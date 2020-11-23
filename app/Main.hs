@@ -18,7 +18,7 @@ import Syntax.Types
 import Syntax.TypeGraph
 import Parser
 import Pretty
-import Eval
+import Eval.Eval
 import GenerateConstraints
 import SolveConstraints
 import Determinize

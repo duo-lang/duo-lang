@@ -8,7 +8,7 @@ import qualified Data.Map as M
 import Parser
 import Syntax.Terms
 import Utils
-import Eval (isClosed_term, isLc_term)
+import Eval.Substitution (isClosed_term, isLc_term)
 import GenerateConstraints
 import SolveConstraints
 import Determinize

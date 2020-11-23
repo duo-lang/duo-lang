@@ -37,7 +37,8 @@ library
   import: shared-build-depends
   exposed-modules:
       Determinize
-      Eval
+      Eval.Eval
+      Eval.Substitution
       FlowAnalysis
       GenerateConstraints
       Minimize

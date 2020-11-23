@@ -18,7 +18,7 @@ import Control.Monad.Reader
 import Data.Void
 import Data.Bifunctor
 
-import Eval
+import Eval.Substitution
 import Syntax.Terms
 import Syntax.Types
 import Utils
