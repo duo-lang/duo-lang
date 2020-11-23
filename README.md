@@ -1,2 +1,14 @@
-# algebraic-subtyping-implementation
-Algebraic subtyping for symmetric data and codata.
+# Algebraic Subtyping
+
+## Installation
+
+The recommended method of building this project is to use `stack`.
+Please follow the installation instructions for stack on https://docs.haskellstack.org/en/stable/install_and_upgrade/
+
+Use the following commands to build, test and run the program:
+
+```
+stack build
+stack test
+stack run simple-exe
+```
