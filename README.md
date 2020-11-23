@@ -1,4 +1,5 @@
 # Algebraic Subtyping
+![CI](https://github.com/ps-tuebingen/algebraic-subtyping-implementation/workflows/CI/badge.svg?branch=main)
 
 ## Installation
 
