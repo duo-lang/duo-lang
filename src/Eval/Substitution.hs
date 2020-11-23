@@ -3,8 +3,12 @@ module Eval.Substitution
   , commandClosingSingle
   , commandOpening
   , commandOpeningSingle
+  , termClosingSingle
+  , termOpeningSingle
   , isClosed_term
   , isLc_term
+  , freeVars_term
+  , freeVars_cmd
   ) where
 
 import Data.List (elemIndex)

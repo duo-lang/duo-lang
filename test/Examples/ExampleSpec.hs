@@ -1,4 +1,4 @@
-module ExampleSpec where
+module Examples.ExampleSpec where
 
 import           Test.Hspec
 import           Control.Monad (forM_, when)
@@ -11,10 +11,7 @@ import Utils
 import Eval.Substitution (isClosed_term, isLc_term)
 import GenerateConstraints
 import SolveConstraints
-import Determinize
-import FlowAnalysis
-import Minimize
-import Target
+
 
 failingExamples :: [String]
 failingExamples = ["div2and3"]
@@ -33,14 +30,7 @@ typecheck :: Term () -> Maybe Error
 typecheck t =
     case generateConstraints t of
       Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-        Right typeAut ->
-          let
-            typeAutDet0 = determinizeTypeAut typeAut
-            typeAutDet = removeAdmissableFlowEdges typeAutDet0
-            minTypeAut = minimizeTypeAut typeAutDet
-            res = autToType minTypeAut
-          in
-            Nothing
+        Right _ -> Nothing
         Left err -> Just err
       Left err -> Just err
 

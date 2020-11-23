@@ -73,7 +73,8 @@ test-suite simple-test
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
-      ExampleSpec
+      Examples.ExampleSpec
+    , Eval.SubstitutionSpec
     , Paths_algebraic_subtyping
     , Spec
   hs-source-dirs:
