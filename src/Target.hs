@@ -1,8 +1,10 @@
 module Target
   (autToType, typeToAut, typeToAutPol)
   where
-
-  import Syntax
+  import Syntax.Terms
+  import Syntax.Types
+  import Syntax.TypeGraph
+  import Utils
   import FlowAnalysis
 
   import Control.Monad.Reader

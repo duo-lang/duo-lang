@@ -12,7 +12,10 @@ module Subsume where
   import Data.Bifunctor (bimap)
   import Control.Monad.State
 
-  import Syntax
+  import Syntax.Terms
+  import Syntax.Types
+  import Syntax.TypeGraph
+
   import Determinize (determinizeTypeAut)
   import FlowAnalysis
   import Minimize

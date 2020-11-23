@@ -8,7 +8,10 @@ import Data.Graph.Inductive.Graph
 import Data.GraphViz
 import Data.Text.Lazy (pack)
 
-import Syntax
+import Syntax.Terms
+import Syntax.Types
+import Syntax.TypeGraph
+import Utils
 
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)

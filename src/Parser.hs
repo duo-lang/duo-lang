@@ -19,7 +19,9 @@ import Data.Void
 import Data.Bifunctor
 
 import Eval
-import Syntax
+import Syntax.Terms
+import Syntax.Types
+import Utils
 
 -- A parser that can read values from an environment
 type EnvParser e = ReaderT (Map String e) (Parsec Void String)

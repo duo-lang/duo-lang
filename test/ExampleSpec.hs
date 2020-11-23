@@ -6,7 +6,8 @@ import           Control.Monad (forM_, when)
 import qualified Data.Map as M
 
 import Parser
-import Syntax
+import Syntax.Terms
+import Utils
 import Eval (isClosed_term, isLc_term)
 import GenerateConstraints
 import SolveConstraints

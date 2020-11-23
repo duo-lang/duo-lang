@@ -8,7 +8,10 @@ module SolveConstraints (solveConstraints, removeEpsilonEdges, removeIslands) wh
   import Data.List (sortBy, (\\))
   import qualified Data.Set as S
 
-  import Syntax
+  import Syntax.Types
+  import Syntax.TypeGraph
+  import Syntax.Terms
+  import Utils
   import Pretty
   import Determinize (removeEpsilonEdges, removeIslands)
 

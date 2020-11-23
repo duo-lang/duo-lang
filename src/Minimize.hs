@@ -7,7 +7,7 @@ module Minimize (minimizeTypeAut) where
   import Data.Set (Set)
   import qualified Data.Set as S
 
-  import Syntax
+  import Syntax.TypeGraph
 
 
   getAlphabet :: (DynGraph gr, Ord b) => gr a b -> [b]

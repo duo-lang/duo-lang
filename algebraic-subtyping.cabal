@@ -45,8 +45,11 @@ library
       Pretty
       SolveConstraints
       Subsume
-      Syntax
+      Syntax.Terms
+      Syntax.Types
+      Syntax.TypeGraph
       Target
+      Utils
   other-modules:
       Paths_algebraic_subtyping
   hs-source-dirs:

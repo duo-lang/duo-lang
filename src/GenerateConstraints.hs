@@ -5,7 +5,9 @@ module GenerateConstraints
   import Control.Monad.State
   import Control.Monad.Except
 
-  import Syntax
+  import Syntax.Terms
+  import Syntax.Types
+  import Utils
   import Eval
   import Pretty
 

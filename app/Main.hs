@@ -13,7 +13,9 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as M
 
-import Syntax
+import Syntax.Terms
+import Syntax.Types
+import Syntax.TypeGraph
 import Parser
 import Pretty
 import Eval

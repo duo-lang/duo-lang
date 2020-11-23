@@ -13,8 +13,9 @@ module Determinize (determinize, determinizeTypeAut, removeFaultyEdges, removeEp
   import qualified Data.Map as M
 
   import Control.Monad.State
-
-  import Syntax
+  import Syntax.Terms
+  import Syntax.Types
+  import Syntax.TypeGraph
 
   ---------------------------------------------------------------------------------------
   -- Generic epsilon edge removal algorithm

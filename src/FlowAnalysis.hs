@@ -1,6 +1,7 @@
 module FlowAnalysis (genFlowGraph, removeAdmissableFlowEdges, getFlowAnalysisMap) where
-
-  import Syntax
+  import Syntax.Terms
+  import Syntax.Types
+  import Syntax.TypeGraph
 
   import Data.Graph.Inductive.Graph
   import Data.Graph.Inductive.PatriciaTree

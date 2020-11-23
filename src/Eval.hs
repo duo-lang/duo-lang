@@ -7,7 +7,8 @@ module Eval where
 
   import Control.Applicative ((<|>))
 
-  import Syntax
+  import Syntax.Terms
+  import Utils
   import Pretty
 
   termOpeningRec :: Int -> XtorArgs a -> Term a -> Term a
