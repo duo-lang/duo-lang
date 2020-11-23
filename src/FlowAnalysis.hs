@@ -1,0 +1,107 @@
+module FlowAnalysis (genFlowGraph, removeAdmissableFlowEdges, getFlowAnalysisMap) where
+
+  import Syntax
+
+  import Data.Graph.Inductive.Graph
+  import Data.Graph.Inductive.PatriciaTree
+
+  import Control.Applicative ((<|>))
+  import Control.Monad.State
+
+  import Data.List (intersect, maximumBy, delete)
+  import Data.Ord (comparing)
+  import Data.Tuple (swap)
+  import Data.Maybe (isJust)
+  import Data.Map (Map)
+  import qualified Data.Map as M
+  import Data.Set (Set)
+  import qualified Data.Set as S
+
+  ----------------------------------------------------------------------------------------
+  -- Flow edge admissability check
+  ----------------------------------------------------------------------------------------
+
+  sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
+  sucWith gr i el = lookup el (map swap (lsuc gr i))
+
+  -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
+  -- needs to be seperated for technical reasons...
+  admissable :: TypeAut -> FlowEdge -> Bool
+  admissable (gr,start,flowEdges) e = isJust $ admissableM (gr,start,delete e flowEdges) e
+
+  admissableM :: TypeAut -> FlowEdge -> Maybe ()
+  admissableM aut@(gr,_,flowEdges) e@(i,j) =
+      let
+        subtypeData = do -- Maybe monad
+          (Neg, HeadCons (Just dat1) _) <- lab gr i
+          (Pos, HeadCons (Just dat2) _) <- lab gr j
+          _ <- forM (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
+          _ <- forM (S.toList dat1) $ \xt -> do
+            _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
+              m <- sucWith gr j el
+              admissableM aut (n,m)
+            _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
+              m <- sucWith gr j el
+              admissableM aut (m,n)
+            return ()
+          return ()
+        subtypeCodata = do -- Maybe monad
+          (Neg, HeadCons _ (Just codat1)) <- lab gr i
+          (Pos, HeadCons _ (Just codat2)) <- lab gr j
+          _ <- forM (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
+          _ <- forM (S.toList codat2) $ \xt -> do
+            _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
+              m <- sucWith gr j el
+              admissableM aut (m,n)
+            _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
+              m <- sucWith gr j el
+              admissableM aut (n,m)
+            return ()
+          return ()
+      in
+        guard (e `elem` flowEdges) <|> subtypeData <|> subtypeCodata
+
+
+  removeAdmissableFlowEdges :: TypeAut -> TypeAut
+  removeAdmissableFlowEdges aut@(gr, starts, flowEdges) = (gr, starts, filter (not . admissable aut) flowEdges)
+
+  -------------------------------------------------------------------------------------
+  -- Flow analysis
+  -------------------------------------------------------------------------------------
+
+  type FlowGraph = Gr () ()
+
+  genFlowGraph :: TypeAut -> FlowGraph
+  genFlowGraph (gr,_,flowEdges) = mkGraph [(n,()) | n <- nodes gr] [(i,j,()) | (i,j) <- flowEdges]
+
+  flowComponent :: FlowGraph -> Node -> [Node]
+  flowComponent flgr i =
+    let
+      ns = neighbors flgr i
+    in
+      if null ns
+        then [i]
+        else ns ++ (foldr1 intersect) (map (neighbors flgr) ns)
+
+  freshTVar :: State Int TVar
+  freshTVar = do
+    n <- get
+    modify (+1)
+    return (MkTVar ("t" ++ show n))
+
+  flowAnalysisState :: FlowGraph -> State Int (Map Node (Set TVar))
+  flowAnalysisState flgr =
+      let
+        nextNode = maximumBy (comparing (length . flowComponent flgr)) (nodes flgr)
+        comp = flowComponent flgr nextNode
+        newGr = delEdges [(x,y) | (x,y) <- edges flgr, x `elem` comp, y `elem` comp] flgr
+      in
+        if length comp < 2
+          then return (M.fromList [(n,S.empty) | n <- nodes flgr])
+          else do
+            tv <- freshTVar
+            rest <- flowAnalysisState newGr
+            return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
+
+  getFlowAnalysisMap :: TypeAut -> Map Node (Set TVar)
+  getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
