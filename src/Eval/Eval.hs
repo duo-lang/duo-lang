@@ -1,12 +1,14 @@
-module Eval.Eval where
+module Eval.Eval
+  ( eval
+  ) where
 
-import Prettyprinter
+import Prettyprinter (Pretty)
 import Data.List (find)
 
+import Eval.Substitution
+import Pretty
 import Syntax.Terms
 import Utils
-import Pretty
-import Eval.Substitution
 
 eval :: Pretty a => Command a -> Either Error String
 eval Done = Right "Done"
@@ -47,3 +49,4 @@ eval cmd@(Apply _ (MuAbs Cns _ _)) = Left $ EvalError ("Error during evaluation 
                                                        "\"\nRight side is not a consumer!")
 eval cmd@(Apply _ _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                           "\"\n Free variable encountered!")
+

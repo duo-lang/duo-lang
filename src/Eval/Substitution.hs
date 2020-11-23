@@ -1,4 +1,11 @@
-module Eval.Substitution where
+module Eval.Substitution
+  ( commandClosing
+  , commandClosingSingle
+  , commandOpening
+  , commandOpeningSingle
+  , isClosed_term
+  , isLc_term
+  ) where
 
 import Data.List (elemIndex)
 import Control.Applicative ((<|>))
