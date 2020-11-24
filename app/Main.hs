@@ -120,24 +120,22 @@ save_cmd s = do
   termEnv <- gets termEnv
   typeEnv <- gets typeEnv
   case runEnvParser typeSchemeP typeEnv s of
-    Right ty -> case typeToAut ty of
-      Right aut -> saveGraphFiles "gr" aut
-      Left err -> prettyRepl err
+    Right ty -> do
+      aut <- fromRight (typeToAut ty)
+      saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (termP Prd) termEnv s of
-      Right t -> case generateConstraints t of
-        Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-          Right typeAut -> do
-              saveGraphFiles "0_typeAut" typeAut
-              let typeAutDet = determinizeTypeAut typeAut
-              saveGraphFiles "1_typeAutDet" typeAutDet
-              let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-              saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
-              let minTypeAut = minimizeTypeAut typeAutDetAdms
-              saveGraphFiles "3_minTypeAut" minTypeAut
-              let res = autToType minTypeAut
-              prettyRepl (" :: " ++ ppPrint res)
-          Left err -> prettyRepl err
-        Left err -> prettyRepl err
+      Right t -> do
+        (typedTerm, css, uvars) <- fromRight (generateConstraints t)
+        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+        saveGraphFiles "0_typeAut" typeAut
+        let typeAutDet = determinizeTypeAut typeAut
+        saveGraphFiles "1_typeAutDet" typeAutDet
+        let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
+        saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
+        let minTypeAut = minimizeTypeAut typeAutDetAdms
+        saveGraphFiles "3_minTypeAut" minTypeAut
+        let res = autToType minTypeAut
+        prettyRepl (" :: " ++ ppPrint res)
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 
