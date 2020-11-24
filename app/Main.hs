@@ -1,5 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import System.Console.Repline hiding (Command)
@@ -7,15 +6,16 @@ import System.FilePath ((</>), (<.>))
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Bifunctor
 
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as M
+import Prettyprinter (Pretty)
 
 import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
+import Utils
 import Parser
 import Pretty
 import Eval
@@ -27,167 +27,197 @@ import Minimize
 import Subsume
 import Target
 
---import Data.Graph.Inductive.Graph (prettyPrint)
 import Data.GraphViz
 
-type Repl = HaskelineT (StateT (TermEnvironment, TypeEnvironment) IO)
+------------------------------------------------------------------------------
+-- Internal State of the Repl
+------------------------------------------------------------------------------
+
+data ReplState = ReplState
+  { termEnv :: TermEnvironment
+  , typeEnv :: TypeEnvironment
+  }
+
+initialReplState :: ReplState
+initialReplState = ReplState { termEnv = M.empty, typeEnv = M.empty }
+
+------------------------------------------------------------------------------
+-- Repl Monad and helper functions
+------------------------------------------------------------------------------
+
+type ReplInner = StateT ReplState IO
+type Repl a = HaskelineT ReplInner a
 
 modifyTermEnv :: (TermEnvironment -> TermEnvironment) -> Repl ()
-modifyTermEnv f = modify (bimap f id)
+modifyTermEnv f = modify $ \rs@ReplState{..} -> rs { termEnv = f termEnv }
 
 modifyTypeEnv :: (TypeEnvironment -> TypeEnvironment) -> Repl ()
-modifyTypeEnv f = modify (bimap id f)
+modifyTypeEnv f = modify $ \rs@ReplState{..} -> rs { typeEnv = f typeEnv }
 
-saveGraphFiles :: String -> TypeAut -> IO ()
+prettyRepl :: Pretty a => a -> Repl ()
+prettyRepl s = liftIO $ putStrLn (ppPrint s)
+
+fromRight :: Pretty err => Either err b -> Repl b
+fromRight (Right b) = return b
+fromRight (Left err) = prettyRepl err >> abort
+
+parseRepl :: String -> EnvParser e a -> Environment e -> Repl a
+parseRepl s p env = fromRight (runEnvParser p env s)
+
+------------------------------------------------------------------------------
+-- Command
+------------------------------------------------------------------------------
+
+cmd :: String -> Repl ()
+cmd s = do
+  env <- gets termEnv
+  com <- parseRepl s commandP env
+  case eval com of
+    Right res -> prettyRepl res
+    Left err -> prettyRepl err
+
+------------------------------------------------------------------------------
+-- Options
+------------------------------------------------------------------------------
+
+type_cmd :: String -> Repl ()
+type_cmd s = do
+  env <- gets termEnv
+  t <- parseRepl s (termP Prd) env
+  (typedTerm, css, uvars) <- fromRight $ generateConstraints t
+  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+  let
+    typeAutDet0 = determinizeTypeAut typeAut
+    typeAutDet = removeAdmissableFlowEdges typeAutDet0
+    minTypeAut = minimizeTypeAut typeAutDet
+    res = autToType minTypeAut
+  prettyRepl (" :: " ++ ppPrint res)
+
+show_cmd :: String -> Repl ()
+show_cmd s = do
+  termEnv <- gets termEnv
+  typeEnv <- gets typeEnv
+  case runEnvParser typeSchemeP typeEnv s of
+    Right ty -> prettyRepl ty
+    Left err1 -> case runEnvParser (termP Prd) termEnv s of
+      Right t -> prettyRepl t
+      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
+                               "Term parsing error:\n"++ ppPrint err2)
+
+def_cmd :: String -> Repl ()
+def_cmd s = do
+  termEnv <- gets termEnv
+  typeEnv <- gets typeEnv
+  case runEnvParser typeDefinitionP typeEnv s of
+    Right (v,ty) -> modifyTypeEnv (M.insert v ty)
+    Left err1 -> case runEnvParser definitionP termEnv s of
+      Right (v,t) -> modifyTermEnv (M.insert v t)
+      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
+                               "Term parsing error:\n"++ ppPrint err2)
+
+save_cmd :: String -> Repl ()
+save_cmd s = do
+  termEnv <- gets termEnv
+  typeEnv <- gets typeEnv
+  case runEnvParser typeSchemeP typeEnv s of
+    Right ty -> do
+      aut <- fromRight (typeToAut ty)
+      saveGraphFiles "gr" aut
+    Left err1 -> case runEnvParser (termP Prd) termEnv s of
+      Right t -> do
+        (typedTerm, css, uvars) <- fromRight (generateConstraints t)
+        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+        saveGraphFiles "0_typeAut" typeAut
+        let typeAutDet = determinizeTypeAut typeAut
+        saveGraphFiles "1_typeAutDet" typeAutDet
+        let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
+        saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
+        let minTypeAut = minimizeTypeAut typeAutDetAdms
+        saveGraphFiles "3_minTypeAut" minTypeAut
+        let res = autToType minTypeAut
+        prettyRepl (" :: " ++ ppPrint res)
+      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
+                               "Term parsing error:\n"++ ppPrint err2)
+
+saveGraphFiles :: String -> TypeAut -> Repl ()
 saveGraphFiles fileName aut = do
   let graphDir = "graphs"
   let fileUri = "  file://"
   let jpg = "jpg"
   let xdot = "xdot"
-  dotInstalled <- isGraphvizInstalled
+  dotInstalled <- liftIO $ isGraphvizInstalled
   case dotInstalled of
     True -> do
-      createDirectoryIfMissing True graphDir
-      currentDir <- getCurrentDirectory
-      _ <- runGraphviz (typeAutToDot aut) Jpeg (graphDir </> fileName <.> jpg)
-      _ <- runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
-      putStrLn (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
-    False -> putStrLn "Cannot execute command: graphviz executable not found in path."
-
-cmd :: String -> Repl ()
-cmd s = do
-  (env,_) <- get
-  case runEnvParser commandP env s of
-    Right com -> case eval com of
-      Right res -> liftIO $ putStrLn res
-      Left err -> liftIO $ putStrLn (ppPrint err)
-    Left err -> liftIO $ putStrLn (ppPrint err)
-
-ini :: Repl ()
-ini = do
-  liftIO $ putStrLn "Algebraic subtyping for structural Ouroboro.\nPress Ctrl+D to exit."
-  loadStandardEnv
-
-final :: Repl ExitDecision
-final = liftIO (putStrLn "Goodbye!") >> return Exit
-
-type_cmd :: String -> Repl ()
-type_cmd s = do
-  (env,_) <- get
-  case runEnvParser (termP Prd) env s of
-    Right t -> case generateConstraints t of
-      Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-        Right typeAut -> let
-            typeAutDet0 = determinizeTypeAut typeAut
-            typeAutDet = removeAdmissableFlowEdges typeAutDet0
-            minTypeAut = minimizeTypeAut typeAutDet
-            res = autToType minTypeAut
-          in
-            liftIO $ putStrLn (" :: " ++ ppPrint res)
-        Left err -> liftIO $ putStrLn (ppPrint err)
-      Left err -> liftIO $ putStrLn (ppPrint err)
-    Left err -> liftIO $ putStrLn (ppPrint err)
-
-show_cmd :: String -> Repl ()
-show_cmd s = do
-  (termEnv,typeEnv) <- get
-  case runEnvParser typeSchemeP typeEnv s of
-    Right ty -> liftIO $ putStrLn (ppPrint ty)
-    Left err1 -> case runEnvParser (termP Prd) termEnv s of
-      Right t -> liftIO $ putStrLn (ppPrint t)
-      Left err2 -> liftIO $ putStrLn ("Type parsing error:\n" ++ ppPrint err1 ++
-                                      "Term pasrsing error:\n"++ ppPrint err2)
-
-def_cmd :: String -> Repl ()
-def_cmd s = do
-  (termEnv,typeEnv) <- get
-  case runEnvParser typeDefinitionP typeEnv s of
-    Right (v,ty) -> modifyTypeEnv (M.insert v ty)
-    Left err1 -> case runEnvParser definitionP termEnv s of
-      Right (v,t) -> modifyTermEnv (M.insert v t)
-      Left err2 -> liftIO $ putStrLn ("Type parsing error:\n" ++ ppPrint err1 ++
-                                      "Term pasrsing error:\n"++ ppPrint err2)
-
-save_cmd :: String -> Repl ()
-save_cmd s = do
-  (termEnv,typeEnv) <- get
-  case runEnvParser typeSchemeP typeEnv s of
-    Right ty -> case typeToAut ty of
-      Right aut -> liftIO $ saveGraphFiles "gr" aut
-      Left err -> liftIO $ putStrLn err
-    Left err1 -> case runEnvParser (termP Prd) termEnv s of
-      Right t -> case generateConstraints t of
-        Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-          Right typeAut -> do
-              liftIO $ saveGraphFiles "0_typeAut" typeAut
-              let typeAutDet = determinizeTypeAut typeAut
-              liftIO $ saveGraphFiles "1_typeAutDet" typeAutDet
-              let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-              liftIO $ saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
-              let minTypeAut = minimizeTypeAut typeAutDetAdms
-              liftIO $ saveGraphFiles "3_minTypeAut" minTypeAut
-              let res = autToType minTypeAut
-              liftIO $ putStrLn (" :: " ++ ppPrint res)
-          Left err -> liftIO $ putStrLn (ppPrint err)
-        Left err -> liftIO $ putStrLn (ppPrint err)
-      Left err2 -> liftIO $ putStrLn ("Type parsing error:\n" ++ ppPrint err1 ++
-                                      "Term pasrsing error:\n"++ ppPrint err2)
+      liftIO $ createDirectoryIfMissing True graphDir
+      currentDir <- liftIO $ getCurrentDirectory
+      _ <- liftIO $ runGraphviz (typeAutToDot aut) Jpeg (graphDir </> fileName <.> jpg)
+      _ <- liftIO $ runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
+      prettyRepl (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
+    False -> prettyRepl "Cannot execute command: graphviz executable not found in path."
 
 bind_cmd :: String -> Repl ()
 bind_cmd s = do
-  (env,_) <- get
-  case runEnvParser bindingP env s of
-    Right (v,t) -> case generateConstraints t of
-      Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-        Right typeAut -> let
-            typeAutDet0 = determinizeTypeAut typeAut
-            typeAutDet = removeAdmissableFlowEdges typeAutDet0
-            minTypeAut = minimizeTypeAut typeAutDet
-            resType = autToType minTypeAut
-          in
-            modifyTypeEnv (M.insert v resType)
-        Left err -> liftIO $ putStrLn (ppPrint err)
-      Left err -> liftIO $ putStrLn (ppPrint err)
-    Left err -> liftIO $ putStrLn (ppPrint err)
+  env <- gets termEnv
+  (v,t) <- parseRepl s bindingP env
+  (typedTerm, css, uvars) <- fromRight (generateConstraints t)
+  typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t))
+  let
+    typeAutDet0 = determinizeTypeAut typeAut
+    typeAutDet  = removeAdmissableFlowEdges typeAutDet0
+    minTypeAut  = minimizeTypeAut typeAutDet
+    resType     = autToType minTypeAut
+  modifyTypeEnv (M.insert v resType)
+
 
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
-  (_,env) <- get
-  case runEnvParser subtypingProblemP env s of
-    Right (t1, t2) -> case (typeToAutPol Pos t1, typeToAutPol Pos t2) of
-      (Right aut1, Right aut2) -> liftIO $ putStrLn $ show (isSubtype aut1 aut2)
-      _ -> case (typeToAutPol Neg t1, typeToAutPol Neg t2) of
-        (Right aut1, Right aut2) -> liftIO $ putStrLn $ show (isSubtype aut1 aut2)
+  env <- gets typeEnv
+  (t1,t2) <- parseRepl s subtypingProblemP env
+  case (typeToAutPol Pos t1, typeToAutPol Pos t2) of
+    (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
+    _ -> case (typeToAutPol Neg t1, typeToAutPol Neg t2) of
+        (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
         -- TODO: Make this error message better
-        _ -> liftIO $ putStrLn "Invalid input. Either the types have non-matching polarities, they aren't polar at all or the covariance rule is violated."
-    Left err -> liftIO $ putStrLn (ppPrint err)
+        _ -> prettyRepl "Invalid input. Either the types have non-matching polarities, they aren't polar at all or the covariance rule is violated."
 
 simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
-  (_,env) <- get
-  case runEnvParser typeSchemeP env s of
-    Right ty -> case typeToAut ty of
-      Right aut -> liftIO $ putStrLn (ppPrint (autToType aut))
-      Left err -> liftIO $ putStrLn (ppPrint err)
-    Left err -> liftIO $ putStrLn (ppPrint err)
+  env <- gets typeEnv
+  ty <- parseRepl s typeSchemeP env
+  aut <- fromRight (typeToAut ty)
+  prettyRepl (autToType aut)
 
 load_cmd :: String -> Repl ()
 load_cmd s = do
-  (env,_) <- get
+  env <- gets termEnv
   defs <- liftIO $ readFile s
-  case runEnvParser environmentP env defs of
-    Right env' -> modifyTermEnv (env' `M.union`)
-    Left err -> liftIO $ putStrLn (ppPrint err)
+  env' <- parseRepl defs environmentP env
+  modifyTermEnv (env' `M.union`)
 
 reload_cmd :: String -> Repl ()
 reload_cmd input = do
   let s = case (dropWhile isSpace input) of {"" -> "prg.txt"; s' -> s'}
   load_cmd s
 
-completer :: String -> StateT (TermEnvironment, TypeEnvironment) IO [String]
-completer s = filter (s `isPrefixOf`) . uncurry (++) . bimap M.keys M.keys <$> get
+------------------------------------------------------------------------------
+-- Repl Configuration
+------------------------------------------------------------------------------
 
-opts :: ReplOpts (StateT (TermEnvironment, TypeEnvironment) IO)
+completer :: String -> ReplInner [String]
+completer s = do
+  termEnv <- gets termEnv
+  typeEnv <- gets typeEnv
+  return $ filter (s `isPrefixOf`) (M.keys termEnv ++ M.keys typeEnv)
+
+ini :: Repl ()
+ini = do
+  prettyRepl "Algebraic subtyping for structural Ouroboro.\nPress Ctrl+D to exit."
+  loadStandardEnv
+
+final :: Repl ExitDecision
+final = prettyRepl "Goodbye!" >> return Exit
+
+opts :: ReplOpts ReplInner
 opts = ReplOpts
   { banner           = const (pure ">>> ")
   , command          = cmd
@@ -211,15 +241,9 @@ opts = ReplOpts
 loadStandardEnv :: Repl ()
 loadStandardEnv = load_cmd "prg.txt"
 
-{-
-Right t = runEnvParser termP M.empty s
-Right (ty,cs,uvs) = generateConstraints t
-Right typeAut = solveConstraints cs uvs (typedTermToType ty) (termPrdOrCns t)
-typeAutDet0 = determinizeTypeAut typeAut
-typeAutDet = removeAdmissableFlowEdges typeAutDet0
-minTypeAut = minimizeTypeAut typeAutDet
-res = autToType minTypeAut
--}
+------------------------------------------------------------------------------
+-- Run the Repl
+------------------------------------------------------------------------------
 
 main :: IO ()
-main = runStateT (evalReplOpts opts) (M.empty, M.empty) >> return ()
+main = runStateT (evalReplOpts opts) initialReplState >> return ()
