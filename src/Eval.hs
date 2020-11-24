@@ -3,6 +3,7 @@ module Eval where
 import Prettyprinter
 import Data.List (elemIndex,find)
 import Data.Maybe (fromJust)
+import Data.Map (Map)
 import qualified Data.Map as M
 
 import Control.Applicative ((<|>))
@@ -10,6 +11,8 @@ import Control.Applicative ((<|>))
 import Syntax.Terms
 import Utils
 import Pretty
+
+type Environment a = Map String a
 
 termOpeningRec :: Int -> XtorArgs a -> Term a -> Term a
 termOpeningRec k args (BoundVar i pc j)     = if i == k then getArg j pc args else BoundVar i pc j

@@ -15,10 +15,10 @@ import Prettyprinter (Pretty)
 import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
-import Utils
+import Syntax.Program
 import Parser
 import Pretty
-import Eval
+import Eval hiding (Environment)
 import GenerateConstraints
 import SolveConstraints
 import Determinize
@@ -34,12 +34,11 @@ import Data.GraphViz
 ------------------------------------------------------------------------------
 
 data ReplState = ReplState
-  { termEnv :: TermEnvironment
-  , typeEnv :: TypeEnvironment
+  { replEnv :: Environment
   }
 
 initialReplState :: ReplState
-initialReplState = ReplState { termEnv = M.empty, typeEnv = M.empty }
+initialReplState = ReplState { replEnv = mempty }
 
 ------------------------------------------------------------------------------
 -- Repl Monad and helper functions
@@ -48,11 +47,8 @@ initialReplState = ReplState { termEnv = M.empty, typeEnv = M.empty }
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyTermEnv :: (TermEnvironment -> TermEnvironment) -> Repl ()
-modifyTermEnv f = modify $ \rs@ReplState{..} -> rs { termEnv = f termEnv }
-
-modifyTypeEnv :: (TypeEnvironment -> TypeEnvironment) -> Repl ()
-modifyTypeEnv f = modify $ \rs@ReplState{..} -> rs { typeEnv = f typeEnv }
+modifyEnvironment :: (Environment -> Environment) -> Repl ()
+modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 prettyRepl :: Pretty a => a -> Repl ()
 prettyRepl s = liftIO $ putStrLn (ppPrint s)
@@ -61,7 +57,7 @@ fromRight :: Pretty err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseRepl :: String -> EnvParser e a -> Environment e -> Repl a
+parseRepl :: String -> Parser a -> Environment -> Repl a
 parseRepl s p env = fromRight (runEnvParser p env s)
 
 ------------------------------------------------------------------------------
@@ -70,7 +66,7 @@ parseRepl s p env = fromRight (runEnvParser p env s)
 
 cmd :: String -> Repl ()
 cmd s = do
-  env <- gets termEnv
+  env <- gets replEnv
   com <- parseRepl s commandP env
   case eval com of
     Right res -> prettyRepl res
@@ -82,7 +78,7 @@ cmd s = do
 
 type_cmd :: String -> Repl ()
 type_cmd s = do
-  env <- gets termEnv
+  env <- gets replEnv
   t <- parseRepl s (termP Prd) env
   (typedTerm, css, uvars) <- fromRight $ generateConstraints t
   typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
@@ -95,35 +91,32 @@ type_cmd s = do
 
 show_cmd :: String -> Repl ()
 show_cmd s = do
-  termEnv <- gets termEnv
-  typeEnv <- gets typeEnv
-  case runEnvParser typeSchemeP typeEnv s of
+  env <- gets replEnv
+  case runEnvParser typeSchemeP env s of
     Right ty -> prettyRepl ty
-    Left err1 -> case runEnvParser (termP Prd) termEnv s of
+    Left err1 -> case runEnvParser (termP Prd) env s of
       Right t -> prettyRepl t
-      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
-                               "Term parsing error:\n"++ ppPrint err2)
+      Left err2 -> prettyRepl $ unlines [ "Type parsing error:"
+                                        , ppPrint err1
+                                        , "Term parsing error:"
+                                        , ppPrint err2
+                                        ]
 
 def_cmd :: String -> Repl ()
 def_cmd s = do
-  termEnv <- gets termEnv
-  typeEnv <- gets typeEnv
-  case runEnvParser typeDefinitionP typeEnv s of
-    Right (v,ty) -> modifyTypeEnv (M.insert v ty)
-    Left err1 -> case runEnvParser definitionP termEnv s of
-      Right (v,t) -> modifyTermEnv (M.insert v t)
-      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
-                               "Term parsing error:\n"++ ppPrint err2)
+  env <- gets replEnv
+  case runEnvParser declarationP env s of
+    Right decl -> modifyEnvironment (insertDecl decl)
+    Left err -> prettyRepl err
 
 save_cmd :: String -> Repl ()
 save_cmd s = do
-  termEnv <- gets termEnv
-  typeEnv <- gets typeEnv
-  case runEnvParser typeSchemeP typeEnv s of
+  env <- gets replEnv
+  case runEnvParser typeSchemeP env s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runEnvParser (termP Prd) termEnv s of
+    Left err1 -> case runEnvParser (termP Prd) env s of
       Right t -> do
         (typedTerm, css, uvars) <- fromRight (generateConstraints t)
         typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
@@ -157,7 +150,7 @@ saveGraphFiles fileName aut = do
 
 bind_cmd :: String -> Repl ()
 bind_cmd s = do
-  env <- gets termEnv
+  env <- gets replEnv
   (v,t) <- parseRepl s bindingP env
   (typedTerm, css, uvars) <- fromRight (generateConstraints t)
   typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t))
@@ -166,12 +159,12 @@ bind_cmd s = do
     typeAutDet  = removeAdmissableFlowEdges typeAutDet0
     minTypeAut  = minimizeTypeAut typeAutDet
     resType     = autToType minTypeAut
-  modifyTypeEnv (M.insert v resType)
+  modifyEnvironment (insertDecl (TypDecl v resType))
 
 
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
-  env <- gets typeEnv
+  env <- gets replEnv
   (t1,t2) <- parseRepl s subtypingProblemP env
   case (typeToAutPol Pos t1, typeToAutPol Pos t2) of
     (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
@@ -182,17 +175,17 @@ sub_cmd s = do
 
 simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
-  env <- gets typeEnv
+  env <- gets replEnv
   ty <- parseRepl s typeSchemeP env
   aut <- fromRight (typeToAut ty)
   prettyRepl (autToType aut)
 
 load_cmd :: String -> Repl ()
 load_cmd s = do
-  env <- gets termEnv
+  env <- gets replEnv
   defs <- liftIO $ readFile s
-  env' <- parseRepl defs environmentP env
-  modifyTermEnv (env' `M.union`)
+  newEnv <- parseRepl defs environmentP env
+  modifyEnvironment ((<>) newEnv)
 
 reload_cmd :: String -> Repl ()
 reload_cmd input = do
@@ -205,9 +198,8 @@ reload_cmd input = do
 
 completer :: String -> ReplInner [String]
 completer s = do
-  termEnv <- gets termEnv
-  typeEnv <- gets typeEnv
-  return $ filter (s `isPrefixOf`) (M.keys termEnv ++ M.keys typeEnv)
+  env <- gets replEnv
+  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env))
 
 ini :: Repl ()
 ini = do

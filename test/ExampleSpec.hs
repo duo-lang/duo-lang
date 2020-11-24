@@ -3,10 +3,12 @@ module ExampleSpec where
 import           Test.Hspec
 import           Control.Monad (forM_, when)
 
+import Data.Map (Map)
 import qualified Data.Map as M
 
 import Parser
 import Syntax.Terms
+import Syntax.Program
 import Utils
 import Eval (isClosed_term, isLc_term)
 import GenerateConstraints
@@ -19,11 +21,13 @@ import Target
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
+type TermEnvironment = Map FreeVarName (Term ())
+
 getEnvironment :: IO TermEnvironment
 getEnvironment = do
   s <- readFile "prg.txt"
-  case runEnvParser environmentP M.empty s of
-    Right env -> return (M.filterWithKey (\k _ -> not (k `elem` failingExamples)) env)
+  case runEnvParser environmentP mempty s of
+    Right env -> return (M.filterWithKey (\k _ -> not (k `elem` failingExamples)) (prdEnv env <> cnsEnv env))
     Left _err -> error "Could not load prg.txt"
 
 checkTerm :: (FreeVarName, Term ()) -> SpecWith ()

@@ -1,7 +1,5 @@
 module Syntax.Terms where
 
-import Data.Map (Map)
-
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -51,4 +49,3 @@ termPrdOrCns (FreeVar _ _)         = error "termPrdOrCns: free variable found"
 
 data Command a = Apply (Term a) (Term a) | Print (Term a) | Done deriving (Eq,Show)
 
-type TermEnvironment = Map FreeVarName (Term ())
