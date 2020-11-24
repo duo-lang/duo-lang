@@ -110,8 +110,9 @@ def_cmd s = do
   typeEnv <- gets typeEnv
   case runEnvParser typeDefinitionP typeEnv s of
     Right (v,ty) -> modifyTypeEnv (M.insert v ty)
-    Left err1 -> case runEnvParser definitionP termEnv s of
-      Right (v,t) -> modifyTermEnv (M.insert v t)
+    Left err1 -> case runEnvParser declarationP termEnv s of
+      Right (PrdDecl v t) -> modifyTermEnv (M.insert v t)
+      Right (CnsDecl v t) -> modifyTermEnv (M.insert v t)
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 

@@ -12,7 +12,6 @@ import Data.Tuple (swap)
 import Data.Bifunctor (bimap)
 import Control.Monad.State
 
-import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 

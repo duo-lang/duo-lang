@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Parser
-  ( runEnvParser , termP, commandP, definitionP, environmentP, typeSchemeP, typeDefinitionP, subtypingProblemP, bindingP, EnvParser)
+  ( runEnvParser , termP, commandP, declarationP, environmentP, typeSchemeP, typeDefinitionP, subtypingProblemP, bindingP, EnvParser)
   where
 
 import Text.Megaparsec hiding (State)
@@ -16,7 +16,6 @@ import Control.Monad.State
 import Control.Monad.Reader
 
 import Data.Void
-import Data.Bifunctor
 
 import Eval
 import Syntax.Terms
@@ -162,33 +161,43 @@ doneCmd = lexeme (symbol "Done") >> return Done
 printCmd :: TermParser (Command ())
 printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP Prd))
 
+---------------------------------------------------------------------------------
+-- Parsing a program
+---------------------------------------------------------------------------------
 
-definitionP :: TermParser (FreeVarName, Term ())
-definitionP = prdDefinitionP <|> cnsDefinitionP
+declarationP :: TermParser (Declaration ())
+declarationP = prdDeclarationP <|> cnsDeclarationP
 
-prdDefinitionP :: TermParser (FreeVarName, Term ())
-prdDefinitionP = do
+prdDeclarationP :: TermParser (Declaration ())
+prdDeclarationP = do
   _ <- try $ lexeme (symbol "prd")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
   t <- lexeme (termP Prd)
-  return (v,t)
+  _ <- symbol ";"
+  return (PrdDecl v t)
 
-cnsDefinitionP :: TermParser (FreeVarName, Term ())
-cnsDefinitionP = do
+cnsDeclarationP :: TermParser (Declaration ())
+cnsDeclarationP = do
   _ <- try $ lexeme (symbol "cns")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
   t <- lexeme (termP Cns)
-  return (v,t)
+  _ <- symbol ";"
+  return (CnsDecl v t)
 
 
--- multuple definitions seperated by ';'. Later definition may depend on earlier ones
+-- Multiple definitions seperated by ';'. Later definition may depend on earlier ones
 environmentP :: TermParser TermEnvironment
 environmentP = (eof >> ask) <|> do
-  (v,t) <- sc >> definitionP
-  _ <- symbol ";"
-  local (M.insert v t) environmentP
+  decl <- sc >> declarationP
+  case decl of
+    PrdDecl v t -> local (M.insert v t) environmentP
+    CnsDecl v t -> local (M.insert v t) environmentP
+
+---------------------------------------------------------------------------------
+-- Parsing for Repl
+---------------------------------------------------------------------------------
 
 bindingP :: TermParser (FreeVarName, Term ())
 bindingP = do
