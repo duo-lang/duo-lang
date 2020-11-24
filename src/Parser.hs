@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Parser
-  ( runEnvParser , termP, commandP, definitionP, environmentP, typeSchemeP, typeDefinitionP, subtypingProblemP, bindingP )
+  ( runEnvParser , termP, commandP, definitionP, environmentP, typeSchemeP, typeDefinitionP, subtypingProblemP, bindingP, EnvParser)
   where
 
 import Text.Megaparsec hiding (State)
