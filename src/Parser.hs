@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Parser
-  ( runEnvParser , termP, commandP, declarationP, environmentP, typeSchemeP, typeDefinitionP, subtypingProblemP, bindingP, EnvParser)
+  ( runEnvParser , termP, commandP, declarationP, environmentP, typeSchemeP, subtypingProblemP, bindingP, Parser)
   where
 
 import Text.Megaparsec hiding (State)
@@ -10,7 +10,6 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Map (Map)
 import qualified Data.Map as M
 import Control.Monad.State
 import Control.Monad.Reader
@@ -20,12 +19,13 @@ import Data.Void
 import Eval
 import Syntax.Terms
 import Syntax.Types
+import Syntax.Program
 import Utils
 
 -- A parser that can read values from an environment
-type EnvParser e = ReaderT (Map String e) (Parsec Void String)
+type Parser = ReaderT Syntax.Program.Environment (Parsec Void String)
 
-runEnvParser :: EnvParser e a -> Environment e -> String -> Either Error a
+runEnvParser :: Parser a -> Syntax.Program.Environment -> String -> Either Error a
 runEnvParser p env input = case runParser (runReaderT (lexeme (p <* eof)) env) "<interactive>" input of
   Left err -> Left $ ParseError (errorBundlePretty err)
   Right x -> Right x
@@ -36,12 +36,6 @@ runEnvParser p env input = case runParser (runReaderT (lexeme (p <* eof)) env) "
 
 sepBy2 :: MonadPlus m => m a -> m sep -> m [a]
 sepBy2 p sep = (:) <$> (p <* sep) <*> (sepBy1 p sep)
-
-envItem :: EnvParser e e
-envItem = do
-  v <- lexeme (many alphaNumChar)
-  Just x <- M.lookup v <$> ask
-  return x
 
 sc :: (MonadParsec Void String m) => m ()
 sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
@@ -84,8 +78,6 @@ argListP p q = do
 -- Term/Command parsing
 --------------------------------------------------------------------------------------------
 
-type TermParser a = EnvParser (Term ()) a
-
 --nice helper function for creating xtor signatures
 argsSig :: Int -> Int -> Twice [()]
 argsSig n m = Twice (replicate n ()) (replicate m ())
@@ -95,38 +87,50 @@ numToTerm :: Int -> Term ()
 numToTerm 0 = XtorCall Data "Z" (Twice [] [])
 numToTerm n = XtorCall Data "S" (Twice [numToTerm (n-1)] [])
 
-termP :: PrdOrCns -> TermParser (Term ())
+termEnvP :: PrdOrCns -> Parser (Term ())
+termEnvP Prd = do
+  v <- lexeme (many alphaNumChar)
+  prdEnv <- asks prdEnv
+  Just t <- return $  M.lookup v prdEnv
+  return t
+termEnvP Cns = do
+  v <- lexeme (many alphaNumChar)
+  cnsEnv <- asks cnsEnv
+  Just t <- return $ M.lookup v cnsEnv
+  return t
+
+termP :: PrdOrCns -> Parser (Term ())
 termP mode = try (parens (termP mode))
   <|> xtorCall mode
   <|> patternMatch
   <|> muAbstraction
-  <|> try envItem -- needs to be tried, because the parser has to consume the string, before it checks
-                  -- if the variable is in the environment, which might cause it to fail
+  <|> try (termEnvP mode) -- needs to be tried, because the parser has to consume the string, before it checks
+                          -- if the variable is in the environment, which might cause it to fail
   <|> freeVar
   <|> numLit
 
-freeVar :: TermParser (Term ())
+freeVar :: Parser (Term ())
 freeVar = do
   v <- freeVarName
   return (FreeVar v ())
 
-numLit :: TermParser (Term ())
+numLit :: Parser (Term ())
 numLit = numToTerm . read <$> some numberChar
 
-xtorCall :: PrdOrCns -> TermParser (Term ())
+xtorCall :: PrdOrCns -> Parser (Term ())
 xtorCall mode = do
   xt <- xtorName
   args <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
   return $ XtorCall (case mode of { Prd -> Data ; Cns -> Codata }) xt args
 
-patternMatch :: TermParser (Term ())
+patternMatch :: Parser (Term ())
 patternMatch = braces $ do
   s <- dataOrCodata
   cases <- singleCase `sepBy` comma
   _ <- symbol (showDataOrCodata s)
   return $ Match s cases
 
-singleCase :: TermParser (MatchCase ())
+singleCase :: Parser (MatchCase ())
 singleCase = do
   xt <- lexeme xtorName
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
@@ -136,7 +140,7 @@ singleCase = do
           argsSig (length prdVars) (length cnsVars),  -- e.g. X(x,y)[k] becomes X((),())[()]
           commandClosing args cmd) -- de brujin transformation
 
-muAbstraction :: TermParser (Term ())
+muAbstraction :: Parser (Term ())
 muAbstraction = do
   pc <- muIdentifier
   v <- lexeme freeVarName
@@ -145,30 +149,30 @@ muAbstraction = do
   return $ MuAbs pc () (commandClosingSingle pc v cmd)
   where muIdentifier = (symbol "mu*" >> return Prd) <|> (symbol "mu" >> return Cns)
 
-commandP :: TermParser (Command ())
+commandP :: Parser (Command ())
 commandP = try (parens commandP) <|> doneCmd <|> printCmd <|> applyCmd
 
-applyCmd :: TermParser (Command ())
+applyCmd :: Parser (Command ())
 applyCmd = do
   prd <- lexeme (termP Prd)
   _ <- lexeme (symbol ">>")
   cns <- lexeme (termP Cns)
   return (Apply prd cns)
 
-doneCmd :: TermParser (Command ())
+doneCmd :: Parser (Command ())
 doneCmd = lexeme (symbol "Done") >> return Done
 
-printCmd :: TermParser (Command ())
+printCmd :: Parser (Command ())
 printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP Prd))
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
-declarationP :: TermParser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP
+declarationP :: Parser (Declaration ())
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> typeDeclarationP
 
-prdDeclarationP :: TermParser (Declaration ())
+prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
   _ <- try $ lexeme (symbol "prd")
   v <- freeVarName
@@ -177,7 +181,7 @@ prdDeclarationP = do
   _ <- symbol ";"
   return (PrdDecl v t)
 
-cnsDeclarationP :: TermParser (Declaration ())
+cnsDeclarationP :: Parser (Declaration ())
 cnsDeclarationP = do
   _ <- try $ lexeme (symbol "cns")
   v <- freeVarName
@@ -186,20 +190,24 @@ cnsDeclarationP = do
   _ <- symbol ";"
   return (CnsDecl v t)
 
+typeDeclarationP :: Parser (Declaration ())
+typeDeclarationP = do
+  v <- typeIdentifierName
+  _ <- symbol ":="
+  t <- typeSchemeP
+  return (TypDecl v t)
 
 -- Multiple definitions seperated by ';'. Later definition may depend on earlier ones
-environmentP :: TermParser TermEnvironment
+environmentP :: Parser Syntax.Program.Environment
 environmentP = (eof >> ask) <|> do
   decl <- sc >> declarationP
-  case decl of
-    PrdDecl v t -> local (M.insert v t) environmentP
-    CnsDecl v t -> local (M.insert v t) environmentP
+  local (insertDecl decl) environmentP
 
 ---------------------------------------------------------------------------------
 -- Parsing for Repl
 ---------------------------------------------------------------------------------
 
-bindingP :: TermParser (FreeVarName, Term ())
+bindingP :: Parser (FreeVarName, Term ())
 bindingP = do
   v <- typeIdentifierName
   _ <- lexeme (symbol "<-")
@@ -212,9 +220,9 @@ bindingP = do
 
 -- ReaderT to keep track of recursively bound type variables
 -- StateT to keep track of free type variables.
-type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (EnvParser TypeScheme)) a
+type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
 
-typeSchemeP :: EnvParser TypeScheme TypeScheme
+typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
   (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
@@ -259,6 +267,13 @@ typeVariable = do
   guard (tv `S.member` tvs)
   return $ TTyTVar tv
 
+envItem :: Parser TypeScheme
+envItem = do
+  v <- lexeme (many alphaNumChar)
+  env <- asks typEnv
+  Just x <- return $ M.lookup v env
+  return x
+
 typeEnvItem :: TypeParser TargetType
 typeEnvItem = do
   tvs <- S.toList <$> get
@@ -280,14 +295,7 @@ recType = do
   ty <- local (S.insert rv) typeR
   return $ TTyRec rv ty
 
-typeDefinitionP :: EnvParser TypeScheme (TypeIdentifierName, TypeScheme)
-typeDefinitionP = do
-  v <- typeIdentifierName
-  _ <- symbol ":="
-  t <- typeSchemeP
-  return (v,t)
-
-subtypingProblemP :: EnvParser TypeScheme (TypeScheme, TypeScheme)
+subtypingProblemP :: Parser (TypeScheme, TypeScheme)
 subtypingProblemP = do
   t1 <- typeSchemeP
   _ <- symbol "<:"

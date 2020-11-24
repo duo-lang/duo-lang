@@ -7,6 +7,7 @@ import qualified Data.Map as M
 
 import Parser
 import Syntax.Terms
+import Syntax.Program
 import Utils
 import Eval (isClosed_term, isLc_term)
 import GenerateConstraints
@@ -22,8 +23,8 @@ failingExamples = ["div2and3"]
 getEnvironment :: IO TermEnvironment
 getEnvironment = do
   s <- readFile "prg.txt"
-  case runEnvParser environmentP M.empty s of
-    Right env -> return (M.filterWithKey (\k _ -> not (k `elem` failingExamples)) env)
+  case runEnvParser environmentP mempty s of
+    Right env -> return (M.filterWithKey (\k _ -> not (k `elem` failingExamples)) (prdEnv env <> cnsEnv env))
     Left _err -> error "Could not load prg.txt"
 
 checkTerm :: (FreeVarName, Term ()) -> SpecWith ()
