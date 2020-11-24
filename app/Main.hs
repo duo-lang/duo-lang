@@ -54,7 +54,6 @@ modifyTermEnv f = modify $ \rs@ReplState{..} -> rs { termEnv = f termEnv }
 modifyTypeEnv :: (TypeEnvironment -> TypeEnvironment) -> Repl ()
 modifyTypeEnv f = modify $ \rs@ReplState{..} -> rs { typeEnv = f typeEnv }
 
-
 prettyRepl :: Pretty a => a -> Repl ()
 prettyRepl s = liftIO $ putStrLn (ppPrint s)
 
@@ -62,7 +61,7 @@ fromRight :: Pretty err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseRepl :: String -> Parser.EnvParser e a -> Environment e -> Repl a
+parseRepl :: String -> EnvParser e a -> Environment e -> Repl a
 parseRepl s p env = fromRight (runEnvParser p env s)
 
 ------------------------------------------------------------------------------
