@@ -17,10 +17,6 @@ data Declaration a
   | TypDecl TypeIdentifierName TypeScheme
   deriving (Show, Eq)
 
-type TermEnvironment = Map FreeVarName (Term ())
-type TypeEnvironment = Map TypeIdentifierName TypeScheme
-
-
 data Environment = Environment
   { prdEnv :: Map FreeVarName (Term ())
   , cnsEnv :: Map FreeVarName (Term ())

@@ -16,10 +16,9 @@ import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Syntax.Program
-import Utils
 import Parser
 import Pretty
-import Eval
+import Eval hiding (Environment)
 import GenerateConstraints
 import SolveConstraints
 import Determinize
@@ -35,7 +34,7 @@ import Data.GraphViz
 ------------------------------------------------------------------------------
 
 data ReplState = ReplState
-  { replEnv :: Syntax.Program.Environment
+  { replEnv :: Environment
   }
 
 initialReplState :: ReplState
@@ -48,13 +47,8 @@ initialReplState = ReplState { replEnv = mempty }
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Syntax.Program.Environment -> Syntax.Program.Environment) -> Repl ()
+modifyEnvironment :: (Environment -> Environment) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
--- modifyTermEnv :: (TermEnvironment -> TermEnvironment) -> Repl ()
--- modifyTermEnv f = modify $ \rs@ReplState{..} -> rs { termEnv = f termEnv }
-
--- modifyTypeEnv :: (TypeEnvironment -> TypeEnvironment) -> Repl ()
--- modifyTypeEnv f = modify $ \rs@ReplState{..} -> rs { typeEnv = f typeEnv }
 
 prettyRepl :: Pretty a => a -> Repl ()
 prettyRepl s = liftIO $ putStrLn (ppPrint s)
@@ -63,7 +57,7 @@ fromRight :: Pretty err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseRepl :: String -> Parser a -> Syntax.Program.Environment -> Repl a
+parseRepl :: String -> Parser a -> Environment -> Repl a
 parseRepl s p env = fromRight (runEnvParser p env s)
 
 ------------------------------------------------------------------------------
@@ -102,8 +96,11 @@ show_cmd s = do
     Right ty -> prettyRepl ty
     Left err1 -> case runEnvParser (termP Prd) env s of
       Right t -> prettyRepl t
-      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
-                               "Term parsing error:\n"++ ppPrint err2)
+      Left err2 -> prettyRepl $ unlines [ "Type parsing error:"
+                                        , ppPrint err1
+                                        , "Term parsing error:"
+                                        , ppPrint err2
+                                        ]
 
 def_cmd :: String -> Repl ()
 def_cmd s = do
