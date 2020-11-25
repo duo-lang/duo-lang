@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Target
   ( autToType
   , typeToAut
@@ -32,11 +33,11 @@ import Minimize (minimizeTypeAut)
 --------------------------------------------------------------------------
 
 autToType :: TypeAut -> TypeScheme
-autToType aut@(gr, starts, _)
-  | length starts > 1 = error "toTargetType: only defined for deterministic automata!"
+autToType aut@TypeAut{..}
+  | length ta_starts > 1 = error "toTargetType: only defined for deterministic automata!"
   | otherwise = let
       mp = (getFlowAnalysisMap aut)
-      monotype = runReader (autToTypeReader mp (head starts)) (gr, S.empty)
+      monotype = runReader (autToTypeReader mp (head ta_starts)) (ta_gr, S.empty)
       tvars = S.toList $ S.unions (M.elems mp)
     in
       TypeScheme tvars monotype
@@ -108,7 +109,10 @@ typeToAutPol pol (TypeScheme tvars ty) =
         let
           (gr', starts) = removeEpsilonEdges (gr, [start])
         in
-          Right $ minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut $ (gr', starts, flowEdges)
+          Right $ minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut $ TypeAut { ta_gr = gr'
+                                                                                             , ta_starts = starts
+                                                                                             , ta_flowEdges = flowEdges
+                                                                                             }
       Left err -> Left err
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.

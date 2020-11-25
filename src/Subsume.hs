@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Subsume
   ( isSubtype
   ) where
@@ -11,7 +12,6 @@ import qualified Data.Map as M
 
 import Data.Maybe (fromJust)
 import Data.Tuple (swap)
-import Data.Bifunctor (bimap)
 import Control.Monad.State
 
 import Syntax.Types
@@ -24,23 +24,21 @@ import Minimize
 
 -- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
 shiftGraph :: Int -> TypeAut -> TypeAut
-shiftGraph shift (gr, starts, flowEdges) =
-  ( mkGraph [(i + shift, a) | (i,a) <- labNodes gr] [(i + shift, j + shift, b) | (i,j,b) <- labEdges gr]
-  , fmap (+shift) starts
-  , bimap (+shift) (+shift) flowEdges)
+shiftGraph shift = mapTypeAut (+shift)
 
 -- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
 unsafeUnion :: TypeAut -> TypeAut -> TypeAut
-unsafeUnion (gr1, starts1, flowEdges1) (gr2, starts2, flowEdges2) =
-  ( mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
-  , starts1 ++ starts2
-  , flowEdges1 ++ flowEdges2)
+unsafeUnion (TypeAut gr1 starts1 flowEdges1) (TypeAut gr2 starts2 flowEdges2) =
+  TypeAut { ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
+          , ta_starts = starts1 ++ starts2
+          , ta_flowEdges = flowEdges1 ++ flowEdges2
+          }
 
 -- Constructs the union of two TypeAuts
 typeAutUnion :: TypeAut -> TypeAut -> TypeAut
-typeAutUnion aut1@(gr,_ ,_) aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
+typeAutUnion aut1@TypeAut{..} aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
   where
-    shift = 1 + snd (nodeRange gr)
+    shift = 1 + snd (nodeRange ta_gr)
 
 isSubtype :: TypeAut -> TypeAut -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
@@ -48,10 +46,10 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   (Neg,Neg) -> (minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut) (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
-    startPolarity (gr,[start],_) = fst (fromJust (lab gr start))
+    startPolarity TypeAut{..} = fst (fromJust (lab ta_gr (head ta_starts)))
 
 typeAutEqual :: TypeAut -> TypeAut -> Bool
-typeAutEqual (gr1, [start1], flowEdges1) (gr2, [start2], flowEdges2)
+typeAutEqual (TypeAut gr1 [start1] flowEdges1) (TypeAut gr2 [start2] flowEdges2)
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False
       Just ((),mp) ->

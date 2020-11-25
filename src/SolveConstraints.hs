@@ -167,4 +167,4 @@ solveConstraints css uvs ty pc =
         let
           (gr', starts) = removeEpsilonEdges (gr, [start])
         in
-          Right $ removeIslands (gr', starts, flowEdges)
+          Right $ removeIslands TypeAut { ta_gr = gr', ta_starts =  starts, ta_flowEdges = flowEdges }

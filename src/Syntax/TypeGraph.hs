@@ -1,8 +1,11 @@
+{-# LANGUAGE RecordWildCards #-}
 module Syntax.TypeGraph where
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Set (Set)
+import Data.Bifunctor (bimap)
+import Data.Containers.ListUtils (nubOrd)
 
 import Syntax.Types
 import Syntax.Terms
@@ -40,4 +43,17 @@ type TypeGrEps = Gr NodeLabel (Maybe EdgeLabel)
 typeGrToEps :: TypeGr -> TypeGrEps
 typeGrToEps = emap Just
 
-type TypeAut = (TypeGr, [Node], [FlowEdge])
+data TypeAut = TypeAut
+  { ta_gr :: TypeGr
+  , ta_starts :: [Node]
+  , ta_flowEdges :: [FlowEdge]
+  }
+
+-- Maps a function on nodes over a type automaton
+mapTypeAut :: (Node -> Node) -> TypeAut -> TypeAut
+mapTypeAut f TypeAut {..} = TypeAut
+  { ta_gr = mkGraph (nubOrd [(f i, a) | (i,a) <- labNodes ta_gr])
+                    (nubOrd [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
+  , ta_starts = nubOrd (f <$> ta_starts)
+  , ta_flowEdges = nubOrd (bimap f f <$> ta_flowEdges)
+  }

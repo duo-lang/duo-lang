@@ -1,10 +1,11 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 module Minimize
   ( minimizeTypeAut
   ) where
 
 import Data.Graph.Inductive.Graph
 import Data.List (nub, intersect, (\\), delete, partition)
-import Data.Bifunctor
 
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -37,23 +38,24 @@ myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p
 removeRedundantEdges :: (DynGraph gr, Eq a, Eq b) => gr a b -> gr a b
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-flowNeighbors :: [FlowEdge] -> Node -> Set Node
-flowNeighbors flowEdges i = S.fromList $ [n | (j,n) <- flowEdges, i == j] ++ [n | (n,j) <- flowEdges, i == j]
+removeRedundantEdges' :: TypeAut -> TypeAut
+removeRedundantEdges' aut@TypeAut{..} = aut { ta_gr = removeRedundantEdges ta_gr }
+
+flowNeighbors :: TypeAut -> Node -> Set Node
+flowNeighbors TypeAut { ta_flowEdges } i =
+  S.fromList $ [n | (j,n) <- ta_flowEdges, i == j] ++ [n | (n,j) <- ta_flowEdges, i == j]
 
 equalNodes :: TypeAut -> Node -> Node -> Bool
-equalNodes (gr, _, flowEdges) i j =
-  (lab gr i == lab gr j) && flowNeighbors flowEdges i == flowNeighbors flowEdges j
+equalNodes aut@TypeAut{ ta_gr } i j =
+  (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
 -- note: nodes with different labels or different flow edge behaviour are never merged
 minimizeTypeAut :: TypeAut -> TypeAut
-minimizeTypeAut aut@(gr, starts, flowEdges) =
+minimizeTypeAut aut@TypeAut{..} =
   let
-    gr' = removeRedundantEdges gr
+    gr' = removeRedundantEdges ta_gr
     distGroups = myGroupBy (equalNodes aut) (nodes gr')
     nodeSets = minimize' gr' distGroups distGroups
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
   in
-    (removeRedundantEdges $
-      mkGraph (map (bimap getNewNode id) (labNodes gr')) (map (\(n1,n2,l) -> (getNewNode n1, getNewNode n2, l)) (labEdges gr'))
-      , getNewNode <$> starts
-      , nub $ map (bimap getNewNode getNewNode) flowEdges)
+    removeRedundantEdges' (mapTypeAut getNewNode aut)
