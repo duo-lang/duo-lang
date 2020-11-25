@@ -38,19 +38,19 @@ myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p
 removeRedundantEdges :: (DynGraph gr, Eq a, Eq b) => gr a b -> gr a b
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeRedundantEdges' :: TypeAut -> TypeAut
+removeRedundantEdges' :: TypeAutDet -> TypeAutDet
 removeRedundantEdges' aut@TypeAut{..} = aut { ta_gr = removeRedundantEdges ta_gr }
 
-flowNeighbors :: TypeAut -> Node -> Set Node
+flowNeighbors :: TypeAut' TypeGr a -> Node -> Set Node
 flowNeighbors TypeAut { ta_flowEdges } i =
   S.fromList $ [n | (j,n) <- ta_flowEdges, i == j] ++ [n | (n,j) <- ta_flowEdges, i == j]
 
-equalNodes :: TypeAut -> Node -> Node -> Bool
+equalNodes :: TypeAut' TypeGr a -> Node -> Node -> Bool
 equalNodes aut@TypeAut{ ta_gr } i j =
   (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
 -- note: nodes with different labels or different flow edge behaviour are never merged
-minimizeTypeAut :: TypeAut -> TypeAut
+minimizeTypeAut :: TypeAutDet -> TypeAutDet
 minimizeTypeAut aut@TypeAut{..} =
   let
     gr' = removeRedundantEdges ta_gr
@@ -58,4 +58,4 @@ minimizeTypeAut aut@TypeAut{..} =
     nodeSets = minimize' gr' distGroups distGroups
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
   in
-    removeRedundantEdges' (mapTypeAut getNewNode aut)
+    removeRedundantEdges' (mapTypeAutDet getNewNode aut)

@@ -124,7 +124,7 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat xtors = Just $ (case pol of {Pos -> intersections; Neg -> S.unions}) xtors
 
-determinizeTypeAut :: TypeAut -> TypeAut
+determinizeTypeAut :: TypeAut -> TypeAutDet
 determinizeTypeAut TypeAut{..} =
   let
     (newgr, newstart, mp) = determinize combineNodeLabels (ta_gr, ta_starts)
@@ -132,7 +132,7 @@ determinizeTypeAut TypeAut{..} =
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in
     TypeAut { ta_gr = removeFaultyEdges newgr
-            , ta_starts = [newstart]
+            , ta_starts = newstart
             , ta_flowEdges = newFlowEdges
             }
 

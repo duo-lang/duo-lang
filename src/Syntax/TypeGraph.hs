@@ -43,11 +43,18 @@ type TypeGrEps = Gr NodeLabel (Maybe EdgeLabel)
 typeGrToEps :: TypeGr -> TypeGrEps
 typeGrToEps = emap Just
 
-data TypeAut = TypeAut
-  { ta_gr :: TypeGr
-  , ta_starts :: [Node]
+
+data TypeAut' a b = TypeAut
+  { ta_gr :: a
+  , ta_starts :: b
   , ta_flowEdges :: [FlowEdge]
   }
+
+type TypeAut    = TypeAut' TypeGr [Node]
+type TypeAutDet = TypeAut' TypeGr Node
+
+forgetDet :: TypeAutDet -> TypeAut
+forgetDet aut@TypeAut{..} = aut { ta_starts = [ta_starts] }
 
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Node -> Node) -> TypeAut -> TypeAut
@@ -55,5 +62,14 @@ mapTypeAut f TypeAut {..} = TypeAut
   { ta_gr = mkGraph (nubOrd [(f i, a) | (i,a) <- labNodes ta_gr])
                     (nubOrd [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
   , ta_starts = nubOrd (f <$> ta_starts)
+  , ta_flowEdges = nubOrd (bimap f f <$> ta_flowEdges)
+  }
+
+-- Maps a function on nodes over a type automaton
+mapTypeAutDet :: (Node -> Node) -> TypeAutDet -> TypeAutDet
+mapTypeAutDet f TypeAut {..} = TypeAut
+  { ta_gr = mkGraph (nubOrd [(f i, a) | (i,a) <- labNodes ta_gr])
+                    (nubOrd [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
+  , ta_starts = f ta_starts
   , ta_flowEdges = nubOrd (bimap f f <$> ta_flowEdges)
   }
