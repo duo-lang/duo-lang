@@ -1,6 +1,5 @@
 module Syntax.Types where
 
-import Data.Map (Map)
 import Data.Bifunctor (bimap)
 import Data.List (nub)
 
@@ -66,7 +65,7 @@ alphaRenameTargetType tvs (TTyInter tys) = TTyInter (map (alphaRenameTargetType 
 alphaRenameTargetType tvs (TTyRec rv ty) = TTyRec rv (alphaRenameTargetType tvs ty)
 alphaRenameTargetType tvs (TTySimple s sigs) = TTySimple s $ map (bimap id (twiceMap (map (alphaRenameTargetType tvs)) (map (alphaRenameTargetType tvs)))) sigs
 
-data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType }
+data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType } deriving (Show, Eq)
 
 -- renames free variables of a type scheme, so that they don't intersect with the given list
 alphaRenameTypeScheme :: [TVar] -> TypeScheme -> TypeScheme
@@ -92,4 +91,3 @@ freeTypeVars = nub . freeTypeVars'
 generalize :: TargetType -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
-type TypeEnvironment = Map TypeIdentifierName TypeScheme

@@ -1,7 +1,5 @@
 module Utils where
 
-import Data.Map (Map)
-
 ----------------------------------------------------------------------------------
 -- Twice functor
 ----------------------------------------------------------------------------------
@@ -24,5 +22,3 @@ data Error
   | EvalError String
   | SolveConstraintsError String
   deriving (Show, Eq)
-
-type Environment a = Map String a

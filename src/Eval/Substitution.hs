@@ -14,9 +14,12 @@ module Eval.Substitution
 import Data.List (elemIndex)
 import Control.Applicative ((<|>))
 import Data.Maybe (fromJust)
+import Data.Map (Map)
 import qualified Data.Map as M
 import Syntax.Terms
 import Utils
+
+type Environment a = Map String a
 
 termOpeningRec :: Int -> XtorArgs a -> Term a -> Term a
 termOpeningRec k args (BoundVar i pc j)     = if i == k then getArg j pc args else BoundVar i pc j

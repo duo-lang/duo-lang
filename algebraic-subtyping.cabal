@@ -49,6 +49,7 @@ library
       Syntax.Terms
       Syntax.Types
       Syntax.TypeGraph
+      Syntax.Program
       Target
       Utils
   other-modules:
