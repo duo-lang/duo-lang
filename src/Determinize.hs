@@ -10,8 +10,8 @@ module Determinize
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS
 
+import Data.Functor.Identity
 import Data.Maybe (catMaybes)
-import Data.List (nub)
 import Data.Bifunctor
 import Data.Maybe (fromJust)
 import Data.Set (Set)
@@ -44,10 +44,10 @@ removeEpsilonEdges' n (gr,starts) =
 fromEpsGr :: DynGraph gr => gr a (Maybe b) -> gr a b
 fromEpsGr gr = gmap (\(ins,i,nl,outs) -> (map (bimap fromJust id) ins, i, nl, map (bimap fromJust id) outs)) gr
 
-removeRedundantEdges :: (DynGraph gr, Eq a, Eq b) => gr a b -> gr a b
+removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeEpsilonEdges :: (DynGraph gr, Eq a, Eq b) => (gr a (Maybe b), [Node]) -> (gr a b, [Node])
+removeEpsilonEdges :: (DynGraph gr, Eq a, Ord b) => (gr a (Maybe b), [Node]) -> (gr a b, [Node])
 removeEpsilonEdges (gr,starts) =
   let
     (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes gr)) (gr, starts)
@@ -132,7 +132,7 @@ determinizeTypeAut TypeAut{..} =
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in
     TypeAut { ta_gr = removeFaultyEdges newgr
-            , ta_starts = newstart
+            , ta_starts = Identity newstart
             , ta_flowEdges = newFlowEdges
             }
 

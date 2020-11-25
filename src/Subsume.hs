@@ -12,6 +12,7 @@ import qualified Data.Map as M
 
 import Data.Maybe (fromJust)
 import Data.Tuple (swap)
+import Data.Functor.Identity
 import Control.Monad.State
 
 import Syntax.Types
@@ -24,11 +25,11 @@ import Minimize
 
 -- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
 shiftGraph :: Int -> TypeAutDet -> TypeAutDet
-shiftGraph shift = mapTypeAutDet (+shift)
+shiftGraph shift = mapTypeAut (+shift)
 
 -- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
 unsafeUnion :: TypeAutDet -> TypeAutDet -> TypeAut
-unsafeUnion (TypeAut gr1 starts1 flowEdges1) (TypeAut gr2 starts2 flowEdges2) =
+unsafeUnion (TypeAut gr1 (Identity starts1) flowEdges1) (TypeAut gr2 (Identity starts2) flowEdges2) =
   TypeAut { ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
           , ta_starts = [starts1, starts2]
           , ta_flowEdges = flowEdges1 ++ flowEdges2
@@ -46,11 +47,11 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   (Neg,Neg) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
-    startPolarity TypeAut{..} = fst (fromJust (lab ta_gr ta_starts))
+    startPolarity TypeAut{..} = fst (fromJust (lab ta_gr (runIdentity ta_starts)))
     fun = minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut
 
 typeAutEqual :: TypeAutDet -> TypeAutDet -> Bool
-typeAutEqual (TypeAut gr1 start1 flowEdges1) (TypeAut gr2 start2 flowEdges2)
+typeAutEqual (TypeAut gr1 (Identity start1) flowEdges1) (TypeAut gr2 (Identity start2) flowEdges2)
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False
       Just ((),mp) ->

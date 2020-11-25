@@ -16,6 +16,7 @@ import Control.Monad.State
 import Control.Monad.Except
 import Data.Maybe (fromJust)
 
+import Data.Functor.Identity
 import Data.Set (Set)
 import qualified Data.Set as S
 
@@ -36,7 +37,7 @@ autToType :: TypeAutDet -> TypeScheme
 autToType aut@TypeAut{..} =
   let
     mp = getFlowAnalysisMap (forgetDet aut)
-    monotype = runReader (autToTypeReader mp ta_starts) (ta_gr, S.empty)
+    monotype = runReader (autToTypeReader mp (runIdentity ta_starts)) (ta_gr, S.empty)
     tvars = S.toList $ S.unions (M.elems mp)
   in
     TypeScheme tvars monotype

@@ -5,6 +5,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Set (Set)
 import Data.Bifunctor (bimap)
+import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 
 import Syntax.Types
@@ -44,32 +45,30 @@ typeGrToEps :: TypeGr -> TypeGrEps
 typeGrToEps = emap Just
 
 
-data TypeAut' a b = TypeAut
+data TypeAut' a f = TypeAut
   { ta_gr :: a
-  , ta_starts :: b
+  , ta_starts :: f Node
   , ta_flowEdges :: [FlowEdge]
   }
 
-type TypeAut    = TypeAut' TypeGr [Node]
-type TypeAutDet = TypeAut' TypeGr Node
+type TypeAut    = TypeAut' TypeGr []
+type TypeAutDet = TypeAut' TypeGr Identity
+
+class Nubable f where
+  nub :: Ord a => f a -> f a
+instance Nubable Identity where
+  nub = id
+instance Nubable [] where
+  nub = nubOrd
 
 forgetDet :: TypeAutDet -> TypeAut
-forgetDet aut@TypeAut{..} = aut { ta_starts = [ta_starts] }
+forgetDet aut@TypeAut{..} = aut { ta_starts = [runIdentity ta_starts] }
 
 -- Maps a function on nodes over a type automaton
-mapTypeAut :: (Node -> Node) -> TypeAut -> TypeAut
+mapTypeAut :: (Functor f, Nubable f) => (Node -> Node) -> TypeAut' TypeGr f -> TypeAut' TypeGr f
 mapTypeAut f TypeAut {..} = TypeAut
-  { ta_gr = mkGraph (nubOrd [(f i, a) | (i,a) <- labNodes ta_gr])
-                    (nubOrd [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  , ta_starts = nubOrd (f <$> ta_starts)
-  , ta_flowEdges = nubOrd (bimap f f <$> ta_flowEdges)
-  }
-
--- Maps a function on nodes over a type automaton
-mapTypeAutDet :: (Node -> Node) -> TypeAutDet -> TypeAutDet
-mapTypeAutDet f TypeAut {..} = TypeAut
-  { ta_gr = mkGraph (nubOrd [(f i, a) | (i,a) <- labNodes ta_gr])
-                    (nubOrd [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  , ta_starts = f ta_starts
-  , ta_flowEdges = nubOrd (bimap f f <$> ta_flowEdges)
+  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
+                    (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
+  , ta_starts = nub (f <$> ta_starts)
+  , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
   }

@@ -5,7 +5,7 @@ module Minimize
   ) where
 
 import Data.Graph.Inductive.Graph
-import Data.List (nub, intersect, (\\), delete, partition)
+import Data.List (intersect, (\\), delete, partition)
 
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -35,7 +35,7 @@ myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
-removeRedundantEdges :: (DynGraph gr, Eq a, Eq b) => gr a b -> gr a b
+removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeRedundantEdges' :: TypeAutDet -> TypeAutDet
@@ -58,4 +58,4 @@ minimizeTypeAut aut@TypeAut{..} =
     nodeSets = minimize' gr' distGroups distGroups
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
   in
-    removeRedundantEdges' (mapTypeAutDet getNewNode aut)
+    removeRedundantEdges' (mapTypeAut getNewNode aut)
