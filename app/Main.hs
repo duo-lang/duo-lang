@@ -7,7 +7,6 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
 
-import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
@@ -35,10 +34,13 @@ import Data.GraphViz
 
 data ReplState = ReplState
   { replEnv :: Environment
+  , loadedFiles :: [FilePath]
   }
 
 initialReplState :: ReplState
-initialReplState = ReplState { replEnv = mempty }
+initialReplState = ReplState { replEnv = mempty
+                             , loadedFiles = ["prg.txt"]
+                             }
 
 ------------------------------------------------------------------------------
 -- Repl Monad and helper functions
@@ -49,6 +51,9 @@ type Repl a = HaskelineT ReplInner a
 
 modifyEnvironment :: (Environment -> Environment) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
+
+modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
+modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedFiles }
 
 prettyRepl :: Pretty a => a -> Repl ()
 prettyRepl s = liftIO $ putStrLn (ppPrint s)
@@ -182,15 +187,22 @@ simplify_cmd s = do
 
 load_cmd :: String -> Repl ()
 load_cmd s = do
+  modifyLoadedFiles ((:) s)
+  load_file s
+
+load_file :: FilePath -> Repl ()
+load_file s = do
   env <- gets replEnv
   defs <- liftIO $ readFile s
   newEnv <- parseRepl defs environmentP env
   modifyEnvironment ((<>) newEnv)
+  prettyRepl $ "Successfully loaded: " ++ s
 
 reload_cmd :: String -> Repl ()
-reload_cmd input = do
-  let s = case (dropWhile isSpace input) of {"" -> "prg.txt"; s' -> s'}
-  load_cmd s
+reload_cmd "" = do
+  loadedFiles <- gets loadedFiles
+  forM_ loadedFiles load_file
+reload_cmd _ = prettyRepl ":reload does not accept arguments"
 
 ------------------------------------------------------------------------------
 -- Repl Configuration
@@ -204,7 +216,7 @@ completer s = do
 ini :: Repl ()
 ini = do
   prettyRepl "Algebraic subtyping for structural Ouroboro.\nPress Ctrl+D to exit."
-  loadStandardEnv
+  reload_cmd ""
 
 final :: Repl ExitDecision
 final = prettyRepl "Goodbye!" >> return Exit
@@ -229,9 +241,6 @@ opts = ReplOpts
   , initialiser      = ini
   , finaliser        = final
   }
-
-loadStandardEnv :: Repl ()
-loadStandardEnv = load_cmd "prg.txt"
 
 ------------------------------------------------------------------------------
 -- Run the Repl
