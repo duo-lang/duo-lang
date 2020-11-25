@@ -1,4 +1,6 @@
-module Subsume where
+module Subsume
+  ( isSubtype
+  ) where
 
 import Data.Graph.Inductive.Graph
 
@@ -19,14 +21,26 @@ import Determinize (determinizeTypeAut)
 import FlowAnalysis
 import Minimize
 
+
+-- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
+shiftGraph :: Int -> TypeAut -> TypeAut
+shiftGraph shift (gr, starts, flowEdges) =
+  ( mkGraph [(i + shift, a) | (i,a) <- labNodes gr] [(i + shift, j + shift, b) | (i,j,b) <- labEdges gr]
+  , fmap (+shift) starts
+  , bimap (+shift) (+shift) flowEdges)
+
+-- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
+unsafeUnion :: TypeAut -> TypeAut -> TypeAut
+unsafeUnion (gr1, starts1, flowEdges1) (gr2, starts2, flowEdges2) =
+  ( mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
+  , starts1 ++ starts2
+  , flowEdges1 ++ flowEdges2)
+
+-- Constructs the union of two TypeAuts
 typeAutUnion :: TypeAut -> TypeAut -> TypeAut
-typeAutUnion (gr1, starts1, flowEdges1) (gr2, starts2, flowEdges2) = (
-    mkGraph (labNodes gr1 ++ [(i + n0, a) | (i,a) <- labNodes gr2])
-            (labEdges gr1 ++ [(i+n0,j+n0,b) | (i,j,b) <- labEdges gr2])
-  , starts1 ++ map (+n0) starts2
-  , flowEdges1 ++ map (bimap (+n0) (+n0)) flowEdges2)
+typeAutUnion aut1@(gr,_ ,_) aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
   where
-    n0 = 1 + snd (nodeRange gr1)
+    shift = 1 + snd (nodeRange gr)
 
 isSubtype :: TypeAut -> TypeAut -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
@@ -35,7 +49,6 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
     startPolarity (gr,[start],_) = fst (fromJust (lab gr start))
-
 
 typeAutEqual :: TypeAut -> TypeAut -> Bool
 typeAutEqual (gr1, [start1], flowEdges1) (gr2, [start2], flowEdges2)
