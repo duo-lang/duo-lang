@@ -46,13 +46,15 @@ typeGrToEps = emap Just
 
 
 data TypeAut' a f = TypeAut
-  { ta_gr :: a
+  { ta_gr :: Gr NodeLabel a
   , ta_starts :: f Node
   , ta_flowEdges :: [FlowEdge]
   }
 
-type TypeAut    = TypeAut' TypeGr []
-type TypeAutDet = TypeAut' TypeGr Identity
+type TypeAut       = TypeAut' EdgeLabel         []
+type TypeAutDet    = TypeAut' EdgeLabel         Identity
+type TypeAutEps    = TypeAut' (Maybe EdgeLabel) []
+type TypeAutEpsDet = TypeAut' (Maybe EdgeLabel) Identity
 
 class Nubable f where
   nub :: Ord a => f a -> f a
@@ -65,7 +67,7 @@ forgetDet :: TypeAutDet -> TypeAut
 forgetDet aut@TypeAut{..} = aut { ta_starts = [runIdentity ta_starts] }
 
 -- Maps a function on nodes over a type automaton
-mapTypeAut :: (Functor f, Nubable f) => (Node -> Node) -> TypeAut' TypeGr f -> TypeAut' TypeGr f
+mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f -> TypeAut' a f
 mapTypeAut f TypeAut {..} = TypeAut
   { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
                     (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
