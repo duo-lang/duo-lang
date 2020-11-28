@@ -10,7 +10,7 @@ type XtorName = String -- start with uppercase
 type FreeVarName = String -- start with lowercase
 type TypeIdentifierName = String -- start with uppercase
 
-data DataOrCodata = Data | Codata deriving (Eq,Show)
+data DataOrCodata = Data | Codata deriving (Eq,Show,Ord)
 showDataOrCodata :: DataOrCodata -> String
 showDataOrCodata Data = "+"
 showDataOrCodata Codata = "-"
