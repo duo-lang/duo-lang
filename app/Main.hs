@@ -156,24 +156,24 @@ save_cmd s = do
   case runEnvParser typeSchemeP env s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
-      saveGraphFiles "gr" (forgetDet aut)
+      saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (termP Prd) env s of
       Right t -> do
         (typedTerm, css, uvars) <- fromRight (generateConstraints t)
         typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
         saveGraphFiles "0_typeAut" typeAut
         let typeAutDet = determinizeTypeAut typeAut
-        saveGraphFiles "1_typeAutDet" (forgetDet typeAutDet)
+        saveGraphFiles "1_typeAutDet" typeAutDet
         let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-        saveGraphFiles "2_typeAutDetAdms" (forgetDet typeAutDetAdms)
+        saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
         let minTypeAut = minimizeTypeAut typeAutDetAdms
-        saveGraphFiles "3_minTypeAut" (forgetDet minTypeAut)
+        saveGraphFiles "3_minTypeAut" minTypeAut
         let res = autToType minTypeAut
         prettyRepl (" :: " ++ ppPrint res)
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 
-saveGraphFiles :: String -> TypeAut -> Repl ()
+saveGraphFiles :: String -> TypeAut' EdgeLabel f -> Repl ()
 saveGraphFiles fileName aut = do
   let graphDir = "graphs"
   let fileUri = "  file://"

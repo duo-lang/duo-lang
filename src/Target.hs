@@ -36,7 +36,7 @@ import Minimize (minimizeTypeAut)
 autToType :: TypeAutDet -> TypeScheme
 autToType aut@TypeAut{..} =
   let
-    mp = getFlowAnalysisMap (forgetDet aut)
+    mp = getFlowAnalysisMap aut
     monotype = runReader (autToTypeReader mp (runIdentity ta_starts)) (ta_gr, S.empty)
     tvars = S.toList $ S.unions (M.elems mp)
   in

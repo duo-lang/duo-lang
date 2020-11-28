@@ -59,9 +59,6 @@ instance Nubable Identity where
 instance Nubable [] where
   nub = nubOrd
 
-forgetDet :: TypeAutDet -> TypeAut
-forgetDet aut@TypeAut{..} = aut { ta_starts = [runIdentity ta_starts] }
-
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f -> TypeAut' a f
 mapTypeAut f TypeAut {..} = TypeAut
