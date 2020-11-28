@@ -6,8 +6,8 @@ import Data.Graph.Inductive.PatriciaTree
 import Data.Set (Set)
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
-import Data.Containers.ListUtils (nubOrd)
-
+--import Data.Containers.ListUtils (nubOrd)
+import qualified Data.List (nub)
 import Syntax.Types
 import Syntax.Terms
 
@@ -61,7 +61,7 @@ class Nubable f where
 instance Nubable Identity where
   nub = id
 instance Nubable [] where
-  nub = nubOrd
+  nub = Data.List.nub
 
 forgetDet :: TypeAutDet -> TypeAut
 forgetDet aut@TypeAut{..} = aut { ta_starts = [runIdentity ta_starts] }
