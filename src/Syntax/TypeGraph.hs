@@ -7,7 +7,6 @@ import Data.Set (Set)
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
-
 import Syntax.Types
 import Syntax.Terms
 
@@ -31,10 +30,7 @@ type NodeLabel = (Polarity, HeadCons)
 
 data EdgeLabel
   = EdgeSymbol DataOrCodata XtorName PrdOrCns Int
-  deriving (Eq,Show)
-
-instance Ord EdgeLabel where
-  compare (EdgeSymbol _ _ _ x) (EdgeSymbol _ _ _ y) = compare x y
+  deriving (Eq,Show, Ord)
 
 type FlowEdge = (Node, Node)
 
