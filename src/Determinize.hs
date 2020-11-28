@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Determinize
   ( determinize
   , determinizeTypeAut
@@ -9,8 +10,8 @@ module Determinize
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS
 
+import Data.Functor.Identity
 import Data.Maybe (catMaybes)
-import Data.List (nub)
 import Data.Bifunctor
 import Data.Maybe (fromJust)
 import Data.Set (Set)
@@ -22,6 +23,7 @@ import Control.Monad.State
 import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
+import Utils
 
 ---------------------------------------------------------------------------------------
 -- Generic epsilon edge removal algorithm
@@ -42,10 +44,10 @@ removeEpsilonEdges' n (gr,starts) =
 fromEpsGr :: DynGraph gr => gr a (Maybe b) -> gr a b
 fromEpsGr gr = gmap (\(ins,i,nl,outs) -> (map (bimap fromJust id) ins, i, nl, map (bimap fromJust id) outs)) gr
 
-removeRedundantEdges :: (DynGraph gr, Eq a, Eq b) => gr a b -> gr a b
+removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeEpsilonEdges :: (DynGraph gr, Eq a, Eq b) => (gr a (Maybe b), [Node]) -> (gr a b, [Node])
+removeEpsilonEdges :: (DynGraph gr, Eq a, Ord b) => (gr a (Maybe b), [Node]) -> (gr a b, [Node])
 removeEpsilonEdges (gr,starts) =
   let
     (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes gr)) (gr, starts)
@@ -53,12 +55,15 @@ removeEpsilonEdges (gr,starts) =
     ((removeRedundantEdges . fromEpsGr) gr', starts')
 
 removeIslands :: TypeAut -> TypeAut
-removeIslands (gr, starts, flowEdges) =
+removeIslands TypeAut{..} =
   let
-    reachableNodes = dfs starts gr
-    reachableFlowEdges = [(i,j) | (i,j) <- flowEdges, i `elem` reachableNodes, j `elem` reachableNodes]
+    reachableNodes = dfs ta_starts ta_gr
+    reachableFlowEdges = [(i,j) | (i,j) <- ta_flowEdges, i `elem` reachableNodes, j `elem` reachableNodes]
   in
-    (subgraph reachableNodes gr, starts, reachableFlowEdges)
+    TypeAut { ta_gr = subgraph reachableNodes ta_gr
+            , ta_starts = ta_starts
+            , ta_flowEdges = reachableFlowEdges
+            }
 
 ---------------------------------------------------------------------------------------
 -- Generic determinization algorithm
@@ -103,13 +108,6 @@ determinize f (gr,starts) =
 -- Applied to type graphs
 ------------------------------------------------------------------------------
 
-allEq :: Eq a => [a] -> Bool
-allEq [] = True
-allEq (x:xs) = all (==x) xs
-
-intersections :: Ord a => [Set a] -> Set a
-intersections = foldr1 S.intersection
-
 combineNodeLabels :: [NodeLabel] -> NodeLabel
 combineNodeLabels nls
   = if not . allEq $ (map fst nls)
@@ -126,14 +124,17 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat xtors = Just $ (case pol of {Pos -> intersections; Neg -> S.unions}) xtors
 
-determinizeTypeAut :: TypeAut -> TypeAut
-determinizeTypeAut (gr,starts,flowEdges) =
+determinizeTypeAut :: TypeAut -> TypeAutDet
+determinizeTypeAut TypeAut{..} =
   let
-    (newgr, newstart, mp) = determinize combineNodeLabels (gr, starts)
+    (newgr, newstart, mp) = determinize combineNodeLabels (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
-                            not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` flowEdges]]
+                            not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in
-    (removeFaultyEdges newgr, [newstart], newFlowEdges)
+    TypeAut { ta_gr = removeFaultyEdges newgr
+            , ta_starts = Identity newstart
+            , ta_flowEdges = newFlowEdges
+            }
 
 -------------------------------------------------------------------------
 -- Removal of faulty edges
