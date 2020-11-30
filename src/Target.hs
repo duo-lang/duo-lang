@@ -26,7 +26,7 @@ import qualified Data.Map as M
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 
-import Determinize (determinize, removeEpsilonEdges)
+import TypeAutomata.Determinize (determinize, removeEpsilonEdges)
 import TypeAutomata.Minimize (minimize)
 
 --------------------------------------------------------------------------

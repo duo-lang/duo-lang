@@ -39,11 +39,9 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
-      Determinize
       Eval
       FlowAnalysis
       GenerateConstraints
-      TypeAutomata.Minimize
       Parser
       Pretty
       SolveConstraints
@@ -52,6 +50,8 @@ library
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
+      TypeAutomata.Minimize
+      TypeAutomata.Determinize
       Target
       Utils
   other-modules:

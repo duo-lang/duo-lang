@@ -18,7 +18,7 @@ import Control.Monad.State
 import Syntax.Types
 import Syntax.TypeGraph
 
-import Determinize (determinize)
+import TypeAutomata.Determinize (determinize)
 import FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 

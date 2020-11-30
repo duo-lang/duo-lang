@@ -17,7 +17,7 @@ import Syntax.TypeGraph
 import Syntax.Terms
 import Utils
 import Pretty
-import Determinize (removeEpsilonEdges, removeIslands)
+import TypeAutomata.Determinize (removeEpsilonEdges, removeIslands)
 
 data SolverState = SolverState
   { sst_gr :: TypeGrEps

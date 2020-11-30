@@ -13,7 +13,7 @@ import Utils
 import Eval (isClosed_term, isLc_term)
 import GenerateConstraints
 import SolveConstraints
-import Determinize
+import TypeAutomata.Determinize
 import FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import Target

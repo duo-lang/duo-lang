@@ -20,7 +20,7 @@ import Pretty
 import Eval hiding (Environment)
 import GenerateConstraints
 import SolveConstraints
-import Determinize
+import TypeAutomata.Determinize
 import FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import Subsume

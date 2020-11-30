@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
-module Determinize
+module TypeAutomata.Determinize
   ( determinize
   , removeEpsilonEdges
   , removeIslands
