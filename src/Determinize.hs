@@ -1,8 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Determinize
   ( determinize
-  , determinizeTypeAut
-  , removeFaultyEdges
   , removeEpsilonEdges
   , removeIslands
   ) where
@@ -47,12 +46,19 @@ fromEpsGr gr = gmap (\(ins,i,nl,outs) -> (map (bimap fromJust id) ins, i, nl, ma
 removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeEpsilonEdges :: (DynGraph gr, Eq a, Ord b) => (gr a (Maybe b), [Node]) -> (gr a b, [Node])
-removeEpsilonEdges (gr,starts) =
+removeEpsilonEdges :: TypeAutEps -> TypeAut
+removeEpsilonEdges TypeAut { ta_gr, ta_starts, ta_flowEdges } =
   let
-    (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes gr)) (gr, starts)
+    (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes ta_gr)) (ta_gr, ta_starts)
   in
-    ((removeRedundantEdges . fromEpsGr) gr', starts')
+   TypeAut { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
+           , ta_starts = starts'
+           , ta_flowEdges = ta_flowEdges
+           }
+
+---------------------------------------------------------------------------------------
+-- Remove islands not reachable from starting states.
+---------------------------------------------------------------------------------------
 
 removeIslands :: TypeAut -> TypeAut
 removeIslands TypeAut{..} =
@@ -95,8 +101,8 @@ getNewNodeLabel f gr ns = f $ catMaybes (map (lab gr) (S.toList ns))
 -- first argument is the node label "combiner"
 -- second result argument is a mapping from sets of node ids to new node ids
 -- this is necessary to correctly handle flow edges, which is done later
-determinize :: (DynGraph gr, Ord b) => ([a] -> c) -> (gr a b, [Node]) -> (gr c b, Node, [(Node, (Set Node))])
-determinize f (gr,starts) =
+determinize' :: (DynGraph gr, Ord b) => ([a] -> c) -> (gr a b, [Node]) -> (gr c b, Node, [(Node, (Set Node))])
+determinize' f (gr,starts) =
   let
     mp = runDeterminize gr starts
   in ( mkGraph [(i, getNewNodeLabel f gr ns) | (ns,_) <- M.toList mp, let i = M.findIndex ns mp]
@@ -124,10 +130,10 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat xtors = Just $ (case pol of {Pos -> intersections; Neg -> S.unions}) xtors
 
-determinizeTypeAut :: TypeAut -> TypeAutDet
-determinizeTypeAut TypeAut{..} =
+determinize :: TypeAut -> TypeAutDet
+determinize TypeAut{..} =
   let
-    (newgr, newstart, mp) = determinize combineNodeLabels (ta_gr, ta_starts)
+    (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in

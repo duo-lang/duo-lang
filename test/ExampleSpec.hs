@@ -39,7 +39,7 @@ typecheck t =
       Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
         Right typeAut ->
           let
-            typeAutDet0 = determinizeTypeAut typeAut
+            typeAutDet0 = determinize typeAut
             typeAutDet = removeAdmissableFlowEdges typeAutDet0
             minTypeAut = minimizeTypeAut typeAutDet
             res = autToType minTypeAut

@@ -18,7 +18,7 @@ import Control.Monad.State
 import Syntax.Types
 import Syntax.TypeGraph
 
-import Determinize (determinizeTypeAut)
+import Determinize (determinize)
 import FlowAnalysis
 import Minimize
 
@@ -48,7 +48,7 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
     startPolarity TypeAut{..} = fst (fromJust (lab ta_gr (runIdentity ta_starts)))
-    fun = minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut
+    fun = minimizeTypeAut . removeAdmissableFlowEdges . determinize
 
 typeAutEqual :: TypeAutDet -> TypeAutDet -> Bool
 typeAutEqual (TypeAut gr1 (Identity start1) flowEdges1) (TypeAut gr2 (Identity start2) flowEdges2)

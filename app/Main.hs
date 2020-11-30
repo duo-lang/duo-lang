@@ -96,7 +96,7 @@ type_cmd s = do
   (typedTerm, css, uvars) <- fromRight $ generateConstraints t
   typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
   let
-    typeAutDet0 = determinizeTypeAut typeAut
+    typeAutDet0 = determinize typeAut
     typeAutDet = removeAdmissableFlowEdges typeAutDet0
     minTypeAut = minimizeTypeAut typeAutDet
     res = autToType minTypeAut
@@ -162,7 +162,7 @@ save_cmd s = do
         (typedTerm, css, uvars) <- fromRight (generateConstraints t)
         typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
         saveGraphFiles "0_typeAut" typeAut
-        let typeAutDet = determinizeTypeAut typeAut
+        let typeAutDet = determinize typeAut
         saveGraphFiles "1_typeAutDet" typeAutDet
         let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
         saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
@@ -206,7 +206,7 @@ bind_cmd s = do
   (typedTerm, css, uvars) <- fromRight (generateConstraints t)
   typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t))
   let
-    typeAutDet0 = determinizeTypeAut typeAut
+    typeAutDet0 = determinize typeAut
     typeAutDet  = removeAdmissableFlowEdges typeAutDet0
     minTypeAut  = minimizeTypeAut typeAutDet
     resType     = autToType minTypeAut

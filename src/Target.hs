@@ -26,7 +26,7 @@ import qualified Data.Map as M
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 
-import Determinize (determinizeTypeAut, removeEpsilonEdges)
+import Determinize (determinize, removeEpsilonEdges)
 import Minimize (minimizeTypeAut)
 
 --------------------------------------------------------------------------
@@ -107,12 +107,9 @@ typeToAutPol pol (TypeScheme tvars ty) =
     case runExcept (runReaderT (runReaderT (runStateT (typeToAutM pol ty) initGr) M.empty) tvarMap) of
       Right (start, gr) ->
         let
-          (gr', starts) = removeEpsilonEdges (gr, [start])
+          aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = flowEdges }
         in
-          Right $ minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut $ TypeAut { ta_gr = gr'
-                                                                                             , ta_starts = starts
-                                                                                             , ta_flowEdges = flowEdges
-                                                                                             }
+          Right $ (minimizeTypeAut . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) aut
       Left err -> Left err
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
