@@ -32,22 +32,22 @@ getEnvironment = do
     Left _err -> error "Could not load prg.txt"
 
 checkTerm :: (FreeVarName, Term ()) -> SpecWith ()
-checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheck term `shouldBe` Nothing
+checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe term `shouldBe` Nothing
 
-typecheck :: Term () -> Maybe Error
-typecheck t =
-    case generateConstraints t of
-      Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-        Right typeAut ->
-          let
-            typeAutDet0 = determinizeTypeAut typeAut
-            typeAutDet = removeAdmissableFlowEdges typeAutDet0
-            minTypeAut = minimizeTypeAut typeAutDet
-            res = autToType minTypeAut
-          in
-            Nothing
-        Left err -> Just err
-      Left err -> Just err
+
+typecheckMaybe :: Term () -> Maybe Error
+typecheckMaybe t = case  typecheck t of
+  Left err -> Just err
+  Right _ -> Nothing
+
+typecheck :: Term () -> Either Error TypeScheme
+typecheck t = do
+  (typedTerm, css, uvars) <- generateConstraints t
+  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+  let typeAutDet0 = determinizeTypeAut typeAut
+  let typeAutDet = removeAdmissableFlowEdges typeAutDet0
+  let minTypeAut = minimizeTypeAut typeAutDet
+  return (autToType minTypeAut)
 
 spec :: Spec
 spec = do
@@ -68,7 +68,8 @@ spec = do
       checkTerm term
   describe "Typecheck specific examples" $ do
     it "id typechecks with the correct type forall a. a -> a" $ do
-      let term = undefined
-      let inferredType = undefined :: TypeScheme
-      let specType = undefined :: TypeScheme
+      let Right term = runEnvParser (termP Prd) mempty "\\(x)[k] => x >> k"
+      let Right inferredType = typecheck term
+      let specType = TypeScheme { ts_vars = [MkTVar {tvar_name = "t0"}]
+                                , ts_monotype = TTySimple Codata [("Ap",Twice [TTyTVar (MkTVar {tvar_name = "t0"})] [TTyTVar (MkTVar {tvar_name = "t0"})])] }
       inferredType `shouldBe` specType
