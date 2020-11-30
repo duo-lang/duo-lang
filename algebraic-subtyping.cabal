@@ -40,7 +40,7 @@ library
   import: shared-build-depends
   exposed-modules:
       Eval
-      FlowAnalysis
+
       GenerateConstraints
       Parser
       Pretty
@@ -52,6 +52,7 @@ library
       Syntax.Program
       TypeAutomata.Minimize
       TypeAutomata.Determinize
+      TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton
       TypeAutomata.ToAutomaton
       Utils

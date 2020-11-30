@@ -4,7 +4,7 @@ import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
-import FlowAnalysis
+import TypeAutomata.FlowAnalysis
 
 import Control.Monad.Reader
 import Data.Maybe (fromJust)

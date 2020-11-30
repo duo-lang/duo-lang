@@ -4,7 +4,10 @@ import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
-import FlowAnalysis
+import TypeAutomata.FlowAnalysis
+import TypeAutomata.Determinize (determinize, removeEpsilonEdges)
+import TypeAutomata.Minimize (minimize)
+
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -17,8 +20,6 @@ import qualified Data.Map as M
 
 import Data.Graph.Inductive.Graph
 
-import TypeAutomata.Determinize (determinize, removeEpsilonEdges)
-import TypeAutomata.Minimize (minimize)
 
 
 --------------------------------------------------------------------------

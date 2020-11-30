@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module FlowAnalysis
+module TypeAutomata.FlowAnalysis
   ( genFlowGraph
   , removeAdmissableFlowEdges
   , getFlowAnalysisMap

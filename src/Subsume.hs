@@ -1,7 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
-module Subsume
-  ( isSubtype
-  ) where
+module Subsume( isSubtype ) where
 
 import Data.Graph.Inductive.Graph
 
@@ -19,7 +16,7 @@ import Syntax.Types
 import Syntax.TypeGraph
 
 import TypeAutomata.Determinize (determinize)
-import FlowAnalysis
+import TypeAutomata.FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 
 

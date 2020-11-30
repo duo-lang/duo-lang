@@ -22,7 +22,7 @@ import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize
 import TypeAutomata.FromAutomaton (autToType)
-import FlowAnalysis
+import TypeAutomata.FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import Subsume
