@@ -33,8 +33,12 @@ common shared-build-depends
     , text >= 1.2 && < 1.3
   default-language:    Haskell2010
   default-extensions:
-             RecordWildCards,
-             NamedFieldPuns
+                     RecordWildCards,
+                     NamedFieldPuns,
+                     FlexibleContexts,
+                     FlexibleInstances,
+                     ScopedTypeVariables,
+                     RankNTypes
 
 library
   import: shared-build-depends

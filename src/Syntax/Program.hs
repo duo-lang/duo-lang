@@ -1,4 +1,3 @@
-{-# LANGUAGE NamedFieldPuns #-}
 module Syntax.Program where
 
 import Data.Map (Map)

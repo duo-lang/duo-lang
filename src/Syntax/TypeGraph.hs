@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 module Syntax.TypeGraph where
 
 import Data.Graph.Inductive.Graph

@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE NamedFieldPuns #-}
 module TypeAutomata.Determinize
   ( determinize
   , removeEpsilonEdges
