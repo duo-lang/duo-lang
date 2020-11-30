@@ -140,7 +140,7 @@ determinizeTypeAut TypeAut{..} =
 -- Removal of faulty edges
 -------------------------------------------------------------------------
 
-containsXtor :: DataOrCodata -> HeadCons -> XtorName -> Bool
+containsXtor :: DataCodata -> HeadCons -> XtorName -> Bool
 containsXtor Data (HeadCons Nothing _) _ = False
 containsXtor Codata (HeadCons _ Nothing) _ = False
 containsXtor Data (HeadCons (Just xtors) _) xt = xt `S.member` xtors

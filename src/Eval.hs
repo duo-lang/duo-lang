@@ -15,7 +15,7 @@ import Pretty
 
 type Environment a = Map String a
 
-getArg :: Int -> PrdOrCns -> XtorArgs a -> Term a
+getArg :: Int -> PrdCns -> XtorArgs a -> Term a
 getArg j Prd (Twice prds _) = prds !! j
 getArg j Cns (Twice _ cnss) = cnss !! j
 
@@ -39,7 +39,7 @@ termOpening :: XtorArgs a -> Term a -> Term a
 termOpening = termOpeningRec 0
 
 -- replaces single bound variable with given term (used for mu abstractions)
-termOpeningSingle :: PrdOrCns -> Term a -> Term a -> Term a
+termOpeningSingle :: PrdCns -> Term a -> Term a -> Term a
 termOpeningSingle Prd t = termOpening (Twice [t] [])
 termOpeningSingle Cns t = termOpening (Twice [] [t])
 
@@ -47,7 +47,7 @@ termOpeningSingle Cns t = termOpening (Twice [] [t])
 commandOpening :: XtorArgs a -> Command a -> Command a
 commandOpening = commandOpeningRec 0
 
-commandOpeningSingle :: PrdOrCns -> Term a -> Command a -> Command a
+commandOpeningSingle :: PrdCns -> Term a -> Command a -> Command a
 commandOpeningSingle Prd t = commandOpening (Twice [t] [])
 commandOpeningSingle Cns t = commandOpening (Twice [] [t])
 
@@ -73,14 +73,14 @@ commandClosingRec k args (Apply t1 t2) = Apply (termClosingRec k args t1) (termC
 termClosing :: Twice [FreeVarName] -> Term a -> Term a
 termClosing = termClosingRec 0
 
-termClosingSingle :: PrdOrCns -> FreeVarName -> Term a -> Term a
+termClosingSingle :: PrdCns -> FreeVarName -> Term a -> Term a
 termClosingSingle Prd v = termClosing (Twice [v] [])
 termClosingSingle Cns v = termClosing (Twice [] [v])
 
 commandClosing :: Twice [FreeVarName] -> Command a -> Command a
 commandClosing = commandClosingRec 0
 
-commandClosingSingle :: PrdOrCns -> FreeVarName -> Command a -> Command a
+commandClosingSingle :: PrdCns -> FreeVarName -> Command a -> Command a
 commandClosingSingle Prd v = commandClosing (Twice [v] [])
 commandClosingSingle Cns v = commandClosing (Twice [] [v])
 
@@ -146,7 +146,7 @@ eval cmd@(Apply (XtorCall Data xt args) (Match Data cases))
           else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                  "\"\nArgument lengths don't coincide.")
       Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                   "\"\nXtor \"" ++ xt ++ "\" doesn't occur in match.")
+                                   "\"\nXtor \"" ++ unXtorName xt ++ "\" doesn't occur in match.")
 eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args))
   = case (find (\(MkCase xt' _ _) -> xt==xt') cases) of
       Just (MkCase _ argTypes cmd') ->
@@ -155,7 +155,7 @@ eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args))
           else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                  "\"\nArgument lengths don't coincide.")
       Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                   "\"\nXtor \"" ++ xt ++ "\" doesn't occur in match.")
+                                   "\"\nXtor \"" ++ unXtorName xt ++ "\" doesn't occur in match.")
 eval (Apply (MuAbs Cns _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
 eval (Apply prd (MuAbs Prd _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
 

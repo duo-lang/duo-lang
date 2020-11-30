@@ -46,9 +46,12 @@ instance Pretty Polarity where
   pretty Neg = "N"
   pretty Pos = "P"
 
-instance Pretty DataOrCodata where
+instance Pretty DataCodata where
   pretty Data = "+"
   pretty Codata = "-"
+
+instance Pretty XtorName where
+  pretty xn = pretty (unXtorName xn)
 
 instance Pretty SimpleType where
   pretty (TyVar uvar) = pretty uvar
