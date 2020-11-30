@@ -41,19 +41,6 @@ data Term a =
   -- If a mu binds a producer, it is itself a consumer and vice versa.
   -- MuAbs Cns == \mu, MuAbs Prd == \tilde{\mu}.
 
--- determines if the term is a producer or a consumer
--- is only defined for closed terms, since we cannot distinguish producer from consumer variable names
--- We distinguish them only in the mathematical formaliazation of the syntax, not in the actual implementation
-termPrdOrCns :: Term a -> PrdOrCns
-termPrdOrCns (XtorCall Data _ _)   = Prd
-termPrdOrCns (XtorCall Codata _ _) = Cns
-termPrdOrCns (Match Data _)        = Cns
-termPrdOrCns (Match Codata _)      = Prd
-termPrdOrCns (MuAbs Prd _ _)       = Cns
-termPrdOrCns (MuAbs Cns _ _)       = Prd
-termPrdOrCns (BoundVar _ pc _)     = pc
-termPrdOrCns (FreeVar _ _)         = error "termPrdOrCns: free variable found"
-
 data Command a
   = Apply (Term a) (Term a)
   | Print (Term a)

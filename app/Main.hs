@@ -94,7 +94,7 @@ type_cmd s = do
   env <- gets replEnv
   t <- parseRepl s (termP Prd) env
   (typedTerm, css, uvars) <- fromRight $ generateConstraints t
-  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
   let
     typeAutDet0 = determinizeTypeAut typeAut
     typeAutDet = removeAdmissableFlowEdges typeAutDet0
@@ -160,7 +160,7 @@ save_cmd s = do
     Left err1 -> case runEnvParser (termP Prd) env s of
       Right t -> do
         (typedTerm, css, uvars) <- fromRight (generateConstraints t)
-        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
         saveGraphFiles "0_typeAut" typeAut
         let typeAutDet = determinizeTypeAut typeAut
         saveGraphFiles "1_typeAutDet" (forgetDet typeAutDet)
@@ -204,7 +204,7 @@ bind_cmd s = do
   env <- gets replEnv
   (v,t) <- parseRepl s bindingP env
   (typedTerm, css, uvars) <- fromRight (generateConstraints t)
-  typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t))
+  typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) Prd)
   let
     typeAutDet0 = determinizeTypeAut typeAut
     typeAutDet  = removeAdmissableFlowEdges typeAutDet0

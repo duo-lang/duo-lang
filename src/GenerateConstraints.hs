@@ -32,6 +32,19 @@ unifcation variables.
 -- So instead, we do a santiy check right after parsing.
 --------------------------------------------------------------------------------------------
 
+-- determines if the term is a producer or a consumer
+-- is only defined for closed terms, since we cannot distinguish producer from consumer variable names
+-- We distinguish them only in the mathematical formaliazation of the syntax, not in the actual implementation
+termPrdOrCns :: Term a -> PrdOrCns
+termPrdOrCns (XtorCall Data _ _)   = Prd
+termPrdOrCns (XtorCall Codata _ _) = Cns
+termPrdOrCns (Match Data _)        = Cns
+termPrdOrCns (Match Codata _)      = Prd
+termPrdOrCns (MuAbs Prd _ _)       = Cns
+termPrdOrCns (MuAbs Cns _ _)       = Prd
+termPrdOrCns (BoundVar _ pc _)     = pc
+termPrdOrCns (FreeVar _ _)         = error "termPrdOrCns: free variable found"
+
 isValidTerm' :: PrdOrCns -> Term () -> Except String ()
 isValidTerm' pc (BoundVar _ pc' _) =
   if pc == pc' then return ()
