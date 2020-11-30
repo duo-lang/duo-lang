@@ -21,9 +21,6 @@ data PrdOrCns
   deriving (Eq,Show,Ord)
 
 type XtorArgs a = Twice [Term a]
-getArg :: Int -> PrdOrCns -> XtorArgs a -> Term a
-getArg j Prd (Twice prds _) = prds !! j
-getArg j Cns (Twice _ cnss) = cnss !! j
 
 data Case a = MkCase
   { case_name :: XtorName

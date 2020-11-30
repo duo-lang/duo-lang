@@ -15,6 +15,10 @@ import Pretty
 
 type Environment a = Map String a
 
+getArg :: Int -> PrdOrCns -> XtorArgs a -> Term a
+getArg j Prd (Twice prds _) = prds !! j
+getArg j Cns (Twice _ cnss) = cnss !! j
+
 termOpeningRec :: Int -> XtorArgs a -> Term a -> Term a
 termOpeningRec k args (BoundVar i pc j)     = if i == k then getArg j pc args else BoundVar i pc j
 termOpeningRec _ _ (FreeVar n a)            = FreeVar n a
