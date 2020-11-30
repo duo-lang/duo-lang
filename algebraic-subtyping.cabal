@@ -40,20 +40,19 @@ library
   import: shared-build-depends
   exposed-modules:
       Eval
-
       GenerateConstraints
       Parser
       Pretty
       SolveConstraints
-      Subsume
       Syntax.Terms
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
-      TypeAutomata.Minimize
       TypeAutomata.Determinize
       TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton
+      TypeAutomata.Minimize
+      TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
       Utils
   other-modules:

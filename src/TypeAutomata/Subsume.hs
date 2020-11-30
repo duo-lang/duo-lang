@@ -1,4 +1,4 @@
-module Subsume( isSubtype ) where
+module TypeAutomata.Subsume( isSubtype ) where
 
 import Data.Graph.Inductive.Graph
 

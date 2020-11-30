@@ -25,7 +25,7 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
-import Subsume
+import TypeAutomata.Subsume (isSubtype)
 
 
 import Data.GraphViz
