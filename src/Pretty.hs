@@ -59,6 +59,10 @@ instance Pretty SimpleType where
 instance Pretty Constraint where
   pretty (SubType t1 t2) = pretty t1 <+> "<:" <+> pretty t2
 
+
+instance Pretty a => Pretty (Case a) where
+  pretty MkCase{..} = pretty case_name <> prettyTwice case_args <+> "=>" <+> pretty case_cmd
+
 instance Pretty a => Pretty (Term a) where
   pretty (BoundVar i pc j) =
     let
@@ -67,9 +71,7 @@ instance Pretty a => Pretty (Term a) where
       parens (pretty i <> "," <> prdCns <> "," <> pretty j)
   pretty (FreeVar v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> prettyTwice args
-  pretty (Match s cases) = braces (pretty s <+> intercalateComma cases' <+> pretty s)
-    where
-      cases' = map (\(xt, args, cmd) -> pretty xt <> prettyTwice args <+> "=>" <+> pretty cmd) cases
+  pretty (Match s cases) = braces (pretty s <+> intercalateComma (pretty <$> cases) <+> pretty s)
   pretty (MuAbs pc a cmd) =
     case pc of {Prd -> "mu~"; Cns -> "mu"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 

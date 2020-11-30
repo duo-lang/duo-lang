@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Eval where
 
 import Prettyprinter
@@ -20,7 +21,7 @@ termOpeningRec _ _ (FreeVar n a)            = FreeVar n a
 termOpeningRec k args (XtorCall s xt args') =
   XtorCall s xt $ (fmap.fmap) (termOpeningRec k args) args'
 termOpeningRec k args (Match s cases) =
-  Match s $ map (\(xtn,xtty,cmd) -> (xtn,xtty, commandOpeningRec (k+1) args cmd)) cases
+  Match s $ map (\pmcase@MkCase{ case_cmd } -> pmcase { case_cmd = commandOpeningRec (k+1) args case_cmd }) cases
 termOpeningRec k args (MuAbs pc a cmd) =
   MuAbs pc a (commandOpeningRec (k+1) args cmd)
 
@@ -55,7 +56,7 @@ termClosingRec k (Twice prdvars cnsvars) (FreeVar v a) = fromJust $ --no need to
   (Just (FreeVar v a))
 termClosingRec k vars (XtorCall s xt args) = XtorCall s xt $ (fmap . fmap) (termClosingRec k vars) args
 termClosingRec k vars (Match s cases) =
-  Match s $ map (\(xtn,xtty,cmd) -> (xtn,xtty, commandClosingRec (k+1) vars cmd)) cases
+  Match s $ map (\pmcase@MkCase { case_cmd } -> pmcase { case_cmd = commandClosingRec (k+1) vars case_cmd }) cases
 termClosingRec k vars (MuAbs pc a cmd) =
   MuAbs pc a (commandClosingRec (k+1) vars cmd)
 
@@ -98,7 +99,7 @@ lcAt_term :: Int -> Term a -> Bool
 lcAt_term k (BoundVar i _ _)                 = i < k
 lcAt_term _ (FreeVar _ _)                    = True
 lcAt_term k (XtorCall _ _ (Twice prds cnss)) = all (lcAt_term k) prds && all (lcAt_term k) cnss
-lcAt_term k (Match _ cases)                  = all (\(_,_,cmd) -> lcAt_cmd (k+1) cmd) cases
+lcAt_term k (Match _ cases)                  = all (\MkCase { case_cmd } -> lcAt_cmd (k+1) case_cmd) cases
 lcAt_term k (MuAbs _ _ cmd)                  = lcAt_cmd (k+1) cmd
 
 -- tests if a term is locally closed, i.e. contains no de brujin indices pointing outside of the term
@@ -116,7 +117,7 @@ freeVars_term :: Term a -> [FreeVarName]
 freeVars_term (BoundVar _ _ _)                 = []
 freeVars_term (FreeVar v _)                    = [v]
 freeVars_term (XtorCall _ _ (Twice prds cnss)) = concat $ map freeVars_term prds ++ map freeVars_term cnss
-freeVars_term (Match _ cases)                  = concat $ map (\(_,_,cmd) -> freeVars_cmd cmd) cases
+freeVars_term (Match _ cases)                  = concat $ map (\MkCase { case_cmd } -> freeVars_cmd case_cmd) cases
 freeVars_term (MuAbs _ _ cmd)                  = freeVars_cmd cmd
 
 freeVars_cmd :: Command a -> [FreeVarName]
@@ -134,8 +135,8 @@ eval :: Pretty a => Command a -> Either Error String
 eval Done = Right "Done"
 eval (Print t) = Right $ ppPrint t
 eval cmd@(Apply (XtorCall Data xt args) (Match Data cases))
-  = case (find (\(xt',_,_) -> xt==xt') cases) of
-      Just (_,argTypes,cmd') ->
+  = case (find (\MkCase { case_name } -> xt==case_name) cases) of
+      Just (MkCase _ argTypes cmd') ->
         if fmap length argTypes == fmap length args
           then eval $ commandOpening args cmd' --reduction is just opening
           else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
@@ -143,8 +144,8 @@ eval cmd@(Apply (XtorCall Data xt args) (Match Data cases))
       Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                    "\"\nXtor \"" ++ xt ++ "\" doesn't occur in match.")
 eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args))
-  = case (find (\(xt',_,_) -> xt==xt') cases) of
-      Just (_,argTypes,cmd') ->
+  = case (find (\(MkCase xt' _ _) -> xt==xt') cases) of
+      Just (MkCase _ argTypes cmd') ->
         if fmap length argTypes == fmap length args
           then eval $ commandOpening args cmd' --reduction is just opening
           else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++

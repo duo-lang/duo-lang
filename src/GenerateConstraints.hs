@@ -43,9 +43,9 @@ isValidTerm' Cns t@(XtorCall Data _ _) = throwError $ "Sanity check failed. Prod
 isValidTerm' Cns (XtorCall Codata _ (Twice prdArgs cnsArgs))
   = mapM_ (isValidTerm' Prd) prdArgs >> mapM_ (isValidTerm' Cns) cnsArgs
 isValidTerm' Prd t@(XtorCall Codata _ _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
-isValidTerm' Prd (Match Codata cases) = mapM_ (\(_,_,cmd) -> isValidCmd cmd) cases
+isValidTerm' Prd (Match Codata cases) = mapM_ (\(MkCase _ _ cmd) -> isValidCmd cmd) cases
 isValidTerm' Prd t@(Match Data _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
-isValidTerm' Cns (Match Data cases) = mapM_ (\(_,_,cmd) -> isValidCmd cmd) cases
+isValidTerm' Cns (Match Data cases) = mapM_ (\(MkCase _ _ cmd) -> isValidCmd cmd) cases
 isValidTerm' Cns t@(Match Codata _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
 isValidTerm' Prd (MuAbs Cns _ cmd) = isValidCmd cmd
 isValidTerm' Prd t@(MuAbs Prd _ _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
@@ -80,11 +80,11 @@ annotateTerm (XtorCall s xt (Twice prdArgs cnsArgs)) = do
   cnsArgs' <- mapM annotateTerm cnsArgs
   return (XtorCall s xt (Twice prdArgs' cnsArgs'))
 annotateTerm (Match s cases) =
-  Match s <$> forM cases (\(xt,Twice prds cnss,cmd) -> do
+  Match s <$> forM cases (\(MkCase xt (Twice prds cnss) cmd) -> do
     (prdUVars, prdTerms) <- unzip <$> freshVars (length prds)
     (cnsUVars, cnsTerms) <- unzip <$> freshVars (length cnss)
     cmd' <- annotateCommand cmd
-    return (xt, Twice prdUVars cnsUVars, (commandOpening (Twice prdTerms cnsTerms) cmd')))
+    return (MkCase xt (Twice prdUVars cnsUVars) (commandOpening (Twice prdTerms cnsTerms) cmd')))
 annotateTerm (MuAbs pc _ cmd) = do
   (uv, freeVar) <- head <$> freshVars 1
   cmd' <- annotateCommand cmd
@@ -107,14 +107,14 @@ typedTermToType :: Term UVar -> SimpleType
 typedTermToType (FreeVar _ t)        = TyVar t
 typedTermToType (BoundVar _ _ _)     = error "typedTermToType: found dangling bound variable"
 typedTermToType (XtorCall s xt args) = SimpleType s [(xt, (fmap . fmap) typedTermToType args)]
-typedTermToType (Match s cases)      = SimpleType s $ map (\(xt,types,_) -> (xt, (fmap . fmap) TyVar types)) cases
+typedTermToType (Match s cases)      = SimpleType s $ map (\(MkCase xt types _) -> (xt, (fmap . fmap) TyVar types)) cases
 typedTermToType (MuAbs _ t _)        = TyVar t
 
 getConstraintsTerm :: Term UVar -> [Constraint]
 getConstraintsTerm (BoundVar _ _ _) = error "getConstraintsTerm:  found dangling bound variable"
 getConstraintsTerm (FreeVar _ _)    = []
 getConstraintsTerm (XtorCall _ _ args) = concat $ mergeTwice (++) $ (fmap.fmap) getConstraintsTerm args
-getConstraintsTerm (Match _ cases) = concat $ map (\(_,_,cmd) -> getConstraintsCommand cmd) cases
+getConstraintsTerm (Match _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases
 getConstraintsTerm (MuAbs _ _ cmd) = getConstraintsCommand cmd
 
 getConstraintsCommand :: Command UVar -> [Constraint]

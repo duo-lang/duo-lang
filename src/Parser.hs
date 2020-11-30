@@ -75,6 +75,10 @@ argListP p q = do
   ys <- option [] (brackets $ q `sepBy` comma)
   return $ Twice xs ys
 
+showDataOrCodata :: DataOrCodata -> String
+showDataOrCodata Data = "+"
+showDataOrCodata Codata = "-"
+
 --------------------------------------------------------------------------------------------
 -- Term/Command parsing
 --------------------------------------------------------------------------------------------
@@ -125,7 +129,7 @@ lambdaSugar = do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match Codata [("Ap", argsSig (length prdVars) (length cnsVars), commandClosing args cmd)]
+  return $ Match Codata [MkCase "Ap" (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
 xtorCall :: PrdOrCns -> Parser (Term ())
 xtorCall mode = do
@@ -140,15 +144,16 @@ patternMatch = braces $ do
   _ <- symbol (showDataOrCodata s)
   return $ Match s cases
 
-singleCase :: Parser (MatchCase ())
+singleCase :: Parser (Case ())
 singleCase = do
   xt <- lexeme xtorName
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- symbol "=>"
   cmd <- lexeme commandP
-  return (xt,
-          argsSig (length prdVars) (length cnsVars),  -- e.g. X(x,y)[k] becomes X((),())[()]
-          commandClosing args cmd) -- de brujin transformation
+  return MkCase { case_name = xt
+                , case_args = argsSig (length prdVars) (length cnsVars)  -- e.g. X(x,y)[k] becomes X((),())[()]
+                , case_cmd = commandClosing args cmd -- de brujin transformation
+                }
 
 muAbstraction :: Parser (Term ())
 muAbstraction = do
