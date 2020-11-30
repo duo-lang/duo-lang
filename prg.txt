@@ -14,6 +14,7 @@ prd impl := {- Ap(x,y)[k] => x >> {+ True => y >> k, False => True >> k +} -};
 ## basic functional stuff ##
 
 prd id := {- Ap(x)[k] => x >> k -};
+prd idAlt := \(x)[k] => x >> k;
 prd curry := {- Ap(f)[k] => {- Ap(x)[k] => {-Ap(y)[k] => f >> Ap(x,y)[k]-} >> k-} >> k -};
 prd uncurry := {- Ap(f)[k] => {- Ap(x,y)[k] => f >> Ap(x)[Ap(y)[k]] -} >> k-};
 prd comp := {- Ap(f,g)[k] => {- Ap(x)[k] => g >> Ap(x)[mu* w. f >> Ap(w)[k]] -} >> k -};
