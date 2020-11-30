@@ -9,6 +9,7 @@ import qualified Data.Map as M
 import Parser
 import Syntax.Terms
 import Syntax.Program
+import Syntax.Types
 import Utils
 import Eval (isClosed_term, isLc_term)
 import GenerateConstraints
@@ -31,22 +32,30 @@ getEnvironment = do
     Left _err -> error "Could not load prg.txt"
 
 checkTerm :: (FreeVarName, Term ()) -> SpecWith ()
-checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheck term `shouldBe` Nothing
+checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe term `shouldBe` Nothing
 
-typecheck :: Term () -> Maybe Error
-typecheck t =
-    case generateConstraints t of
-      Right (typedTerm, css, uvars) -> case solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t) of
-        Right typeAut ->
-          let
-            typeAutDet0 = determinizeTypeAut typeAut
-            typeAutDet = removeAdmissableFlowEdges typeAutDet0
-            minTypeAut = minimizeTypeAut typeAutDet
-            res = autToType minTypeAut
-          in
-            Nothing
-        Left err -> Just err
-      Left err -> Just err
+
+typecheckMaybe :: Term () -> Maybe Error
+typecheckMaybe t = case  typecheck t of
+  Left err -> Just err
+  Right _ -> Nothing
+
+typecheck :: Term () -> Either Error TypeScheme
+typecheck t = do
+  (typedTerm, css, uvars) <- generateConstraints t
+  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+  let typeAutDet0 = determinizeTypeAut typeAut
+  let typeAutDet = removeAdmissableFlowEdges typeAutDet0
+  let minTypeAut = minimizeTypeAut typeAutDet
+  return (autToType minTypeAut)
+
+typecheckExample :: String -> String -> Spec
+typecheckExample termS typS = do
+  it (termS ++  " typechecks as: " ++ typS) $ do
+      let Right term = runEnvParser (termP Prd) mempty termS
+      let Right inferredType = typecheck term
+      let Right specType = runEnvParser typeSchemeP mempty typS
+      inferredType `shouldBe` specType
 
 spec :: Spec
 spec = do
@@ -65,3 +74,6 @@ spec = do
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_  (M.toList env) $ \term -> do
       checkTerm term
+  describe "Typecheck specific examples" $ do
+    typecheckExample "\\(x)[k] => x >> k" "forall t0. {- Ap(t0)[t0] -}"
+    typecheckExample "S(Z)" "{+ S({+ Z +}) +}"
