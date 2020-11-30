@@ -32,7 +32,7 @@ common shared-build-depends
     , repline >=0.4 && <0.5
     , text >= 1.2 && < 1.3
   default-language:    Haskell2010
-  extensions:
+  default-extensions:
              RecordWildCards,
              NamedFieldPuns
 
@@ -52,7 +52,8 @@ library
       Syntax.Program
       TypeAutomata.Minimize
       TypeAutomata.Determinize
-      Target
+      TypeAutomata.FromAutomaton
+      TypeAutomata.ToAutomaton
       Utils
   other-modules:
       Paths_algebraic_subtyping

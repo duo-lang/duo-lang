@@ -16,7 +16,7 @@ import SolveConstraints
 import TypeAutomata.Determinize
 import FlowAnalysis
 import TypeAutomata.Minimize (minimize)
-import Target
+import TypeAutomata.FromAutomaton
 
 failingExamples :: [String]
 failingExamples = ["div2and3"]

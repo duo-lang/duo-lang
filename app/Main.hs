@@ -21,10 +21,12 @@ import Eval hiding (Environment)
 import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize
+import TypeAutomata.FromAutomaton (autToType)
 import FlowAnalysis
 import TypeAutomata.Minimize (minimize)
+import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import Subsume
-import Target
+
 
 import Data.GraphViz
 
