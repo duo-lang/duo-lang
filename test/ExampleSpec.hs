@@ -9,6 +9,7 @@ import qualified Data.Map as M
 import Parser
 import Syntax.Terms
 import Syntax.Program
+import Syntax.Types
 import Utils
 import Eval (isClosed_term, isLc_term)
 import GenerateConstraints
@@ -65,3 +66,9 @@ spec = do
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_  (M.toList env) $ \term -> do
       checkTerm term
+  describe "Typecheck specific examples" $ do
+    it "id typechecks with the correct type forall a. a -> a" $ do
+      let term = undefined
+      let inferredType = undefined :: TypeScheme
+      let specType = undefined :: TypeScheme
+      inferredType `shouldBe` specType
