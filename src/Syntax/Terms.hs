@@ -8,7 +8,6 @@ import Utils
 
 type XtorName = String -- start with uppercase
 type FreeVarName = String -- start with lowercase
-type TypeIdentifierName = String -- start with uppercase
 
 data DataOrCodata
   = Data

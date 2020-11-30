@@ -11,6 +11,8 @@ import Syntax.Types
 -- Program
 ---------------------------------------------------------------------------------
 
+type TypeIdentifierName = String -- start with uppercase
+
 data Declaration a
   = PrdDecl FreeVarName (Term a)
   | CnsDecl FreeVarName (Term a)
