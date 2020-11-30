@@ -108,6 +108,7 @@ termP mode = try (parens (termP mode))
                           -- if the variable is in the environment, which might cause it to fail
   <|> freeVar
   <|> numLit
+  <|> lambdaSugar
 
 freeVar :: Parser (Term ())
 freeVar = do
@@ -116,6 +117,14 @@ freeVar = do
 
 numLit :: Parser (Term ())
 numLit = numToTerm . read <$> some numberChar
+
+lambdaSugar :: Parser (Term ())
+lambdaSugar = do
+  _ <- lexeme (symbol "\\")
+  args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
+  _ <- lexeme (symbol "=>")
+  cmd <- lexeme commandP
+  return $ Match Codata [("Ap", argsSig (length prdVars) (length cnsVars), commandClosing args cmd)]
 
 xtorCall :: PrdOrCns -> Parser (Term ())
 xtorCall mode = do

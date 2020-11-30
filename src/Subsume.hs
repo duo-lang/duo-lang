@@ -1,4 +1,7 @@
-module Subsume where
+{-# LANGUAGE RecordWildCards #-}
+module Subsume
+  ( isSubtype
+  ) where
 
 import Data.Graph.Inductive.Graph
 
@@ -9,7 +12,7 @@ import qualified Data.Map as M
 
 import Data.Maybe (fromJust)
 import Data.Tuple (swap)
-import Data.Bifunctor (bimap)
+import Data.Functor.Identity
 import Control.Monad.State
 
 import Syntax.Types
@@ -19,32 +22,41 @@ import Determinize (determinizeTypeAut)
 import FlowAnalysis
 import Minimize
 
-typeAutUnion :: TypeAut -> TypeAut -> TypeAut
-typeAutUnion (gr1, starts1, flowEdges1) (gr2, starts2, flowEdges2) = (
-    mkGraph (labNodes gr1 ++ [(i + n0, a) | (i,a) <- labNodes gr2])
-            (labEdges gr1 ++ [(i+n0,j+n0,b) | (i,j,b) <- labEdges gr2])
-  , starts1 ++ map (+n0) starts2
-  , flowEdges1 ++ map (bimap (+n0) (+n0)) flowEdges2)
-  where
-    n0 = 1 + snd (nodeRange gr1)
 
-isSubtype :: TypeAut -> TypeAut -> Bool
+-- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
+shiftGraph :: Int -> TypeAutDet -> TypeAutDet
+shiftGraph shift = mapTypeAut (+shift)
+
+-- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
+unsafeUnion :: TypeAutDet -> TypeAutDet -> TypeAut
+unsafeUnion (TypeAut gr1 (Identity starts1) flowEdges1) (TypeAut gr2 (Identity starts2) flowEdges2) =
+  TypeAut { ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
+          , ta_starts = [starts1, starts2]
+          , ta_flowEdges = flowEdges1 ++ flowEdges2
+          }
+
+-- Constructs the union of two TypeAuts
+typeAutUnion :: TypeAutDet -> TypeAutDet -> TypeAut
+typeAutUnion aut1@TypeAut{..} aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
+  where
+    shift = 1 + snd (nodeRange ta_gr)
+
+isSubtype :: TypeAutDet -> TypeAutDet -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
-  (Pos,Pos) -> (minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut) (typeAutUnion aut1 aut2) `typeAutEqual` aut2
-  (Neg,Neg) -> (minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut) (typeAutUnion aut1 aut2) `typeAutEqual` aut1
+  (Pos,Pos) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut2
+  (Neg,Neg) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
-    startPolarity (gr,[start],_) = fst (fromJust (lab gr start))
+    startPolarity TypeAut{..} = fst (fromJust (lab ta_gr (runIdentity ta_starts)))
+    fun = minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut
 
-
-typeAutEqual :: TypeAut -> TypeAut -> Bool
-typeAutEqual (gr1, [start1], flowEdges1) (gr2, [start2], flowEdges2)
+typeAutEqual :: TypeAutDet -> TypeAutDet -> Bool
+typeAutEqual (TypeAut gr1 (Identity start1) flowEdges1) (TypeAut gr2 (Identity start2) flowEdges2)
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False
       Just ((),mp) ->
         S.fromList flowEdges2 ==
           S.fromList [(i',j') | (i,j) <- flowEdges1, let Just i' = M.lookup i mp, let Just j' = M.lookup j mp]
-typeAutEqual _ _ = error "typeAutEqual: only defined for deterministic automata!"
 
 sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))

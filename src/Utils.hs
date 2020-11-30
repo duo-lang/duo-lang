@@ -1,5 +1,8 @@
 module Utils where
 
+import Data.Set (Set)
+import qualified Data.Set as S
+
 ----------------------------------------------------------------------------------
 -- Twice functor
 ----------------------------------------------------------------------------------
@@ -22,3 +25,10 @@ data Error
   | EvalError String
   | SolveConstraintsError String
   deriving (Show, Eq)
+
+allEq :: Eq a => [a] -> Bool
+allEq [] = True
+allEq (x:xs) = all (==x) xs
+
+intersections :: Ord a => [Set a] -> Set a
+intersections = foldr1 S.intersection

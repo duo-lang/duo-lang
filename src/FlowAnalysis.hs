@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module FlowAnalysis
   ( genFlowGraph
   , removeAdmissableFlowEdges
@@ -32,44 +33,44 @@ sucWith gr i el = lookup el (map swap (lsuc gr i))
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
-admissable :: TypeAut -> FlowEdge -> Bool
-admissable (gr,start,flowEdges) e = isJust $ admissableM (gr,start,delete e flowEdges) e
+admissable :: TypeAutDet -> FlowEdge -> Bool
+admissable aut@TypeAut {..} e = isJust $ admissableM (aut { ta_flowEdges = delete e ta_flowEdges }) e
 
-admissableM :: TypeAut -> FlowEdge -> Maybe ()
-admissableM aut@(gr,_,flowEdges) e@(i,j) =
+admissableM :: TypeAutDet -> FlowEdge -> Maybe ()
+admissableM aut@TypeAut{..} e@(i,j) =
     let
       subtypeData = do -- Maybe monad
-        (Neg, HeadCons (Just dat1) _) <- lab gr i
-        (Pos, HeadCons (Just dat2) _) <- lab gr j
+        (Neg, HeadCons (Just dat1) _) <- lab ta_gr i
+        (Pos, HeadCons (Just dat2) _) <- lab ta_gr j
         _ <- forM (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
         _ <- forM (S.toList dat1) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
-            m <- sucWith gr j el
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+            m <- sucWith ta_gr j el
             admissableM aut (n,m)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
-            m <- sucWith gr j el
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+            m <- sucWith ta_gr j el
             admissableM aut (m,n)
           return ()
         return ()
       subtypeCodata = do -- Maybe monad
-        (Neg, HeadCons _ (Just codat1)) <- lab gr i
-        (Pos, HeadCons _ (Just codat2)) <- lab gr j
+        (Neg, HeadCons _ (Just codat1)) <- lab ta_gr i
+        (Pos, HeadCons _ (Just codat2)) <- lab ta_gr j
         _ <- forM (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
         _ <- forM (S.toList codat2) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
-            m <- sucWith gr j el
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+            m <- sucWith ta_gr j el
             admissableM aut (m,n)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc gr i, xt == xt'] $ \(n,el) -> do
-            m <- sucWith gr j el
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+            m <- sucWith ta_gr j el
             admissableM aut (n,m)
           return ()
         return ()
     in
-      guard (e `elem` flowEdges) <|> subtypeData <|> subtypeCodata
+      guard (e `elem` ta_flowEdges) <|> subtypeData <|> subtypeCodata
 
 
-removeAdmissableFlowEdges :: TypeAut -> TypeAut
-removeAdmissableFlowEdges aut@(gr, starts, flowEdges) = (gr, starts, filter (not . admissable aut) flowEdges)
+removeAdmissableFlowEdges :: TypeAutDet -> TypeAutDet
+removeAdmissableFlowEdges aut@TypeAut{..} = aut { ta_flowEdges = filter (not . admissable aut) ta_flowEdges }
 
 -------------------------------------------------------------------------------------
 -- Flow analysis
@@ -78,7 +79,7 @@ removeAdmissableFlowEdges aut@(gr, starts, flowEdges) = (gr, starts, filter (not
 type FlowGraph = Gr () ()
 
 genFlowGraph :: TypeAut -> FlowGraph
-genFlowGraph (gr,_,flowEdges) = mkGraph [(n,()) | n <- nodes gr] [(i,j,()) | (i,j) <- flowEdges]
+genFlowGraph TypeAut{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
 
 flowComponent :: FlowGraph -> Node -> [Node]
 flowComponent flgr i =

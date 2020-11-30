@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Target
   ( autToType
   , typeToAut
@@ -15,6 +16,7 @@ import Control.Monad.State
 import Control.Monad.Except
 import Data.Maybe (fromJust)
 
+import Data.Functor.Identity
 import Data.Set (Set)
 import qualified Data.Set as S
 
@@ -31,15 +33,14 @@ import Minimize (minimizeTypeAut)
 -- Type automata -> Target types
 --------------------------------------------------------------------------
 
-autToType :: TypeAut -> TypeScheme
-autToType aut@(gr, starts, _)
-  | length starts > 1 = error "toTargetType: only defined for deterministic automata!"
-  | otherwise = let
-      mp = (getFlowAnalysisMap aut)
-      monotype = runReader (autToTypeReader mp (head starts)) (gr, S.empty)
-      tvars = S.toList $ S.unions (M.elems mp)
-    in
-      TypeScheme tvars monotype
+autToType :: TypeAutDet -> TypeScheme
+autToType aut@TypeAut{..} =
+  let
+    mp = getFlowAnalysisMap (forgetDet aut)
+    monotype = runReader (autToTypeReader mp (runIdentity ta_starts)) (ta_gr, S.empty)
+    tvars = S.toList $ S.unions (M.elems mp)
+  in
+    TypeScheme tvars monotype
 
 autToTypeReader :: Map Node (Set TVar) -> Node -> Reader (TypeGr, Set Node) TargetType
 autToTypeReader tvMap i = do
@@ -95,7 +96,7 @@ type TVarEnv = Map TVar (Node, Node)
 type TypeToAutM a = StateT TypeGrEps (ReaderT RVarEnv (ReaderT TVarEnv (Except String))) a
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: Polarity -> TypeScheme -> Either String TypeAut
+typeToAutPol :: Polarity -> TypeScheme -> Either String TypeAutDet
 typeToAutPol pol (TypeScheme tvars ty) =
   let
     tvarMap = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
@@ -108,11 +109,14 @@ typeToAutPol pol (TypeScheme tvars ty) =
         let
           (gr', starts) = removeEpsilonEdges (gr, [start])
         in
-          Right $ minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut $ (gr', starts, flowEdges)
+          Right $ minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut $ TypeAut { ta_gr = gr'
+                                                                                             , ta_starts = starts
+                                                                                             , ta_flowEdges = flowEdges
+                                                                                             }
       Left err -> Left err
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
-typeToAut :: TypeScheme -> Either String TypeAut
+typeToAut :: TypeScheme -> Either String TypeAutDet
 typeToAut ty = case typeToAutPol Pos ty of
   Right res -> Right res
   Left _ -> case typeToAutPol Neg ty of
