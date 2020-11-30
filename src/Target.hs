@@ -27,7 +27,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 
 import Determinize (determinize, removeEpsilonEdges)
-import Minimize (minimizeTypeAut)
+import TypeAutomata.Minimize (minimize)
 
 --------------------------------------------------------------------------
 -- Type automata -> Target types
@@ -109,7 +109,7 @@ typeToAutPol pol (TypeScheme tvars ty) =
         let
           aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = flowEdges }
         in
-          Right $ (minimizeTypeAut . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) aut
+          Right $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) aut
       Left err -> Left err
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.

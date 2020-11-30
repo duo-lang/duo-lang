@@ -22,7 +22,7 @@ import GenerateConstraints
 import SolveConstraints
 import Determinize
 import FlowAnalysis
-import Minimize
+import TypeAutomata.Minimize (minimize)
 import Subsume
 import Target
 
@@ -98,7 +98,7 @@ type_cmd s = do
   let
     typeAutDet0 = determinize typeAut
     typeAutDet = removeAdmissableFlowEdges typeAutDet0
-    minTypeAut = minimizeTypeAut typeAutDet
+    minTypeAut = minimize typeAutDet
     res = autToType minTypeAut
   prettyRepl (" :: " ++ ppPrint res)
 
@@ -166,7 +166,7 @@ save_cmd s = do
         saveGraphFiles "1_typeAutDet" typeAutDet
         let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
         saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
-        let minTypeAut = minimizeTypeAut typeAutDetAdms
+        let minTypeAut = minimize typeAutDetAdms
         saveGraphFiles "3_minTypeAut" minTypeAut
         let res = autToType minTypeAut
         prettyRepl (" :: " ++ ppPrint res)
@@ -208,7 +208,7 @@ bind_cmd s = do
   let
     typeAutDet0 = determinize typeAut
     typeAutDet  = removeAdmissableFlowEdges typeAutDet0
-    minTypeAut  = minimizeTypeAut typeAutDet
+    minTypeAut  = minimize typeAutDet
     resType     = autToType minTypeAut
   modifyEnvironment (insertDecl (TypDecl v resType))
 

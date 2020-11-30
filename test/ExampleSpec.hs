@@ -15,7 +15,7 @@ import GenerateConstraints
 import SolveConstraints
 import Determinize
 import FlowAnalysis
-import Minimize
+import TypeAutomata.Minimize (minimize)
 import Target
 
 failingExamples :: [String]
@@ -41,7 +41,7 @@ typecheck t =
           let
             typeAutDet0 = determinize typeAut
             typeAutDet = removeAdmissableFlowEdges typeAutDet0
-            minTypeAut = minimizeTypeAut typeAutDet
+            minTypeAut = minimize typeAutDet
             res = autToType minTypeAut
           in
             Nothing
