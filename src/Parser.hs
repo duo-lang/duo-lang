@@ -17,6 +17,7 @@ import Data.Void
 import Eval
 import Syntax.Terms
 import Syntax.Types
+import Syntax.TypeGraph
 import Syntax.Program
 import Utils
 
@@ -106,6 +107,7 @@ termP mode = try (parens (termP mode))
                           -- if the variable is in the environment, which might cause it to fail
   <|> freeVar
   <|> numLit
+  <|> lambdaSugar
 
 freeVar :: Parser (Term ())
 freeVar = do
@@ -114,6 +116,14 @@ freeVar = do
 
 numLit :: Parser (Term ())
 numLit = numToTerm . read <$> some numberChar
+
+lambdaSugar :: Parser (Term ())
+lambdaSugar = do
+  _ <- lexeme (symbol "\\")
+  args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
+  _ <- lexeme (symbol "=>")
+  cmd <- lexeme commandP
+  return $ Match Codata [("Ap", argsSig (length prdVars) (length cnsVars), commandClosing args cmd)]
 
 xtorCall :: PrdOrCns -> Parser (Term ())
 xtorCall mode = do
@@ -224,7 +234,7 @@ typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
   (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
-  return (TypeScheme (tvars ++ S.toList newtvars) monotype)
+  return (TypeScheme (nub (tvars ++ S.toList newtvars)) monotype)
 
 --without joins and meets
 typeR' :: TypeParser TargetType
