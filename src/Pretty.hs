@@ -52,6 +52,7 @@ instance Pretty DataOrCodata where
 
 instance Pretty SimpleType where
   pretty (TyVar uvar) = pretty uvar
+  pretty (NominalType tn) = pretty (unTypeName tn)
   pretty (SimpleType s xtors) = braces (pretty s <+> intercalateComma xtors' <+> pretty s)
     where
       xtors' = map (\(xt,args) -> pretty xt <> prettyTwice args) xtors
@@ -88,6 +89,7 @@ instance Pretty TargetType where
   pretty (TTyTVar tv) = pretty tv
   pretty (TTyRVar tv) = pretty tv
   pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t
+  pretty (TTyNominal tn) = pretty (unTypeName tn)
   pretty (TTySimple s xtors) = braces (pretty s <+> intercalateComma xtors' <+> pretty s)
     where
       xtors' = map (\(xt,args) -> pretty xt <> prettyTwice args) xtors

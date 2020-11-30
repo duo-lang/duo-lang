@@ -10,6 +10,9 @@ import Utils
 -- Type syntax
 ------------------------------------------------------------------------------
 
+-- | The name of a nominally declared type, e.g. "Nat"
+data TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show)
+
 newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
 
 instance Show UVar where
@@ -32,6 +35,7 @@ type XtorSig a = (XtorName, Twice [a])
 data SimpleType =
     TyVar UVar
   | SimpleType DataOrCodata [XtorSig SimpleType]
+  | NominalType TypeName
   deriving (Show,Eq)
 
 data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
@@ -41,7 +45,7 @@ newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Ord, Show)
 
 alphaRenameTVar :: [TVar] -> TVar -> TVar
 alphaRenameTVar tvs tv
-  | tv `elem` tvs = head [newtv | n <- [0..], let newtv = MkTVar (tvar_name tv ++ show n), not (newtv `elem` tvs)]
+  | tv `elem` tvs = head [newtv | n <- [(0 :: Integer)..], let newtv = MkTVar (tvar_name tv ++ show n), not (newtv `elem` tvs)]
   | otherwise = tv
 
 -- bound type variables (used in recursive types)
@@ -54,6 +58,7 @@ data TargetType
   | TTyRVar RVar
   | TTyRec RVar TargetType
   | TTySimple DataOrCodata [XtorSig TargetType]
+  | TTyNominal TypeName
   deriving (Eq,Show)
 
 -- replaces all free type variables in the type, so that they don't intersect with the given type variables
@@ -64,6 +69,7 @@ alphaRenameTargetType tvs (TTyUnion tys) = TTyUnion (map (alphaRenameTargetType 
 alphaRenameTargetType tvs (TTyInter tys) = TTyInter (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyRec rv ty) = TTyRec rv (alphaRenameTargetType tvs ty)
 alphaRenameTargetType tvs (TTySimple s sigs) = TTySimple s $ map (bimap id (twiceMap (map (alphaRenameTargetType tvs)) (map (alphaRenameTargetType tvs)))) sigs
+alphaRenameTargetType _ (TTyNominal tn) = TTyNominal tn
 
 data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType } deriving (Show, Eq)
 
@@ -83,6 +89,7 @@ freeTypeVars' (TTyUnion ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyInter ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
 freeTypeVars' (TTySimple _ xtors) = concat (map (\(_,Twice prdTypes cnsTypes) -> concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)) xtors)
+freeTypeVars' (TTyNominal _) = []
 
 freeTypeVars :: TargetType -> [TVar]
 freeTypeVars = nub . freeTypeVars'
