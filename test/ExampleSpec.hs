@@ -49,6 +49,14 @@ typecheck t = do
   let minTypeAut = minimizeTypeAut typeAutDet
   return (autToType minTypeAut)
 
+typecheckExample :: String -> String -> Spec
+typecheckExample termS typS = do
+  it (termS ++  " typechecks as: " ++ typS) $ do
+      let Right term = runEnvParser (termP Prd) mempty termS
+      let Right inferredType = typecheck term
+      let Right specType = runEnvParser typeSchemeP mempty typS
+      inferredType `shouldBe` specType
+
 spec :: Spec
 spec = do
   describe "All examples are closed" $ do
@@ -67,9 +75,5 @@ spec = do
     forM_  (M.toList env) $ \term -> do
       checkTerm term
   describe "Typecheck specific examples" $ do
-    it "id typechecks with the correct type forall a. a -> a" $ do
-      let Right term = runEnvParser (termP Prd) mempty "\\(x)[k] => x >> k"
-      let Right inferredType = typecheck term
-      let specType = TypeScheme { ts_vars = [MkTVar {tvar_name = "t0"}]
-                                , ts_monotype = TTySimple Codata [("Ap",Twice [TTyTVar (MkTVar {tvar_name = "t0"})] [TTyTVar (MkTVar {tvar_name = "t0"})])] }
-      inferredType `shouldBe` specType
+    typecheckExample "\\(x)[k] => x >> k" "forall t0. {- Ap(t0)[t0] -}"
+    typecheckExample "S(Z)" "{+ S({+ Z +}) +}"

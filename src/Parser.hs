@@ -19,6 +19,7 @@ import Data.Void
 import Eval
 import Syntax.Terms
 import Syntax.Types
+import Syntax.TypeGraph
 import Syntax.Program
 import Utils
 
@@ -235,7 +236,7 @@ typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
   (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
-  return (TypeScheme (tvars ++ S.toList newtvars) monotype)
+  return (TypeScheme (nub (tvars ++ S.toList newtvars)) monotype)
 
 --without joins and meets
 typeR' :: TypeParser TargetType
