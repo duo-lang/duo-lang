@@ -24,7 +24,7 @@ switchPolarity :: Polarity -> Polarity
 switchPolarity Neg = Pos
 switchPolarity Pos = Neg
 
-applyVariance :: DataOrCodata -> PrdOrCns -> (Polarity -> Polarity)
+applyVariance :: DataCodata -> PrdCns -> (Polarity -> Polarity)
 applyVariance Data Prd = id
 applyVariance Data Cns = switchPolarity
 applyVariance Codata Prd = switchPolarity
@@ -34,8 +34,9 @@ type XtorSig a = (XtorName, Twice [a])
 
 data SimpleType =
     TyVar UVar
-  | SimpleType DataOrCodata [XtorSig SimpleType]
+  | SimpleType DataCodata [XtorSig SimpleType]
   | NominalType TypeName
+
   deriving (Show,Eq)
 
 data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
@@ -57,7 +58,7 @@ data TargetType
   | TTyTVar TVar
   | TTyRVar RVar
   | TTyRec RVar TargetType
-  | TTySimple DataOrCodata [XtorSig TargetType]
+  | TTySimple DataCodata [XtorSig TargetType]
   | TTyNominal TypeName
   deriving (Eq,Show)
 

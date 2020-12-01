@@ -49,12 +49,12 @@ freeVarName :: (MonadParsec Void String m) => m FreeVarName
 freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
 
 xtorName :: (MonadParsec Void String m) => m XtorName
-xtorName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
+xtorName = MkXtorName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
-typeIdentifierName :: (MonadParsec Void String m) => m XtorName
+typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
 
-dataOrCodata :: (MonadParsec Void String m) => m DataOrCodata
+dataOrCodata :: (MonadParsec Void String m) => m DataCodata
 dataOrCodata = (symbol "+" >> return Data) <|> (symbol "-" >> return Codata)
 
 parens, braces, brackets :: (MonadParsec Void String m) => m a -> m a
@@ -73,6 +73,10 @@ argListP p q = do
   ys <- option [] (brackets $ q `sepBy` comma)
   return $ Twice xs ys
 
+showDataCodata :: DataCodata -> String
+showDataCodata Data = "+"
+showDataCodata Codata = "-"
+
 --------------------------------------------------------------------------------------------
 -- Term/Command parsing
 --------------------------------------------------------------------------------------------
@@ -83,10 +87,10 @@ argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
 numToTerm :: Int -> Term ()
-numToTerm 0 = XtorCall Data "Z" (Twice [] [])
-numToTerm n = XtorCall Data "S" (Twice [numToTerm (n-1)] [])
+numToTerm 0 = XtorCall Data (MkXtorName "Z") (Twice [] [])
+numToTerm n = XtorCall Data (MkXtorName "S") (Twice [numToTerm (n-1)] [])
 
-termEnvP :: PrdOrCns -> Parser (Term ())
+termEnvP :: PrdCns -> Parser (Term ())
 termEnvP Prd = do
   v <- lexeme (many alphaNumChar)
   prdEnv <- asks prdEnv
@@ -98,7 +102,7 @@ termEnvP Cns = do
   Just t <- return $ M.lookup v cnsEnv
   return t
 
-termP :: PrdOrCns -> Parser (Term ())
+termP :: PrdCns -> Parser (Term ())
 termP mode = try (parens (termP mode))
   <|> xtorCall mode
   <|> patternMatch
@@ -123,9 +127,9 @@ lambdaSugar = do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match Codata [("Ap", argsSig (length prdVars) (length cnsVars), commandClosing args cmd)]
+  return $ Match Codata [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
-xtorCall :: PrdOrCns -> Parser (Term ())
+xtorCall :: PrdCns -> Parser (Term ())
 xtorCall mode = do
   xt <- xtorName
   args <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
@@ -135,18 +139,19 @@ patternMatch :: Parser (Term ())
 patternMatch = braces $ do
   s <- dataOrCodata
   cases <- singleCase `sepBy` comma
-  _ <- symbol (showDataOrCodata s)
+  _ <- symbol (showDataCodata s)
   return $ Match s cases
 
-singleCase :: Parser (MatchCase ())
+singleCase :: Parser (Case ())
 singleCase = do
   xt <- lexeme xtorName
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- symbol "=>"
   cmd <- lexeme commandP
-  return (xt,
-          argsSig (length prdVars) (length cnsVars),  -- e.g. X(x,y)[k] becomes X((),())[()]
-          commandClosing args cmd) -- de brujin transformation
+  return MkCase { case_name = xt
+                , case_args = argsSig (length prdVars) (length cnsVars)  -- e.g. X(x,y)[k] becomes X((),())[()]
+                , case_cmd = commandClosing args cmd -- de brujin transformation
+                }
 
 muAbstraction :: Parser (Term ())
 muAbstraction = do
@@ -252,7 +257,7 @@ simpleType :: TypeParser TargetType
 simpleType = braces $ do
   s <- dataOrCodata
   xtorSigs <- xtorSignature `sepBy` comma
-  _ <- symbol (showDataOrCodata s)
+  _ <- symbol (showDataCodata s)
   return $ TTySimple s xtorSigs
 
 xtorSignature :: TypeParser (XtorSig TargetType)

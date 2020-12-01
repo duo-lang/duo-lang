@@ -86,8 +86,8 @@ graphToType i = do
 subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
   = if not . null $ (map fst xtors1) \\ (map fst xtors2)
-    then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, beacuse xtor \"" ++
-                      (head $ (map fst xtors1) \\ (map fst xtors2)) ++
+    then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
+                      ppPrint (head $ (map fst xtors1) \\ (map fst xtors2)) ++
                       "\" occurs only in the left side."
     else return $ do -- list monad
       (xtName,Twice prd1 cns1) <- xtors1
@@ -95,8 +95,8 @@ subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
       zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2))
   = if not . null $ (map fst xtors2) \\ (map fst xtors1)
-    then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, beacuse xtor \"" ++
-                      (head $ (map fst xtors2) \\ (map fst xtors1)) ++
+    then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
+                      ppPrint (head $ (map fst xtors2) \\ (map fst xtors1)) ++
                       "\" occurs only in the right side."
     else return $ do -- list monad
       (xtName,Twice prd2 cns2) <- xtors2
@@ -147,9 +147,9 @@ solve (cs:css) = do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
--- PrdOrCns argument is needed to determine polarity of start state:
+-- PrdCns argument is needed to determine polarity of start state:
 -- Prd means positive start state, Cns means negative start state
-solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdOrCns -> Either Error TypeAut
+solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
 solveConstraints css uvs ty pc =
   let
     uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Pos,Neg]]
