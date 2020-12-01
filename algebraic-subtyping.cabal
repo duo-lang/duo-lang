@@ -32,24 +32,32 @@ common shared-build-depends
     , repline >=0.4 && <0.5
     , text >= 1.2 && < 1.3
   default-language:    Haskell2010
+  default-extensions:
+                     RecordWildCards,
+                     NamedFieldPuns,
+                     FlexibleContexts,
+                     FlexibleInstances,
+                     ScopedTypeVariables,
+                     RankNTypes
 
 library
   import: shared-build-depends
   exposed-modules:
-      Determinize
       Eval
-      FlowAnalysis
       GenerateConstraints
-      Minimize
       Parser
       Pretty
       SolveConstraints
-      Subsume
       Syntax.Terms
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
-      Target
+      TypeAutomata.Determinize
+      TypeAutomata.FlowAnalysis
+      TypeAutomata.FromAutomaton
+      TypeAutomata.Minimize
+      TypeAutomata.Subsume
+      TypeAutomata.ToAutomaton
       Utils
   other-modules:
       Paths_algebraic_subtyping

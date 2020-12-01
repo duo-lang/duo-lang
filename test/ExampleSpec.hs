@@ -9,17 +9,16 @@ import qualified Data.Map as M
 import Parser
 import Syntax.Terms
 import Syntax.Program
-import Syntax.Types
 import Syntax.TypeGraph
 import Utils
 import Eval (isClosed_term, isLc_term)
-import Subsume (typeAutEqual)
 import GenerateConstraints
 import SolveConstraints
-import Determinize
-import FlowAnalysis
-import Minimize
-import Target
+import TypeAutomata.Determinize
+import TypeAutomata.FlowAnalysis
+import TypeAutomata.Minimize (minimize)
+import TypeAutomata.ToAutomaton
+import TypeAutomata.Subsume (typeAutEqual)
 
 failingExamples :: [String]
 failingExamples = ["div2and3"]
@@ -46,9 +45,9 @@ typecheck :: Term () -> Either Error TypeAutDet
 typecheck t = do
   (typedTerm, css, uvars) <- generateConstraints t
   typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
-  let typeAutDet0 = determinizeTypeAut typeAut
+  let typeAutDet0 = determinize typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
-  let minTypeAut = minimizeTypeAut typeAutDet
+  let minTypeAut = minimize typeAutDet
   return minTypeAut
 
 typecheckExample :: String -> String -> Spec

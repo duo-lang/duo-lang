@@ -1,5 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
-module Subsume
+module TypeAutomata.Subsume
   ( isSubtype
   , typeAutEqual
   ) where
@@ -19,9 +18,9 @@ import Control.Monad.State
 import Syntax.Types
 import Syntax.TypeGraph
 
-import Determinize (determinizeTypeAut)
-import FlowAnalysis
-import Minimize
+import TypeAutomata.Determinize (determinize)
+import TypeAutomata.FlowAnalysis
+import TypeAutomata.Minimize (minimize)
 
 
 -- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
@@ -49,7 +48,7 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
     startPolarity TypeAut{..} = fst (fromJust (lab ta_gr (runIdentity ta_starts)))
-    fun = minimizeTypeAut . removeAdmissableFlowEdges . determinizeTypeAut
+    fun = minimize . removeAdmissableFlowEdges . determinize
 
 typeAutEqual :: TypeAutDet -> TypeAutDet -> Bool
 typeAutEqual (TypeAut gr1 (Identity start1) flowEdges1) (TypeAut gr2 (Identity start2) flowEdges2)
