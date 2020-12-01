@@ -54,9 +54,6 @@ xtorName = MkXtorName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
 
-prdCnsP :: (MonadParsec Void String m) => m PrdCns
-prdCnsP = (symbol "+" >> return Prd) <|> (symbol "-" >> return Cns)
-
 dataOrCodata :: (MonadParsec Void String m) => m DataCodata
 dataOrCodata = (symbol "+" >> return Data) <|> (symbol "-" >> return Codata)
 
@@ -79,10 +76,6 @@ argListP p q = do
 showDataCodata :: DataCodata -> String
 showDataCodata Data = "+"
 showDataCodata Codata = "-"
-
-showPrdCns :: PrdCns -> String
-showPrdCns Prd = "+"
-showPrdCns Cns = "-"
 
 --------------------------------------------------------------------------------------------
 -- Term/Command parsing
@@ -110,13 +103,13 @@ termEnvP Cns = do
   return t
 
 termP :: PrdCns -> Parser (Term Prd ())
-termP mode = try (parens (termP mode))
-  <|> xtorCall mode
-  <|> patternMatch
+termP pc = try (parens (termP pc))
+  <|> xtorCall pc
+  <|> patternMatch pc
   <|> muAbstraction
-  <|> try (termEnvP mode) -- needs to be tried, because the parser has to consume the string, before it checks
-                          -- if the variable is in the environment, which might cause it to fail
-  <|> freeVar mode
+  <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
+                        -- if the variable is in the environment, which might cause it to fail
+  <|> freeVar pc
   <|> numLit
   <|> lambdaSugar
 
@@ -142,12 +135,17 @@ xtorCall pc = do
   (Twice prdArgs cnsArgs) <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
   return $ XtorCall pc xt (MkXtorArgs prdArgs cnsArgs)
 
-patternMatch :: Parser (Term Prd ())
-patternMatch = braces $ do
-  s <- prdCnsP
+patternMatch :: PrdCns -> Parser (Term Prd ())
+patternMatch Prd = braces $ do -- Comatch!
+  _ <- symbol "-"
   cases <- singleCase `sepBy` comma
-  _ <- symbol (showPrdCns s)
-  return $ Match s cases
+  _ <- symbol "-"
+  return $ Match Prd cases
+patternMatch Cns = braces $ do -- Match!
+  _ <- symbol "+"
+  cases <- singleCase `sepBy` comma
+  _ <- symbol "+"
+  return $ Match Cns cases
 
 singleCase :: Parser (Case ())
 singleCase = do
