@@ -86,11 +86,11 @@ argsSig :: Int -> Int -> Twice [()]
 argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
-numToTerm :: Int -> Term ()
+numToTerm :: Int -> Term Prd ()
 numToTerm 0 = XtorCall Data (MkXtorName "Z") (Twice [] [])
 numToTerm n = XtorCall Data (MkXtorName "S") (Twice [numToTerm (n-1)] [])
 
-termEnvP :: PrdCns -> Parser (Term ())
+termEnvP :: PrdCns -> Parser (Term Prd ())
 termEnvP Prd = do
   v <- lexeme (many alphaNumChar)
   prdEnv <- asks prdEnv
@@ -102,7 +102,7 @@ termEnvP Cns = do
   Just t <- return $ M.lookup v cnsEnv
   return t
 
-termP :: PrdCns -> Parser (Term ())
+termP :: PrdCns -> Parser (Term Prd ())
 termP mode = try (parens (termP mode))
   <|> xtorCall mode
   <|> patternMatch
@@ -113,15 +113,15 @@ termP mode = try (parens (termP mode))
   <|> numLit
   <|> lambdaSugar
 
-freeVar :: Parser (Term ())
+freeVar :: Parser (Term Prd ())
 freeVar = do
   v <- freeVarName
   return (FreeVar v ())
 
-numLit :: Parser (Term ())
+numLit :: Parser (Term Prd ())
 numLit = numToTerm . read <$> some numberChar
 
-lambdaSugar :: Parser (Term ())
+lambdaSugar :: Parser (Term Prd ())
 lambdaSugar = do
   _ <- lexeme (symbol "\\")
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
@@ -129,13 +129,13 @@ lambdaSugar = do
   cmd <- lexeme commandP
   return $ Match Codata [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
-xtorCall :: PrdCns -> Parser (Term ())
+xtorCall :: PrdCns -> Parser (Term Prd ())
 xtorCall mode = do
   xt <- xtorName
   args <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
   return $ XtorCall (case mode of { Prd -> Data ; Cns -> Codata }) xt args
 
-patternMatch :: Parser (Term ())
+patternMatch :: Parser (Term Prd ())
 patternMatch = braces $ do
   s <- dataOrCodata
   cases <- singleCase `sepBy` comma
@@ -153,7 +153,7 @@ singleCase = do
                 , case_cmd = commandClosing args cmd -- de brujin transformation
                 }
 
-muAbstraction :: Parser (Term ())
+muAbstraction :: Parser (Term Prd ())
 muAbstraction = do
   pc <- muIdentifier
   v <- lexeme freeVarName
@@ -220,7 +220,7 @@ environmentP = (eof >> ask) <|> do
 -- Parsing for Repl
 ---------------------------------------------------------------------------------
 
-bindingP :: Parser (FreeVarName, Term ())
+bindingP :: Parser (FreeVarName, Term Prd ())
 bindingP = do
   v <- typeIdentifierName
   _ <- lexeme (symbol "<-")

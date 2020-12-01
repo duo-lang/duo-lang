@@ -40,7 +40,9 @@ common shared-build-depends
                      ScopedTypeVariables,
                      RankNTypes,
                      DataKinds,
-                     GADTs
+                     GADTs,
+                     KindSignatures,
+                     StandaloneDeriving
 
 library
   import: shared-build-depends

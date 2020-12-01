@@ -36,7 +36,7 @@ unifcation variables.
 -- determines if the term is a producer or a consumer
 -- is only defined for closed terms, since we cannot distinguish producer from consumer variable names
 -- We distinguish them only in the mathematical formaliazation of the syntax, not in the actual implementation
-termPrdCns :: Term a -> PrdCns
+termPrdCns :: Term Prd a -> PrdCns
 termPrdCns (XtorCall Data _ _)   = Prd
 termPrdCns (XtorCall Codata _ _) = Cns
 termPrdCns (Match Data _)        = Cns
@@ -46,7 +46,7 @@ termPrdCns (MuAbs Cns _ _)       = Prd
 termPrdCns (BoundVar _ pc)     = pc
 termPrdCns (FreeVar _ _)         = error "termPrdCns: free variable found"
 
-isValidTerm' :: PrdCns -> Term () -> Except String ()
+isValidTerm' :: PrdCns -> Term Prd () -> Except String ()
 isValidTerm' pc (BoundVar _ pc') =
   if pc == pc' then return ()
     else throwError "Sanity check failed, you used a prd/cns variable in a wrong position.\nSorry, I can't be more precise since we're using de brujin indices and not variable names ;)"
@@ -66,7 +66,7 @@ isValidTerm' Prd t@(MuAbs Prd _ _) = throwError $ "Sanity check failed. Consumer
 isValidTerm' Cns (MuAbs Prd _ cmd) = isValidCmd cmd
 isValidTerm' Cns t@(MuAbs Cns _ _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
 
-isValidTerm :: Term () -> Except String ()
+isValidTerm :: Term Prd () -> Except String ()
 isValidTerm t = isValidTerm' (termPrdCns t) t
 
 isValidCmd :: Command () -> Except String ()
@@ -80,13 +80,13 @@ isValidCmd (Apply t1 t2) = isValidTerm' Prd t1 >> isValidTerm' Cns t2
 
 type GenerateM a = StateT Int (Except String) a
 
-freshVars :: Int -> GenerateM [(UVar, Term UVar)]
+freshVars :: Int -> GenerateM [(UVar, Term Prd UVar)]
 freshVars k = do
   n <- get
   modify (+k)
   return [(uv, FreeVar ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = MkUVar i]
 
-annotateTerm :: Term () -> GenerateM (Term UVar)
+annotateTerm :: Term Prd () -> GenerateM (Term Prd UVar)
 annotateTerm (FreeVar v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
 annotateTerm (BoundVar idx pc) = return (BoundVar idx pc)
 annotateTerm (XtorCall s xt (Twice prdArgs cnsArgs)) = do
@@ -117,14 +117,14 @@ annotateCommand (Apply t1 t2) = do
 ---------------------------------------------------------------------------------------------
 
 -- only defined for fully opened terms, i.e. no de brujin indices left
-typedTermToType :: Term UVar -> SimpleType
+typedTermToType :: Term Prd UVar -> SimpleType
 typedTermToType (FreeVar _ t)        = TyVar t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 typedTermToType (XtorCall s xt args) = SimpleType s [(xt, (fmap . fmap) typedTermToType args)]
 typedTermToType (Match s cases)      = SimpleType s $ map (\(MkCase xt types _) -> (xt, (fmap . fmap) TyVar types)) cases
 typedTermToType (MuAbs _ t _)        = TyVar t
 
-getConstraintsTerm :: Term UVar -> [Constraint]
+getConstraintsTerm :: Term Prd UVar -> [Constraint]
 getConstraintsTerm (BoundVar _ _) = error "getConstraintsTerm:  found dangling bound variable"
 getConstraintsTerm (FreeVar _ _)    = []
 getConstraintsTerm (XtorCall _ _ args) = concat $ mergeTwice (++) $ (fmap.fmap) getConstraintsTerm args
@@ -137,7 +137,7 @@ getConstraintsCommand (Print t) = getConstraintsTerm t
 getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConstraintsTerm t2)
   where newCs = SubType (typedTermToType t1) (typedTermToType t2)
 
-generateConstraints :: Term () -> Either Error (Term UVar, [Constraint], [UVar])
+generateConstraints :: Term Prd () -> Either Error (Term Prd UVar, [Constraint], [UVar])
 generateConstraints t0 =
   case runExcept (isValidTerm t0) of
     Right () -> case runExcept (runStateT (annotateTerm t0) 0) of

@@ -23,7 +23,7 @@ import TypeAutomata.Subsume (typeAutEqual)
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
-type TermEnvironment = Map FreeVarName (Term ())
+type TermEnvironment = Map FreeVarName (Term Prd ())
 
 getEnvironment :: IO TermEnvironment
 getEnvironment = do
@@ -32,16 +32,16 @@ getEnvironment = do
     Right env -> return (M.filterWithKey (\k _ -> not (k `elem` failingExamples)) (prdEnv env <> cnsEnv env))
     Left _err -> error "Could not load prg.txt"
 
-checkTerm :: (FreeVarName, Term ()) -> SpecWith ()
+checkTerm :: (FreeVarName, Term Prd ()) -> SpecWith ()
 checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe term `shouldBe` Nothing
 
 
-typecheckMaybe :: Term () -> Maybe Error
+typecheckMaybe :: Term Prd () -> Maybe Error
 typecheckMaybe t = case  typecheck t of
   Left err -> Just err
   Right _ -> Nothing
 
-typecheck :: Term () -> Either Error TypeAutDet
+typecheck :: Term Prd () -> Either Error TypeAutDet
 typecheck t = do
   (typedTerm, css, uvars) <- generateConstraints t
   typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdCns t)
