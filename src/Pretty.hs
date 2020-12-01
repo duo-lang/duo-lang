@@ -55,6 +55,10 @@ instance Pretty PrdCns where
   pretty Prd = "+"
   pretty Cns = "-"
 
+instance Pretty (PrdCnsRep pc) where
+  pretty PrdRep = "+"
+  pretty CnsRep = "-"
+
 instance Pretty XtorName where
   pretty xn = pretty (unXtorName xn)
 
@@ -74,17 +78,17 @@ instance Pretty a => Pretty (Case a) where
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
 
-instance Pretty a => Pretty (Term Prd a) where
+instance Pretty a => Pretty (Term pc a) where
   pretty (BoundVar pc (i,j)) =
     let
-      prdCns = case pc of {Prd -> "P"; Cns -> "C"}
+      prdCns = case pc of {PrdRep -> "P"; CnsRep -> "C"}
     in
       parens (pretty i <> "," <> prdCns <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
   pretty (Match s cases) = braces (pretty s <+> intercalateComma (pretty <$> cases) <+> pretty s)
   pretty (MuAbs pc a cmd) =
-    case pc of {Prd -> "mu"; Cns -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
+    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"

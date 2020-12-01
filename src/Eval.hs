@@ -13,11 +13,11 @@ import Pretty
 
 type Environment a = Map String a
 
-getArg :: Int -> PrdCns -> XtorArgs a -> Term Prd a
-getArg j Prd (MkXtorArgs prds _) = prds !! j
-getArg j Cns (MkXtorArgs _ cnss) = cnss !! j
+getArg :: Int -> PrdCnsRep pc -> XtorArgs a -> Term pc a
+getArg j PrdRep (MkXtorArgs prds _) = prds !! j
+getArg j CnsRep (MkXtorArgs _ cnss) = cnss !! j
 
-termOpeningRec :: Int -> XtorArgs a -> Term Prd a -> Term Prd a
+termOpeningRec :: Int -> XtorArgs a -> Term pc a -> Term pc a
 termOpeningRec k args bv@(BoundVar pc (i,j)) | i == k    = getArg j pc args
                                              | otherwise = bv
 termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
@@ -35,29 +35,30 @@ commandOpeningRec k args (Print t) = Print (termOpeningRec k args t)
 commandOpeningRec k args (Apply t1 t2) = Apply (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 -- replaces bound variables pointing "outside" of a term with given arguments
-termOpening :: XtorArgs a -> Term Prd a -> Term Prd a
+termOpening :: XtorArgs a -> Term pc a -> Term pc a
 termOpening = termOpeningRec 0
 
 -- replaces single bound variable with given term (used for mu abstractions)
-termOpeningSingle :: PrdCns -> Term Prd a -> Term Prd a -> Term Prd a
-termOpeningSingle Prd t = termOpening (MkXtorArgs [t] [])
-termOpeningSingle Cns t = termOpening (MkXtorArgs [] [t])
+termOpeningSingle :: PrdCnsRep pc -> Term pc a -> Term pc' a -> Term pc' a
+termOpeningSingle PrdRep t = termOpening (MkXtorArgs [t] [])
+termOpeningSingle CnsRep t = termOpening (MkXtorArgs [] [t])
 
 -- replaces bound variables pointing "outside" of a command with given arguments
 commandOpening :: XtorArgs a -> Command a -> Command a
 commandOpening = commandOpeningRec 0
 
-commandOpeningSingle :: PrdCns -> Term Prd a -> Command a -> Command a
-commandOpeningSingle Prd t = commandOpening (MkXtorArgs [t] [])
-commandOpeningSingle Cns t = commandOpening (MkXtorArgs [] [t])
+commandOpeningSingle :: PrdCnsRep pc -> Term pc a -> Command a -> Command a
+commandOpeningSingle PrdRep t = commandOpening (MkXtorArgs [t] [])
+commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
 
 
 -- TODO: Check the logic in the freevar case which could be improved!
-termClosingRec :: Int -> Twice [FreeVarName] -> Term Prd a -> Term Prd a
+termClosingRec :: Int -> Twice [FreeVarName] -> Term pc a -> Term pc a
 termClosingRec _ _ bv@(BoundVar _ _) = bv
-termClosingRec k (Twice prdvars cnsvars) (FreeVar pc v a) | isJust (v `elemIndex` prdvars) = BoundVar Prd (k, fromJust (v `elemIndex` prdvars))
-                                                         | isJust (v `elemIndex` cnsvars) = BoundVar Cns (k, fromJust (v `elemIndex` cnsvars))
-                                                         | otherwise = FreeVar pc v a
+termClosingRec k (Twice prdvars _) (FreeVar PrdRep v a) | isJust (v `elemIndex` prdvars) = BoundVar PrdRep (k, fromJust (v `elemIndex` prdvars))
+                                                        | otherwise = FreeVar PrdRep v a
+termClosingRec k (Twice _ cnsvars) (FreeVar CnsRep v a) | isJust (v `elemIndex` cnsvars) = BoundVar CnsRep (k, fromJust (v `elemIndex` cnsvars))
+                                                        | otherwise = FreeVar CnsRep v a
 termClosingRec k vars (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) =
   XtorCall s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
 termClosingRec k vars (Match s cases) =
@@ -71,22 +72,22 @@ commandClosingRec k args (Print t) = Print (termClosingRec k args t)
 commandClosingRec k args (Apply t1 t2) = Apply (termClosingRec k args t1) (termClosingRec k args t2)
 
 -- replaces given set of free variables with bound variables (de bruijn indices)
-termClosing :: Twice [FreeVarName] -> Term Prd a -> Term Prd a
+termClosing :: Twice [FreeVarName] -> Term pc a -> Term pc a
 termClosing = termClosingRec 0
 
-termClosingSingle :: PrdCns -> FreeVarName -> Term Prd a -> Term Prd a
+termClosingSingle :: PrdCns -> FreeVarName -> Term pc a -> Term pc a
 termClosingSingle Prd v = termClosing (Twice [v] [])
 termClosingSingle Cns v = termClosing (Twice [] [v])
 
 commandClosing :: Twice [FreeVarName] -> Command a -> Command a
 commandClosing = commandClosingRec 0
 
-commandClosingSingle :: PrdCns -> FreeVarName -> Command a -> Command a
-commandClosingSingle Prd v = commandClosing (Twice [v] [])
-commandClosingSingle Cns v = commandClosing (Twice [] [v])
+commandClosingSingle :: PrdCnsRep pc -> FreeVarName -> Command a -> Command a
+commandClosingSingle PrdRep v = commandClosing (Twice [v] [])
+commandClosingSingle CnsRep v = commandClosing (Twice [] [v])
 
 -- substition can be defined in terms of opening and closing
-substituteTerm :: Twice [FreeVarName] -> XtorArgs a -> Term Prd a -> Term Prd a
+substituteTerm :: Twice [FreeVarName] -> XtorArgs a -> Term pc a -> Term pc a
 substituteTerm vars args = termOpening args . termClosing vars
 
 substituteEnvTerm :: Environment (Term Prd a) -> Term Prd a -> Term Prd a
@@ -100,7 +101,7 @@ substituteCommand vars args (Print t)     = Print $ substituteTerm vars args t
 substituteEnvCommand :: Environment (Term Prd a) -> Command a -> Command a
 substituteEnvCommand env = substituteCommand (Twice (M.keys env) []) (MkXtorArgs (M.elems env) [])
 
-lcAt_term :: Int -> Term Prd a -> Bool
+lcAt_term :: Int -> Term pc a -> Bool
 lcAt_term k (BoundVar _ (i,_))                 = i < k
 lcAt_term _ (FreeVar _ _ _)                    = True
 lcAt_term k (XtorCall _ _ (MkXtorArgs prds cnss)) = all (lcAt_term k) prds && all (lcAt_term k) cnss
@@ -118,7 +119,7 @@ lcAt_cmd _ _           = True
 isLc_cmd :: Command a -> Bool
 isLc_cmd = lcAt_cmd 0
 
-freeVars_term :: Term Prd a -> [FreeVarName]
+freeVars_term :: Term pc a -> [FreeVarName]
 freeVars_term (BoundVar _ _)                 = []
 freeVars_term (FreeVar _ v _)                    = [v]
 freeVars_term (XtorCall _ _ (MkXtorArgs prds cnss)) = concat $ map freeVars_term prds ++ map freeVars_term cnss
@@ -147,20 +148,20 @@ lookupCase xt cases = case find (\MkCase { case_name } -> xt == case_name) cases
 eval :: Pretty a => Command a -> Either Error String
 eval Done = Right "Done"
 eval (Print t) = Right $ ppPrint t
-eval cmd@(Apply (XtorCall Prd xt args) (Match Cns cases)) = do
+eval cmd@(Apply (XtorCall PrdRep xt args) (Match CnsRep cases)) = do
   (MkCase _ argTypes cmd') <- lookupCase xt cases
   if True -- TODO fmap length argTypes == fmap length args
     then eval $ commandOpening args cmd' --reduction is just opening
     else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                            "\"\nArgument lengths don't coincide.")
-eval cmd@(Apply (Match Prd cases) (XtorCall Cns xt args)) = do
+eval cmd@(Apply (Match PrdRep cases) (XtorCall CnsRep xt args)) = do
   (MkCase _ argTypes cmd') <- lookupCase xt cases
   if True -- TODO fmap length argTypes == fmap length args
     then eval $ commandOpening args cmd' --reduction is just opening
     else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                             "\"\nArgument lengths don't coincide.")
-eval (Apply (MuAbs Prd _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
-eval (Apply prd (MuAbs Cns _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
+eval (Apply (MuAbs PrdRep _ cmd) cns) = eval $ commandOpeningSingle CnsRep cns cmd
+eval (Apply prd (MuAbs CnsRep _ cmd)) = eval $ commandOpeningSingle PrdRep prd cmd
 -- Error handling
 eval cmd@(Apply _ _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                           "\"\n Free variable encountered!")

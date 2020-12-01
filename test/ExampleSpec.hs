@@ -23,13 +23,17 @@ import TypeAutomata.Subsume (typeAutEqual)
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
-type TermEnvironment = Map FreeVarName (Term Prd ())
+filterEnvironment :: Environment -> Environment
+filterEnvironment Environment {..} = Environment { prdEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) prdEnv
+                                                 , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
+                                                 , typEnv = typEnv
+                                                 }
 
-getEnvironment :: IO TermEnvironment
+getEnvironment :: IO Environment
 getEnvironment = do
   s <- readFile "prg.txt"
   case runEnvParser environmentP mempty s of
-    Right env -> return (M.filterWithKey (\k _ -> not (k `elem` failingExamples)) (prdEnv env <> cnsEnv env))
+    Right env -> return (filterEnvironment env) --() (prdEnv env <> cnsEnv env))
     Left _err -> error "Could not load prg.txt"
 
 checkTerm :: (FreeVarName, Term Prd ()) -> SpecWith ()
@@ -41,10 +45,10 @@ typecheckMaybe t = case  typecheck t of
   Left err -> Just err
   Right _ -> Nothing
 
-typecheck :: Term Prd () -> Either Error TypeAutDet
+typecheck :: Term pc () -> Either Error TypeAutDet
 typecheck t = do
   (typedTerm, css, uvars) <- generateConstraints t
-  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdCns t)
+  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (case termPrdCns t of PrdRep -> Prd; CnsRep -> Cns)
   let typeAutDet0 = determinize typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
   let minTypeAut = minimize typeAutDet
@@ -53,7 +57,7 @@ typecheck t = do
 typecheckExample :: String -> String -> Spec
 typecheckExample termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
-      let Right term = runEnvParser (termP Prd) mempty termS
+      let Right term = runEnvParser (termP PrdRep) mempty termS
       let Right inferredTypeAut = typecheck term
       let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
       let Right specTypeAut = typeToAut specTypeScheme
@@ -64,17 +68,17 @@ spec = do
   describe "All examples are closed" $ do
     env <- runIO getEnvironment
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_ (M.toList env) $ \(name,term) -> do
+    forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
       it (name ++ " does not contain free variables") $ isClosed_term term `shouldBe` True
   describe "All examples are locally closed" $ do
     env <- runIO getEnvironment
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_ (M.toList env) $ \(name,term) -> do
+    forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
       it (name ++ " does not contain dangling deBruijn indizes") $ isLc_term term `shouldBe` True
   describe "All examples typecheck" $ do
     env <- runIO getEnvironment
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_  (M.toList env) $ \term -> do
+    forM_  (M.toList (prdEnv env)) $ \term -> do
       checkTerm term
   describe "Typecheck specific examples" $ do
     typecheckExample "\\(x)[k] => x >> k" "forall a. {- Ap(a)[a] -}"

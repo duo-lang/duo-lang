@@ -14,13 +14,13 @@ type TypeIdentifierName = String -- start with uppercase
 
 data Declaration a
   = PrdDecl FreeVarName (Term Prd a)
-  | CnsDecl FreeVarName (Term Prd a)
+  | CnsDecl FreeVarName (Term Cns a)
   | TypDecl TypeIdentifierName TypeScheme
   deriving (Show)
 
 data Environment = Environment
   { prdEnv :: Map FreeVarName (Term Prd ())
-  , cnsEnv :: Map FreeVarName (Term Prd ())
+  , cnsEnv :: Map FreeVarName (Term Cns ())
   , typEnv :: Map TypeIdentifierName TypeScheme
   }
 
