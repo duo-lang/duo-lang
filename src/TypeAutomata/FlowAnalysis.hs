@@ -1,5 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
-module FlowAnalysis
+module TypeAutomata.FlowAnalysis
   ( genFlowGraph
   , removeAdmissableFlowEdges
   , getFlowAnalysisMap
@@ -78,7 +77,7 @@ removeAdmissableFlowEdges aut@TypeAut{..} = aut { ta_flowEdges = filter (not . a
 
 type FlowGraph = Gr () ()
 
-genFlowGraph :: TypeAut -> FlowGraph
+genFlowGraph :: TypeAut' EdgeLabel f -> FlowGraph
 genFlowGraph TypeAut{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
 
 flowComponent :: FlowGraph -> Node -> [Node]
@@ -110,5 +109,5 @@ flowAnalysisState flgr =
           rest <- flowAnalysisState newGr
           return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
 
-getFlowAnalysisMap :: TypeAut -> Map Node (Set TVar)
+getFlowAnalysisMap :: TypeAut' EdgeLabel f -> Map Node (Set TVar)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0

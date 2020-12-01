@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 module Pretty where
 
 import Data.List (intersperse)
@@ -123,7 +122,7 @@ instance Pretty EdgeLabel where
     in
       showS <> pretty xt <> "." <> showPc <> "." <> pretty i
 
-typeAutToDot :: TypeAut -> DotGraph Node
+typeAutToDot :: TypeAut' EdgeLabel f -> DotGraph Node
 typeAutToDot TypeAut {..} =
     let
       grWithFlow = insEdges [(i,j,Nothing) | (i,j) <- ta_flowEdges] (emap Just ta_gr)

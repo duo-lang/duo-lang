@@ -1,8 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
-module Minimize
-  ( minimizeTypeAut
-  ) where
+module TypeAutomata.Minimize ( minimize ) where
 
 import Data.Graph.Inductive.Graph
 import Data.List (intersect, (\\), delete, partition)
@@ -50,8 +46,8 @@ equalNodes aut@TypeAut{ ta_gr } i j =
   (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
 -- note: nodes with different labels or different flow edge behaviour are never merged
-minimizeTypeAut :: TypeAutDet -> TypeAutDet
-minimizeTypeAut aut@TypeAut{..} =
+minimize :: TypeAutDet -> TypeAutDet
+minimize aut@TypeAut{..} =
   let
     gr' = removeRedundantEdges ta_gr
     distGroups = myGroupBy (equalNodes aut) (nodes gr')
