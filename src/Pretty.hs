@@ -50,6 +50,10 @@ instance Pretty Polarity where
 instance Pretty DataCodata where
   pretty Data = "+"
   pretty Codata = "-"
+-- TODO: HACK
+instance Pretty PrdCns where
+  pretty Prd = "+"
+  pretty Cns = "-"
 
 instance Pretty XtorName where
   pretty xn = pretty (unXtorName xn)

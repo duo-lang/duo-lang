@@ -54,6 +54,9 @@ xtorName = MkXtorName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
 
+prdCnsP :: (MonadParsec Void String m) => m PrdCns
+prdCnsP = (symbol "+" >> return Prd) <|> (symbol "-" >> return Cns)
+
 dataOrCodata :: (MonadParsec Void String m) => m DataCodata
 dataOrCodata = (symbol "+" >> return Data) <|> (symbol "-" >> return Codata)
 
@@ -77,6 +80,10 @@ showDataCodata :: DataCodata -> String
 showDataCodata Data = "+"
 showDataCodata Codata = "-"
 
+showPrdCns :: PrdCns -> String
+showPrdCns Prd = "+"
+showPrdCns Cns = "-"
+
 --------------------------------------------------------------------------------------------
 -- Term/Command parsing
 --------------------------------------------------------------------------------------------
@@ -87,8 +94,8 @@ argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
 numToTerm :: Int -> Term Prd ()
-numToTerm 0 = XtorCall Data (MkXtorName "Z") (MkXtorArgs [] [])
-numToTerm n = XtorCall Data (MkXtorName "S") (MkXtorArgs [numToTerm (n-1)] [])
+numToTerm 0 = XtorCall Prd (MkXtorName "Z") (MkXtorArgs [] [])
+numToTerm n = XtorCall Prd (MkXtorName "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 termEnvP :: PrdCns -> Parser (Term Prd ())
 termEnvP Prd = do
@@ -127,19 +134,19 @@ lambdaSugar = do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match Codata [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  return $ Match Cns [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
 xtorCall :: PrdCns -> Parser (Term Prd ())
-xtorCall mode = do
+xtorCall pc = do
   xt <- xtorName
   (Twice prdArgs cnsArgs) <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
-  return $ XtorCall (case mode of { Prd -> Data ; Cns -> Codata }) xt (MkXtorArgs prdArgs cnsArgs)
+  return $ XtorCall pc xt (MkXtorArgs prdArgs cnsArgs)
 
 patternMatch :: Parser (Term Prd ())
 patternMatch = braces $ do
-  s <- dataOrCodata
+  s <- prdCnsP
   cases <- singleCase `sepBy` comma
-  _ <- symbol (showDataCodata s)
+  _ <- symbol (showPrdCns s)
   return $ Match s cases
 
 singleCase :: Parser (Case ())

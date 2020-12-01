@@ -51,8 +51,8 @@ type Index = (Int, Int)
 data Term (pc :: PrdCns) a where
   BoundVar :: PrdCns -> Index -> Term Prd a -- de bruijn indices
   FreeVar  :: PrdCns -> FreeVarName -> a -> Term Prd a
-  XtorCall :: DataCodata -> XtorName -> XtorArgs a -> Term Prd a
-  Match    :: DataCodata -> [Case a] -> Term Prd a
+  XtorCall :: PrdCns -> XtorName -> XtorArgs a -> Term Prd a
+  Match    :: PrdCns -> [Case a] -> Term Prd a
   MuAbs    :: PrdCns -> a -> Command a -> Term Prd a
   -- The PrdOrCns parameter describes the type of variable that is being bound by the mu.
   -- If a mu binds a producer, it is itself a consumer and vice versa.

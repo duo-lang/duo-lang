@@ -147,13 +147,13 @@ lookupCase xt cases = case find (\MkCase { case_name } -> xt == case_name) cases
 eval :: Pretty a => Command a -> Either Error String
 eval Done = Right "Done"
 eval (Print t) = Right $ ppPrint t
-eval cmd@(Apply (XtorCall Data xt args) (Match Data cases)) = do
+eval cmd@(Apply (XtorCall Prd xt args) (Match Cns cases)) = do
   (MkCase _ argTypes cmd') <- lookupCase xt cases
   if True -- TODO fmap length argTypes == fmap length args
     then eval $ commandOpening args cmd' --reduction is just opening
     else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                            "\"\nArgument lengths don't coincide.")
-eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args)) = do
+eval cmd@(Apply (Match Prd cases) (XtorCall Cns xt args)) = do
   (MkCase _ argTypes cmd') <- lookupCase xt cases
   if True -- TODO fmap length argTypes == fmap length args
     then eval $ commandOpening args cmd' --reduction is just opening
@@ -161,19 +161,6 @@ eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args)) = do
                             "\"\nArgument lengths don't coincide.")
 eval (Apply (MuAbs Cns _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
 eval (Apply prd (MuAbs Prd _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
-
 -- Error handling
-eval cmd@(Apply (XtorCall Codata _ _) _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                       "\"\nLeft side is not a producer!")
-eval cmd@(Apply _ (Match Codata _)) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                       "\"\nRight side is not a consumer!")
-eval cmd@(Apply (Match Data _) _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                       "\"\nLeft side is not a producer!")
-eval cmd@(Apply _ (XtorCall Data _ _)) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                       "\"\nRight side is not a consumer!")
-eval cmd@(Apply (MuAbs Prd _ _) _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                       "\"\nLeft side is not a producer!")
-eval cmd@(Apply _ (MuAbs Cns _ _)) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                       "\"\nRight side is not a consumer!")
 eval cmd@(Apply _ _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                           "\"\n Free variable encountered!")

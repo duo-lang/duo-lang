@@ -24,10 +24,8 @@ unifcation variables.
 -}
 
 termPrdCns :: Term Prd a -> PrdCns
-termPrdCns (XtorCall Data _ _)   = Prd
-termPrdCns (XtorCall Codata _ _) = Cns
-termPrdCns (Match Data _)        = Cns
-termPrdCns (Match Codata _)      = Prd
+termPrdCns (XtorCall pc _ _)     = pc
+termPrdCns (Match pc _)          = pc
 termPrdCns (MuAbs Prd _ _)       = Cns
 termPrdCns (MuAbs Cns _ _)       = Prd
 termPrdCns (BoundVar pc _)       = pc
@@ -79,9 +77,10 @@ annotateCommand (Apply t1 t2) = do
 typedTermToType :: Term Prd UVar -> SimpleType
 typedTermToType (FreeVar _ _ t)        = TyVar t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
-typedTermToType (XtorCall s xt (MkXtorArgs prdargs cnsargs)) =
-  SimpleType s [(xt, Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
-typedTermToType (Match s cases)      = SimpleType s (map getCaseType cases)
+typedTermToType (XtorCall pc xt (MkXtorArgs prdargs cnsargs)) =
+  SimpleType (case pc of Prd -> Data; Cns -> Codata) [(xt, Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
+typedTermToType (Match pc cases)      =
+  SimpleType (case pc of Prd -> Codata; Cns -> Data) (map getCaseType cases)
   where
     getCaseType (MkCase xt types _) = (xt, (fmap . fmap) TyVar types)
 typedTermToType (MuAbs _ t _)        = TyVar t
