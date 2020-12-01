@@ -127,7 +127,7 @@ lambdaSugar = do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match Cns [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  return $ Match Prd [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
 xtorCall :: PrdCns -> Parser (Term Prd ())
 xtorCall pc = do
