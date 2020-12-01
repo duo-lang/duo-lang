@@ -44,7 +44,7 @@ typecheckMaybe t = case  typecheck t of
 typecheck :: Term () -> Either Error TypeAutDet
 typecheck t = do
   (typedTerm, css, uvars) <- generateConstraints t
-  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
+  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdCns t)
   let typeAutDet0 = determinize typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
   let minTypeAut = minimize typeAutDet

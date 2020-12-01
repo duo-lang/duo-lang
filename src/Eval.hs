@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Eval where
 
 import Prettyprinter
@@ -14,13 +15,17 @@ import Pretty
 
 type Environment a = Map String a
 
+getArg :: Int -> PrdCns -> XtorArgs a -> Term a
+getArg j Prd (Twice prds _) = prds !! j
+getArg j Cns (Twice _ cnss) = cnss !! j
+
 termOpeningRec :: Int -> XtorArgs a -> Term a -> Term a
 termOpeningRec k args (BoundVar i pc j)     = if i == k then getArg j pc args else BoundVar i pc j
 termOpeningRec _ _ (FreeVar n a)            = FreeVar n a
 termOpeningRec k args (XtorCall s xt args') =
   XtorCall s xt $ (fmap.fmap) (termOpeningRec k args) args'
 termOpeningRec k args (Match s cases) =
-  Match s $ map (\(xtn,xtty,cmd) -> (xtn,xtty, commandOpeningRec (k+1) args cmd)) cases
+  Match s $ map (\pmcase@MkCase{ case_cmd } -> pmcase { case_cmd = commandOpeningRec (k+1) args case_cmd }) cases
 termOpeningRec k args (MuAbs pc a cmd) =
   MuAbs pc a (commandOpeningRec (k+1) args cmd)
 
@@ -34,7 +39,7 @@ termOpening :: XtorArgs a -> Term a -> Term a
 termOpening = termOpeningRec 0
 
 -- replaces single bound variable with given term (used for mu abstractions)
-termOpeningSingle :: PrdOrCns -> Term a -> Term a -> Term a
+termOpeningSingle :: PrdCns -> Term a -> Term a -> Term a
 termOpeningSingle Prd t = termOpening (Twice [t] [])
 termOpeningSingle Cns t = termOpening (Twice [] [t])
 
@@ -42,7 +47,7 @@ termOpeningSingle Cns t = termOpening (Twice [] [t])
 commandOpening :: XtorArgs a -> Command a -> Command a
 commandOpening = commandOpeningRec 0
 
-commandOpeningSingle :: PrdOrCns -> Term a -> Command a -> Command a
+commandOpeningSingle :: PrdCns -> Term a -> Command a -> Command a
 commandOpeningSingle Prd t = commandOpening (Twice [t] [])
 commandOpeningSingle Cns t = commandOpening (Twice [] [t])
 
@@ -55,7 +60,7 @@ termClosingRec k (Twice prdvars cnsvars) (FreeVar v a) = fromJust $ --no need to
   (Just (FreeVar v a))
 termClosingRec k vars (XtorCall s xt args) = XtorCall s xt $ (fmap . fmap) (termClosingRec k vars) args
 termClosingRec k vars (Match s cases) =
-  Match s $ map (\(xtn,xtty,cmd) -> (xtn,xtty, commandClosingRec (k+1) vars cmd)) cases
+  Match s $ map (\pmcase@MkCase { case_cmd } -> pmcase { case_cmd = commandClosingRec (k+1) vars case_cmd }) cases
 termClosingRec k vars (MuAbs pc a cmd) =
   MuAbs pc a (commandClosingRec (k+1) vars cmd)
 
@@ -68,14 +73,14 @@ commandClosingRec k args (Apply t1 t2) = Apply (termClosingRec k args t1) (termC
 termClosing :: Twice [FreeVarName] -> Term a -> Term a
 termClosing = termClosingRec 0
 
-termClosingSingle :: PrdOrCns -> FreeVarName -> Term a -> Term a
+termClosingSingle :: PrdCns -> FreeVarName -> Term a -> Term a
 termClosingSingle Prd v = termClosing (Twice [v] [])
 termClosingSingle Cns v = termClosing (Twice [] [v])
 
 commandClosing :: Twice [FreeVarName] -> Command a -> Command a
 commandClosing = commandClosingRec 0
 
-commandClosingSingle :: PrdOrCns -> FreeVarName -> Command a -> Command a
+commandClosingSingle :: PrdCns -> FreeVarName -> Command a -> Command a
 commandClosingSingle Prd v = commandClosing (Twice [v] [])
 commandClosingSingle Cns v = commandClosing (Twice [] [v])
 
@@ -98,7 +103,7 @@ lcAt_term :: Int -> Term a -> Bool
 lcAt_term k (BoundVar i _ _)                 = i < k
 lcAt_term _ (FreeVar _ _)                    = True
 lcAt_term k (XtorCall _ _ (Twice prds cnss)) = all (lcAt_term k) prds && all (lcAt_term k) cnss
-lcAt_term k (Match _ cases)                  = all (\(_,_,cmd) -> lcAt_cmd (k+1) cmd) cases
+lcAt_term k (Match _ cases)                  = all (\MkCase { case_cmd } -> lcAt_cmd (k+1) case_cmd) cases
 lcAt_term k (MuAbs _ _ cmd)                  = lcAt_cmd (k+1) cmd
 
 -- tests if a term is locally closed, i.e. contains no de brujin indices pointing outside of the term
@@ -116,7 +121,7 @@ freeVars_term :: Term a -> [FreeVarName]
 freeVars_term (BoundVar _ _ _)                 = []
 freeVars_term (FreeVar v _)                    = [v]
 freeVars_term (XtorCall _ _ (Twice prds cnss)) = concat $ map freeVars_term prds ++ map freeVars_term cnss
-freeVars_term (Match _ cases)                  = concat $ map (\(_,_,cmd) -> freeVars_cmd cmd) cases
+freeVars_term (Match _ cases)                  = concat $ map (\MkCase { case_cmd } -> freeVars_cmd case_cmd) cases
 freeVars_term (MuAbs _ _ cmd)                  = freeVars_cmd cmd
 
 freeVars_cmd :: Command a -> [FreeVarName]
@@ -134,23 +139,23 @@ eval :: Pretty a => Command a -> Either Error String
 eval Done = Right "Done"
 eval (Print t) = Right $ ppPrint t
 eval cmd@(Apply (XtorCall Data xt args) (Match Data cases))
-  = case (find (\(xt',_,_) -> xt==xt') cases) of
-      Just (_,argTypes,cmd') ->
+  = case (find (\MkCase { case_name } -> xt==case_name) cases) of
+      Just (MkCase _ argTypes cmd') ->
         if fmap length argTypes == fmap length args
           then eval $ commandOpening args cmd' --reduction is just opening
           else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                  "\"\nArgument lengths don't coincide.")
       Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                   "\"\nXtor \"" ++ xt ++ "\" doesn't occur in match.")
+                                   "\"\nXtor \"" ++ unXtorName xt ++ "\" doesn't occur in match.")
 eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args))
-  = case (find (\(xt',_,_) -> xt==xt') cases) of
-      Just (_,argTypes,cmd') ->
+  = case (find (\(MkCase xt' _ _) -> xt==xt') cases) of
+      Just (MkCase _ argTypes cmd') ->
         if fmap length argTypes == fmap length args
           then eval $ commandOpening args cmd' --reduction is just opening
           else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                  "\"\nArgument lengths don't coincide.")
       Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                   "\"\nXtor \"" ++ xt ++ "\" doesn't occur in match.")
+                                   "\"\nXtor \"" ++ unXtorName xt ++ "\" doesn't occur in match.")
 eval (Apply (MuAbs Cns _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
 eval (Apply prd (MuAbs Prd _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
 

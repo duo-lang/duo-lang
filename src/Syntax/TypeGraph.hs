@@ -21,14 +21,14 @@ data HeadCons = HeadCons
 emptyHeadCons :: HeadCons
 emptyHeadCons = HeadCons Nothing Nothing
 
-singleHeadCons :: DataOrCodata -> Set XtorName -> HeadCons
+singleHeadCons :: DataCodata -> Set XtorName -> HeadCons
 singleHeadCons Data xtors = HeadCons (Just xtors) Nothing
 singleHeadCons Codata xtors = HeadCons Nothing (Just xtors)
 
 type NodeLabel = (Polarity, HeadCons)
 
 data EdgeLabel
-  = EdgeSymbol DataOrCodata XtorName PrdOrCns Int
+  = EdgeSymbol DataCodata XtorName PrdCns Int
   deriving (Eq,Show, Ord)
 
 type FlowEdge = (Node, Node)
