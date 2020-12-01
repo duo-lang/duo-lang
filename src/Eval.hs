@@ -52,13 +52,15 @@ commandOpeningSingle PrdRep t = commandOpening (MkXtorArgs [t] [])
 commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
 
 
--- TODO: Check the logic in the freevar case which could be improved!
+-- TODO: The logic here is not 100% correct!
 termClosingRec :: Int -> Twice [FreeVarName] -> Term pc a -> Term pc a
 termClosingRec _ _ bv@(BoundVar _ _) = bv
-termClosingRec k (Twice prdvars _) (FreeVar PrdRep v a) | isJust (v `elemIndex` prdvars) = BoundVar PrdRep (k, fromJust (v `elemIndex` prdvars))
-                                                        | otherwise = FreeVar PrdRep v a
-termClosingRec k (Twice _ cnsvars) (FreeVar CnsRep v a) | isJust (v `elemIndex` cnsvars) = BoundVar CnsRep (k, fromJust (v `elemIndex` cnsvars))
-                                                        | otherwise = FreeVar CnsRep v a
+termClosingRec k (Twice prdvars cnsvars) (FreeVar PrdRep v a) | isJust (v `elemIndex` prdvars) = BoundVar PrdRep (k, fromJust (v `elemIndex` prdvars))
+                                                              | isJust (v `elemIndex` cnsvars) = BoundVar PrdRep (k, fromJust (v `elemIndex` cnsvars))
+                                                              | otherwise = FreeVar PrdRep v a
+termClosingRec k (Twice prdvars cnsvars) (FreeVar CnsRep v a) | isJust (v `elemIndex` prdvars) = BoundVar CnsRep (k, fromJust (v `elemIndex` prdvars))
+                                                              | isJust (v `elemIndex` cnsvars) = BoundVar CnsRep (k, fromJust (v `elemIndex` cnsvars))
+                                                              | otherwise = FreeVar CnsRep v a
 termClosingRec k vars (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) =
   XtorCall s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
 termClosingRec k vars (Match s cases) =

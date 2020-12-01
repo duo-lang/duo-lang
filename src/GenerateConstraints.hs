@@ -55,10 +55,14 @@ annotateTerm (Match s cases) =
     (cnsUVars, cnsTerms) <- unzip <$> freshVars (length cnss) CnsRep
     cmd' <- annotateCommand cmd
     return (MkCase xt (Twice prdUVars cnsUVars) (commandOpening (MkXtorArgs prdTerms cnsTerms) cmd')))
-annotateTerm (MuAbs pc _ cmd) = do
-  (uv, freeVar) <- head <$> freshVars 1 pc
+annotateTerm (MuAbs PrdRep _ cmd) = do
+  (uv, freeVar) <- head <$> freshVars 1 CnsRep
   cmd' <- annotateCommand cmd
-  return (MuAbs pc uv (commandOpeningSingle pc freeVar cmd'))
+  return (MuAbs PrdRep uv (commandOpeningSingle CnsRep freeVar cmd'))
+annotateTerm (MuAbs CnsRep _ cmd) = do
+  (uv, freeVar) <- head <$> freshVars 1 PrdRep
+  cmd' <- annotateCommand cmd
+  return (MuAbs CnsRep uv (commandOpeningSingle PrdRep freeVar cmd'))
 
 annotateCommand :: Command () -> GenerateM (Command UVar)
 annotateCommand Done = return Done
