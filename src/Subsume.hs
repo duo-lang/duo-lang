@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Subsume
   ( isSubtype
+  , typeAutEqual
   ) where
 
 import Data.Graph.Inductive.Graph

@@ -10,8 +10,10 @@ import Parser
 import Syntax.Terms
 import Syntax.Program
 import Syntax.Types
+import Syntax.TypeGraph
 import Utils
 import Eval (isClosed_term, isLc_term)
+import Subsume (typeAutEqual)
 import GenerateConstraints
 import SolveConstraints
 import Determinize
@@ -40,22 +42,23 @@ typecheckMaybe t = case  typecheck t of
   Left err -> Just err
   Right _ -> Nothing
 
-typecheck :: Term () -> Either Error TypeScheme
+typecheck :: Term () -> Either Error TypeAutDet
 typecheck t = do
   (typedTerm, css, uvars) <- generateConstraints t
   typeAut <- solveConstraints css uvars (typedTermToType typedTerm) (termPrdOrCns t)
   let typeAutDet0 = determinizeTypeAut typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
   let minTypeAut = minimizeTypeAut typeAutDet
-  return (autToType minTypeAut)
+  return minTypeAut
 
 typecheckExample :: String -> String -> Spec
 typecheckExample termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right term = runEnvParser (termP Prd) mempty termS
-      let Right inferredType = typecheck term
-      let Right specType = runEnvParser typeSchemeP mempty typS
-      inferredType `shouldBe` specType
+      let Right inferredTypeAut = typecheck term
+      let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
+      let Right specTypeAut = typeToAut specTypeScheme
+      (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
 spec :: Spec
 spec = do
@@ -75,5 +78,11 @@ spec = do
     forM_  (M.toList env) $ \term -> do
       checkTerm term
   describe "Typecheck specific examples" $ do
-    typecheckExample "\\(x)[k] => x >> k" "forall t0. {- Ap(t0)[t0] -}"
+    typecheckExample "\\(x)[k] => x >> k" "forall a. {- Ap(a)[a] -}"
     typecheckExample "S(Z)" "{+ S({+ Z +}) +}"
+    typecheckExample "\\(b,x,y)[k] => b >> {+ True => x >> k, False => y >> k +}"
+                     "forall a. {- Ap({+True,False+}, a, a)[a] -}"
+    typecheckExample "\\(b,x,y)[k] => b >> {+ True => x >> k, False => y >> k +}"
+                     "forall a b. {- Ap({+True,False+}, a, b)[a \\/ b] -}"
+    typecheckExample "\\(f)[k] => (\\(x)[k] => f >> Ap(x)[mu*y. f >> Ap(y)[k]]) >> k"
+                     "forall a b. {- Ap({- Ap(a \\/ b)[b] -})[{- Ap(a)[b] -}] -}"
