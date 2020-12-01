@@ -6,11 +6,6 @@ import Utils
 -- Tags
 ---------------------------------------------------------------------------------
 
-data DataCodata
-  = Data
-  | Codata
-  deriving (Eq, Show, Ord)
-
 data PrdCns
   = Prd
   | Cns
