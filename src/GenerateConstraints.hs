@@ -1,7 +1,6 @@
 module GenerateConstraints
   ( generateConstraints
   , typedTermToType
-  , termPrdCns
   ) where
 
 import Control.Monad.State
