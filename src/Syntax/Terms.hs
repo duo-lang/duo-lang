@@ -11,10 +11,20 @@ data DataCodata
   | Codata
   deriving (Eq, Show, Ord)
 
+-- | Singleton Type for DataCodata
+data DataCodataRep a where
+  DataRep   :: DataCodataRep Data
+  CodataRep :: DataCodataRep Codata
+
 data PrdCns
   = Prd
   | Cns
   deriving (Eq, Show, Ord)
+
+-- | Singleton Type for PrdCns
+data PrdCnsRep a where
+  PrdRep :: PrdCnsRep Prd
+  CnsRep :: PrdCnsRep Cns
 
 ---------------------------------------------------------------------------------
 -- Names
@@ -38,12 +48,14 @@ data Case a = MkCase
   , case_cmd  :: Command a
   } deriving (Show, Eq)
 
-data Term a =
-    BoundVar Int PrdCns Int -- de bruijn indices
-  | FreeVar FreeVarName a
-  | XtorCall DataCodata XtorName (XtorArgs a)
-  | Match DataCodata [Case a]
-  | MuAbs PrdCns a (Command a)
+type Index = (Int, Int)
+
+data Term a where
+  BoundVar :: Index -> PrdCns -> Term a -- de bruijn indices
+  FreeVar :: FreeVarName -> a -> Term a
+  XtorCall :: DataCodata -> XtorName -> XtorArgs a -> Term a
+  Match :: DataCodata -> [Case a] -> Term a
+  MuAbs :: PrdCns -> a -> Command a -> Term a
   -- The PrdOrCns parameter describes the type of variable that is being bound by the mu.
   -- If a mu binds a producer, it is itself a consumer and vice versa.
   -- MuAbs Cns == \mu, MuAbs Prd == \tilde{\mu}.

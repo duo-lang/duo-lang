@@ -43,11 +43,11 @@ termPrdCns (Match Data _)        = Cns
 termPrdCns (Match Codata _)      = Prd
 termPrdCns (MuAbs Prd _ _)       = Cns
 termPrdCns (MuAbs Cns _ _)       = Prd
-termPrdCns (BoundVar _ pc _)     = pc
+termPrdCns (BoundVar _ pc)     = pc
 termPrdCns (FreeVar _ _)         = error "termPrdCns: free variable found"
 
 isValidTerm' :: PrdCns -> Term () -> Except String ()
-isValidTerm' pc (BoundVar _ pc' _) =
+isValidTerm' pc (BoundVar _ pc') =
   if pc == pc' then return ()
     else throwError "Sanity check failed, you used a prd/cns variable in a wrong position.\nSorry, I can't be more precise since we're using de brujin indices and not variable names ;)"
 isValidTerm' _ (FreeVar _ _)       = throwError "Sanity check failed, term is not closed."
@@ -88,7 +88,7 @@ freshVars k = do
 
 annotateTerm :: Term () -> GenerateM (Term UVar)
 annotateTerm (FreeVar v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
-annotateTerm (BoundVar i pc j) = return (BoundVar i pc j)
+annotateTerm (BoundVar idx pc) = return (BoundVar idx pc)
 annotateTerm (XtorCall s xt (Twice prdArgs cnsArgs)) = do
   prdArgs' <- mapM annotateTerm prdArgs
   cnsArgs' <- mapM annotateTerm cnsArgs
@@ -119,13 +119,13 @@ annotateCommand (Apply t1 t2) = do
 -- only defined for fully opened terms, i.e. no de brujin indices left
 typedTermToType :: Term UVar -> SimpleType
 typedTermToType (FreeVar _ t)        = TyVar t
-typedTermToType (BoundVar _ _ _)     = error "typedTermToType: found dangling bound variable"
+typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 typedTermToType (XtorCall s xt args) = SimpleType s [(xt, (fmap . fmap) typedTermToType args)]
 typedTermToType (Match s cases)      = SimpleType s $ map (\(MkCase xt types _) -> (xt, (fmap . fmap) TyVar types)) cases
 typedTermToType (MuAbs _ t _)        = TyVar t
 
 getConstraintsTerm :: Term UVar -> [Constraint]
-getConstraintsTerm (BoundVar _ _ _) = error "getConstraintsTerm:  found dangling bound variable"
+getConstraintsTerm (BoundVar _ _) = error "getConstraintsTerm:  found dangling bound variable"
 getConstraintsTerm (FreeVar _ _)    = []
 getConstraintsTerm (XtorCall _ _ args) = concat $ mergeTwice (++) $ (fmap.fmap) getConstraintsTerm args
 getConstraintsTerm (Match _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases

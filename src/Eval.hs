@@ -3,11 +3,9 @@ module Eval where
 
 import Prettyprinter
 import Data.List (elemIndex,find)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Data.Map (Map)
 import qualified Data.Map as M
-
-import Control.Applicative ((<|>))
 
 import Syntax.Terms
 import Utils
@@ -20,7 +18,7 @@ getArg j Prd (Twice prds _) = prds !! j
 getArg j Cns (Twice _ cnss) = cnss !! j
 
 termOpeningRec :: Int -> XtorArgs a -> Term a -> Term a
-termOpeningRec k args (BoundVar i pc j)     = if i == k then getArg j pc args else BoundVar i pc j
+termOpeningRec k args (BoundVar (i,j) pc)     = if i == k then getArg j pc args else BoundVar (i,j) pc
 termOpeningRec _ _ (FreeVar n a)            = FreeVar n a
 termOpeningRec k args (XtorCall s xt args') =
   XtorCall s xt $ (fmap.fmap) (termOpeningRec k args) args'
@@ -53,11 +51,10 @@ commandOpeningSingle Cns t = commandOpening (Twice [] [t])
 
 
 termClosingRec :: Int -> Twice [FreeVarName] -> Term a -> Term a
-termClosingRec _ _ (BoundVar i pc j) = BoundVar i pc j
-termClosingRec k (Twice prdvars cnsvars) (FreeVar v a) = fromJust $ --no need to worry, last alternative cannot fail
-  (BoundVar k Prd <$> (v `elemIndex` prdvars)) <|>
-  (BoundVar k Cns <$> (v `elemIndex` cnsvars)) <|>
-  (Just (FreeVar v a))
+termClosingRec _ _ bv@(BoundVar _ _) = bv
+termClosingRec k (Twice prdvars cnsvars) (FreeVar v a) | isJust (v `elemIndex` prdvars) = BoundVar (k, fromJust (v `elemIndex` prdvars)) Prd
+                                                       | isJust (v `elemIndex` cnsvars) = BoundVar (k, fromJust (v `elemIndex` cnsvars)) Cns
+                                                       | otherwise = FreeVar v a
 termClosingRec k vars (XtorCall s xt args) = XtorCall s xt $ (fmap . fmap) (termClosingRec k vars) args
 termClosingRec k vars (Match s cases) =
   Match s $ map (\pmcase@MkCase { case_cmd } -> pmcase { case_cmd = commandClosingRec (k+1) vars case_cmd }) cases
@@ -100,7 +97,7 @@ substituteEnvCommand :: Environment (Term a) -> Command a -> Command a
 substituteEnvCommand env = substituteCommand (Twice (M.keys env) []) (Twice (M.elems env) [])
 
 lcAt_term :: Int -> Term a -> Bool
-lcAt_term k (BoundVar i _ _)                 = i < k
+lcAt_term k (BoundVar (i,_) _)                 = i < k
 lcAt_term _ (FreeVar _ _)                    = True
 lcAt_term k (XtorCall _ _ (Twice prds cnss)) = all (lcAt_term k) prds && all (lcAt_term k) cnss
 lcAt_term k (Match _ cases)                  = all (\MkCase { case_cmd } -> lcAt_cmd (k+1) case_cmd) cases
@@ -118,7 +115,7 @@ isLc_cmd :: Command a -> Bool
 isLc_cmd = lcAt_cmd 0
 
 freeVars_term :: Term a -> [FreeVarName]
-freeVars_term (BoundVar _ _ _)                 = []
+freeVars_term (BoundVar _ _)                 = []
 freeVars_term (FreeVar v _)                    = [v]
 freeVars_term (XtorCall _ _ (Twice prds cnss)) = concat $ map freeVars_term prds ++ map freeVars_term cnss
 freeVars_term (Match _ cases)                  = concat $ map (\MkCase { case_cmd } -> freeVars_cmd case_cmd) cases

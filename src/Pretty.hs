@@ -66,7 +66,7 @@ instance Pretty a => Pretty (Case a) where
   pretty MkCase{..} = pretty case_name <> prettyTwice case_args <+> "=>" <+> pretty case_cmd
 
 instance Pretty a => Pretty (Term a) where
-  pretty (BoundVar i pc j) =
+  pretty (BoundVar (i,j) pc) =
     let
       prdCns = case pc of {Prd -> "P"; Cns -> "C"}
     in
