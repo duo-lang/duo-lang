@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 module Syntax.TypeGraph where
 
 import Data.Graph.Inductive.Graph
@@ -58,9 +57,6 @@ instance Nubable Identity where
   nub = id
 instance Nubable [] where
   nub = nubOrd
-
-forgetDet :: TypeAutDet -> TypeAut
-forgetDet aut@TypeAut{..} = aut { ta_starts = [runIdentity ta_starts] }
 
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f -> TypeAut' a f

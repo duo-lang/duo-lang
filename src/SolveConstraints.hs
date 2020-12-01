@@ -17,7 +17,7 @@ import Syntax.TypeGraph
 import Syntax.Terms
 import Utils
 import Pretty
-import Determinize (removeEpsilonEdges, removeIslands)
+import TypeAutomata.Determinize (removeEpsilonEdges, removeIslands)
 
 data SolverState = SolverState
   { sst_gr :: TypeGrEps
@@ -165,6 +165,7 @@ solveConstraints css uvs ty pc =
       Left err -> Left (SolveConstraintsError err)
       Right (_,SolverState gr _) ->
         let
-          (gr', starts) = removeEpsilonEdges (gr, [start])
+          aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = flowEdges }
         in
-          Right $ removeIslands TypeAut { ta_gr = gr', ta_starts =  starts, ta_flowEdges = flowEdges }
+          Right $ (removeIslands . removeEpsilonEdges) aut
+
