@@ -43,14 +43,14 @@ termPrdCns (Match Data _)        = Cns
 termPrdCns (Match Codata _)      = Prd
 termPrdCns (MuAbs Prd _ _)       = Cns
 termPrdCns (MuAbs Cns _ _)       = Prd
-termPrdCns (BoundVar _ pc)     = pc
-termPrdCns (FreeVar _ _)         = error "termPrdCns: free variable found"
+termPrdCns (BoundVar pc _)       = pc
+termPrdCns (FreeVar pc _ _)      = pc
 
 isValidTerm' :: PrdCns -> Term Prd () -> Except String ()
-isValidTerm' pc (BoundVar _ pc') =
+isValidTerm' pc (BoundVar pc' _) =
   if pc == pc' then return ()
     else throwError "Sanity check failed, you used a prd/cns variable in a wrong position.\nSorry, I can't be more precise since we're using de brujin indices and not variable names ;)"
-isValidTerm' _ (FreeVar _ _)       = throwError "Sanity check failed, term is not closed."
+isValidTerm' _ (FreeVar _ _ _)       = throwError "Sanity check failed, term is not closed."
 isValidTerm' Prd (XtorCall Data _ (Twice prdArgs cnsArgs))
   = mapM_ (isValidTerm' Prd) prdArgs >> mapM_ (isValidTerm' Cns) cnsArgs
 isValidTerm' Cns t@(XtorCall Data _ _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
@@ -84,10 +84,10 @@ freshVars :: Int -> GenerateM [(UVar, Term Prd UVar)]
 freshVars k = do
   n <- get
   modify (+k)
-  return [(uv, FreeVar ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = MkUVar i]
+  return [(uv, FreeVar Prd ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = MkUVar i]
 
 annotateTerm :: Term Prd () -> GenerateM (Term Prd UVar)
-annotateTerm (FreeVar v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
+annotateTerm (FreeVar _ v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
 annotateTerm (BoundVar idx pc) = return (BoundVar idx pc)
 annotateTerm (XtorCall s xt (Twice prdArgs cnsArgs)) = do
   prdArgs' <- mapM annotateTerm prdArgs
@@ -118,7 +118,7 @@ annotateCommand (Apply t1 t2) = do
 
 -- only defined for fully opened terms, i.e. no de brujin indices left
 typedTermToType :: Term Prd UVar -> SimpleType
-typedTermToType (FreeVar _ t)        = TyVar t
+typedTermToType (FreeVar _ _ t)        = TyVar t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 typedTermToType (XtorCall s xt args) = SimpleType s [(xt, (fmap . fmap) typedTermToType args)]
 typedTermToType (Match s cases)      = SimpleType s $ map (\(MkCase xt types _) -> (xt, (fmap . fmap) TyVar types)) cases
@@ -126,7 +126,7 @@ typedTermToType (MuAbs _ t _)        = TyVar t
 
 getConstraintsTerm :: Term Prd UVar -> [Constraint]
 getConstraintsTerm (BoundVar _ _) = error "getConstraintsTerm:  found dangling bound variable"
-getConstraintsTerm (FreeVar _ _)    = []
+getConstraintsTerm (FreeVar _ _ _)    = []
 getConstraintsTerm (XtorCall _ _ args) = concat $ mergeTwice (++) $ (fmap.fmap) getConstraintsTerm args
 getConstraintsTerm (Match _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases
 getConstraintsTerm (MuAbs _ _ cmd) = getConstraintsCommand cmd

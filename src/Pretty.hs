@@ -66,12 +66,12 @@ instance Pretty a => Pretty (Case a) where
   pretty MkCase{..} = pretty case_name <> prettyTwice case_args <+> "=>" <+> pretty case_cmd
 
 instance Pretty a => Pretty (Term Prd a) where
-  pretty (BoundVar (i,j) pc) =
+  pretty (BoundVar pc (i,j)) =
     let
       prdCns = case pc of {Prd -> "P"; Cns -> "C"}
     in
       parens (pretty i <> "," <> prdCns <> "," <> pretty j)
-  pretty (FreeVar v a) = parens (pretty v <+> ":" <+> pretty a)
+  pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> prettyTwice args
   pretty (Match s cases) = braces (pretty s <+> intercalateComma (pretty <$> cases) <+> pretty s)
   pretty (MuAbs pc a cmd) =

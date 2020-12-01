@@ -109,14 +109,14 @@ termP mode = try (parens (termP mode))
   <|> muAbstraction
   <|> try (termEnvP mode) -- needs to be tried, because the parser has to consume the string, before it checks
                           -- if the variable is in the environment, which might cause it to fail
-  <|> freeVar
+  <|> freeVar mode
   <|> numLit
   <|> lambdaSugar
 
-freeVar :: Parser (Term Prd ())
-freeVar = do
+freeVar :: PrdCns -> Parser (Term Prd ())
+freeVar pc = do
   v <- freeVarName
-  return (FreeVar v ())
+  return (FreeVar pc v ())
 
 numLit :: Parser (Term Prd ())
 numLit = numToTerm . read <$> some numberChar
