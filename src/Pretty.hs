@@ -84,7 +84,7 @@ instance Pretty a => Pretty (Term Prd a) where
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
   pretty (Match s cases) = braces (pretty s <+> intercalateComma (pretty <$> cases) <+> pretty s)
   pretty (MuAbs pc a cmd) =
-    case pc of {Prd -> "mu~"; Cns -> "mu"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
+    case pc of {Prd -> "mu"; Cns -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"

@@ -106,7 +106,7 @@ termP :: PrdCns -> Parser (Term Prd ())
 termP pc = try (parens (termP pc))
   <|> xtorCall pc
   <|> patternMatch pc
-  <|> muAbstraction
+  <|> muAbstraction pc
   <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
                         -- if the variable is in the environment, which might cause it to fail
   <|> freeVar pc
@@ -158,14 +158,13 @@ singleCase = do
                 , case_cmd = commandClosing args cmd -- de brujin transformation
                 }
 
-muAbstraction :: Parser (Term Prd ())
-muAbstraction = do
-  pc <- muIdentifier
+muAbstraction :: PrdCns -> Parser (Term Prd ())
+muAbstraction pc = do
+  _ <- symbol (case pc of { Prd -> "mu"; Cns -> "mu*" })
   v <- lexeme freeVarName
   _ <- dot
   cmd <- lexeme commandP
   return $ MuAbs pc () (commandClosingSingle pc v cmd)
-  where muIdentifier = (symbol "mu*" >> return Prd) <|> (symbol "mu" >> return Cns)
 
 commandP :: Parser (Command ())
 commandP = try (parens commandP) <|> doneCmd <|> printCmd <|> applyCmd

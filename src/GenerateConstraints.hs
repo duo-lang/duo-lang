@@ -26,8 +26,7 @@ unifcation variables.
 termPrdCns :: Term Prd a -> PrdCns
 termPrdCns (XtorCall pc _ _)     = pc
 termPrdCns (Match pc _)          = pc
-termPrdCns (MuAbs Prd _ _)       = Cns
-termPrdCns (MuAbs Cns _ _)       = Prd
+termPrdCns (MuAbs pc _ _)       = pc
 termPrdCns (BoundVar pc _)       = pc
 termPrdCns (FreeVar pc _ _)      = pc
 

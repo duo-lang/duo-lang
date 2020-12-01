@@ -54,9 +54,7 @@ data Term (pc :: PrdCns) a where
   XtorCall :: PrdCns -> XtorName -> XtorArgs a -> Term Prd a
   Match    :: PrdCns -> [Case a] -> Term Prd a
   MuAbs    :: PrdCns -> a -> Command a -> Term Prd a
-  -- The PrdOrCns parameter describes the type of variable that is being bound by the mu.
-  -- If a mu binds a producer, it is itself a consumer and vice versa.
-  -- MuAbs Cns == \mu, MuAbs Prd == \tilde{\mu}.
+  -- The PrdCns parameter describes the result of the abstraction!
 deriving instance Eq a => Eq (Term pc a)
 deriving instance Show a => Show (Term pc a)
 

@@ -159,8 +159,8 @@ eval cmd@(Apply (Match Prd cases) (XtorCall Cns xt args)) = do
     then eval $ commandOpening args cmd' --reduction is just opening
     else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                             "\"\nArgument lengths don't coincide.")
-eval (Apply (MuAbs Cns _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
-eval (Apply prd (MuAbs Prd _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
+eval (Apply (MuAbs Prd _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
+eval (Apply prd (MuAbs Cns _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
 -- Error handling
 eval cmd@(Apply _ _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                           "\"\n Free variable encountered!")
