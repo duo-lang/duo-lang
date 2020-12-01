@@ -87,8 +87,8 @@ argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
 numToTerm :: Int -> Term Prd ()
-numToTerm 0 = XtorCall Data (MkXtorName "Z") (Twice [] [])
-numToTerm n = XtorCall Data (MkXtorName "S") (Twice [numToTerm (n-1)] [])
+numToTerm 0 = XtorCall Data (MkXtorName "Z") (MkXtorArgs [] [])
+numToTerm n = XtorCall Data (MkXtorName "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 termEnvP :: PrdCns -> Parser (Term Prd ())
 termEnvP Prd = do
@@ -132,8 +132,8 @@ lambdaSugar = do
 xtorCall :: PrdCns -> Parser (Term Prd ())
 xtorCall mode = do
   xt <- xtorName
-  args <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
-  return $ XtorCall (case mode of { Prd -> Data ; Cns -> Codata }) xt args
+  (Twice prdArgs cnsArgs) <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
+  return $ XtorCall (case mode of { Prd -> Data ; Cns -> Codata }) xt (MkXtorArgs prdArgs cnsArgs)
 
 patternMatch :: Parser (Term Prd ())
 patternMatch = braces $ do

@@ -51,10 +51,10 @@ isValidTerm' pc (BoundVar pc' _) =
   if pc == pc' then return ()
     else throwError "Sanity check failed, you used a prd/cns variable in a wrong position.\nSorry, I can't be more precise since we're using de brujin indices and not variable names ;)"
 isValidTerm' _ (FreeVar _ _ _)       = throwError "Sanity check failed, term is not closed."
-isValidTerm' Prd (XtorCall Data _ (Twice prdArgs cnsArgs))
+isValidTerm' Prd (XtorCall Data _ (MkXtorArgs prdArgs cnsArgs))
   = mapM_ (isValidTerm' Prd) prdArgs >> mapM_ (isValidTerm' Cns) cnsArgs
 isValidTerm' Cns t@(XtorCall Data _ _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
-isValidTerm' Cns (XtorCall Codata _ (Twice prdArgs cnsArgs))
+isValidTerm' Cns (XtorCall Codata _ (MkXtorArgs prdArgs cnsArgs))
   = mapM_ (isValidTerm' Prd) prdArgs >> mapM_ (isValidTerm' Cns) cnsArgs
 isValidTerm' Prd t@(XtorCall Codata _ _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
 isValidTerm' Prd (Match Codata cases) = mapM_ (\(MkCase _ _ cmd) -> isValidCmd cmd) cases
@@ -89,16 +89,16 @@ freshVars k = do
 annotateTerm :: Term Prd () -> GenerateM (Term Prd UVar)
 annotateTerm (FreeVar _ v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
 annotateTerm (BoundVar idx pc) = return (BoundVar idx pc)
-annotateTerm (XtorCall s xt (Twice prdArgs cnsArgs)) = do
+annotateTerm (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) = do
   prdArgs' <- mapM annotateTerm prdArgs
   cnsArgs' <- mapM annotateTerm cnsArgs
-  return (XtorCall s xt (Twice prdArgs' cnsArgs'))
+  return (XtorCall s xt (MkXtorArgs prdArgs' cnsArgs'))
 annotateTerm (Match s cases) =
   Match s <$> forM cases (\(MkCase xt (Twice prds cnss) cmd) -> do
     (prdUVars, prdTerms) <- unzip <$> freshVars (length prds)
     (cnsUVars, cnsTerms) <- unzip <$> freshVars (length cnss)
     cmd' <- annotateCommand cmd
-    return (MkCase xt (Twice prdUVars cnsUVars) (commandOpening (Twice prdTerms cnsTerms) cmd')))
+    return (MkCase xt (Twice prdUVars cnsUVars) (commandOpening (MkXtorArgs prdTerms cnsTerms) cmd')))
 annotateTerm (MuAbs pc _ cmd) = do
   (uv, freeVar) <- head <$> freshVars 1
   cmd' <- annotateCommand cmd
@@ -120,14 +120,18 @@ annotateCommand (Apply t1 t2) = do
 typedTermToType :: Term Prd UVar -> SimpleType
 typedTermToType (FreeVar _ _ t)        = TyVar t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
-typedTermToType (XtorCall s xt args) = SimpleType s [(xt, (fmap . fmap) typedTermToType args)]
-typedTermToType (Match s cases)      = SimpleType s $ map (\(MkCase xt types _) -> (xt, (fmap . fmap) TyVar types)) cases
+typedTermToType (XtorCall s xt (MkXtorArgs prdargs cnsargs)) =
+  SimpleType s [(xt, Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
+typedTermToType (Match s cases)      = SimpleType s (map getCaseType cases)
+  where
+    getCaseType (MkCase xt types _) = (xt, (fmap . fmap) TyVar types)
 typedTermToType (MuAbs _ t _)        = TyVar t
 
 getConstraintsTerm :: Term Prd UVar -> [Constraint]
 getConstraintsTerm (BoundVar _ _) = error "getConstraintsTerm:  found dangling bound variable"
 getConstraintsTerm (FreeVar _ _ _)    = []
-getConstraintsTerm (XtorCall _ _ args) = concat $ mergeTwice (++) $ (fmap.fmap) getConstraintsTerm args
+getConstraintsTerm (XtorCall _ _ (MkXtorArgs prdargs cnsargs)) =
+  concat $ mergeTwice (++) $ Twice (getConstraintsTerm <$> prdargs) (getConstraintsTerm <$> cnsargs)
 getConstraintsTerm (Match _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases
 getConstraintsTerm (MuAbs _ _ cmd) = getConstraintsCommand cmd
 

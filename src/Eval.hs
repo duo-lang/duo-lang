@@ -14,15 +14,16 @@ import Pretty
 type Environment a = Map String a
 
 getArg :: Int -> PrdCns -> XtorArgs a -> Term Prd a
-getArg j Prd (Twice prds _) = prds !! j
-getArg j Cns (Twice _ cnss) = cnss !! j
+getArg j Prd (MkXtorArgs prds _) = prds !! j
+getArg j Cns (MkXtorArgs _ cnss) = cnss !! j
 
 termOpeningRec :: Int -> XtorArgs a -> Term Prd a -> Term Prd a
 termOpeningRec k args bv@(BoundVar pc (i,j)) | i == k    = getArg j pc args
                                              | otherwise = bv
 termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
-termOpeningRec k args (XtorCall s xt args') =
-  XtorCall s xt $ (fmap.fmap) (termOpeningRec k args) args'
+termOpeningRec k args (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) =
+  XtorCall s xt (MkXtorArgs (termOpeningRec k args <$> prdArgs)
+                            (termOpeningRec k args <$> cnsArgs))
 termOpeningRec k args (Match s cases) =
   Match s $ map (\pmcase@MkCase{ case_cmd } -> pmcase { case_cmd = commandOpeningRec (k+1) args case_cmd }) cases
 termOpeningRec k args (MuAbs pc a cmd) =
@@ -39,16 +40,16 @@ termOpening = termOpeningRec 0
 
 -- replaces single bound variable with given term (used for mu abstractions)
 termOpeningSingle :: PrdCns -> Term Prd a -> Term Prd a -> Term Prd a
-termOpeningSingle Prd t = termOpening (Twice [t] [])
-termOpeningSingle Cns t = termOpening (Twice [] [t])
+termOpeningSingle Prd t = termOpening (MkXtorArgs [t] [])
+termOpeningSingle Cns t = termOpening (MkXtorArgs [] [t])
 
 -- replaces bound variables pointing "outside" of a command with given arguments
 commandOpening :: XtorArgs a -> Command a -> Command a
 commandOpening = commandOpeningRec 0
 
 commandOpeningSingle :: PrdCns -> Term Prd a -> Command a -> Command a
-commandOpeningSingle Prd t = commandOpening (Twice [t] [])
-commandOpeningSingle Cns t = commandOpening (Twice [] [t])
+commandOpeningSingle Prd t = commandOpening (MkXtorArgs [t] [])
+commandOpeningSingle Cns t = commandOpening (MkXtorArgs [] [t])
 
 
 -- TODO: Check the logic in the freevar case which could be improved!
@@ -57,7 +58,8 @@ termClosingRec _ _ bv@(BoundVar _ _) = bv
 termClosingRec k (Twice prdvars cnsvars) (FreeVar pc v a) | isJust (v `elemIndex` prdvars) = BoundVar Prd (k, fromJust (v `elemIndex` prdvars))
                                                          | isJust (v `elemIndex` cnsvars) = BoundVar Cns (k, fromJust (v `elemIndex` cnsvars))
                                                          | otherwise = FreeVar pc v a
-termClosingRec k vars (XtorCall s xt args) = XtorCall s xt $ (fmap . fmap) (termClosingRec k vars) args
+termClosingRec k vars (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) =
+  XtorCall s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
 termClosingRec k vars (Match s cases) =
   Match s $ map (\pmcase@MkCase { case_cmd } -> pmcase { case_cmd = commandClosingRec (k+1) vars case_cmd }) cases
 termClosingRec k vars (MuAbs pc a cmd) =
@@ -88,7 +90,7 @@ substituteTerm :: Twice [FreeVarName] -> XtorArgs a -> Term Prd a -> Term Prd a
 substituteTerm vars args = termOpening args . termClosing vars
 
 substituteEnvTerm :: Environment (Term Prd a) -> Term Prd a -> Term Prd a
-substituteEnvTerm env = substituteTerm (Twice (M.keys env) []) (Twice (M.elems env) [])
+substituteEnvTerm env = substituteTerm (Twice (M.keys env) []) (MkXtorArgs (M.elems env) [])
 
 substituteCommand :: Twice [FreeVarName] -> XtorArgs a -> Command a -> Command a
 substituteCommand vars args (Apply t1 t2) = Apply (substituteTerm vars args t1) (substituteTerm vars args t2)
@@ -96,12 +98,12 @@ substituteCommand _ _ Done                = Done
 substituteCommand vars args (Print t)     = Print $ substituteTerm vars args t
 
 substituteEnvCommand :: Environment (Term Prd a) -> Command a -> Command a
-substituteEnvCommand env = substituteCommand (Twice (M.keys env) []) (Twice (M.elems env) [])
+substituteEnvCommand env = substituteCommand (Twice (M.keys env) []) (MkXtorArgs (M.elems env) [])
 
 lcAt_term :: Int -> Term Prd a -> Bool
 lcAt_term k (BoundVar _ (i,_))                 = i < k
 lcAt_term _ (FreeVar _ _ _)                    = True
-lcAt_term k (XtorCall _ _ (Twice prds cnss)) = all (lcAt_term k) prds && all (lcAt_term k) cnss
+lcAt_term k (XtorCall _ _ (MkXtorArgs prds cnss)) = all (lcAt_term k) prds && all (lcAt_term k) cnss
 lcAt_term k (Match _ cases)                  = all (\MkCase { case_cmd } -> lcAt_cmd (k+1) case_cmd) cases
 lcAt_term k (MuAbs _ _ cmd)                  = lcAt_cmd (k+1) cmd
 
@@ -119,7 +121,7 @@ isLc_cmd = lcAt_cmd 0
 freeVars_term :: Term Prd a -> [FreeVarName]
 freeVars_term (BoundVar _ _)                 = []
 freeVars_term (FreeVar _ v _)                    = [v]
-freeVars_term (XtorCall _ _ (Twice prds cnss)) = concat $ map freeVars_term prds ++ map freeVars_term cnss
+freeVars_term (XtorCall _ _ (MkXtorArgs prds cnss)) = concat $ map freeVars_term prds ++ map freeVars_term cnss
 freeVars_term (Match _ cases)                  = concat $ map (\MkCase { case_cmd } -> freeVars_cmd case_cmd) cases
 freeVars_term (MuAbs _ _ cmd)                  = freeVars_cmd cmd
 
@@ -134,27 +136,29 @@ isClosed_term t = freeVars_term t == []
 isClosed_cmd :: Command a -> Bool
 isClosed_cmd cmd = freeVars_cmd cmd == []
 
+lookupCase :: XtorName -> [Case a] -> Either Error (Case a)
+lookupCase xt cases = case find (\MkCase { case_name } -> xt == case_name) cases of
+  Just pmcase -> Right pmcase
+  Nothing -> Left $ EvalError $ unlines ["Error during evaluation. The xtor: "
+                                        , unXtorName xt
+                                        , "doesn't occur in match."
+                                        ]
+
 eval :: Pretty a => Command a -> Either Error String
 eval Done = Right "Done"
 eval (Print t) = Right $ ppPrint t
-eval cmd@(Apply (XtorCall Data xt args) (Match Data cases))
-  = case (find (\MkCase { case_name } -> xt==case_name) cases) of
-      Just (MkCase _ argTypes cmd') ->
-        if fmap length argTypes == fmap length args
-          then eval $ commandOpening args cmd' --reduction is just opening
-          else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                 "\"\nArgument lengths don't coincide.")
-      Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                   "\"\nXtor \"" ++ unXtorName xt ++ "\" doesn't occur in match.")
-eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args))
-  = case (find (\(MkCase xt' _ _) -> xt==xt') cases) of
-      Just (MkCase _ argTypes cmd') ->
-        if fmap length argTypes == fmap length args
-          then eval $ commandOpening args cmd' --reduction is just opening
-          else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                 "\"\nArgument lengths don't coincide.")
-      Nothing -> Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                   "\"\nXtor \"" ++ unXtorName xt ++ "\" doesn't occur in match.")
+eval cmd@(Apply (XtorCall Data xt args) (Match Data cases)) = do
+  (MkCase _ argTypes cmd') <- lookupCase xt cases
+  if True -- TODO fmap length argTypes == fmap length args
+    then eval $ commandOpening args cmd' --reduction is just opening
+    else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
+                           "\"\nArgument lengths don't coincide.")
+eval cmd@(Apply (Match Codata cases) (XtorCall Codata xt args)) = do
+  (MkCase _ argTypes cmd') <- lookupCase xt cases
+  if True -- TODO fmap length argTypes == fmap length args
+    then eval $ commandOpening args cmd' --reduction is just opening
+    else Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
+                            "\"\nArgument lengths don't coincide.")
 eval (Apply (MuAbs Cns _ cmd) cns) = eval $ commandOpeningSingle Cns cns cmd
 eval (Apply prd (MuAbs Prd _ cmd)) = eval $ commandOpeningSingle Prd prd cmd
 

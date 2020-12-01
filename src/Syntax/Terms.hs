@@ -40,7 +40,10 @@ type FreeVarName = String
 -- Terms
 ---------------------------------------------------------------------------------
 
-type XtorArgs a = Twice [Term Prd a]
+data XtorArgs a = MkXtorArgs { prdArgs :: [Term Prd a]
+                             , cnsArgs :: [Term Prd a]
+                             }
+                  deriving (Eq, Show)
 
 data Case a = MkCase
   { case_name :: XtorName
