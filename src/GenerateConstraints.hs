@@ -23,13 +23,6 @@ and unifcation variables. Thus, during the actual constraint generation, we don'
 unifcation variables.
 -}
 
-termPrdCns :: Term pc a -> PrdCnsRep pc
-termPrdCns (XtorCall pc _ _) = pc
-termPrdCns (Match pc _)      = pc
-termPrdCns (MuAbs pc _ _)    = pc
-termPrdCns (BoundVar pc _)   = pc
-termPrdCns (FreeVar pc _ _)  = pc
-
 -------------------------------------------------------------------------------------
 -- Phase 1: Term annotation
 -------------------------------------------------------------------------------------
