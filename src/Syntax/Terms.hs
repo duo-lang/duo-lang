@@ -11,11 +11,6 @@ data DataCodata
   | Codata
   deriving (Eq, Show, Ord)
 
--- | Singleton Type for DataCodata
-data DataCodataRep a where
-  DataRep   :: DataCodataRep Data
-  CodataRep :: DataCodataRep Codata
-
 data PrdCns
   = Prd
   | Cns

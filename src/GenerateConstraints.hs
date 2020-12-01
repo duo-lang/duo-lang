@@ -11,7 +11,6 @@ import Syntax.Terms
 import Syntax.Types
 import Utils
 import Eval
-import Pretty
 
 {-
 Constraint generation is split in two phases:
@@ -24,18 +23,6 @@ and unifcation variables. Thus, during the actual constraint generation, we don'
 unifcation variables.
 -}
 
---------------------------------------------------------------------------------------------
--- Phase 0: Term sanity check (not strictly part of constraint generation)
--- Here, we check if the parsed term is syntactically correct in the following sense:
--- ** Producers are only in places where producers can go and consumers are only in places consumers can go **
--- This could be done during pasrsing, *IF* we were to use different variable names to distinguish producers
--- from consumers. We do so only in the mathematical formaliazation of the syntax, but not in the implementation.
--- So instead, we do a santiy check right after parsing.
---------------------------------------------------------------------------------------------
-
--- determines if the term is a producer or a consumer
--- is only defined for closed terms, since we cannot distinguish producer from consumer variable names
--- We distinguish them only in the mathematical formaliazation of the syntax, not in the actual implementation
 termPrdCns :: Term Prd a -> PrdCns
 termPrdCns (XtorCall Data _ _)   = Prd
 termPrdCns (XtorCall Codata _ _) = Cns
@@ -45,34 +32,6 @@ termPrdCns (MuAbs Prd _ _)       = Cns
 termPrdCns (MuAbs Cns _ _)       = Prd
 termPrdCns (BoundVar pc _)       = pc
 termPrdCns (FreeVar pc _ _)      = pc
-
-isValidTerm' :: PrdCns -> Term Prd () -> Except String ()
-isValidTerm' pc (BoundVar pc' _) =
-  if pc == pc' then return ()
-    else throwError "Sanity check failed, you used a prd/cns variable in a wrong position.\nSorry, I can't be more precise since we're using de brujin indices and not variable names ;)"
-isValidTerm' _ (FreeVar _ _ _)       = throwError "Sanity check failed, term is not closed."
-isValidTerm' Prd (XtorCall Data _ (MkXtorArgs prdArgs cnsArgs))
-  = mapM_ (isValidTerm' Prd) prdArgs >> mapM_ (isValidTerm' Cns) cnsArgs
-isValidTerm' Cns t@(XtorCall Data _ _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
-isValidTerm' Cns (XtorCall Codata _ (MkXtorArgs prdArgs cnsArgs))
-  = mapM_ (isValidTerm' Prd) prdArgs >> mapM_ (isValidTerm' Cns) cnsArgs
-isValidTerm' Prd t@(XtorCall Codata _ _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
-isValidTerm' Prd (Match Codata cases) = mapM_ (\(MkCase _ _ cmd) -> isValidCmd cmd) cases
-isValidTerm' Prd t@(Match Data _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
-isValidTerm' Cns (Match Data cases) = mapM_ (\(MkCase _ _ cmd) -> isValidCmd cmd) cases
-isValidTerm' Cns t@(Match Codata _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
-isValidTerm' Prd (MuAbs Cns _ cmd) = isValidCmd cmd
-isValidTerm' Prd t@(MuAbs Prd _ _) = throwError $ "Sanity check failed. Consumer term \n\n" ++ ppPrint t ++ "\n\n used in producer position."
-isValidTerm' Cns (MuAbs Prd _ cmd) = isValidCmd cmd
-isValidTerm' Cns t@(MuAbs Cns _ _) = throwError $ "Sanity check failed. Producer term \n\n" ++ ppPrint t ++ "\n\n used in consumer position."
-
-isValidTerm :: Term Prd () -> Except String ()
-isValidTerm t = isValidTerm' (termPrdCns t) t
-
-isValidCmd :: Command () -> Except String ()
-isValidCmd Done = return ()
-isValidCmd (Print t) = isValidTerm t
-isValidCmd (Apply t1 t2) = isValidTerm' Prd t1 >> isValidTerm' Cns t2
 
 -------------------------------------------------------------------------------------
 -- Phase 1: Term annotation
@@ -143,8 +102,7 @@ getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConst
 
 generateConstraints :: Term Prd () -> Either Error (Term Prd UVar, [Constraint], [UVar])
 generateConstraints t0 =
-  case runExcept (isValidTerm t0) of
-    Right () -> case runExcept (runStateT (annotateTerm t0) 0) of
-      Right (t1, numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
-      Left err            -> Left $ GenConstraintsError err
-    Left err -> Left $ GenConstraintsError err
+  case runExcept (runStateT (annotateTerm t0) 0) of
+    Right (t1, numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
+    Left err            -> Left $ GenConstraintsError err
+
