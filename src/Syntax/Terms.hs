@@ -12,9 +12,10 @@ data PrdCns
   deriving (Eq, Show, Ord)
 
 -- | Singleton Type for PrdCns
-data PrdCnsRep a where
+data PrdCnsRep pc where
   PrdRep :: PrdCnsRep Prd
   CnsRep :: PrdCnsRep Cns
+deriving instance Show (PrdCnsRep pc)
 
 ---------------------------------------------------------------------------------
 -- Names
@@ -33,13 +34,13 @@ type FreeVarName = String
 data XtorArgs a = MkXtorArgs { prdArgs :: [Term Prd a]
                              , cnsArgs :: [Term Prd a]
                              }
-                  deriving (Eq, Show)
+                  deriving (Show)
 
 data Case a = MkCase
   { case_name :: XtorName
   , case_args :: Twice [a]
   , case_cmd  :: Command a
-  } deriving (Show, Eq)
+  } deriving (Show)
 
 type Index = (Int, Int)
 
@@ -50,7 +51,6 @@ data Term (pc :: PrdCns) a where
   Match    :: PrdCns -> [Case a] -> Term Prd a
   MuAbs    :: PrdCns -> a -> Command a -> Term Prd a
   -- The PrdCns parameter describes the result of the abstraction!
-deriving instance Eq a => Eq (Term pc a)
 deriving instance Show a => Show (Term pc a)
 
 ---------------------------------------------------------------------------------
@@ -61,5 +61,5 @@ data Command a
   = Apply (Term Prd a) (Term Prd a)
   | Print (Term Prd a)
   | Done
-  deriving (Eq,Show)
+  deriving (Show)
 

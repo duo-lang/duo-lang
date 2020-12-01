@@ -16,7 +16,7 @@ data Declaration a
   = PrdDecl FreeVarName (Term Prd a)
   | CnsDecl FreeVarName (Term Prd a)
   | TypDecl TypeIdentifierName TypeScheme
-  deriving (Show, Eq)
+  deriving (Show)
 
 data Environment = Environment
   { prdEnv :: Map FreeVarName (Term Prd ())
