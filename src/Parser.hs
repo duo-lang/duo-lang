@@ -54,17 +54,16 @@ xtorName = MkXtorName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
 
-dataOrCodata :: (MonadParsec Void String m) => m DataCodata
-dataOrCodata = (symbol "+" >> return Data) <|> (symbol "-" >> return Codata)
-
-parens, braces, brackets :: (MonadParsec Void String m) => m a -> m a
+parens, braces, brackets, angles :: (MonadParsec Void String m) => m a -> m a
 parens    = between (symbol "(") (symbol ")")
 braces    = between (symbol "{") (symbol "}")
 brackets  = between (symbol "[") (symbol "]")
+angles    = between (symbol "<") (symbol ">")
 
-comma, dot :: (MonadParsec Void String m) => m String
+comma, dot, pipe :: (MonadParsec Void String m) => m String
 comma = symbol ","
 dot = symbol "."
+pipe = symbol "|"
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 argListP :: (MonadParsec Void String m) => m a -> m a ->  m (Twice [a])
@@ -72,10 +71,6 @@ argListP p q = do
   xs <- option [] (parens   $ p `sepBy` comma)
   ys <- option [] (brackets $ q `sepBy` comma)
   return $ Twice xs ys
-
-showDataCodata :: DataCodata -> String
-showDataCodata Data = "+"
-showDataCodata Codata = "-"
 
 --------------------------------------------------------------------------------------------
 -- Term/Command parsing
@@ -255,7 +250,8 @@ typeSchemeP = do
 --without joins and meets
 typeR' :: TypeParser TargetType
 typeR' = try (parens typeR) <|>
-  simpleType <|>
+  dataType <|>
+  codataType <|>
   try recVar <|>
   try (typeEnvItem) <|>
   recType <|>
@@ -264,12 +260,15 @@ typeR' = try (parens typeR) <|>
 typeR :: TypeParser TargetType
 typeR = try joinType <|> try meetType <|> typeR'
 
-simpleType :: TypeParser TargetType
-simpleType = braces $ do
-  s <- dataOrCodata
+dataType :: TypeParser TargetType
+dataType = angles $ do
+  xtorSigs <- xtorSignature `sepBy` pipe
+  return (TTySimple Data xtorSigs)
+
+codataType :: TypeParser TargetType
+codataType = braces $ do
   xtorSigs <- xtorSignature `sepBy` comma
-  _ <- symbol (showDataCodata s)
-  return $ TTySimple s xtorSigs
+  return (TTySimple Codata xtorSigs)
 
 xtorSignature :: TypeParser (XtorSig TargetType)
 xtorSignature = do
