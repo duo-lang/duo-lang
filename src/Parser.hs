@@ -275,7 +275,7 @@ xtorSignature :: TypeParser (XtorSig TargetType)
 xtorSignature = do
   xt <- xtorName
   args <- argListP (lexeme typeR) (lexeme typeR)
-  return (xt, args)
+  return (MkXtorSig xt args)
 
 recVar :: TypeParser TargetType
 recVar = do

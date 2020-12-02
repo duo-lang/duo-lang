@@ -56,7 +56,7 @@ autToTypeReader tvMap i = do
               cnsTypes <- forM [0..highestIndex Data xt Cns] $ \j -> do
                 typs <- sequence [autToTypeReader tvMap n | (EdgeSymbol Data xt' Cns j', n) <- outs, xt == xt', j == j']
                 return $ unionOrInter (applyVariance Data Cns pol) typs
-              return (xt,Twice prdTypes cnsTypes)
+              return (MkXtorSig xt (Twice prdTypes cnsTypes))
             return [TTySimple Data sig]}
         codatL <- case maybeCodat of
           {Nothing -> return [] ;
@@ -68,7 +68,7 @@ autToTypeReader tvMap i = do
               cnsTypes <- forM [0..highestIndex Codata xt Cns] $ \j -> do
                 typs <- sequence [autToTypeReader tvMap n | (EdgeSymbol Codata xt' Cns j', n) <- outs, xt == xt', j == j']
                 return $ unionOrInter (applyVariance Codata Cns pol) typs
-              return (xt,Twice prdTypes cnsTypes)
+              return (MkXtorSig xt (Twice prdTypes cnsTypes))
             return [TTySimple Codata sig]}
         return $ unionOrInter pol (varL ++ datL ++ codatL)
 

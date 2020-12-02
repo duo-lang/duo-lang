@@ -80,11 +80,12 @@ instance Pretty DataCodata where
   pretty Data = "+"
   pretty Codata = "-"
 
+instance Pretty a => Pretty (XtorSig a) where
+  pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
+
 instance Pretty SimpleType where
   pretty (TyVar uvar) = pretty uvar
-  pretty (SimpleType s xtors) = braces (pretty s <+> intercalateComma xtors' <+> pretty s)
-    where
-      xtors' = map (\(xt,args) -> pretty xt <> prettyTwice args) xtors
+  pretty (SimpleType s xtors) = braces (pretty s <+> intercalateComma (pretty <$> xtors) <+> pretty s)
 
 instance Pretty TargetType where
   pretty (TTyUnion []) = "Bot"
@@ -96,9 +97,7 @@ instance Pretty TargetType where
   pretty (TTyTVar tv) = pretty tv
   pretty (TTyRVar tv) = pretty tv
   pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t
-  pretty (TTySimple s xtors) = braces (pretty s <+> intercalateComma xtors' <+> pretty s)
-    where
-      xtors' = map (\(xt,args) -> pretty xt <> prettyTwice args) xtors
+  pretty (TTySimple s xtors) = braces (pretty s <+> intercalateComma (pretty <$> xtors) <+> pretty s)
 
 instance Pretty TypeScheme where
   pretty (TypeScheme [] ty) = pretty ty
