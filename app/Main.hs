@@ -324,7 +324,7 @@ all_options = [ type_option, show_option, help_option, def_option, save_option
 -- Repl Configuration
 ------------------------------------------------------------------------------
 
-completer :: String -> ReplInner [String]
+completer :: WordCompleter ReplInner
 completer s = do
   env <- gets replEnv
   return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env))
@@ -346,7 +346,7 @@ opts :: ReplOpts ReplInner
 opts = ReplOpts
   { banner           = repl_banner
   , command          = cmd
-  , options          = (\opt -> (option_name opt, option_cmd opt)) <$> all_options
+  , options          = (\opt -> (option_name opt, \s -> dontCrash ((option_cmd opt) s))) <$> all_options
   , prefix           = Just ':'
   , multilineCommand = Nothing
   , tabComplete      = Word0 completer
