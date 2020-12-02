@@ -76,16 +76,13 @@ instance Pretty TVar where
 instance Pretty RVar where
   pretty (MkRVar rv) = pretty rv
 
-instance Pretty DataCodata where
-  pretty Data = "+"
-  pretty Codata = "-"
-
 instance Pretty a => Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
 
 instance Pretty SimpleType where
   pretty (TyVar uvar) = pretty uvar
-  pretty (SimpleType s xtors) = braces (pretty s <+> intercalateComma (pretty <$> xtors) <+> pretty s)
+  pretty (SimpleType Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (SimpleType Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty TargetType where
   pretty (TTyUnion []) = "Bot"
@@ -97,7 +94,8 @@ instance Pretty TargetType where
   pretty (TTyTVar tv) = pretty tv
   pretty (TTyRVar tv) = pretty tv
   pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t
-  pretty (TTySimple s xtors) = braces (pretty s <+> intercalateComma (pretty <$> xtors) <+> pretty s)
+  pretty (TTySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TTySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty TypeScheme where
   pretty (TypeScheme [] ty) = pretty ty
