@@ -1,5 +1,5 @@
 module Parser
-  ( runEnvParser , termP, commandP, declarationP, environmentP, typeSchemeP, subtypingProblemP, bindingP, Parser)
+  ( runEnvParser , termP, commandP, declarationP, environmentP, typeSchemeP, subtypingProblemP, Parser)
   where
 
 import Text.Megaparsec hiding (State)
@@ -205,6 +205,7 @@ cnsDeclarationP = do
 
 typeDeclarationP :: Parser (Declaration ())
 typeDeclarationP = do
+  _ <- try $ lexeme (symbol "type")
   v <- typeIdentifierName
   _ <- symbol ":="
   t <- typeSchemeP
@@ -220,12 +221,12 @@ environmentP = (eof >> ask) <|> do
 -- Parsing for Repl
 ---------------------------------------------------------------------------------
 
-bindingP :: Parser (FreeVarName, Term ())
-bindingP = do
-  v <- typeIdentifierName
-  _ <- lexeme (symbol "<-")
-  t <- lexeme (termP Prd)
-  return (v,t)
+subtypingProblemP :: Parser (TypeScheme, TypeScheme)
+subtypingProblemP = do
+  t1 <- typeSchemeP
+  _ <- symbol "<:"
+  t2 <- typeSchemeP
+  return (t1, t2)
 
 ---------------------------------------------------------------------------------
 -- Type parsing
@@ -308,9 +309,3 @@ recType = do
   ty <- local (S.insert rv) typeR
   return $ TTyRec rv ty
 
-subtypingProblemP :: Parser (TypeScheme, TypeScheme)
-subtypingProblemP = do
-  t1 <- typeSchemeP
-  _ <- symbol "<:"
-  t2 <- typeSchemeP
-  return (t1, t2)

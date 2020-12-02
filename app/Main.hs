@@ -198,28 +198,6 @@ save_option = Option
   , option_help = ["Save generated type automata to disk as jpgs."]
   }
 
--- Bind
-
-bind_cmd :: String -> Repl ()
-bind_cmd s = do
-  env <- gets replEnv
-  (v,t) <- parseRepl s bindingP env
-  (typedTerm, css, uvars) <- fromRight (generateConstraints t)
-  typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) Prd)
-  let
-    typeAutDet0 = determinize typeAut
-    typeAutDet  = removeAdmissableFlowEdges typeAutDet0
-    minTypeAut  = minimize typeAutDet
-    resType     = autToType minTypeAut
-  modifyEnvironment (insertDecl (TypDecl v resType))
-
-
-bind_option :: Option
-bind_option = Option
-  { option_name = "bind"
-  , option_cmd = bind_cmd
-  , option_help = ["Infer the type of producer term, and add corresponding type declaration to environment."]
-  }
 
 -- Subsume
 
@@ -318,7 +296,7 @@ help_option = Option
 
 all_options :: [Option]
 all_options = [ type_option, show_option, help_option, def_option, save_option
-              , sub_option, bind_option, simplify_option, load_option, reload_option]
+              , sub_option, simplify_option, load_option, reload_option]
 
 ------------------------------------------------------------------------------
 -- Repl Configuration
