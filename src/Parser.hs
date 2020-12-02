@@ -145,15 +145,13 @@ xtorCall pc = do
   return $ XtorCall pc xt args
 
 patternMatch :: PrdCnsRep pc -> Parser (Term pc ())
-patternMatch PrdRep = braces $ do -- Comatch!
-  _ <- symbol "-"
-  cases <- singleCase `sepBy` comma
-  _ <- symbol "-"
+patternMatch PrdRep = do
+  _ <- symbol "comatch"
+  cases <- braces $ singleCase `sepBy` comma
   return $ Match PrdRep cases
-patternMatch CnsRep = braces $ do -- Match!
-  _ <- symbol "+"
-  cases <- singleCase `sepBy` comma
-  _ <- symbol "+"
+patternMatch CnsRep = do
+  _ <- symbol "match"
+  cases <- braces $ singleCase `sepBy` comma
   return $ Match CnsRep cases
 
 singleCase :: Parser (Case ())

@@ -86,7 +86,8 @@ instance Pretty a => Pretty (Term pc a) where
       parens (pretty i <> "," <> prdCns <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
-  pretty (Match s cases) = braces (pretty s <+> intercalateComma (pretty <$> cases) <+> pretty s)
+  pretty (Match PrdRep cases) = "comatch" <+> braces (intercalateComma (pretty <$> cases))
+  pretty (Match CnsRep cases) = "match"   <+> braces (intercalateComma (pretty <$> cases))
   pretty (MuAbs pc a cmd) =
     case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 

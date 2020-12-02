@@ -83,9 +83,9 @@ spec = do
   describe "Typecheck specific examples" $ do
     typecheckExample "\\(x)[k] => x >> k" "forall a. {- Ap(a)[a] -}"
     typecheckExample "S(Z)" "{+ S({+ Z +}) +}"
-    typecheckExample "\\(b,x,y)[k] => b >> {+ True => x >> k, False => y >> k +}"
+    typecheckExample "\\(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }"
                      "forall a. {- Ap({+True,False+}, a, a)[a] -}"
-    typecheckExample "\\(b,x,y)[k] => b >> {+ True => x >> k, False => y >> k +}"
+    typecheckExample "\\(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }"
                      "forall a b. {- Ap({+True,False+}, a, b)[a \\/ b] -}"
     typecheckExample "\\(f)[k] => (\\(x)[k] => f >> Ap(x)[mu*y. f >> Ap(y)[k]]) >> k"
                      "forall a b. {- Ap({- Ap(a \\/ b)[b] -})[{- Ap(a)[b] -}] -}"
