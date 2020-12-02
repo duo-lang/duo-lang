@@ -3,7 +3,6 @@ module ExampleSpec where
 import           Test.Hspec
 import           Control.Monad (forM_, when)
 
-import Data.Map (Map)
 import qualified Data.Map as M
 
 import Parser
