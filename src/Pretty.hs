@@ -25,12 +25,14 @@ intercalateX  x xs = hsep (intersperse x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = intercalateX ", " xs
 
-prettyTwice :: Pretty a => Twice [a] -> Doc ann
-prettyTwice (Twice xs ys) = xs' <> ys'
+prettyTwice' :: (Pretty a, Pretty b) => [a] -> [b] -> Doc ann
+prettyTwice' xs ys = xs' <> ys'
   where
     xs' = if null xs then mempty else parens   (intercalateComma (map pretty xs))
     ys' = if null ys then mempty else brackets (intercalateComma (map pretty ys))
 
+prettyTwice :: Pretty a => Twice [a] -> Doc ann
+prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
 instance Pretty UVar where
   pretty (MkUVar n) = "U" <> pretty n
@@ -48,6 +50,14 @@ instance Pretty Polarity where
 instance Pretty DataCodata where
   pretty Data = "+"
   pretty Codata = "-"
+-- TODO: HACK
+instance Pretty PrdCns where
+  pretty Prd = "+"
+  pretty Cns = "-"
+
+instance Pretty (PrdCnsRep pc) where
+  pretty PrdRep = "+"
+  pretty CnsRep = "-"
 
 instance Pretty XtorName where
   pretty xn = pretty (unXtorName xn)
@@ -65,17 +75,20 @@ instance Pretty Constraint where
 instance Pretty a => Pretty (Case a) where
   pretty MkCase{..} = pretty case_name <> prettyTwice case_args <+> "=>" <+> pretty case_cmd
 
-instance Pretty a => Pretty (Term a) where
-  pretty (BoundVar i pc j) =
+instance Pretty a => Pretty (XtorArgs a) where
+  pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
+
+instance Pretty a => Pretty (Term pc a) where
+  pretty (BoundVar pc (i,j)) =
     let
-      prdCns = case pc of {Prd -> "P"; Cns -> "C"}
+      prdCns = case pc of {PrdRep -> "P"; CnsRep -> "C"}
     in
       parens (pretty i <> "," <> prdCns <> "," <> pretty j)
-  pretty (FreeVar v a) = parens (pretty v <+> ":" <+> pretty a)
-  pretty (XtorCall _ xt args) = pretty xt <> prettyTwice args
+  pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
+  pretty (XtorCall _ xt args) = pretty xt <> pretty args
   pretty (Match s cases) = braces (pretty s <+> intercalateComma (pretty <$> cases) <+> pretty s)
   pretty (MuAbs pc a cmd) =
-    case pc of {Prd -> "mu~"; Cns -> "mu"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
+    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"

@@ -10,6 +10,11 @@ import Utils
 -- Type syntax
 ------------------------------------------------------------------------------
 
+data DataCodata
+  = Data
+  | Codata
+  deriving (Eq, Show, Ord)
+
 newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
 
 instance Show UVar where

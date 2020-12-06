@@ -38,7 +38,11 @@ common shared-build-depends
                      FlexibleContexts,
                      FlexibleInstances,
                      ScopedTypeVariables,
-                     RankNTypes
+                     RankNTypes,
+                     DataKinds,
+                     GADTs,
+                     KindSignatures,
+                     StandaloneDeriving
 
 library
   import: shared-build-depends
@@ -63,7 +67,7 @@ library
       Paths_algebraic_subtyping
   hs-source-dirs:
       src
-  ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans
+  ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors
 
 executable simple-exe
   import: shared-build-depends

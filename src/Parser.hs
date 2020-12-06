@@ -86,61 +86,75 @@ argsSig :: Int -> Int -> Twice [()]
 argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
-numToTerm :: Int -> Term ()
-numToTerm 0 = XtorCall Data (MkXtorName "Z") (Twice [] [])
-numToTerm n = XtorCall Data (MkXtorName "S") (Twice [numToTerm (n-1)] [])
+numToTerm :: Int -> Term Prd ()
+numToTerm 0 = XtorCall PrdRep (MkXtorName "Z") (MkXtorArgs [] [])
+numToTerm n = XtorCall PrdRep (MkXtorName "S") (MkXtorArgs [numToTerm (n-1)] [])
 
-termEnvP :: PrdCns -> Parser (Term ())
-termEnvP Prd = do
+termEnvP :: PrdCnsRep pc -> Parser (Term pc ())
+termEnvP PrdRep = do
   v <- lexeme (many alphaNumChar)
   prdEnv <- asks prdEnv
   Just t <- return $  M.lookup v prdEnv
   return t
-termEnvP Cns = do
+termEnvP CnsRep = do
   v <- lexeme (many alphaNumChar)
   cnsEnv <- asks cnsEnv
   Just t <- return $ M.lookup v cnsEnv
   return t
 
-termP :: PrdCns -> Parser (Term ())
-termP mode = try (parens (termP mode))
-  <|> xtorCall mode
-  <|> patternMatch
-  <|> muAbstraction
-  <|> try (termEnvP mode) -- needs to be tried, because the parser has to consume the string, before it checks
-                          -- if the variable is in the environment, which might cause it to fail
-  <|> freeVar
-  <|> numLit
-  <|> lambdaSugar
+termP :: PrdCnsRep pc -> Parser (Term pc ())
+termP pc = try (parens (termP pc))
+  <|> xtorCall pc
+  <|> patternMatch pc
+  <|> muAbstraction pc
+  <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
+                        -- if the variable is in the environment, which might cause it to fail
+  <|> freeVar pc
+  <|> numLit pc
+  <|> lambdaSugar pc
 
-freeVar :: Parser (Term ())
-freeVar = do
+freeVar :: PrdCnsRep pc -> Parser (Term pc ())
+freeVar pc = do
   v <- freeVarName
-  return (FreeVar v ())
+  return (FreeVar pc v ())
 
-numLit :: Parser (Term ())
-numLit = numToTerm . read <$> some numberChar
+numLit :: PrdCnsRep pc -> Parser (Term pc ())
+numLit CnsRep = empty
+numLit PrdRep = numToTerm . read <$> some numberChar
 
-lambdaSugar :: Parser (Term ())
-lambdaSugar = do
+lambdaSugar :: PrdCnsRep pc -> Parser (Term pc ())
+lambdaSugar CnsRep = empty
+lambdaSugar PrdRep= do
   _ <- lexeme (symbol "\\")
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match Codata [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  return $ Match PrdRep [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
-xtorCall :: PrdCns -> Parser (Term ())
-xtorCall mode = do
+-- | Parse two lists, the first in parentheses and the second in brackets.
+xtorArgsP :: Parser (XtorArgs ())
+xtorArgsP = do
+  xs <- option [] (parens   $ (termP PrdRep) `sepBy` comma)
+  ys <- option [] (brackets $ (termP CnsRep) `sepBy` comma)
+  return $ MkXtorArgs xs ys
+
+xtorCall :: PrdCnsRep pc -> Parser (Term pc ())
+xtorCall pc = do
   xt <- xtorName
-  args <- argListP (lexeme $ termP Prd) (lexeme $ termP Cns)
-  return $ XtorCall (case mode of { Prd -> Data ; Cns -> Codata }) xt args
+  args <- xtorArgsP
+  return $ XtorCall pc xt args
 
-patternMatch :: Parser (Term ())
-patternMatch = braces $ do
-  s <- dataOrCodata
+patternMatch :: PrdCnsRep pc -> Parser (Term pc ())
+patternMatch PrdRep = braces $ do -- Comatch!
+  _ <- symbol "-"
   cases <- singleCase `sepBy` comma
-  _ <- symbol (showDataCodata s)
-  return $ Match s cases
+  _ <- symbol "-"
+  return $ Match PrdRep cases
+patternMatch CnsRep = braces $ do -- Match!
+  _ <- symbol "+"
+  cases <- singleCase `sepBy` comma
+  _ <- symbol "+"
+  return $ Match CnsRep cases
 
 singleCase :: Parser (Case ())
 singleCase = do
@@ -153,30 +167,29 @@ singleCase = do
                 , case_cmd = commandClosing args cmd -- de brujin transformation
                 }
 
-muAbstraction :: Parser (Term ())
-muAbstraction = do
-  pc <- muIdentifier
+muAbstraction :: PrdCnsRep pc -> Parser (Term pc ())
+muAbstraction pc = do
+  _ <- symbol (case pc of { PrdRep -> "mu"; CnsRep -> "mu*" })
   v <- lexeme freeVarName
   _ <- dot
   cmd <- lexeme commandP
   return $ MuAbs pc () (commandClosingSingle pc v cmd)
-  where muIdentifier = (symbol "mu*" >> return Prd) <|> (symbol "mu" >> return Cns)
 
 commandP :: Parser (Command ())
 commandP = try (parens commandP) <|> doneCmd <|> printCmd <|> applyCmd
 
 applyCmd :: Parser (Command ())
 applyCmd = do
-  prd <- lexeme (termP Prd)
+  prd <- lexeme (termP PrdRep)
   _ <- lexeme (symbol ">>")
-  cns <- lexeme (termP Cns)
+  cns <- lexeme (termP CnsRep)
   return (Apply prd cns)
 
 doneCmd :: Parser (Command ())
 doneCmd = lexeme (symbol "Done") >> return Done
 
 printCmd :: Parser (Command ())
-printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP Prd))
+printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
@@ -190,7 +203,7 @@ prdDeclarationP = do
   _ <- try $ lexeme (symbol "prd")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
-  t <- lexeme (termP Prd)
+  t <- lexeme (termP PrdRep)
   _ <- symbol ";"
   return (PrdDecl v t)
 
@@ -199,7 +212,7 @@ cnsDeclarationP = do
   _ <- try $ lexeme (symbol "cns")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
-  t <- lexeme (termP Cns)
+  t <- lexeme (termP CnsRep)
   _ <- symbol ";"
   return (CnsDecl v t)
 
@@ -220,11 +233,11 @@ environmentP = (eof >> ask) <|> do
 -- Parsing for Repl
 ---------------------------------------------------------------------------------
 
-bindingP :: Parser (FreeVarName, Term ())
+bindingP :: Parser (FreeVarName, Term Prd ())
 bindingP = do
   v <- typeIdentifierName
   _ <- lexeme (symbol "<-")
-  t <- lexeme (termP Prd)
+  t <- lexeme (termP PrdRep)
   return (v,t)
 
 ---------------------------------------------------------------------------------
