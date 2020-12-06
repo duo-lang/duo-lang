@@ -47,7 +47,8 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
-      Eval
+      Eval.Substitution
+      Eval.Eval
       GenerateConstraints
       Parser
       Pretty

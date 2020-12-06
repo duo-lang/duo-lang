@@ -11,7 +11,7 @@ import Syntax.Terms
 import Syntax.Program
 import Syntax.TypeGraph
 import Utils
-import Eval (isClosed_term, isLc_term)
+import Eval.Substitution (isClosed_term, isLc_term)
 import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize

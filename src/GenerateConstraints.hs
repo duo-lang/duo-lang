@@ -9,7 +9,7 @@ import Control.Monad.Except
 import Syntax.Terms
 import Syntax.Types
 import Utils
-import Eval
+import Eval.Substitution
 
 {-
 Constraint generation is split in two phases:
