@@ -93,3 +93,6 @@ prd oneortwo := {- Ap(b)[k] => b >> {+ True => S(Z) >> k, False => S(S(Z)) >> k 
 prd admissabilityTest := {- Ap(f)[k] => True >> {+ True => {- Ap(x)[k] => f >> Ap(x)[k] -} >> k, False => f >> k +}-};
 
 prd implicationConstraintsTest1 := {- Ap(x) => x >> {+ A => Done, B => x >> {+ B => Done +} +} -};
+
+prd parserTest := {- Ap(x)[x] => x >> x -};
+prd parserTest2 := \(x)[x] => x >> x;

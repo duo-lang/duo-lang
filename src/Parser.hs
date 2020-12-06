@@ -173,7 +173,10 @@ muAbstraction pc = do
   v <- lexeme freeVarName
   _ <- dot
   cmd <- lexeme commandP
-  return $ MuAbs pc () (commandClosingSingle pc v cmd)
+  case pc of
+    PrdRep -> return $ MuAbs pc () (commandClosingSingle CnsRep v cmd)
+    CnsRep -> return $ MuAbs pc () (commandClosingSingle PrdRep v cmd)
+
 
 commandP :: Parser (Command ())
 commandP = try (parens commandP) <|> doneCmd <|> printCmd <|> applyCmd

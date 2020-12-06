@@ -11,7 +11,7 @@ import Syntax.Terms
 import Syntax.Program
 import Syntax.TypeGraph
 import Utils
-import Eval.Substitution (isClosed_term, isLc_term)
+import Eval.Substitution (isClosed_term, termLocallyClosed)
 import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize
@@ -74,7 +74,7 @@ spec = do
     env <- runIO getEnvironment
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-      it (name ++ " does not contain dangling deBruijn indizes") $ isLc_term term `shouldBe` True
+      it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` True
   describe "All examples typecheck" $ do
     env <- runIO getEnvironment
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
