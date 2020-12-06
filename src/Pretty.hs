@@ -44,7 +44,10 @@ instance Pretty XtorName where
   pretty xn = pretty (unXtorName xn)
 
 instance Pretty a => Pretty (Case a) where
-  pretty MkCase{..} = pretty case_name <> prettyTwice (fmap (const "-") case_args) <+> "=>" <+> pretty case_cmd
+  pretty MkCase{..} = pretty case_name <> prettyTwice (constString case_args) <+> "=>" <+> pretty case_cmd
+    where
+      constString :: Twice [a] -> Twice [String]
+      constString (Twice a b) = Twice (const "-" <$> a) (const "-" <$> b)
 
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
