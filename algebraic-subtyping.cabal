@@ -87,6 +87,7 @@ test-suite simple-test
   main-is: TestRunner.hs
   other-modules:
       ExampleSpec
+    , SubstitutionSpec
     , Paths_algebraic_subtyping
     , Spec
   hs-source-dirs:

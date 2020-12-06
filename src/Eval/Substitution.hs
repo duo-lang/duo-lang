@@ -8,6 +8,7 @@ module Eval.Substitution
   -- Locally Closed Check
   , termLocallyClosed
   , commandLocallyClosed
+  , checkIfBound
   -- Free Variables
   , isClosed_term
   ) where
@@ -122,7 +123,7 @@ commandClosingSingle CnsRep v = commandClosing (Twice [] [v])
 ---------------------------------------------------------------------------------
 
 checkIfBound :: [Twice [a]] -> PrdCnsRep pc -> Index -> Bool
-checkIfBound env rep  (i, j) | i < length env - 1 = False
+checkIfBound env rep  (i, j) | i >= length env = False
                              | otherwise = checkIfBound' (env !! i) rep j
 
 checkIfBound' :: Twice [a] -> PrdCnsRep pc -> Int -> Bool
