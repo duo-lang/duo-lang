@@ -135,8 +135,8 @@ termLocallyClosedRec env (BoundVar pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = True
 termLocallyClosedRec env (XtorCall _ _ (MkXtorArgs prds cnss)) = all (termLocallyClosedRec env) prds && all (termLocallyClosedRec env) cnss
 termLocallyClosedRec env (Match _ cases) = all (\MkCase { case_cmd, case_args } -> commandLocallyClosedRec (twiceMap (fmap (const ())) (fmap (const ())) case_args : env) case_cmd) cases
-termLocallyClosedRec env (MuAbs PrdRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
-termLocallyClosedRec env (MuAbs CnsRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
+termLocallyClosedRec env (MuAbs PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
+termLocallyClosedRec env (MuAbs CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
 
 commandLocallyClosedRec :: [Twice [()]] -> Command a -> Bool
 commandLocallyClosedRec _ Done = True
