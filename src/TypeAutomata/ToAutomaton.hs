@@ -35,8 +35,8 @@ typeToAutPol :: Polarity -> TypeScheme -> Either String TypeAutDet
 typeToAutPol pol (TypeScheme tvars ty) =
   let
     tvarMap = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
-    initGr = mkGraph [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Pos, Neg],
-                                                               let offset = case pol of {Pos -> 0; Neg -> 1}] []
+    initGr = mkGraph [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
+                                                               let offset = case pol of {Prd -> 0; Cns -> 1}] []
     flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
   in
     case runExcept (runReaderT (runReaderT (runStateT (typeToAutM pol ty) initGr) M.empty) tvarMap) of
@@ -49,9 +49,9 @@ typeToAutPol pol (TypeScheme tvars ty) =
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
 typeToAut :: TypeScheme -> Either String TypeAutDet
-typeToAut ty = case typeToAutPol Pos ty of
+typeToAut ty = case typeToAutPol Prd ty of
   Right res -> Right res
-  Left _ -> case typeToAutPol Neg ty of
+  Left _ -> case typeToAutPol Cns ty of
     Right res -> Right res
     Left err -> Left err
 
@@ -59,27 +59,27 @@ typeToAutM :: Polarity -> TargetType -> TypeToAutM Node
 typeToAutM pol (TTyTVar tv) = do
   tvarEnv <- lift $ lift ask
   case M.lookup tv tvarEnv of
-    Just (i,j) -> return $ case pol of {Pos -> i; Neg -> j}
+    Just (i,j) -> return $ case pol of {Prd -> i; Cns -> j}
     Nothing -> throwError $ "unknown free type variable: " ++ (tvar_name tv)
 typeToAutM pol (TTyRVar rv) = do
   rvarEnv <- ask
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ "covariance rule violated: " ++ (rvar_name rv)
-typeToAutM Pos (TTyUnion tys) = do
+typeToAutM Prd (TTyUnion tys) = do
   newNode <- head . newNodes 1 <$> get
-  modify (insNode (newNode, (Pos, emptyHeadCons)))
-  ns <- mapM (typeToAutM Pos) tys
+  modify (insNode (newNode, (Prd, emptyHeadCons)))
+  ns <- mapM (typeToAutM Prd) tys
   modify (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Neg (TTyUnion _) = throwError "typeToAutM: type has wrong polarity."
-typeToAutM Neg (TTyInter tys) = do
+typeToAutM Cns (TTyUnion _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Cns (TTyInter tys) = do
   newNode <- head . newNodes 1 <$> get
-  modify (insNode (newNode, (Neg, emptyHeadCons)))
-  ns <- mapM (typeToAutM Neg) tys
+  modify (insNode (newNode, (Cns, emptyHeadCons)))
+  ns <- mapM (typeToAutM Cns) tys
   modify (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Pos (TTyInter _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Prd (TTyInter _) = throwError "typeToAutM: type has wrong polarity."
 typeToAutM pol (TTyRec rv ty) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (pol, emptyHeadCons)))

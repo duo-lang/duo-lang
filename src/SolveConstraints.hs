@@ -29,8 +29,8 @@ runSolverM :: SolverM a -> SolverState -> Either String (a, SolverState)
 runSolverM m initSt = runExcept (runStateT m initSt)
 
 uvarToNodeId :: UVar -> Polarity -> Node
-uvarToNodeId uv Pos = 2 * uvar_id uv
-uvarToNodeId uv Neg  = 2 * uvar_id uv + 1
+uvarToNodeId uv Prd = 2 * uvar_id uv
+uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 
 nodeIdToUVar :: Node -> UVar
 nodeIdToUVar n = MkUVar (n `div` 2)
@@ -121,26 +121,26 @@ solve (cs:css) = do
       modifyCache (cs:)
       case cs of
         (SubType (TyVar uv1) (TyVar uv2)) -> do
-          let (uv1Neg, uv1Pos) = (uvarToNodeId uv1 Neg, uvarToNodeId uv1 Pos)
-          let (uv2Neg, uv2Pos) = (uvarToNodeId uv2 Neg, uvarToNodeId uv2 Pos)
-          lbs <- mapM graphToType (epsilonSuccs gr uv1Pos)
-          ubs <- mapM graphToType (epsilonSuccs gr uv2Neg)
-          modifyGraph (insEdge (uv2Pos,uv1Pos,Nothing))
-          modifyGraph (insEdge (uv1Neg,uv2Neg,Nothing))
+          let (uv1Cns, uv1Prd) = (uvarToNodeId uv1 Cns, uvarToNodeId uv1 Prd)
+          let (uv2Cns, uv2Prd) = (uvarToNodeId uv2 Cns, uvarToNodeId uv2 Prd)
+          lbs <- mapM graphToType (epsilonSuccs gr uv1Prd)
+          ubs <- mapM graphToType (epsilonSuccs gr uv2Cns)
+          modifyGraph (insEdge (uv2Prd,uv1Prd,Nothing))
+          modifyGraph (insEdge (uv1Cns,uv2Cns,Nothing))
           let newCss = [SubType lb ub | lb <- lbs, ub <- ubs]
           solve (newCss ++ css)
         (SubType (TyVar uv) ub) -> do
-          let (uvNeg, uvPos) = (uvarToNodeId uv Neg, uvarToNodeId uv Pos)
-          ubNode <- typeToGraph Neg ub
-          modifyGraph (insEdge (uvNeg,ubNode,Nothing))
-          lbs <- mapM graphToType (epsilonSuccs gr uvPos)
+          let (uvCns, uvPrd) = (uvarToNodeId uv Cns, uvarToNodeId uv Prd)
+          ubNode <- typeToGraph Cns ub
+          modifyGraph (insEdge (uvCns,ubNode,Nothing))
+          lbs <- mapM graphToType (epsilonSuccs gr uvPrd)
           let newCss = [SubType lb ub | lb <- lbs]
           solve (newCss ++ css)
         (SubType lb (TyVar uv)) -> do
-          let (uvNeg, uvPos) = (uvarToNodeId uv Neg, uvarToNodeId uv Pos)
-          lbNode <- typeToGraph Pos lb
-          modifyGraph (insEdge (uvPos,lbNode,Nothing))
-          ubs <- mapM graphToType (epsilonSuccs gr uvNeg)
+          let (uvCns, uvPrd) = (uvarToNodeId uv Cns, uvarToNodeId uv Prd)
+          lbNode <- typeToGraph Prd lb
+          modifyGraph (insEdge (uvPrd,lbNode,Nothing))
+          ubs <- mapM graphToType (epsilonSuccs gr uvCns)
           let newCss = [SubType lb ub | ub <- ubs]
           solve (newCss ++ css)
         _ -> do
@@ -152,9 +152,9 @@ solve (cs:css) = do
 solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
 solveConstraints css uvs ty pc =
   let
-    uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Pos,Neg]]
-    flowEdges = [(uvarToNodeId uv Neg, uvarToNodeId uv Pos) | uv <- uvs]
-    startPol = case pc of {Prd -> Pos; Cns -> Neg}
+    uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Prd,Cns]]
+    flowEdges = [(uvarToNodeId uv Cns, uvarToNodeId uv Prd) | uv <- uvs]
+    startPol = pc
     initState0 = SolverState
       { sst_gr = mkGraph uvNodes []
       , sst_cache = [] }

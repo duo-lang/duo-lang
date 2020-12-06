@@ -20,11 +20,11 @@ newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
 instance Show UVar where
   show (MkUVar i) = "U" ++ show i
 
-data Polarity = Pos | Neg deriving (Show,Eq,Ord)
+type Polarity = PrdCns
 
 switchPolarity :: Polarity -> Polarity
-switchPolarity Neg = Pos
-switchPolarity Pos = Neg
+switchPolarity Cns = Prd
+switchPolarity Prd = Cns
 
 applyVariance :: DataCodata -> PrdCns -> (Polarity -> Polarity)
 applyVariance Data Prd = id
@@ -78,8 +78,8 @@ alphaRenameTypeScheme tvs (TypeScheme tvs' ty) = TypeScheme (map (alphaRenameTVa
 
 unionOrInter :: Polarity -> [TargetType] -> TargetType
 unionOrInter _ [t] = t
-unionOrInter Pos tys = TTyUnion tys
-unionOrInter Neg tys = TTyInter tys
+unionOrInter Prd tys = TTyUnion tys
+unionOrInter Cns tys = TTyInter tys
 
 freeTypeVars' :: TargetType -> [TVar]
 freeTypeVars' (TTyTVar tv) = [tv]

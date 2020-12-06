@@ -43,10 +43,6 @@ instance Pretty TVar where
 instance Pretty RVar where
   pretty (MkRVar rv) = pretty rv
 
-instance Pretty Polarity where
-  pretty Neg = "N"
-  pretty Pos = "P"
-
 instance Pretty DataCodata where
   pretty Data = "+"
   pretty Codata = "-"
@@ -151,7 +147,7 @@ typeAutParams :: GraphvizParams Node NodeLabel (Maybe EdgeLabel) () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,(pol,hc)) ->
     [ style filled
-    , fillColor $ case pol of {Pos -> White; Neg -> Gray}
+    , fillColor $ case pol of {Prd -> White; Cns -> Gray}
     , textLabel (pack (ppPrint (hc :: HeadCons)))]
   , fmtEdge = \(_,_,elM) -> case elM of {Nothing -> [arrowTo dotArrow]; Just el -> [textLabel $ pack (ppPrint (el :: EdgeLabel))] }
   }
