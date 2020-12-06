@@ -21,8 +21,10 @@ deriving instance Show (PrdCnsRep pc)
 -- Names
 ---------------------------------------------------------------------------------
 
+data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
+
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
-data XtorName = MkXtorName { unXtorName :: String } deriving (Eq, Ord, Show)
+data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: String } deriving (Eq, Ord, Show)
 
 -- | Name of a free variable. Starts with a lowercase letter.
 type FreeVarName = String

@@ -49,7 +49,7 @@ freeVarName :: (MonadParsec Void String m) => m FreeVarName
 freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
 
 xtorName :: (MonadParsec Void String m) => m XtorName
-xtorName = MkXtorName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+xtorName = MkXtorName Structural <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
 typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
@@ -87,8 +87,8 @@ argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
 numToTerm :: Int -> Term Prd ()
-numToTerm 0 = XtorCall PrdRep (MkXtorName "Z") (MkXtorArgs [] [])
-numToTerm n = XtorCall PrdRep (MkXtorName "S") (MkXtorArgs [numToTerm (n-1)] [])
+numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
+numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 termEnvP :: PrdCnsRep pc -> Parser (Term pc ())
 termEnvP PrdRep = do
@@ -129,7 +129,7 @@ lambdaSugar PrdRep= do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match PrdRep [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  return $ Match PrdRep [MkCase (MkXtorName Structural "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs ())
