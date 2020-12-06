@@ -196,7 +196,7 @@ printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
 ---------------------------------------------------------------------------------
 
 declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> typeDeclarationP
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> typeDeclarationP <|> dataDeclP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
@@ -239,6 +239,13 @@ bindingP = do
   _ <- lexeme (symbol "<-")
   t <- lexeme (termP PrdRep)
   return (v,t)
+
+subtypingProblemP :: Parser (TypeScheme, TypeScheme)
+subtypingProblemP = do
+  t1 <- typeSchemeP
+  _ <- symbol "<:"
+  t2 <- typeSchemeP
+  return (t1, t2)
 
 ---------------------------------------------------------------------------------
 -- Type parsing
@@ -321,9 +328,40 @@ recType = do
   ty <- local (S.insert rv) typeR
   return $ TTyRec rv ty
 
-subtypingProblemP :: Parser (TypeScheme, TypeScheme)
-subtypingProblemP = do
-  t1 <- typeSchemeP
-  _ <- symbol "<:"
-  t2 <- typeSchemeP
-  return (t1, t2)
+---------------------------------------------------------------------------------
+-- Nominal type declaration parser
+---------------------------------------------------------------------------------
+
+typeNameP :: Parser TypeName
+typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+
+
+simpleTypeP :: Parser SimpleType
+simpleTypeP = NominalType <$> typeNameP
+
+dataDeclP :: Parser (Declaration ())
+dataDeclP = DataDecl <$> dataDeclP'
+  where
+    dataDeclP' :: Parser DataDecl
+    dataDeclP' = do
+      dataCodata <- dataCodataDeclP
+      tn <- typeNameP
+      xtors <- braces $ xtorDeclP `sepBy` comma
+      _ <- symbol ";"
+      return NominalDecl
+        { data_name = tn
+        , data_polarity = dataCodata
+        , data_xtors = xtors
+        }
+
+    dataCodataDeclP :: Parser DataCodata
+    dataCodataDeclP = (symbol "data" >> return Data) <|> (symbol "codata" >> return Codata)
+
+    xtorDeclP :: Parser (XtorSig SimpleType)
+    xtorDeclP = do
+      xt <- xtorName
+      args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
+      return (xt, args)
+
+
+

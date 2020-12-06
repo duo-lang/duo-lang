@@ -16,6 +16,7 @@ data Declaration a
   = PrdDecl FreeVarName (Term Prd a)
   | CnsDecl FreeVarName (Term Cns a)
   | TypDecl TypeIdentifierName TypeScheme
+  | DataDecl DataDecl
   deriving (Show)
 
 data Environment = Environment
@@ -42,3 +43,4 @@ insertDecl :: Declaration () -> Environment -> Environment
 insertDecl (PrdDecl v t) env@Environment { prdEnv } = env { prdEnv = M.insert v t prdEnv }
 insertDecl (CnsDecl v t) env@Environment { cnsEnv } = env { cnsEnv = M.insert v t cnsEnv }
 insertDecl (TypDecl n t) env@Environment { typEnv } = env { typEnv = M.insert n t typEnv }
+insertDecl (DataDecl _) env = env

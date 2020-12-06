@@ -104,3 +104,13 @@ freeTypeVars = nub . freeTypeVars'
 generalize :: TargetType -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
+------------------------------------------------------------------------------
+-- Data Type declarations
+------------------------------------------------------------------------------
+
+data DataDecl = NominalDecl
+  { data_name :: TypeName
+  , data_polarity :: DataCodata
+  , data_xtors :: [XtorSig SimpleType]
+  }
+  deriving (Show, Eq)
