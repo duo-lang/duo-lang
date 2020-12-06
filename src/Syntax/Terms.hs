@@ -6,15 +6,16 @@ import Utils
 -- Tags
 ---------------------------------------------------------------------------------
 
-data DataCodata
-  = Data
-  | Codata
-  deriving (Eq, Show, Ord)
-
 data PrdCns
   = Prd
   | Cns
   deriving (Eq, Show, Ord)
+
+-- | Singleton Type for PrdCns
+data PrdCnsRep pc where
+  PrdRep :: PrdCnsRep Prd
+  CnsRep :: PrdCnsRep Cns
+deriving instance Show (PrdCnsRep pc)
 
 ---------------------------------------------------------------------------------
 -- Names
@@ -30,32 +31,36 @@ type FreeVarName = String
 -- Terms
 ---------------------------------------------------------------------------------
 
-type XtorArgs a = Twice [Term a]
+data XtorArgs a = MkXtorArgs { prdArgs :: [Term Prd a]
+                             , cnsArgs :: [Term Cns a]
+                             }
+                  deriving (Show)
 
 data Case a = MkCase
   { case_name :: XtorName
   , case_args :: Twice [a]
   , case_cmd  :: Command a
-  } deriving (Show, Eq)
+  } deriving (Show)
 
-data Term a =
-    BoundVar Int PrdCns Int -- de bruijn indices
-  | FreeVar FreeVarName a
-  | XtorCall DataCodata XtorName (XtorArgs a)
-  | Match DataCodata [Case a]
-  | MuAbs PrdCns a (Command a)
-  -- The PrdOrCns parameter describes the type of variable that is being bound by the mu.
-  -- If a mu binds a producer, it is itself a consumer and vice versa.
-  -- MuAbs Cns == \mu, MuAbs Prd == \tilde{\mu}.
-  deriving (Eq,Show)
+-- | Two-level de Bruijn indices.
+type Index = (Int, Int)
+
+data Term (pc :: PrdCns) a where
+  BoundVar :: PrdCnsRep pc -> Index -> Term pc a
+  FreeVar  :: PrdCnsRep pc -> FreeVarName -> a -> Term pc a
+  XtorCall :: PrdCnsRep pc -> XtorName -> XtorArgs a -> Term pc a
+  Match    :: PrdCnsRep pc -> [Case a] -> Term pc a
+  MuAbs    :: PrdCnsRep pc -> a -> Command a -> Term pc a
+  -- The PrdCns parameter describes the result of the abstraction!
+deriving instance Show a => Show (Term pc a)
 
 ---------------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------------
 
 data Command a
-  = Apply (Term a) (Term a)
-  | Print (Term a)
+  = Apply (Term Prd a) (Term Cns a)
+  | Print (Term Prd a)
   | Done
-  deriving (Eq,Show)
+  deriving (Show)
 

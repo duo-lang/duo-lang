@@ -10,8 +10,13 @@ import Utils
 -- Type syntax
 ------------------------------------------------------------------------------
 
--- | The name of a nominally declared type, e.g. "Nat"
+
 data TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show)
+
+data DataCodata
+  = Data
+  | Codata
+  deriving (Eq, Show, Ord)
 
 newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
 

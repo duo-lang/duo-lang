@@ -93,7 +93,7 @@ data Option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  t <- parseRepl s (termP Prd) env
+  t <- parseRepl s (termP PrdRep) env
   (typedTerm, css, uvars) <- fromRight $ generateConstraints t
   typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
   let
@@ -117,7 +117,7 @@ show_cmd s = do
   env <- gets replEnv
   case runEnvParser typeSchemeP env s of
     Right ty -> prettyRepl ty
-    Left err1 -> case runEnvParser (termP Prd) env s of
+    Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> prettyRepl t
       Left err2 -> prettyRepl $ unlines [ "Type parsing error:"
                                         , ppPrint err1
@@ -158,7 +158,7 @@ save_cmd s = do
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runEnvParser (termP Prd) env s of
+    Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> do
         (typedTerm, css, uvars) <- fromRight (generateConstraints t)
         typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
