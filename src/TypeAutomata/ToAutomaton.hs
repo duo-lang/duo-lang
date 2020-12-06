@@ -26,12 +26,12 @@ import Data.Graph.Inductive.Graph
 -- Target types -> Type automata
 --------------------------------------------------------------------------
 
-type RVarEnv = Map (Polarity, RVar) Node
+type RVarEnv = Map (PrdCns, RVar) Node
 type TVarEnv = Map TVar (Node, Node)
 type TypeToAutM a = StateT TypeGrEps (ReaderT RVarEnv (ReaderT TVarEnv (Except String))) a
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: Polarity -> TypeScheme -> Either String TypeAutDet
+typeToAutPol :: PrdCns -> TypeScheme -> Either String TypeAutDet
 typeToAutPol pol (TypeScheme tvars ty) =
   let
     tvarMap = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
@@ -55,7 +55,7 @@ typeToAut ty = case typeToAutPol Prd ty of
     Right res -> Right res
     Left err -> Left err
 
-typeToAutM :: Polarity -> TargetType -> TypeToAutM Node
+typeToAutM :: PrdCns -> TargetType -> TypeToAutM Node
 typeToAutM pol (TTyTVar tv) = do
   tvarEnv <- lift $ lift ask
   case M.lookup tv tvarEnv of

@@ -20,16 +20,14 @@ newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
 instance Show UVar where
   show (MkUVar i) = "U" ++ show i
 
-type Polarity = PrdCns
+switchPrdCns :: PrdCns -> PrdCns
+switchPrdCns Cns = Prd
+switchPrdCns Prd = Cns
 
-switchPolarity :: Polarity -> Polarity
-switchPolarity Cns = Prd
-switchPolarity Prd = Cns
-
-applyVariance :: DataCodata -> PrdCns -> (Polarity -> Polarity)
+applyVariance :: DataCodata -> PrdCns -> (PrdCns -> PrdCns)
 applyVariance Data Prd = id
-applyVariance Data Cns = switchPolarity
-applyVariance Codata Prd = switchPolarity
+applyVariance Data Cns = switchPrdCns
+applyVariance Codata Prd = switchPrdCns
 applyVariance Codata Cns = id
 
 type XtorSig a = (XtorName, Twice [a])
@@ -76,7 +74,7 @@ data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType } de
 alphaRenameTypeScheme :: [TVar] -> TypeScheme -> TypeScheme
 alphaRenameTypeScheme tvs (TypeScheme tvs' ty) = TypeScheme (map (alphaRenameTVar tvs) tvs') (alphaRenameTargetType tvs ty)
 
-unionOrInter :: Polarity -> [TargetType] -> TargetType
+unionOrInter :: PrdCns -> [TargetType] -> TargetType
 unionOrInter _ [t] = t
 unionOrInter Prd tys = TTyUnion tys
 unionOrInter Cns tys = TTyInter tys

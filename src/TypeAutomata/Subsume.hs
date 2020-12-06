@@ -16,7 +16,6 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Syntax.Terms (PrdCns(..))
-import Syntax.Types
 import Syntax.TypeGraph
 
 import TypeAutomata.Determinize (determinize)

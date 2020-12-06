@@ -28,7 +28,7 @@ type SolverM a = (StateT SolverState (Except String)) a
 runSolverM :: SolverM a -> SolverState -> Either String (a, SolverState)
 runSolverM m initSt = runExcept (runStateT m initSt)
 
-uvarToNodeId :: UVar -> Polarity -> Node
+uvarToNodeId :: UVar -> PrdCns -> Node
 uvarToNodeId uv Prd = 2 * uvar_id uv
 uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 
@@ -45,7 +45,7 @@ modifyGraph f = modify (\(SolverState gr cache) -> SolverState (f gr) cache)
 modifyCache :: ([Constraint] -> [Constraint]) -> SolverM ()
 modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 
-typeToGraph :: Polarity -> SimpleType -> SolverM Node
+typeToGraph :: PrdCns -> SimpleType -> SolverM Node
 typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
 typeToGraph pol (SimpleType s xtors) = do
   newNodeId <- head . newNodes 1 . sst_gr <$> get
