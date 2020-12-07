@@ -35,7 +35,8 @@ applyVariance Data Cns = switchPolarity
 applyVariance Codata Prd = switchPolarity
 applyVariance Codata Cns = id
 
-type XtorSig a = (XtorName, Twice [a])
+data XtorSig a = MkXtorSig { sig_name :: XtorName, sig_args :: Twice [a] }
+  deriving (Show, Eq)
 
 data SimpleType =
     TyVar UVar
@@ -74,8 +75,10 @@ alphaRenameTargetType _   (TTyRVar rv)   = TTyRVar rv
 alphaRenameTargetType tvs (TTyUnion tys) = TTyUnion (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyInter tys) = TTyInter (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyRec rv ty) = TTyRec rv (alphaRenameTargetType tvs ty)
-alphaRenameTargetType tvs (TTySimple s sigs) = TTySimple s $ map (bimap id (twiceMap (map (alphaRenameTargetType tvs)) (map (alphaRenameTargetType tvs)))) sigs
 alphaRenameTargetType _ (TTyNominal tn) = TTyNominal tn
+alphaRenameTargetType tvs (TTySimple s sigs) = TTySimple s $ map renameXtorSig  sigs
+  where
+    renameXtorSig (MkXtorSig xt args) = MkXtorSig xt (twiceMap (map (alphaRenameTargetType tvs)) (map (alphaRenameTargetType tvs)) args)
 
 data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType } deriving (Show, Eq)
 
@@ -94,8 +97,11 @@ freeTypeVars' (TTyRVar _)  = []
 freeTypeVars' (TTyUnion ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyInter ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
-freeTypeVars' (TTySimple _ xtors) = concat (map (\(_,Twice prdTypes cnsTypes) -> concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)) xtors)
 freeTypeVars' (TTyNominal _) = []
+freeTypeVars' (TTySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+  where
+    freeTypeVarsXtorSig (MkXtorSig _ (Twice prdTypes cnsTypes)) =
+      concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)
 
 freeTypeVars :: TargetType -> [TVar]
 freeTypeVars = nub . freeTypeVars'
