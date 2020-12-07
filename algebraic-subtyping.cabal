@@ -47,7 +47,8 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
-      Eval
+      Eval.Substitution
+      Eval.Eval
       GenerateConstraints
       Parser
       Pretty
@@ -86,6 +87,7 @@ test-suite simple-test
   main-is: TestRunner.hs
   other-modules:
       ExampleSpec
+    , SubstitutionSpec
     , Paths_algebraic_subtyping
     , Spec
   hs-source-dirs:

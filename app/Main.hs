@@ -16,7 +16,7 @@ import Syntax.TypeGraph
 import Syntax.Program
 import Parser
 import Pretty
-import Eval hiding (Environment)
+import Eval.Eval
 import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize
