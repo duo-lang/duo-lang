@@ -97,8 +97,10 @@ prd implicationConstraintsTest1 := comatch { 'Ap(x) => x >> match { 'A => Done, 
 prd parserTest := comatch { 'Ap(x)[x] => x >> x };
 prd parserTest2 := \(x)[x] => x >> x;
 
-## Data Definitions
+## Nominal Types
 
-data Bool { Zero, Succ };
+data Bool { TT, FF };
+data Nat { Zero, Succ(Nat) };
 codata NatBoolFun { Ap(Nat)[Bool] };
 
+prd nominalNot := \(x)[k] => x >> match { TT => FF >> k, FF => TT >> k };

@@ -106,8 +106,12 @@ termEnvP CnsRep = do
 
 termP :: PrdCnsRep pc -> Parser (Term pc ())
 termP pc = try (parens (termP pc))
-  <|> xtorCall pc
-  <|> patternMatch pc
+  <|> xtorCall Structural pc
+  <|> xtorCall Nominal pc
+  -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
+  -- infer a structural type, not a nominal one.
+  <|> try (patternMatch Structural pc) 
+  <|> try (patternMatch Nominal pc)
   <|> muAbstraction pc
   <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
                         -- if the variable is in the environment, which might cause it to fail
@@ -140,25 +144,25 @@ xtorArgsP = do
   ys <- option [] (brackets $ (termP CnsRep) `sepBy` comma)
   return $ MkXtorArgs xs ys
 
-xtorCall :: PrdCnsRep pc -> Parser (Term pc ())
-xtorCall pc = do
-  xt <- xtorName Structural
+xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc ())
+xtorCall ns pc = do
+  xt <- xtorName ns
   args <- xtorArgsP
   return $ XtorCall pc xt args
 
-patternMatch :: PrdCnsRep pc -> Parser (Term pc ())
-patternMatch PrdRep = do
+patternMatch :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc ())
+patternMatch ns PrdRep = do
   _ <- symbol "comatch"
-  cases <- braces $ singleCase `sepBy` comma
-  return $ Match PrdRep Structural cases
-patternMatch CnsRep = do
+  cases <- braces $ singleCase ns `sepBy` comma
+  return $ Match PrdRep ns cases
+patternMatch ns CnsRep = do
   _ <- symbol "match"
-  cases <- braces $ singleCase `sepBy` comma
-  return $ Match CnsRep Structural cases
+  cases <- braces $ singleCase ns `sepBy` comma
+  return $ Match CnsRep ns cases
 
-singleCase :: Parser (Case ())
-singleCase = do
-  xt <- lexeme (xtorName Structural)
+singleCase :: NominalStructural -> Parser (Case ())
+singleCase ns = do
+  xt <- lexeme (xtorName ns)
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- symbol "=>"
   cmd <- lexeme commandP

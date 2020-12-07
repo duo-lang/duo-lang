@@ -41,7 +41,8 @@ prettyTwice (Twice xs ys) = prettyTwice' xs ys
 ---------------------------------------------------------------------------------
 
 instance Pretty XtorName where
-  pretty xn = pretty (unXtorName xn)
+  pretty (MkXtorName Structural xt) = "'" <> pretty xt
+  pretty (MkXtorName Nominal    xt) = pretty xt
 
 instance Pretty a => Pretty (Case a) where
   pretty MkCase{..} = pretty case_name <> prettyTwice (constString case_args) <+> "=>" <+> pretty case_cmd
