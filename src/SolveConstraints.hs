@@ -20,7 +20,7 @@ import Pretty
 import TypeAutomata.Determinize (removeEpsilonEdges, removeIslands)
 
 data SolverState = SolverState
-  { sst_gr :: TypeGrEps
+  { sst_gr :: TypeAutEps
   , sst_cache :: [Constraint] }
 
 type SolverM a = (StateT SolverState (Except String)) a
@@ -40,7 +40,7 @@ typeToHeadCons (TyVar _) = emptyHeadCons
 typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> SolverM ()
-modifyGraph f = modify (\(SolverState gr cache) -> SolverState (f gr) cache)
+modifyGraph f = modify (\(SolverState aut@TypeAut { ta_gr } cache) -> SolverState aut { ta_gr = f ta_gr } cache)
 
 modifyCache :: ([Constraint] -> [Constraint]) -> SolverM ()
 modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
@@ -48,7 +48,7 @@ modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 typeToGraph :: Polarity -> SimpleType -> SolverM Node
 typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
 typeToGraph pol (SimpleType s xtors) = do
-  newNodeId <- head . newNodes 1 . sst_gr <$> get
+  newNodeId <- gets (head . newNodes 1 . ta_gr . sst_gr)
   let hc = typeToHeadCons (SimpleType s xtors)
   modifyGraph (insNode (newNodeId, (pol, hc)))
   forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
@@ -62,7 +62,7 @@ typeToGraph pol (SimpleType s xtors) = do
 
 getNodeLabel :: Node -> SolverM NodeLabel
 getNodeLabel i = do
-  gr <- sst_gr <$> get
+  gr <- gets (ta_gr . sst_gr)
   case lab gr i of
     Just x -> return x
     Nothing -> throwError "graphToType: node doesn't exist in graph"
@@ -70,7 +70,7 @@ getNodeLabel i = do
 -- | At the given node 'i', get all outgoing Edges which are annotated with the XtorName 'xt' and reconstruct the corresponding xtorSig.
 getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorSig SimpleType)
 getXtorSig i dc xt = do
-  gr <- sst_gr <$> get
+  gr <- gets (ta_gr . sst_gr)
   let outs = out gr i
   let prdNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol dc' xt' Prd j)) <- outs, xt == xt', dc == dc']
   prdTypes <- mapM graphToType prdNodes
@@ -122,7 +122,7 @@ epsilonSuccs gr i = [j | (_,j,Nothing) <- out gr i]
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
-  SolverState gr cache <- get
+  SolverState (TypeAut {ta_gr = gr}) cache <- get
   if cs `elem` cache
     then solve css
     else do
@@ -171,18 +171,13 @@ mkInitialGraph uvs =
 solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
 solveConstraints css uvs ty pc =
   let
-    TypeAut { ta_gr, ta_flowEdges } = mkInitialGraph uvs
     initState0 = SolverState
-      { sst_gr = ta_gr
+      { sst_gr = mkInitialGraph uvs
       , sst_cache = [] }
     -- initializes the graph with the given simple type
     Right (start, initState1) = runSolverM (typeToGraph (case pc of {Prd -> Pos; Cns -> Neg}) ty) initState0
   in
     case runSolverM (solve css) initState1 of
       Left err -> Left (SolveConstraintsError err)
-      Right (_,SolverState gr _) ->
-        let
-          aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = ta_flowEdges }
-        in
-          Right $ (removeIslands . removeEpsilonEdges) aut
+      Right (_,SolverState aut _) -> Right $ (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
 
