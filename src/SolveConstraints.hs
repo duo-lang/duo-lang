@@ -147,25 +147,34 @@ solve (cs:css) = do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
+mkInitialGraph :: [UVar] -> TypeAutEps
+mkInitialGraph uvs =
+  let
+    uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Pos,Neg]]
+    flowEdges = [(uvarToNodeId uv Neg, uvarToNodeId uv Pos) | uv <- uvs]
+  in
+    TypeAut { ta_gr = mkGraph uvNodes []
+            , ta_starts = []
+            , ta_flowEdges = flowEdges
+            }
+
 -- PrdCns argument is needed to determine polarity of start state:
 -- Prd means positive start state, Cns means negative start state
 solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
 solveConstraints css uvs ty pc =
   let
-    uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Pos,Neg]]
-    flowEdges = [(uvarToNodeId uv Neg, uvarToNodeId uv Pos) | uv <- uvs]
-    startPol = case pc of {Prd -> Pos; Cns -> Neg}
+    TypeAut { ta_gr, ta_flowEdges } = mkInitialGraph uvs
     initState0 = SolverState
-      { sst_gr = mkGraph uvNodes []
+      { sst_gr = ta_gr
       , sst_cache = [] }
     -- initializes the graph with the given simple type
-    Right (start, initState1) = runSolverM (typeToGraph startPol ty) initState0
+    Right (start, initState1) = runSolverM (typeToGraph (case pc of {Prd -> Pos; Cns -> Neg}) ty) initState0
   in
     case runSolverM (solve css) initState1 of
       Left err -> Left (SolveConstraintsError err)
       Right (_,SolverState gr _) ->
         let
-          aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = flowEdges }
+          aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = ta_flowEdges }
         in
           Right $ (removeIslands . removeEpsilonEdges) aut
 
