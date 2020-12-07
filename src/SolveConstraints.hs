@@ -28,6 +28,9 @@ type SolverM a = (StateT SolverState (Except Error)) a
 runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
 runSolverM m initSt = runExcept (runStateT m initSt)
 
+throwSolverError :: String -> SolverM a
+throwSolverError = throwError . SolveConstraintsError
+
 uvarToNodeId :: UVar -> Polarity -> Node
 uvarToNodeId uv Pos = 2 * uvar_id uv
 uvarToNodeId uv Neg  = 2 * uvar_id uv + 1
@@ -65,7 +68,7 @@ getNodeLabel i = do
   gr <- gets (ta_gr . sst_gr)
   case lab gr i of
     Just x -> return x
-    Nothing -> throwError $ SolveConstraintsError "graphToType: node doesn't exist in graph"
+    Nothing -> throwSolverError ("getNodeLabel: node " ++ show i ++ " doesn't exist in graph.")
 
 -- | At the given node 'i', get all outgoing Edges which are annotated with the XtorName 'xt' and reconstruct the corresponding xtorSig.
 getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorSig SimpleType)
@@ -89,31 +92,35 @@ graphToType i = do
     (HeadCons Nothing (Just xtors)) -> do
       xtorSigs <- forM (S.toList xtors) $ \xt -> getXtorSig i Codata xt
       return (SimpleType Codata xtorSigs)
-    (HeadCons (Just _) (Just _)) -> throwError $ SolveConstraintsError "Encountered HeadCons with both constructors and destructors during solving: Should not occur"
+    (HeadCons (Just _) (Just _)) -> throwSolverError "Encountered HeadCons with both constructors and destructors during solving: Should not occur"
 
 subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
   = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
-    then throwError $ SolveConstraintsError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
-                                               ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2)) ++
-                                              "\" occurs only in the left side."
+    then throwSolverError $ unlines [ "Constraint:"
+                                    , ppPrint cs
+                                    , "is unsolvable, because xtor:"
+                                    , ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2))
+                                    , "occurs only in the left side." ]
     else return $ do -- list monad
       (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
       let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
       zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2))
   = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
-    then throwError $ SolveConstraintsError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
-                                               ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1)) ++
-                                              "\" occurs only in the right side."
+    then throwSolverError $ unlines [ "Constraint:"
+                                    , ppPrint cs
+                                    , "is unsolvable, because xtor:"
+                                    , ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1))
+                                    , "occurs only in the left side." ]
     else return $ do -- list monad
       (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
       let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
       zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
 subConstraints cs@(SubType (SimpleType Data _) (SimpleType Codata _))
-  = throwError $ SolveConstraintsError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
+  = throwSolverError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
 subConstraints cs@(SubType (SimpleType Codata _) (SimpleType Data _))
-  = throwError $ SolveConstraintsError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
+  = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
 subConstraints _ = return [] -- constraint is atomic
 
 epsilonSuccs :: TypeGrEps -> Node -> [Node]
