@@ -110,6 +110,13 @@ instance Pretty TypeScheme where
 instance Pretty Constraint where
   pretty (SubType t1 t2) = pretty t1 <+> "<:" <+> pretty t2
 
+instance Pretty TypeName where
+  pretty (MkTypeName tn) = pretty tn
+
+instance Pretty DataDecl where
+  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
 ---------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
 
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, find)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
@@ -130,6 +130,22 @@ show_option = Option
   { option_name = "show"
   , option_cmd = show_cmd
   , option_help = ["Display term or type on the command line."]
+  }
+
+-- Show TypeDeclaration
+
+show_type_cmd :: String -> Repl ()
+show_type_cmd s = do
+  env <- gets (declEnv . replEnv)
+  let maybeDecl = find (\x -> data_name x == MkTypeName s) env
+  case maybeDecl of
+    Nothing -> prettyRepl ("Type: " ++ s ++ " not found in environment.")
+    Just decl -> prettyRepl decl
+show_type_option :: Option
+show_type_option = Option
+  { option_name = "showtype"
+  , option_cmd = show_type_cmd
+  , option_help = ["Show the definition of a nominal type"]
   }
 
 -- Define
@@ -318,7 +334,7 @@ help_option = Option
 
 all_options :: [Option]
 all_options = [ type_option, show_option, help_option, def_option, save_option
-              , sub_option, bind_option, simplify_option, load_option, reload_option]
+              , sub_option, bind_option, simplify_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
 -- Repl Configuration
@@ -327,7 +343,7 @@ all_options = [ type_option, show_option, help_option, def_option, save_option
 completer :: String -> ReplInner [String]
 completer s = do
   env <- gets replEnv
-  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env))
+  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env) ++ ((unTypeName . data_name) <$> (declEnv env)))
 
 ini :: Repl ()
 ini = do
