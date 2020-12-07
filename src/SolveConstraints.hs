@@ -37,7 +37,7 @@ nodeIdToUVar n = MkUVar (n `div` 2)
 
 typeToHeadCons :: SimpleType -> HeadCons
 typeToHeadCons (TyVar _) = emptyHeadCons
-typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map fst xtors))
+typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> SolverM ()
 modifyGraph f = modify (\(SolverState gr cache) -> SolverState (f gr) cache)
@@ -51,7 +51,7 @@ typeToGraph pol (SimpleType s xtors) = do
   newNodeId <- head . newNodes 1 . sst_gr <$> get
   let hc = typeToHeadCons (SimpleType s xtors)
   modifyGraph (insNode (newNodeId, (pol, hc)))
-  forM_ xtors $ \(xt, Twice prdTypes cnsTypes) -> do
+  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- typeToGraph (applyVariance s Prd pol) prdType
       modifyGraph (insEdge (newNodeId, prdNode, Just (EdgeSymbol s xt Prd i)))
@@ -68,7 +68,7 @@ getNodeLabel i = do
     Nothing -> throwError "graphToType: node doesn't exist in graph"
 
 -- | At the given node 'i', get all outgoing Edges which are annotated with the XtorName 'xt' and reconstruct the corresponding xtorSig.
-getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorName, Twice [SimpleType])
+getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorSig SimpleType)
 getXtorSig i dc xt = do
   gr <- sst_gr <$> get
   let outs = out gr i
@@ -76,7 +76,7 @@ getXtorSig i dc xt = do
   prdTypes <- mapM graphToType prdNodes
   let cnsNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol dc' xt' Cns j)) <- outs, xt == xt', dc == dc']
   cnsTypes <- mapM graphToType cnsNodes
-  return (xt, Twice prdTypes cnsTypes)
+  return (MkXtorSig xt (Twice prdTypes cnsTypes))
 
 graphToType :: Node -> SolverM SimpleType
 graphToType i = do
@@ -93,22 +93,22 @@ graphToType i = do
 
 subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
-  = if not . null $ (map fst xtors1) \\ (map fst xtors2)
+  = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
     then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
-                      ppPrint (head $ (map fst xtors1) \\ (map fst xtors2)) ++
+                      ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2)) ++
                       "\" occurs only in the left side."
     else return $ do -- list monad
-      (xtName,Twice prd1 cns1) <- xtors1
-      let Just (Twice prd2 cns2) = lookup xtName xtors2 --safe, because of check above
+      (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
+      let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
       zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2))
-  = if not . null $ (map fst xtors2) \\ (map fst xtors1)
+  = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
     then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
-                      ppPrint (head $ (map fst xtors2) \\ (map fst xtors1)) ++
+                      ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1)) ++
                       "\" occurs only in the right side."
     else return $ do -- list monad
-      (xtName,Twice prd2 cns2) <- xtors2
-      let Just (Twice prd1 cns1) = lookup xtName xtors1 --safe, because of check above
+      (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
+      let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
       zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
 subConstraints cs@(SubType (SimpleType Data _) (SimpleType Codata _))
   = throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
