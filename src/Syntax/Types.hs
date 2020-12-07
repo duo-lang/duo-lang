@@ -1,6 +1,5 @@
 module Syntax.Types where
 
-import Data.Bifunctor (bimap)
 import Data.List (nub)
 
 import Syntax.Terms

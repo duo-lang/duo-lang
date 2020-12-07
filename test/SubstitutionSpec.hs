@@ -1,25 +1,10 @@
 module SubstitutionSpec where
 
-import           Test.Hspec
-import           Control.Monad (forM_, when)
+import Test.Hspec
 
-import Data.Map (Map)
-import qualified Data.Map as M
-
-import Parser
 import Syntax.Terms
-import Syntax.Program
-import Syntax.TypeGraph
 import Utils
-import Eval.Substitution (isClosed_term, termLocallyClosed, checkIfBound)
-import GenerateConstraints
-import SolveConstraints
-import TypeAutomata.Determinize
-import TypeAutomata.FlowAnalysis
-import TypeAutomata.Minimize (minimize)
-import TypeAutomata.ToAutomaton
-import TypeAutomata.Subsume (typeAutEqual)
-
+import Eval.Substitution (checkIfBound)
 
 spec :: Spec
 spec = do

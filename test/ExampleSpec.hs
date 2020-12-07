@@ -26,6 +26,7 @@ filterEnvironment :: Environment -> Environment
 filterEnvironment Environment {..} = Environment { prdEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) prdEnv
                                                  , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
                                                  , typEnv = typEnv
+                                                 , declEnv = declEnv
                                                  }
 
 getEnvironment :: IO Environment
