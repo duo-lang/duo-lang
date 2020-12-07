@@ -88,9 +88,9 @@ typeToAutM pol (TTyRec rv ty) = do
   return newNode
 typeToAutM pol (TTySimple s xtors) = do
   newNode <- head . newNodes 1 <$> get
-  let nl = (pol, singleHeadCons s (S.fromList (map fst xtors)))
+  let nl = (pol, singleHeadCons s (S.fromList (map sig_name xtors)))
   modify (insNode (newNode,nl))
-  edges <- forM xtors $ \(xt,Twice prdTypes cnsTypes) -> do
+  edges <- forM xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
     prdNodes <- mapM (typeToAutM (applyVariance s Prd pol)) prdTypes
     cnsNodes <- mapM (typeToAutM (applyVariance s Cns pol)) cnsTypes
     return $ [(newNode, n, Just (EdgeSymbol s xt Prd i)) | i <- [0..length prdNodes - 1], let n = prdNodes !! i] ++

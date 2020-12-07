@@ -73,11 +73,11 @@ typedTermToType :: Term pc UVar -> SimpleType
 typedTermToType (FreeVar _ _ t)        = TyVar t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 typedTermToType (XtorCall pc xt (MkXtorArgs prdargs cnsargs)) =
-  SimpleType (case pc of PrdRep -> Data; CnsRep -> Codata) [(xt, Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
+  SimpleType (case pc of PrdRep -> Data; CnsRep -> Codata) [MkXtorSig xt (Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
 typedTermToType (Match pc cases)      =
   SimpleType (case pc of PrdRep -> Codata; CnsRep -> Data) (map getCaseType cases)
   where
-    getCaseType (MkCase xt types _) = (xt, (fmap . fmap) TyVar types)
+    getCaseType (MkCase xt types _) = MkXtorSig xt ((fmap . fmap) TyVar types)
 typedTermToType (MuAbs _ t _)        = TyVar t
 
 getConstraintsTerm :: Term pc UVar -> [Constraint]
