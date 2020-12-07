@@ -41,8 +41,8 @@ annotateTerm (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) = do
   prdArgs' <- mapM annotateTerm prdArgs
   cnsArgs' <- mapM annotateTerm cnsArgs
   return (XtorCall s xt (MkXtorArgs prdArgs' cnsArgs'))
-annotateTerm (Match s cases) =
-  Match s <$> forM cases (\(MkCase xt (Twice prds cnss) cmd) -> do
+annotateTerm (Match pc sn cases) =
+  Match pc sn <$> forM cases (\(MkCase xt (Twice prds cnss) cmd) -> do
     (prdUVars, prdTerms) <- unzip <$> freshVars (length prds) PrdRep
     (cnsUVars, cnsTerms) <- unzip <$> freshVars (length cnss) CnsRep
     cmd' <- annotateCommand cmd
@@ -74,7 +74,7 @@ typedTermToType (FreeVar _ _ t)        = TyVar t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 typedTermToType (XtorCall pc xt (MkXtorArgs prdargs cnsargs)) =
   SimpleType (case pc of PrdRep -> Data; CnsRep -> Codata) [MkXtorSig xt (Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
-typedTermToType (Match pc cases)      =
+typedTermToType (Match pc _ cases)      =
   SimpleType (case pc of PrdRep -> Codata; CnsRep -> Data) (map getCaseType cases)
   where
     getCaseType (MkCase xt types _) = MkXtorSig xt ((fmap . fmap) TyVar types)
@@ -85,7 +85,7 @@ getConstraintsTerm (BoundVar _ _) = error "getConstraintsTerm:  found dangling b
 getConstraintsTerm (FreeVar _ _ _)    = []
 getConstraintsTerm (XtorCall _ _ (MkXtorArgs prdargs cnsargs)) =
   concat $ mergeTwice (++) $ Twice (getConstraintsTerm <$> prdargs) (getConstraintsTerm <$> cnsargs)
-getConstraintsTerm (Match _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases
+getConstraintsTerm (Match _ _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases
 getConstraintsTerm (MuAbs _ _ cmd) = getConstraintsCommand cmd
 
 getConstraintsCommand :: Command UVar -> [Constraint]

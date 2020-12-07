@@ -32,11 +32,11 @@ checkArgs cmd argTypes args =
 evalOneStep :: Pretty a => Command a -> EvalM (Maybe (Command a))
 evalOneStep Done = return Nothing
 evalOneStep (Print _) = return Nothing
-evalOneStep cmd@(Apply (XtorCall PrdRep xt args) (Match CnsRep cases)) = do
+evalOneStep cmd@(Apply (XtorCall PrdRep xt args) (Match CnsRep _ cases)) = do
   (MkCase _ argTypes cmd') <- lookupCase xt cases
   checkArgs cmd argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalOneStep cmd@(Apply (Match PrdRep cases) (XtorCall CnsRep xt args)) = do
+evalOneStep cmd@(Apply (Match PrdRep _ cases) (XtorCall CnsRep xt args)) = do
   (MkCase _ argTypes cmd') <- lookupCase xt cases
   checkArgs cmd argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
