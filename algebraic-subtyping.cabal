@@ -77,7 +77,7 @@ executable simple-exe
       Paths_algebraic_subtyping
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors
   build-depends:
       algebraic-subtyping
 
@@ -92,7 +92,7 @@ test-suite simple-test
     , Spec
   hs-source-dirs:
       test
-  ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       algebraic-subtyping
     , QuickCheck
