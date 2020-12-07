@@ -32,3 +32,6 @@ allEq (x:xs) = all (==x) xs
 
 intersections :: Ord a => [Set a] -> Set a
 intersections = foldr1 S.intersection
+
+enumerate :: [a] -> [(Int,a)]
+enumerate xs = zip [0..] xs

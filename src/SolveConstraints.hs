@@ -51,37 +51,45 @@ typeToGraph pol (SimpleType s xtors) = do
   newNodeId <- head . newNodes 1 . sst_gr <$> get
   let hc = typeToHeadCons (SimpleType s xtors)
   modifyGraph (insNode (newNodeId, (pol, hc)))
-  _ <- forM xtors $ \(xt, Twice prdTypes cnsTypes) -> do
-    let (n,m) = (length prdTypes, length cnsTypes)
-    _ <- forM [0..n-1] $ \i -> do
-      prdNode <- typeToGraph (applyVariance s Prd pol) (prdTypes !! i)
+  forM_ xtors $ \(xt, Twice prdTypes cnsTypes) -> do
+    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
+      prdNode <- typeToGraph (applyVariance s Prd pol) prdType
       modifyGraph (insEdge (newNodeId, prdNode, Just (EdgeSymbol s xt Prd i)))
-    _ <- forM [0..m-1] $ \j -> do
-      cnsNode <- typeToGraph (applyVariance s Cns pol) (cnsTypes !! j)
+    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
+      cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
       modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
-    return ()
   return newNodeId
+
+getNodeLabel :: Node -> SolverM NodeLabel
+getNodeLabel i = do
+  gr <- sst_gr <$> get
+  case lab gr i of
+    Just x -> return x
+    Nothing -> throwError "graphToType: node doesn't exist in graph"
+
+-- | At the given node 'i', get all outgoing Edges which are annotated with the XtorName 'xt' and reconstruct the corresponding xtorSig.
+getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorName, Twice [SimpleType])
+getXtorSig i dc xt = do
+  gr <- sst_gr <$> get
+  let outs = out gr i
+  let prdNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol dc' xt' Prd j)) <- outs, xt == xt', dc == dc']
+  prdTypes <- mapM graphToType prdNodes
+  let cnsNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol dc' xt' Cns j)) <- outs, xt == xt', dc == dc']
+  cnsTypes <- mapM graphToType cnsNodes
+  return (xt, Twice prdTypes cnsTypes)
 
 graphToType :: Node -> SolverM SimpleType
 graphToType i = do
-  gr <- sst_gr <$> get
-  case lab gr i of
-    Just (_,HeadCons Nothing Nothing) -> return (TyVar (nodeIdToUVar i))
-    Just (_,HeadCons (Just xtors) Nothing) ->
-      SimpleType Data <$> (forM (S.toList xtors) $ \xt -> do
-        let prdNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol Data xt' Prd j)) <- out gr i, xt == xt']
-        prdTypes <- mapM graphToType prdNodes
-        let cnsNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol Data xt' Cns j)) <- out gr i, xt == xt']
-        cnsTypes <- mapM graphToType cnsNodes
-        return $ (xt, Twice prdTypes cnsTypes))
-    Just (_,HeadCons Nothing (Just xtors)) -> do
-      SimpleType Codata <$> (forM (S.toList xtors) $ \xt -> do
-        let prdNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol Codata xt' Prd j)) <- out gr i, xt == xt']
-        prdTypes <- mapM graphToType prdNodes
-        let cnsNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol Codata xt' Cns j)) <- out gr i, xt == xt']
-        cnsTypes <- mapM graphToType cnsNodes
-        return (xt, Twice prdTypes cnsTypes))
-    Nothing -> throwError "graphToType: node doesn't exist in graph"
+  (_,hc) <- getNodeLabel i
+  case hc of
+    (HeadCons Nothing Nothing) -> return (TyVar (nodeIdToUVar i))
+    (HeadCons (Just xtors) Nothing) -> do
+      xtorSigs <- forM (S.toList xtors) $ \xt -> getXtorSig i Data xt
+      return (SimpleType Data xtorSigs)
+    (HeadCons Nothing (Just xtors)) -> do
+      xtorSigs <- forM (S.toList xtors) $ \xt -> getXtorSig i Codata xt
+      return (SimpleType Codata xtorSigs)
+    (HeadCons (Just _) (Just _)) -> throwError "Encountered HeadCons with both constructors and destructors during solving: Should not occur"
 
 subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
