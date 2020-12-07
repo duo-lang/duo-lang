@@ -9,7 +9,7 @@ import Control.Monad.Except
 import Syntax.Terms
 import Syntax.Types
 import Utils
-import Eval
+import Eval.Substitution
 
 {-
 Constraint generation is split in two phases:
@@ -96,7 +96,9 @@ getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConst
 
 generateConstraints :: Term pc () -> Either Error (Term pc UVar, [Constraint], [UVar])
 generateConstraints t0 =
-  case runExcept (runStateT (annotateTerm t0) 0) of
-    Right (t1, numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
-    Left err            -> Left $ GenConstraintsError err
+  case termLocallyClosed t0 of
+    True -> case runExcept (runStateT (annotateTerm t0) 0) of
+      Right (t1, numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
+      Left err            -> Left $ GenConstraintsError err
+    False -> Left $ GenConstraintsError "Term is not locally closed"
 

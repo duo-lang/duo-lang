@@ -94,3 +94,6 @@ prd admissabilityTest := comatch { Ap(f)[k] => True >> match { True => comatch {
 
 prd implicationConstraintsTest1 := comatch { Ap(x) => x >> match { A => Done, B => x >> match { B => Done }}};
 
+prd parserTest := comatch { Ap(x)[x] => x >> x };
+prd parserTest2 := \(x)[x] => x >> x;
+
