@@ -48,8 +48,14 @@ symbol = L.symbol sc
 freeVarName :: (MonadParsec Void String m) => m FreeVarName
 freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
 
-xtorName :: (MonadParsec Void String m) => m XtorName
-xtorName = MkXtorName Structural <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+xtorName :: (MonadParsec Void String m) => NominalStructural -> m XtorName
+xtorName Structural = do
+  _ <- tick
+  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  return (MkXtorName Structural name) -- Saved without tick!
+xtorName Nominal = do
+  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  return (MkXtorName Nominal name)
 
 typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
@@ -60,10 +66,11 @@ braces    = between (symbol "{") (symbol "}")
 brackets  = between (symbol "[") (symbol "]")
 angles    = between (symbol "<") (symbol ">")
 
-comma, dot, pipe :: (MonadParsec Void String m) => m String
+comma, dot, pipe, tick :: (MonadParsec Void String m) => m String
 comma = symbol ","
 dot = symbol "."
 pipe = symbol "|"
+tick = symbol "'"
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 argListP :: (MonadParsec Void String m) => m a -> m a ->  m (Twice [a])
@@ -135,7 +142,7 @@ xtorArgsP = do
 
 xtorCall :: PrdCnsRep pc -> Parser (Term pc ())
 xtorCall pc = do
-  xt <- xtorName
+  xt <- xtorName Structural
   args <- xtorArgsP
   return $ XtorCall pc xt args
 
@@ -151,7 +158,7 @@ patternMatch CnsRep = do
 
 singleCase :: Parser (Case ())
 singleCase = do
-  xt <- lexeme xtorName
+  xt <- lexeme (xtorName Structural)
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- symbol "=>"
   cmd <- lexeme commandP
@@ -282,7 +289,7 @@ codataType = braces $ do
 
 xtorSignature :: TypeParser (XtorSig TargetType)
 xtorSignature = do
-  xt <- xtorName
+  xt <- xtorName Structural
   args <- argListP (lexeme typeR) (lexeme typeR)
   return (MkXtorSig xt args)
 
@@ -359,7 +366,7 @@ dataDeclP = DataDecl <$> dataDeclP'
 
     xtorDeclP :: Parser (XtorSig SimpleType)
     xtorDeclP = do
-      xt <- xtorName
+      xt <- xtorName Nominal
       args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
       return (MkXtorSig xt args)
 
