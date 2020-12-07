@@ -23,9 +23,9 @@ data SolverState = SolverState
   { sst_gr :: TypeAutEps
   , sst_cache :: [Constraint] }
 
-type SolverM a = (StateT SolverState (Except String)) a
+type SolverM a = (StateT SolverState (Except Error)) a
 
-runSolverM :: SolverM a -> SolverState -> Either String (a, SolverState)
+runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
 runSolverM m initSt = runExcept (runStateT m initSt)
 
 uvarToNodeId :: UVar -> Polarity -> Node
@@ -65,7 +65,7 @@ getNodeLabel i = do
   gr <- gets (ta_gr . sst_gr)
   case lab gr i of
     Just x -> return x
-    Nothing -> throwError "graphToType: node doesn't exist in graph"
+    Nothing -> throwError $ SolveConstraintsError "graphToType: node doesn't exist in graph"
 
 -- | At the given node 'i', get all outgoing Edges which are annotated with the XtorName 'xt' and reconstruct the corresponding xtorSig.
 getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorSig SimpleType)
@@ -89,31 +89,31 @@ graphToType i = do
     (HeadCons Nothing (Just xtors)) -> do
       xtorSigs <- forM (S.toList xtors) $ \xt -> getXtorSig i Codata xt
       return (SimpleType Codata xtorSigs)
-    (HeadCons (Just _) (Just _)) -> throwError "Encountered HeadCons with both constructors and destructors during solving: Should not occur"
+    (HeadCons (Just _) (Just _)) -> throwError $ SolveConstraintsError "Encountered HeadCons with both constructors and destructors during solving: Should not occur"
 
 subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
   = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
-    then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
-                      ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2)) ++
-                      "\" occurs only in the left side."
+    then throwError $ SolveConstraintsError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
+                                               ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2)) ++
+                                              "\" occurs only in the left side."
     else return $ do -- list monad
       (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
       let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
       zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2))
   = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
-    then throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
-                      ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1)) ++
-                      "\" occurs only in the right side."
+    then throwError $ SolveConstraintsError $ "Constraint: \n      " ++ ppPrint cs ++ "\nis unsolvable, because xtor \"" ++
+                                               ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1)) ++
+                                              "\" occurs only in the right side."
     else return $ do -- list monad
       (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
       let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
       zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
 subConstraints cs@(SubType (SimpleType Data _) (SimpleType Codata _))
-  = throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
+  = throwError $ SolveConstraintsError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
 subConstraints cs@(SubType (SimpleType Codata _) (SimpleType Data _))
-  = throwError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
+  = throwError $ SolveConstraintsError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
 subConstraints _ = return [] -- constraint is atomic
 
 epsilonSuccs :: TypeGrEps -> Node -> [Node]
@@ -155,8 +155,9 @@ solve (cs:css) = do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
-mkInitialGraph :: [UVar] -> TypeAutEps
-mkInitialGraph uvs =
+-- | Creates an initial type automaton from a list of UVars.
+mkInitialTypeAut :: [UVar] -> TypeAutEps
+mkInitialTypeAut uvs =
   let
     uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Pos,Neg]]
     flowEdges = [(uvarToNodeId uv Neg, uvarToNodeId uv Pos) | uv <- uvs]
@@ -166,18 +167,22 @@ mkInitialGraph uvs =
             , ta_flowEdges = flowEdges
             }
 
--- PrdCns argument is needed to determine polarity of start state:
--- Prd means positive start state, Cns means negative start state
+-- | Creates the typeautomaton that results from solving constraints.
+solveConstraintsOne :: [Constraint] -> [UVar] -> Either Error TypeAutEps
+solveConstraintsOne css uvs = do
+  let initState = SolverState { sst_gr = mkInitialTypeAut uvs, sst_cache = [] }
+  (_, SolverState aut _) <- runSolverM (solve css) initState
+  return aut
+
+-- | Takes a given type automaton without a starting state, and adds a simple type as starting state to the automaton.
+solveConstraintsTwo :: TypeAutEps -> SimpleType -> PrdCns -> Either Error TypeAut
+solveConstraintsTwo aut ty pc = do
+  let initState = SolverState { sst_gr = aut, sst_cache = [] }
+  (start, SolverState aut _) <- runSolverM (typeToGraph (case pc of {Prd -> Pos; Cns -> Neg}) ty) initState
+  return $ (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
+
 solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
-solveConstraints css uvs ty pc =
-  let
-    initState0 = SolverState
-      { sst_gr = mkInitialGraph uvs
-      , sst_cache = [] }
-    -- initializes the graph with the given simple type
-    Right (start, initState1) = runSolverM (typeToGraph (case pc of {Prd -> Pos; Cns -> Neg}) ty) initState0
-  in
-    case runSolverM (solve css) initState1 of
-      Left err -> Left (SolveConstraintsError err)
-      Right (_,SolverState aut _) -> Right $ (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
+solveConstraints css uvs ty pc = do
+  aut <- solveConstraintsOne css uvs
+  solveConstraintsTwo aut ty pc
 
