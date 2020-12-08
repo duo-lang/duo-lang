@@ -2,9 +2,32 @@ module Syntax.Types where
 
 import Data.Bifunctor (bimap)
 import Data.List (nub)
-
+import Data.Void
 import Syntax.Terms
+import Data.Kind (Type)
 import Utils
+
+
+data SimpleTarget = Simple | Target
+
+type family TargetTypeF (st :: SimpleTarget) :: Type where
+  TargetTypeF Simple = Void
+  TargetTypeF Target = ()
+
+data Typ (st :: SimpleTarget) where
+  TyUnion  :: TargetTypeF st -> [TargetType] -> Typ st
+  TyInter  :: TargetTypeF st -> [TargetType] -> Typ st
+  TyRec    :: TargetTypeF st -> RVar -> TargetType -> Typ st
+  TyRVar   :: RVar -> Typ st
+  TyTVar   :: TVar -> Typ st
+  TySimple :: DataCodata -> [XtorSig TargetType] -> Typ st
+
+deriving instance Show (Typ Simple)
+deriving instance Show (Typ Target)
+deriving instance Eq (Typ Simple)
+deriving instance Eq (Typ Target)
+--type SimpleType = Typ Simple
+--type TargetType = Typ Target
 
 ------------------------------------------------------------------------------
 -- Type syntax
