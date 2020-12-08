@@ -62,23 +62,37 @@ nodeToOuts i = do
   let (_,_,_,outs) = context gr i
   return outs
 
-filterSortOuts :: [(EdgeLabel, Node)] -> DataCodata -> XtorName -> PrdCns -> [[Node]]
-filterSortOuts outs dc xt pc =
+-- | Compute the Nodes which have to be turned into the argument types for one constructor or destructor.
+computeArgNodes :: [(EdgeLabel, Node)] -- ^ All the outgoing edges of a node.
+                -> DataCodata -- ^ Whether we want to construct a constructor or destructor
+                -> XtorName -- ^ The name of the constructor / destructor
+                -> Twice [[Node]] -- ^ The nodes which contain the arguments of the constructor / destructor
+computeArgNodes outs dc xt =
   let
-    filtereds = [ (el, n) | (el@(EdgeSymbol dc' xt' pc' _), n) <- outs, dc == dc', xt == xt', pc == pc' ]
+    -- Filter out all Edges which don't interest us.
+    filtereds pc = [ (el, n) | (el@(EdgeSymbol dc' xt' pc' _), n) <- outs, dc == dc', xt == xt', pc == pc' ]
+    -- Sort the Edges by their position in the Arglist.
     sortFun (EdgeSymbol _ _ _ j1,_) (EdgeSymbol _ _ _ j2,_) = j1 `compare` j2
-    sorteds = sortBy sortFun filtereds
+    sorteds pc = sortBy sortFun (filtereds pc)
+    -- Group the nodes by their position.
     groupFun (EdgeSymbol _ _ _ j1,_) (EdgeSymbol _ _ _ j2,_) = j1 == j2
-    groupeds = groupBy groupFun sorteds
+    groupeds pc = groupBy groupFun (sorteds pc)
+    groupeds' pc = (fmap . fmap) snd $ groupeds pc
   in
-    (fmap . fmap) snd $ groupeds
+    Twice (groupeds' Prd) (groupeds' Cns)
 
-bar :: [[Node]] -> DataCodata -> PrdCns -> Polarity -> AutToTypeM [TargetType]
-bar nodes dc pc pol = do
-  forM nodes $ \ns -> do
+-- | Takes the output of computeArgNodes and turns the nodes into types.
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> Polarity -> AutToTypeM (Twice [TargetType])
+argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
+  prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc pc pol) typs
+    return $ unionOrInter (applyVariance dc Prd pol) typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ unionOrInter (applyVariance dc Cns pol) typs
+  return (Twice prdTypes cnsTypes)
 
 nodeToType :: Node -> AutToTypeM TargetType
 nodeToType i = do
@@ -100,22 +114,18 @@ nodeToType i = do
           Nothing -> return []
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
-              let prdNodes = filterSortOuts outs Data xt Prd
-              prdTypes <- bar prdNodes Data Prd pol
-              let cnsNodes = filterSortOuts outs Data xt Cns
-              cnsTypes <- bar cnsNodes Data Cns pol
-              return (MkXtorSig xt (Twice prdTypes cnsTypes))
+              let nodes = computeArgNodes outs Data xt
+              argTypes <- argNodesToArgTypes nodes Data pol
+              return (MkXtorSig xt argTypes)
             return [TTySimple Data sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
-              let prdNodes = filterSortOuts outs Codata xt Prd
-              prdTypes <- bar prdNodes Codata Prd pol
-              let cnsNodes = filterSortOuts outs Codata xt Cns
-              cnsTypes <- bar cnsNodes Codata Cns pol
-              return (MkXtorSig xt (Twice prdTypes cnsTypes))
+              let nodes = computeArgNodes outs Codata xt
+              argTypes <- argNodesToArgTypes nodes Codata pol
+              return (MkXtorSig xt argTypes)
             return [TTySimple Codata sig]
         return $ unionOrInter pol (varL ++ datL ++ codatL)
 
