@@ -97,7 +97,7 @@ nodeToType i = do
         varL <- nodeToTVars i
         -- Creating data types
         datL <- case maybeDat of
-          {Nothing -> return [] ;
+          Nothing -> return []
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
               let prdNodes = filterSortOuts outs Data xt Prd
@@ -105,10 +105,10 @@ nodeToType i = do
               let cnsNodes = filterSortOuts outs Data xt Cns
               cnsTypes <- bar cnsNodes Data Cns pol
               return (MkXtorSig xt (Twice prdTypes cnsTypes))
-            return [TTySimple Data sig]}
+            return [TTySimple Data sig]
         -- Creating codata types
         codatL <- case maybeCodat of
-          {Nothing -> return [] ;
+          Nothing -> return []
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
               let prdNodes = filterSortOuts outs Codata xt Prd
@@ -116,7 +116,7 @@ nodeToType i = do
               let cnsNodes = filterSortOuts outs Codata xt Cns
               cnsTypes <- bar cnsNodes Codata Cns pol
               return (MkXtorSig xt (Twice prdTypes cnsTypes))
-            return [TTySimple Codata sig]}
+            return [TTySimple Codata sig]
         return $ unionOrInter pol (varL ++ datL ++ codatL)
 
       -- If the graph is cyclic, make a recursive type
