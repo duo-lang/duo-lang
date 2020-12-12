@@ -49,11 +49,7 @@ typeToAutPol pol (TypeScheme tvars ty) =
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
 typeToAut :: TypeScheme -> Either String TypeAutDet
-typeToAut ty = case typeToAutPol Prd ty of
-  Right res -> Right res
-  Left _ -> case typeToAutPol Cns ty of
-    Right res -> Right res
-    Left err -> Left err
+typeToAut ty = (typeToAutPol Prd ty) <> (typeToAutPol Cns ty)
 
 typeToAutM :: PrdCns -> TargetType -> TypeToAutM Node
 typeToAutM pol (TTyTVar tv) = do
