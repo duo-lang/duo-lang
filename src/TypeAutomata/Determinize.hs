@@ -124,9 +124,9 @@ combineNodeLabels nls
     pol = fst (head nls)
     hcs = map snd nls
     mrgDat [] = Nothing
-    mrgDat xtors = Just $ (case pol of {Pos -> S.unions; Neg -> intersections}) xtors
+    mrgDat xtors = Just $ (case pol of {Prd -> S.unions; Cns -> intersections}) xtors
     mrgCodat [] = Nothing
-    mrgCodat xtors = Just $ (case pol of {Pos -> intersections; Neg -> S.unions}) xtors
+    mrgCodat xtors = Just $ (case pol of {Prd -> intersections; Cns -> S.unions}) xtors
 
 determinize :: TypeAut -> TypeAutDet
 determinize TypeAut{..} =
