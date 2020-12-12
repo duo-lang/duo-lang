@@ -82,7 +82,7 @@ computeArgNodes outs dc xt =
     Twice (groupeds' Prd) (groupeds' Cns)
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> Polarity -> AutToTypeM (Twice [TargetType])
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (Twice [TargetType])
 argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
