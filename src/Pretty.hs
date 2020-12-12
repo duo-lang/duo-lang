@@ -36,10 +36,6 @@ prettyTwice' xs ys = xs' <> ys'
 prettyTwice :: Pretty a => Twice [a] -> Doc ann
 prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
----------------------------------------------------------------------------------
--- Prettyprinting of Terms
----------------------------------------------------------------------------------
-
 instance Pretty XtorName where
   pretty xn = pretty (unXtorName xn)
 
@@ -151,7 +147,7 @@ typeAutParams :: GraphvizParams Node NodeLabel (Maybe EdgeLabel) () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,(pol,hc)) ->
     [ style filled
-    , fillColor $ case pol of {Pos -> White; Neg -> Gray}
+    , fillColor $ case pol of {Prd -> White; Cns -> Gray}
     , textLabel (pack (ppPrint (hc :: HeadCons)))]
   , fmtEdge = \(_,_,elM) -> case elM of {Nothing -> [arrowTo dotArrow]; Just el -> [textLabel $ pack (ppPrint (el :: EdgeLabel))] }
   }
