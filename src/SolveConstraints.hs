@@ -11,6 +11,8 @@ import Control.Monad.Except
 import Data.Ord (comparing)
 import Data.List (sortBy, (\\))
 import qualified Data.Set as S
+import Data.Map (Map)
+import qualified Data.Map as M
 
 import Syntax.Types
 import Syntax.TypeGraph
@@ -19,8 +21,24 @@ import Utils
 import Pretty
 import TypeAutomata.Determinize (removeEpsilonEdges, removeIslands)
 
+data VariableState = VariableState
+  { vst_upperbounds :: [SimpleType]
+  , vst_lowerbounds :: [SimpleType] }
+
+emptyVarState = VariableState [] []
+
+getBounds :: PrdCns -> VariableState -> [SimpleType]
+getBounds Prd = vst_lowerbounds
+getBounds Cns = vst_upperbounds
+
+addUpperBound :: SimpleType -> VariableState -> VariableState
+addUpperBound bound (VariableState ubs lbs) = VariableState (bound:ubs) lbs
+
+addLowerBound :: SimpleType -> VariableState -> VariableState
+addLowerBound bound (VariableState ubs lbs) = VariableState ubs (bound:lbs)
+
 data SolverState = SolverState
-  { sst_gr :: TypeAutEps
+  { sst_bounds :: Map UVar VariableState
   , sst_cache :: [Constraint] }
 
 type SolverM a = (StateT SolverState (Except Error)) a
@@ -31,68 +49,17 @@ runSolverM m initSt = runExcept (runStateT m initSt)
 throwSolverError :: String -> SolverM a
 throwSolverError = throwError . SolveConstraintsError
 
-uvarToNodeId :: UVar -> PrdCns -> Node
-uvarToNodeId uv Prd = 2 * uvar_id uv
-uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
-
-nodeIdToUVar :: Node -> UVar
-nodeIdToUVar n = MkUVar (n `div` 2)
-
-typeToHeadCons :: SimpleType -> HeadCons
-typeToHeadCons (TyVar _) = emptyHeadCons
-typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
-
-modifyGraph :: (TypeGrEps -> TypeGrEps) -> SolverM ()
-modifyGraph f = modify (\(SolverState aut@TypeAut { ta_gr } cache) -> SolverState aut { ta_gr = f ta_gr } cache)
-
 modifyCache :: ([Constraint] -> [Constraint]) -> SolverM ()
 modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 
-typeToGraph :: PrdCns -> SimpleType -> SolverM Node
-typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
-typeToGraph pol (SimpleType s xtors) = do
-  newNodeId <- gets (head . newNodes 1 . ta_gr . sst_gr)
-  let hc = typeToHeadCons (SimpleType s xtors)
-  modifyGraph (insNode (newNodeId, (pol, hc)))
-  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
-    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- typeToGraph (applyVariance s Prd pol) prdType
-      modifyGraph (insEdge (newNodeId, prdNode, Just (EdgeSymbol s xt Prd i)))
-    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
-      modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
-  return newNodeId
+modifyBounds :: (VariableState -> VariableState) -> UVar -> SolverM ()
+modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getNodeLabel :: Node -> SolverM NodeLabel
-getNodeLabel i = do
-  gr <- gets (ta_gr . sst_gr)
-  case lab gr i of
-    Just x -> return x
-    Nothing -> throwSolverError ("getNodeLabel: node " ++ show i ++ " doesn't exist in graph.")
+getUpperBounds :: UVar -> SolverM [SimpleType]
+getUpperBounds uv = gets (vst_upperbounds . (M.! uv) . sst_bounds)
 
--- | At the given node 'i', get all outgoing Edges which are annotated with the XtorName 'xt' and reconstruct the corresponding xtorSig.
-getXtorSig :: Node -> DataCodata -> XtorName -> SolverM (XtorSig SimpleType)
-getXtorSig i dc xt = do
-  gr <- gets (ta_gr . sst_gr)
-  let outs = out gr i
-  let prdNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol dc' xt' Prd j)) <- outs, xt == xt', dc == dc']
-  prdTypes <- mapM graphToType prdNodes
-  let cnsNodes = map fst $ sortBy (comparing snd) [(nd,j) | (_,nd,Just (EdgeSymbol dc' xt' Cns j)) <- outs, xt == xt', dc == dc']
-  cnsTypes <- mapM graphToType cnsNodes
-  return (MkXtorSig xt (Twice prdTypes cnsTypes))
-
-graphToType :: Node -> SolverM SimpleType
-graphToType i = do
-  (_,hc) <- getNodeLabel i
-  case hc of
-    (HeadCons Nothing Nothing) -> return (TyVar (nodeIdToUVar i))
-    (HeadCons (Just xtors) Nothing) -> do
-      xtorSigs <- forM (S.toList xtors) $ \xt -> getXtorSig i Data xt
-      return (SimpleType Data xtorSigs)
-    (HeadCons Nothing (Just xtors)) -> do
-      xtorSigs <- forM (S.toList xtors) $ \xt -> getXtorSig i Codata xt
-      return (SimpleType Codata xtorSigs)
-    (HeadCons (Just _) (Just _)) -> throwSolverError "Encountered HeadCons with both constructors and destructors during solving: Should not occur"
+getLowerBounds :: UVar -> SolverM [SimpleType]
+getLowerBounds uv = gets (vst_lowerbounds . (M.! uv) . sst_bounds)
 
 subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
@@ -123,44 +90,76 @@ subConstraints cs@(SubType (SimpleType Codata _) (SimpleType Data _))
   = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
 subConstraints _ = return [] -- constraint is atomic
 
-epsilonSuccs :: TypeGrEps -> Node -> [Node]
-epsilonSuccs gr i = [j | (_,j,Nothing) <- out gr i]
-
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
-  SolverState (TypeAut {ta_gr = gr}) cache <- get
+  SolverState varMap cache <- get
   if cs `elem` cache
     then solve css
     else do
       modifyCache (cs:)
       case cs of
-        (SubType (TyVar uv1) (TyVar uv2)) -> do
-          let (uv1Cns, uv1Prd) = (uvarToNodeId uv1 Cns, uvarToNodeId uv1 Prd)
-          let (uv2Cns, uv2Prd) = (uvarToNodeId uv2 Cns, uvarToNodeId uv2 Prd)
-          lbs <- mapM graphToType (epsilonSuccs gr uv1Prd)
-          ubs <- mapM graphToType (epsilonSuccs gr uv2Cns)
-          modifyGraph (insEdge (uv2Prd,uv1Prd,Nothing))
-          modifyGraph (insEdge (uv1Cns,uv2Cns,Nothing))
-          let newCss = [SubType lb ub | lb <- lbs, ub <- ubs]
-          solve (newCss ++ css)
         (SubType (TyVar uv) ub) -> do
-          let (uvCns, uvPrd) = (uvarToNodeId uv Cns, uvarToNodeId uv Prd)
-          ubNode <- typeToGraph Cns ub
-          modifyGraph (insEdge (uvCns,ubNode,Nothing))
-          lbs <- mapM graphToType (epsilonSuccs gr uvPrd)
+          modifyBounds (addUpperBound ub) uv
+          lbs <- getLowerBounds uv
           let newCss = [SubType lb ub | lb <- lbs]
           solve (newCss ++ css)
         (SubType lb (TyVar uv)) -> do
-          let (uvCns, uvPrd) = (uvarToNodeId uv Cns, uvarToNodeId uv Prd)
-          lbNode <- typeToGraph Prd lb
-          modifyGraph (insEdge (uvPrd,lbNode,Nothing))
-          ubs <- mapM graphToType (epsilonSuccs gr uvCns)
+          modifyBounds (addLowerBound lb) uv
+          ubs <- getUpperBounds uv
           let newCss = [SubType lb ub | ub <- ubs]
           solve (newCss ++ css)
         _ -> do
           subCss <- subConstraints cs
           solve (subCss ++ css)
+
+-------------------------------------------------------------------------
+-- Translation from SolverState to Type automaton
+-------------------------------------------------------------------------
+
+type MkAutM a = State TypeAutEps a
+
+modifyGraph :: (TypeGrEps -> TypeGrEps) -> MkAutM ()
+modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
+
+uvarToNodeId :: UVar -> PrdCns -> Node
+uvarToNodeId uv Prd = 2 * uvar_id uv
+uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
+
+nodeIdToUVar :: Node -> UVar
+nodeIdToUVar n = MkUVar (n `div` 2)
+
+typeToHeadCons :: SimpleType -> HeadCons
+typeToHeadCons (TyVar _) = emptyHeadCons
+typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
+
+typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
+typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
+typeToGraph pol ty@(SimpleType s xtors) = do
+  newNodeId <- gets (head . newNodes 1 . ta_gr)
+  let hc = typeToHeadCons ty
+  modifyGraph (insNode (newNodeId, (pol, hc)))
+  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
+    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
+      prdNode <- typeToGraph (applyVariance s Prd pol) prdType
+      modifyGraph (insEdge (newNodeId, prdNode, Just (EdgeSymbol s xt Prd i)))
+    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
+      cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
+      modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
+  return newNodeId
+
+-- | Creates upper/lower bounds for a unification variable by inserting epsilon edges into the automaton
+insertEpsilonEdges :: UVar -> VariableState -> MkAutM ()
+insertEpsilonEdges uv vstate = do
+  forM_ [Prd,Cns] $ \pc -> do
+    forM_ (getBounds pc vstate) $ \ty -> do
+      i <- typeToGraph pc ty
+      modifyGraph (insEdge (uvarToNodeId uv pc, i, Nothing))
+
+-- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
+solverStateToTypeAutM :: SolverState -> MkAutM ()
+solverStateToTypeAutM (SolverState {..}) =
+  forM_ (M.toList sst_bounds) (uncurry insertEpsilonEdges)
 
 -- | Creates an initial type automaton from a list of UVars.
 mkInitialTypeAut :: [UVar] -> TypeAutEps
@@ -174,22 +173,33 @@ mkInitialTypeAut uvs =
             , ta_flowEdges = flowEdges
             }
 
--- | Creates the typeautomaton that results from solving constraints.
-solveConstraintsOne :: [Constraint] -> [UVar] -> Either Error TypeAutEps
+-- | Creates the variable states that results from solving constraints.
+solveConstraintsOne :: [Constraint] -> [UVar] -> Either Error SolverState
 solveConstraintsOne css uvs = do
-  let initState = SolverState { sst_gr = mkInitialTypeAut uvs, sst_cache = [] }
-  (_, SolverState aut _) <- runSolverM (solve css) initState
-  return aut
+  let initState = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs] , sst_cache = [] }
+  (_, solverState) <- runSolverM (solve css) initState
+  return solverState
+
+-- | Creates a type automaton from the variable states
+solveConstraintsTwo :: SolverState -> TypeAutEps
+solveConstraintsTwo solverState =
+  let
+    initAut = mkInitialTypeAut (M.keys (sst_bounds solverState))
+    (_,aut) = runState (solverStateToTypeAutM solverState) initAut
+  in
+    aut
 
 -- | Takes a given type automaton without a starting state, and adds a simple type as starting state to the automaton.
-solveConstraintsTwo :: TypeAutEps -> SimpleType -> PrdCns -> Either Error TypeAut
-solveConstraintsTwo aut ty pc = do
-  let initState = SolverState { sst_gr = aut, sst_cache = [] }
-  (start, SolverState aut _) <- runSolverM (typeToGraph pc ty) initState
-  return $ (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
+solveConstraintsThree :: TypeAutEps -> SimpleType -> PrdCns -> TypeAut
+solveConstraintsThree aut0 ty pc =
+  let
+    (start, aut) = runState (typeToGraph pc ty) aut0
+  in
+    (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
 
 solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
 solveConstraints css uvs ty pc = do
-  aut <- solveConstraintsOne css uvs
-  solveConstraintsTwo aut ty pc
-
+  solverState <- solveConstraintsOne css uvs
+  let aut0 = solveConstraintsTwo solverState
+  let aut1 = solveConstraintsThree aut0 ty pc
+  return aut1
