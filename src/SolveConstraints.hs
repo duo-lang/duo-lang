@@ -8,8 +8,7 @@ import Data.Graph.Inductive.Graph
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.Ord (comparing)
-import Data.List (sortBy, (\\))
+import Data.List ((\\))
 import qualified Data.Set as S
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -25,6 +24,7 @@ data VariableState = VariableState
   { vst_upperbounds :: [SimpleType]
   , vst_lowerbounds :: [SimpleType] }
 
+emptyVarState :: VariableState
 emptyVarState = VariableState [] []
 
 getBounds :: PrdCns -> VariableState -> [SimpleType]
@@ -93,7 +93,7 @@ subConstraints _ = return [] -- constraint is atomic
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
-  SolverState varMap cache <- get
+  cache <- gets sst_cache
   if cs `elem` cache
     then solve css
     else do
@@ -126,9 +126,6 @@ uvarToNodeId :: UVar -> PrdCns -> Node
 uvarToNodeId uv Prd = 2 * uvar_id uv
 uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 
-nodeIdToUVar :: Node -> UVar
-nodeIdToUVar n = MkUVar (n `div` 2)
-
 typeToHeadCons :: SimpleType -> HeadCons
 typeToHeadCons (TyVar _) = emptyHeadCons
 typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
@@ -151,7 +148,7 @@ typeToGraph pol ty@(SimpleType s xtors) = do
 -- | Creates upper/lower bounds for a unification variable by inserting epsilon edges into the automaton
 insertEpsilonEdges :: UVar -> VariableState -> MkAutM ()
 insertEpsilonEdges uv vstate = do
-  forM_ [Prd,Cns] $ \pc -> do
+  forM_ [Prd,Cns] $ \pc ->
     forM_ (getBounds pc vstate) $ \ty -> do
       i <- typeToGraph pc ty
       modifyGraph (insEdge (uvarToNodeId uv pc, i, Nothing))
