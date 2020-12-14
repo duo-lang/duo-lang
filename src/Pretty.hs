@@ -119,12 +119,10 @@ instance Pretty Error where
 ---------------------------------------------------------------------------------
 
 instance Pretty HeadCons where
-  pretty (HeadCons maybeDat maybeCodat) = intercalateX ";" (catMaybes [printDat maybeDat, printCodat maybeCodat])
+  pretty (HeadCons maybeDat maybeCodat) = intercalateX ";" (catMaybes [printDat <$> maybeDat, printCodat <$> maybeCodat])
     where
-      printDat Nothing = Nothing
-      printDat (Just dat) = Just ( angles (mempty <+> cat (punctuate " | " (pretty <$> (S.toList dat))) <+> mempty) )
-      printCodat Nothing = Nothing
-      printCodat (Just codat) = Just (braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty))
+      printDat   dat   = angles (mempty <+> cat (punctuate " | " (pretty <$> (S.toList dat))) <+> mempty)
+      printCodat codat = braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty)
 
 instance Pretty EdgeLabel where
   pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
