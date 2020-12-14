@@ -3,6 +3,7 @@ module Pretty where
 import qualified Data.Set as S
 
 import Data.Graph.Inductive.Graph
+import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), StyleItem(SItem))
 import Data.GraphViz
 import Data.Text.Lazy (pack)
 import Data.Maybe (catMaybes)
@@ -141,5 +142,8 @@ typeAutParams = defaultParams
     [ style filled
     , fillColor $ case pol of {Prd -> White; Cns -> Gray}
     , textLabel (pack (ppPrint (hc :: HeadCons)))]
-  , fmtEdge = \(_,_,elM) -> case elM of {Nothing -> [arrowTo dotArrow]; Just el -> [textLabel $ pack (ppPrint (el :: EdgeLabel))] }
+  , fmtEdge = \(_,_,elM) -> maybe flowEdgeStyle regularEdgeStyle elM
   }
+  where
+    flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
+    regularEdgeStyle el = [textLabel $ pack (ppPrint (el :: EdgeLabel))]
