@@ -25,7 +25,7 @@ singleHeadCons :: DataCodata -> Set XtorName -> HeadCons
 singleHeadCons Data xtors = HeadCons (Just xtors) Nothing
 singleHeadCons Codata xtors = HeadCons Nothing (Just xtors)
 
-type NodeLabel = (Polarity, HeadCons)
+type NodeLabel = (PrdCns, HeadCons)
 
 data EdgeLabel
   = EdgeSymbol DataCodata XtorName PrdCns Int
