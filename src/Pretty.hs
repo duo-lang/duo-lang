@@ -5,6 +5,7 @@ import qualified Data.Set as S
 import Data.Graph.Inductive.Graph
 import Data.GraphViz
 import Data.Text.Lazy (pack)
+import Data.Maybe (catMaybes)
 
 import Syntax.Terms
 import Syntax.Types
@@ -118,23 +119,16 @@ instance Pretty Error where
 ---------------------------------------------------------------------------------
 
 instance Pretty HeadCons where
-  pretty (HeadCons maybeDat maybeCodat) =
-    case maybeDat of
-      Just dat -> "{+ " <> intercalateComma (pretty <$> S.toList dat) <> " +}"
-        <> case maybeCodat of
-          Just codat -> "; {- " <> intercalateComma (pretty <$> S.toList codat) <> " -}"
-          Nothing -> ""
-      Nothing -> case maybeCodat of
-        Just codat -> "{- " <> intercalateComma (pretty <$> S.toList codat) <> " -}"
-        Nothing -> ""
+  pretty (HeadCons maybeDat maybeCodat) = intercalateX ";" (catMaybes [printDat maybeDat, printCodat maybeCodat])
+    where
+      printDat Nothing = Nothing
+      printDat (Just dat) = Just ( angles (mempty <+> cat (punctuate " | " (pretty <$> (S.toList dat))) <+> mempty) )
+      printCodat Nothing = Nothing
+      printCodat (Just codat) = Just (braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty))
 
 instance Pretty EdgeLabel where
-  pretty (EdgeSymbol s xt pc i) =
-    let
-      showS = case s of {Data -> "+"; Codata -> "-"}
-      showPc = case pc of {Prd -> "prd"; Cns -> "cns"}
-    in
-      showS <> pretty xt <> "." <> showPc <> "." <> pretty i
+  pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
+  pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
 
 typeAutToDot :: TypeAut' EdgeLabel f -> DotGraph Node
 typeAutToDot TypeAut {..} =
