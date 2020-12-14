@@ -26,12 +26,16 @@ unifcation variables.
 -- Phase 1: Term annotation
 -------------------------------------------------------------------------------------
 
-type GenerateM a = StateT Int (Except String) a
+data GenerateState = GenerateState { varGen :: Int }
+type GenerateM a = StateT GenerateState (Except String) a
+
+lookupCase :: XtorName -> GenerateM (Twice [SimpleType], XtorArgs SimpleType)
+lookupCase _xt = throwError "not implemented yet"
 
 freshVars :: Int -> PrdCnsRep pc -> GenerateM [(SimpleType, Term pc SimpleType)]
 freshVars k pc = do
-  n <- get
-  modify (+k)
+  n <- gets varGen
+  modify (\gs@GenerateState { varGen } -> gs {varGen = varGen + k })
   return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar (MkUVar i)]
 
 annotateCase :: Case () -> GenerateM (Case SimpleType)
@@ -43,11 +47,10 @@ annotateCase (MkCase xt@(MkXtorName { xtorNominalStructural = Structural }) (Twi
   cmd' <- annotateCommand cmd
   return (MkCase xt (Twice prdUVars cnsUVars) (commandOpening (MkXtorArgs prdTerms cnsTerms) cmd'))
 -- In Matches on nominal types we don't add unification variables, since types of arguments are known from type declaration.
-annotateCase (MkCase xt@(MkXtorName { xtorNominalStructural = Nominal }) (Twice prds cnss) cmd) = do
-  -- cmd' <- annotateCommand cmd
-  -- return (MkCase xt (Twice (replicate (length prds) (error "foo")) (replicate (length cnss)) (error "bar"))
-  --        (commandOpening 
-  throwError "not implemented yet"
+annotateCase (MkCase xt@(MkXtorName { xtorNominalStructural = Nominal }) _caseArgs cmd) = do
+  cmd' <- annotateCommand cmd
+  (vars, args) <- lookupCase xt
+  return (MkCase xt vars (commandOpening args cmd'))
 
 annotateTerm :: Term pc () -> GenerateM (Term pc SimpleType)
 annotateTerm (FreeVar _ v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
@@ -109,8 +112,8 @@ getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConst
 generateConstraints :: Term pc () -> Either Error (Term pc SimpleType, [Constraint], [UVar])
 generateConstraints t0 =
   case termLocallyClosed t0 of
-    True -> case runExcept (runStateT (annotateTerm t0) 0) of
-      Right (t1, numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
+    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0)) of
+      Right (t1, GenerateState numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
       Left err            -> Left $ GenConstraintsError err
     False -> Left $ GenConstraintsError "Term is not locally closed"
 
