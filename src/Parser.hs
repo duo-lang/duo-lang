@@ -340,15 +340,43 @@ recType = do
   return $ TTyRec rv ty
 
 ---------------------------------------------------------------------------------
--- Nominal type declaration parser
+-- Parser for Simple Types
 ---------------------------------------------------------------------------------
 
 typeNameP :: Parser TypeName
 typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
 
+xtorSignatureP :: Parser (XtorSig SimpleType)
+xtorSignatureP = do
+  xt <- xtorName Structural
+  args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
+  return (MkXtorSig xt args)
+
+dataTypeP :: Parser SimpleType
+dataTypeP = angles $ do
+  xtorSigs <- xtorSignatureP `sepBy` pipe
+  return (SimpleType Data xtorSigs)
+
+codataTypeP :: Parser SimpleType
+codataTypeP = braces $ do
+  xtorSigs <- xtorSignatureP `sepBy` comma
+  return (SimpleType Codata xtorSigs)
+
+nominalTypeP :: Parser SimpleType
+nominalTypeP = NominalType <$> typeNameP
+
 simpleTypeP :: Parser SimpleType
-simpleTypeP = NominalType <$> typeNameP
+simpleTypeP = nominalTypeP <|>
+              dataTypeP <|>
+              codataTypeP
+
+
+---------------------------------------------------------------------------------
+-- Nominal type declaration parser
+---------------------------------------------------------------------------------
+
+
 
 dataDeclP :: Parser (Declaration ())
 dataDeclP = DataDecl <$> dataDeclP'

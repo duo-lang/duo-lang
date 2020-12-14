@@ -102,5 +102,5 @@ prd parserTest2 := \(x)[x] => x >> x;
 data Bool { TT, FF };
 data Nat { Zero, Succ(Nat) };
 codata NatBoolFun { Ap(Nat)[Bool] };
-
+data FooBar { TT(< 'TT | 'FF >) };
 prd nominalNot := \(x)[k] => x >> match { TT => FF >> k, FF => TT >> k };
