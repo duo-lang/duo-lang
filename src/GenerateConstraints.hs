@@ -3,9 +3,12 @@ module GenerateConstraints
   , typedTermToType
   ) where
 
+import Data.Map (Map)
+import qualified Data.Map as M
 import Control.Monad.State
 import Control.Monad.Except
 
+import Pretty
 import Syntax.Terms
 import Syntax.Types
 import Utils
@@ -26,11 +29,19 @@ unifcation variables.
 -- Phase 1: Term annotation
 -------------------------------------------------------------------------------------
 
-data GenerateState = GenerateState { varGen :: Int }
+data GenerateState = GenerateState { varGen :: Int, xtorMap :: Map XtorName (Twice [SimpleType]) }
 type GenerateM a = StateT GenerateState (Except String) a
 
 lookupCase :: XtorName -> GenerateM (Twice [SimpleType], XtorArgs SimpleType)
-lookupCase _xt = throwError "not implemented yet"
+lookupCase xt = do
+  map <- gets xtorMap
+  case M.lookup xt map of
+    Nothing -> throwError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
+    Just types@(Twice prdTypes cnsTypes) -> do
+      let prds = (\ty -> FreeVar PrdRep "y" ty) <$> prdTypes
+      let cnss = (\ty -> FreeVar CnsRep "y" ty) <$> cnsTypes
+      return (types, MkXtorArgs prds cnss)
+
 
 freshVars :: Int -> PrdCnsRep pc -> GenerateM [(SimpleType, Term pc SimpleType)]
 freshVars k pc = do
@@ -112,8 +123,8 @@ getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConst
 generateConstraints :: Term pc () -> Either Error (Term pc SimpleType, [Constraint], [UVar])
 generateConstraints t0 =
   case termLocallyClosed t0 of
-    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0)) of
-      Right (t1, GenerateState numVars) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
+    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0 M.empty)) of
+      Right (t1, GenerateState numVars _) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
       Left err            -> Left $ GenConstraintsError err
     False -> Left $ GenConstraintsError "Term is not locally closed"
 
