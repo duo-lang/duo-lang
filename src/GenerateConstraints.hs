@@ -120,10 +120,12 @@ getConstraintsCommand (Print t) = getConstraintsTerm t
 getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConstraintsTerm t2)
   where newCs = SubType (typedTermToType t1) (typedTermToType t2)
 
-generateConstraints :: Term pc () -> Either Error (Term pc SimpleType, [Constraint], [UVar])
-generateConstraints t0 =
+generateConstraints :: Term pc ()
+                    -> Map XtorName (Twice [SimpleType])
+                    -> Either Error (Term pc SimpleType, [Constraint], [UVar])
+generateConstraints t0 map =
   case termLocallyClosed t0 of
-    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0 M.empty)) of
+    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0 map)) of
       Right (t1, GenerateState numVars _) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
       Left err            -> Left $ GenConstraintsError err
     False -> Left $ GenConstraintsError "Term is not locally closed"

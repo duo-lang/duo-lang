@@ -7,6 +7,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 
 import Data.List (isPrefixOf, find)
+import Data.Map (Map)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
@@ -25,6 +26,7 @@ import TypeAutomata.FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
+import Utils
 
 
 import Data.GraphViz
@@ -66,6 +68,9 @@ fromRight (Left err) = prettyRepl err >> abort
 parseRepl :: String -> Parser a -> Environment -> Repl a
 parseRepl s p env = fromRight (runEnvParser p env s)
 
+getXtorMap :: Repl (Map XtorName (Twice [SimpleType]))
+getXtorMap = return M.empty
+
 ------------------------------------------------------------------------------
 -- Command
 ------------------------------------------------------------------------------
@@ -93,8 +98,9 @@ data Option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
+  xtorMap <- getXtorMap
   t <- parseRepl s (termP PrdRep) env
-  (typedTerm, css, uvars) <- fromRight $ generateConstraints t
+  (typedTerm, css, uvars) <- fromRight $ generateConstraints t xtorMap
   typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
   let
     typeAutDet0 = determinize typeAut
@@ -176,7 +182,8 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> do
-        (typedTerm, css, uvars) <- fromRight (generateConstraints t)
+        xtorMap <- getXtorMap
+        (typedTerm, css, uvars) <- fromRight (generateConstraints t xtorMap)
         typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
         saveGraphFiles "0_typeAut" typeAut
         let typeAutDet = determinize typeAut
@@ -219,8 +226,9 @@ save_option = Option
 bind_cmd :: String -> Repl ()
 bind_cmd s = do
   env <- gets replEnv
+  xtorMap <- getXtorMap
   (v,t) <- parseRepl s bindingP env
-  (typedTerm, css, uvars) <- fromRight (generateConstraints t)
+  (typedTerm, css, uvars) <- fromRight (generateConstraints t xtorMap)
   typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) Prd)
   let
     typeAutDet0 = determinize typeAut

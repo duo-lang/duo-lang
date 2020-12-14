@@ -36,29 +36,29 @@ getEnvironment = do
     Right env -> return (filterEnvironment env) --() (prdEnv env <> cnsEnv env))
     Left _err -> error "Could not load prg.txt"
 
-checkTerm :: (FreeVarName, Term Prd ()) -> SpecWith ()
-checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe term `shouldBe` Nothing
+checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
+checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe env term `shouldBe` Nothing
 
 
-typecheckMaybe :: Term Prd () -> Maybe Error
-typecheckMaybe t = case  typecheck t of
+typecheckMaybe :: Environment -> Term Prd () -> Maybe Error
+typecheckMaybe env t = case typecheck env t of
   Left err -> Just err
   Right _ -> Nothing
 
-typecheck :: Term Prd () -> Either Error TypeAutDet
-typecheck t = do
-  (typedTerm, css, uvars) <- generateConstraints t
+typecheck :: Environment -> Term Prd () -> Either Error TypeAutDet
+typecheck env t = do
+  (typedTerm, css, uvars) <- generateConstraints t M.empty
   typeAut <- solveConstraints css uvars (typedTermToType typedTerm) Prd
   let typeAutDet0 = determinize typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
   let minTypeAut = minimize typeAutDet
   return minTypeAut
 
-typecheckExample :: String -> String -> Spec
-typecheckExample termS typS = do
+typecheckExample :: Environment -> String -> String -> Spec
+typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right term = runEnvParser (termP PrdRep) mempty termS
-      let Right inferredTypeAut = typecheck term
+      let Right inferredTypeAut = typecheck env term
       let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
@@ -79,13 +79,14 @@ spec = do
     env <- runIO getEnvironment
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_  (M.toList (prdEnv env)) $ \term -> do
-      checkTerm term
+      checkTerm env term
   describe "Typecheck specific examples" $ do
-    typecheckExample "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
-    typecheckExample "'S('Z)" "< 'S(< 'Z >) >"
-    typecheckExample "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
-                     "forall a. { 'Ap(< 'True | 'False >, a, a)[a] }"
-    typecheckExample "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
-                     "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }"
-    typecheckExample "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu*y. f >> 'Ap(y)[k]]) >> k"
-                     "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }"
+    env <- runIO  getEnvironment
+    typecheckExample env "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
+    typecheckExample env "'S('Z)" "< 'S(< 'Z >) >"
+    typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
+                         "forall a. { 'Ap(< 'True | 'False >, a, a)[a] }"
+    typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
+                         "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }"
+    typecheckExample env "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu*y. f >> 'Ap(y)[k]]) >> k"
+                         "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }"
