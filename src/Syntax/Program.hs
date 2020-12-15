@@ -5,6 +5,7 @@ import qualified Data.Map as M
 
 import Syntax.Terms
 import Syntax.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Program
@@ -47,3 +48,10 @@ insertDecl (PrdDecl v t)  env@Environment { prdEnv }  = env { prdEnv  = M.insert
 insertDecl (CnsDecl v t)  env@Environment { cnsEnv }  = env { cnsEnv  = M.insert v t cnsEnv }
 insertDecl (TypDecl n t)  env@Environment { typEnv }  = env { typEnv  = M.insert n t typEnv }
 insertDecl (DataDecl dcl) env@Environment { declEnv } = env { declEnv = dcl : declEnv }
+
+envToXtorMap :: Environment -> Map XtorName (Twice [SimpleType])
+envToXtorMap Environment { declEnv } = M.unions xtorMaps
+  where
+    xtorMaps = xtorSigsToAssocList <$> declEnv
+    xtorSigsToAssocList NominalDecl { data_xtors } =
+      M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors)

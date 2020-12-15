@@ -69,7 +69,9 @@ parseRepl :: String -> Parser a -> Environment -> Repl a
 parseRepl s p env = fromRight (runEnvParser p env s)
 
 getXtorMap :: Repl (Map XtorName (Twice [SimpleType]))
-getXtorMap = return M.empty
+getXtorMap = do
+  env <- gets replEnv
+  return (envToXtorMap env)
 
 ------------------------------------------------------------------------------
 -- Command
