@@ -93,3 +93,8 @@ typeToAutM pol (TTySimple s xtors) = do
              [(newNode, n, Just (EdgeSymbol s xt Cns i)) | i <- [0..length cnsNodes - 1], let n = cnsNodes !! i]
   modify (insEdges (concat edges))
   return newNode
+typeToAutM pol (TTyNominal tn) = do
+  newNode <- head . newNodes 1 <$> get
+  let nl = (pol, emptyHeadCons { hc_nominal = S.singleton tn })
+  modify (insNode (newNode, nl))
+  return newNode

@@ -129,7 +129,7 @@ nodeToType i = do
             return [TTySimple Codata sig]
         -- Creating Nominal types
         let nominals = TTyNominal <$> (S.toList tns)
-        return $ unionOrInter pol (varL ++ datL ++ codatL)
+        return $ unionOrInter pol (varL ++ datL ++ codatL ++ nominals)
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
