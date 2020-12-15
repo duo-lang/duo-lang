@@ -68,11 +68,6 @@ fromRight (Left err) = prettyRepl err >> abort
 parseRepl :: String -> Parser a -> Environment -> Repl a
 parseRepl s p env = fromRight (runEnvParser p env s)
 
-getXtorMap :: Repl (Map XtorName (Twice [SimpleType]))
-getXtorMap = do
-  env <- gets replEnv
-  return (envToXtorMap env)
-
 ------------------------------------------------------------------------------
 -- Command
 ------------------------------------------------------------------------------
@@ -100,9 +95,8 @@ data Option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  xtorMap <- getXtorMap
   t <- parseRepl s (termP PrdRep) env
-  (typedTerm, css, uvars) <- fromRight $ generateConstraints t xtorMap
+  (typedTerm, css, uvars) <- fromRight $ generateConstraints t env
   typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
   let
     typeAutDet0 = determinize typeAut
@@ -184,8 +178,7 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> do
-        xtorMap <- getXtorMap
-        (typedTerm, css, uvars) <- fromRight (generateConstraints t xtorMap)
+        (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
         typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
         saveGraphFiles "0_typeAut" typeAut
         let typeAutDet = determinize typeAut
@@ -228,9 +221,8 @@ save_option = Option
 bind_cmd :: String -> Repl ()
 bind_cmd s = do
   env <- gets replEnv
-  xtorMap <- getXtorMap
   (v,t) <- parseRepl s bindingP env
-  (typedTerm, css, uvars) <- fromRight (generateConstraints t xtorMap)
+  (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
   typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) Prd)
   let
     typeAutDet0 = determinize typeAut

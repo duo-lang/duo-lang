@@ -11,6 +11,7 @@ import Control.Monad.Except
 import Pretty
 import Syntax.Terms
 import Syntax.Types
+import Syntax.Program
 import Utils
 import Eval.Substitution
 
@@ -29,13 +30,13 @@ unifcation variables.
 -- Phase 1: Term annotation
 -------------------------------------------------------------------------------------
 
-data GenerateState = GenerateState { varGen :: Int, xtorMap :: Map XtorName (Twice [SimpleType]) }
+data GenerateState = GenerateState { varGen :: Int, envGen :: Environment }
 type GenerateM a = StateT GenerateState (Except String) a
 
 lookupCase :: XtorName -> GenerateM (Twice [SimpleType], XtorArgs SimpleType)
 lookupCase xt = do
-  map <- gets xtorMap
-  case M.lookup xt map of
+  env <- gets envGen
+  case M.lookup xt (envToXtorMap env) of
     Nothing -> throwError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
     Just types@(Twice prdTypes cnsTypes) -> do
       let prds = (\ty -> FreeVar PrdRep "y" ty) <$> prdTypes
@@ -94,12 +95,21 @@ annotateCommand (Apply t1 t2) = do
 -- Phase 2: Constraint collection
 ---------------------------------------------------------------------------------------------
 
+argsToTypes :: XtorArgs SimpleType -> Twice [SimpleType]
+argsToTypes (MkXtorArgs prdargs cnsargs) = (Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))
+
 -- only defined for fully opened terms, i.e. no de brujin indices left
 typedTermToType :: Term pc SimpleType -> SimpleType
 typedTermToType (FreeVar _ _ t)        =  t
 typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
-typedTermToType (XtorCall pc xt (MkXtorArgs prdargs cnsargs)) =
-  SimpleType (case pc of PrdRep -> Data; CnsRep -> Codata) [MkXtorSig xt (Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))]
+-- Structural XtorCalls:
+typedTermToType (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
+  SimpleType Data [MkXtorSig xt (argsToTypes args)]
+typedTermToType (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
+  SimpleType Codata [MkXtorSig xt (argsToTypes args)]
+-- Nominal XtorCalls
+typedTermToType (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
+  undefined
 typedTermToType (Match pc _ cases)      =
   SimpleType (case pc of PrdRep -> Codata; CnsRep -> Data) (map getCaseType cases)
   where
@@ -121,7 +131,7 @@ getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConst
   where newCs = SubType (typedTermToType t1) (typedTermToType t2)
 
 generateConstraints :: Term pc ()
-                    -> Map XtorName (Twice [SimpleType])
+                    -> Environment
                     -> Either Error (Term pc SimpleType, [Constraint], [UVar])
 generateConstraints t0 map =
   case termLocallyClosed t0 of
