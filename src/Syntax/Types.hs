@@ -10,7 +10,7 @@ import Utils
 ------------------------------------------------------------------------------
 
 
-data TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show)
+data TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
 
 data DataCodata
   = Data

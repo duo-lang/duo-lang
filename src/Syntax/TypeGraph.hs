@@ -3,6 +3,7 @@ module Syntax.TypeGraph where
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Set (Set)
+import qualified Data.Set as S
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
@@ -16,14 +17,15 @@ import Syntax.Terms
 data HeadCons = HeadCons
   { hc_data :: Maybe (Set XtorName)
   , hc_codata :: Maybe (Set XtorName)
+  , hc_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
 emptyHeadCons :: HeadCons
-emptyHeadCons = HeadCons Nothing Nothing
+emptyHeadCons = HeadCons Nothing Nothing S.empty
 
 singleHeadCons :: DataCodata -> Set XtorName -> HeadCons
-singleHeadCons Data xtors = HeadCons (Just xtors) Nothing
-singleHeadCons Codata xtors = HeadCons Nothing (Just xtors)
+singleHeadCons Data xtors = HeadCons (Just xtors) Nothing S.empty
+singleHeadCons Codata xtors = HeadCons Nothing (Just xtors) S.empty
 
 type NodeLabel = (PrdCns, HeadCons)
 
