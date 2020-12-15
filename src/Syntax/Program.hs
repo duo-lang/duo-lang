@@ -2,7 +2,8 @@ module Syntax.Program where
 
 import Data.Map (Map)
 import qualified Data.Map as M
-
+import Data.Monoid (Alt(..))
+import Data.Foldable (fold)
 import Syntax.Terms
 import Syntax.Types
 import Utils
@@ -55,3 +56,12 @@ envToXtorMap Environment { declEnv } = M.unions xtorMaps
     xtorMaps = xtorSigsToAssocList <$> declEnv
     xtorSigsToAssocList NominalDecl { data_xtors } =
       M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors)
+
+lookupXtor :: XtorName -> Environment -> Maybe TypeName
+lookupXtor xt Environment { declEnv } = firstJust (xtorInDecl <$> declEnv)
+  where
+    xtorInDecl :: DataDecl -> Maybe TypeName
+    xtorInDecl NominalDecl { data_name, data_xtors } | xt `elem` (sig_name <$> data_xtors) = Just data_name
+                                              | otherwise = Nothing
+    firstJust :: [Maybe TypeName] -> Maybe TypeName
+    firstJust x = getAlt (fold ( Alt <$> x))
