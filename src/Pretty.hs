@@ -3,8 +3,10 @@ module Pretty where
 import qualified Data.Set as S
 
 import Data.Graph.Inductive.Graph
+import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), StyleItem(SItem))
 import Data.GraphViz
 import Data.Text.Lazy (pack)
+import Data.Maybe (catMaybes)
 
 import Syntax.Terms
 import Syntax.Types
@@ -128,23 +130,14 @@ instance Pretty Error where
 ---------------------------------------------------------------------------------
 
 instance Pretty HeadCons where
-  pretty (HeadCons maybeDat maybeCodat) =
-    case maybeDat of
-      Just dat -> "{+ " <> intercalateComma (pretty <$> S.toList dat) <> " +}"
-        <> case maybeCodat of
-          Just codat -> "; {- " <> intercalateComma (pretty <$> S.toList codat) <> " -}"
-          Nothing -> ""
-      Nothing -> case maybeCodat of
-        Just codat -> "{- " <> intercalateComma (pretty <$> S.toList codat) <> " -}"
-        Nothing -> ""
+  pretty (HeadCons maybeDat maybeCodat) = intercalateX ";" (catMaybes [printDat <$> maybeDat, printCodat <$> maybeCodat])
+    where
+      printDat   dat   = angles (mempty <+> cat (punctuate " | " (pretty <$> (S.toList dat))) <+> mempty)
+      printCodat codat = braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty)
 
 instance Pretty EdgeLabel where
-  pretty (EdgeSymbol s xt pc i) =
-    let
-      showS = case s of {Data -> "+"; Codata -> "-"}
-      showPc = case pc of {Prd -> "prd"; Cns -> "cns"}
-    in
-      showS <> pretty xt <> "." <> showPc <> "." <> pretty i
+  pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
+  pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
 
 typeAutToDot :: TypeAut' EdgeLabel f -> DotGraph Node
 typeAutToDot TypeAut {..} =
@@ -159,5 +152,8 @@ typeAutParams = defaultParams
     [ style filled
     , fillColor $ case pol of {Prd -> White; Cns -> Gray}
     , textLabel (pack (ppPrint (hc :: HeadCons)))]
-  , fmtEdge = \(_,_,elM) -> case elM of {Nothing -> [arrowTo dotArrow]; Just el -> [textLabel $ pack (ppPrint (el :: EdgeLabel))] }
+  , fmtEdge = \(_,_,elM) -> maybe flowEdgeStyle regularEdgeStyle elM
   }
+  where
+    flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
+    regularEdgeStyle el = [textLabel $ pack (ppPrint (el :: EdgeLabel))]
