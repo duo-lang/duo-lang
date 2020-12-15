@@ -7,7 +7,6 @@ import Control.Monad.Reader
 import Control.Monad.State
 
 import Data.List (isPrefixOf, find)
-import Data.Map (Map)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
@@ -26,8 +25,6 @@ import TypeAutomata.FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
-import Utils
-
 
 import Data.GraphViz
 
@@ -97,7 +94,7 @@ type_cmd s = do
   env <- gets replEnv
   t <- parseRepl s (termP PrdRep) env
   (typedTerm, css, uvars) <- fromRight $ generateConstraints t env
-  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
+  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType env typedTerm) Prd
   let
     typeAutDet0 = determinize typeAut
     typeAutDet = removeAdmissableFlowEdges typeAutDet0
@@ -179,7 +176,7 @@ save_cmd s = do
     Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> do
         (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
-        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
+        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType env typedTerm) Prd
         saveGraphFiles "0_typeAut" typeAut
         let typeAutDet = determinize typeAut
         saveGraphFiles "1_typeAutDet" typeAutDet
@@ -223,7 +220,7 @@ bind_cmd s = do
   env <- gets replEnv
   (v,t) <- parseRepl s bindingP env
   (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
-  typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) Prd)
+  typeAut <- fromRight (solveConstraints css uvars (typedTermToType env typedTerm) Prd)
   let
     typeAutDet0 = determinize typeAut
     typeAutDet  = removeAdmissableFlowEdges typeAutDet0

@@ -48,7 +48,7 @@ typecheckMaybe env t = case typecheck env t of
 typecheck :: Environment -> Term Prd () -> Either Error TypeAutDet
 typecheck env t = do
   (typedTerm, css, uvars) <- generateConstraints t env
-  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) Prd
+  typeAut <- solveConstraints css uvars (typedTermToType env typedTerm) Prd
   let typeAutDet0 = determinize typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
   let minTypeAut = minimize typeAutDet

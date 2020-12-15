@@ -3,7 +3,6 @@ module GenerateConstraints
   , typedTermToType
   ) where
 
-import Data.Map (Map)
 import qualified Data.Map as M
 import Control.Monad.State
 import Control.Monad.Except
@@ -95,48 +94,48 @@ annotateCommand (Apply t1 t2) = do
 -- Phase 2: Constraint collection
 ---------------------------------------------------------------------------------------------
 
-argsToTypes :: XtorArgs SimpleType -> Twice [SimpleType]
-argsToTypes (MkXtorArgs prdargs cnsargs) = (Twice (typedTermToType <$> prdargs) (typedTermToType <$> cnsargs))
+argsToTypes :: Environment -> XtorArgs SimpleType -> Twice [SimpleType]
+argsToTypes env (MkXtorArgs prdargs cnsargs) = (Twice (typedTermToType env <$> prdargs) (typedTermToType env <$> cnsargs))
 
 -- only defined for fully opened terms, i.e. no de brujin indices left
-typedTermToType :: Term pc SimpleType -> SimpleType
-typedTermToType (FreeVar _ _ t)        =  t
-typedTermToType (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
+typedTermToType :: Environment -> Term pc SimpleType -> SimpleType
+typedTermToType _ (FreeVar _ _ t)        =  t
+typedTermToType _ (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 -- Structural XtorCalls:
-typedTermToType (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
-  SimpleType Data [MkXtorSig xt (argsToTypes args)]
-typedTermToType (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
-  SimpleType Codata [MkXtorSig xt (argsToTypes args)]
+typedTermToType env (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
+  SimpleType Data [MkXtorSig xt (argsToTypes env args)]
+typedTermToType env (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
+  SimpleType Codata [MkXtorSig xt (argsToTypes env args)]
 -- Nominal XtorCalls
-typedTermToType (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
+typedTermToType _ (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
   undefined
-typedTermToType (Match pc _ cases)      =
+typedTermToType _ (Match pc _ cases)      =
   SimpleType (case pc of PrdRep -> Codata; CnsRep -> Data) (map getCaseType cases)
   where
     getCaseType (MkCase xt types _) = MkXtorSig xt types
-typedTermToType (MuAbs _ t _)        = t
+typedTermToType _ (MuAbs _ t _)        = t
 
-getConstraintsTerm :: Term pc SimpleType -> [Constraint]
-getConstraintsTerm (BoundVar _ _) = error "getConstraintsTerm:  found dangling bound variable"
-getConstraintsTerm (FreeVar _ _ _)    = []
-getConstraintsTerm (XtorCall _ _ (MkXtorArgs prdargs cnsargs)) =
-  concat $ mergeTwice (++) $ Twice (getConstraintsTerm <$> prdargs) (getConstraintsTerm <$> cnsargs)
-getConstraintsTerm (Match _ _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand cmd) cases
-getConstraintsTerm (MuAbs _ _ cmd) = getConstraintsCommand cmd
+getConstraintsTerm :: Environment -> Term pc SimpleType -> [Constraint]
+getConstraintsTerm _ (BoundVar _ _) = error "getConstraintsTerm:  found dangling bound variable"
+getConstraintsTerm _ (FreeVar _ _ _)    = []
+getConstraintsTerm env (XtorCall _ _ (MkXtorArgs prdargs cnsargs)) =
+  concat $ mergeTwice (++) $ Twice (getConstraintsTerm env <$> prdargs) (getConstraintsTerm env <$> cnsargs)
+getConstraintsTerm env (Match _ _ cases) = concat $ map (\(MkCase _ _ cmd) -> getConstraintsCommand env cmd) cases
+getConstraintsTerm env (MuAbs _ _ cmd) = getConstraintsCommand env cmd
 
-getConstraintsCommand :: Command SimpleType -> [Constraint]
-getConstraintsCommand Done = []
-getConstraintsCommand (Print t) = getConstraintsTerm t
-getConstraintsCommand (Apply t1 t2) = newCs : (getConstraintsTerm t1 ++ getConstraintsTerm t2)
-  where newCs = SubType (typedTermToType t1) (typedTermToType t2)
+getConstraintsCommand :: Environment -> Command SimpleType -> [Constraint]
+getConstraintsCommand _ Done = []
+getConstraintsCommand env (Print t) = getConstraintsTerm env t
+getConstraintsCommand env (Apply t1 t2) = newCs : (getConstraintsTerm env t1 ++ getConstraintsTerm env t2)
+  where newCs = SubType (typedTermToType env t1) (typedTermToType env t2)
 
 generateConstraints :: Term pc ()
                     -> Environment
                     -> Either Error (Term pc SimpleType, [Constraint], [UVar])
-generateConstraints t0 map =
+generateConstraints t0 env =
   case termLocallyClosed t0 of
-    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0 map)) of
-      Right (t1, GenerateState numVars _) -> Right (t1, getConstraintsTerm t1, MkUVar <$> [0..numVars-1])
+    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0 env)) of
+      Right (t1, GenerateState numVars _) -> Right (t1, getConstraintsTerm env t1, MkUVar <$> [0..numVars-1])
       Left err            -> Left $ GenConstraintsError err
     False -> Left $ GenConstraintsError "Term is not locally closed"
 
