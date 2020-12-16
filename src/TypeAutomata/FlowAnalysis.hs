@@ -64,8 +64,12 @@ admissableM aut@TypeAut{..} e@(i,j) =
             admissableM aut (n,m)
           return ()
         return ()
+      subTypeNominal = do -- Maybe monad
+        (Cns, HeadCons _ _ nominal1) <- lab ta_gr i
+        (Prd, HeadCons _ _ nominal2) <- lab ta_gr j
+        guard $ not . S.null $ S.intersection nominal1 nominal2
     in
-      guard (e `elem` ta_flowEdges) <|> subtypeData <|> subtypeCodata
+      guard (e `elem` ta_flowEdges) <|> subtypeData <|> subtypeCodata <|> subTypeNominal
 
 
 removeAdmissableFlowEdges :: TypeAutDet -> TypeAutDet
