@@ -47,6 +47,10 @@ data TypeAut' a f = TypeAut
   , ta_starts :: f Node
   , ta_flowEdges :: [FlowEdge]
   }
+deriving instance Show TypeAut
+deriving instance Show TypeAutDet
+deriving instance Show TypeAutEps
+deriving instance Show TypeAutEpsDet
 
 type TypeAut       = TypeAut' EdgeLabel         []
 type TypeAutDet    = TypeAut' EdgeLabel         Identity

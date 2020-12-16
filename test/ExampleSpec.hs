@@ -4,6 +4,7 @@ import           Test.Hspec
 import           Control.Monad (forM_, when)
 
 import qualified Data.Map as M
+import Data.Either (isRight)
 
 import TestUtils
 import Parser
@@ -23,13 +24,7 @@ failingExamples :: [String]
 failingExamples = ["div2and3"]
 
 checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
-checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe env term `shouldBe` Nothing
-
-
-typecheckMaybe :: Environment -> Term Prd () -> Maybe Error
-typecheckMaybe env t = case typecheck env t of
-  Left err -> Just err
-  Right _ -> Nothing
+checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ typecheck env term `shouldSatisfy` isRight
 
 typecheck :: Environment -> Term Prd () -> Either Error TypeAutDet
 typecheck env t = do
