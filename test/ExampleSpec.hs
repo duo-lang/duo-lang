@@ -82,7 +82,7 @@ spec = do
                          "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
     -- subNominal
     typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu*w. predNominal >> 'Ap(w)[k]] }} >> k })['Ap(m)[k]] }"
-                         "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
+                         "{ 'Ap(Nat,Nat)[Nat] }"
     -- subSafeNominal
     typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(mp) => n >> match { Zero => n >> k, Succ(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]}"
                          "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
