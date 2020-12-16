@@ -5,12 +5,12 @@ import           Control.Monad (forM_, when)
 
 import qualified Data.Map as M
 
+import TestUtils
 import Parser
 import Syntax.Terms
 import Syntax.Program
 import Syntax.TypeGraph
 import Utils
-import Eval.Substitution (isClosed_term, termLocallyClosed)
 import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize
@@ -21,20 +21,6 @@ import TypeAutomata.Subsume (typeAutEqual)
 
 failingExamples :: [String]
 failingExamples = ["div2and3"]
-
-filterEnvironment :: Environment -> Environment
-filterEnvironment Environment {..} = Environment { prdEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) prdEnv
-                                                 , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
-                                                 , typEnv = typEnv
-                                                 , declEnv = declEnv
-                                                 }
-
-getEnvironment :: IO Environment
-getEnvironment = do
-  s <- readFile "prg.txt"
-  case runEnvParser environmentP mempty s of
-    Right env -> return (filterEnvironment env) --() (prdEnv env <> cnsEnv env))
-    Left _err -> error "Could not load prg.txt"
 
 checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
 checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe env term `shouldBe` Nothing
@@ -65,23 +51,13 @@ typecheckExample env termS typS = do
 
 spec :: Spec
 spec = do
-  describe "All examples are closed" $ do
-    env <- runIO getEnvironment
-    when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-      it (name ++ " does not contain free variables") $ isClosed_term term `shouldBe` True
-  describe "All examples are locally closed" $ do
-    env <- runIO getEnvironment
-    when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-      it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` True
   describe "All examples typecheck" $ do
-    env <- runIO getEnvironment
+    env <- runIO $ getEnvironment "prg.txt" failingExamples
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_  (M.toList (prdEnv env)) $ \term -> do
       checkTerm env term
   describe "Typecheck specific examples" $ do
-    env <- runIO  getEnvironment
+    env <- runIO $ getEnvironment "prg.txt" []
     typecheckExample env "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
     typecheckExample env "'S('Z)" "< 'S(< 'Z >) >"
     typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"

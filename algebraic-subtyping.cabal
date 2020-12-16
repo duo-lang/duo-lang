@@ -87,9 +87,10 @@ test-suite simple-test
   main-is: TestRunner.hs
   other-modules:
       ExampleSpec
-    , SubstitutionSpec
+    , Eval.SubstitutionSpec
     , Paths_algebraic_subtyping
     , Spec
+    , TestUtils
   hs-source-dirs:
       test
   ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors -threaded -rtsopts -with-rtsopts=-N
