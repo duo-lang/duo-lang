@@ -262,15 +262,23 @@ subtypingProblemP = do
 -- StateT to keep track of free type variables.
 type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
 
+typeName :: TypeParser TypeName
+typeName = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
   (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
   return (TypeScheme (nub (tvars ++ S.toList newtvars)) monotype)
 
+nominalType :: TypeParser TargetType
+nominalType = TTyNominal <$> typeName
+
+
 --without joins and meets
 typeR' :: TypeParser TargetType
 typeR' = try (parens typeR) <|>
+  nominalType <|>
   dataType <|>
   codataType <|>
   try recVar <|>

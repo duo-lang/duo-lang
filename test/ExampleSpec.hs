@@ -61,3 +61,10 @@ spec = do
                          "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }"
     typecheckExample env "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu*y. f >> 'Ap(y)[k]]) >> k"
                          "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }"
+    typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }"
+                         "{ 'Ap(Bool)[Bool] }"
+    typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => Zero >> k }"
+                         "{ 'Ap(Bool)[(Bool \\/ Nat)] }"
+    typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => Zero >> k }"
+                         "{ 'Ap(Bool)[(Nat \\/ Bool)] }"
+
