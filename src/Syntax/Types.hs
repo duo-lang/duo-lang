@@ -8,21 +8,66 @@ import Data.Kind (Type)
 import Data.Void
 
 ------------------------------------------------------------------------------
--- Type syntax
+-- Types
 ------------------------------------------------------------------------------
 
+-- Free type variable.
+newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Ord, Show)
 
+-- Bound type variable.
+newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord, Show)
+
+-- Name of nominal type.
 data TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
 
-data DataCodata
-  = Data
-  | Codata
-  deriving (Eq, Show, Ord)
+data DataCodata = Data  | Codata  deriving (Eq, Show, Ord)
 
-newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
+data UnionInter = Union | Inter deriving (Eq, Show)
 
-instance Show UVar where
-  show (MkUVar i) = "U" ++ show i
+data SimpleTarget = Simple | Target
+
+type family TargetF (k :: SimpleTarget) :: Type where
+  TargetF Target = ()
+  TargetF Simple = Void
+
+data XtorSig a = MkXtorSig { sig_name :: XtorName, sig_args :: Twice [a] }
+  deriving (Show, Eq)
+
+data Typ a
+  = TyFreeVar TVar
+  | TyBoundVar UVar
+  | TySimple DataCodata [XtorSig (Typ a)]
+  | TyNominal TypeName
+  | TySet (TargetF a) UnionInter [Typ a]
+  | TyRec (TargetF a) (Typ a)
+
+type SimpleType = Typ Simple
+type TargetType' = Typ Target
+
+deriving instance Eq SimpleType
+deriving instance Show SimpleType
+
+------------------------------------------------------------------------------
+-- Constraints
+------------------------------------------------------------------------------
+
+data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
+
+------------------------------------------------------------------------------
+-- Data Type declarations
+------------------------------------------------------------------------------
+
+data DataDecl = NominalDecl
+  { data_name :: TypeName
+  , data_polarity :: DataCodata
+  , data_xtors :: [XtorSig SimpleType]
+  }
+  deriving (Show, Eq)
+
+------------------------------------------------------------------------------
+-- Most of the stuff below is deprecated, and will be merged with
+-- the stuff declared above.
+------------------------------------------------------------------------------
 
 switchPrdCns :: PrdCns -> PrdCns
 switchPrdCns Cns = Prd
@@ -33,21 +78,6 @@ applyVariance Data Prd = id
 applyVariance Data Cns = switchPrdCns
 applyVariance Codata Prd = switchPrdCns
 applyVariance Codata Cns = id
-
-data XtorSig a = MkXtorSig { sig_name :: XtorName, sig_args :: Twice [a] }
-  deriving (Show, Eq)
-
-data SimpleType =
-    TyVar UVar
-  | SimpleType DataCodata [XtorSig SimpleType]
-  | NominalType TypeName
-
-  deriving (Show,Eq)
-
-data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
-
--- free type variables
-newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Ord, Show)
 
 alphaRenameTVar :: [TVar] -> TVar -> TVar
 alphaRenameTVar tvs tv
@@ -106,36 +136,4 @@ freeTypeVars = nub . freeTypeVars'
 generalize :: TargetType -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
-------------------------------------------------------------------------------
--- Types
-------------------------------------------------------------------------------
 
-data SimpleTarget = Simple | Target
-
-type family TargetF (k :: SimpleTarget) :: Type where
-  TargetF Target = ()
-  TargetF Simple = Void
-
-data UnionInter = Union | Inter deriving (Eq, Show)
-
-data Typ a
-  = TyFreeVar TVar
-  | TyBoundVar Int
-  | TySimple DataCodata [XtorSig (Typ a)]
-  | TyNominal TypeName
-  | TySet (TargetF a) UnionInter [Typ a]
-  | TyRec (TargetF a) (Typ a)
-
-type SimpleType' = Typ Simple
-type TargetType' = Typ Target
-
-------------------------------------------------------------------------------
--- Data Type declarations
-------------------------------------------------------------------------------
-
-data DataDecl = NominalDecl
-  { data_name :: TypeName
-  , data_polarity :: DataCodata
-  , data_xtors :: [XtorSig SimpleType]
-  }
-  deriving (Show, Eq)

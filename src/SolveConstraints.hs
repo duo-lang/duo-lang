@@ -12,6 +12,7 @@ import Data.List ((\\))
 import qualified Data.Set as S
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Void (absurd)
 
 import Syntax.Types
 import Syntax.TypeGraph
@@ -62,11 +63,18 @@ getLowerBounds :: UVar -> SolverM [SimpleType]
 getLowerBounds uv = gets (vst_lowerbounds . (M.! uv) . sst_bounds)
 
 subConstraints :: Constraint -> SolverM [Constraint]
+-- Should not occur.
+subConstraints (SubType (TyFreeVar _) _) = return []
+subConstraints (SubType _ (TyFreeVar _)) = return []
+subConstraints (SubType (TySet v _ _) _) = absurd v
+subConstraints (SubType _ (TySet v _ _)) = absurd v
+subConstraints (SubType (TyRec v  _) _) = absurd v
+subConstraints (SubType _ (TyRec v  _)) = absurd v
 -- Atomic constraints (one side is a TyVar)
-subConstraints (SubType (TyVar _) _) = return []
-subConstraints (SubType _ (TyVar _)) = return []
+subConstraints (SubType (TyBoundVar _) _) = return []
+subConstraints (SubType _ (TyBoundVar _)) = return []
 -- Data/Data and Codata/Codata constraints
-subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
+subConstraints cs@(SubType (TySimple Data xtors1) (TySimple Data xtors2))
   = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
     then throwSolverError $ unlines [ "Constraint:"
                                     , ppPrint cs
@@ -77,7 +85,7 @@ subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
       (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
       let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
       zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
-subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2))
+subConstraints cs@(SubType (TySimple Codata xtors1) (TySimple Codata xtors2))
   = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
     then throwSolverError $ unlines [ "Constraint:"
                                     , ppPrint cs
@@ -89,16 +97,16 @@ subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2)
       let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
       zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
 -- Nominal/Nominal Constraint
-subConstraints (SubType (NominalType tn1) (NominalType tn2)) | tn1 == tn2 = return []
-                                                             | otherwise = throwSolverError ("The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2)
+subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
+                                                         | otherwise = throwSolverError ("The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2)
 -- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (SimpleType Data _) (SimpleType Codata _))
+subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
   = throwSolverError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
-subConstraints cs@(SubType (SimpleType Codata _) (SimpleType Data _))
+subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
   = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
 -- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (SimpleType _ _) (NominalType _)) = throwSolverError "Cannot constrain nominal by structural type"
-subConstraints (SubType (NominalType _) (SimpleType _ _)) = throwSolverError "Cannot constrain nominal by structural type"
+subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError "Cannot constrain nominal by structural type"
+subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError "Cannot constrain nominal by structural type"
 
 --subConstraints _ = return [] -- constraint is atomic
 
@@ -111,12 +119,12 @@ solve (cs:css) = do
     else do
       modifyCache (cs:)
       case cs of
-        (SubType (TyVar uv) ub) -> do
+        (SubType (TyBoundVar uv) ub) -> do
           modifyBounds (addUpperBound ub) uv
           lbs <- getLowerBounds uv
           let newCss = [SubType lb ub | lb <- lbs]
           solve (newCss ++ css)
-        (SubType lb (TyVar uv)) -> do
+        (SubType lb (TyBoundVar uv)) -> do
           modifyBounds (addLowerBound lb) uv
           ubs <- getUpperBounds uv
           let newCss = [SubType lb ub | ub <- ubs]
@@ -139,13 +147,16 @@ uvarToNodeId uv Prd = 2 * uvar_id uv
 uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 
 typeToHeadCons :: SimpleType -> HeadCons
-typeToHeadCons (TyVar _) = emptyHeadCons
-typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
-typeToHeadCons (NominalType tn) = emptyHeadCons { hc_nominal = S.singleton tn }
+typeToHeadCons (TyBoundVar _) = emptyHeadCons
+typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
+typeToHeadCons (TyNominal tn) = emptyHeadCons { hc_nominal = S.singleton tn }
+typeToHeadCons (TySet v _ _) = absurd v
+typeToHeadCons (TyRec v _) = absurd v
+typeToHeadCons (TyFreeVar _) = error "should not occur"
 
 typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
-typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
-typeToGraph pol ty@(SimpleType s xtors) = do
+typeToGraph pol (TyBoundVar uv) = return (uvarToNodeId uv pol)
+typeToGraph pol ty@(TySimple s xtors) = do
   newNodeId <- gets (head . newNodes 1 . ta_gr)
   let hc = typeToHeadCons ty
   modifyGraph (insNode (newNodeId, (pol, hc)))
@@ -157,11 +168,14 @@ typeToGraph pol ty@(SimpleType s xtors) = do
       cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
       modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
   return newNodeId
-typeToGraph pol (NominalType tn) = do
+typeToGraph pol (TyNominal tn) = do
   newNodeId <- gets (head . newNodes 1 . ta_gr)
   let hc = emptyHeadCons { hc_nominal = S.singleton tn }
   modifyGraph (insNode (newNodeId, (pol, hc)))
   return newNodeId
+typeToGraph _ (TySet v _ _) = absurd v
+typeToGraph _ (TyRec v _) = absurd v
+typeToGraph _ (TyFreeVar _) = error "should not occur"
 
 -- | Creates upper/lower bounds for a unification variable by inserting epsilon edges into the automaton
 insertEpsilonEdges :: UVar -> VariableState -> MkAutM ()

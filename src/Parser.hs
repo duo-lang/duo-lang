@@ -364,15 +364,15 @@ xtorSignatureP = do
 dataTypeP :: Parser SimpleType
 dataTypeP = angles $ do
   xtorSigs <- xtorSignatureP `sepBy` pipe
-  return (SimpleType Data xtorSigs)
+  return (TySimple Data xtorSigs)
 
 codataTypeP :: Parser SimpleType
 codataTypeP = braces $ do
   xtorSigs <- xtorSignatureP `sepBy` comma
-  return (SimpleType Codata xtorSigs)
+  return (TySimple Codata xtorSigs)
 
 nominalTypeP :: Parser SimpleType
-nominalTypeP = NominalType <$> typeNameP
+nominalTypeP = TyNominal <$> typeNameP
 
 simpleTypeP :: Parser SimpleType
 simpleTypeP = nominalTypeP <|>

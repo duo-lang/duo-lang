@@ -7,6 +7,7 @@ import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), S
 import Data.GraphViz
 import Data.Text.Lazy (pack)
 import Data.Maybe (catMaybes)
+import Data.Void (absurd)
 
 import Syntax.Terms
 import Syntax.Types
@@ -72,6 +73,7 @@ instance Pretty a => Pretty (Command a) where
 instance Pretty UVar where
   pretty (MkUVar n) = "U" <> pretty n
 
+
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
 
@@ -82,10 +84,13 @@ instance Pretty a => Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
 
 instance Pretty SimpleType where
-  pretty (TyVar uvar) = pretty uvar
-  pretty (NominalType tn) = pretty (unTypeName tn)
-  pretty (SimpleType Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (SimpleType Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (TyFreeVar tv) = pretty tv
+  pretty (TyBoundVar i) = pretty i
+  pretty (TyNominal tn) = pretty (unTypeName tn)
+  pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (TySet v _ _) = absurd v
+  pretty (TyRec v _) = absurd v
 
 instance Pretty TargetType where
   pretty (TTySet Union []) = "Bot"
