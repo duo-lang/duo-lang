@@ -1,6 +1,5 @@
 module Syntax.Types where
 
-import Data.Bifunctor (bimap)
 import Data.List (nub)
 
 import Syntax.Terms
@@ -9,6 +8,9 @@ import Utils
 ------------------------------------------------------------------------------
 -- Type syntax
 ------------------------------------------------------------------------------
+
+
+data TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
 
 data DataCodata
   = Data
@@ -36,6 +38,8 @@ data XtorSig a = MkXtorSig { sig_name :: XtorName, sig_args :: Twice [a] }
 data SimpleType =
     TyVar UVar
   | SimpleType DataCodata [XtorSig SimpleType]
+  | NominalType TypeName
+
   deriving (Show,Eq)
 
 data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
@@ -45,7 +49,7 @@ newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Ord, Show)
 
 alphaRenameTVar :: [TVar] -> TVar -> TVar
 alphaRenameTVar tvs tv
-  | tv `elem` tvs = head [newtv | n <- [0..], let newtv = MkTVar (tvar_name tv ++ show n), not (newtv `elem` tvs)]
+  | tv `elem` tvs = head [newtv | n <- [(0 :: Integer)..], let newtv = MkTVar (tvar_name tv ++ show n), not (newtv `elem` tvs)]
   | otherwise = tv
 
 -- bound type variables (used in recursive types)
@@ -58,6 +62,7 @@ data TargetType
   | TTyRVar RVar
   | TTyRec RVar TargetType
   | TTySimple DataCodata [XtorSig TargetType]
+  | TTyNominal TypeName
   deriving (Eq,Show)
 
 -- replaces all free type variables in the type, so that they don't intersect with the given type variables
@@ -67,6 +72,7 @@ alphaRenameTargetType _   (TTyRVar rv)   = TTyRVar rv
 alphaRenameTargetType tvs (TTyUnion tys) = TTyUnion (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyInter tys) = TTyInter (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyRec rv ty) = TTyRec rv (alphaRenameTargetType tvs ty)
+alphaRenameTargetType _ (TTyNominal tn) = TTyNominal tn
 alphaRenameTargetType tvs (TTySimple s sigs) = TTySimple s $ map renameXtorSig  sigs
   where
     renameXtorSig (MkXtorSig xt args) = MkXtorSig xt (twiceMap (map (alphaRenameTargetType tvs)) (map (alphaRenameTargetType tvs)) args)
@@ -88,6 +94,7 @@ freeTypeVars' (TTyRVar _)  = []
 freeTypeVars' (TTyUnion ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyInter ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
+freeTypeVars' (TTyNominal _) = []
 freeTypeVars' (TTySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
   where
     freeTypeVarsXtorSig (MkXtorSig _ (Twice prdTypes cnsTypes)) =
@@ -100,3 +107,13 @@ freeTypeVars = nub . freeTypeVars'
 generalize :: TargetType -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
+------------------------------------------------------------------------------
+-- Data Type declarations
+------------------------------------------------------------------------------
+
+data DataDecl = NominalDecl
+  { data_name :: TypeName
+  , data_polarity :: DataCodata
+  , data_xtors :: [XtorSig SimpleType]
+  }
+  deriving (Show, Eq)

@@ -21,8 +21,10 @@ deriving instance Show (PrdCnsRep pc)
 -- Names
 ---------------------------------------------------------------------------------
 
+data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
+
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
-data XtorName = MkXtorName { unXtorName :: String } deriving (Eq, Ord, Show)
+data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: String } deriving (Eq, Ord, Show)
 
 -- | Name of a free variable. Starts with a lowercase letter.
 type FreeVarName = String
@@ -49,7 +51,7 @@ data Term (pc :: PrdCns) a where
   BoundVar :: PrdCnsRep pc -> Index -> Term pc a
   FreeVar  :: PrdCnsRep pc -> FreeVarName -> a -> Term pc a
   XtorCall :: PrdCnsRep pc -> XtorName -> XtorArgs a -> Term pc a
-  Match    :: PrdCnsRep pc -> [Case a] -> Term pc a
+  Match    :: PrdCnsRep pc -> NominalStructural -> [Case a] -> Term pc a
   MuAbs    :: PrdCnsRep pc -> a -> Command a -> Term pc a
   -- The PrdCns parameter describes the result of the abstraction!
 deriving instance Show a => Show (Term pc a)

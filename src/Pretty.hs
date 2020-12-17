@@ -39,7 +39,8 @@ prettyTwice :: Pretty a => Twice [a] -> Doc ann
 prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
 instance Pretty XtorName where
-  pretty xn = pretty (unXtorName xn)
+  pretty (MkXtorName Structural xt) = "'" <> pretty xt
+  pretty (MkXtorName Nominal    xt) = pretty xt
 
 instance Pretty a => Pretty (Case a) where
   pretty MkCase{..} = pretty case_name <> prettyTwice (constString case_args) <+> "=>" <+> pretty case_cmd
@@ -54,8 +55,8 @@ instance Pretty a => Pretty (Term pc a) where
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
-  pretty (Match PrdRep cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
-  pretty (Match CnsRep cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (Match PrdRep _ cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (Match CnsRep _ cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (MuAbs pc a cmd) =
     case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 
@@ -82,6 +83,7 @@ instance Pretty a => Pretty (XtorSig a) where
 
 instance Pretty SimpleType where
   pretty (TyVar uvar) = pretty uvar
+  pretty (NominalType tn) = pretty (unTypeName tn)
   pretty (SimpleType Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
   pretty (SimpleType Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
@@ -95,6 +97,7 @@ instance Pretty TargetType where
   pretty (TTyTVar tv) = pretty tv
   pretty (TTyRVar tv) = pretty tv
   pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t
+  pretty (TTyNominal tn) = pretty (unTypeName tn)
   pretty (TTySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
   pretty (TTySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
@@ -104,6 +107,13 @@ instance Pretty TypeScheme where
 
 instance Pretty Constraint where
   pretty (SubType t1 t2) = pretty t1 <+> "<:" <+> pretty t2
+
+instance Pretty TypeName where
+  pretty (MkTypeName tn) = pretty tn
+
+instance Pretty DataDecl where
+  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -120,10 +130,13 @@ instance Pretty Error where
 ---------------------------------------------------------------------------------
 
 instance Pretty HeadCons where
-  pretty (HeadCons maybeDat maybeCodat) = intercalateX ";" (catMaybes [printDat <$> maybeDat, printCodat <$> maybeCodat])
+  pretty (HeadCons maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
+                                                                          , printCodat <$> maybeCodat
+                                                                          , printNominal tns])
     where
       printDat   dat   = angles (mempty <+> cat (punctuate " | " (pretty <$> (S.toList dat))) <+> mempty)
       printCodat codat = braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty)
+      printNominal tns = Just (intercalateX ";" (pretty <$> (S.toList tns)))
 
 instance Pretty EdgeLabel where
   pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)

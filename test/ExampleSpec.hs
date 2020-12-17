@@ -4,13 +4,14 @@ import           Test.Hspec
 import           Control.Monad (forM_, when)
 
 import qualified Data.Map as M
+import Data.Either (isRight)
 
+import TestUtils
 import Parser
 import Syntax.Terms
 import Syntax.Program
 import Syntax.TypeGraph
 import Utils
-import Eval.Substitution (isClosed_term, termLocallyClosed)
 import GenerateConstraints
 import SolveConstraints
 import TypeAutomata.Determinize
@@ -22,69 +23,67 @@ import TypeAutomata.Subsume (typeAutEqual)
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
-filterEnvironment :: Environment -> Environment
-filterEnvironment Environment {..} = Environment { prdEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) prdEnv
-                                                 , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
-                                                 , typEnv = typEnv
-                                                 }
+checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
+checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ typecheck env term `shouldSatisfy` isRight
 
-getEnvironment :: IO Environment
-getEnvironment = do
-  s <- readFile "prg.txt"
-  case runEnvParser environmentP mempty s of
-    Right env -> return (filterEnvironment env) --() (prdEnv env <> cnsEnv env))
-    Left _err -> error "Could not load prg.txt"
-
-checkTerm :: (FreeVarName, Term Prd ()) -> SpecWith ()
-checkTerm (name,term) = it (name ++ " can be typechecked correctly") $ typecheckMaybe term `shouldBe` Nothing
-
-
-typecheckMaybe :: Term Prd () -> Maybe Error
-typecheckMaybe t = case  typecheck t of
-  Left err -> Just err
-  Right _ -> Nothing
-
-typecheck :: Term Prd () -> Either Error TypeAutDet
-typecheck t = do
-  (typedTerm, css, uvars) <- generateConstraints t
-  typeAut <- solveConstraints css uvars (typedTermToType typedTerm) Prd
+typecheck :: Environment -> Term Prd () -> Either Error TypeAutDet
+typecheck env t = do
+  (typedTerm, css, uvars) <- generateConstraints t env
+  typeAut <- solveConstraints css uvars (typedTermToType env typedTerm) Prd
   let typeAutDet0 = determinize typeAut
   let typeAutDet = removeAdmissableFlowEdges typeAutDet0
   let minTypeAut = minimize typeAutDet
   return minTypeAut
 
-typecheckExample :: String -> String -> Spec
-typecheckExample termS typS = do
+typecheckExample :: Environment -> String -> String -> Spec
+typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
-      let Right term = runEnvParser (termP PrdRep) mempty termS
-      let Right inferredTypeAut = typecheck term
+      let Right term = runEnvParser (termP PrdRep) env termS
+      let Right inferredTypeAut = typecheck env term
       let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
 spec :: Spec
 spec = do
-  describe "All examples are closed" $ do
-    env <- runIO getEnvironment
-    when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-      it (name ++ " does not contain free variables") $ isClosed_term term `shouldBe` True
-  describe "All examples are locally closed" $ do
-    env <- runIO getEnvironment
-    when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-    forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-      it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` True
   describe "All examples typecheck" $ do
-    env <- runIO getEnvironment
+    env <- runIO $ getEnvironment "prg.txt" failingExamples
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_  (M.toList (prdEnv env)) $ \term -> do
-      checkTerm term
+      checkTerm env term
   describe "Typecheck specific examples" $ do
-    typecheckExample "\\(x)[k] => x >> k" "forall a. { Ap(a)[a] }"
-    typecheckExample "S(Z)" "< S(< Z >) >"
-    typecheckExample "\\(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }"
-                     "forall a. { Ap(< True | False >, a, a)[a] }"
-    typecheckExample "\\(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }"
-                     "forall a b. { Ap(<True|False>, a, b)[a \\/ b] }"
-    typecheckExample "\\(f)[k] => (\\(x)[k] => f >> Ap(x)[mu*y. f >> Ap(y)[k]]) >> k"
-                     "forall a b. { Ap({ Ap(a \\/ b)[b] })[{ Ap(a)[b] }] }"
+    env <- runIO $ getEnvironment "prg.txt" []
+    typecheckExample env "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
+    typecheckExample env "'S('Z)" "< 'S(< 'Z >) >"
+    typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
+                         "forall a. { 'Ap(< 'True | 'False >, a, a)[a] }"
+    typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
+                         "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }"
+    typecheckExample env "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu*y. f >> 'Ap(y)[k]]) >> k"
+                         "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }"
+    -- Nominal Examples
+    typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }"
+                         "{ 'Ap(Bool)[Bool] }"
+    typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => Zero >> k }"
+                         "{ 'Ap(Bool)[(Bool \\/ Nat)] }"
+    typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => Zero >> k }"
+                         "{ 'Ap(Bool)[(Nat \\/ Bool)] }"
+    -- predNominal
+    typecheckExample env "comatch { 'Ap(n)[k] => n >> match { Succ(m) => m >> k } }"
+                         "{ 'Ap(Nat)[Nat] }"
+    -- addNominal
+    typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. Succ(w) >> k] }} >> k })['Ap(m)[k]] }"
+                         "forall t0. { 'Ap(t0,Nat)[(t0 \\/ Nat)] }"
+    -- mltNominal
+    typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Zero >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]}"
+                         "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
+    -- expNominal
+    typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Succ(Zero) >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] }"
+                         "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
+    -- subNominal
+    typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu*w. predNominal >> 'Ap(w)[k]] }} >> k })['Ap(m)[k]] }"
+                         "{ 'Ap(Nat,Nat)[Nat] }"
+    -- subSafeNominal
+    typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(mp) => n >> match { Zero => n >> k, Succ(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]}"
+                         "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
+

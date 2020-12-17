@@ -104,7 +104,7 @@ nodeToType i = do
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
-      let (_,_,(pol,HeadCons datSet codatSet),_) = context gr i
+      let (_,_,(pol,HeadCons datSet codatSet tns),_) = context gr i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       resType <- local (visitNode i) $ do
         -- Creating type variables
@@ -127,7 +127,9 @@ nodeToType i = do
               argTypes <- argNodesToArgTypes nodes Codata pol
               return (MkXtorSig xt argTypes)
             return [TTySimple Codata sig]
-        return $ unionOrInter pol (varL ++ datL ++ codatL)
+        -- Creating Nominal types
+        let nominals = TTyNominal <$> (S.toList tns)
+        return $ unionOrInter pol (varL ++ datL ++ codatL ++ nominals)
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr

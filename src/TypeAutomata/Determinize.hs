@@ -117,8 +117,9 @@ combineNodeLabels nls
   = if not . allEq $ (map fst nls)
       then error "Tried to combine node labels of different polarity!"
       else (pol, HeadCons {
-        hc_data = mrgDat [xtors | HeadCons (Just xtors) _ <- hcs],
-        hc_codata = mrgCodat [xtors | HeadCons _ (Just xtors) <- hcs]
+        hc_data = mrgDat [xtors | HeadCons (Just xtors) _ _ <- hcs],
+        hc_codata = mrgCodat [xtors | HeadCons _ (Just xtors) _ <- hcs],
+        hc_nominal = S.unions [ tn | HeadCons _ _ tn <- hcs]
         })
   where
     pol = fst (head nls)
@@ -145,10 +146,10 @@ determinize TypeAut{..} =
 -------------------------------------------------------------------------
 
 containsXtor :: DataCodata -> HeadCons -> XtorName -> Bool
-containsXtor Data (HeadCons Nothing _) _ = False
-containsXtor Codata (HeadCons _ Nothing) _ = False
-containsXtor Data (HeadCons (Just xtors) _) xt = xt `S.member` xtors
-containsXtor Codata (HeadCons _ (Just xtors)) xt = xt `S.member` xtors
+containsXtor Data (HeadCons Nothing _ _) _ = False
+containsXtor Codata (HeadCons _ Nothing _) _ = False
+containsXtor Data (HeadCons (Just xtors) _ _) xt = xt `S.member` xtors
+containsXtor Codata (HeadCons _ (Just xtors) _) xt = xt `S.member` xtors
 
 isFaultyEdge :: TypeGr -> LEdge EdgeLabel -> Bool
 isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (snd (fromJust (lab gr i))) xt

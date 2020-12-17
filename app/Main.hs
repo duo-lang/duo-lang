@@ -6,7 +6,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
 
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, find)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
@@ -25,7 +25,6 @@ import TypeAutomata.FlowAnalysis
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
-
 
 import Data.GraphViz
 
@@ -94,8 +93,8 @@ type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
   t <- parseRepl s (termP PrdRep) env
-  (typedTerm, css, uvars) <- fromRight $ generateConstraints t
-  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
+  (typedTerm, css, uvars) <- fromRight $ generateConstraints t env
+  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType env typedTerm) Prd
   let
     typeAutDet0 = determinize typeAut
     typeAutDet = removeAdmissableFlowEdges typeAutDet0
@@ -132,6 +131,22 @@ show_option = Option
   , option_help = ["Display term or type on the command line."]
   }
 
+-- Show TypeDeclaration
+
+show_type_cmd :: String -> Repl ()
+show_type_cmd s = do
+  env <- gets (declEnv . replEnv)
+  let maybeDecl = find (\x -> data_name x == MkTypeName s) env
+  case maybeDecl of
+    Nothing -> prettyRepl ("Type: " ++ s ++ " not found in environment.")
+    Just decl -> prettyRepl decl
+show_type_option :: Option
+show_type_option = Option
+  { option_name = "showtype"
+  , option_cmd = show_type_cmd
+  , option_help = ["Show the definition of a nominal type"]
+  }
+
 -- Define
 
 def_cmd :: String -> Repl ()
@@ -160,8 +175,8 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> do
-        (typedTerm, css, uvars) <- fromRight (generateConstraints t)
-        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType typedTerm) Prd
+        (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
+        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType env typedTerm) Prd
         saveGraphFiles "0_typeAut" typeAut
         let typeAutDet = determinize typeAut
         saveGraphFiles "1_typeAutDet" typeAutDet
@@ -204,8 +219,8 @@ bind_cmd :: String -> Repl ()
 bind_cmd s = do
   env <- gets replEnv
   (v,t) <- parseRepl s bindingP env
-  (typedTerm, css, uvars) <- fromRight (generateConstraints t)
-  typeAut <- fromRight (solveConstraints css uvars (typedTermToType typedTerm) Prd)
+  (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
+  typeAut <- fromRight (solveConstraints css uvars (typedTermToType env typedTerm) Prd)
   let
     typeAutDet0 = determinize typeAut
     typeAutDet  = removeAdmissableFlowEdges typeAutDet0
@@ -318,7 +333,7 @@ help_option = Option
 
 all_options :: [Option]
 all_options = [ type_option, show_option, help_option, def_option, save_option
-              , sub_option, bind_option, simplify_option, load_option, reload_option]
+              , sub_option, bind_option, simplify_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
 -- Repl Configuration
@@ -327,7 +342,7 @@ all_options = [ type_option, show_option, help_option, def_option, save_option
 completer :: String -> ReplInner [String]
 completer s = do
   env <- gets replEnv
-  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env))
+  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env) ++ ((unTypeName . data_name) <$> (declEnv env)))
 
 ini :: Repl ()
 ini = do

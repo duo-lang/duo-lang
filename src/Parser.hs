@@ -48,8 +48,14 @@ symbol = L.symbol sc
 freeVarName :: (MonadParsec Void String m) => m FreeVarName
 freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
 
-xtorName :: (MonadParsec Void String m) => m XtorName
-xtorName = MkXtorName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+xtorName :: (MonadParsec Void String m) => NominalStructural -> m XtorName
+xtorName Structural = do
+  _ <- tick
+  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  return (MkXtorName Structural name) -- Saved without tick!
+xtorName Nominal = do
+  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  return (MkXtorName Nominal name)
 
 typeIdentifierName :: (MonadParsec Void String m) => m String
 typeIdentifierName = lexeme $ (:) <$> upperChar <*> many alphaNumChar
@@ -60,10 +66,11 @@ braces    = between (symbol "{") (symbol "}")
 brackets  = between (symbol "[") (symbol "]")
 angles    = between (symbol "<") (symbol ">")
 
-comma, dot, pipe :: (MonadParsec Void String m) => m String
+comma, dot, pipe, tick :: (MonadParsec Void String m) => m String
 comma = symbol ","
 dot = symbol "."
 pipe = symbol "|"
+tick = symbol "'"
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 argListP :: (MonadParsec Void String m) => m a -> m a ->  m (Twice [a])
@@ -82,8 +89,8 @@ argsSig n m = Twice (replicate n ()) (replicate m ())
 
 -- nice helper function for creating natural numbers
 numToTerm :: Int -> Term Prd ()
-numToTerm 0 = XtorCall PrdRep (MkXtorName "Z") (MkXtorArgs [] [])
-numToTerm n = XtorCall PrdRep (MkXtorName "S") (MkXtorArgs [numToTerm (n-1)] [])
+numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
+numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 termEnvP :: PrdCnsRep pc -> Parser (Term pc ())
 termEnvP PrdRep = do
@@ -99,8 +106,12 @@ termEnvP CnsRep = do
 
 termP :: PrdCnsRep pc -> Parser (Term pc ())
 termP pc = try (parens (termP pc))
-  <|> xtorCall pc
-  <|> patternMatch pc
+  <|> xtorCall Structural pc
+  <|> xtorCall Nominal pc
+  -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
+  -- infer a structural type, not a nominal one.
+  <|> try (patternMatch Structural pc) 
+  <|> try (patternMatch Nominal pc)
   <|> muAbstraction pc
   <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
                         -- if the variable is in the environment, which might cause it to fail
@@ -124,7 +135,7 @@ lambdaSugar PrdRep= do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match PrdRep [MkCase (MkXtorName "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  return $ Match PrdRep Structural [MkCase (MkXtorName Structural "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs ())
@@ -133,25 +144,25 @@ xtorArgsP = do
   ys <- option [] (brackets $ (termP CnsRep) `sepBy` comma)
   return $ MkXtorArgs xs ys
 
-xtorCall :: PrdCnsRep pc -> Parser (Term pc ())
-xtorCall pc = do
-  xt <- xtorName
+xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc ())
+xtorCall ns pc = do
+  xt <- xtorName ns
   args <- xtorArgsP
   return $ XtorCall pc xt args
 
-patternMatch :: PrdCnsRep pc -> Parser (Term pc ())
-patternMatch PrdRep = do
+patternMatch :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc ())
+patternMatch ns PrdRep = do
   _ <- symbol "comatch"
-  cases <- braces $ singleCase `sepBy` comma
-  return $ Match PrdRep cases
-patternMatch CnsRep = do
+  cases <- braces $ singleCase ns `sepBy` comma
+  return $ Match PrdRep ns cases
+patternMatch ns CnsRep = do
   _ <- symbol "match"
-  cases <- braces $ singleCase `sepBy` comma
-  return $ Match CnsRep cases
+  cases <- braces $ singleCase ns `sepBy` comma
+  return $ Match CnsRep ns cases
 
-singleCase :: Parser (Case ())
-singleCase = do
-  xt <- lexeme xtorName
+singleCase :: NominalStructural -> Parser (Case ())
+singleCase ns = do
+  xt <- lexeme (xtorName ns)
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- symbol "=>"
   cmd <- lexeme commandP
@@ -192,7 +203,7 @@ printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
 ---------------------------------------------------------------------------------
 
 declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> typeDeclarationP
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> typeDeclarationP <|> dataDeclP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
@@ -236,6 +247,13 @@ bindingP = do
   t <- lexeme (termP PrdRep)
   return (v,t)
 
+subtypingProblemP :: Parser (TypeScheme, TypeScheme)
+subtypingProblemP = do
+  t1 <- typeSchemeP
+  _ <- symbol "<:"
+  t2 <- typeSchemeP
+  return (t1, t2)
+
 ---------------------------------------------------------------------------------
 -- Type parsing
 ---------------------------------------------------------------------------------
@@ -244,15 +262,23 @@ bindingP = do
 -- StateT to keep track of free type variables.
 type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
 
+typeName :: TypeParser TypeName
+typeName = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
   (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
   return (TypeScheme (nub (tvars ++ S.toList newtvars)) monotype)
 
+nominalType :: TypeParser TargetType
+nominalType = TTyNominal <$> typeName
+
+
 --without joins and meets
 typeR' :: TypeParser TargetType
 typeR' = try (parens typeR) <|>
+  nominalType <|>
   dataType <|>
   codataType <|>
   try recVar <|>
@@ -275,7 +301,7 @@ codataType = braces $ do
 
 xtorSignature :: TypeParser (XtorSig TargetType)
 xtorSignature = do
-  xt <- xtorName
+  xt <- xtorName Structural
   args <- argListP (lexeme typeR) (lexeme typeR)
   return (MkXtorSig xt args)
 
@@ -321,9 +347,68 @@ recType = do
   ty <- local (S.insert rv) typeR
   return $ TTyRec rv ty
 
-subtypingProblemP :: Parser (TypeScheme, TypeScheme)
-subtypingProblemP = do
-  t1 <- typeSchemeP
-  _ <- symbol "<:"
-  t2 <- typeSchemeP
-  return (t1, t2)
+---------------------------------------------------------------------------------
+-- Parser for Simple Types
+---------------------------------------------------------------------------------
+
+typeNameP :: Parser TypeName
+typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+
+
+xtorSignatureP :: Parser (XtorSig SimpleType)
+xtorSignatureP = do
+  xt <- xtorName Structural
+  args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
+  return (MkXtorSig xt args)
+
+dataTypeP :: Parser SimpleType
+dataTypeP = angles $ do
+  xtorSigs <- xtorSignatureP `sepBy` pipe
+  return (SimpleType Data xtorSigs)
+
+codataTypeP :: Parser SimpleType
+codataTypeP = braces $ do
+  xtorSigs <- xtorSignatureP `sepBy` comma
+  return (SimpleType Codata xtorSigs)
+
+nominalTypeP :: Parser SimpleType
+nominalTypeP = NominalType <$> typeNameP
+
+simpleTypeP :: Parser SimpleType
+simpleTypeP = nominalTypeP <|>
+              dataTypeP <|>
+              codataTypeP
+
+
+---------------------------------------------------------------------------------
+-- Nominal type declaration parser
+---------------------------------------------------------------------------------
+
+
+
+dataDeclP :: Parser (Declaration ())
+dataDeclP = DataDecl <$> dataDeclP'
+  where
+    dataDeclP' :: Parser DataDecl
+    dataDeclP' = do
+      dataCodata <- dataCodataDeclP
+      tn <- typeNameP
+      xtors <- braces $ xtorDeclP `sepBy` comma
+      _ <- symbol ";"
+      return NominalDecl
+        { data_name = tn
+        , data_polarity = dataCodata
+        , data_xtors = xtors
+        }
+
+    dataCodataDeclP :: Parser DataCodata
+    dataCodataDeclP = (symbol "data" >> return Data) <|> (symbol "codata" >> return Codata)
+
+    xtorDeclP :: Parser (XtorSig SimpleType)
+    xtorDeclP = do
+      xt <- xtorName Nominal
+      args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
+      return (MkXtorSig xt args)
+
+
+

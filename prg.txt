@@ -3,97 +3,110 @@ cns print := mu* x.Print x;
 
 ## Boolean functions ##
 
-prd ifthenelse := comatch { Ap(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }};
-prd neg := comatch { Ap(b)[k] => b >> match { True => False >> k, False => True >> k }};
-prd and := comatch { Ap(x,y)[k] => ifthenelse >> Ap(x,y,x)[k] };
-prd or := comatch { Ap(x,y)[k] => ifthenelse >> Ap(x,x,y)[k] };
-prd nand := comatch { Ap(x,y)[k] => and >> Ap(x,y)[mu* z. neg >> Ap(z)[k]] };
-prd nor := comatch { Ap(x,y)[k] => or >> Ap(x,y)[mu* z. neg >> Ap(z)[k]] };
-prd impl := comatch { Ap(x,y)[k] => x >> match { True => y >> k, False => True >> k } };
+prd ifthenelse := comatch { 'Ap(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }};
+prd neg := comatch { 'Ap(b)[k] => b >> match { 'True => 'False >> k, 'False => 'True >> k }};
+prd and := comatch { 'Ap(x,y)[k] => ifthenelse >> 'Ap(x,y,x)[k] };
+prd or := comatch { 'Ap(x,y)[k] => ifthenelse >> 'Ap(x,x,y)[k] };
+prd nand := comatch { 'Ap(x,y)[k] => and >> 'Ap(x,y)[mu* z. neg >> 'Ap(z)[k]] };
+prd nor := comatch { 'Ap(x,y)[k] => or >> 'Ap(x,y)[mu* z. neg >> 'Ap(z)[k]] };
+prd impl := comatch { 'Ap(x,y)[k] => x >> match { 'True => y >> k, 'False => 'True >> k } };
 
 ## basic functional stuff ##
 
-prd id := comatch { Ap(x)[k] => x >> k };
+prd id := comatch { 'Ap(x)[k] => x >> k };
 prd idAlt := \(x)[k] => x >> k;
-prd curry := comatch { Ap(f)[k] => comatch { Ap(x)[k] => comatch { Ap(y)[k] => f >> Ap(x,y)[k] } >> k } >> k };
-prd uncurry := comatch { Ap(f)[k] => comatch { Ap(x,y)[k] => f >> Ap(x)[Ap(y)[k]] } >> k };
-prd comp := comatch { Ap(f,g)[k] => comatch { Ap(x)[k] => g >> Ap(x)[mu* w. f >> Ap(w)[k]] } >> k };
-prd twice := comatch { Ap(f)[k] => comatch { Ap(x)[k] => comp >> Ap(f,f)[Ap(x)[k]] } >> k };
-prd thrice := comatch { Ap(f)[k] => comatch { Ap(x)[k] => comp >> Ap(f,f)[mu*g. comp >> Ap(g,f)[Ap(x)[k]]] } >> k };
+prd curry := comatch { 'Ap(f)[k] => comatch { 'Ap(x)[k] => comatch { 'Ap(y)[k] => f >> 'Ap(x,y)[k] } >> k } >> k };
+prd uncurry := comatch { 'Ap(f)[k] => comatch { 'Ap(x,y)[k] => f >> 'Ap(x)['Ap(y)[k]] } >> k };
+prd comp := comatch { 'Ap(f,g)[k] => comatch { 'Ap(x)[k] => g >> 'Ap(x)[mu* w. f >> 'Ap(w)[k]] } >> k };
+prd twice := comatch { 'Ap(f)[k] => comatch { 'Ap(x)[k] => comp >> 'Ap(f,f)['Ap(x)[k]] } >> k };
+prd thrice := comatch { 'Ap(f)[k] => comatch { 'Ap(x)[k] => comp >> 'Ap(f,f)[mu*g. comp >> 'Ap(g,f)['Ap(x)[k]]] } >> k };
 
 ## fixed point combinators ##
 
-prd fix := comatch { Ap(f)[k] => comatch { Ap(x)[k] => f >> Ap( comatch { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] } >> Ap( comatch { Ap(x)[k] => f >> Ap(comatch { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] })[k] };
-prd fixLazy := comatch { Ap(f)[k] => comatch { Ap(x)[k] => x >> Ap(x)[mu*xx. f >> Ap(xx)[k]] } >> Ap(comatch { Ap(x)[k] => x >> Ap(x)[mu*xx. f >> Ap(xx)[k]] })[k]};
+prd fix := comatch { 'Ap(f)[k] => comatch { 'Ap(x)[k] => f >> 'Ap( comatch { 'Ap(v)[k] => x >> 'Ap(x)['Ap(v)[k]] })[k] } >> 'Ap( comatch { 'Ap(x)[k] => f >> 'Ap(comatch { 'Ap(v)[k] => x >> 'Ap(x)['Ap(v)[k]] })[k] })[k] };
+prd fixLazy := comatch { 'Ap(f)[k] => comatch { 'Ap(x)[k] => x >> 'Ap(x)[mu*xx. f >> 'Ap(xx)[k]] } >> 'Ap(comatch { 'Ap(x)[k] => x >> 'Ap(x)[mu*xx. f >> 'Ap(xx)[k]] })[k]};
 
 ## basic recursive functions ##
 
-prd recZero := comatch { Ap(n)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => n >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[k] }} >> k})[Ap(n)[k]] };
-prd retItself := comatch { Ap(x)[k] => comatch { Ap(x)[k] => comatch { Ap(y)[k] => x >> Ap(x)[k] } >> k } >> Ap(comatch { Ap(x)[k] => comatch { Ap(y)[k] => x >> Ap(x)[k] } >> k })[k] };
-prd omega := mu k. comatch { Ap(x)[k] => x >> Ap(x)[k] } >> Ap(comatch { Ap(x)[k] => x >> Ap(x)[k] })[k];
+prd recZero := comatch { 'Ap(n)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => 'Z >> k, 'S(p) => alpha >> 'Ap(p)[k] }} >> k})['Ap(n)[k]] };
+prd retItself := comatch { 'Ap(x)[k] => comatch { 'Ap(x)[k] => comatch { 'Ap(y)[k] => x >> 'Ap(x)[k] } >> k } >> 'Ap(comatch { 'Ap(x)[k] => comatch { 'Ap(y)[k] => x >> 'Ap(x)[k] } >> k })[k] };
+prd omega := mu k. comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] } >> 'Ap(comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] })[k];
 
 ## natural number arithmetic
 
-prd succ := comatch { Ap(n)[k] => S(n) >> k };
-prd pred := comatch { Ap(n)[k] => n >> match { S(m) => m >> k } };
-prd add := comatch { Ap(n,m)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu* w. S(w) >> k] }} >> k })[Ap(m)[k]] };
-prd mlt := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[mu* w. add >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
-prd exp := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu* w. mlt >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
-prd sub := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu*w. pred >> Ap(w)[k]] }} >> k })[Ap(m)[k]] };
-prd subSafe := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
-prd foldNat := comatch { Ap(n,x,f)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(x)[k] => n >> match { Z => x >> k, S(p) => f >> Ap(x)[mu*w. alpha >> Ap(p)[Ap(w)[k]]] } } >> k } >> k })[Ap(n)[Ap(x)[k]]] };
-prd foldNat1 := comatch { Ap(n,x,f)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(x)[k] => n >> match { S(m) => m >> match { Z => f >> Ap(x)[k], S(p) => f >> Ap(x)[mu*w. alpha >> Ap(m)[Ap(w)[k]]] }}} >> k } >> k })[Ap(n)[Ap(x)[k]]]};
+prd succ := comatch { 'Ap(n)[k] => 'S(n) >> k };
+prd pred := comatch { 'Ap(n)[k] => n >> match { 'S(m) => m >> k } };
+prd add := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { 'Z => n >> k, 'S(p) => alpha >> 'Ap(p)[mu* w. 'S(w) >> k] }} >> k })['Ap(m)[k]] };
+prd mlt := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { 'Z => 'Z >> k, 'S(p) => alpha >> 'Ap(p)[mu* w. add >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
+prd exp := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { 'Z => 'S('Z) >> k, 'S(p) => alpha >> 'Ap(p)[mu* w. mlt >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
+prd sub := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { 'Z => n >> k, 'S(p) => alpha >> 'Ap(p)[mu*w. pred >> 'Ap(w)[k]] }} >> k })['Ap(m)[k]] };
+prd subSafe := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { 'Z => n >> k, 'S(mp) => n >> match { 'Z => n >> k, 'S(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
+prd foldNat := comatch { 'Ap(n,x,f)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(x)[k] => n >> match { 'Z => x >> k, 'S(p) => f >> 'Ap(x)[mu*w. alpha >> 'Ap(p)['Ap(w)[k]]] } } >> k } >> k })['Ap(n)['Ap(x)[k]]] };
+prd foldNat1 := comatch { 'Ap(n,x,f)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(x)[k] => n >> match { 'S(m) => m >> match { 'Z => f >> 'Ap(x)[k], 'S(p) => f >> 'Ap(x)[mu*w. alpha >> 'Ap(m)['Ap(w)[k]]] }}} >> k } >> k })['Ap(n)['Ap(x)[k]]]};
 
-prd ltUnsafe := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(m)[k] => n >> match { Z => True >> k, S(np) => m >> match { S(mp) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]] };
-prd ltSafe := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(m)[k] => n >> match { Z => True >> k, S(np) => m >> match { Z => False >> k, S(mp) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]] };
-prd eqUnsafe := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(m)[k] => n >> match { Z => m >> match { Z => True >> k }, S(np) => m >> match { S(mp) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]] };
-prd eqSafe := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(m)[k] => n >> match { Z => m >> match { Z => True >> k, S(mp) => False >> k }, S(np) => m >> match { Z => False >> k, S(mp) => alpha >> Ap(np)[Ap(mp)[k]] } } } >> k } >> k })[Ap(n)[Ap(m)[k]]] };
-prd times2 := comatch { Ap(n)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => n >> match { Z => Z >> k, S(m) => alpha >> Ap(m)[mu*w. S(S(w)) >> k]}} >> k })[Ap(n)[k]]};
-prd times3 := comatch { Ap(n)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => n >> match { Z => Z >> k, S(m) => alpha >> Ap(m)[mu*w. S(S(S(w))) >> k] } } >> k })[Ap(n)[k]] };
-prd times2or3 := comatch { Ap(b,n)[k] => b >> match { True => times2 >> Ap(n)[k], False => times3 >> Ap(n)[k] } };
-prd times2and3 := comatch { Ap(n)[k] => comp >> Ap(times2,times3)[Ap(n)[k]]};
-prd div2 := comatch { Ap(n)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => n >> match { Z => Z >> k, S(m) => m >> match { S(p) => alpha >> Ap(p)[mu*w. S(w) >> k]}}} >> k })[Ap(n)[k]] };
-prd div3 := comatch { Ap(n)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => n >> match { Z => Z >> k, S(m) => m >> match { S(p) => p >> match { S(r) => alpha >> Ap(r)[mu*w. S(w) >> k] }}}} >> k })[Ap(n)[k]]};
-prd div2or3 := comatch { Ap(b,n)[k] => b >> match { True => div2 >> Ap(n)[k], False => div3 >> Ap(n)[k] }};
-prd div2and3 := comatch { Ap(n)[k] => comp >> Ap(div2,div3)[Ap(n)[k]]};
+prd ltUnsafe := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => n >> match { 'Z => 'True >> k, 'S(np) => m >> match { 'S(mp) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]] };
+prd ltSafe := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => n >> match { 'Z => 'True >> k, 'S(np) => m >> match { 'Z => 'False >> k, 'S(mp) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]] };
+prd eqUnsafe := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => n >> match { 'Z => m >> match { 'Z => 'True >> k }, 'S(np) => m >> match { 'S(mp) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]] };
+prd eqSafe := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => n >> match { 'Z => m >> match { 'Z => 'True >> k, 'S(mp) => 'False >> k }, 'S(np) => m >> match { 'Z => 'False >> k, 'S(mp) => alpha >> 'Ap(np)['Ap(mp)[k]] } } } >> k } >> k })['Ap(n)['Ap(m)[k]]] };
+prd times2 := comatch { 'Ap(n)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => 'Z >> k, 'S(m) => alpha >> 'Ap(m)[mu*w. 'S('S(w)) >> k]}} >> k })['Ap(n)[k]]};
+prd times3 := comatch { 'Ap(n)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => 'Z >> k, 'S(m) => alpha >> 'Ap(m)[mu*w. 'S('S('S(w))) >> k] } } >> k })['Ap(n)[k]] };
+prd times2or3 := comatch { 'Ap(b,n)[k] => b >> match { 'True => times2 >> 'Ap(n)[k], 'False => times3 >> 'Ap(n)[k] } };
+prd times2and3 := comatch { 'Ap(n)[k] => comp >> 'Ap(times2,times3)['Ap(n)[k]]};
+prd div2 := comatch { 'Ap(n)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => 'Z >> k, 'S(m) => m >> match { 'S(p) => alpha >> 'Ap(p)[mu*w. 'S(w) >> k]}}} >> k })['Ap(n)[k]] };
+prd div3 := comatch { 'Ap(n)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => 'Z >> k, 'S(m) => m >> match { 'S(p) => p >> match { 'S(r) => alpha >> 'Ap(r)[mu*w. 'S(w) >> k] }}}} >> k })['Ap(n)[k]]};
+prd div2or3 := comatch { 'Ap(b,n)[k] => b >> match { 'True => div2 >> 'Ap(n)[k], 'False => div3 >> 'Ap(n)[k] }};
+prd div2and3 := comatch { 'Ap(n)[k] => comp >> 'Ap(div2,div3)['Ap(n)[k]]};
 
 ## pairs (data type)
-prd fst := comatch { Ap(p)[k] => p >> match { Pair(x,y) => x >> k }};
-prd snd := comatch { Ap(p)[k] => p >> match { Pair(x,y) => y >> k }};
-prd bimapDat := comatch { Ap(f,g,p)[k] => p >> match { Pair(x,y) => f >> Ap(x)[mu*fx. g >> Ap(y)[mu*gy. Pair(fx,gy) >> k]] }};
+prd fst := comatch { 'Ap(p)[k] => p >> match { 'Pair(x,y) => x >> k }};
+prd snd := comatch { 'Ap(p)[k] => p >> match { 'Pair(x,y) => y >> k }};
+prd bimapDat := comatch { 'Ap(f,g,p)[k] => p >> match { 'Pair(x,y) => f >> 'Ap(x)[mu*fx. g >> 'Ap(y)[mu*gy. 'Pair(fx,gy) >> k]] }};
 
 ## pairs (codata type)
-prd pair := comatch { Ap(x,y)[k] => comatch { Fst[k1] => x >> k1, Snd[k2] => y >> k2 } >> k };
-prd bimapCodat := comatch { Ap(f,g,p)[k] => comatch { Fst[k1] => p >> Fst[mu*x. f >> Ap(x)[k1]], Snd[k2] => p >> Snd[mu*y. g >> Ap(y)[k2]] } >> k };
+prd pair := comatch { 'Ap(x,y)[k] => comatch { 'Fst[k1] => x >> k1, 'Snd[k2] => y >> k2 } >> k };
+prd bimapCodat := comatch { 'Ap(f,g,p)[k] => comatch { 'Fst[k1] => p >> 'Fst[mu*x. f >> 'Ap(x)[k1]], 'Snd[k2] => p >> 'Snd[mu*y. g >> 'Ap(y)[k2]] } >> k };
 
 ## lists (data type)
-prd map := comatch { Ap(f,xs)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => xs >> match { Nil => Nil >> k, Cons(p,ys) => alpha >> Ap(ys)[mu* w1. f >> Ap(p)[mu* w2. Cons(w2,w1) >> k]] } } >> k})[Ap(xs)[k]]};
-prd head := comatch { Ap(xs)[k] => xs >> match { Cons(x,xs) => x >> k }};
-prd tail := comatch { Ap(xs)[k] => xs >> match { Cons(x,xs) => xs >> k }};
-prd null := comatch { Ap(xs)[k] => xs >> match { Nil => True >> k, Cons(x,rest) => False >> k }};
-prd append := comatch { Ap(xs,ys)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => xs >> match { Nil => ys >> k, Cons(x,rest) => alpha >> Ap(rest)[mu*w. Cons(x,w) >> k] }} >> k })[Ap(xs)[k]]};
-prd elemAt := comatch { Ap(xs,n)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => comatch { Ap(n)[k] => n >> match { Z => head >> Ap(xs)[k], S(p) => tail >> Ap(xs)[mu*w. alpha >> Ap(w)[Ap(p)[k]]] }} >> k } >> k })[Ap(xs)[Ap(n)[k]]] };
-prd foldl := comatch { Ap(f,x,xs)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(x)[k] => comatch { Ap(xs)[k] => xs >> match { Nil => x >> k, Cons(y,ys) => f >> Ap(x,y)[mu*fxy.alpha >> Ap(fxy)[Ap(ys)[k]]] } } >> k } >> k })[Ap(x)[Ap(xs)[k]]] };
-prd reverse := comatch { Ap(xs)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => xs >> match { Nil => Nil >> k, Cons(x,rest) => alpha >> Ap(rest)[mu*w. append >> Ap(w,Cons(x,Nil))[k]] }} >> k })[Ap(xs)[k]] };
-prd length := comatch { Ap(xs)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => xs >> match { Nil => Z >> k, Cons(x,rest) => alpha >> Ap(rest)[mu*w. S(w) >> k]}} >> k })[Ap(xs)[k]]};
-prd filter := comatch { Ap(p,xs)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => xs >> match { Nil => Nil >> k, Cons(x,rest) => p >> Ap(x)[match { True => alpha >> Ap(rest)[mu*w. Cons(x,w) >> k], False => alpha >> Ap(rest)[k] }] } } >> k })[Ap(xs)[k]]};
+prd map := comatch { 'Ap(f,xs)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => xs >> match { 'Nil => 'Nil >> k, 'Cons(p,ys) => alpha >> 'Ap(ys)[mu* w1. f >> 'Ap(p)[mu* w2. 'Cons(w2,w1) >> k]] } } >> k})['Ap(xs)[k]]};
+prd head := comatch { 'Ap(xs)[k] => xs >> match { 'Cons(x,xs) => x >> k }};
+prd tail := comatch { 'Ap(xs)[k] => xs >> match { 'Cons(x,xs) => xs >> k }};
+prd null := comatch { 'Ap(xs)[k] => xs >> match { 'Nil => 'True >> k, 'Cons(x,rest) => 'False >> k }};
+prd append := comatch { 'Ap(xs,ys)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => xs >> match { 'Nil => ys >> k, 'Cons(x,rest) => alpha >> 'Ap(rest)[mu*w. 'Cons(x,w) >> k] }} >> k })['Ap(xs)[k]]};
+prd elemAt := comatch { 'Ap(xs,n)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => head >> 'Ap(xs)[k], 'S(p) => tail >> 'Ap(xs)[mu*w. alpha >> 'Ap(w)['Ap(p)[k]]] }} >> k } >> k })['Ap(xs)['Ap(n)[k]]] };
+prd foldl := comatch { 'Ap(f,x,xs)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(x)[k] => comatch { 'Ap(xs)[k] => xs >> match { 'Nil => x >> k, 'Cons(y,ys) => f >> 'Ap(x,y)[mu*fxy.alpha >> 'Ap(fxy)['Ap(ys)[k]]] } } >> k } >> k })['Ap(x)['Ap(xs)[k]]] };
+prd reverse := comatch { 'Ap(xs)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => xs >> match { 'Nil => 'Nil >> k, 'Cons(x,rest) => alpha >> 'Ap(rest)[mu*w. append >> 'Ap(w,'Cons(x,'Nil))[k]] }} >> k })['Ap(xs)[k]] };
+prd length := comatch { 'Ap(xs)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => xs >> match { 'Nil => 'Z >> k, 'Cons(x,rest) => alpha >> 'Ap(rest)[mu*w. 'S(w) >> k]}} >> k })['Ap(xs)[k]]};
+prd filter := comatch { 'Ap(p,xs)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => xs >> match { 'Nil => 'Nil >> k, 'Cons(x,rest) => p >> 'Ap(x)[match { 'True => alpha >> 'Ap(rest)[mu*w. 'Cons(x,w) >> k], 'False => alpha >> 'Ap(rest)[k] }] } } >> k })['Ap(xs)[k]]};
 
 
 ## lists (codata type)
-prd consNeg := comatch { Ap(x,xs)[k] => comatch { Head[k] => x >> k, Tail[k] => xs >> k } >> k };
-prd mapNeg := comatch { Ap(f,xs)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => comatch { Head[k] => xs >> Head[mu*w. f >> Ap(w)[k]], Tail[k] => xs >> Tail[mu*w. alpha >> Ap(w)[k]]} >> k } >> k })[Ap(xs)[k]] };
-prd elemAtNeg := comatch { Ap(xs,n)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(xs)[k] => comatch { Ap(n)[k] => n >> match { Z => xs >> Head[k], S(m) => xs >> Tail[mu*ys. alpha >> Ap(ys)[Ap(m)[k]]] }} >> k } >> k })[Ap(xs)[Ap(n)[k]]]};
-prd repeat := comatch { Ap(x)[k] => fixLazy >> Ap(comatch { Ap(alpha)[k] => comatch { Head[k] => x >> k, Tail[k] => alpha >> k } >> k })[k]};
+prd consNeg := comatch { 'Ap(x,xs)[k] => comatch { 'Head[k] => x >> k, 'Tail[k] => xs >> k } >> k };
+prd mapNeg := comatch { 'Ap(f,xs)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => comatch { 'Head[k] => xs >> 'Head[mu*w. f >> 'Ap(w)[k]], 'Tail[k] => xs >> 'Tail[mu*w. alpha >> 'Ap(w)[k]]} >> k } >> k })['Ap(xs)[k]] };
+prd elemAtNeg := comatch { 'Ap(xs,n)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(xs)[k] => comatch { 'Ap(n)[k] => n >> match { 'Z => xs >> 'Head[k], 'S(m) => xs >> 'Tail[mu*ys. alpha >> 'Ap(ys)['Ap(m)[k]]] }} >> k } >> k })['Ap(xs)['Ap(n)[k]]]};
+prd repeat := comatch { 'Ap(x)[k] => fixLazy >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Head[k] => x >> k, 'Tail[k] => alpha >> k } >> k })[k]};
 
 ## misc interesting terms
 
-prd doubleCycle := comatch { Ap(x) => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(x) => x >> match { X(x1) => x1 >> match { X(x2) => alpha >> Ap(x2)}, Y(y1) => y1 >> match { Y(y2) => alpha >> Ap(y2)}}} >> k })[Ap(x)]};
-prd faultyEdgeTest := comatch { Ap(b,f) => b >> match { True => f >> match { X(x) => Done, Y(x) => Done }, False => f >> match { X(x) => Done, Z(x)=>Done }}};
-prd oneortwo := comatch { Ap(b)[k] => b >> match { True => S(Z) >> k, False => S(S(Z)) >> k }};
-prd admissabilityTest := comatch { Ap(f)[k] => True >> match { True => comatch { Ap(x)[k] => f >> Ap(x)[k]} >> k, False => f >> k }};
+prd doubleCycle := comatch { 'Ap(x) => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(x) => x >> match { 'X(x1) => x1 >> match { 'X(x2) => alpha >> 'Ap(x2)}, 'Y(y1) => y1 >> match { 'Y(y2) => alpha >> 'Ap(y2)}}} >> k })['Ap(x)]};
+prd faultyEdgeTest := comatch { 'Ap(b,f) => b >> match { 'True => f >> match { 'X(x) => Done, 'Y(x) => Done }, 'False => f >> match { 'X(x) => Done, 'Z(x)=>Done }}};
+prd oneortwo := comatch { 'Ap(b)[k] => b >> match { 'True => 'S('Z) >> k, 'False => 'S('S('Z)) >> k }};
+prd admissabilityTest := comatch { 'Ap(f)[k] => 'True >> match { 'True => comatch { 'Ap(x)[k] => f >> 'Ap(x)[k]} >> k, 'False => f >> k }};
 
-prd implicationConstraintsTest1 := comatch { Ap(x) => x >> match { A => Done, B => x >> match { B => Done }}};
+prd implicationConstraintsTest1 := comatch { 'Ap(x) => x >> match { 'A => Done, 'B => x >> match { 'B => Done }}};
 
-prd parserTest := comatch { Ap(x)[x] => x >> x };
+prd parserTest := comatch { 'Ap(x)[x] => x >> x };
 prd parserTest2 := \(x)[x] => x >> x;
 
+## Nominal Types
+
+data Bool { TT, FF };
+data Nat { Zero, Succ(Nat) };
+codata NatBoolFun { Ap(Nat)[Bool] };
+prd nominalNot := \(x)[k] => x >> match { TT => FF >> k, FF => TT >> k };
+
+prd predNominal := comatch { 'Ap(n)[k] => n >> match { Succ(m) => m >> k } };
+prd addNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. Succ(w) >> k] }} >> k })['Ap(m)[k]] };
+prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Zero >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
+prd expNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Succ(Zero) >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
+prd subNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu*w. predNominal >> 'Ap(w)[k]] }} >> k })['Ap(m)[k]] };
+prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(mp) => n >> match { Zero => n >> k, Succ(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};

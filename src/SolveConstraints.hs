@@ -62,6 +62,10 @@ getLowerBounds :: UVar -> SolverM [SimpleType]
 getLowerBounds uv = gets (vst_lowerbounds . (M.! uv) . sst_bounds)
 
 subConstraints :: Constraint -> SolverM [Constraint]
+-- Atomic constraints (one side is a TyVar)
+subConstraints (SubType (TyVar _) _) = return []
+subConstraints (SubType _ (TyVar _)) = return []
+-- Data/Data and Codata/Codata constraints
 subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
   = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
     then throwSolverError $ unlines [ "Constraint:"
@@ -84,11 +88,19 @@ subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2)
       (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
       let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
       zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
+-- Nominal/Nominal Constraint
+subConstraints (SubType (NominalType tn1) (NominalType tn2)) | tn1 == tn2 = return []
+                                                             | otherwise = throwSolverError ("The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2)
+-- Data/Codata and Codata/Data Constraints
 subConstraints cs@(SubType (SimpleType Data _) (SimpleType Codata _))
   = throwSolverError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
 subConstraints cs@(SubType (SimpleType Codata _) (SimpleType Data _))
   = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
-subConstraints _ = return [] -- constraint is atomic
+-- Nominal/XData and XData/Nominal Constraints
+subConstraints (SubType (SimpleType _ _) (NominalType _)) = throwSolverError "Cannot constrain nominal by structural type"
+subConstraints (SubType (NominalType _) (SimpleType _ _)) = throwSolverError "Cannot constrain nominal by structural type"
+
+--subConstraints _ = return [] -- constraint is atomic
 
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
@@ -129,6 +141,7 @@ uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 typeToHeadCons :: SimpleType -> HeadCons
 typeToHeadCons (TyVar _) = emptyHeadCons
 typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
+typeToHeadCons (NominalType tn) = emptyHeadCons { hc_nominal = S.singleton tn }
 
 typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
 typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
@@ -143,6 +156,11 @@ typeToGraph pol ty@(SimpleType s xtors) = do
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
       cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
       modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
+  return newNodeId
+typeToGraph pol (NominalType tn) = do
+  newNodeId <- gets (head . newNodes 1 . ta_gr)
+  let hc = emptyHeadCons { hc_nominal = S.singleton tn }
+  modifyGraph (insNode (newNodeId, (pol, hc)))
   return newNodeId
 
 -- | Creates upper/lower bounds for a unification variable by inserting epsilon edges into the automaton
