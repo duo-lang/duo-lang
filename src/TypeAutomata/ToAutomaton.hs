@@ -62,20 +62,20 @@ typeToAutM pol (TTyRVar rv) = do
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ "covariance rule violated: " ++ (rvar_name rv)
-typeToAutM Prd (TTyUnion tys) = do
+typeToAutM Prd (TTySet Union tys) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (Prd, emptyHeadCons)))
   ns <- mapM (typeToAutM Prd) tys
   modify (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Cns (TTyUnion _) = throwError "typeToAutM: type has wrong polarity."
-typeToAutM Cns (TTyInter tys) = do
+typeToAutM Cns (TTySet Union _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Cns (TTySet Inter tys) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (Cns, emptyHeadCons)))
   ns <- mapM (typeToAutM Cns) tys
   modify (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Prd (TTyInter _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Prd (TTySet Inter _) = throwError "typeToAutM: type has wrong polarity."
 typeToAutM pol (TTyRec rv ty) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (pol, emptyHeadCons)))

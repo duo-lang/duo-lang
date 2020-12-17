@@ -58,8 +58,7 @@ alphaRenameTVar tvs tv
 newtype RVar = MkRVar { rvar_name :: String } deriving (Eq, Ord, Show)
 
 data TargetType
-  = TTyUnion [TargetType]
-  | TTyInter [TargetType]
+  = TTySet UnionInter  [TargetType]
   | TTyTVar TVar
   | TTyRVar RVar
   | TTyRec RVar TargetType
@@ -71,8 +70,7 @@ data TargetType
 alphaRenameTargetType :: [TVar] -> TargetType -> TargetType
 alphaRenameTargetType tvs (TTyTVar tv)   = TTyTVar (alphaRenameTVar tvs tv)
 alphaRenameTargetType _   (TTyRVar rv)   = TTyRVar rv
-alphaRenameTargetType tvs (TTyUnion tys) = TTyUnion (map (alphaRenameTargetType tvs) tys)
-alphaRenameTargetType tvs (TTyInter tys) = TTyInter (map (alphaRenameTargetType tvs) tys)
+alphaRenameTargetType tvs (TTySet ui tys) = TTySet ui (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyRec rv ty) = TTyRec rv (alphaRenameTargetType tvs ty)
 alphaRenameTargetType _ (TTyNominal tn) = TTyNominal tn
 alphaRenameTargetType tvs (TTySimple s sigs) = TTySimple s $ map renameXtorSig  sigs
@@ -87,14 +85,13 @@ alphaRenameTypeScheme tvs (TypeScheme tvs' ty) = TypeScheme (map (alphaRenameTVa
 
 unionOrInter :: PrdCns -> [TargetType] -> TargetType
 unionOrInter _ [t] = t
-unionOrInter Prd tys = TTyUnion tys
-unionOrInter Cns tys = TTyInter tys
+unionOrInter Prd tys = TTySet Union tys
+unionOrInter Cns tys = TTySet Inter tys
 
 freeTypeVars' :: TargetType -> [TVar]
 freeTypeVars' (TTyTVar tv) = [tv]
 freeTypeVars' (TTyRVar _)  = []
-freeTypeVars' (TTyUnion ts) = concat $ map freeTypeVars' ts
-freeTypeVars' (TTyInter ts) = concat $ map freeTypeVars' ts
+freeTypeVars' (TTySet _ ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
 freeTypeVars' (TTyNominal _) = []
 freeTypeVars' (TTySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
@@ -119,7 +116,7 @@ type family TargetF (k :: SimpleTarget) :: Type where
   TargetF Target = ()
   TargetF Simple = Void
 
-data UnionInter = Union | Inter
+data UnionInter = Union | Inter deriving (Eq, Show)
 
 data Typ a
   = TyFreeVar TVar
@@ -128,6 +125,9 @@ data Typ a
   | TyNominal TypeName
   | TySet (TargetF a) UnionInter [Typ a]
   | TyRec (TargetF a) (Typ a)
+
+type SimpleType' = Typ Simple
+type TargetType' = Typ Target
 
 ------------------------------------------------------------------------------
 -- Data Type declarations

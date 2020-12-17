@@ -88,12 +88,12 @@ instance Pretty SimpleType where
   pretty (SimpleType Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty TargetType where
-  pretty (TTyUnion []) = "Bot"
-  pretty (TTyUnion [t]) = pretty t
-  pretty (TTyUnion tts) = parens (intercalateX " \\/ " (map pretty tts))
-  pretty (TTyInter []) = "Top"
-  pretty (TTyInter [t]) = pretty t
-  pretty (TTyInter tts) = parens (intercalateX " /\\ " (map pretty tts))
+  pretty (TTySet Union []) = "Bot"
+  pretty (TTySet Union [t]) = pretty t
+  pretty (TTySet Union tts) = parens (intercalateX " \\/ " (map pretty tts))
+  pretty (TTySet Inter []) = "Top"
+  pretty (TTySet Inter [t]) = pretty t
+  pretty (TTySet Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
   pretty (TTyTVar tv) = pretty tv
   pretty (TTyRVar tv) = pretty tv
   pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t

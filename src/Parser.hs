@@ -334,10 +334,10 @@ typeEnvItem = do
   return ty
 
 joinType :: TypeParser TargetType
-joinType = TTyUnion <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
+joinType = TTySet Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
 
 meetType :: TypeParser TargetType
-meetType = TTyInter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
+meetType = TTySet Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
 
 recType :: TypeParser TargetType
 recType = do
