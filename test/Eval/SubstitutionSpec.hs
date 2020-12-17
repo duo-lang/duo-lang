@@ -8,7 +8,7 @@ import Syntax.Terms
 import Syntax.Program
 import Utils
 import TestUtils
-import Eval.Substitution 
+import Eval.TermSubstitution
 
 failingExamples :: [String]
 failingExamples = []

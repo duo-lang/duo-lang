@@ -1,4 +1,4 @@
-module Eval.Substitution
+module Eval.TermSubstitution
   ( -- Variable Opening
     commandOpening
   , commandOpeningSingle

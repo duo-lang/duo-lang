@@ -4,7 +4,7 @@ import Prettyprinter
 
 import Data.List (find)
 import Syntax.Terms
-import Eval.Substitution
+import Eval.TermSubstitution
 import Utils
 import Pretty
 
