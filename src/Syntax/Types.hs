@@ -4,6 +4,8 @@ import Data.List (nub)
 
 import Syntax.Terms
 import Utils
+import Data.Kind (Type)
+import Data.Void
 
 ------------------------------------------------------------------------------
 -- Type syntax
@@ -106,6 +108,26 @@ freeTypeVars = nub . freeTypeVars'
 -- generalizes over all free type variables of a type
 generalize :: TargetType -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
+
+------------------------------------------------------------------------------
+-- Types
+------------------------------------------------------------------------------
+
+data SimpleTarget = Simple | Target
+
+type family TargetF (k :: SimpleTarget) :: Type where
+  TargetF Target = ()
+  TargetF Simple = Void
+
+data UnionInter = Union | Inter
+
+data Typ a
+  = TyFreeVar TVar
+  | TyBoundVar Int
+  | TySimple DataCodata [XtorSig (Typ a)]
+  | TyNominal TypeName
+  | TySet (TargetF a) UnionInter [Typ a]
+  | TyRec (TargetF a) (Typ a)
 
 ------------------------------------------------------------------------------
 -- Data Type declarations
