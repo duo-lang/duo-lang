@@ -73,12 +73,8 @@ instance Pretty a => Pretty (Command a) where
 instance Pretty UVar where
   pretty (MkUVar n) = "U" <> pretty n
 
-
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
-
-instance Pretty RVar where
-  pretty (MkRVar rv) = pretty rv
 
 instance Pretty a => Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args

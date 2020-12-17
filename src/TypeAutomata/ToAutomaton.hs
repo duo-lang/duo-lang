@@ -26,7 +26,7 @@ import Data.Graph.Inductive.Graph
 -- Target types -> Type automata
 --------------------------------------------------------------------------
 
-type RVarEnv = Map (PrdCns, RVar) Node
+type RVarEnv = Map (PrdCns, TVar) Node
 type TVarEnv = Map TVar (Node, Node)
 type TypeToAutM a = StateT TypeGrEps (ReaderT RVarEnv (ReaderT TVarEnv (Except String))) a
 
@@ -61,7 +61,7 @@ typeToAutM pol (TTyRVar rv) = do
   rvarEnv <- ask
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
-    Nothing -> throwError $ "covariance rule violated: " ++ (rvar_name rv)
+    Nothing -> throwError $ "covariance rule violated: " ++ (tvar_name rv)
 typeToAutM Prd (TTySet Union tys) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (Prd, emptyHeadCons)))

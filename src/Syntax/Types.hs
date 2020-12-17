@@ -84,14 +84,11 @@ alphaRenameTVar tvs tv
   | tv `elem` tvs = head [newtv | n <- [(0 :: Integer)..], let newtv = MkTVar (tvar_name tv ++ show n), not (newtv `elem` tvs)]
   | otherwise = tv
 
--- bound type variables (used in recursive types)
-newtype RVar = MkRVar { rvar_name :: String } deriving (Eq, Ord, Show)
-
 data TargetType
   = TTySet UnionInter  [TargetType]
   | TTyTVar TVar
-  | TTyRVar RVar
-  | TTyRec RVar TargetType
+  | TTyRVar TVar
+  | TTyRec TVar TargetType
   | TTySimple DataCodata [XtorSig TargetType]
   | TTyNominal TypeName
   deriving (Eq,Show)

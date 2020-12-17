@@ -260,7 +260,7 @@ subtypingProblemP = do
 
 -- ReaderT to keep track of recursively bound type variables
 -- StateT to keep track of free type variables.
-type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
+type TypeParser a = StateT (Set TVar) (ReaderT (Set TVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
 
 typeName :: TypeParser TypeName
 typeName = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
@@ -308,7 +308,7 @@ xtorSignature = do
 recVar :: TypeParser TargetType
 recVar = do
   rvs <- ask
-  rv <- MkRVar <$> freeVarName
+  rv <- MkTVar <$> freeVarName
   guard (rv `S.member` rvs)
   return $ TTyRVar rv
 
@@ -342,7 +342,7 @@ meetType = TTySet Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
 recType :: TypeParser TargetType
 recType = do
   _ <- symbol "rec"
-  rv <- MkRVar <$> freeVarName
+  rv <- MkTVar <$> freeVarName
   _ <- dot
   ty <- local (S.insert rv) typeR
   return $ TTyRec rv ty

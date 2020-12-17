@@ -100,7 +100,7 @@ nodeToType i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TTyRVar (MkRVar ("r" ++ show i))
+    True -> return $ TTyRVar (MkTVar ("r" ++ show i))
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
@@ -133,6 +133,6 @@ nodeToType i = do
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
-        then return $ TTyRec (MkRVar ("r" ++ show i)) resType
+        then return $ TTyRec (MkTVar ("r" ++ show i)) resType
         else return resType
 
