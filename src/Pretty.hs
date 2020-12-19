@@ -7,7 +7,6 @@ import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), S
 import Data.GraphViz
 import Data.Text.Lazy (pack)
 import Data.Maybe (catMaybes)
-import Data.Void (absurd)
 
 import Syntax.Terms
 import Syntax.Types
@@ -79,32 +78,23 @@ instance Pretty TVar where
 instance Pretty a => Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
 
-instance Pretty SimpleType where
+instance Pretty (Typ a) where
   pretty (TyFreeVar tv) = pretty tv
   pretty (TyBoundVar i) = pretty i
   pretty (TyNominal tn) = pretty (unTypeName tn)
   pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
   pretty (TySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
-  pretty (TySet v _ _) = absurd v
-  pretty (TyRec v _) = absurd v
+  pretty (TySet _ Union []) = "Bot"
+  pretty (TySet _ Union [t]) = pretty t
+  pretty (TySet _ Union tts) = parens (intercalateX " \\/ " (map pretty tts))
+  pretty (TySet _ Inter []) = "Top"
+  pretty (TySet _ Inter [t]) = pretty t
+  pretty (TySet _ Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
+  pretty (TyRec _ t) = "rec " <> "-" <> "." <> pretty t
 
-instance Pretty TargetType where
-  pretty (TTySet Union []) = "Bot"
-  pretty (TTySet Union [t]) = pretty t
-  pretty (TTySet Union tts) = parens (intercalateX " \\/ " (map pretty tts))
-  pretty (TTySet Inter []) = "Top"
-  pretty (TTySet Inter [t]) = pretty t
-  pretty (TTySet Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
-  pretty (TTyTVar tv) = pretty tv
-  pretty (TTyRVar tv) = pretty tv
-  pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t
-  pretty (TTyNominal tn) = pretty (unTypeName tn)
-  pretty (TTySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (TTySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
-
-instance Pretty TypeScheme where
-  pretty (TypeScheme [] ty) = pretty ty
-  pretty (TypeScheme tvs ty) = "forall " <> intercalateX "" (map pretty tvs) <> ". " <> pretty ty
+instance Pretty TypeScheme' where
+  pretty (TypeScheme' [] ty) = pretty ty
+  pretty (TypeScheme' tvs ty) = "forall " <> intercalateX "" (map (const "-") tvs) <> ". " <> pretty ty
 
 instance Pretty Constraint where
   pretty (SubType t1 t2) = pretty t1 <+> "<:" <+> pretty t2

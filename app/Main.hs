@@ -14,6 +14,7 @@ import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Syntax.Program
+import Syntax.Utils
 import Parser
 import Pretty
 import Eval.Eval
@@ -100,7 +101,7 @@ type_cmd s = do
     typeAutDet = removeAdmissableFlowEdges typeAutDet0
     minTypeAut = minimize typeAutDet
     res = autToType minTypeAut
-  prettyRepl (" :: " ++ ppPrint res)
+  prettyRepl (" :: " ++ ppPrint (oldToNew' res))
 
 type_option :: Option
 type_option = Option
@@ -115,7 +116,7 @@ show_cmd :: String -> Repl ()
 show_cmd s = do
   env <- gets replEnv
   case runEnvParser typeSchemeP env s of
-    Right ty -> prettyRepl ty
+    Right ty -> prettyRepl (oldToNew' ty)
     Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> prettyRepl t
       Left err2 -> prettyRepl $ unlines [ "Type parsing error:"
@@ -185,7 +186,7 @@ save_cmd s = do
         let minTypeAut = minimize typeAutDetAdms
         saveGraphFiles "3_minTypeAut" minTypeAut
         let res = autToType minTypeAut
-        prettyRepl (" :: " ++ ppPrint res)
+        prettyRepl (" :: " ++ ppPrint (oldToNew' res))
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 
@@ -264,7 +265,7 @@ simplify_cmd s = do
   env <- gets replEnv
   ty <- parseRepl s typeSchemeP env
   aut <- fromRight (typeToAut ty)
-  prettyRepl (autToType aut)
+  prettyRepl (oldToNew' (autToType aut))
 
 simplify_option :: Option
 simplify_option = Option
