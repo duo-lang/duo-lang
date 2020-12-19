@@ -45,7 +45,11 @@ type SimpleType = Typ Simple
 type TargetType' = Typ Target
 
 deriving instance Eq SimpleType
+deriving instance Eq TargetType'
 deriving instance Show SimpleType
+deriving instance Show TargetType'
+
+data TypeScheme' = TypeScheme' { ts_vars' :: [()], ts_monotype' :: TargetType' } deriving (Show, Eq)
 
 ------------------------------------------------------------------------------
 -- Constraints
@@ -132,5 +136,4 @@ freeTypeVars = nub . freeTypeVars'
 -- generalizes over all free type variables of a type
 generalize :: TargetType -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
-
 

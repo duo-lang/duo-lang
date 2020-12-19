@@ -59,6 +59,7 @@ library
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
+      Syntax.Utils
       TypeAutomata.Determinize
       TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton
