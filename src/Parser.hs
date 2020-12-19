@@ -281,10 +281,10 @@ typeR' = try (parens typeR) <|>
   nominalType <|>
   dataType <|>
   codataType <|>
-  try recVar <|>
+  try (typeVariable Rec) <|>
   try (typeEnvItem) <|>
   recType <|>
-  typeVariable
+  typeVariable Normal
 
 typeR :: TypeParser TargetType
 typeR = try joinType <|> try meetType <|> typeR'
@@ -305,19 +305,19 @@ xtorSignature = do
   args <- argListP (lexeme typeR) (lexeme typeR)
   return (MkXtorSig xt args)
 
-recVar :: TypeParser TargetType
-recVar = do
-  rvs <- ask
-  rv <- MkTVar <$> freeVarName
-  guard (rv `S.member` rvs)
-  return $ TTyRVar rv
 
-typeVariable :: TypeParser TargetType
-typeVariable = do
+
+typeVariable :: RecNormal -> TypeParser TargetType
+typeVariable Normal = do
   tvs <- get
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TTyTVar tv
+  return $ TTyVar Normal tv
+typeVariable Rec = do
+  rvs <- ask
+  rv <- MkTVar <$> freeVarName
+  guard (rv `S.member` rvs)
+  return $ TTyVar Rec rv
 
 envItem :: Parser TypeScheme
 envItem = do

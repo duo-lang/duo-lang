@@ -52,12 +52,12 @@ typeToAut :: TypeScheme -> Either String TypeAutDet
 typeToAut ty = (typeToAutPol Prd ty) <> (typeToAutPol Cns ty)
 
 typeToAutM :: PrdCns -> TargetType -> TypeToAutM Node
-typeToAutM pol (TTyTVar tv) = do
+typeToAutM pol (TTyVar Normal tv) = do
   tvarEnv <- lift $ lift ask
   case M.lookup tv tvarEnv of
     Just (i,j) -> return $ case pol of {Prd -> i; Cns -> j}
     Nothing -> throwError $ "unknown free type variable: " ++ (tvar_name tv)
-typeToAutM pol (TTyRVar rv) = do
+typeToAutM pol (TTyVar Rec rv) = do
   rvarEnv <- ask
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i

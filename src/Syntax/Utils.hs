@@ -7,8 +7,7 @@ import Eval.TypeSubstitution
 -- Helpers for deprecating old target types.
 
 oldToNew :: TargetType -> TargetType'
-oldToNew (TTyTVar tv) = TyFreeVar tv
-oldToNew (TTyRVar tv) = TyFreeVar tv
+oldToNew (TTyVar _ tv) = TyFreeVar tv
 oldToNew (TTySet ui ts) = TySet () ui (oldToNew <$> ts)
 oldToNew (TTyRec tv ts) = TyRec () (typeClosing tv (oldToNew ts))
 oldToNew (TTySimple dc xtors) = TySimple dc (oldToNewXtor <$> xtors)

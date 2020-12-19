@@ -88,10 +88,11 @@ alphaRenameTVar tvs tv
   | tv `elem` tvs = head [newtv | n <- [(0 :: Integer)..], let newtv = MkTVar (tvar_name tv ++ show n), not (newtv `elem` tvs)]
   | otherwise = tv
 
+
+data RecNormal = Rec | Normal deriving (Show, Eq)
 data TargetType
   = TTySet UnionInter  [TargetType]
-  | TTyTVar TVar
-  | TTyRVar TVar
+  | TTyVar RecNormal TVar
   | TTyRec TVar TargetType
   | TTySimple DataCodata [XtorSig TargetType]
   | TTyNominal TypeName
@@ -99,8 +100,8 @@ data TargetType
 
 -- replaces all free type variables in the type, so that they don't intersect with the given type variables
 alphaRenameTargetType :: [TVar] -> TargetType -> TargetType
-alphaRenameTargetType tvs (TTyTVar tv)   = TTyTVar (alphaRenameTVar tvs tv)
-alphaRenameTargetType _   (TTyRVar rv)   = TTyRVar rv
+alphaRenameTargetType tvs (TTyVar Normal tv) = TTyVar Normal (alphaRenameTVar tvs tv)
+alphaRenameTargetType _   (TTyVar Rec tv)    = TTyVar Rec tv
 alphaRenameTargetType tvs (TTySet ui tys) = TTySet ui (map (alphaRenameTargetType tvs) tys)
 alphaRenameTargetType tvs (TTyRec rv ty) = TTyRec rv (alphaRenameTargetType tvs ty)
 alphaRenameTargetType _ (TTyNominal tn) = TTyNominal tn
@@ -120,8 +121,8 @@ unionOrInter Prd tys = TTySet Union tys
 unionOrInter Cns tys = TTySet Inter tys
 
 freeTypeVars' :: TargetType -> [TVar]
-freeTypeVars' (TTyTVar tv) = [tv]
-freeTypeVars' (TTyRVar _)  = []
+freeTypeVars' (TTyVar Normal tv) = [tv]
+freeTypeVars' (TTyVar Rec _)  = []
 freeTypeVars' (TTySet _ ts) = concat $ map freeTypeVars' ts
 freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
 freeTypeVars' (TTyNominal _) = []

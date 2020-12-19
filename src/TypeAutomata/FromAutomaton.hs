@@ -54,7 +54,8 @@ checkCache i = do
 nodeToTVars :: Node -> AutToTypeM [TargetType]
 nodeToTVars i = do
   tvMap <- asks tvMap
-  return (TTyTVar <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  let list = S.toList $ fromJust $ M.lookup i tvMap
+  return (TTyVar Normal <$> list)
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabel, Node)]
 nodeToOuts i = do
@@ -100,7 +101,7 @@ nodeToType i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TTyRVar (MkTVar ("r" ++ show i))
+    True -> return $ TTyVar Rec (MkTVar ("r" ++ show i))
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
