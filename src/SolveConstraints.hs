@@ -63,10 +63,10 @@ getLowerBounds uv = gets (vst_lowerbounds . (M.! uv) . sst_bounds)
 
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Atomic constraints (one side is a TyVar)
-subConstraints (SubType (TyVar _) _) = return []
-subConstraints (SubType _ (TyVar _)) = return []
+subConstraints (SubType (TyUVar () _) _) = return []
+subConstraints (SubType _ (TyUVar () _)) = return []
 -- Data/Data and Codata/Codata constraints
-subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
+subConstraints cs@(SubType (TySimple Data xtors1) (TySimple Data xtors2))
   = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
     then throwSolverError $ unlines [ "Constraint:"
                                     , ppPrint cs
@@ -77,7 +77,7 @@ subConstraints cs@(SubType (SimpleType Data xtors1) (SimpleType Data xtors2))
       (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
       let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
       zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
-subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2))
+subConstraints cs@(SubType (TySimple Codata xtors1) (TySimple Codata xtors2))
   = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
     then throwSolverError $ unlines [ "Constraint:"
                                     , ppPrint cs
@@ -89,16 +89,16 @@ subConstraints cs@(SubType (SimpleType Codata xtors1) (SimpleType Codata xtors2)
       let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
       zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
 -- Nominal/Nominal Constraint
-subConstraints (SubType (NominalType tn1) (NominalType tn2)) | tn1 == tn2 = return []
+subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
                                                              | otherwise = throwSolverError ("The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2)
 -- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (SimpleType Data _) (SimpleType Codata _))
+subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
   = throwSolverError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
-subConstraints cs@(SubType (SimpleType Codata _) (SimpleType Data _))
+subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
   = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
 -- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (SimpleType _ _) (NominalType _)) = throwSolverError "Cannot constrain nominal by structural type"
-subConstraints (SubType (NominalType _) (SimpleType _ _)) = throwSolverError "Cannot constrain nominal by structural type"
+subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError "Cannot constrain nominal by structural type"
+subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError "Cannot constrain nominal by structural type"
 
 --subConstraints _ = return [] -- constraint is atomic
 
@@ -111,12 +111,12 @@ solve (cs:css) = do
     else do
       modifyCache (cs:)
       case cs of
-        (SubType (TyVar uv) ub) -> do
+        (SubType (TyUVar () uv) ub) -> do
           modifyBounds (addUpperBound ub) uv
           lbs <- getLowerBounds uv
           let newCss = [SubType lb ub | lb <- lbs]
           solve (newCss ++ css)
-        (SubType lb (TyVar uv)) -> do
+        (SubType lb (TyUVar () uv)) -> do
           modifyBounds (addLowerBound lb) uv
           ubs <- getUpperBounds uv
           let newCss = [SubType lb ub | ub <- ubs]
@@ -139,13 +139,13 @@ uvarToNodeId uv Prd = 2 * uvar_id uv
 uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 
 typeToHeadCons :: SimpleType -> HeadCons
-typeToHeadCons (TyVar _) = emptyHeadCons
-typeToHeadCons (SimpleType s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
-typeToHeadCons (NominalType tn) = emptyHeadCons { hc_nominal = S.singleton tn }
+typeToHeadCons (TyUVar () _) = emptyHeadCons
+typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
+typeToHeadCons (TyNominal tn) = emptyHeadCons { hc_nominal = S.singleton tn }
 
 typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
-typeToGraph pol (TyVar uv) = return (uvarToNodeId uv pol)
-typeToGraph pol ty@(SimpleType s xtors) = do
+typeToGraph pol (TyUVar () uv) = return (uvarToNodeId uv pol)
+typeToGraph pol ty@(TySimple s xtors) = do
   newNodeId <- gets (head . newNodes 1 . ta_gr)
   let hc = typeToHeadCons ty
   modifyGraph (insNode (newNodeId, (pol, hc)))
@@ -157,7 +157,7 @@ typeToGraph pol ty@(SimpleType s xtors) = do
       cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
       modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
   return newNodeId
-typeToGraph pol (NominalType tn) = do
+typeToGraph pol (TyNominal tn) = do
   newNodeId <- gets (head . newNodes 1 . ta_gr)
   let hc = emptyHeadCons { hc_nominal = S.singleton tn }
   modifyGraph (insNode (newNodeId, (pol, hc)))

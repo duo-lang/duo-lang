@@ -1,9 +1,43 @@
 module Syntax.Types where
 
 import Data.List (nub)
+import Data.Kind (Type)
+import Data.Void
 
 import Syntax.Terms
 import Utils
+
+
+------------------------------------------------------------------------------
+-- Types
+------------------------------------------------------------------------------
+
+data SimpleTarget = Simple | Target
+
+type family TargetF (k :: SimpleTarget) :: Type where
+  TargetF Target = ()
+  TargetF Simple = Void
+
+type family SimpleF (k :: SimpleTarget) :: Type where
+  SimpleF Target = Void
+  SimpleF Simple = ()
+
+data Typ a
+  = TyTVar (TargetF a) TVar
+  | TyRVar (TargetF a) RVar
+  | TyUVar (SimpleF a) UVar
+  | TySimple DataCodata [XtorSig (Typ a)]
+  | TyNominal TypeName
+  | TySet (TargetF a) UnionInter [Typ a]
+  | TyRec (TargetF a) RVar (Typ a)
+
+type SimpleType = Typ Simple
+type TargetType = Typ Target
+
+deriving instance Eq SimpleType
+deriving instance Eq TargetType
+deriving instance Show SimpleType
+deriving instance Show TargetType
 
 ------------------------------------------------------------------------------
 -- Type syntax
@@ -37,13 +71,6 @@ applyVariance Codata Cns = id
 data XtorSig a = MkXtorSig { sig_name :: XtorName, sig_args :: Twice [a] }
   deriving (Show, Eq)
 
-data SimpleType =
-    TyVar UVar
-  | SimpleType DataCodata [XtorSig SimpleType]
-  | NominalType TypeName
-
-  deriving (Show,Eq)
-
 data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
 
 -- free type variables
@@ -52,21 +79,12 @@ newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Ord, Show)
 -- bound type variables (used in recursive types)
 newtype RVar = MkRVar { rvar_name :: String } deriving (Eq, Ord, Show)
 
-data TargetType
-  = TTySet UnionInter [TargetType]
-  | TTyTVar TVar
-  | TTyRVar RVar
-  | TTyRec RVar TargetType
-  | TTySimple DataCodata [XtorSig TargetType]
-  | TTyNominal TypeName
-  deriving (Eq,Show)
-
 data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType } deriving (Show, Eq)
 
 unionOrInter :: PrdCns -> [TargetType] -> TargetType
 unionOrInter _ [t] = t
-unionOrInter Prd tys = TTySet Union tys
-unionOrInter Cns tys = TTySet Inter tys
+unionOrInter Prd tys = TySet () Union tys
+unionOrInter Cns tys = TySet () Inter tys
 
 
 
@@ -74,12 +92,13 @@ freeTypeVars :: TargetType -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: TargetType -> [TVar]
-    freeTypeVars' (TTyTVar tv) = [tv]
-    freeTypeVars' (TTyRVar _)  = []
-    freeTypeVars' (TTySet _ ts) = concat $ map freeTypeVars' ts
-    freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
-    freeTypeVars' (TTyNominal _) = []
-    freeTypeVars' (TTySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyTVar () tv) = [tv]
+    freeTypeVars' (TyRVar () _)  = []
+    freeTypeVars' (TyUVar v _) = absurd v
+    freeTypeVars' (TySet () _ ts) = concat $ map freeTypeVars' ts
+    freeTypeVars' (TyRec () _ t)  = freeTypeVars' t
+    freeTypeVars' (TyNominal _) = []
+    freeTypeVars' (TySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
     freeTypeVarsXtorSig :: XtorSig TargetType -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ (Twice prdTypes cnsTypes)) =
