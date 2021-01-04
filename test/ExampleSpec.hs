@@ -10,13 +10,7 @@ import TestUtils
 import Parser
 import Syntax.Terms
 import Syntax.Program
-import Syntax.TypeGraph
-import Utils
-import GenerateConstraints
-import SolveConstraints
-import TypeAutomata.Determinize
-import TypeAutomata.FlowAnalysis
-import TypeAutomata.Minimize (minimize)
+import InferTypes
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 
@@ -24,22 +18,13 @@ failingExamples :: [String]
 failingExamples = ["div2and3"]
 
 checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
-checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ typecheck env term `shouldSatisfy` isRight
-
-typecheck :: Environment -> Term Prd () -> Either Error TypeAutDet
-typecheck env t = do
-  (typedTerm, css, uvars) <- generateConstraints t env
-  typeAut <- solveConstraints css uvars (typedTermToType env typedTerm) Prd
-  let typeAutDet0 = determinize typeAut
-  let typeAutDet = removeAdmissableFlowEdges typeAutDet0
-  let minTypeAut = minimize typeAutDet
-  return minTypeAut
+checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
 
 typecheckExample :: Environment -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right term = runEnvParser (termP PrdRep) env termS
-      let Right inferredTypeAut = typecheck env term
+      let Right inferredTypeAut = inferPrdAut term env
       let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True

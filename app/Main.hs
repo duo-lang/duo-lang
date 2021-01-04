@@ -17,12 +17,8 @@ import Syntax.Program
 import Parser
 import Pretty
 import Eval.Eval
-import GenerateConstraints
-import SolveConstraints
-import TypeAutomata.Determinize
+import InferTypes
 import TypeAutomata.FromAutomaton (autToType)
-import TypeAutomata.FlowAnalysis
-import TypeAutomata.Minimize (minimize)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
 
@@ -93,13 +89,7 @@ type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
   t <- parseRepl s (termP PrdRep) env
-  (typedTerm, css, uvars) <- fromRight $ generateConstraints t env
-  typeAut <- fromRight $ solveConstraints css uvars (typedTermToType env typedTerm) Prd
-  let
-    typeAutDet0 = determinize typeAut
-    typeAutDet = removeAdmissableFlowEdges typeAutDet0
-    minTypeAut = minimize typeAutDet
-    res = autToType minTypeAut
+  res <- fromRight $ inferPrd t env
   prettyRepl (" :: " ++ ppPrint res)
 
 type_option :: Option
@@ -175,17 +165,12 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (termP PrdRep) env s of
       Right t -> do
-        (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
-        typeAut <- fromRight $ solveConstraints css uvars (typedTermToType env typedTerm) Prd
-        saveGraphFiles "0_typeAut" typeAut
-        let typeAutDet = determinize typeAut
-        saveGraphFiles "1_typeAutDet" typeAutDet
-        let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-        saveGraphFiles "2_typeAutDetAdms" typeAutDetAdms
-        let minTypeAut = minimize typeAutDetAdms
-        saveGraphFiles "3_minTypeAut" minTypeAut
-        let res = autToType minTypeAut
-        prettyRepl (" :: " ++ ppPrint res)
+        trace <- fromRight $ inferPrdTraced t env
+        saveGraphFiles "0_typeAut" (trace_typeAut trace)
+        saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
+        saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
+        saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
+        prettyRepl (" :: " ++ ppPrint (trace_resType trace))
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 
@@ -219,13 +204,7 @@ bind_cmd :: String -> Repl ()
 bind_cmd s = do
   env <- gets replEnv
   (v,t) <- parseRepl s bindingP env
-  (typedTerm, css, uvars) <- fromRight (generateConstraints t env)
-  typeAut <- fromRight (solveConstraints css uvars (typedTermToType env typedTerm) Prd)
-  let
-    typeAutDet0 = determinize typeAut
-    typeAutDet  = removeAdmissableFlowEdges typeAutDet0
-    minTypeAut  = minimize typeAutDet
-    resType     = autToType minTypeAut
+  resType <- fromRight $ inferPrd t env
   modifyEnvironment (insertDecl (TypDecl v resType))
 
 
