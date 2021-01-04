@@ -282,7 +282,7 @@ typeR' = try (parens typeR) <|>
   dataType <|>
   codataType <|>
   try recVar <|>
-  try (typeEnvItem) <|>
+--  try (typeEnvItem) <|>
   recType <|>
   typeVariable
 
@@ -319,19 +319,20 @@ typeVariable = do
   guard (tv `S.member` tvs)
   return $ TTyTVar tv
 
-envItem :: Parser TypeScheme
-envItem = do
-  v <- lexeme (many alphaNumChar)
-  env <- asks typEnv
-  Just x <- return $ M.lookup v env
-  return x
+-- envItem :: Parser TypeScheme
+-- envItem = do
+--   v <- lexeme (many alphaNumChar)
+--   env <- asks typEnv
+--   Just x <- return $ M.lookup v env
+--   return x
 
-typeEnvItem :: TypeParser TargetType
-typeEnvItem = do
-  tvs <- S.toList <$> get
-  TypeScheme newtvs ty <- alphaRenameTypeScheme tvs <$> lift (lift envItem)
-  modify (S.union (S.fromList newtvs))
-  return ty
+
+-- typeEnvItem :: TypeParser TargetType
+-- typeEnvItem = do
+--   tvs <- S.toList <$> get
+--   TypeScheme newtvs ty <- alphaRenameTypeScheme tvs <$> lift (lift envItem)
+--   modify (S.union (S.fromList newtvs))
+--   return ty
 
 joinType :: TypeParser TargetType
 joinType = TTyUnion <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
