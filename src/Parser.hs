@@ -266,9 +266,6 @@ data TypeParseReader = TypeParseReader
 -- StateT to keep track of free type variables.
 type TypeParser a = ReaderT TypeParseReader Parser a
 
-typeName :: TypeParser TypeName
-typeName = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
-
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
@@ -278,14 +275,10 @@ typeSchemeP = do
     then return (generalize monotype)
     else fail "Forall annotation in type scheme is incorrect"
 
-nominalType :: TypeParser TargetType
-nominalType = TyNominal <$> typeName
-
-
 --without joins and meets
 typeR' :: TypeParser TargetType
 typeR' = try (parens typeR) <|>
-  nominalType <|>
+  (lift nominalTypeP) <|>
   dataType <|>
   codataType <|>
   try recVar <|>
@@ -361,7 +354,7 @@ codataTypeP = braces $ do
   xtorSigs <- xtorSignatureP `sepBy` comma
   return (TySimple Codata xtorSigs)
 
-nominalTypeP :: Parser SimpleType
+nominalTypeP :: Parser (Typ a)
 nominalTypeP = TyNominal <$> typeNameP
 
 simpleTypeP :: Parser SimpleType
