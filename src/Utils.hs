@@ -24,6 +24,7 @@ data Error
   | GenConstraintsError String
   | EvalError String
   | SolveConstraintsError String
+  | OtherError String
   deriving (Show, Eq)
 
 allEq :: Eq a => [a] -> Bool

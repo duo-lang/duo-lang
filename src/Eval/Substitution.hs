@@ -122,31 +122,34 @@ commandClosingSingle CnsRep v = commandClosing (Twice [] [v])
 -- Check for locally closedness
 ---------------------------------------------------------------------------------
 
-checkIfBound :: [Twice [a]] -> PrdCnsRep pc -> Index -> Bool
-checkIfBound env rep  (i, j) | i >= length env = False
+checkIfBound :: [Twice [a]] -> PrdCnsRep pc -> Index -> Either Error ()
+checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError "Variable is not bound"
                              | otherwise = checkIfBound' (env !! i) rep j
 
-checkIfBound' :: Twice [a] -> PrdCnsRep pc -> Int -> Bool
-checkIfBound' (Twice prds _) PrdRep j = j < length prds
-checkIfBound' (Twice _ cnss) CnsRep j = j < length cnss
+checkIfBound' :: Twice [a] -> PrdCnsRep pc -> Int -> Either Error ()
+checkIfBound' (Twice prds _) PrdRep j = if j < length prds then Right () else Left $ OtherError "Variable is not bound"
+checkIfBound' (Twice _ cnss) CnsRep j = if j < length cnss then Right () else Left $ OtherError "Variable is not bound"
 
-termLocallyClosedRec :: [Twice [()]] -> Term pc a -> Bool
+termLocallyClosedRec :: [Twice [()]] -> Term pc a -> Either Error ()
 termLocallyClosedRec env (BoundVar pc idx) = checkIfBound env pc idx
-termLocallyClosedRec _ (FreeVar _ _ _) = True
-termLocallyClosedRec env (XtorCall _ _ (MkXtorArgs prds cnss)) = all (termLocallyClosedRec env) prds && all (termLocallyClosedRec env) cnss
-termLocallyClosedRec env (Match _ _ cases) = all (\MkCase { case_cmd, case_args } -> commandLocallyClosedRec (twiceMap (fmap (const ())) (fmap (const ())) case_args : env) case_cmd) cases
+termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
+termLocallyClosedRec env (XtorCall _ _ (MkXtorArgs prds cnss)) = do
+  sequence_ (termLocallyClosedRec env <$> prds)
+  sequence_ (termLocallyClosedRec env <$> cnss)
+termLocallyClosedRec env (Match _ _ cases) = do
+  sequence_ ((\MkCase { case_cmd, case_args } -> commandLocallyClosedRec (twiceMap (fmap (const ())) (fmap (const ())) case_args : env) case_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
 termLocallyClosedRec env (MuAbs CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
 
-commandLocallyClosedRec :: [Twice [()]] -> Command a -> Bool
-commandLocallyClosedRec _ Done = True
+commandLocallyClosedRec :: [Twice [()]] -> Command a -> Either Error ()
+commandLocallyClosedRec _ Done = Right ()
 commandLocallyClosedRec env (Print t) = termLocallyClosedRec env t
-commandLocallyClosedRec env (Apply t1 t2) = termLocallyClosedRec env t1 && termLocallyClosedRec env t2
+commandLocallyClosedRec env (Apply t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
-termLocallyClosed :: Term pc a -> Bool
+termLocallyClosed :: Term pc a -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
-commandLocallyClosed :: Command a -> Bool
+commandLocallyClosed :: Command a -> Either Error ()
 commandLocallyClosed = commandLocallyClosedRec []
 
 ---------------------------------------------------------------------------------

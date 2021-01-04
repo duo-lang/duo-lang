@@ -30,13 +30,13 @@ unifcation variables.
 -------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState { varGen :: Int, envGen :: Environment }
-type GenerateM a = StateT GenerateState (Except String) a
+type GenerateM a = StateT GenerateState (Except Error) a
 
 lookupCase :: XtorName -> GenerateM (Twice [SimpleType], XtorArgs SimpleType)
 lookupCase xt = do
   env <- gets envGen
   case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
+    Nothing -> throwError $ GenConstraintsError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
     Just types@(Twice prdTypes cnsTypes) -> do
       let prds = (\ty -> FreeVar PrdRep "y" ty) <$> prdTypes
       let cnss = (\ty -> FreeVar CnsRep "y" ty) <$> cnsTypes
@@ -64,7 +64,7 @@ annotateCase (MkCase xt@(MkXtorName { xtorNominalStructural = Nominal }) _caseAr
   return (MkCase xt vars (commandOpening args cmd'))
 
 annotateTerm :: Term pc () -> GenerateM (Term pc SimpleType)
-annotateTerm (FreeVar _ v _)     = throwError $ "Unknown free variable: \"" ++ v ++ "\""
+annotateTerm (FreeVar _ v _)     = throwError $ GenConstraintsError ("Unknown free variable: \"" ++ v ++ "\"")
 annotateTerm (BoundVar idx pc) = return (BoundVar idx pc)
 annotateTerm (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) = do
   prdArgs' <- mapM annotateTerm prdArgs
@@ -113,17 +113,17 @@ typedTermToType env (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = St
 typedTermToType env (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
   case lookupXtor xt env of
     Nothing -> error "Xtor does not exist"
-    Just tn -> NominalType tn
+    Just tn -> NominalType (data_name tn)
 -- Structural Matches
 typedTermToType _ (Match PrdRep Structural cases) = SimpleType Codata (getCaseType <$> cases)
 typedTermToType _ (Match CnsRep Structural cases) = SimpleType Data (getCaseType <$> cases)
 -- Nominal Matches.
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 typedTermToType _ (Match _ Nominal []) = error "Unreachable"
-typedTermToType env (Match _ Nominal (pmcase:_)) =
+typedTermToType env (Match _ Nominal (pmcase:pmcases)) =
   case lookupXtor (case_name pmcase) env of
     Nothing -> error "Xtor does not exist"
-    Just tn -> NominalType tn
+    Just tn -> NominalType (data_name tn)
 typedTermToType _ (MuAbs _ t _)        = t
 
 getConstraintsTerm :: Environment -> Term pc SimpleType -> [Constraint]
@@ -143,10 +143,9 @@ getConstraintsCommand env (Apply t1 t2) = newCs : (getConstraintsTerm env t1 ++ 
 generateConstraints :: Term pc ()
                     -> Environment
                     -> Either Error (Term pc SimpleType, [Constraint], [UVar])
-generateConstraints t0 env =
-  case termLocallyClosed t0 of
-    True -> case runExcept (runStateT (annotateTerm t0) (GenerateState 0 env)) of
-      Right (t1, GenerateState numVars _) -> Right (t1, getConstraintsTerm env t1, MkUVar <$> [0..numVars-1])
-      Left err            -> Left $ GenConstraintsError err
-    False -> Left $ GenConstraintsError "Term is not locally closed"
+generateConstraints t0 env = do
+  _ <- termLocallyClosed t0
+  (t1, GenerateState numVars _) <- runExcept (runStateT (annotateTerm t0) (GenerateState 0 env))
+  return (t1, getConstraintsTerm env t1, MkUVar <$> [0..numVars-1])
+
 
