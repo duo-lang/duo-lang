@@ -17,6 +17,8 @@ data DataCodata
   | Codata
   deriving (Eq, Show, Ord)
 
+data UnionInter = Union | Inter deriving (Eq, Show, Ord)
+
 newtype UVar = MkUVar {uvar_id :: Int} deriving (Eq,Ord)
 
 instance Show UVar where
@@ -51,8 +53,7 @@ newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Ord, Show)
 newtype RVar = MkRVar { rvar_name :: String } deriving (Eq, Ord, Show)
 
 data TargetType
-  = TTyUnion [TargetType]
-  | TTyInter [TargetType]
+  = TTySet UnionInter [TargetType]
   | TTyTVar TVar
   | TTyRVar RVar
   | TTyRec RVar TargetType
@@ -64,8 +65,8 @@ data TypeScheme = TypeScheme { ts_vars :: [TVar], ts_monotype :: TargetType } de
 
 unionOrInter :: PrdCns -> [TargetType] -> TargetType
 unionOrInter _ [t] = t
-unionOrInter Prd tys = TTyUnion tys
-unionOrInter Cns tys = TTyInter tys
+unionOrInter Prd tys = TTySet Union tys
+unionOrInter Cns tys = TTySet Inter tys
 
 
 
@@ -75,8 +76,7 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' :: TargetType -> [TVar]
     freeTypeVars' (TTyTVar tv) = [tv]
     freeTypeVars' (TTyRVar _)  = []
-    freeTypeVars' (TTyUnion ts) = concat $ map freeTypeVars' ts
-    freeTypeVars' (TTyInter ts) = concat $ map freeTypeVars' ts
+    freeTypeVars' (TTySet _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TTyRec _ t)  = freeTypeVars' t
     freeTypeVars' (TTyNominal _) = []
     freeTypeVars' (TTySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)

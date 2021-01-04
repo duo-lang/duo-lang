@@ -293,7 +293,7 @@ typeR' = try (parens typeR) <|>
   typeVariable
 
 typeR :: TypeParser TargetType
-typeR = try joinType <|> try meetType <|> typeR'
+typeR = try (setType Union) <|> try (setType Inter) <|> typeR'
 
 dataType :: TypeParser TargetType
 dataType = angles $ do
@@ -325,11 +325,9 @@ typeVariable = do
   guard (tv `S.member` tvs)
   return $ TTyTVar tv
 
-joinType :: TypeParser TargetType
-joinType = TTyUnion <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
-
-meetType :: TypeParser TargetType
-meetType = TTyInter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
+setType :: UnionInter -> TypeParser TargetType
+setType Union = TTySet Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
+setType Inter = TTySet Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
 
 recType :: TypeParser TargetType
 recType = do
