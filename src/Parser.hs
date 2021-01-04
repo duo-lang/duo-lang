@@ -17,7 +17,6 @@ import Data.Void
 import Eval.Substitution
 import Syntax.Terms
 import Syntax.Types
-import Syntax.TypeGraph
 import Syntax.Program
 import Utils
 
@@ -258,18 +257,26 @@ subtypingProblemP = do
 -- Type parsing
 ---------------------------------------------------------------------------------
 
+data TypeParseReader = TypeParseReader
+  { rvars :: Set RVar
+  , tvars :: Set TVar
+  }
+
 -- ReaderT to keep track of recursively bound type variables
 -- StateT to keep track of free type variables.
-type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
+type TypeParser a = ReaderT TypeParseReader Parser a
 
 typeName :: TypeParser TypeName
 typeName = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
-  tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
-  return (TypeScheme (nub (tvars ++ S.toList newtvars)) monotype)
+  tvars <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
+  let initialState = TypeParseReader { rvars = S.empty, tvars = tvars }
+  monotype <- runReaderT typeR initialState
+  if tvars == S.fromList (freeTypeVars monotype)
+    then return (generalize monotype)
+    else fail "Forall annotation in type scheme is incorrect"
 
 nominalType :: TypeParser TargetType
 nominalType = TTyNominal <$> typeName
@@ -282,7 +289,6 @@ typeR' = try (parens typeR) <|>
   dataType <|>
   codataType <|>
   try recVar <|>
---  try (typeEnvItem) <|>
   recType <|>
   typeVariable
 
@@ -307,32 +313,17 @@ xtorSignature = do
 
 recVar :: TypeParser TargetType
 recVar = do
-  rvs <- ask
+  rvs <- asks rvars
   rv <- MkRVar <$> freeVarName
   guard (rv `S.member` rvs)
   return $ TTyRVar rv
 
 typeVariable :: TypeParser TargetType
 typeVariable = do
-  tvs <- get
+  tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
   return $ TTyTVar tv
-
--- envItem :: Parser TypeScheme
--- envItem = do
---   v <- lexeme (many alphaNumChar)
---   env <- asks typEnv
---   Just x <- return $ M.lookup v env
---   return x
-
-
--- typeEnvItem :: TypeParser TargetType
--- typeEnvItem = do
---   tvs <- S.toList <$> get
---   TypeScheme newtvs ty <- alphaRenameTypeScheme tvs <$> lift (lift envItem)
---   modify (S.union (S.fromList newtvs))
---   return ty
 
 joinType :: TypeParser TargetType
 joinType = TTyUnion <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
@@ -345,7 +336,7 @@ recType = do
   _ <- symbol "rec"
   rv <- MkRVar <$> freeVarName
   _ <- dot
-  ty <- local (S.insert rv) typeR
+  ty <- local (\tpr@TypeParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) typeR
   return $ TTyRec rv ty
 
 ---------------------------------------------------------------------------------
