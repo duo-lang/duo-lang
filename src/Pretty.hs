@@ -124,6 +124,7 @@ instance Pretty Error where
   pretty (EvalError err) = "Evaluation error:" <+> pretty err
   pretty (GenConstraintsError err) = "Constraint generation error:" <+> pretty err
   pretty (SolveConstraintsError err) = "Constraint solving error:" <+> pretty err
+  pretty (OtherError err) = "Other Error:" <+> pretty err
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Type Automata

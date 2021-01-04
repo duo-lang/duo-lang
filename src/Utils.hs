@@ -12,9 +12,6 @@ data Twice a = Twice a a deriving (Eq,Show)
 twiceMap :: (a -> b) -> (a -> b) -> Twice a -> Twice b
 twiceMap f g (Twice x y) = Twice (f x) (g y)
 
-mergeTwice :: (a -> a -> a) -> Twice a -> a
-mergeTwice f (Twice x y) = f x y
-
 instance Functor Twice where
   fmap f = twiceMap f f
 

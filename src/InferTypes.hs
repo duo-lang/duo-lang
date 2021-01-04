@@ -26,7 +26,8 @@ data TypeInferenceTrace = TypeInferenceTrace
 inferPrdTraced :: Term Prd () -> Environment -> Either Error TypeInferenceTrace
 inferPrdTraced tm env = do
   (typedTerm, css, uvars) <- generateConstraints tm env
-  typeAut <- solveConstraints css uvars (typedTermToType env typedTerm) Prd
+  ty <- typedTermToType env typedTerm
+  typeAut <- solveConstraints css uvars ty Prd
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
@@ -40,7 +41,6 @@ inferPrdTraced tm env = do
     , trace_minTypeAut = minTypeAut
     , trace_resType = resType
     }
-
 
 inferPrdAut :: Term Prd () -> Environment -> Either Error TypeAutDet
 inferPrdAut tm env = do
