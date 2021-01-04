@@ -88,6 +88,7 @@ instance Pretty (Typ a) where
   pretty (TySet _ Inter []) = "Top"
   pretty (TySet _ Inter [t]) = pretty t
   pretty (TySet _ Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
+  pretty (TyUVar _ uv) = pretty uv
   pretty (TyTVar _ tv) = pretty tv
   pretty (TyRVar _ rv) = pretty rv
   pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t

@@ -12,6 +12,7 @@ import Data.List ((\\))
 import qualified Data.Set as S
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Void
 
 import Syntax.Types
 import Syntax.TypeGraph
@@ -99,6 +100,15 @@ subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
 -- Nominal/XData and XData/Nominal Constraints
 subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError "Cannot constrain nominal by structural type"
 subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError "Cannot constrain nominal by structural type"
+-- Impossible constructors
+subConstraints (SubType (TyTVar v _) _) = absurd v
+subConstraints (SubType _ (TyTVar v _)) = absurd v
+subConstraints (SubType (TyRVar v _) _) = absurd v
+subConstraints (SubType _ (TyRVar v _)) = absurd v
+subConstraints (SubType (TySet v _ _) _) = absurd v
+subConstraints (SubType _ (TySet v _ _)) = absurd v
+subConstraints (SubType (TyRec v _ _) _) = absurd v
+subConstraints (SubType _ (TyRec v _ _)) = absurd v
 
 --subConstraints _ = return [] -- constraint is atomic
 
@@ -142,6 +152,10 @@ typeToHeadCons :: SimpleType -> HeadCons
 typeToHeadCons (TyUVar () _) = emptyHeadCons
 typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
 typeToHeadCons (TyNominal tn) = emptyHeadCons { hc_nominal = S.singleton tn }
+typeToHeadCons (TyTVar v _) = absurd v
+typeToHeadCons (TyRVar v _) = absurd v
+typeToHeadCons (TySet v _ _) = absurd v
+typeToHeadCons (TyRec v _ _) = absurd v
 
 typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
 typeToGraph pol (TyUVar () uv) = return (uvarToNodeId uv pol)
@@ -162,6 +176,10 @@ typeToGraph pol (TyNominal tn) = do
   let hc = emptyHeadCons { hc_nominal = S.singleton tn }
   modifyGraph (insNode (newNodeId, (pol, hc)))
   return newNodeId
+typeToGraph _ (TyTVar v _) = absurd v
+typeToGraph _ (TyRVar v _) = absurd v
+typeToGraph _ (TySet v _ _) = absurd v
+typeToGraph _ (TyRec v _ _) = absurd v
 
 -- | Creates upper/lower bounds for a unification variable by inserting epsilon edges into the automaton
 insertEpsilonEdges :: UVar -> VariableState -> MkAutM ()
