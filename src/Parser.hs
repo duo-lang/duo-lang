@@ -17,7 +17,6 @@ import Data.Void
 import Eval.Substitution
 import Syntax.Terms
 import Syntax.Types
-import Syntax.TypeGraph
 import Syntax.Program
 import Utils
 
@@ -258,46 +257,46 @@ subtypingProblemP = do
 -- Type parsing
 ---------------------------------------------------------------------------------
 
+data TypeParseReader = TypeParseReader
+  { rvars :: Set RVar
+  , tvars :: Set TVar
+  }
+
 -- ReaderT to keep track of recursively bound type variables
 -- StateT to keep track of free type variables.
-type TypeParser a = StateT (Set TVar) (ReaderT (Set RVar) (ReaderT Syntax.Program.Environment (Parsec Void String))) a
-
-typeName :: TypeParser TypeName
-typeName = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+type TypeParser a = ReaderT TypeParseReader Parser a
 
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
-  tvars <- option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  (monotype, newtvars) <- runReaderT (runStateT typeR (S.fromList tvars)) S.empty
-  return (TypeScheme (nub (tvars ++ S.toList newtvars)) monotype)
-
-nominalType :: TypeParser TargetType
-nominalType = TTyNominal <$> typeName
-
+  tvars <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
+  let initialState = TypeParseReader { rvars = S.empty, tvars = tvars }
+  monotype <- runReaderT typeR initialState
+  if tvars == S.fromList (freeTypeVars monotype)
+    then return (generalize monotype)
+    else fail "Forall annotation in type scheme is incorrect"
 
 --without joins and meets
 typeR' :: TypeParser TargetType
 typeR' = try (parens typeR) <|>
-  nominalType <|>
+  (lift nominalTypeP) <|>
   dataType <|>
   codataType <|>
   try recVar <|>
-  try (typeEnvItem) <|>
   recType <|>
   typeVariable
 
 typeR :: TypeParser TargetType
-typeR = try joinType <|> try meetType <|> typeR'
+typeR = try (setType Union) <|> try (setType Inter) <|> typeR'
 
 dataType :: TypeParser TargetType
 dataType = angles $ do
   xtorSigs <- xtorSignature `sepBy` pipe
-  return (TTySimple Data xtorSigs)
+  return (TySimple Data xtorSigs)
 
 codataType :: TypeParser TargetType
 codataType = braces $ do
   xtorSigs <- xtorSignature `sepBy` comma
-  return (TTySimple Codata xtorSigs)
+  return (TySimple Codata xtorSigs)
 
 xtorSignature :: TypeParser (XtorSig TargetType)
 xtorSignature = do
@@ -307,45 +306,29 @@ xtorSignature = do
 
 recVar :: TypeParser TargetType
 recVar = do
-  rvs <- ask
+  rvs <- asks rvars
   rv <- MkRVar <$> freeVarName
   guard (rv `S.member` rvs)
-  return $ TTyRVar rv
+  return $ TyRVar () rv
 
 typeVariable :: TypeParser TargetType
 typeVariable = do
-  tvs <- get
+  tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TTyTVar tv
+  return $ TyTVar () tv
 
-envItem :: Parser TypeScheme
-envItem = do
-  v <- lexeme (many alphaNumChar)
-  env <- asks typEnv
-  Just x <- return $ M.lookup v env
-  return x
-
-typeEnvItem :: TypeParser TargetType
-typeEnvItem = do
-  tvs <- S.toList <$> get
-  TypeScheme newtvs ty <- alphaRenameTypeScheme tvs <$> lift (lift envItem)
-  modify (S.union (S.fromList newtvs))
-  return ty
-
-joinType :: TypeParser TargetType
-joinType = TTyUnion <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
-
-meetType :: TypeParser TargetType
-meetType = TTyInter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
+setType :: UnionInter -> TypeParser TargetType
+setType Union = TySet () Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
+setType Inter = TySet () Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
 
 recType :: TypeParser TargetType
 recType = do
   _ <- symbol "rec"
   rv <- MkRVar <$> freeVarName
   _ <- dot
-  ty <- local (S.insert rv) typeR
-  return $ TTyRec rv ty
+  ty <- local (\tpr@TypeParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) typeR
+  return $ TyRec () rv ty
 
 ---------------------------------------------------------------------------------
 -- Parser for Simple Types
@@ -364,15 +347,15 @@ xtorSignatureP = do
 dataTypeP :: Parser SimpleType
 dataTypeP = angles $ do
   xtorSigs <- xtorSignatureP `sepBy` pipe
-  return (SimpleType Data xtorSigs)
+  return (TySimple Data xtorSigs)
 
 codataTypeP :: Parser SimpleType
 codataTypeP = braces $ do
   xtorSigs <- xtorSignatureP `sepBy` comma
-  return (SimpleType Codata xtorSigs)
+  return (TySimple Codata xtorSigs)
 
-nominalTypeP :: Parser SimpleType
-nominalTypeP = NominalType <$> typeNameP
+nominalTypeP :: Parser (Typ a)
+nominalTypeP = TyNominal <$> typeNameP
 
 simpleTypeP :: Parser SimpleType
 simpleTypeP = nominalTypeP <|>

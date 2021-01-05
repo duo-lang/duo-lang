@@ -47,7 +47,7 @@ freshVars :: Int -> PrdCnsRep pc -> GenerateM [(SimpleType, Term pc SimpleType)]
 freshVars k pc = do
   n <- gets varGen
   modify (\gs@GenerateState { varGen } -> gs {varGen = varGen + k })
-  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar (MkUVar i)]
+  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyUVar () (MkUVar i)]
 
 annotateCase :: Case () -> GenerateM (Case SimpleType)
 -- In Matches on Structural types, all arguments to xtors have to be annotated by a unification variable, since
@@ -110,18 +110,18 @@ typedTermToType _ (BoundVar _ _)     = Left $ (OtherError  "typedTermToType: fou
 -- Structural XtorCalls
 typedTermToType env (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   argTypes <- argsToTypes env args
-  return (SimpleType Data [MkXtorSig xt argTypes])
+  return (TySimple Data [MkXtorSig xt argTypes])
 typedTermToType env (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   argTypes <- argsToTypes env args
-  return (SimpleType Codata [MkXtorSig xt argTypes])
+  return (TySimple Codata [MkXtorSig xt argTypes])
 -- Nominal XtorCalls
 typedTermToType env (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
   case lookupXtor xt env of
     Nothing -> Left $ OtherError "Xtor does not exist"
-    Just tn -> return $ NominalType (data_name tn)
+    Just tn -> return $ TyNominal (data_name tn)
 -- Structural Matches
-typedTermToType _ (Match PrdRep Structural cases) = return $ SimpleType Codata (getCaseType <$> cases)
-typedTermToType _ (Match CnsRep Structural cases) = return $ SimpleType Data (getCaseType <$> cases)
+typedTermToType _ (Match PrdRep Structural cases) = return $ TySimple Codata (getCaseType <$> cases)
+typedTermToType _ (Match CnsRep Structural cases) = return $ TySimple Data (getCaseType <$> cases)
 -- Nominal Matches.
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 typedTermToType _ (Match _ Nominal []) = Left $ OtherError "unreachable"
@@ -130,7 +130,7 @@ typedTermToType env (Match _ Nominal (pmcase:pmcases)) =
     Nothing -> Left $ OtherError "Xtor does not exist"
     Just tn -> do
       forM_ pmcases (\MkCase { case_name } -> case_name `isContainedIn` (data_xtors tn))
-      return $ NominalType (data_name tn)
+      return $ TyNominal (data_name tn)
 typedTermToType _ (MuAbs _ t _) = return t
 
 isContainedIn :: XtorName -> [XtorSig SimpleType] -> Either Error ()
@@ -142,6 +142,7 @@ isContainedIn xt foo =
       isContainedIn' :: XtorSig SimpleType -> Bool
       isContainedIn' MkXtorSig { sig_name } | xt == sig_name = True
                                             | otherwise      = False
+
 
 getConstraintsTerm :: Environment -> Term pc SimpleType -> Either Error [Constraint]
 getConstraintsTerm _ (BoundVar _ _) = Left $ OtherError "getConstraintsTerm:  found dangling bound variable"

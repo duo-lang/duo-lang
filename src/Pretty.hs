@@ -81,25 +81,20 @@ instance Pretty RVar where
 instance Pretty a => Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
 
-instance Pretty SimpleType where
-  pretty (TyVar uvar) = pretty uvar
-  pretty (NominalType tn) = pretty (unTypeName tn)
-  pretty (SimpleType Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (SimpleType Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
-
-instance Pretty TargetType where
-  pretty (TTyUnion []) = "Bot"
-  pretty (TTyUnion [t]) = pretty t
-  pretty (TTyUnion tts) = parens (intercalateX " \\/ " (map pretty tts))
-  pretty (TTyInter []) = "Top"
-  pretty (TTyInter [t]) = pretty t
-  pretty (TTyInter tts) = parens (intercalateX " /\\ " (map pretty tts))
-  pretty (TTyTVar tv) = pretty tv
-  pretty (TTyRVar tv) = pretty tv
-  pretty (TTyRec tv t) = "rec " <> pretty tv <> "." <> pretty t
-  pretty (TTyNominal tn) = pretty (unTypeName tn)
-  pretty (TTySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (TTySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+instance Pretty (Typ a) where
+  pretty (TySet _ Union []) = "Bot"
+  pretty (TySet _ Union [t]) = pretty t
+  pretty (TySet _ Union tts) = parens (intercalateX " \\/ " (map pretty tts))
+  pretty (TySet _ Inter []) = "Top"
+  pretty (TySet _ Inter [t]) = pretty t
+  pretty (TySet _ Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
+  pretty (TyUVar _ uv) = pretty uv
+  pretty (TyTVar _ tv) = pretty tv
+  pretty (TyRVar _ rv) = pretty rv
+  pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t
+  pretty (TyNominal tn) = pretty (unTypeName tn)
+  pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty TypeScheme where
   pretty (TypeScheme [] ty) = pretty ty

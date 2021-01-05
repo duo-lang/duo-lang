@@ -12,7 +12,7 @@ import TypeAutomata.Minimize (minimize)
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
-
+import Data.Void
 import qualified Data.Set as S
 
 import Data.Map (Map)
@@ -52,37 +52,38 @@ typeToAut :: TypeScheme -> Either String TypeAutDet
 typeToAut ty = (typeToAutPol Prd ty) <> (typeToAutPol Cns ty)
 
 typeToAutM :: PrdCns -> TargetType -> TypeToAutM Node
-typeToAutM pol (TTyTVar tv) = do
+typeToAutM _ (TyUVar v _) = absurd v
+typeToAutM pol (TyTVar () tv) = do
   tvarEnv <- lift $ lift ask
   case M.lookup tv tvarEnv of
     Just (i,j) -> return $ case pol of {Prd -> i; Cns -> j}
     Nothing -> throwError $ "unknown free type variable: " ++ (tvar_name tv)
-typeToAutM pol (TTyRVar rv) = do
+typeToAutM pol (TyRVar () rv) = do
   rvarEnv <- ask
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ "covariance rule violated: " ++ (rvar_name rv)
-typeToAutM Prd (TTyUnion tys) = do
+typeToAutM Prd (TySet () Union tys) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (Prd, emptyHeadCons)))
   ns <- mapM (typeToAutM Prd) tys
   modify (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Cns (TTyUnion _) = throwError "typeToAutM: type has wrong polarity."
-typeToAutM Cns (TTyInter tys) = do
+typeToAutM Cns (TySet () Union _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Cns (TySet () Inter tys) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (Cns, emptyHeadCons)))
   ns <- mapM (typeToAutM Cns) tys
   modify (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Prd (TTyInter _) = throwError "typeToAutM: type has wrong polarity."
-typeToAutM pol (TTyRec rv ty) = do
+typeToAutM Prd (TySet () Inter _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM pol (TyRec () rv ty) = do
   newNode <- head . newNodes 1 <$> get
   modify (insNode (newNode, (pol, emptyHeadCons)))
   n <- local (M.insert (pol, rv) newNode) (typeToAutM pol ty)
   modify (insEdge (newNode, n, Nothing))
   return newNode
-typeToAutM pol (TTySimple s xtors) = do
+typeToAutM pol (TySimple s xtors) = do
   newNode <- head . newNodes 1 <$> get
   let nl = (pol, singleHeadCons s (S.fromList (map sig_name xtors)))
   modify (insNode (newNode,nl))
@@ -93,7 +94,7 @@ typeToAutM pol (TTySimple s xtors) = do
              [(newNode, n, Just (EdgeSymbol s xt Cns i)) | i <- [0..length cnsNodes - 1], let n = cnsNodes !! i]
   modify (insEdges (concat edges))
   return newNode
-typeToAutM pol (TTyNominal tn) = do
+typeToAutM pol (TyNominal tn) = do
   newNode <- head . newNodes 1 <$> get
   let nl = (pol, emptyHeadCons { hc_nominal = S.singleton tn })
   modify (insNode (newNode, nl))

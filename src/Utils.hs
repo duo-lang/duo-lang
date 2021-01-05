@@ -1,6 +1,8 @@
 module Utils where
 
 import Data.Set (Set)
+import Data.Foldable (foldl')
+import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Set as S
 
 ----------------------------------------------------------------------------------
@@ -28,8 +30,8 @@ allEq :: Eq a => [a] -> Bool
 allEq [] = True
 allEq (x:xs) = all (==x) xs
 
-intersections :: Ord a => [Set a] -> Set a
-intersections = foldr1 S.intersection
+intersections :: Ord a => NonEmpty (Set a) -> Set a
+intersections (s :| ss) = foldl' S.intersection s ss
 
 enumerate :: [a] -> [(Int,a)]
 enumerate xs = zip [0..] xs

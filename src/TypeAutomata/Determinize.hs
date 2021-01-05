@@ -15,7 +15,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Map (Map)
 import qualified Data.Map as M
-
+import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
 import Syntax.Terms
 import Syntax.Types
@@ -125,9 +125,9 @@ combineNodeLabels nls
     pol = fst (head nls)
     hcs = map snd nls
     mrgDat [] = Nothing
-    mrgDat xtors = Just $ (case pol of {Prd -> S.unions; Cns -> intersections}) xtors
+    mrgDat (xtor:xtors) = Just $ case pol of {Prd -> S.unions (xtor:xtors) ; Cns -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
-    mrgCodat xtors = Just $ (case pol of {Prd -> intersections; Cns -> S.unions}) xtors
+    mrgCodat (xtor:xtors) = Just $ case pol of {Prd -> intersections (xtor :| xtors); Cns -> S.unions (xtor:xtors)}
 
 determinize :: TypeAut -> TypeAutDet
 determinize TypeAut{..} =
