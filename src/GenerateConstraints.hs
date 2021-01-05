@@ -47,7 +47,7 @@ freshVars :: Int -> PrdCnsRep pc -> GenerateM [(SimpleType, Term pc SimpleType)]
 freshVars k pc = do
   n <- gets varGen
   modify (\gs@GenerateState { varGen } -> gs {varGen = varGen + k })
-  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar (MkUVar i)]
+  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyUVar () (MkUVar i)]
 
 annotateCase :: Case () -> GenerateM (Case SimpleType)
 -- In Matches on Structural types, all arguments to xtors have to be annotated by a unification variable, since
@@ -106,24 +106,24 @@ typedTermToType _ (FreeVar _ _ t)        =  t
 typedTermToType _ (BoundVar _ _)     = error "typedTermToType: found dangling bound variable"
 -- Structural XtorCalls
 typedTermToType env (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
-  SimpleType Data [MkXtorSig xt (argsToTypes env args)]
+  TySimple Data [MkXtorSig xt (argsToTypes env args)]
 typedTermToType env (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) =
-  SimpleType Codata [MkXtorSig xt (argsToTypes env args)]
+  TySimple Codata [MkXtorSig xt (argsToTypes env args)]
 -- Nominal XtorCalls
 typedTermToType env (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
   case lookupXtor xt env of
     Nothing -> error "Xtor does not exist"
-    Just tn -> NominalType tn
+    Just tn -> TyNominal tn
 -- Structural Matches
-typedTermToType _ (Match PrdRep Structural cases) = SimpleType Codata (getCaseType <$> cases)
-typedTermToType _ (Match CnsRep Structural cases) = SimpleType Data (getCaseType <$> cases)
+typedTermToType _ (Match PrdRep Structural cases) = TySimple Codata (getCaseType <$> cases)
+typedTermToType _ (Match CnsRep Structural cases) = TySimple Data (getCaseType <$> cases)
 -- Nominal Matches.
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 typedTermToType _ (Match _ Nominal []) = error "Unreachable"
 typedTermToType env (Match _ Nominal (pmcase:_)) =
   case lookupXtor (case_name pmcase) env of
     Nothing -> error "Xtor does not exist"
-    Just tn -> NominalType tn
+    Just tn -> TyNominal tn
 typedTermToType _ (MuAbs _ t _)        = t
 
 getConstraintsTerm :: Environment -> Term pc SimpleType -> [Constraint]

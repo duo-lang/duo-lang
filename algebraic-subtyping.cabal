@@ -42,7 +42,8 @@ common shared-build-depends
                      DataKinds,
                      GADTs,
                      KindSignatures,
-                     StandaloneDeriving
+                     StandaloneDeriving,
+                     TypeFamilies
 
 library
   import: shared-build-depends
