@@ -51,6 +51,7 @@ library
       Eval.Substitution
       Eval.Eval
       GenerateConstraints
+      InferTypes
       Parser
       Pretty
       SolveConstraints
