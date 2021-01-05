@@ -2,6 +2,7 @@ module Eval.SubstitutionSpec where
 
 import Test.Hspec
 import qualified Data.Map as M
+import Data.Either (isLeft, isRight)
 import Control.Monad (forM_, when)
 
 import Syntax.Terms
@@ -24,16 +25,16 @@ spec = do
     env <- runIO $ getEnvironment "prg.txt" failingExamples
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-      it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` True
+      it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` Right ()
   describe "checkIfBound works" $ do
     it "checkIfBound [] PrdRep (0,0) `shouldBe` False" $ do
-      checkIfBound [] PrdRep (0,0) `shouldBe` False
+      checkIfBound [] PrdRep (0,0) `shouldSatisfy` isLeft
     it "checkIfBound [Twice [] []] PrdRep (0,0) = False" $ do
-      checkIfBound [Twice [] []] PrdRep (0,0) `shouldBe` False
+      checkIfBound [Twice [] []] PrdRep (0,0) `shouldSatisfy` isLeft
     it "checkIfBound [Twice [()] []] PrdRep (0,0) = True" $ do
-      checkIfBound [Twice [()] []] PrdRep (0,0) `shouldBe` True
+      checkIfBound [Twice [()] []] PrdRep (0,0) `shouldSatisfy` isRight
     it "checkIfBound [Twice [] [()]] CnsRep (0,0) = True" $ do
-      checkIfBound [Twice [] [()]] CnsRep (0,0) `shouldBe` True
+      checkIfBound [Twice [] [()]] CnsRep (0,0) `shouldSatisfy` isRight
     it "checkIfBound [Twice [()] []] CnsRep (0,0) = False" $ do
-      checkIfBound [Twice [()] []] CnsRep (0,0) `shouldBe` False
+      checkIfBound [Twice [()] []] CnsRep (0,0) `shouldSatisfy` isLeft
 
