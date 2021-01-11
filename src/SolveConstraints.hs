@@ -6,7 +6,7 @@ module SolveConstraints
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.List ((\\))
+import Data.List (find)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
@@ -14,6 +14,7 @@ import qualified Data.Set as S
 import Data.Void
 
 import Syntax.Types
+import Syntax.Terms (XtorName)
 import Utils
 import Pretty
 
@@ -101,35 +102,33 @@ solve (cs:css) = do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
+lookupXtor :: XtorName -> [XtorSig SimpleType] -> SolverM (XtorSig SimpleType)
+lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
+  Nothing -> throwSolverError ["The xtor"
+                              , ppPrint xtName
+                              , "is not contained in the list of xtors"
+                              , ppPrint xtors ]
+  Just xtorSig -> pure xtorSig
+
+checkXtor :: [XtorSig SimpleType] -> XtorSig SimpleType ->  SolverM [Constraint]
+checkXtor xtors2 (MkXtorSig xtName (Twice prd1 cns1)) = do
+  MkXtorSig _ (Twice prd2 cns2) <- lookupXtor xtName xtors2
+  pure $ zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
+
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Data/Data and Codata/Codata constraints
-subConstraints cs@(SubType (TySimple Data xtors1) (TySimple Data xtors2)) = do
-  let foo = (map sig_name xtors1) \\ (map sig_name xtors2)
-  if not . null $ foo
-    then throwSolverError [ "Constraint:"
-                          , ppPrint cs
-                          , "is unsolvable, because xtor:"
-                          , ppPrint (head foo)
-                          , "occurs only in the left side." ]
-    else return $ do -- list monad
-      (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
-      let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
-      zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
-subConstraints cs@(SubType (TySimple Codata xtors1) (TySimple Codata xtors2)) = do
-  let foo = (map sig_name xtors2) \\ (map sig_name xtors1)
-  if not . null $ foo
-    then throwSolverError [ "Constraint:"
-                          , ppPrint cs
-                          , "is unsolvable, because xtor:"
-                          , ppPrint (head foo)
-                          , "occurs only in the left side." ]
-    else return $ do -- list monad
-      (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
-      let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
-      zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
+subConstraints (SubType (TySimple Data xtors1) (TySimple Data xtors2)) = do
+  constraints <- forM xtors1 (checkXtor xtors2)
+  pure $ concat constraints
+subConstraints (SubType (TySimple Codata xtors1) (TySimple Codata xtors2)) = do
+  constraints <- forM xtors2 (checkXtor xtors1)
+  pure $ concat constraints
 -- Nominal/Nominal Constraint
 subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
-                                                         | otherwise = throwSolverError ["The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2]
+                                                         | otherwise = throwSolverError ["The following nominal types are incompatible:"
+                                                                                        , "    " ++ ppPrint tn1
+                                                                                        , "and"
+                                                                                        , "    " ++ ppPrint tn2 ]
 -- Data/Codata and Codata/Data Constraints
 subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
   = throwSolverError [ "Constraint:"
@@ -143,8 +142,10 @@ subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
 subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
-subConstraints (SubType (TyUVar () _) _) = throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
-subConstraints (SubType _ (TyUVar () _)) = throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+subConstraints (SubType (TyUVar () _) _) =
+  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+subConstraints (SubType _ (TyUVar () _)) =
+  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
 -- Impossible constructors. Constraints must be between simple types.
 subConstraints (SubType (TyTVar v _ _) _) = absurd v
 subConstraints (SubType _ (TyTVar v _ _)) = absurd v
