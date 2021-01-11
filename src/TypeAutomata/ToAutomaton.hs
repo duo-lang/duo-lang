@@ -27,6 +27,7 @@ import Data.Graph.Inductive.Graph
 --------------------------------------------------------------------------
 data LookupEnv = LookupEnv { rvarEnv :: Map (PrdCns, TVar) Node
                            , tvarEnv :: Map TVar (Node, Node)
+                           , uvarEnv :: Map (PrdCns, UVar) Node
                            }
 type TypeToAutM a = StateT TypeAutEps (ReaderT LookupEnv (Except Error)) a
 
@@ -39,17 +40,39 @@ modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
 createInitialFromTypeScheme :: [TVar] -> (TypeAutEps, LookupEnv)
 createInitialFromTypeScheme tvars =
   let
-    initGr = mkGraph [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
-                                                                 let offset = case pol of {Prd -> 0; Cns -> 1}] []
-    initAut = TypeAut { ta_gr = initGr
+    nodes = [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
+                                                                 let offset = case pol of {Prd -> 0; Cns -> 1}]
+    initAut = TypeAut { ta_gr = mkGraph nodes []
                       , ta_starts = []
                       , ta_flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
                       }
     lookupEnv = LookupEnv { rvarEnv = M.empty
                           , tvarEnv = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
+                          , uvarEnv = M.empty
                           }
   in
     (initAut, lookupEnv)
+
+uvarToNodeId :: UVar -> PrdCns -> Node
+uvarToNodeId uv Prd = 2 * uvar_id uv
+uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
+
+-- | Creates an initial type automaton from a list of UVars.
+mkInitialTypeAut :: [UVar] -> (TypeAutEps, LookupEnv)
+mkInitialTypeAut uvs =
+  let
+    uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Prd,Cns]]
+    initAut = TypeAut { ta_gr = mkGraph uvNodes []
+                      , ta_starts = []
+                      , ta_flowEdges = [(uvarToNodeId uv Cns, uvarToNodeId uv Prd) | uv <- uvs]
+            }
+    lookupEnv = LookupEnv { rvarEnv = M.empty
+                          , tvarEnv = M.empty
+                          , uvarEnv = undefined
+                          }
+  in
+    (initAut, lookupEnv)
+
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
 typeToAutPol :: PrdCns -> TypeScheme -> Either Error TypeAutDet
@@ -103,7 +126,7 @@ typeToAutM Prd (TySet () Inter _) = throwError $ OtherError "typeToAutM: type ha
 typeToAutM pol (TyRec () rv ty) = do
   newNode <- newNodeM
   modifyGraph (insNode (newNode, (pol, emptyHeadCons)))
-  n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (typeToAutM pol ty)
+  n <- local (\(LookupEnv rvars tvars uvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars uvars) (typeToAutM pol ty)
   modifyGraph (insEdge (newNode, n, Nothing))
   return newNode
 typeToAutM pol (TySimple s xtors) = do

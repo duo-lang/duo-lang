@@ -33,20 +33,11 @@ getBounds :: PrdCns -> VariableState -> [SimpleType]
 getBounds Prd = vst_lowerbounds
 getBounds Cns = vst_upperbounds
 
-
-typeToHeadCons :: SimpleType -> HeadCons
-typeToHeadCons (TyUVar () _) = emptyHeadCons
-typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
-typeToHeadCons (TyNominal tn) = emptyHeadCons { hc_nominal = S.singleton tn }
-typeToHeadCons (TyTVar v _ _) = absurd v
-typeToHeadCons (TySet v _ _) = absurd v
-typeToHeadCons (TyRec v _ _) = absurd v
-
 typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
 typeToGraph pol (TyUVar () uv) = return (uvarToNodeId uv pol)
 typeToGraph pol ty@(TySimple s xtors) = do
   newNodeId <- gets (head . newNodes 1 . ta_gr)
-  let hc = typeToHeadCons ty
+  let hc = singleHeadCons s (S.fromList (map sig_name xtors))
   modifyGraph (insNode (newNodeId, (pol, hc)))
   forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
