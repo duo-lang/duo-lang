@@ -168,11 +168,12 @@ getConstraintsCommand env (Apply t1 t2) = do
 
 generateConstraints :: Term pc ()
                     -> Environment
-                    -> Either Error (Term pc SimpleType, [Constraint], [UVar])
+                    -> Either Error (Term pc SimpleType, ConstraintSet)
 generateConstraints t0 env = do
   termLocallyClosed t0
   (t1, GenerateState numVars _) <- runExcept (runStateT (annotateTerm t0) (GenerateState 0 env))
   css <- getConstraintsTerm env t1
-  return (t1, css, MkUVar <$> [0..numVars-1])
+  let constraintSet = ConstraintSet css (MkUVar <$> [0..numVars-1])
+  return (t1, constraintSet)
 
 

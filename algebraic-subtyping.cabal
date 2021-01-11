@@ -55,6 +55,7 @@ library
       Parser
       Pretty
       SolveConstraints
+      BoundsToAutomaton
       Syntax.Terms
       Syntax.Types
       Syntax.TypeGraph

@@ -1,25 +1,26 @@
 module SolveConstraints
-  ( solveConstraints
-  , removeEpsilonEdges
-  , removeIslands
+  ( VariableState(..)
+  , SolverResult
+  , solveConstraints
   ) where
-
-import Data.Graph.Inductive.Graph
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.List ((\\))
-import qualified Data.Set as S
+import Data.List (find)
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Set (Set)
+import qualified Data.Set as S
 import Data.Void
 
 import Syntax.Types
-import Syntax.TypeGraph
-import Syntax.Terms
+import Syntax.Terms (XtorName)
 import Utils
 import Pretty
-import TypeAutomata.Determinize (removeEpsilonEdges, removeIslands)
+
+------------------------------------------------------------------------------
+-- VariableState and SolverResult
+------------------------------------------------------------------------------
 
 data VariableState = VariableState
   { vst_upperbounds :: [SimpleType]
@@ -28,207 +29,138 @@ data VariableState = VariableState
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
 
-getBounds :: PrdCns -> VariableState -> [SimpleType]
-getBounds Prd = vst_lowerbounds
-getBounds Cns = vst_upperbounds
+type SolverResult = Map UVar VariableState
 
-addUpperBound :: SimpleType -> VariableState -> VariableState
-addUpperBound bound (VariableState ubs lbs) = VariableState (bound:ubs) lbs
-
-addLowerBound :: SimpleType -> VariableState -> VariableState
-addLowerBound bound (VariableState ubs lbs) = VariableState ubs (bound:lbs)
+------------------------------------------------------------------------------
+-- Constraint solver monad
+------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: Map UVar VariableState
-  , sst_cache :: [Constraint] }
+  { sst_bounds :: SolverResult
+  , sst_cache :: Set Constraint }
+
+createInitState :: ConstraintSet -> SolverState
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs]
+                                                    , sst_cache = S.empty }
 
 type SolverM a = (StateT SolverState (Except Error)) a
 
 runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
 runSolverM m initSt = runExcept (runStateT m initSt)
 
-throwSolverError :: String -> SolverM a
-throwSolverError = throwError . SolveConstraintsError
+------------------------------------------------------------------------------
+-- Monadic helper functions
+------------------------------------------------------------------------------
 
-modifyCache :: ([Constraint] -> [Constraint]) -> SolverM ()
-modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+throwSolverError :: [String] -> SolverM a
+throwSolverError = throwError . SolveConstraintsError . unlines
+
+addToCache :: Constraint -> SolverM ()
+addToCache cs = modifyCache (S.insert cs)
+  where
+    modifyCache :: (Set Constraint -> Set Constraint) -> SolverM ()
+    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+
+inCache :: Constraint -> SolverM Bool
+inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getUpperBounds :: UVar -> SolverM [SimpleType]
-getUpperBounds uv = gets (vst_upperbounds . (M.! uv) . sst_bounds)
+addUpperBound :: UVar -> SimpleType -> SolverM [Constraint]
+addUpperBound uv ty = do
+  modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
+  lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
+  return [SubType lb ty | lb <- lbs]
 
-getLowerBounds :: UVar -> SolverM [SimpleType]
-getLowerBounds uv = gets (vst_lowerbounds . (M.! uv) . sst_bounds)
+addLowerBound :: UVar -> SimpleType -> SolverM [Constraint]
+addLowerBound uv ty = do
+  modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
+  ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
+  return [SubType ty ub | ub <- ubs]
 
-subConstraints :: Constraint -> SolverM [Constraint]
--- Atomic constraints (one side is a TyVar)
-subConstraints (SubType (TyUVar () _) _) = return []
-subConstraints (SubType _ (TyUVar () _)) = return []
--- Data/Data and Codata/Codata constraints
-subConstraints cs@(SubType (TySimple Data xtors1) (TySimple Data xtors2))
-  = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
-    then throwSolverError $ unlines [ "Constraint:"
-                                    , ppPrint cs
-                                    , "is unsolvable, because xtor:"
-                                    , ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2))
-                                    , "occurs only in the left side." ]
-    else return $ do -- list monad
-      (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
-      let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
-      zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
-subConstraints cs@(SubType (TySimple Codata xtors1) (TySimple Codata xtors2))
-  = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
-    then throwSolverError $ unlines [ "Constraint:"
-                                    , ppPrint cs
-                                    , "is unsolvable, because xtor:"
-                                    , ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1))
-                                    , "occurs only in the left side." ]
-    else return $ do -- list monad
-      (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
-      let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
-      zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
--- Nominal/Nominal Constraint
-subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
-                                                             | otherwise = throwSolverError ("The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2)
--- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
-  = throwSolverError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
-subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
-  = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
--- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError "Cannot constrain nominal by structural type"
-subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError "Cannot constrain nominal by structural type"
--- Impossible constructors
-subConstraints (SubType (TyTVar v _ _) _) = absurd v
-subConstraints (SubType _ (TyTVar v _ _)) = absurd v
-subConstraints (SubType (TySet v _ _) _) = absurd v
-subConstraints (SubType _ (TySet v _ _)) = absurd v
-subConstraints (SubType (TyRec v _ _) _) = absurd v
-subConstraints (SubType _ (TyRec v _ _)) = absurd v
-
---subConstraints _ = return [] -- constraint is atomic
+------------------------------------------------------------------------------
+-- Constraint solving algorithm
+------------------------------------------------------------------------------
 
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
-  cache <- gets sst_cache
-  if cs `elem` cache
-    then solve css
-    else do
-      modifyCache (cs:)
+  cacheHit <- inCache cs
+  case cacheHit of
+    True -> solve css
+    False -> do
+      addToCache cs
       case cs of
         (SubType (TyUVar () uv) ub) -> do
-          modifyBounds (addUpperBound ub) uv
-          lbs <- getLowerBounds uv
-          let newCss = [SubType lb ub | lb <- lbs]
+          newCss <- addUpperBound uv ub
           solve (newCss ++ css)
         (SubType lb (TyUVar () uv)) -> do
-          modifyBounds (addLowerBound lb) uv
-          ubs <- getUpperBounds uv
-          let newCss = [SubType lb ub | ub <- ubs]
+          newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
--------------------------------------------------------------------------
--- Translation from SolverState to Type automaton
--------------------------------------------------------------------------
+lookupXtor :: XtorName -> [XtorSig SimpleType] -> SolverM (XtorSig SimpleType)
+lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
+  Nothing -> throwSolverError ["The xtor"
+                              , ppPrint xtName
+                              , "is not contained in the list of xtors"
+                              , ppPrint xtors ]
+  Just xtorSig -> pure xtorSig
 
-type MkAutM a = State TypeAutEps a
+checkXtor :: [XtorSig SimpleType] -> XtorSig SimpleType ->  SolverM [Constraint]
+checkXtor xtors2 (MkXtorSig xtName (Twice prd1 cns1)) = do
+  MkXtorSig _ (Twice prd2 cns2) <- lookupXtor xtName xtors2
+  pure $ zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 
-modifyGraph :: (TypeGrEps -> TypeGrEps) -> MkAutM ()
-modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
+subConstraints :: Constraint -> SolverM [Constraint]
+-- Data/Data and Codata/Codata constraints
+subConstraints (SubType (TySimple Data xtors1) (TySimple Data xtors2)) = do
+  constraints <- forM xtors1 (checkXtor xtors2)
+  pure $ concat constraints
+subConstraints (SubType (TySimple Codata xtors1) (TySimple Codata xtors2)) = do
+  constraints <- forM xtors2 (checkXtor xtors1)
+  pure $ concat constraints
+-- Nominal/Nominal Constraint
+subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
+                                                         | otherwise = throwSolverError ["The following nominal types are incompatible:"
+                                                                                        , "    " ++ ppPrint tn1
+                                                                                        , "and"
+                                                                                        , "    " ++ ppPrint tn2 ]
+-- Data/Codata and Codata/Data Constraints
+subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
+  = throwSolverError [ "Constraint:"
+                     , "     " ++ ppPrint cs
+                     , "is unsolvable. A data type can't be a subtype of a codata type!" ]
+subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
+  = throwSolverError [ "Constraint:"
+                     , "     "++ ppPrint cs
+                     , "is unsolvable. A codata type can't be a subtype of a data type!" ]
+-- Nominal/XData and XData/Nominal Constraints
+subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+-- subConstraints should never be called if the upper or lower bound is a unification variable.
+subConstraints (SubType (TyUVar () _) _) =
+  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+subConstraints (SubType _ (TyUVar () _)) =
+  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+-- Impossible constructors. Constraints must be between simple types.
+subConstraints (SubType (TyTVar v _ _) _) = absurd v
+subConstraints (SubType _ (TyTVar v _ _)) = absurd v
+subConstraints (SubType (TySet v _ _) _)  = absurd v
+subConstraints (SubType _ (TySet v _ _))  = absurd v
+subConstraints (SubType (TyRec v _ _) _)  = absurd v
+subConstraints (SubType _ (TyRec v _ _))  = absurd v
 
-uvarToNodeId :: UVar -> PrdCns -> Node
-uvarToNodeId uv Prd = 2 * uvar_id uv
-uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
-
-typeToHeadCons :: SimpleType -> HeadCons
-typeToHeadCons (TyUVar () _) = emptyHeadCons
-typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
-typeToHeadCons (TyNominal tn) = emptyHeadCons { hc_nominal = S.singleton tn }
-typeToHeadCons (TyTVar v _ _) = absurd v
-typeToHeadCons (TySet v _ _) = absurd v
-typeToHeadCons (TyRec v _ _) = absurd v
-
-typeToGraph :: PrdCns -> SimpleType -> MkAutM Node
-typeToGraph pol (TyUVar () uv) = return (uvarToNodeId uv pol)
-typeToGraph pol ty@(TySimple s xtors) = do
-  newNodeId <- gets (head . newNodes 1 . ta_gr)
-  let hc = typeToHeadCons ty
-  modifyGraph (insNode (newNodeId, (pol, hc)))
-  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
-    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- typeToGraph (applyVariance s Prd pol) prdType
-      modifyGraph (insEdge (newNodeId, prdNode, Just (EdgeSymbol s xt Prd i)))
-    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- typeToGraph (applyVariance s Cns pol) cnsType
-      modifyGraph (insEdge (newNodeId, cnsNode, Just (EdgeSymbol s xt Cns j)))
-  return newNodeId
-typeToGraph pol (TyNominal tn) = do
-  newNodeId <- gets (head . newNodes 1 . ta_gr)
-  let hc = emptyHeadCons { hc_nominal = S.singleton tn }
-  modifyGraph (insNode (newNodeId, (pol, hc)))
-  return newNodeId
-typeToGraph _ (TyTVar v _ _) = absurd v
-typeToGraph _ (TySet v _ _) = absurd v
-typeToGraph _ (TyRec v _ _) = absurd v
-
--- | Creates upper/lower bounds for a unification variable by inserting epsilon edges into the automaton
-insertEpsilonEdges :: UVar -> VariableState -> MkAutM ()
-insertEpsilonEdges uv vstate = do
-  forM_ [Prd,Cns] $ \pc ->
-    forM_ (getBounds pc vstate) $ \ty -> do
-      i <- typeToGraph pc ty
-      modifyGraph (insEdge (uvarToNodeId uv pc, i, Nothing))
-
--- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
-solverStateToTypeAutM :: SolverState -> MkAutM ()
-solverStateToTypeAutM (SolverState {..}) =
-  forM_ (M.toList sst_bounds) (uncurry insertEpsilonEdges)
-
--- | Creates an initial type automaton from a list of UVars.
-mkInitialTypeAut :: [UVar] -> TypeAutEps
-mkInitialTypeAut uvs =
-  let
-    uvNodes = [(uvarToNodeId uv pol, (pol, emptyHeadCons)) | uv <- uvs, pol <- [Prd,Cns]]
-    flowEdges = [(uvarToNodeId uv Cns, uvarToNodeId uv Prd) | uv <- uvs]
-  in
-    TypeAut { ta_gr = mkGraph uvNodes []
-            , ta_starts = []
-            , ta_flowEdges = flowEdges
-            }
+------------------------------------------------------------------------------
+-- Exported Function
+------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraintsOne :: [Constraint] -> [UVar] -> Either Error SolverState
-solveConstraintsOne css uvs = do
-  let initState = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs] , sst_cache = [] }
-  (_, solverState) <- runSolverM (solve css) initState
-  return solverState
+solveConstraints :: ConstraintSet -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _) = do
+  (_, solverState) <- runSolverM (solve css) (createInitState constraintSet)
+  return (sst_bounds solverState)
 
--- | Creates a type automaton from the variable states
-solveConstraintsTwo :: SolverState -> TypeAutEps
-solveConstraintsTwo solverState =
-  let
-    initAut = mkInitialTypeAut (M.keys (sst_bounds solverState))
-    (_,aut) = runState (solverStateToTypeAutM solverState) initAut
-  in
-    aut
-
--- | Takes a given type automaton without a starting state, and adds a simple type as starting state to the automaton.
-solveConstraintsThree :: TypeAutEps -> SimpleType -> PrdCns -> TypeAut
-solveConstraintsThree aut0 ty pc =
-  let
-    (start, aut) = runState (typeToGraph pc ty) aut0
-  in
-    (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
-
-solveConstraints :: [Constraint] -> [UVar] -> SimpleType -> PrdCns -> Either Error TypeAut
-solveConstraints css uvs ty pc = do
-  solverState <- solveConstraintsOne css uvs
-  let aut0 = solveConstraintsTwo solverState
-  let aut1 = solveConstraintsThree aut0 ty pc
-  return aut1
