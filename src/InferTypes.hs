@@ -6,7 +6,8 @@ import Syntax.TypeGraph
 import Utils
 import Syntax.Program
 import GenerateConstraints
-import SolveConstraints
+import SolveConstraints (solveConstraints)
+import BoundsToAutomaton
 import TypeAutomata.Determinize
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
@@ -27,7 +28,8 @@ inferPrdTraced :: Term Prd () -> Environment -> Either Error TypeInferenceTrace
 inferPrdTraced tm env = do
   (typedTerm, css, uvars) <- generateConstraints tm env
   ty <- typedTermToType env typedTerm
-  typeAut <- solveConstraints css uvars ty Prd
+  solverState <- solveConstraints css uvars
+  typeAut <- solverStateToTypeAut solverState ty Prd
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
