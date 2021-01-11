@@ -101,10 +101,8 @@ subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
 subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError "Cannot constrain nominal by structural type"
 subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError "Cannot constrain nominal by structural type"
 -- Impossible constructors
-subConstraints (SubType (TyTVar v _) _) = absurd v
-subConstraints (SubType _ (TyTVar v _)) = absurd v
-subConstraints (SubType (TyRVar v _) _) = absurd v
-subConstraints (SubType _ (TyRVar v _)) = absurd v
+subConstraints (SubType (TyTVar v _ _) _) = absurd v
+subConstraints (SubType _ (TyTVar v _ _)) = absurd v
 subConstraints (SubType (TySet v _ _) _) = absurd v
 subConstraints (SubType _ (TySet v _ _)) = absurd v
 subConstraints (SubType (TyRec v _ _) _) = absurd v
@@ -152,8 +150,7 @@ typeToHeadCons :: SimpleType -> HeadCons
 typeToHeadCons (TyUVar () _) = emptyHeadCons
 typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))
 typeToHeadCons (TyNominal tn) = emptyHeadCons { hc_nominal = S.singleton tn }
-typeToHeadCons (TyTVar v _) = absurd v
-typeToHeadCons (TyRVar v _) = absurd v
+typeToHeadCons (TyTVar v _ _) = absurd v
 typeToHeadCons (TySet v _ _) = absurd v
 typeToHeadCons (TyRec v _ _) = absurd v
 
@@ -176,8 +173,7 @@ typeToGraph pol (TyNominal tn) = do
   let hc = emptyHeadCons { hc_nominal = S.singleton tn }
   modifyGraph (insNode (newNodeId, (pol, hc)))
   return newNodeId
-typeToGraph _ (TyTVar v _) = absurd v
-typeToGraph _ (TyRVar v _) = absurd v
+typeToGraph _ (TyTVar v _ _) = absurd v
 typeToGraph _ (TySet v _ _) = absurd v
 typeToGraph _ (TyRec v _ _) = absurd v
 

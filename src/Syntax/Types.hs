@@ -14,11 +14,8 @@ import Utils
 -- | Unification Variables
 newtype UVar = MkUVar { uvar_id :: Int } deriving (Eq, Show, Ord)
 
--- | Free type variables
+-- | Type variables
 newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Show, Ord)
-
--- | Bound type variables (used in recursive types)
-newtype RVar = MkRVar { rvar_name :: String } deriving (Eq, Show, Ord)
 
 -- | Name of nominal type
 newtype TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
@@ -32,6 +29,8 @@ data SimpleTarget = Simple | Target deriving (Eq, Ord, Show)
 data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data UnionInter = Union | Inter deriving (Eq, Show, Ord)
+
+data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
 
 ------------------------------------------------------------------------------
 -- Types
@@ -51,13 +50,12 @@ data XtorSig a = MkXtorSig
   } deriving (Eq, Show)
 
 data Typ a
-  = TyTVar (TargetF a) TVar
-  | TyRVar (TargetF a) RVar
+  = TyTVar (TargetF a) TVarKind TVar
   | TyUVar (SimpleF a) UVar
   | TySimple DataCodata [XtorSig (Typ a)]
   | TyNominal TypeName
   | TySet (TargetF a) UnionInter [Typ a]
-  | TyRec (TargetF a) RVar (Typ a)
+  | TyRec (TargetF a) TVar (Typ a)
 
 type SimpleType = Typ Simple
 type TargetType = Typ Target
@@ -80,8 +78,8 @@ freeTypeVars :: TargetType -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: TargetType -> [TVar]
-    freeTypeVars' (TyTVar () tv) = [tv]
-    freeTypeVars' (TyRVar () _)  = []
+    freeTypeVars' (TyTVar () Normal tv) = [tv]
+    freeTypeVars' (TyTVar () Recursive _)  = []
     freeTypeVars' (TyUVar v _) = absurd v
     freeTypeVars' (TySet () _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec () _ t)  = freeTypeVars' t

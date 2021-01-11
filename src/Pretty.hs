@@ -75,9 +75,6 @@ instance Pretty UVar where
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
 
-instance Pretty RVar where
-  pretty (MkRVar rv) = pretty rv
-
 instance Pretty a => Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
 
@@ -89,8 +86,7 @@ instance Pretty (Typ a) where
   pretty (TySet _ Inter [t]) = pretty t
   pretty (TySet _ Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
   pretty (TyUVar _ uv) = pretty uv
-  pretty (TyTVar _ tv) = pretty tv
-  pretty (TyRVar _ rv) = pretty rv
+  pretty (TyTVar _ _ tv) = pretty tv -- Normal + Recursive
   pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t
   pretty (TyNominal tn) = pretty (unTypeName tn)
   pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)

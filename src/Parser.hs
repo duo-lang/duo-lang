@@ -258,7 +258,7 @@ subtypingProblemP = do
 ---------------------------------------------------------------------------------
 
 data TypeParseReader = TypeParseReader
-  { rvars :: Set RVar
+  { rvars :: Set TVar
   , tvars :: Set TVar
   }
 
@@ -307,16 +307,16 @@ xtorSignature = do
 recVar :: TypeParser TargetType
 recVar = do
   rvs <- asks rvars
-  rv <- MkRVar <$> freeVarName
+  rv <- MkTVar <$> freeVarName
   guard (rv `S.member` rvs)
-  return $ TyRVar () rv
+  return $ TyTVar () Recursive rv
 
 typeVariable :: TypeParser TargetType
 typeVariable = do
   tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyTVar () tv
+  return $ TyTVar () Normal tv
 
 setType :: UnionInter -> TypeParser TargetType
 setType Union = TySet () Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
@@ -325,7 +325,7 @@ setType Inter = TySet () Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
 recType :: TypeParser TargetType
 recType = do
   _ <- symbol "rec"
-  rv <- MkRVar <$> freeVarName
+  rv <- MkTVar <$> freeVarName
   _ <- dot
   ty <- local (\tpr@TypeParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) typeR
   return $ TyRec () rv ty
