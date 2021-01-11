@@ -29,6 +29,11 @@ uvarToNodeId :: UVar -> PrdCns -> Node
 uvarToNodeId uv Prd = 2 * uvar_id uv
 uvarToNodeId uv Cns  = 2 * uvar_id uv + 1
 
+getBounds :: PrdCns -> VariableState -> [SimpleType]
+getBounds Prd = vst_lowerbounds
+getBounds Cns = vst_upperbounds
+
+
 typeToHeadCons :: SimpleType -> HeadCons
 typeToHeadCons (TyUVar () _) = emptyHeadCons
 typeToHeadCons (TySimple s xtors) = singleHeadCons s (S.fromList (map sig_name xtors))

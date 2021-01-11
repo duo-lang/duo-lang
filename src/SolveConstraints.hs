@@ -1,8 +1,7 @@
 module SolveConstraints
-  ( solveConstraints
+  ( VariableState(..)
   , SolverResult
-  , VariableState(..)
-  , getBounds
+  , solveConstraints
   ) where
 
 import Control.Monad.State
@@ -10,12 +9,11 @@ import Control.Monad.Except
 import Data.List ((\\))
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Void
 import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Void
 
 import Syntax.Types
-import Syntax.Terms
 import Utils
 import Pretty
 
@@ -30,12 +28,7 @@ data VariableState = VariableState
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
 
-getBounds :: PrdCns -> VariableState -> [SimpleType]
-getBounds Prd = vst_lowerbounds
-getBounds Cns = vst_upperbounds
-
 type SolverResult = Map UVar VariableState
-
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -58,8 +51,8 @@ runSolverM m initSt = runExcept (runStateT m initSt)
 -- Monadic helper functions
 ------------------------------------------------------------------------------
 
-throwSolverError :: String -> SolverM a
-throwSolverError = throwError . SolveConstraintsError
+throwSolverError :: [String] -> SolverM a
+throwSolverError = throwError . SolveConstraintsError . unlines
 
 addToCache :: Constraint -> SolverM ()
 addToCache cs = modifyCache (S.insert cs)
@@ -89,53 +82,6 @@ addLowerBound uv ty = do
 -- Constraint solving algorithm
 ------------------------------------------------------------------------------
 
-subConstraints :: Constraint -> SolverM [Constraint]
--- Atomic constraints (one side is a TyVar)
-subConstraints (SubType (TyUVar () _) _) = return []
-subConstraints (SubType _ (TyUVar () _)) = return []
--- Data/Data and Codata/Codata constraints
-subConstraints cs@(SubType (TySimple Data xtors1) (TySimple Data xtors2))
-  = if not . null $ (map sig_name xtors1) \\ (map sig_name xtors2)
-    then throwSolverError $ unlines [ "Constraint:"
-                                    , ppPrint cs
-                                    , "is unsolvable, because xtor:"
-                                    , ppPrint (head $ (map sig_name xtors1) \\ (map sig_name xtors2))
-                                    , "occurs only in the left side." ]
-    else return $ do -- list monad
-      (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
-      let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
-      zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
-subConstraints cs@(SubType (TySimple Codata xtors1) (TySimple Codata xtors2))
-  = if not . null $ (map sig_name xtors2) \\ (map sig_name xtors1)
-    then throwSolverError $ unlines [ "Constraint:"
-                                    , ppPrint cs
-                                    , "is unsolvable, because xtor:"
-                                    , ppPrint (head $ (map sig_name xtors2) \\ (map sig_name xtors1))
-                                    , "occurs only in the left side." ]
-    else return $ do -- list monad
-      (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
-      let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
-      zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
--- Nominal/Nominal Constraint
-subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
-                                                             | otherwise = throwSolverError ("The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2)
--- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
-  = throwSolverError $  "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A data type can't be a subtype of a codata type!"
-subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
-  = throwSolverError $ "Constraint: \n      " ++ ppPrint cs ++ "\n is unsolvable. A codata type can't be a subtype of a data type!"
--- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError "Cannot constrain nominal by structural type"
-subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError "Cannot constrain nominal by structural type"
--- Impossible constructors
-subConstraints (SubType (TyTVar v _ _) _) = absurd v
-subConstraints (SubType _ (TyTVar v _ _)) = absurd v
-subConstraints (SubType (TySet v _ _) _) = absurd v
-subConstraints (SubType _ (TySet v _ _)) = absurd v
-subConstraints (SubType (TyRec v _ _) _) = absurd v
-subConstraints (SubType _ (TyRec v _ _)) = absurd v
-
-
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
@@ -154,6 +100,58 @@ solve (cs:css) = do
         _ -> do
           subCss <- subConstraints cs
           solve (subCss ++ css)
+
+subConstraints :: Constraint -> SolverM [Constraint]
+-- Data/Data and Codata/Codata constraints
+subConstraints cs@(SubType (TySimple Data xtors1) (TySimple Data xtors2)) = do
+  let foo = (map sig_name xtors1) \\ (map sig_name xtors2)
+  if not . null $ foo
+    then throwSolverError [ "Constraint:"
+                          , ppPrint cs
+                          , "is unsolvable, because xtor:"
+                          , ppPrint (head foo)
+                          , "occurs only in the left side." ]
+    else return $ do -- list monad
+      (MkXtorSig xtName (Twice prd1 cns1)) <- xtors1
+      let Just (Twice prd2 cns2) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors2) --safe, because of check above
+      zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
+subConstraints cs@(SubType (TySimple Codata xtors1) (TySimple Codata xtors2)) = do
+  let foo = (map sig_name xtors2) \\ (map sig_name xtors1)
+  if not . null $ foo
+    then throwSolverError [ "Constraint:"
+                          , ppPrint cs
+                          , "is unsolvable, because xtor:"
+                          , ppPrint (head foo)
+                          , "occurs only in the left side." ]
+    else return $ do -- list monad
+      (MkXtorSig xtName (Twice prd2 cns2)) <- xtors2
+      let Just (Twice prd1 cns1) = lookup xtName ((\(MkXtorSig xt args) -> (xt, args)) <$> xtors1) --safe, because of check above
+      zipWith SubType prd2 prd1 ++ zipWith SubType cns1 cns2
+-- Nominal/Nominal Constraint
+subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
+                                                         | otherwise = throwSolverError ["The two nominal types are incompatible: " ++ ppPrint tn1 ++ " and " ++ ppPrint tn2]
+-- Data/Codata and Codata/Data Constraints
+subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
+  = throwSolverError [ "Constraint:"
+                     , "     " ++ ppPrint cs
+                     , "is unsolvable. A data type can't be a subtype of a codata type!" ]
+subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
+  = throwSolverError [ "Constraint:"
+                     , "     "++ ppPrint cs
+                     , "is unsolvable. A codata type can't be a subtype of a data type!" ]
+-- Nominal/XData and XData/Nominal Constraints
+subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+-- subConstraints should never be called if the upper or lower bound is a unification variable.
+subConstraints (SubType (TyUVar () _) _) = throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+subConstraints (SubType _ (TyUVar () _)) = throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+-- Impossible constructors. Constraints must be between simple types.
+subConstraints (SubType (TyTVar v _ _) _) = absurd v
+subConstraints (SubType _ (TyTVar v _ _)) = absurd v
+subConstraints (SubType (TySet v _ _) _)  = absurd v
+subConstraints (SubType _ (TySet v _ _))  = absurd v
+subConstraints (SubType (TyRec v _ _) _)  = absurd v
+subConstraints (SubType _ (TyRec v _ _))  = absurd v
 
 ------------------------------------------------------------------------------
 -- Exported Function
