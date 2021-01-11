@@ -1,6 +1,6 @@
 module SolveConstraints
   ( solveConstraints
-  , SolverState(..)
+  , SolverResult
   , VariableState(..)
   , getBounds
   ) where
@@ -21,6 +21,7 @@ data VariableState = VariableState
   { vst_upperbounds :: [SimpleType]
   , vst_lowerbounds :: [SimpleType] }
 
+
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
 
@@ -34,8 +35,10 @@ addUpperBound bound (VariableState ubs lbs) = VariableState (bound:ubs) lbs
 addLowerBound :: SimpleType -> VariableState -> VariableState
 addLowerBound bound (VariableState ubs lbs) = VariableState ubs (bound:lbs)
 
+type SolverResult = Map UVar VariableState
+
 data SolverState = SolverState
-  { sst_bounds :: Map UVar VariableState
+  { sst_bounds :: SolverResult
   , sst_cache :: [Constraint] }
 
 type SolverM a = (StateT SolverState (Except Error)) a
@@ -132,9 +135,9 @@ solve (cs:css) = do
 
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: [Constraint] -> [UVar] -> Either Error SolverState
+solveConstraints :: [Constraint] -> [UVar] -> Either Error SolverResult
 solveConstraints css uvs = do
   let initState = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs] , sst_cache = [] }
   (_, solverState) <- runSolverM (solve css) initState
-  return solverState
+  return (sst_bounds solverState)
 

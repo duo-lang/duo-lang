@@ -69,9 +69,9 @@ insertEpsilonEdges uv vstate = do
       modifyGraph (insEdge (uvarToNodeId uv pc, i, Nothing))
 
 -- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
-solverStateToTypeAutM :: SolverState -> MkAutM ()
-solverStateToTypeAutM (SolverState {..}) =
-  forM_ (M.toList sst_bounds) (uncurry insertEpsilonEdges)
+solverStateToTypeAutM :: SolverResult -> MkAutM ()
+solverStateToTypeAutM solverResult =
+  forM_ (M.toList solverResult) (uncurry insertEpsilonEdges)
 
 -- | Creates an initial type automaton from a list of UVars.
 mkInitialTypeAut :: [UVar] -> TypeAutEps
@@ -88,11 +88,11 @@ mkInitialTypeAut uvs =
 
 
 -- | Creates a type automaton from the variable states
-solveConstraintsTwo :: SolverState -> TypeAutEps
-solveConstraintsTwo solverState =
+solveConstraintsTwo :: SolverResult -> TypeAutEps
+solveConstraintsTwo solverResult =
   let
-    initAut = mkInitialTypeAut (M.keys (sst_bounds solverState))
-    (_,aut) = runState (solverStateToTypeAutM solverState) initAut
+    initAut = mkInitialTypeAut (M.keys solverResult)
+    (_,aut) = runState (solverStateToTypeAutM solverResult) initAut
   in
     aut
 
@@ -104,7 +104,7 @@ solveConstraintsThree aut0 ty pc =
   in
     (removeIslands . removeEpsilonEdges) (aut { ta_starts = [start] })
 
-solverStateToTypeAut :: SolverState -> SimpleType -> PrdCns -> Either Error TypeAut
+solverStateToTypeAut :: SolverResult -> SimpleType -> PrdCns -> Either Error TypeAut
 solverStateToTypeAut solverState ty pc = do
   let aut0 = solveConstraintsTwo solverState
   let aut1 = solveConstraintsThree aut0 ty pc
