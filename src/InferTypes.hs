@@ -15,8 +15,7 @@ import TypeAutomata.FlowAnalysis
 
 
 data TypeInferenceTrace = TypeInferenceTrace
-  { trace_constraints :: [Constraint]
-  , trace_uvars :: [UVar]
+  { trace_constraintSet :: ConstraintSet
   , trace_typeAut :: TypeAut
   , trace_typeAutDet :: TypeAutDet
   , trace_typeAutDetAdms :: TypeAutDet
@@ -26,17 +25,16 @@ data TypeInferenceTrace = TypeInferenceTrace
 
 inferPrdTraced :: Term Prd () -> Environment -> Either Error TypeInferenceTrace
 inferPrdTraced tm env = do
-  (typedTerm, css, uvars) <- generateConstraints tm env
+  (typedTerm, constraintSet) <- generateConstraints tm env
   ty <- typedTermToType env typedTerm
-  solverState <- solveConstraints css uvars
+  solverState <- solveConstraints constraintSet
   typeAut <- solverStateToTypeAut solverState ty Prd
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
   let resType = autToType minTypeAut
   return TypeInferenceTrace
-    { trace_constraints = css
-    , trace_uvars = uvars
+    { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut
     , trace_typeAutDet = typeAutDet
     , trace_typeAutDetAdms = typeAutDetAdms

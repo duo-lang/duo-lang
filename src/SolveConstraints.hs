@@ -11,16 +11,21 @@ import Data.List ((\\))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Void
+import Data.Set (Set)
+import qualified Data.Set as S
 
 import Syntax.Types
 import Syntax.Terms
 import Utils
 import Pretty
 
+------------------------------------------------------------------------------
+-- VariableState and SolverResult
+------------------------------------------------------------------------------
+
 data VariableState = VariableState
   { vst_upperbounds :: [SimpleType]
   , vst_lowerbounds :: [SimpleType] }
-
 
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
@@ -29,37 +34,60 @@ getBounds :: PrdCns -> VariableState -> [SimpleType]
 getBounds Prd = vst_lowerbounds
 getBounds Cns = vst_upperbounds
 
-addUpperBound :: SimpleType -> VariableState -> VariableState
-addUpperBound bound (VariableState ubs lbs) = VariableState (bound:ubs) lbs
-
-addLowerBound :: SimpleType -> VariableState -> VariableState
-addLowerBound bound (VariableState ubs lbs) = VariableState ubs (bound:lbs)
-
 type SolverResult = Map UVar VariableState
+
+
+------------------------------------------------------------------------------
+-- Constraint solver monad
+------------------------------------------------------------------------------
 
 data SolverState = SolverState
   { sst_bounds :: SolverResult
-  , sst_cache :: [Constraint] }
+  , sst_cache :: Set Constraint }
+
+createInitState :: ConstraintSet -> SolverState
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs]
+                                                    , sst_cache = S.empty }
 
 type SolverM a = (StateT SolverState (Except Error)) a
 
 runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
 runSolverM m initSt = runExcept (runStateT m initSt)
 
+------------------------------------------------------------------------------
+-- Monadic helper functions
+------------------------------------------------------------------------------
+
 throwSolverError :: String -> SolverM a
 throwSolverError = throwError . SolveConstraintsError
 
-modifyCache :: ([Constraint] -> [Constraint]) -> SolverM ()
-modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+addToCache :: Constraint -> SolverM ()
+addToCache cs = modifyCache (S.insert cs)
+  where
+    modifyCache :: (Set Constraint -> Set Constraint) -> SolverM ()
+    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+
+inCache :: Constraint -> SolverM Bool
+inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getUpperBounds :: UVar -> SolverM [SimpleType]
-getUpperBounds uv = gets (vst_upperbounds . (M.! uv) . sst_bounds)
+addUpperBound :: UVar -> SimpleType -> SolverM [Constraint]
+addUpperBound uv ty = do
+  modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
+  lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
+  return [SubType lb ty | lb <- lbs]
 
-getLowerBounds :: UVar -> SolverM [SimpleType]
-getLowerBounds uv = gets (vst_lowerbounds . (M.! uv) . sst_bounds)
+addLowerBound :: UVar -> SimpleType -> SolverM [Constraint]
+addLowerBound uv ty = do
+  modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
+  ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
+  return [SubType ty ub | ub <- ubs]
+
+------------------------------------------------------------------------------
+-- Constraint solving algorithm
+------------------------------------------------------------------------------
 
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Atomic constraints (one side is a TyVar)
@@ -107,37 +135,33 @@ subConstraints (SubType _ (TySet v _ _)) = absurd v
 subConstraints (SubType (TyRec v _ _) _) = absurd v
 subConstraints (SubType _ (TyRec v _ _)) = absurd v
 
---subConstraints _ = return [] -- constraint is atomic
 
 solve :: [Constraint] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
-  cache <- gets sst_cache
-  if cs `elem` cache
-    then solve css
-    else do
-      modifyCache (cs:)
+  cacheHit <- inCache cs
+  case cacheHit of
+    True -> solve css
+    False -> do
+      addToCache cs
       case cs of
         (SubType (TyUVar () uv) ub) -> do
-          modifyBounds (addUpperBound ub) uv
-          lbs <- getLowerBounds uv
-          let newCss = [SubType lb ub | lb <- lbs]
+          newCss <- addUpperBound uv ub
           solve (newCss ++ css)
         (SubType lb (TyUVar () uv)) -> do
-          modifyBounds (addLowerBound lb) uv
-          ubs <- getUpperBounds uv
-          let newCss = [SubType lb ub | ub <- ubs]
+          newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
-
+------------------------------------------------------------------------------
+-- Exported Function
+------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: [Constraint] -> [UVar] -> Either Error SolverResult
-solveConstraints css uvs = do
-  let initState = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs] , sst_cache = [] }
-  (_, solverState) <- runSolverM (solve css) initState
+solveConstraints :: ConstraintSet -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _) = do
+  (_, solverState) <- runSolverM (solve css) (createInitState constraintSet)
   return (sst_bounds solverState)
 

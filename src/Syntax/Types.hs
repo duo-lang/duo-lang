@@ -47,7 +47,7 @@ type family SimpleF (k :: SimpleTarget) :: Type where
 data XtorSig a = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: Twice [a]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
 data Typ a
   = TyTVar (TargetF a) TVarKind TVar
@@ -64,6 +64,8 @@ deriving instance Eq SimpleType
 deriving instance Eq TargetType
 deriving instance Show SimpleType
 deriving instance Show TargetType
+deriving instance Ord SimpleType
+deriving instance Ord TargetType
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -99,7 +101,13 @@ generalize ty = TypeScheme (freeTypeVars ty) ty
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType SimpleType SimpleType deriving (Eq, Show)
+data Constraint = SubType SimpleType SimpleType deriving (Eq, Show, Ord)
+
+-- | A ConstraintSet is a set of constraints, together with a list of all the
+-- unification variables occurring in them.
+data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint]
+                                   , cs_uvars :: [UVar]
+                                   } deriving (Eq, Show)
 
 ------------------------------------------------------------------------------
 -- Data Type declarations

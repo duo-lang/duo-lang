@@ -10,7 +10,7 @@ import qualified Data.Set as S
 ----------------------------------------------------------------------------------
 
 -- oftenly used data structure, so extracting it and making it a functor is useful
-data Twice a = Twice a a deriving (Eq,Show)
+data Twice a = Twice a a deriving (Eq, Show, Ord)
 twiceMap :: (a -> b) -> (a -> b) -> Twice a -> Twice b
 twiceMap f g (Twice x y) = Twice (f x) (g y)
 
