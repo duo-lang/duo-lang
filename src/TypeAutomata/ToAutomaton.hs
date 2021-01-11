@@ -25,77 +25,100 @@ import Data.Graph.Inductive.Graph
 --------------------------------------------------------------------------
 -- Target types -> Type automata
 --------------------------------------------------------------------------
+data LookupEnv = LookupEnv { rvarEnv :: Map (PrdCns, TVar) Node
+                           , tvarEnv :: Map TVar (Node, Node)
+                           }
+type TypeToAutM a = StateT TypeAutEps (ReaderT LookupEnv (Except Error)) a
 
-type RVarEnv = Map (PrdCns, TVar) Node
-type TVarEnv = Map TVar (Node, Node)
-type TypeToAutM a = StateT TypeGrEps (ReaderT RVarEnv (ReaderT TVarEnv (Except String))) a
+runTypeAut :: TypeAutEps -> LookupEnv -> TypeToAutM a -> Either Error (a, TypeAutEps)
+runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
+
+modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM ()
+modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
+
+createInitialFromTypeScheme :: [TVar] -> (TypeAutEps, LookupEnv)
+createInitialFromTypeScheme tvars =
+  let
+    initGr = mkGraph [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
+                                                                 let offset = case pol of {Prd -> 0; Cns -> 1}] []
+    initAut = TypeAut { ta_gr = initGr
+                      , ta_starts = []
+                      , ta_flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
+                      }
+    lookupEnv = LookupEnv { rvarEnv = M.empty
+                          , tvarEnv = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
+                          }
+  in
+    (initAut, lookupEnv)
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: PrdCns -> TypeScheme -> Either String TypeAutDet
-typeToAutPol pol (TypeScheme tvars ty) =
-  let
-    tvarMap = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
-    initGr = mkGraph [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
-                                                               let offset = case pol of {Prd -> 0; Cns -> 1}] []
-    flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
-  in
-    case runExcept (runReaderT (runReaderT (runStateT (typeToAutM pol ty) initGr) M.empty) tvarMap) of
-      Right (start, gr) ->
-        let
-          aut = TypeAut { ta_gr = gr, ta_starts = [start], ta_flowEdges = flowEdges }
-        in
-          Right $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) aut
-      Left err -> Left err
+typeToAutPol :: PrdCns -> TypeScheme -> Either Error TypeAutDet
+typeToAutPol pol (TypeScheme tvars ty) = do
+  let (initAut, lookupEnv) = createInitialFromTypeScheme tvars
+  (start, aut) <- runTypeAut initAut lookupEnv (typeToAutM pol ty)
+  let newaut = aut { ta_starts = [start] }
+  pure $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) newaut
+
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
-typeToAut :: TypeScheme -> Either String TypeAutDet
+typeToAut :: TypeScheme -> Either Error TypeAutDet
 typeToAut ty = (typeToAutPol Prd ty) <> (typeToAutPol Cns ty)
+
+
+--------------------------------------------------------------------------
+-- Type insertion helpers
+--------------------------------------------------------------------------
+
+newNodeM :: TypeToAutM Node
+newNodeM = do
+  graph <- gets ta_gr
+  pure $ (head . newNodes 1) graph
 
 typeToAutM :: PrdCns -> TargetType -> TypeToAutM Node
 typeToAutM _ (TyUVar v _) = absurd v
 typeToAutM pol (TyTVar () Normal tv) = do
-  tvarEnv <- lift $ lift ask
+  tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
     Just (i,j) -> return $ case pol of {Prd -> i; Cns -> j}
-    Nothing -> throwError $ "unknown free type variable: " ++ (tvar_name tv)
+    Nothing -> throwError $ OtherError $ "unknown free type variable: " ++ (tvar_name tv)
 typeToAutM pol (TyTVar () Recursive rv) = do
-  rvarEnv <- ask
+  rvarEnv <- asks rvarEnv
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
-    Nothing -> throwError $ "covariance rule violated: " ++ (tvar_name rv)
+    Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
 typeToAutM Prd (TySet () Union tys) = do
-  newNode <- head . newNodes 1 <$> get
-  modify (insNode (newNode, (Prd, emptyHeadCons)))
+  newNode <- newNodeM
+  modifyGraph (insNode (newNode, (Prd, emptyHeadCons)))
   ns <- mapM (typeToAutM Prd) tys
-  modify (insEdges [(newNode, n, Nothing) | n <- ns])
+  modifyGraph (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Cns (TySet () Union _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Cns (TySet () Union _) = throwError $ OtherError "typeToAutM: type has wrong polarity."
 typeToAutM Cns (TySet () Inter tys) = do
-  newNode <- head . newNodes 1 <$> get
-  modify (insNode (newNode, (Cns, emptyHeadCons)))
+  newNode <- newNodeM
+  modifyGraph (insNode (newNode, (Cns, emptyHeadCons)))
   ns <- mapM (typeToAutM Cns) tys
-  modify (insEdges [(newNode, n, Nothing) | n <- ns])
+  modifyGraph (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Prd (TySet () Inter _) = throwError "typeToAutM: type has wrong polarity."
+typeToAutM Prd (TySet () Inter _) = throwError $ OtherError "typeToAutM: type has wrong polarity."
 typeToAutM pol (TyRec () rv ty) = do
-  newNode <- head . newNodes 1 <$> get
-  modify (insNode (newNode, (pol, emptyHeadCons)))
-  n <- local (M.insert (pol, rv) newNode) (typeToAutM pol ty)
-  modify (insEdge (newNode, n, Nothing))
+  newNode <- newNodeM
+  modifyGraph (insNode (newNode, (pol, emptyHeadCons)))
+  n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (typeToAutM pol ty)
+  modifyGraph (insEdge (newNode, n, Nothing))
   return newNode
 typeToAutM pol (TySimple s xtors) = do
-  newNode <- head . newNodes 1 <$> get
+  newNode <- newNodeM
   let nl = (pol, singleHeadCons s (S.fromList (map sig_name xtors)))
-  modify (insNode (newNode,nl))
+  modifyGraph (insNode (newNode,nl))
   edges <- forM xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
     prdNodes <- mapM (typeToAutM (applyVariance s Prd pol)) prdTypes
     cnsNodes <- mapM (typeToAutM (applyVariance s Cns pol)) cnsTypes
     return $ [(newNode, n, Just (EdgeSymbol s xt Prd i)) | i <- [0..length prdNodes - 1], let n = prdNodes !! i] ++
              [(newNode, n, Just (EdgeSymbol s xt Cns i)) | i <- [0..length cnsNodes - 1], let n = cnsNodes !! i]
-  modify (insEdges (concat edges))
+  modifyGraph (insEdges (concat edges))
   return newNode
 typeToAutM pol (TyNominal tn) = do
-  newNode <- head . newNodes 1 <$> get
+  newNode <- newNodeM
   let nl = (pol, emptyHeadCons { hc_nominal = S.singleton tn })
-  modify (insNode (newNode, nl))
+  modifyGraph (insNode (newNode, nl))
   return newNode
