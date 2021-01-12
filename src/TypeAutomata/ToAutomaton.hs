@@ -1,18 +1,17 @@
-module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol ) where
+module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol, solverStateToTypeAut) where
 
 import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
 import TypeAutomata.FlowAnalysis
-import TypeAutomata.Determinize (determinize, removeEpsilonEdges)
+import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
 import TypeAutomata.Minimize (minimize)
-
+import SolveConstraints
 
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
-import Data.Void
 import qualified Data.Set as S
 
 import Data.Map (Map)
@@ -97,33 +96,33 @@ newNodeM = do
   graph <- gets ta_gr
   pure $ (head . newNodes 1) graph
 
-typeToAutM :: PrdCns -> TargetType -> TypeToAutM Node
-typeToAutM _ (TyUVar v _) = absurd v
-typeToAutM pol (TyTVar () Normal tv) = do
+typeToAutM :: PrdCns -> Typ a -> TypeToAutM Node
+typeToAutM pol (TyUVar _ uv) = return (uvarToNodeId uv pol) -- HACKYHACKY !!!
+typeToAutM pol (TyTVar _ Normal tv) = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
     Just (i,j) -> return $ case pol of {Prd -> i; Cns -> j}
     Nothing -> throwError $ OtherError $ "unknown free type variable: " ++ (tvar_name tv)
-typeToAutM pol (TyTVar () Recursive rv) = do
+typeToAutM pol (TyTVar _ Recursive rv) = do
   rvarEnv <- asks rvarEnv
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
-typeToAutM Prd (TySet () Union tys) = do
+typeToAutM Prd (TySet _ Union tys) = do
   newNode <- newNodeM
   modifyGraph (insNode (newNode, (Prd, emptyHeadCons)))
   ns <- mapM (typeToAutM Prd) tys
   modifyGraph (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Cns (TySet () Union _) = throwError $ OtherError "typeToAutM: type has wrong polarity."
-typeToAutM Cns (TySet () Inter tys) = do
+typeToAutM Cns (TySet _ Union _) = throwError $ OtherError "typeToAutM: type has wrong polarity."
+typeToAutM Cns (TySet _ Inter tys) = do
   newNode <- newNodeM
   modifyGraph (insNode (newNode, (Cns, emptyHeadCons)))
   ns <- mapM (typeToAutM Cns) tys
   modifyGraph (insEdges [(newNode, n, Nothing) | n <- ns])
   return newNode
-typeToAutM Prd (TySet () Inter _) = throwError $ OtherError "typeToAutM: type has wrong polarity."
-typeToAutM pol (TyRec () rv ty) = do
+typeToAutM Prd (TySet _ Inter _) = throwError $ OtherError "typeToAutM: type has wrong polarity."
+typeToAutM pol (TyRec _ rv ty) = do
   newNode <- newNodeM
   modifyGraph (insNode (newNode, (pol, emptyHeadCons)))
   n <- local (\(LookupEnv rvars tvars uvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars uvars) (typeToAutM pol ty)
@@ -133,15 +132,35 @@ typeToAutM pol (TySimple s xtors) = do
   newNode <- newNodeM
   let nl = (pol, singleHeadCons s (S.fromList (map sig_name xtors)))
   modifyGraph (insNode (newNode,nl))
-  edges <- forM xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
-    prdNodes <- mapM (typeToAutM (applyVariance s Prd pol)) prdTypes
-    cnsNodes <- mapM (typeToAutM (applyVariance s Cns pol)) cnsTypes
-    return $ [(newNode, n, Just (EdgeSymbol s xt Prd i)) | i <- [0..length prdNodes - 1], let n = prdNodes !! i] ++
-             [(newNode, n, Just (EdgeSymbol s xt Cns i)) | i <- [0..length cnsNodes - 1], let n = cnsNodes !! i]
-  modifyGraph (insEdges (concat edges))
+  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
+    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
+      prdNode <- typeToAutM (applyVariance s Prd pol) prdType
+      modifyGraph (insEdge (newNode, prdNode, Just (EdgeSymbol s xt Prd i)))
+    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
+      cnsNode <- typeToAutM (applyVariance s Cns pol) cnsType
+      modifyGraph (insEdge (newNode, cnsNode, Just (EdgeSymbol s xt Cns j)))
   return newNode
 typeToAutM pol (TyNominal tn) = do
   newNode <- newNodeM
   let nl = (pol, emptyHeadCons { hc_nominal = S.singleton tn })
   modifyGraph (insNode (newNode, nl))
   return newNode
+
+
+-- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
+insertEpsilonEdges :: SolverResult -> TypeToAutM ()
+insertEpsilonEdges solverResult =
+  forM_ (M.toList solverResult) $ \(uv, vstate) -> do
+    forM_ (vst_lowerbounds vstate) $ \ty -> do
+      i <- typeToAutM Prd ty
+      modifyGraph (insEdge (uvarToNodeId uv Prd, i, Nothing))
+    forM_ (vst_upperbounds vstate) $ \ty -> do
+      i <- typeToAutM Cns ty
+      modifyGraph (insEdge (uvarToNodeId uv Cns, i, Nothing))
+
+solverStateToTypeAut :: SolverResult -> SimpleType -> PrdCns -> Either Error TypeAut
+solverStateToTypeAut solverResult ty pc = do
+  let (initAut, lookupEnv) = mkInitialTypeAut (M.keys solverResult)
+  ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)
+  (start, aut1) <- runTypeAut aut0 lookupEnv (typeToAutM pc ty)
+  return $ (removeIslands . removeEpsilonEdges) (aut1 { ta_starts = [start] })
