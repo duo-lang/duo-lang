@@ -47,7 +47,7 @@ freshVars :: Int -> PrdCnsRep pc -> GenerateM [(SimpleType, Term pc SimpleType)]
 freshVars k pc = do
   n <- gets varGen
   modify (\gs@GenerateState { varGen } -> gs {varGen = varGen + k })
-  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyUVar () (MkUVar i)]
+  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar Normal (MkTVar ("u" ++ show i))]
 
 annotateCase :: Case () -> GenerateM (Case SimpleType)
 -- In Matches on Structural types, all arguments to xtors have to be annotated by a unification variable, since
@@ -173,7 +173,7 @@ generateConstraints t0 env = do
   termLocallyClosed t0
   (t1, GenerateState numVars _) <- runExcept (runStateT (annotateTerm t0) (GenerateState 0 env))
   css <- getConstraintsTerm env t1
-  let constraintSet = ConstraintSet css (MkUVar <$> [0..numVars-1])
+  let constraintSet = ConstraintSet css (MkTVar <$> ((\i -> "u" ++ show i) <$> [0..numVars-1]))
   return (t1, constraintSet)
 
 

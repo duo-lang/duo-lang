@@ -29,7 +29,7 @@ data VariableState = VariableState
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
 
-type SolverResult = Map UVar VariableState
+type SolverResult = Map TVar VariableState
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -64,16 +64,16 @@ addToCache cs = modifyCache (S.insert cs)
 inCache :: Constraint -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
 
-modifyBounds :: (VariableState -> VariableState) -> UVar -> SolverM ()
+modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-addUpperBound :: UVar -> SimpleType -> SolverM [Constraint]
+addUpperBound :: TVar -> SimpleType -> SolverM [Constraint]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
   lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
   return [SubType lb ty | lb <- lbs]
 
-addLowerBound :: UVar -> SimpleType -> SolverM [Constraint]
+addLowerBound :: TVar -> SimpleType -> SolverM [Constraint]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
@@ -92,10 +92,10 @@ solve (cs:css) = do
     False -> do
       addToCache cs
       case cs of
-        (SubType (TyUVar () uv) ub) -> do
+        (SubType (TyVar Normal uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
-        (SubType lb (TyUVar () uv)) -> do
+        (SubType lb (TyVar Normal uv)) -> do
           newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
@@ -142,13 +142,11 @@ subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
 subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
-subConstraints (SubType (TyUVar () _) _) =
+subConstraints (SubType (TyVar _ _) _) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
-subConstraints (SubType _ (TyUVar () _)) =
+subConstraints (SubType _ (TyVar _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
 -- Impossible constructors. Constraints must be between simple types.
-subConstraints (SubType (TyTVar v _ _) _) = absurd v
-subConstraints (SubType _ (TyTVar v _ _)) = absurd v
 subConstraints (SubType (TySet v _ _) _)  = absurd v
 subConstraints (SubType _ (TySet v _ _))  = absurd v
 subConstraints (SubType (TyRec v _ _) _)  = absurd v

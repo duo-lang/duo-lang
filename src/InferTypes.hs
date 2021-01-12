@@ -7,7 +7,7 @@ import Utils
 import Syntax.Program
 import GenerateConstraints
 import SolveConstraints (solveConstraints)
-import BoundsToAutomaton
+import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton

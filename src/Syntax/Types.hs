@@ -11,9 +11,6 @@ import Utils
 -- Type Variables and Names
 ------------------------------------------------------------------------------
 
--- | Unification Variables
-newtype UVar = MkUVar { uvar_id :: Int } deriving (Eq, Show, Ord)
-
 -- | Type variables
 newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Show, Ord)
 
@@ -40,18 +37,13 @@ type family TargetF (k :: SimpleTarget) :: Type where
   TargetF Target = ()
   TargetF Simple = Void
 
-type family SimpleF (k :: SimpleTarget) :: Type where
-  SimpleF Target = Void
-  SimpleF Simple = ()
-
 data XtorSig a = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: Twice [a]
   } deriving (Eq, Show, Ord)
 
 data Typ a
-  = TyTVar (TargetF a) TVarKind TVar
-  | TyUVar (SimpleF a) UVar
+  = TyVar TVarKind TVar
   | TySimple DataCodata [XtorSig (Typ a)]
   | TyNominal TypeName
   | TySet (TargetF a) UnionInter [Typ a]
@@ -80,9 +72,8 @@ freeTypeVars :: TargetType -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: TargetType -> [TVar]
-    freeTypeVars' (TyTVar () Normal tv) = [tv]
-    freeTypeVars' (TyTVar () Recursive _)  = []
-    freeTypeVars' (TyUVar v _) = absurd v
+    freeTypeVars' (TyVar Normal tv) = [tv]
+    freeTypeVars' (TyVar Recursive _)  = []
     freeTypeVars' (TySet () _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec () _ t)  = freeTypeVars' t
     freeTypeVars' (TyNominal _) = []
@@ -106,7 +97,7 @@ data Constraint = SubType SimpleType SimpleType deriving (Eq, Show, Ord)
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint]
-                                   , cs_uvars :: [UVar]
+                                   , cs_uvars :: [TVar]
                                    } deriving (Eq, Show)
 
 ------------------------------------------------------------------------------

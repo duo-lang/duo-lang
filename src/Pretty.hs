@@ -69,9 +69,6 @@ instance Pretty a => Pretty (Command a) where
 -- Prettyprinting of Types
 ---------------------------------------------------------------------------------
 
-instance Pretty UVar where
-  pretty (MkUVar n) = "U" <> pretty n
-
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
 
@@ -85,8 +82,7 @@ instance Pretty (Typ a) where
   pretty (TySet _ Inter []) = "Top"
   pretty (TySet _ Inter [t]) = pretty t
   pretty (TySet _ Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
-  pretty (TyUVar _ uv) = pretty uv
-  pretty (TyTVar _ _ tv) = pretty tv -- Normal + Recursive
+  pretty (TyVar _ tv) = pretty tv -- Normal + Recursive
   pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t
   pretty (TyNominal tn) = pretty (unTypeName tn)
   pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
