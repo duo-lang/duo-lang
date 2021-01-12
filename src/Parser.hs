@@ -309,14 +309,14 @@ recVar = do
   rvs <- asks rvars
   rv <- MkTVar <$> freeVarName
   guard (rv `S.member` rvs)
-  return $ TyTVar () Recursive rv
+  return $ TyVar Recursive rv
 
 typeVariable :: TypeParser TargetType
 typeVariable = do
   tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyTVar () Normal tv
+  return $ TyVar Normal tv
 
 setType :: UnionInter -> TypeParser TargetType
 setType Union = TySet () Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
