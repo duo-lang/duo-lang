@@ -189,8 +189,15 @@ muAbstraction pc = do
     CnsRep -> return $ MuAbs pc () (commandClosingSingle PrdRep v cmd)
 
 
+cmdEnvP :: Parser (Command ())
+cmdEnvP = do
+  v <- lexeme (many alphaNumChar)
+  prdEnv <- asks (cmdEnv . parseEnv)
+  Just t <- return $  M.lookup v prdEnv
+  return t
+
 commandP :: Parser (Command ())
-commandP = try (parens commandP) <|> doneCmd <|> printCmd <|> applyCmd
+commandP = try (parens commandP) <|> try cmdEnvP <|> doneCmd <|> printCmd <|> applyCmd
 
 applyCmd :: Parser (Command ())
 applyCmd = do
@@ -210,7 +217,7 @@ printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
 ---------------------------------------------------------------------------------
 
 declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> typeDeclarationP <|> dataDeclP
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> typeDeclarationP <|> dataDeclP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
@@ -229,6 +236,15 @@ cnsDeclarationP = do
   t <- lexeme (termP CnsRep)
   _ <- symbol ";"
   return (CnsDecl v t)
+
+cmdDeclarationP :: Parser (Declaration ())
+cmdDeclarationP = do
+  _ <- try $ lexeme (symbol "cmd")
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme commandP
+  _ <- symbol ";"
+  return (CmdDecl v t)
 
 typeDeclarationP :: Parser (Declaration ())
 typeDeclarationP = do

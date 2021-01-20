@@ -365,7 +365,7 @@ all_options = [ type_option, show_option, help_option, def_option, save_option, 
 completer :: String -> ReplInner [String]
 completer s = do
   env <- gets replEnv
-  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (typEnv env) ++ ((unTypeName . data_name) <$> (declEnv env)))
+  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (cmdEnv env) ++ M.keys (typEnv env) ++ ((unTypeName . data_name) <$> (declEnv env)))
 
 ini :: Repl ()
 ini = do
