@@ -23,6 +23,13 @@ newtype TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
 
 data SimpleTarget = Simple | Target deriving (Eq, Ord, Show)
 
+-- | Singleton Type for SimpleTarget
+data SimpleTargetRep st where
+  SimpleRep :: SimpleTargetRep Simple
+  TargetRep :: SimpleTargetRep Target
+deriving instance Show (SimpleTargetRep st)
+
+
 data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data UnionInter = Union | Inter deriving (Eq, Show, Ord)

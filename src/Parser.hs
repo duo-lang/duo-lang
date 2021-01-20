@@ -262,44 +262,29 @@ subtypingProblemP = do
   return (t1, t2)
 
 ---------------------------------------------------------------------------------
--- Type parsing
+-- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
 
-typeSchemeP :: Parser TypeScheme
-typeSchemeP = do
-  tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) typeR
-  if tvars' == S.fromList (freeTypeVars monotype)
-    then return (generalize monotype)
-    else fail "Forall annotation in type scheme is incorrect"
+typeNameP :: Parser TypeName
+typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
---without joins and meets
-typeR' :: Parser TargetType
-typeR' = try (parens typeR) <|>
-  nominalTypeP <|>
-  dataType <|>
-  codataType <|>
-  try recVar <|>
-  recType <|>
-  typeVariable
+nominalTypeP :: Parser (Typ st)
+nominalTypeP = TyNominal <$> typeNameP
 
-typeR :: Parser TargetType
-typeR = try (setType Union) <|> try (setType Inter) <|> typeR'
-
-dataType :: Parser TargetType
-dataType = angles $ do
-  xtorSigs <- xtorSignature `sepBy` pipe
+dataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+dataTypeP rep = angles $ do
+  xtorSigs <- xtorSignatureP rep `sepBy` pipe
   return (TySimple Data xtorSigs)
 
-codataType :: Parser TargetType
-codataType = braces $ do
-  xtorSigs <- xtorSignature `sepBy` comma
+codataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+codataTypeP rep = braces $ do
+  xtorSigs <- xtorSignatureP rep `sepBy` comma
   return (TySimple Codata xtorSigs)
 
-xtorSignature :: Parser (XtorSig TargetType)
-xtorSignature = do
+xtorSignatureP :: SimpleTargetRep st -> Parser (XtorSig (Typ st))
+xtorSignatureP rep = do
   xt <- xtorName Structural
-  args <- argListP (lexeme typeR) (lexeme typeR)
+  args <- argListP (lexeme (typP rep)) (lexeme (typP rep))
   return (MkXtorSig xt args)
 
 recVar :: Parser TargetType
@@ -317,55 +302,52 @@ typeVariable = do
   return $ TyVar Normal tv
 
 setType :: UnionInter -> Parser TargetType
-setType Union = TySet () Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
-setType Inter = TySet () Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
+setType Union = TySet () Union <$> (lexeme targetTypeP' `sepBy2` (symbol "\\/"))
+setType Inter = TySet () Inter <$> (lexeme targetTypeP' `sepBy2` (symbol "/\\"))
 
 recType :: Parser TargetType
 recType = do
   _ <- symbol "rec"
   rv <- MkTVar <$> freeVarName
   _ <- dot
-  ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) typeR
+  ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) targetTypeP
   return $ TyRec () rv ty
 
----------------------------------------------------------------------------------
--- Parser for Simple Types
----------------------------------------------------------------------------------
+-- Without joins and meets
+targetTypeP' :: Parser TargetType
+targetTypeP' = try (parens targetTypeP) <|>
+  nominalTypeP <|>
+  dataTypeP TargetRep <|>
+  codataTypeP TargetRep <|>
+  try recVar <|>
+  recType <|>
+  typeVariable
 
-typeNameP :: Parser TypeName
-typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
-
-
-xtorSignatureP :: Parser (XtorSig SimpleType)
-xtorSignatureP = do
-  xt <- xtorName Structural
-  args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
-  return (MkXtorSig xt args)
-
-dataTypeP :: Parser SimpleType
-dataTypeP = angles $ do
-  xtorSigs <- xtorSignatureP `sepBy` pipe
-  return (TySimple Data xtorSigs)
-
-codataTypeP :: Parser SimpleType
-codataTypeP = braces $ do
-  xtorSigs <- xtorSignatureP `sepBy` comma
-  return (TySimple Codata xtorSigs)
-
-nominalTypeP :: Parser (Typ a)
-nominalTypeP = TyNominal <$> typeNameP
+targetTypeP :: Parser TargetType
+targetTypeP = try (setType Union) <|> try (setType Inter) <|> targetTypeP'
 
 simpleTypeP :: Parser SimpleType
-simpleTypeP = nominalTypeP <|>
-              dataTypeP <|>
-              codataTypeP
+simpleTypeP = nominalTypeP <|> dataTypeP SimpleRep <|> codataTypeP SimpleRep
 
+typP :: SimpleTargetRep st -> Parser (Typ st)
+typP SimpleRep = simpleTypeP
+typP TargetRep = targetTypeP
+
+---------------------------------------------------------------------------------
+-- Parsing of type schemes.
+---------------------------------------------------------------------------------
+
+typeSchemeP :: Parser TypeScheme
+typeSchemeP = do
+  tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
+  monotype <- local (\s -> s { tvars = tvars' }) targetTypeP
+  if tvars' == S.fromList (freeTypeVars monotype)
+    then return (generalize monotype)
+    else fail "Forall annotation in type scheme is incorrect"
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
-
-
 
 dataDeclP :: Parser (Declaration ())
 dataDeclP = DataDecl <$> dataDeclP'
