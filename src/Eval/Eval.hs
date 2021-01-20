@@ -1,4 +1,4 @@
-module Eval.Eval (eval) where
+module Eval.Eval (eval, evalSteps) where
 
 import Prettyprinter
 
@@ -46,11 +46,22 @@ evalOneStep (Apply prd (MuAbs CnsRep _ cmd)) = return (Just (commandOpeningSingl
 evalOneStep cmd@(Apply _ _) = Left $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                                           "\"\n Free variable encountered!")
 
-
-eval :: Pretty a => Command a -> EvalM String
+-- | Return just thef final evaluation result
+eval :: Pretty a => Command a -> EvalM (Command a)
 eval cmd = do
   cmd' <- evalOneStep cmd
   case cmd' of
-    Nothing -> Right (ppPrint cmd)
+    Nothing -> Right cmd
     Just cmd' -> eval cmd'
+
+-- | Return all intermediate evaluation results
+evalSteps :: Pretty a => Command a -> EvalM [Command a]
+evalSteps cmd = evalSteps' [cmd] cmd
+  where
+    evalSteps' :: Pretty a => [Command a] -> Command a -> EvalM [Command a]
+    evalSteps' cmds cmd = do
+      cmd' <- evalOneStep cmd
+      case cmd' of
+        Nothing -> Right cmds
+        Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
 

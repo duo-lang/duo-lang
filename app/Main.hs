@@ -28,14 +28,18 @@ import Data.GraphViz
 -- Internal State of the Repl
 ------------------------------------------------------------------------------
 
+data EvalSteps = Steps | NoSteps
+
 data ReplState = ReplState
   { replEnv :: Environment
   , loadedFiles :: [FilePath]
+  , steps :: EvalSteps
   }
 
 initialReplState :: ReplState
 initialReplState = ReplState { replEnv = mempty
                              , loadedFiles = ["prg.txt"]
+                             , steps = NoSteps
                              }
 
 ------------------------------------------------------------------------------
@@ -69,9 +73,16 @@ cmd :: String -> Repl ()
 cmd s = do
   env <- gets replEnv
   com <- parseRepl s commandP env
-  case eval com of
-    Right res -> prettyRepl res
-    Left err -> prettyRepl err
+  steps <- gets steps
+  case steps of
+    NoSteps -> do
+      case eval com of
+        Right res -> prettyRepl res
+        Left err -> prettyRepl err
+    Steps -> do
+      case evalSteps com of
+        Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
+        Left err -> prettyRepl err
 
 ------------------------------------------------------------------------------
 -- Options
@@ -81,6 +92,32 @@ data Option = Option
   { option_name :: String
   , option_cmd  :: String -> Repl ()
   , option_help :: [String]
+  }
+
+-- Set & Unset
+
+set_cmd :: String -> Repl ()
+set_cmd "steps" = do
+  modify (\rs -> rs { steps = Steps })
+set_cmd s = prettyRepl $ "The option " ++ s ++ " is not recognized."
+
+set_option :: Option
+set_option = Option
+  { option_name = "set"
+  , option_cmd = set_cmd
+  , option_help = ["Set a Repl option."]
+  }
+
+unset_cmd :: String -> Repl ()
+unset_cmd "steps" = do
+  modify (\rs -> rs { steps = NoSteps })
+unset_cmd s = prettyRepl $ "The option " ++ s ++ " is not recognized."
+
+unset_option :: Option
+unset_option = Option
+  { option_name = "unset"
+  , option_cmd = unset_cmd
+  , option_help = ["Unset a Repl option."]
   }
 
 -- Type
@@ -311,7 +348,7 @@ help_option = Option
 -- All Options
 
 all_options :: [Option]
-all_options = [ type_option, show_option, help_option, def_option, save_option
+all_options = [ type_option, show_option, help_option, def_option, save_option, set_option, unset_option
               , sub_option, bind_option, simplify_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
