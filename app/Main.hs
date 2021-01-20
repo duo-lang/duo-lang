@@ -340,7 +340,7 @@ opts :: ReplOpts ReplInner
 opts = ReplOpts
   { banner           = repl_banner
   , command          = cmd
-  , options          = (\opt -> (option_name opt, option_cmd opt)) <$> all_options
+  , options          = (\opt -> (option_name opt, \s -> dontCrash ((option_cmd opt) s))) <$> all_options
   , prefix           = Just ':'
   , multilineCommand = Nothing
   , tabComplete      = Word0 completer
