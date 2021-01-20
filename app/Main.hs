@@ -34,12 +34,14 @@ data ReplState = ReplState
   { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
+  , evalOrder :: EvalOrder
   }
 
 initialReplState :: ReplState
 initialReplState = ReplState { replEnv = mempty
                              , loadedFiles = ["prg.txt"]
                              , steps = NoSteps
+                             , evalOrder = CBV
                              }
 
 ------------------------------------------------------------------------------
@@ -74,13 +76,14 @@ cmd s = do
   env <- gets replEnv
   com <- parseRepl s commandP env
   steps <- gets steps
+  evalOrder <- gets evalOrder
   case steps of
     NoSteps -> do
-      case eval com of
+      case runEval (eval com) evalOrder of
         Right res -> prettyRepl res
         Left err -> prettyRepl err
     Steps -> do
-      case evalSteps com of
+      case runEval (evalSteps com) evalOrder of
         Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
         Left err -> prettyRepl err
 
@@ -97,6 +100,10 @@ data Option = Option
 -- Set & Unset
 
 set_cmd :: String -> Repl ()
+set_cmd "cbv" = do
+  modify (\rs -> rs { evalOrder = CBV })
+set_cmd "cbn" = do
+  modify (\rs -> rs { evalOrder = CBN })
 set_cmd "steps" = do
   modify (\rs -> rs { steps = Steps })
 set_cmd s = prettyRepl $ "The option " ++ s ++ " is not recognized."
