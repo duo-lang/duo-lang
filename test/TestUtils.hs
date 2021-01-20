@@ -8,6 +8,7 @@ filterEnvironment :: [String] -> Environment -> Environment
 filterEnvironment failingExamples Environment {..} =
   Environment { prdEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) prdEnv
               , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
+              , cmdEnv = cmdEnv
               , typEnv = typEnv
               , declEnv = declEnv
               }
