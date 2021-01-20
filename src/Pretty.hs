@@ -51,7 +51,15 @@ instance Pretty a => Pretty (Case a) where
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
 
+isNum :: Term pc a -> Maybe Int
+isNum (XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])) = Just 0
+isNum (XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [n] [])) = case isNum n of
+  Nothing -> Nothing
+  Just n -> Just (n + 1)
+isNum _ = Nothing
+
 instance Pretty a => Pretty (Term pc a) where
+  pretty (isNum -> Just n) = pretty n -- View Pattern !
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
@@ -62,7 +70,7 @@ instance Pretty a => Pretty (Term pc a) where
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"
-  pretty (Print t) = "Print" <+> pretty t
+  pretty (Print t) = "Print" <> parens (pretty t)
   pretty (Apply t1 t2) = group (nest 3 (line' <> vsep [pretty t1, ">>", pretty t2]))
 
 ---------------------------------------------------------------------------------

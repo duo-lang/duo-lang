@@ -43,7 +43,8 @@ common shared-build-depends
                      GADTs,
                      KindSignatures,
                      StandaloneDeriving,
-                     TypeFamilies
+                     TypeFamilies,
+                     ViewPatterns
 
 library
   import: shared-build-depends
