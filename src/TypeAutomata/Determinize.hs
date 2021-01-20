@@ -114,16 +114,16 @@ determinize' f (gr,starts) =
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
 combineNodeLabels nls
-  = if not . allEq $ (map fst nls)
+  = if not . allEq $ (map hc_pol nls)
       then error "Tried to combine node labels of different polarity!"
-      else (pol, HeadCons {
-        hc_data = mrgDat [xtors | HeadCons (Just xtors) _ _ <- hcs],
-        hc_codata = mrgCodat [xtors | HeadCons _ (Just xtors) _ <- hcs],
-        hc_nominal = S.unions [ tn | HeadCons _ _ tn <- hcs]
-        })
+      else HeadCons {
+        hc_pol = pol,
+        hc_data = mrgDat [xtors | HeadCons _ (Just xtors) _ _ <- nls],
+        hc_codata = mrgCodat [xtors | HeadCons _ _ (Just xtors) _ <- nls],
+        hc_nominal = S.unions [ tn | HeadCons _ _ _ tn <- nls]
+        }
   where
-    pol = fst (head nls)
-    hcs = map snd nls
+    pol = hc_pol (head nls)
     mrgDat [] = Nothing
     mrgDat (xtor:xtors) = Just $ case pol of {Prd -> S.unions (xtor:xtors) ; Cns -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
@@ -145,14 +145,14 @@ determinize TypeAut{..} =
 -- Removal of faulty edges
 -------------------------------------------------------------------------
 
-containsXtor :: DataCodata -> HeadCons -> XtorName -> Bool
-containsXtor Data (HeadCons Nothing _ _) _ = False
-containsXtor Codata (HeadCons _ Nothing _) _ = False
-containsXtor Data (HeadCons (Just xtors) _ _) xt = xt `S.member` xtors
-containsXtor Codata (HeadCons _ (Just xtors) _) xt = xt `S.member` xtors
+containsXtor :: DataCodata -> NodeLabel -> XtorName -> Bool
+containsXtor Data (HeadCons _ Nothing _ _) _ = False
+containsXtor Codata (HeadCons _ _ Nothing _) _ = False
+containsXtor Data (HeadCons _ (Just xtors) _ _) xt = xt `S.member` xtors
+containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` xtors
 
 isFaultyEdge :: TypeGr -> LEdge EdgeLabel -> Bool
-isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (snd (fromJust (lab gr i))) xt
+isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt
 
 removeFaultyEdges :: TypeGr -> TypeGr
 removeFaultyEdges gr = delAllLEdges (filter (isFaultyEdge gr) (labEdges gr)) gr

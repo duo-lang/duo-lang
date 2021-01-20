@@ -125,8 +125,8 @@ instance Pretty Error where
 -- Prettyprinting of Type Automata
 ---------------------------------------------------------------------------------
 
-instance Pretty HeadCons where
-  pretty (HeadCons maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
+instance Pretty NodeLabel where
+  pretty (HeadCons _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat
                                                                           , printNominal tns])
     where
@@ -147,10 +147,10 @@ typeAutToDot TypeAut {..} =
 
 typeAutParams :: GraphvizParams Node NodeLabel (Maybe EdgeLabel) () NodeLabel
 typeAutParams = defaultParams
-  { fmtNode = \(_,(pol,hc)) ->
+  { fmtNode = \(_,nl) ->
     [ style filled
-    , fillColor $ case pol of {Prd -> White; Cns -> Gray}
-    , textLabel (pack (ppPrint (hc :: HeadCons)))]
+    , fillColor $ case hc_pol nl of {Prd -> White; Cns -> Gray}
+    , textLabel (pack (ppPrint (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> maybe flowEdgeStyle regularEdgeStyle elM
   }
   where

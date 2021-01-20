@@ -39,8 +39,8 @@ admissableM :: TypeAutDet -> FlowEdge -> Maybe ()
 admissableM aut@TypeAut{..} e@(i,j) =
     let
       subtypeData = do -- Maybe monad
-        (Cns, HeadCons (Just dat1) _ _) <- lab ta_gr i
-        (Prd, HeadCons (Just dat2) _ _) <- lab ta_gr j
+        (HeadCons Cns (Just dat1) _ _) <- lab ta_gr i
+        (HeadCons Prd (Just dat2) _ _) <- lab ta_gr j
         _ <- forM (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
         _ <- forM (S.toList dat1) $ \xt -> do
           _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
@@ -52,8 +52,8 @@ admissableM aut@TypeAut{..} e@(i,j) =
           return ()
         return ()
       subtypeCodata = do -- Maybe monad
-        (Cns, HeadCons _ (Just codat1) _) <- lab ta_gr i
-        (Prd, HeadCons _ (Just codat2) _) <- lab ta_gr j
+        (HeadCons Cns _ (Just codat1) _) <- lab ta_gr i
+        (HeadCons Prd _ (Just codat2) _) <- lab ta_gr j
         _ <- forM (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
         _ <- forM (S.toList codat2) $ \xt -> do
           _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
@@ -65,8 +65,8 @@ admissableM aut@TypeAut{..} e@(i,j) =
           return ()
         return ()
       subTypeNominal = do -- Maybe monad
-        (Cns, HeadCons _ _ nominal1) <- lab ta_gr i
-        (Prd, HeadCons _ _ nominal2) <- lab ta_gr j
+        (HeadCons Cns _ _ nominal1) <- lab ta_gr i
+        (HeadCons Prd _ _ nominal2) <- lab ta_gr j
         guard $ not . S.null $ S.intersection nominal1 nominal2
     in
       guard (e `elem` ta_flowEdges) <|> subtypeData <|> subtypeCodata <|> subTypeNominal

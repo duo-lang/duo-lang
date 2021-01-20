@@ -104,7 +104,7 @@ nodeToType i = do
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
-      let (_,_,(pol,HeadCons datSet codatSet tns),_) = context gr i
+      let (_,_,(HeadCons pol datSet codatSet tns),_) = context gr i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       resType <- local (visitNode i) $ do
         -- Creating type variables

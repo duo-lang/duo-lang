@@ -14,20 +14,19 @@ import Syntax.Terms
 -- Graph syntax
 -------------------------------------------------------
 
-data HeadCons = HeadCons
-  { hc_data :: Maybe (Set XtorName)
+data NodeLabel = HeadCons
+  { hc_pol :: PrdCns
+  , hc_data :: Maybe (Set XtorName)
   , hc_codata :: Maybe (Set XtorName)
   , hc_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
-emptyHeadCons :: HeadCons
-emptyHeadCons = HeadCons Nothing Nothing S.empty
+emptyHeadCons :: PrdCns -> NodeLabel
+emptyHeadCons pol = HeadCons pol Nothing Nothing S.empty
 
-singleHeadCons :: DataCodata -> Set XtorName -> HeadCons
-singleHeadCons Data xtors = HeadCons (Just xtors) Nothing S.empty
-singleHeadCons Codata xtors = HeadCons Nothing (Just xtors) S.empty
-
-type NodeLabel = (PrdCns, HeadCons)
+singleHeadCons :: PrdCns -> DataCodata -> Set XtorName -> NodeLabel
+singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
+singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 
 data EdgeLabel
   = EdgeSymbol DataCodata XtorName PrdCns Int
