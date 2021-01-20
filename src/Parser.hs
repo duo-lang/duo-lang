@@ -20,11 +20,20 @@ import Syntax.Types
 import Syntax.Program
 import Utils
 
+data ParseReader = ParseReader
+  { rvars :: Set TVar
+  , tvars :: Set TVar
+  , parseEnv :: Syntax.Program.Environment
+  }
+
+defaultParseReader :: Syntax.Program.Environment -> ParseReader
+defaultParseReader env = ParseReader S.empty S.empty env
+
 -- A parser that can read values from an environment
-type Parser = ReaderT Syntax.Program.Environment (Parsec Void String)
+type Parser a = ReaderT ParseReader (Parsec Void String) a
 
 runEnvParser :: Parser a -> Syntax.Program.Environment -> String -> Either Error a
-runEnvParser p env input = case runParser (runReaderT (lexeme (p <* eof)) env) "<interactive>" input of
+runEnvParser p env input = case runParser (runReaderT (lexeme (p <* eof)) (defaultParseReader env)) "<interactive>" input of
   Left err -> Left $ ParseError (errorBundlePretty err)
   Right x -> Right x
 
@@ -86,20 +95,15 @@ argListP p q = do
 argsSig :: Int -> Int -> Twice [()]
 argsSig n m = Twice (replicate n ()) (replicate m ())
 
--- nice helper function for creating natural numbers
-numToTerm :: Int -> Term Prd ()
-numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
-numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
-
 termEnvP :: PrdCnsRep pc -> Parser (Term pc ())
 termEnvP PrdRep = do
   v <- lexeme (many alphaNumChar)
-  prdEnv <- asks prdEnv
+  prdEnv <- asks (prdEnv . parseEnv)
   Just t <- return $  M.lookup v prdEnv
   return t
 termEnvP CnsRep = do
   v <- lexeme (many alphaNumChar)
-  cnsEnv <- asks cnsEnv
+  cnsEnv <- asks (cnsEnv . parseEnv)
   Just t <- return $ M.lookup v cnsEnv
   return t
 
@@ -126,6 +130,10 @@ freeVar pc = do
 numLit :: PrdCnsRep pc -> Parser (Term pc ())
 numLit CnsRep = empty
 numLit PrdRep = numToTerm . read <$> some numberChar
+  where
+    numToTerm :: Int -> Term Prd ()
+    numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
+    numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 lambdaSugar :: PrdCnsRep pc -> Parser (Term pc ())
 lambdaSugar CnsRep = empty
@@ -231,9 +239,9 @@ typeDeclarationP = do
 
 -- Multiple definitions seperated by ';'. Later definition may depend on earlier ones
 environmentP :: Parser Syntax.Program.Environment
-environmentP = (eof >> ask) <|> do
+environmentP = (eof >> asks parseEnv) <|> do
   decl <- sc >> declarationP
-  local (insertDecl decl) environmentP
+  local (\pr@ParseReader {parseEnv} -> pr { parseEnv = insertDecl decl parseEnv }) environmentP
 
 ---------------------------------------------------------------------------------
 -- Parsing for Repl
@@ -254,120 +262,92 @@ subtypingProblemP = do
   return (t1, t2)
 
 ---------------------------------------------------------------------------------
--- Type parsing
+-- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
 
-data TypeParseReader = TypeParseReader
-  { rvars :: Set TVar
-  , tvars :: Set TVar
-  }
+typeNameP :: Parser TypeName
+typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
--- ReaderT to keep track of recursively bound type variables
--- StateT to keep track of free type variables.
-type TypeParser a = ReaderT TypeParseReader Parser a
+nominalTypeP :: Parser (Typ st)
+nominalTypeP = TyNominal <$> typeNameP
 
-typeSchemeP :: Parser TypeScheme
-typeSchemeP = do
-  tvars <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  let initialState = TypeParseReader { rvars = S.empty, tvars = tvars }
-  monotype <- runReaderT typeR initialState
-  if tvars == S.fromList (freeTypeVars monotype)
-    then return (generalize monotype)
-    else fail "Forall annotation in type scheme is incorrect"
-
---without joins and meets
-typeR' :: TypeParser TargetType
-typeR' = try (parens typeR) <|>
-  (lift nominalTypeP) <|>
-  dataType <|>
-  codataType <|>
-  try recVar <|>
-  recType <|>
-  typeVariable
-
-typeR :: TypeParser TargetType
-typeR = try (setType Union) <|> try (setType Inter) <|> typeR'
-
-dataType :: TypeParser TargetType
-dataType = angles $ do
-  xtorSigs <- xtorSignature `sepBy` pipe
+dataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+dataTypeP rep = angles $ do
+  xtorSigs <- xtorSignatureP rep `sepBy` pipe
   return (TySimple Data xtorSigs)
 
-codataType :: TypeParser TargetType
-codataType = braces $ do
-  xtorSigs <- xtorSignature `sepBy` comma
+codataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+codataTypeP rep = braces $ do
+  xtorSigs <- xtorSignatureP rep `sepBy` comma
   return (TySimple Codata xtorSigs)
 
-xtorSignature :: TypeParser (XtorSig TargetType)
-xtorSignature = do
+xtorSignatureP :: SimpleTargetRep st -> Parser (XtorSig (Typ st))
+xtorSignatureP rep = do
   xt <- xtorName Structural
-  args <- argListP (lexeme typeR) (lexeme typeR)
+  args <- argListP (lexeme (typP rep)) (lexeme (typP rep))
   return (MkXtorSig xt args)
 
-recVar :: TypeParser TargetType
+recVar :: Parser TargetType
 recVar = do
   rvs <- asks rvars
   rv <- MkTVar <$> freeVarName
   guard (rv `S.member` rvs)
   return $ TyVar Recursive rv
 
-typeVariable :: TypeParser TargetType
+typeVariable :: Parser TargetType
 typeVariable = do
   tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
   return $ TyVar Normal tv
 
-setType :: UnionInter -> TypeParser TargetType
-setType Union = TySet () Union <$> (lexeme typeR' `sepBy2` (symbol "\\/"))
-setType Inter = TySet () Inter <$> (lexeme typeR' `sepBy2` (symbol "/\\"))
+setType :: UnionInter -> Parser TargetType
+setType Union = TySet () Union <$> (lexeme targetTypeP' `sepBy2` (symbol "\\/"))
+setType Inter = TySet () Inter <$> (lexeme targetTypeP' `sepBy2` (symbol "/\\"))
 
-recType :: TypeParser TargetType
+recType :: Parser TargetType
 recType = do
   _ <- symbol "rec"
   rv <- MkTVar <$> freeVarName
   _ <- dot
-  ty <- local (\tpr@TypeParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) typeR
+  ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) targetTypeP
   return $ TyRec () rv ty
 
----------------------------------------------------------------------------------
--- Parser for Simple Types
----------------------------------------------------------------------------------
+-- Without joins and meets
+targetTypeP' :: Parser TargetType
+targetTypeP' = try (parens targetTypeP) <|>
+  nominalTypeP <|>
+  dataTypeP TargetRep <|>
+  codataTypeP TargetRep <|>
+  try recVar <|>
+  recType <|>
+  typeVariable
 
-typeNameP :: Parser TypeName
-typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
-
-
-xtorSignatureP :: Parser (XtorSig SimpleType)
-xtorSignatureP = do
-  xt <- xtorName Structural
-  args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
-  return (MkXtorSig xt args)
-
-dataTypeP :: Parser SimpleType
-dataTypeP = angles $ do
-  xtorSigs <- xtorSignatureP `sepBy` pipe
-  return (TySimple Data xtorSigs)
-
-codataTypeP :: Parser SimpleType
-codataTypeP = braces $ do
-  xtorSigs <- xtorSignatureP `sepBy` comma
-  return (TySimple Codata xtorSigs)
-
-nominalTypeP :: Parser (Typ a)
-nominalTypeP = TyNominal <$> typeNameP
+targetTypeP :: Parser TargetType
+targetTypeP = try (setType Union) <|> try (setType Inter) <|> targetTypeP'
 
 simpleTypeP :: Parser SimpleType
-simpleTypeP = nominalTypeP <|>
-              dataTypeP <|>
-              codataTypeP
+simpleTypeP = nominalTypeP <|> dataTypeP SimpleRep <|> codataTypeP SimpleRep
 
+typP :: SimpleTargetRep st -> Parser (Typ st)
+typP SimpleRep = simpleTypeP
+typP TargetRep = targetTypeP
+
+---------------------------------------------------------------------------------
+-- Parsing of type schemes.
+---------------------------------------------------------------------------------
+
+typeSchemeP :: Parser TypeScheme
+typeSchemeP = do
+  tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
+  monotype <- local (\s -> s { tvars = tvars' }) targetTypeP
+  if tvars' == S.fromList (freeTypeVars monotype)
+    then return (generalize monotype)
+    else fail "Forall annotation in type scheme is incorrect"
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
-
-
 
 dataDeclP :: Parser (Declaration ())
 dataDeclP = DataDecl <$> dataDeclP'
