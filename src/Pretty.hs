@@ -125,8 +125,8 @@ instance Pretty Error where
 -- Prettyprinting of Type Automata
 ---------------------------------------------------------------------------------
 
-instance Pretty HeadCons where
-  pretty (HeadCons maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
+instance Pretty NodeLabel where
+  pretty (HeadCons _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat
                                                                           , printNominal tns])
     where
@@ -134,25 +134,28 @@ instance Pretty HeadCons where
       printCodat codat = braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty)
       printNominal tns = Just (intercalateX ";" (pretty <$> (S.toList tns)))
 
-instance Pretty EdgeLabel where
+instance Pretty (EdgeLabel a) where
   pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
   pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
+  pretty (EpsilonEdge _) = "e"
 
-typeAutToDot :: TypeAut' EdgeLabel f -> DotGraph Node
+typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
 typeAutToDot TypeAut {..} =
     let
-      grWithFlow = insEdges [(i,j,Nothing) | (i,j) <- ta_flowEdges] (emap Just ta_gr)
+      grWithFlow = insEdges [(i,j,EpsilonEdge ()) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr) -- Should be modified!
     in
       graphToDot typeAutParams grWithFlow
 
-typeAutParams :: GraphvizParams Node NodeLabel (Maybe EdgeLabel) () NodeLabel
+typeAutParams :: GraphvizParams Node NodeLabel EdgeLabelEpsilon () NodeLabel
 typeAutParams = defaultParams
-  { fmtNode = \(_,(pol,hc)) ->
+  { fmtNode = \(_,nl) ->
     [ style filled
-    , fillColor $ case pol of {Prd -> White; Cns -> Gray}
-    , textLabel (pack (ppPrint (hc :: HeadCons)))]
-  , fmtEdge = \(_,_,elM) -> maybe flowEdgeStyle regularEdgeStyle elM
+    , fillColor $ case hc_pol nl of {Prd -> White; Cns -> Gray}
+    , textLabel (pack (ppPrint (nl :: NodeLabel)))]
+  , fmtEdge = \(_,_,elM) -> case elM of
+                              el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
+                              (EpsilonEdge _) -> flowEdgeStyle
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
-    regularEdgeStyle el = [textLabel $ pack (ppPrint (el :: EdgeLabel))]
+    regularEdgeStyle el = [textLabel $ pack (ppPrint el)]

@@ -218,7 +218,7 @@ save_cmd s = do
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 
-saveGraphFiles :: String -> TypeAut' EdgeLabel f -> Repl ()
+saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f -> Repl ()
 saveGraphFiles fileName aut = do
   let graphDir = "graphs"
   let fileUri = "  file://"

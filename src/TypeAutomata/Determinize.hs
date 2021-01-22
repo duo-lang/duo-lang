@@ -6,10 +6,10 @@ module TypeAutomata.Determinize
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS
+import Data.Graph.Inductive.PatriciaTree
 
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
-import Data.Bifunctor
 import Data.Maybe (fromJust)
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -17,6 +17,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
+import Data.Void
 import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
@@ -26,22 +27,27 @@ import Utils
 -- Generic epsilon edge removal algorithm
 ---------------------------------------------------------------------------------------
 
-delAllLEdges :: (DynGraph gr, Eq b) => [LEdge b] -> gr a b -> gr a b
+delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es
 
-removeEpsilonEdges' :: (DynGraph gr, Eq b) => Node -> (gr a (Maybe b), [Node]) -> (gr a (Maybe b), [Node])
+removeEpsilonEdges' :: Node -> (TypeGrEps, [Node]) -> (TypeGrEps, [Node])
 removeEpsilonEdges' n (gr,starts) =
-  ( delAllLEdges [(n,j,Nothing) | (j,Nothing) <- lsuc gr n]
-  . insEdges [(i,j,el) | (j,Nothing) <- lsuc gr n, (i,el) <- lpre gr n]
+  ( delAllLEdges [(n,j, EpsilonEdge ()) | (j, EpsilonEdge _) <- lsuc gr n]
+  . insEdges [(i,j,el) | (j, EpsilonEdge _) <- lsuc gr n, (i,el) <- lpre gr n]
   $ gr
   , if n `elem` starts
-      then starts ++ [j | (j,Nothing) <- lsuc gr n]
+      then starts ++ [j | (j,EpsilonEdge _) <- lsuc gr n]
       else starts)
 
-fromEpsGr :: DynGraph gr => gr a (Maybe b) -> gr a b
-fromEpsGr gr = gmap (\(ins,i,nl,outs) -> (map (bimap fromJust id) ins, i, nl, map (bimap fromJust id) outs)) gr
+fromEpsGr :: TypeGrEps -> TypeGr
+fromEpsGr gr = gmap mapfun gr
+  where
+    foo :: Adj EdgeLabelEpsilon -> Adj EdgeLabelNormal
+    foo = fmap (\(el, node) -> (unsafeEmbedEdgeLabel el, node))
+    mapfun :: Context NodeLabel EdgeLabelEpsilon -> Context NodeLabel EdgeLabelNormal
+    mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
-removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
+removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeEpsilonEdges :: TypeAutEps -> TypeAut
@@ -73,13 +79,13 @@ removeIslands TypeAut{..} =
 -- Generic determinization algorithm
 ---------------------------------------------------------------------------------------
 
-getAlphabetForNodes :: (DynGraph gr, Ord b) => gr a b -> Set Node -> [b]
+getAlphabetForNodes :: Ord b => Gr NodeLabel b -> Set Node -> [b]
 getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concat (map (out gr) (S.toList ns)))
 
-succsWith :: (DynGraph gr, Eq b) => gr a b -> Set Node -> b -> Set Node
+succsWith :: Eq b => Gr NodeLabel b -> Set Node -> b -> Set Node
 succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) . concat $ map (lsuc gr) (S.toList ns)
 
-determinizeState :: (DynGraph gr, Ord b) => [Set Node] -> gr a b -> State (Map (Set Node) [((Set Node),b)]) ()
+determinizeState :: Ord b => [Set Node] -> Gr NodeLabel b -> State (Map (Set Node) [((Set Node),b)]) ()
 determinizeState [] _ = return ()
 determinizeState (ns:rest) gr = do
   mp <- get
@@ -90,16 +96,16 @@ determinizeState (ns:rest) gr = do
       modify (M.insert ns newEdges)
       determinizeState (newNodeSets ++ rest) gr
 
-runDeterminize :: (DynGraph gr, Ord b) => gr a b -> [Node] -> Map (Set Node) [((Set Node),b)]
+runDeterminize :: Ord b => Gr NodeLabel b -> [Node] -> Map (Set Node) [((Set Node),b)]
 runDeterminize gr starts = snd $ runState (determinizeState [S.fromList starts] gr) M.empty
 
-getNewNodeLabel :: (DynGraph gr) => ([a] -> c) -> gr a b -> Set Node -> c
+getNewNodeLabel :: ([NodeLabel] -> NodeLabel) -> Gr NodeLabel b -> Set Node -> NodeLabel
 getNewNodeLabel f gr ns = f $ catMaybes (map (lab gr) (S.toList ns))
 
 -- first argument is the node label "combiner"
 -- second result argument is a mapping from sets of node ids to new node ids
 -- this is necessary to correctly handle flow edges, which is done later
-determinize' :: (DynGraph gr, Ord b) => ([a] -> c) -> (gr a b, [Node]) -> (gr c b, Node, [(Node, (Set Node))])
+determinize' :: Ord b => ([NodeLabel] -> NodeLabel) -> (Gr NodeLabel b, [Node]) -> (Gr NodeLabel b, Node, [(Node, (Set Node))])
 determinize' f (gr,starts) =
   let
     mp = runDeterminize gr starts
@@ -114,16 +120,16 @@ determinize' f (gr,starts) =
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
 combineNodeLabels nls
-  = if not . allEq $ (map fst nls)
+  = if not . allEq $ (map hc_pol nls)
       then error "Tried to combine node labels of different polarity!"
-      else (pol, HeadCons {
-        hc_data = mrgDat [xtors | HeadCons (Just xtors) _ _ <- hcs],
-        hc_codata = mrgCodat [xtors | HeadCons _ (Just xtors) _ <- hcs],
-        hc_nominal = S.unions [ tn | HeadCons _ _ tn <- hcs]
-        })
+      else HeadCons {
+        hc_pol = pol,
+        hc_data = mrgDat [xtors | HeadCons _ (Just xtors) _ _ <- nls],
+        hc_codata = mrgCodat [xtors | HeadCons _ _ (Just xtors) _ <- nls],
+        hc_nominal = S.unions [ tn | HeadCons _ _ _ tn <- nls]
+        }
   where
-    pol = fst (head nls)
-    hcs = map snd nls
+    pol = hc_pol (head nls)
     mrgDat [] = Nothing
     mrgDat (xtor:xtors) = Just $ case pol of {Prd -> S.unions (xtor:xtors) ; Cns -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
@@ -145,14 +151,15 @@ determinize TypeAut{..} =
 -- Removal of faulty edges
 -------------------------------------------------------------------------
 
-containsXtor :: DataCodata -> HeadCons -> XtorName -> Bool
-containsXtor Data (HeadCons Nothing _ _) _ = False
-containsXtor Codata (HeadCons _ Nothing _) _ = False
-containsXtor Data (HeadCons (Just xtors) _ _) xt = xt `S.member` xtors
-containsXtor Codata (HeadCons _ (Just xtors) _) xt = xt `S.member` xtors
+containsXtor :: DataCodata -> NodeLabel -> XtorName -> Bool
+containsXtor Data (HeadCons _ Nothing _ _) _ = False
+containsXtor Codata (HeadCons _ _ Nothing _) _ = False
+containsXtor Data (HeadCons _ (Just xtors) _ _) xt = xt `S.member` xtors
+containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` xtors
 
-isFaultyEdge :: TypeGr -> LEdge EdgeLabel -> Bool
-isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (snd (fromJust (lab gr i))) xt
+isFaultyEdge :: TypeGr -> LEdge EdgeLabelNormal -> Bool
+isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt
+isFaultyEdge _ (_,_,EpsilonEdge v) = absurd v
 
 removeFaultyEdges :: TypeGr -> TypeGr
 removeFaultyEdges gr = delAllLEdges (filter (isFaultyEdge gr) (labEdges gr)) gr

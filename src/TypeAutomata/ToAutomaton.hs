@@ -39,10 +39,10 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM ()
 modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
 
-insertNode :: Node -> PrdCns -> HeadCons -> TypeToAutM ()
-insertNode node pol headcons = modifyGraph (G.insNode (node, (pol, headcons)))
+insertNode :: Node -> NodeLabel -> TypeToAutM ()
+insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
-insertEdges :: [(Node,Node,Maybe EdgeLabel)] -> TypeToAutM ()
+insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TypeToAutM ()
 insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TypeToAutM Node
@@ -71,44 +71,44 @@ insertType pol (TyVar Recursive rv) = do
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
 insertType Prd (TySet _ Union tys) = do
   newNode <- newNodeM
-  insertNode newNode Prd emptyHeadCons
+  insertNode newNode (emptyHeadCons Prd)
   ns <- mapM (insertType Prd) tys
-  insertEdges [(newNode, n, Nothing) | n <- ns]
+  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType Cns (TySet _ Union _) = throwError $ OtherError "insertType: type has wrong polarity."
 insertType Cns (TySet _ Inter tys) = do
   newNode <- newNodeM
-  insertNode newNode Cns emptyHeadCons
+  insertNode newNode (emptyHeadCons Cns)
   ns <- mapM (insertType Cns) tys
-  insertEdges [(newNode, n, Nothing) | n <- ns]
+  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType Prd (TySet _ Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
 insertType pol (TyRec _ rv ty) = do
   newNode <- newNodeM
-  insertNode newNode pol emptyHeadCons
+  insertNode newNode (emptyHeadCons pol)
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
-  insertEdges [(newNode, n, Nothing)]
+  insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType pol (TySimple s xtors) = do
   newNode <- newNodeM
-  insertNode newNode pol (singleHeadCons s (S.fromList (map sig_name xtors)))
+  insertNode newNode (singleHeadCons pol s (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType (applyVariance s Prd pol) prdType
-      insertEdges [(newNode, prdNode, Just (EdgeSymbol s xt Prd i))]
+      insertEdges [(newNode, prdNode, EdgeSymbol s xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
       cnsNode <- insertType (applyVariance s Cns pol) cnsType
-      insertEdges [(newNode, cnsNode, Just (EdgeSymbol s xt Cns j))]
+      insertEdges [(newNode, cnsNode, EdgeSymbol s xt Cns j)]
   return newNode
 insertType pol (TyNominal tn) = do
   newNode <- newNodeM
-  insertNode newNode pol (emptyHeadCons { hc_nominal = S.singleton tn })
+  insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
   return newNode
 
 createInitialFromTypeScheme :: [TVar] -> (TypeAutEps, LookupEnv)
 createInitialFromTypeScheme tvars =
   let
-    nodes = [(2 * i + offset, (pol, emptyHeadCons)) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
+    nodes = [(2 * i + offset, emptyHeadCons pol) | i <- [0..length tvars - 1], pol <- [Prd, Cns],
                                                                  let offset = case pol of {Prd -> 0; Cns -> 1}]
     initAut = TypeAut { ta_gr = G.mkGraph nodes []
                       , ta_starts = []
@@ -142,10 +142,10 @@ insertEpsilonEdges solverResult =
     (i,j) <- lookupTVar tv
     forM_ (vst_lowerbounds vstate) $ \ty -> do
       node <- insertType Prd ty
-      insertEdges [(i, node, Nothing)]
+      insertEdges [(i, node, EpsilonEdge ())]
     forM_ (vst_upperbounds vstate) $ \ty -> do
       node <- insertType Cns ty
-      insertEdges [(j, node, Nothing)]
+      insertEdges [(j, node, EpsilonEdge ())]
 
 solverStateToTypeAut :: SolverResult -> SimpleType -> PrdCns -> Either Error TypeAut
 solverStateToTypeAut solverResult ty pc = do

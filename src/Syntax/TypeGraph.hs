@@ -7,6 +7,7 @@ import qualified Data.Set as S
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
+import Data.Void
 import Syntax.Types
 import Syntax.Terms
 
@@ -14,33 +15,40 @@ import Syntax.Terms
 -- Graph syntax
 -------------------------------------------------------
 
-data HeadCons = HeadCons
-  { hc_data :: Maybe (Set XtorName)
+data NodeLabel = HeadCons
+  { hc_pol :: PrdCns
+  , hc_data :: Maybe (Set XtorName)
   , hc_codata :: Maybe (Set XtorName)
   , hc_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
-emptyHeadCons :: HeadCons
-emptyHeadCons = HeadCons Nothing Nothing S.empty
+emptyHeadCons :: PrdCns -> NodeLabel
+emptyHeadCons pol = HeadCons pol Nothing Nothing S.empty
 
-singleHeadCons :: DataCodata -> Set XtorName -> HeadCons
-singleHeadCons Data xtors = HeadCons (Just xtors) Nothing S.empty
-singleHeadCons Codata xtors = HeadCons Nothing (Just xtors) S.empty
+singleHeadCons :: PrdCns -> DataCodata -> Set XtorName -> NodeLabel
+singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
+singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 
-type NodeLabel = (PrdCns, HeadCons)
-
-data EdgeLabel
+data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
+  | EpsilonEdge a
   deriving (Eq,Show, Ord)
+
+type EdgeLabelNormal  = EdgeLabel Void
+type EdgeLabelEpsilon = EdgeLabel ()
+
+embedEdgeLabel :: EdgeLabelNormal -> EdgeLabelEpsilon
+embedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
+embedEdgeLabel (EpsilonEdge v) = absurd v
+
+unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
+unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
+unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
 
 type FlowEdge = (Node, Node)
 
-type TypeGr = Gr NodeLabel EdgeLabel
-type TypeGrEps = Gr NodeLabel (Maybe EdgeLabel)
-
-typeGrToEps :: TypeGr -> TypeGrEps
-typeGrToEps = emap Just
-
+type TypeGr = Gr NodeLabel EdgeLabelNormal
+type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
 data TypeAut' a f = TypeAut
   { ta_gr :: Gr NodeLabel a
@@ -52,10 +60,10 @@ deriving instance Show TypeAutDet
 deriving instance Show TypeAutEps
 deriving instance Show TypeAutEpsDet
 
-type TypeAut       = TypeAut' EdgeLabel         []
-type TypeAutDet    = TypeAut' EdgeLabel         Identity
-type TypeAutEps    = TypeAut' (Maybe EdgeLabel) []
-type TypeAutEpsDet = TypeAut' (Maybe EdgeLabel) Identity
+type TypeAut       = TypeAut' EdgeLabelNormal  []
+type TypeAutDet    = TypeAut' EdgeLabelNormal  Identity
+type TypeAutEps    = TypeAut' EdgeLabelEpsilon []
+type TypeAutEpsDet = TypeAut' EdgeLabelEpsilon Identity
 
 class Nubable f where
   nub :: Ord a => f a -> f a

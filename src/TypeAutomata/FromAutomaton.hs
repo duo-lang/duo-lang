@@ -13,9 +13,9 @@ import Data.List (sortBy, groupBy)
 import Data.Functor.Identity
 import Data.Set (Set)
 import qualified Data.Set as S
-
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Void
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
@@ -56,14 +56,14 @@ nodeToTVars i = do
   tvMap <- asks tvMap
   return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
-nodeToOuts :: Node -> AutToTypeM [(EdgeLabel, Node)]
+nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
   gr <- asks graph
   let (_,_,_,outs) = context gr i
   return outs
 
 -- | Compute the Nodes which have to be turned into the argument types for one constructor or destructor.
-computeArgNodes :: [(EdgeLabel, Node)] -- ^ All the outgoing edges of a node.
+computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a node.
                 -> DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorName -- ^ The name of the constructor / destructor
                 -> Twice [[Node]] -- ^ The nodes which contain the arguments of the constructor / destructor
@@ -73,9 +73,15 @@ computeArgNodes outs dc xt =
     filtereds pc = [ (el, n) | (el@(EdgeSymbol dc' xt' pc' _), n) <- outs, dc == dc', xt == xt', pc == pc' ]
     -- Sort the Edges by their position in the Arglist.
     sortFun (EdgeSymbol _ _ _ j1,_) (EdgeSymbol _ _ _ j2,_) = j1 `compare` j2
+    sortFun (EpsilonEdge v,_)(_,_) = absurd v
+    sortFun (_,_)(EpsilonEdge v,_) = absurd v
+
     sorteds pc = sortBy sortFun (filtereds pc)
     -- Group the nodes by their position.
     groupFun (EdgeSymbol _ _ _ j1,_) (EdgeSymbol _ _ _ j2,_) = j1 == j2
+    groupFun (EpsilonEdge v,_)(_,_) = absurd v
+    groupFun (_,_)(EpsilonEdge v,_) = absurd v
+
     groupeds pc = groupBy groupFun (sorteds pc)
     groupeds' pc = (fmap . fmap) snd $ groupeds pc
   in
@@ -104,7 +110,7 @@ nodeToType i = do
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
-      let (_,_,(pol,HeadCons datSet codatSet tns),_) = context gr i
+      let (_,_,(HeadCons pol datSet codatSet tns),_) = context gr i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       resType <- local (visitNode i) $ do
         -- Creating type variables

@@ -47,7 +47,7 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   (Cns,Cns) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
-    startPolarity TypeAut{..} = fst (fromJust (lab ta_gr (runIdentity ta_starts)))
+    startPolarity TypeAut{..} = hc_pol (fromJust (lab ta_gr (runIdentity ta_starts)))
     fun = minimize . removeAdmissableFlowEdges . determinize
 
 typeAutEqual :: TypeAutDet -> TypeAutDet -> Bool
