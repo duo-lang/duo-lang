@@ -6,6 +6,7 @@ module TypeAutomata.Determinize
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS
+import Data.Graph.Inductive.PatriciaTree
 
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
@@ -27,10 +28,10 @@ import Utils
 -- Generic epsilon edge removal algorithm
 ---------------------------------------------------------------------------------------
 
-delAllLEdges :: (DynGraph gr, Eq b) => [LEdge b] -> gr a b -> gr a b
+delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es
 
-removeEpsilonEdges' :: (DynGraph gr, Eq b) => Node -> (gr a (Maybe b), [Node]) -> (gr a (Maybe b), [Node])
+removeEpsilonEdges' :: Node -> (TypeGrEps, [Node]) -> (TypeGrEps, [Node])
 removeEpsilonEdges' n (gr,starts) =
   ( delAllLEdges [(n,j,Nothing) | (j,Nothing) <- lsuc gr n]
   . insEdges [(i,j,el) | (j,Nothing) <- lsuc gr n, (i,el) <- lpre gr n]
@@ -39,10 +40,10 @@ removeEpsilonEdges' n (gr,starts) =
       then starts ++ [j | (j,Nothing) <- lsuc gr n]
       else starts)
 
-fromEpsGr :: DynGraph gr => gr a (Maybe b) -> gr a b
+fromEpsGr :: TypeGrEps -> TypeGr
 fromEpsGr gr = gmap (\(ins,i,nl,outs) -> (map (bimap fromJust id) ins, i, nl, map (bimap fromJust id) outs)) gr
 
-removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
+removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeEpsilonEdges :: TypeAutEps -> TypeAut
@@ -74,13 +75,13 @@ removeIslands TypeAut{..} =
 -- Generic determinization algorithm
 ---------------------------------------------------------------------------------------
 
-getAlphabetForNodes :: (DynGraph gr, Ord b) => gr a b -> Set Node -> [b]
+getAlphabetForNodes :: Ord b => Gr NodeLabel b -> Set Node -> [b]
 getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concat (map (out gr) (S.toList ns)))
 
-succsWith :: (DynGraph gr, Eq b) => gr a b -> Set Node -> b -> Set Node
+succsWith :: Eq b => Gr NodeLabel b -> Set Node -> b -> Set Node
 succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) . concat $ map (lsuc gr) (S.toList ns)
 
-determinizeState :: (DynGraph gr, Ord b) => [Set Node] -> gr a b -> State (Map (Set Node) [((Set Node),b)]) ()
+determinizeState :: Ord b => [Set Node] -> Gr NodeLabel b -> State (Map (Set Node) [((Set Node),b)]) ()
 determinizeState [] _ = return ()
 determinizeState (ns:rest) gr = do
   mp <- get
@@ -91,16 +92,16 @@ determinizeState (ns:rest) gr = do
       modify (M.insert ns newEdges)
       determinizeState (newNodeSets ++ rest) gr
 
-runDeterminize :: (DynGraph gr, Ord b) => gr a b -> [Node] -> Map (Set Node) [((Set Node),b)]
+runDeterminize :: Ord b => Gr NodeLabel b -> [Node] -> Map (Set Node) [((Set Node),b)]
 runDeterminize gr starts = snd $ runState (determinizeState [S.fromList starts] gr) M.empty
 
-getNewNodeLabel :: (DynGraph gr) => ([a] -> c) -> gr a b -> Set Node -> c
+getNewNodeLabel :: ([NodeLabel] -> NodeLabel) -> Gr NodeLabel b -> Set Node -> NodeLabel
 getNewNodeLabel f gr ns = f $ catMaybes (map (lab gr) (S.toList ns))
 
 -- first argument is the node label "combiner"
 -- second result argument is a mapping from sets of node ids to new node ids
 -- this is necessary to correctly handle flow edges, which is done later
-determinize' :: (DynGraph gr, Ord b) => ([a] -> c) -> (gr a b, [Node]) -> (gr c b, Node, [(Node, (Set Node))])
+determinize' :: Ord b => ([NodeLabel] -> NodeLabel) -> (Gr NodeLabel b, [Node]) -> (Gr NodeLabel b, Node, [(Node, (Set Node))])
 determinize' f (gr,starts) =
   let
     mp = runDeterminize gr starts
