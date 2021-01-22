@@ -10,7 +10,6 @@ import Data.Graph.Inductive.PatriciaTree
 
 import Data.Functor.Identity
 import Data.Maybe (catMaybes)
-import Data.Bifunctor
 import Data.Maybe (fromJust)
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -41,7 +40,12 @@ removeEpsilonEdges' n (gr,starts) =
       else starts)
 
 fromEpsGr :: TypeGrEps -> TypeGr
-fromEpsGr gr = gmap (\(ins,i,nl,outs) -> (map (bimap fromJust id) ins, i, nl, map (bimap fromJust id) outs)) gr
+fromEpsGr gr = gmap mapfun gr
+  where
+    foo :: Adj EdgeLabelEpsilon -> Adj EdgeLabelNormal
+    foo = fmap (\(el, node) -> (unsafeEmbedEdgeLabel el, node))
+    mapfun :: Context NodeLabel EdgeLabelEpsilon -> Context NodeLabel EdgeLabelNormal
+    mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))

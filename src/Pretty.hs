@@ -142,7 +142,7 @@ instance Pretty (EdgeLabel a) where
 typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
 typeAutToDot TypeAut {..} =
     let
-      grWithFlow = insEdges [(i,j,Nothing) | (i,j) <- ta_flowEdges] (emap Just ta_gr)
+      grWithFlow = insEdges [(i,j,Nothing) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr)
     in
       graphToDot typeAutParams grWithFlow
 

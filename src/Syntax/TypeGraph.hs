@@ -35,16 +35,21 @@ data EdgeLabel a
   deriving (Eq,Show, Ord)
 
 type EdgeLabelNormal = EdgeLabel Void
-type EdgeLabelEpsilon = Maybe (EdgeLabel Void)
+type EdgeLabelEpsilon = Maybe (EdgeLabel ())
+
+embedEdgeLabel :: EdgeLabelNormal -> EdgeLabelEpsilon
+embedEdgeLabel (EdgeSymbol dc xt pc i) = Just (EdgeSymbol dc xt pc i)
+embedEdgeLabel (EpsilonEdge v) = absurd v
+
+unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
+unsafeEmbedEdgeLabel (Just (EdgeSymbol dc xt pc i)) = EdgeSymbol dc xt pc i
+unsafeEmbedEdgeLabel (Just (EpsilonEdge _)) = error "unsafeEmbedEdgeLabel failed"
+unsafeEmbedEdgeLabel Nothing = error "unsafeEmbedEdgeLabel failed"
 
 type FlowEdge = (Node, Node)
 
 type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
-
-typeGrToEps :: TypeGr -> TypeGrEps
-typeGrToEps = emap Just
-
 
 data TypeAut' a f = TypeAut
   { ta_gr :: Gr NodeLabel a
