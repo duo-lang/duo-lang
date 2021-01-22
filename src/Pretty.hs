@@ -137,6 +137,7 @@ instance Pretty NodeLabel where
 instance Pretty EdgeLabel where
   pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
   pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
+  pretty (EpsilonEdge _) = "e"
 
 typeAutToDot :: TypeAut' EdgeLabel f -> DotGraph Node
 typeAutToDot TypeAut {..} =

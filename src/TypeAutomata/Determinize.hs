@@ -17,6 +17,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
+import Data.Void
 import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
@@ -153,6 +154,7 @@ containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` xtors
 
 isFaultyEdge :: TypeGr -> LEdge EdgeLabel -> Bool
 isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt
+isFaultyEdge _ (_,_,EpsilonEdge v) = absurd v
 
 removeFaultyEdges :: TypeGr -> TypeGr
 removeFaultyEdges gr = delAllLEdges (filter (isFaultyEdge gr) (labEdges gr)) gr

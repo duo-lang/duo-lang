@@ -7,6 +7,7 @@ import qualified Data.Set as S
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
+import Data.Void
 import Syntax.Types
 import Syntax.Terms
 
@@ -30,6 +31,7 @@ singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 
 data EdgeLabel
   = EdgeSymbol DataCodata XtorName PrdCns Int
+  | EpsilonEdge Void
   deriving (Eq,Show, Ord)
 
 type FlowEdge = (Node, Node)

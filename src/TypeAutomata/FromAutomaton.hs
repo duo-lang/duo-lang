@@ -13,9 +13,9 @@ import Data.List (sortBy, groupBy)
 import Data.Functor.Identity
 import Data.Set (Set)
 import qualified Data.Set as S
-
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Void
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
@@ -73,9 +73,15 @@ computeArgNodes outs dc xt =
     filtereds pc = [ (el, n) | (el@(EdgeSymbol dc' xt' pc' _), n) <- outs, dc == dc', xt == xt', pc == pc' ]
     -- Sort the Edges by their position in the Arglist.
     sortFun (EdgeSymbol _ _ _ j1,_) (EdgeSymbol _ _ _ j2,_) = j1 `compare` j2
+    sortFun (EpsilonEdge v,_)(_,_) = absurd v
+    sortFun (_,_)(EpsilonEdge v,_) = absurd v
+
     sorteds pc = sortBy sortFun (filtereds pc)
     -- Group the nodes by their position.
     groupFun (EdgeSymbol _ _ _ j1,_) (EdgeSymbol _ _ _ j2,_) = j1 == j2
+    groupFun (EpsilonEdge v,_)(_,_) = absurd v
+    groupFun (_,_)(EpsilonEdge v,_) = absurd v
+
     groupeds pc = groupBy groupFun (sorteds pc)
     groupeds' pc = (fmap . fmap) snd $ groupeds pc
   in
