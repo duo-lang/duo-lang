@@ -29,15 +29,18 @@ singleHeadCons :: PrdCns -> DataCodata -> Set XtorName -> NodeLabel
 singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
 singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 
-data EdgeLabel
+data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
-  | EpsilonEdge Void
+  | EpsilonEdge a
   deriving (Eq,Show, Ord)
+
+type EdgeLabelNormal = EdgeLabel Void
+type EdgeLabelEpsilon = Maybe (EdgeLabel Void)
 
 type FlowEdge = (Node, Node)
 
-type TypeGr = Gr NodeLabel EdgeLabel
-type TypeGrEps = Gr NodeLabel (Maybe EdgeLabel)
+type TypeGr = Gr NodeLabel EdgeLabelNormal
+type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
 typeGrToEps :: TypeGr -> TypeGrEps
 typeGrToEps = emap Just
@@ -53,10 +56,10 @@ deriving instance Show TypeAutDet
 deriving instance Show TypeAutEps
 deriving instance Show TypeAutEpsDet
 
-type TypeAut       = TypeAut' EdgeLabel         []
-type TypeAutDet    = TypeAut' EdgeLabel         Identity
-type TypeAutEps    = TypeAut' (Maybe EdgeLabel) []
-type TypeAutEpsDet = TypeAut' (Maybe EdgeLabel) Identity
+type TypeAut       = TypeAut' EdgeLabelNormal  []
+type TypeAutDet    = TypeAut' EdgeLabelNormal  Identity
+type TypeAutEps    = TypeAut' EdgeLabelEpsilon []
+type TypeAutEpsDet = TypeAut' EdgeLabelEpsilon Identity
 
 class Nubable f where
   nub :: Ord a => f a -> f a

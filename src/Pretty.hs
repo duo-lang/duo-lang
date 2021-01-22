@@ -134,19 +134,19 @@ instance Pretty NodeLabel where
       printCodat codat = braces (mempty <+> cat (punctuate " , " (pretty <$> (S.toList codat))) <+> mempty)
       printNominal tns = Just (intercalateX ";" (pretty <$> (S.toList tns)))
 
-instance Pretty EdgeLabel where
+instance Pretty (EdgeLabel a) where
   pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
   pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
   pretty (EpsilonEdge _) = "e"
 
-typeAutToDot :: TypeAut' EdgeLabel f -> DotGraph Node
+typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
 typeAutToDot TypeAut {..} =
     let
       grWithFlow = insEdges [(i,j,Nothing) | (i,j) <- ta_flowEdges] (emap Just ta_gr)
     in
       graphToDot typeAutParams grWithFlow
 
-typeAutParams :: GraphvizParams Node NodeLabel (Maybe EdgeLabel) () NodeLabel
+typeAutParams :: GraphvizParams Node NodeLabel EdgeLabelEpsilon () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,nl) ->
     [ style filled
@@ -156,4 +156,4 @@ typeAutParams = defaultParams
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
-    regularEdgeStyle el = [textLabel $ pack (ppPrint (el :: EdgeLabel))]
+    regularEdgeStyle el = [textLabel $ pack (ppPrint el)]

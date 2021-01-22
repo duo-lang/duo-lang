@@ -56,14 +56,14 @@ nodeToTVars i = do
   tvMap <- asks tvMap
   return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
-nodeToOuts :: Node -> AutToTypeM [(EdgeLabel, Node)]
+nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
   gr <- asks graph
   let (_,_,_,outs) = context gr i
   return outs
 
 -- | Compute the Nodes which have to be turned into the argument types for one constructor or destructor.
-computeArgNodes :: [(EdgeLabel, Node)] -- ^ All the outgoing edges of a node.
+computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a node.
                 -> DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorName -- ^ The name of the constructor / destructor
                 -> Twice [[Node]] -- ^ The nodes which contain the arguments of the constructor / destructor

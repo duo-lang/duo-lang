@@ -152,7 +152,7 @@ containsXtor Codata (HeadCons _ _ Nothing _) _ = False
 containsXtor Data (HeadCons _ (Just xtors) _ _) xt = xt `S.member` xtors
 containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` xtors
 
-isFaultyEdge :: TypeGr -> LEdge EdgeLabel -> Bool
+isFaultyEdge :: TypeGr -> LEdge EdgeLabelNormal -> Bool
 isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt
 isFaultyEdge _ (_,_,EpsilonEdge v) = absurd v
 

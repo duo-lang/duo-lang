@@ -42,7 +42,7 @@ modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
 insertNode :: Node -> NodeLabel -> TypeToAutM ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
-insertEdges :: [(Node,Node,Maybe EdgeLabel)] -> TypeToAutM ()
+insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TypeToAutM ()
 insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TypeToAutM Node
