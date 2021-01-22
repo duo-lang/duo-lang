@@ -73,21 +73,21 @@ insertType Prd (TySet _ Union tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Prd)
   ns <- mapM (insertType Prd) tys
-  insertEdges [(newNode, n, Nothing) | n <- ns]
+  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType Cns (TySet _ Union _) = throwError $ OtherError "insertType: type has wrong polarity."
 insertType Cns (TySet _ Inter tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Cns)
   ns <- mapM (insertType Cns) tys
-  insertEdges [(newNode, n, Nothing) | n <- ns]
+  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType Prd (TySet _ Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
 insertType pol (TyRec _ rv ty) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
-  insertEdges [(newNode, n, Nothing)]
+  insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType pol (TySimple s xtors) = do
   newNode <- newNodeM
@@ -95,10 +95,10 @@ insertType pol (TySimple s xtors) = do
   forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType (applyVariance s Prd pol) prdType
-      insertEdges [(newNode, prdNode, Just (EdgeSymbol s xt Prd i))]
+      insertEdges [(newNode, prdNode, EdgeSymbol s xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
       cnsNode <- insertType (applyVariance s Cns pol) cnsType
-      insertEdges [(newNode, cnsNode, Just (EdgeSymbol s xt Cns j))]
+      insertEdges [(newNode, cnsNode, EdgeSymbol s xt Cns j)]
   return newNode
 insertType pol (TyNominal tn) = do
   newNode <- newNodeM
@@ -142,10 +142,10 @@ insertEpsilonEdges solverResult =
     (i,j) <- lookupTVar tv
     forM_ (vst_lowerbounds vstate) $ \ty -> do
       node <- insertType Prd ty
-      insertEdges [(i, node, Nothing)]
+      insertEdges [(i, node, EpsilonEdge ())]
     forM_ (vst_upperbounds vstate) $ \ty -> do
       node <- insertType Cns ty
-      insertEdges [(j, node, Nothing)]
+      insertEdges [(j, node, EpsilonEdge ())]
 
 solverStateToTypeAut :: SolverResult -> SimpleType -> PrdCns -> Either Error TypeAut
 solverStateToTypeAut solverResult ty pc = do

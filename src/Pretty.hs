@@ -142,7 +142,7 @@ instance Pretty (EdgeLabel a) where
 typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
 typeAutToDot TypeAut {..} =
     let
-      grWithFlow = insEdges [(i,j,Nothing) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr)
+      grWithFlow = insEdges [(i,j,EpsilonEdge ()) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr) -- Should be modified!
     in
       graphToDot typeAutParams grWithFlow
 
@@ -152,7 +152,9 @@ typeAutParams = defaultParams
     [ style filled
     , fillColor $ case hc_pol nl of {Prd -> White; Cns -> Gray}
     , textLabel (pack (ppPrint (nl :: NodeLabel)))]
-  , fmtEdge = \(_,_,elM) -> maybe flowEdgeStyle regularEdgeStyle elM
+  , fmtEdge = \(_,_,elM) -> case elM of
+                              el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
+                              (EpsilonEdge _) -> flowEdgeStyle
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]

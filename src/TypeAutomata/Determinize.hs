@@ -32,11 +32,11 @@ delAllLEdges es gr = foldr delAllLEdge gr es
 
 removeEpsilonEdges' :: Node -> (TypeGrEps, [Node]) -> (TypeGrEps, [Node])
 removeEpsilonEdges' n (gr,starts) =
-  ( delAllLEdges [(n,j,Nothing) | (j,Nothing) <- lsuc gr n]
-  . insEdges [(i,j,el) | (j,Nothing) <- lsuc gr n, (i,el) <- lpre gr n]
+  ( delAllLEdges [(n,j, EpsilonEdge ()) | (j, EpsilonEdge _) <- lsuc gr n]
+  . insEdges [(i,j,el) | (j, EpsilonEdge _) <- lsuc gr n, (i,el) <- lpre gr n]
   $ gr
   , if n `elem` starts
-      then starts ++ [j | (j,Nothing) <- lsuc gr n]
+      then starts ++ [j | (j,EpsilonEdge _) <- lsuc gr n]
       else starts)
 
 fromEpsGr :: TypeGrEps -> TypeGr
