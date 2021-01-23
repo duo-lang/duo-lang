@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Pretty where
+module Pretty.Pretty where
 import qualified Data.Set as S
 
 import Data.Graph.Inductive.Graph

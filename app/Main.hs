@@ -14,8 +14,8 @@ import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Syntax.Program
-import Parser
-import Pretty
+import Parser.Parser
+import Pretty.Pretty
 import Eval.Eval
 import InferTypes
 import TypeAutomata.FromAutomaton (autToType)

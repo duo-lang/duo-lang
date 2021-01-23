@@ -53,8 +53,8 @@ library
       Eval.Eval
       GenerateConstraints
       InferTypes
-      Parser
-      Pretty
+      Parser.Parser
+      Pretty.Pretty
       SolveConstraints
       Syntax.Terms
       Syntax.Types

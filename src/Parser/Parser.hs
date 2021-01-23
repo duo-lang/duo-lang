@@ -1,4 +1,4 @@
-module Parser
+module Parser.Parser
   ( runEnvParser , termP, commandP, declarationP, environmentP, typeSchemeP, subtypingProblemP, bindingP, Parser)
   where
 
