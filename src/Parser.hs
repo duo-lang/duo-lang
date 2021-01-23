@@ -15,7 +15,7 @@ import Control.Monad.Reader
 import Data.Void
 
 import Eval.Substitution
-import Syntax.Terms
+import Syntax.SymmetricTerm
 import Syntax.Types
 import Syntax.Program
 import Utils

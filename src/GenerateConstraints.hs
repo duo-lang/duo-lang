@@ -8,7 +8,7 @@ import Control.Monad.State
 import Control.Monad.Except
 
 import Pretty
-import Syntax.Terms
+import Syntax.SymmetricTerm
 import Syntax.Types
 import Syntax.Program
 import Utils

@@ -56,10 +56,12 @@ library
       Parser
       Pretty
       SolveConstraints
-      Syntax.Terms
+      Syntax.AsymmetricTerm
+      Syntax.CommonTerm
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
+      Syntax.SymmetricTerm
       TypeAutomata.Determinize
       TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton

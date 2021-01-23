@@ -8,7 +8,7 @@ import Data.GraphViz
 import Data.Text.Lazy (pack)
 import Data.Maybe (catMaybes)
 
-import Syntax.Terms
+import Syntax.SymmetricTerm
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils

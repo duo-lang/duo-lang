@@ -1,6 +1,6 @@
 module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol, solverStateToTypeAut) where
 
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils

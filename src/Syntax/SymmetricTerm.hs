@@ -1,36 +1,16 @@
-module Syntax.Terms where
+module Syntax.SymmetricTerm
+  ( module Syntax.CommonTerm
+  , XtorArgs(..)
+  , Case(..)
+  , Term(..)
+  , Command(..)
+  ) where
 
 import Utils
+import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
--- Tags
----------------------------------------------------------------------------------
-
-data PrdCns
-  = Prd
-  | Cns
-  deriving (Eq, Show, Ord)
-
--- | Singleton Type for PrdCns
-data PrdCnsRep pc where
-  PrdRep :: PrdCnsRep Prd
-  CnsRep :: PrdCnsRep Cns
-deriving instance Show (PrdCnsRep pc)
-
----------------------------------------------------------------------------------
--- Names
----------------------------------------------------------------------------------
-
-data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
-
--- | Name of a constructor/destructor. Starts with an uppercase letter.
-data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: String } deriving (Eq, Ord, Show)
-
--- | Name of a free variable. Starts with a lowercase letter.
-type FreeVarName = String
-
----------------------------------------------------------------------------------
--- Terms
+-- Symmetric Terms
 ---------------------------------------------------------------------------------
 
 data XtorArgs a = MkXtorArgs { prdArgs :: [Term Prd a]
@@ -43,9 +23,6 @@ data Case a = MkCase
   , case_args :: Twice [a]
   , case_cmd  :: Command a
   } deriving (Show)
-
--- | Two-level de Bruijn indices.
-type Index = (Int, Int)
 
 data Term (pc :: PrdCns) a where
   BoundVar :: PrdCnsRep pc -> Index -> Term pc a

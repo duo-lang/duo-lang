@@ -10,7 +10,7 @@ import Data.List (isPrefixOf, find)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
-import Syntax.Terms
+import Syntax.SymmetricTerm
 import Syntax.Types
 import Syntax.TypeGraph
 import Syntax.Program

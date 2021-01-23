@@ -1,6 +1,6 @@
 module InferTypes where
 
-import Syntax.Terms
+import Syntax.SymmetricTerm
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils

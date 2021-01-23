@@ -18,7 +18,7 @@ import qualified Data.Map as M
 import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
 import Data.Void
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
