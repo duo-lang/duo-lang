@@ -11,13 +11,11 @@ import Utils
 -- Program
 ---------------------------------------------------------------------------------
 
-type TypeIdentifierName = String -- start with uppercase
-
 data Declaration a
   = PrdDecl FreeVarName (Term Prd a)
   | CnsDecl FreeVarName (Term Cns a)
   | CmdDecl FreeVarName (Command a)
-  | TypDecl TypeIdentifierName TypeScheme
+  | TypDecl TypeName TypeScheme
   | DataDecl DataDecl
   deriving (Show)
 
@@ -25,7 +23,7 @@ data Environment = Environment
   { prdEnv :: Map FreeVarName (Term Prd ())
   , cnsEnv :: Map FreeVarName (Term Cns ())
   , cmdEnv :: Map FreeVarName (Command ())
-  , typEnv :: Map TypeIdentifierName TypeScheme
+  , typEnv :: Map TypeName TypeScheme
   , declEnv :: [DataDecl]
   }
 

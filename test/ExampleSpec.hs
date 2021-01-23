@@ -7,7 +7,7 @@ import qualified Data.Map as M
 import Data.Either (isRight)
 
 import TestUtils
-import Parser
+import Parser.Parser
 import Syntax.SymmetricTerm
 import Syntax.Program
 import InferTypes

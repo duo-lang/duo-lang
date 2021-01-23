@@ -1,6 +1,6 @@
 module TestUtils where
 
-import Parser
+import Parser.Parser
 import Syntax.Program
 import qualified Data.Map as M
 
