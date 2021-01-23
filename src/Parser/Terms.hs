@@ -1,15 +1,20 @@
-module Parser.Terms where
+module Parser.Terms
+  ( termP
+  , commandP
+  )where
 
+import Control.Monad.Reader
 import qualified Data.Map as M
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
-import Control.Monad.Reader
+
 import Eval.Substitution
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Terms
 import Syntax.Program
+import Syntax.Terms
 import Utils
+
 --------------------------------------------------------------------------------------------
 -- Term/Command parsing
 --------------------------------------------------------------------------------------------
@@ -134,3 +139,4 @@ doneCmd = lexeme (symbol "Done") >> return Done
 
 printCmd :: Parser (Command ())
 printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
+

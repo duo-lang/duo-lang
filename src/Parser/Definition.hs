@@ -1,12 +1,16 @@
-module Parser.Definition where
+module Parser.Definition
+  ( Parser
+  , ParseReader(..)
+  , runEnvParser
+  ) where
 
-import Text.Megaparsec hiding (State)
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
 import Control.Monad.Reader
 import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Void
+import Text.Megaparsec hiding (State)
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 
 import Syntax.Types
 import Syntax.Program
@@ -35,3 +39,4 @@ runEnvParser p env input = case runParser (runReaderT (lexeme (p <* eof)) (defau
 
     lexeme :: (MonadParsec Void String m) => m a -> m a
     lexeme = L.lexeme sc
+

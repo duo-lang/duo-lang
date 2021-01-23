@@ -1,20 +1,21 @@
-module Parser.Types where
-import Text.Megaparsec hiding (State)
-import Text.Megaparsec.Char
-import qualified Data.Set as S
-import Parser.Definition
-import Parser.Lexer
+module Parser.Types
+  ( typeSchemeP
+  , simpleTypeP
+  ) where
 
 import Control.Monad.State
 import Control.Monad.Reader
+import qualified Data.Set as S
+import Text.Megaparsec hiding (State)
+
+import Parser.Definition
+import Parser.Lexer
 import Syntax.Terms
 import Syntax.Types
+
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
-
-typeNameP :: Parser TypeName
-typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
 nominalTypeP :: Parser (Typ st)
 nominalTypeP = TyNominal <$> typeNameP
@@ -92,3 +93,4 @@ typeSchemeP = do
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)
     else fail "Forall annotation in type scheme is incorrect"
+

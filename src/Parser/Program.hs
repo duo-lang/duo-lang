@@ -1,15 +1,19 @@
-module Parser.Program where
+module Parser.Program
+  ( declarationP
+  , environmentP
+  ) where
 
 import Control.Monad.Reader
+import Text.Megaparsec hiding (State)
+
 import Parser.Definition
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types
 import Syntax.Program
-import Syntax.Types
 import Syntax.Terms
+import Syntax.Types
 
-import Text.Megaparsec hiding (State)
 ---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
@@ -46,7 +50,7 @@ cmdDeclarationP = do
 
 typeDeclarationP :: Parser (Declaration ())
 typeDeclarationP = do
-  v <- typeIdentifierName
+  v <- typeNameP
   _ <- symbol ":="
   t <- typeSchemeP
   return (TypDecl v t)
@@ -84,6 +88,4 @@ dataDeclP = DataDecl <$> dataDeclP'
       xt <- xtorName Nominal
       args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
       return (MkXtorSig xt args)
-
-
 
