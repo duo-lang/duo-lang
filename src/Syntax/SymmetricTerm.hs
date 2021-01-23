@@ -28,7 +28,7 @@ data Term (pc :: PrdCns) a where
   BoundVar :: PrdCnsRep pc -> Index -> Term pc a
   FreeVar  :: PrdCnsRep pc -> FreeVarName -> a -> Term pc a
   XtorCall :: PrdCnsRep pc -> XtorName -> XtorArgs a -> Term pc a
-  Match    :: PrdCnsRep pc -> NominalStructural -> [Case a] -> Term pc a
+  XMatch    :: PrdCnsRep pc -> NominalStructural -> [Case a] -> Term pc a
   MuAbs    :: PrdCnsRep pc -> a -> Command a -> Term pc a
   -- The PrdCns parameter describes the result of the abstraction!
 deriving instance Show a => Show (Term pc a)

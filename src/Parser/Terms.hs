@@ -70,7 +70,7 @@ lambdaSugar PrdRep= do
   args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ Match PrdRep Structural [MkCase (MkXtorName Structural "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  return $ XMatch PrdRep Structural [MkCase (MkXtorName Structural "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs ())
@@ -89,11 +89,11 @@ patternMatch :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc ())
 patternMatch ns PrdRep = do
   _ <- symbol "comatch"
   cases <- braces $ singleCase ns `sepBy` comma
-  return $ Match PrdRep ns cases
+  return $ XMatch PrdRep ns cases
 patternMatch ns CnsRep = do
   _ <- symbol "match"
   cases <- braces $ singleCase ns `sepBy` comma
-  return $ Match CnsRep ns cases
+  return $ XMatch CnsRep ns cases
 
 singleCase :: NominalStructural -> Parser (Case ())
 singleCase ns = do

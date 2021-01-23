@@ -35,8 +35,8 @@ termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
 termOpeningRec k args (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) =
   XtorCall s xt (MkXtorArgs (termOpeningRec k args <$> prdArgs)
                             (termOpeningRec k args <$> cnsArgs))
-termOpeningRec k args (Match pc sn cases) =
-  Match pc sn $ map (\pmcase@MkCase{ case_cmd } -> pmcase { case_cmd = commandOpeningRec (k+1) args case_cmd }) cases
+termOpeningRec k args (XMatch pc sn cases) =
+  XMatch pc sn $ map (\pmcase@MkCase{ case_cmd } -> pmcase { case_cmd = commandOpeningRec (k+1) args case_cmd }) cases
 termOpeningRec k args (MuAbs pc a cmd) =
   MuAbs pc a (commandOpeningRec (k+1) args cmd)
 
@@ -74,8 +74,8 @@ termClosingRec k (Twice _ cnsvars) (FreeVar CnsRep v a) | isJust (v `elemIndex` 
                                                         | otherwise = FreeVar CnsRep v a
 termClosingRec k vars (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) =
   XtorCall s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
-termClosingRec k vars (Match pc sn cases) =
-  Match pc sn $ map (\pmcase@MkCase { case_cmd } -> pmcase { case_cmd = commandClosingRec (k+1) vars case_cmd }) cases
+termClosingRec k vars (XMatch pc sn cases) =
+  XMatch pc sn $ map (\pmcase@MkCase { case_cmd } -> pmcase { case_cmd = commandClosingRec (k+1) vars case_cmd }) cases
 termClosingRec k vars (MuAbs pc a cmd) =
   MuAbs pc a (commandClosingRec (k+1) vars cmd)
 
@@ -136,7 +136,7 @@ termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
 termLocallyClosedRec env (XtorCall _ _ (MkXtorArgs prds cnss)) = do
   sequence_ (termLocallyClosedRec env <$> prds)
   sequence_ (termLocallyClosedRec env <$> cnss)
-termLocallyClosedRec env (Match _ _ cases) = do
+termLocallyClosedRec env (XMatch _ _ cases) = do
   sequence_ ((\MkCase { case_cmd, case_args } -> commandLocallyClosedRec (twiceMap (fmap (const ())) (fmap (const ())) case_args : env) case_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
 termLocallyClosedRec env (MuAbs CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
@@ -167,7 +167,7 @@ freeVars_term (BoundVar _ _) = Twice [] []
 freeVars_term (FreeVar PrdRep v _) = Twice [v] []
 freeVars_term (FreeVar CnsRep v _) = Twice [] [v]
 freeVars_term (XtorCall _ _ (MkXtorArgs prds cnss)) = combineFreeVars (map freeVars_term prds ++ map freeVars_term cnss)
-freeVars_term (Match _ _ cases)                  = combineFreeVars (map (\MkCase { case_cmd } -> freeVars_cmd case_cmd) cases)
+freeVars_term (XMatch _ _ cases)                  = combineFreeVars (map (\MkCase { case_cmd } -> freeVars_cmd case_cmd) cases)
 freeVars_term (MuAbs _ _ cmd)                  = freeVars_cmd cmd
 
 freeVars_cmd :: Command a -> Twice [FreeVarName]

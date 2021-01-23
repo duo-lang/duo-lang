@@ -70,9 +70,9 @@ annotateTerm (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) = do
   prdArgs' <- mapM annotateTerm prdArgs
   cnsArgs' <- mapM annotateTerm cnsArgs
   return (XtorCall s xt (MkXtorArgs prdArgs' cnsArgs'))
-annotateTerm (Match pc sn cases) = do
+annotateTerm (XMatch pc sn cases) = do
   cases' <- forM cases annotateCase
-  return (Match pc sn cases')
+  return (XMatch pc sn cases')
 annotateTerm (MuAbs PrdRep _ cmd) = do
   (uv, freeVar) <- head <$> freshVars 1 CnsRep
   cmd' <- annotateCommand cmd
@@ -120,12 +120,12 @@ typedTermToType env (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal
     Nothing -> Left $ OtherError "Xtor does not exist"
     Just tn -> return $ TyNominal (data_name tn)
 -- Structural Matches
-typedTermToType _ (Match PrdRep Structural cases) = return $ TySimple Codata (getCaseType <$> cases)
-typedTermToType _ (Match CnsRep Structural cases) = return $ TySimple Data (getCaseType <$> cases)
+typedTermToType _ (XMatch PrdRep Structural cases) = return $ TySimple Codata (getCaseType <$> cases)
+typedTermToType _ (XMatch CnsRep Structural cases) = return $ TySimple Data (getCaseType <$> cases)
 -- Nominal Matches.
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
-typedTermToType _ (Match _ Nominal []) = Left $ OtherError "unreachable"
-typedTermToType env (Match _ Nominal (pmcase:pmcases)) =
+typedTermToType _ (XMatch _ Nominal []) = Left $ OtherError "unreachable"
+typedTermToType env (XMatch _ Nominal (pmcase:pmcases)) =
   case lookupXtor (case_name pmcase) env of
     Nothing -> Left $ OtherError "Xtor does not exist"
     Just tn -> do
@@ -151,7 +151,7 @@ getConstraintsTerm env (XtorCall _ _ (MkXtorArgs prdargs cnsargs)) = do
   prdCss <- sequence $ getConstraintsTerm env <$> prdargs
   cnsCss <- sequence $ getConstraintsTerm env <$> cnsargs
   return $ (concat) (prdCss ++ cnsCss)
-getConstraintsTerm env (Match _ _ cases) = do
+getConstraintsTerm env (XMatch _ _ cases) = do
   constraints <- sequence $ (\(MkCase _ _ cmd) -> getConstraintsCommand env cmd) <$> cases
   return $ concat constraints
 getConstraintsTerm env (MuAbs _ _ cmd) = getConstraintsCommand env cmd
