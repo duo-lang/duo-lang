@@ -16,6 +16,7 @@ import Syntax.TypeGraph
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
+import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
 import InferTypes
 import TypeAutomata.FromAutomaton (autToType)

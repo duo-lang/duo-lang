@@ -55,6 +55,7 @@ library
       InferTypes
       Parser.Parser
       Pretty.Pretty
+      Pretty.TypeAutomata
       SolveConstraints
       Syntax.Terms
       Syntax.Types
