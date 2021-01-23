@@ -16,7 +16,7 @@ import Data.Void
 import Syntax.Types
 import Syntax.Terms (XtorName)
 import Utils
-import Pretty
+import Pretty.Pretty
 
 ------------------------------------------------------------------------------
 -- VariableState and SolverResult

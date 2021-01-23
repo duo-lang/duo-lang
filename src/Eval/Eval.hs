@@ -12,7 +12,7 @@ import Data.List (find)
 import Syntax.Terms
 import Eval.Substitution
 import Utils
-import Pretty
+import Pretty.Pretty
 
 data EvalOrder = CBV | CBN
 

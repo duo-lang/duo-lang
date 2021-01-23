@@ -14,8 +14,9 @@ import Syntax.Terms
 import Syntax.Types
 import Syntax.TypeGraph
 import Syntax.Program
-import Parser
-import Pretty
+import Parser.Parser
+import Pretty.Pretty
+import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
 import InferTypes
 import TypeAutomata.FromAutomaton (autToType)
@@ -365,7 +366,7 @@ all_options = [ type_option, show_option, help_option, def_option, save_option, 
 completer :: String -> ReplInner [String]
 completer s = do
   env <- gets replEnv
-  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (cmdEnv env) ++ M.keys (typEnv env) ++ ((unTypeName . data_name) <$> (declEnv env)))
+  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (cmdEnv env) ++ (unTypeName <$> M.keys (typEnv env)) ++ ((unTypeName . data_name) <$> (declEnv env)))
 
 ini :: Repl ()
 ini = do
