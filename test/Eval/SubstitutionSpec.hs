@@ -5,7 +5,7 @@ import qualified Data.Map as M
 import Data.Either (isLeft, isRight)
 import Control.Monad (forM_, when)
 
-import Syntax.Terms
+import Syntax.SymmetricTerm
 import Syntax.Program
 import Utils
 import TestUtils
