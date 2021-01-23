@@ -39,7 +39,7 @@ prettyTwice :: Pretty a => Twice [a] -> Doc ann
 prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
 instance Pretty XtorName where
-  pretty (MkXtorName Structural xt) = "'" <> pretty xt
+  pretty (MkXtorName Structural xt) = pretty xt
   pretty (MkXtorName Nominal    xt) = pretty xt
 
 instance Pretty a => Pretty (Case a) where

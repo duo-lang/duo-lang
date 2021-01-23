@@ -58,7 +58,7 @@ freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
 
 xtorName :: (MonadParsec Void String m) => NominalStructural -> m XtorName
 xtorName Structural = do
-  _ <- tick
+  -- _ <- tick
   name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
   return (MkXtorName Structural name) -- Saved without tick!
 xtorName Nominal = do
@@ -110,11 +110,9 @@ termEnvP CnsRep = do
 termP :: PrdCnsRep pc -> Parser (Term pc ())
 termP pc = try (parens (termP pc))
   <|> xtorCall Structural pc
-  <|> xtorCall Nominal pc
   -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
   -- infer a structural type, not a nominal one.
-  <|> try (patternMatch Structural pc) 
-  <|> try (patternMatch Nominal pc)
+  <|> try (patternMatch Structural pc)
   <|> muAbstraction pc
   <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
                         -- if the variable is in the environment, which might cause it to fail
@@ -217,7 +215,7 @@ printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
 ---------------------------------------------------------------------------------
 
 declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> typeDeclarationP <|> dataDeclP
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> typeDeclarationP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
@@ -388,6 +386,3 @@ dataDeclP = DataDecl <$> dataDeclP'
       xt <- xtorName Nominal
       args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
       return (MkXtorSig xt args)
-
-
-
