@@ -53,7 +53,12 @@ library
       Eval.Eval
       GenerateConstraints
       InferTypes
+      Parser.Definition
+      Parser.Lexer
       Parser.Parser
+      Parser.Program
+      Parser.Terms
+      Parser.Types
       Pretty.Pretty
       Pretty.TypeAutomata
       SolveConstraints
