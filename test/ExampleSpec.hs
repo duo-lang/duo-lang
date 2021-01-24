@@ -23,7 +23,7 @@ checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ infer
 typecheckExample :: Environment -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
-      let Right term = runEnvParser (termP PrdRep) env termS
+      let Right term = runEnvParser (stermP PrdRep) env termS
       let Right inferredTypeAut = inferPrdAut term env
       let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
       let Right specTypeAut = typeToAut specTypeScheme
