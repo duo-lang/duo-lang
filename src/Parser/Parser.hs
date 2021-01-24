@@ -1,6 +1,6 @@
 module Parser.Parser
   ( runEnvParser
-  , termP
+  , stermP
   , commandP
   , declarationP
   , environmentP
@@ -26,7 +26,7 @@ bindingP :: Parser (TypeName, STerm Prd ())
 bindingP = do
   v <- typeNameP
   _ <- lexeme (symbol "<-")
-  t <- lexeme (termP PrdRep)
+  t <- lexeme (stermP PrdRep)
   return (v,t)
 
 subtypingProblemP :: Parser (TypeScheme, TypeScheme)

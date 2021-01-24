@@ -1,5 +1,5 @@
 module Parser.STerms
-  ( termP
+  ( stermP
   , commandP
   )where
 
@@ -16,12 +16,8 @@ import Syntax.STerms
 import Utils
 
 --------------------------------------------------------------------------------------------
--- Term/Command parsing
+-- Symmetric Terms
 --------------------------------------------------------------------------------------------
-
---nice helper function for creating xtor signatures
-argsSig :: Int -> Int -> Twice [()]
-argsSig n m = Twice (replicate n ()) (replicate m ())
 
 termEnvP :: PrdCnsRep pc -> Parser (STerm pc ())
 termEnvP PrdRep = do
@@ -34,21 +30,6 @@ termEnvP CnsRep = do
   cnsEnv <- asks (cnsEnv . parseEnv)
   Just t <- return $ M.lookup v cnsEnv
   return t
-
-termP :: PrdCnsRep pc -> Parser (STerm pc ())
-termP pc = try (parens (termP pc))
-  <|> xtorCall Structural pc
-  <|> xtorCall Nominal pc
-  -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
-  -- infer a structural type, not a nominal one.
-  <|> try (patternMatch Structural pc) 
-  <|> try (patternMatch Nominal pc)
-  <|> muAbstraction pc
-  <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
-                        -- if the variable is in the environment, which might cause it to fail
-  <|> freeVar pc
-  <|> numLit pc
-  <|> lambdaSugar pc
 
 freeVar :: PrdCnsRep pc -> Parser (STerm pc ())
 freeVar pc = do
@@ -67,16 +48,17 @@ lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc ())
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
   _ <- lexeme (symbol "\\")
-  args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
+  args <- argListP freeVarName freeVarName
   _ <- lexeme (symbol "=>")
   cmd <- lexeme commandP
-  return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") (argsSig (length prdVars) (length cnsVars)) (commandClosing args cmd)]
+  let args' = twiceMap (fmap (const ())) (fmap (const ())) args
+  return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args' (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs ())
 xtorArgsP = do
-  xs <- option [] (parens   $ (termP PrdRep) `sepBy` comma)
-  ys <- option [] (brackets $ (termP CnsRep) `sepBy` comma)
+  xs <- option [] (parens   $ (stermP PrdRep) `sepBy` comma)
+  ys <- option [] (brackets $ (stermP CnsRep) `sepBy` comma)
   return $ MkXtorArgs xs ys
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc ())
@@ -98,11 +80,11 @@ patternMatch ns CnsRep = do
 singleCase :: NominalStructural -> Parser (SCase ())
 singleCase ns = do
   xt <- lexeme (xtorName ns)
-  args@(Twice prdVars cnsVars) <- argListP freeVarName freeVarName
+  args <- argListP freeVarName freeVarName
   _ <- symbol "=>"
   cmd <- lexeme commandP
   return MkSCase { scase_name = xt
-                 , scase_args = argsSig (length prdVars) (length cnsVars)  -- e.g. X(x,y)[k] becomes X((),())[()]
+                 , scase_args = twiceMap (fmap (const ())) (fmap (const ())) args -- e.g. X(x,y)[k] becomes X((),())[()]
                  , scase_cmd = commandClosing args cmd -- de brujin transformation
                  }
 
@@ -116,6 +98,24 @@ muAbstraction pc = do
     PrdRep -> return $ MuAbs pc () (commandClosingSingle CnsRep v cmd)
     CnsRep -> return $ MuAbs pc () (commandClosingSingle PrdRep v cmd)
 
+stermP :: PrdCnsRep pc -> Parser (STerm pc ())
+stermP pc = try (parens (stermP pc))
+  <|> xtorCall Structural pc
+  <|> xtorCall Nominal pc
+  -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
+  -- infer a structural type, not a nominal one.
+  <|> try (patternMatch Structural pc) 
+  <|> try (patternMatch Nominal pc)
+  <|> muAbstraction pc
+  <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
+                        -- if the variable is in the environment, which might cause it to fail
+  <|> freeVar pc
+  <|> numLit pc
+  <|> lambdaSugar pc
+
+--------------------------------------------------------------------------------------------
+-- Commands
+--------------------------------------------------------------------------------------------
 
 cmdEnvP :: Parser (Command ())
 cmdEnvP = do
@@ -124,19 +124,24 @@ cmdEnvP = do
   Just t <- return $  M.lookup v prdEnv
   return t
 
-commandP :: Parser (Command ())
-commandP = try (parens commandP) <|> try cmdEnvP <|> doneCmd <|> printCmd <|> applyCmd
-
-applyCmd :: Parser (Command ())
-applyCmd = do
-  prd <- lexeme (termP PrdRep)
+applyCmdP :: Parser (Command ())
+applyCmdP = do
+  prd <- lexeme (stermP PrdRep)
   _ <- lexeme (symbol ">>")
-  cns <- lexeme (termP CnsRep)
+  cns <- lexeme (stermP CnsRep)
   return (Apply prd cns)
 
-doneCmd :: Parser (Command ())
-doneCmd = lexeme (symbol "Done") >> return Done
+doneCmdP :: Parser (Command ())
+doneCmdP = lexeme (symbol "Done") >> return Done
 
-printCmd :: Parser (Command ())
-printCmd = lexeme (symbol "Print") >> (Print <$> lexeme (termP PrdRep))
+printCmdP :: Parser (Command ())
+printCmdP = lexeme (symbol "Print") >> (Print <$> lexeme (stermP PrdRep))
+
+commandP :: Parser (Command ())
+commandP =
+  try (parens commandP) <|>
+  try cmdEnvP <|>
+  doneCmdP <|>
+  printCmdP <|>
+  applyCmdP
 

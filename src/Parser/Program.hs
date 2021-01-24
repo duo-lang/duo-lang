@@ -26,7 +26,7 @@ prdDeclarationP = do
   _ <- try $ lexeme (symbol "prd")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
-  t <- lexeme (termP PrdRep)
+  t <- lexeme (stermP PrdRep)
   _ <- symbol ";"
   return (PrdDecl v t)
 
@@ -35,7 +35,7 @@ cnsDeclarationP = do
   _ <- try $ lexeme (symbol "cns")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
-  t <- lexeme (termP CnsRep)
+  t <- lexeme (stermP CnsRep)
   _ <- symbol ";"
   return (CnsDecl v t)
 
