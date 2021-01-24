@@ -9,20 +9,7 @@ import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.ATerms
 
-
---   XtorCall s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
--- termClosingRec k vars (XMatch pc sn cases) =
---   XMatch pc sn $ map (\pmcase@MkSCase { scase_cmd } -> pmcase { scase_cmd = commandClosingRec (k+1) vars scase_cmd }) cases
-
--- data ATerm a where
---   BVar :: Index -> ATerm a
---   FVar :: FreeVarName -> ATerm a
---   Ctor :: XtorName -> [ATerm a] -> ATerm a
---   Dtor :: XtorName -> ATerm a -> [ATerm a] -> ATerm a
---   Match :: ATerm a -> [ACase a] -> ATerm a
---   Comatch :: [ACase a] -> ATerm a
---   deriving (Eq, Show, Ord)
-
+-- TODO, move this to Eval Substitution?
 atermClosingRec :: Int -> [FreeVarName] -> ATerm a -> ATerm a
 atermClosingRec _ _ bv@(BVar _) = bv
 atermClosingRec k args fv@(FVar v) | isJust (v `elemIndex` args) = BVar (k, fromJust (v `elemIndex` args))

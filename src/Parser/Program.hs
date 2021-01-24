@@ -9,6 +9,7 @@ import Text.Megaparsec hiding (State)
 import Parser.Definition
 import Parser.Lexer
 import Parser.STerms
+import Parser.ATerms
 import Parser.Types
 import Syntax.Program
 import Syntax.STerms
@@ -19,7 +20,7 @@ import Syntax.Types
 ---------------------------------------------------------------------------------
 
 declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> typeDeclarationP <|> dataDeclP
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> defDeclarationP <|> typeDeclarationP <|> dataDeclP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
@@ -47,6 +48,15 @@ cmdDeclarationP = do
   t <- lexeme commandP
   _ <- symbol ";"
   return (CmdDecl v t)
+
+defDeclarationP :: Parser (Declaration ())
+defDeclarationP = do
+  _ <- try $ (lexeme (symbol "def"))
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme atermP
+  _ <- symbol ";"
+  return (DefDecl v t)
 
 typeDeclarationP :: Parser (Declaration ())
 typeDeclarationP = do
