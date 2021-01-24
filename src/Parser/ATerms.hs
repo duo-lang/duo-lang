@@ -1,5 +1,7 @@
 module Parser.ATerms ( atermP ) where
 
+import Data.List (elemIndex)
+import Data.Maybe (isJust, fromJust)
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
@@ -7,8 +9,31 @@ import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.ATerms
 
+
+--   XtorCall s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
+-- termClosingRec k vars (XMatch pc sn cases) =
+--   XMatch pc sn $ map (\pmcase@MkSCase { scase_cmd } -> pmcase { scase_cmd = commandClosingRec (k+1) vars scase_cmd }) cases
+
+-- data ATerm a where
+--   BVar :: Index -> ATerm a
+--   FVar :: FreeVarName -> ATerm a
+--   Ctor :: XtorName -> [ATerm a] -> ATerm a
+--   Dtor :: XtorName -> ATerm a -> [ATerm a] -> ATerm a
+--   Match :: ATerm a -> [ACase a] -> ATerm a
+--   Comatch :: [ACase a] -> ATerm a
+--   deriving (Eq, Show, Ord)
+
+atermClosingRec :: Int -> [FreeVarName] -> ATerm a -> ATerm a
+atermClosingRec _ _ bv@(BVar _) = bv
+atermClosingRec k args fv@(FVar v) | isJust (v `elemIndex` args) = BVar (k, fromJust (v `elemIndex` args))
+                                   | otherwise                   = fv
+atermClosingRec k args (Ctor xt args') = Ctor xt (atermClosingRec k args <$> args')
+atermClosingRec k args (Dtor xt t args') = Dtor xt (atermClosingRec k args t) (atermClosingRec k args <$> args')
+atermClosingRec k args (Match t cases) = Match (atermClosingRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cases)
+atermClosingRec k args (Comatch cocases) = Comatch ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cocases)
+
 atermClosing :: [FreeVarName] -> ATerm () -> ATerm ()
-atermClosing = undefined
+atermClosing = atermClosingRec 0
 
 acaseP :: Parser (ACase ())
 acaseP = do
