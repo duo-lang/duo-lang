@@ -149,15 +149,17 @@ type_option = Option
 show_cmd :: String -> Repl ()
 show_cmd s = do
   env <- gets replEnv
-  case runEnvParser typeSchemeP env s of
-    Right ty -> prettyRepl ty
-    Left err1 -> case runEnvParser (stermP PrdRep) env s of
-      Right t -> prettyRepl t
-      Left err2 -> prettyRepl $ unlines [ "Type parsing error:"
-                                        , ppPrint err1
-                                        , "Term parsing error:"
-                                        , ppPrint err2
-                                        ]
+  case M.lookup s (prdEnv env) of
+    Just prd -> prettyRepl prd
+    Nothing -> case M.lookup s (cnsEnv env) of
+      Just cns -> prettyRepl cns
+      Nothing -> case M.lookup s (cmdEnv env) of
+        Just cmd -> prettyRepl cmd
+        Nothing -> case M.lookup s (defEnv env) of
+          Just def -> prettyRepl def
+          Nothing -> case M.lookup (MkTypeName s) (typEnv env) of
+            Just typ -> prettyRepl typ
+            Nothing -> prettyRepl "Not in environment."
 
 show_option :: Option
 show_option = Option

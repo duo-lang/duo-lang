@@ -113,3 +113,6 @@ prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k
 
 cmd exampleCommand1 := Print(2);
 cmd exampleCommand2 := mu x.Print(2) >> mu* y. Print(4);
+
+def newStylePred := match x with { Z() => Z(), S(x) => x };
+def newStylePredTwo := (comatch { Ap(x) => match x with { Z() => Z(), S(x) => x }}.Ap(S(S(S(Z())))));
