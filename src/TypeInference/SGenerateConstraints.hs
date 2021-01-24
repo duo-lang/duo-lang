@@ -1,6 +1,6 @@
-module TypeInference.GenerateConstraints
-  ( generateConstraints
-  , typedTermToType
+module TypeInference.SGenerateConstraints
+  ( sgenerateConstraints
+  , typedSTermToType
   ) where
 
 import qualified Data.Map as M
@@ -95,42 +95,42 @@ annotateCommand (Apply t1 t2) = do
 
 argsToTypes :: Environment -> XtorArgs SimpleType -> Either Error (Twice [SimpleType])
 argsToTypes env (MkXtorArgs prdargs cnsargs) = do
-  prdArgs' <- sequence (typedTermToType env <$> prdargs)
-  cnsArgs' <- sequence (typedTermToType env <$> cnsargs)
+  prdArgs' <- sequence (typedSTermToType env <$> prdargs)
+  cnsArgs' <- sequence (typedSTermToType env <$> cnsargs)
   return (Twice prdArgs' cnsArgs')
 
 getCaseType :: SCase a -> XtorSig a
 getCaseType (MkSCase xt types _) = MkXtorSig xt types
 
 -- only defined for fully opened terms, i.e. no de brujin indices left
-typedTermToType :: Environment -> STerm pc SimpleType -> Either Error SimpleType
-typedTermToType _ (FreeVar _ _ t)        =  return t
-typedTermToType _ (BoundVar _ _)     = Left $ (OtherError  "typedTermToType: found dangling bound variable")
+typedSTermToType :: Environment -> STerm pc SimpleType -> Either Error SimpleType
+typedSTermToType _ (FreeVar _ _ t)        =  return t
+typedSTermToType _ (BoundVar _ _)     = Left $ (OtherError  "typedSTermToType: found dangling bound variable")
 -- Structural XtorCalls
-typedTermToType env (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
+typedSTermToType env (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   argTypes <- argsToTypes env args
   return (TySimple Data [MkXtorSig xt argTypes])
-typedTermToType env (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
+typedSTermToType env (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   argTypes <- argsToTypes env args
   return (TySimple Codata [MkXtorSig xt argTypes])
 -- Nominal XtorCalls
-typedTermToType env (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
+typedSTermToType env (XtorCall _ xt@(MkXtorName { xtorNominalStructural = Nominal }) _) =
   case lookupXtor xt env of
     Nothing -> Left $ OtherError "Xtor does not exist"
     Just tn -> return $ TyNominal (data_name tn)
 -- Structural Matches
-typedTermToType _ (XMatch PrdRep Structural cases) = return $ TySimple Codata (getCaseType <$> cases)
-typedTermToType _ (XMatch CnsRep Structural cases) = return $ TySimple Data (getCaseType <$> cases)
+typedSTermToType _ (XMatch PrdRep Structural cases) = return $ TySimple Codata (getCaseType <$> cases)
+typedSTermToType _ (XMatch CnsRep Structural cases) = return $ TySimple Data (getCaseType <$> cases)
 -- Nominal Matches.
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
-typedTermToType _ (XMatch _ Nominal []) = Left $ OtherError "unreachable"
-typedTermToType env (XMatch _ Nominal (pmcase:pmcases)) =
+typedSTermToType _ (XMatch _ Nominal []) = Left $ OtherError "unreachable"
+typedSTermToType env (XMatch _ Nominal (pmcase:pmcases)) =
   case lookupXtor (scase_name pmcase) env of
     Nothing -> Left $ OtherError "Xtor does not exist"
     Just tn -> do
       forM_ pmcases (\MkSCase { scase_name } -> scase_name `isContainedIn` (data_xtors tn))
       return $ TyNominal (data_name tn)
-typedTermToType _ (MuAbs _ t _) = return t
+typedSTermToType _ (MuAbs _ t _) = return t
 
 isContainedIn :: XtorName -> [XtorSig SimpleType] -> Either Error ()
 isContainedIn xt foo =
@@ -161,14 +161,14 @@ getConstraintsCommand env (Print t) = getConstraintsTerm env t
 getConstraintsCommand env (Apply t1 t2) = do
   css1 <- getConstraintsTerm env t1
   css2 <- getConstraintsTerm env t2
-  ty1 <- typedTermToType env t1
-  ty2 <- typedTermToType env t2
+  ty1 <- typedSTermToType env t1
+  ty2 <- typedSTermToType env t2
   return $ (SubType ty1 ty2) : (css1 ++ css2)
 
-generateConstraints :: STerm pc ()
-                    -> Environment
-                    -> Either Error (STerm pc SimpleType, ConstraintSet)
-generateConstraints t0 env = do
+sgenerateConstraints :: STerm pc ()
+                     -> Environment
+                     -> Either Error (STerm pc SimpleType, ConstraintSet)
+sgenerateConstraints t0 env = do
   termLocallyClosed t0
   (t1, GenerateState numVars _) <- runExcept (runStateT (annotateTerm t0) (GenerateState 0 env))
   css <- getConstraintsTerm env t1

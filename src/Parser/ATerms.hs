@@ -9,7 +9,7 @@ import Syntax.ATerms
 
 acaseP :: Parser (ACase ())
 acaseP = do
-  xt <- xtorName Nominal
+  xt <- xtorName Structural
   args <- parens (freeVarName `sepBy` comma)
   _ <- symbol "=>"
   res <- atermP
@@ -22,7 +22,7 @@ fvarP = do
 
 ctorP :: Parser (ATerm ())
 ctorP = do
-  xt <- xtorName Nominal
+  xt <- xtorName Structural
   args <- parens (atermP `sepBy` comma)
   return (Ctor xt args)
 
@@ -31,7 +31,7 @@ dtorP :: Parser (ATerm ())
 dtorP = parens $ do
   destructee <- atermP
   _ <- symbol "."
-  xt <- xtorName Nominal
+  xt <- xtorName Structural
   args <- parens (atermP `sepBy` comma)
   return (Dtor xt destructee args)
 

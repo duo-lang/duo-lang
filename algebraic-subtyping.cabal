@@ -50,8 +50,6 @@ library
   import: shared-build-depends
   exposed-modules:
       Eval.Eval
-
-
       Parser.ATerms
       Parser.Definition
       Parser.Lexer
@@ -73,7 +71,8 @@ library
       TypeAutomata.Minimize
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
-      TypeInference.GenerateConstraints
+      TypeInference.AGenerateConstraints
+      TypeInference.SGenerateConstraints
       TypeInference.InferTypes
       TypeInference.SolveConstraints
       Utils
