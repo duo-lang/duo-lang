@@ -23,7 +23,7 @@ data TypeInferenceTrace = TypeInferenceTrace
   , trace_resType :: TypeScheme
   }
 
-inferPrdTraced :: Term Prd () -> Environment -> Either Error TypeInferenceTrace
+inferPrdTraced :: STerm Prd () -> Environment -> Either Error TypeInferenceTrace
 inferPrdTraced tm env = do
   (typedTerm, constraintSet) <- generateConstraints tm env
   ty <- typedTermToType env typedTerm
@@ -42,12 +42,12 @@ inferPrdTraced tm env = do
     , trace_resType = resType
     }
 
-inferPrdAut :: Term Prd () -> Environment -> Either Error TypeAutDet
+inferPrdAut :: STerm Prd () -> Environment -> Either Error TypeAutDet
 inferPrdAut tm env = do
   trace <- inferPrdTraced tm env
   return $ trace_minTypeAut trace
 
-inferPrd :: Term Prd () -> Environment -> Either Error TypeScheme
+inferPrd :: STerm Prd () -> Environment -> Either Error TypeScheme
 inferPrd tm env = do
   trace <- inferPrdTraced tm env
   return $ trace_resType trace

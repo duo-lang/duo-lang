@@ -39,8 +39,8 @@ instance Pretty XtorName where
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
-instance Pretty a => Pretty (Case a) where
-  pretty MkCase{..} = pretty case_name <> prettyTwice (constString case_args) <+> "=>" <+> pretty case_cmd
+instance Pretty a => Pretty (SCase a) where
+  pretty MkSCase{..} = pretty scase_name <> prettyTwice (constString scase_args) <+> "=>" <+> pretty scase_cmd
     where
       constString :: Twice [a] -> Twice [String]
       constString (Twice a b) = Twice (const "-" <$> a) (const "-" <$> b)
@@ -48,14 +48,14 @@ instance Pretty a => Pretty (Case a) where
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
 
-isNum :: Term pc a -> Maybe Int
+isNum :: STerm pc a -> Maybe Int
 isNum (XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])) = Just 0
 isNum (XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [n] [])) = case isNum n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNum _ = Nothing
 
-instance Pretty a => Pretty (Term pc a) where
+instance Pretty a => Pretty (STerm pc a) where
   pretty (isNum -> Just n) = pretty n -- View Pattern !
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)

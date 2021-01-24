@@ -21,8 +21,8 @@ type EvalM a = (ReaderT EvalOrder (Except Error)) a
 runEval :: EvalM a -> EvalOrder -> Either Error a
 runEval e evalorder = runExcept (runReaderT e evalorder)
 
-lookupCase :: XtorName -> [Case a] -> EvalM (Case a)
-lookupCase xt cases = case find (\MkCase { case_name } -> xt == case_name) cases of
+lookupCase :: XtorName -> [SCase a] -> EvalM (SCase a)
+lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwError $ EvalError $ unlines ["Error during evaluation. The xtor: "
                                               , unXtorName xt
@@ -44,11 +44,11 @@ evalOneStep :: Pretty a => Command a -> EvalM (Maybe (Command a))
 evalOneStep Done = return Nothing
 evalOneStep (Print _) = return Nothing
 evalOneStep cmd@(Apply (XtorCall PrdRep xt args) (XMatch CnsRep _ cases)) = do
-  (MkCase _ argTypes cmd') <- lookupCase xt cases
+  (MkSCase _ argTypes cmd') <- lookupCase xt cases
   checkArgs cmd argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalOneStep cmd@(Apply (XMatch PrdRep _ cases) (XtorCall CnsRep xt args)) = do
-  (MkCase _ argTypes cmd') <- lookupCase xt cases
+  (MkSCase _ argTypes cmd') <- lookupCase xt cases
   checkArgs cmd argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 evalOneStep (Apply prd@(MuAbs PrdRep _ cmd) cns@(MuAbs CnsRep _ cmd')) = do

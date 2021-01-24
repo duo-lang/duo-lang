@@ -12,16 +12,16 @@ import Utils
 ---------------------------------------------------------------------------------
 
 data Declaration a
-  = PrdDecl FreeVarName (Term Prd a)
-  | CnsDecl FreeVarName (Term Cns a)
+  = PrdDecl FreeVarName (STerm Prd a)
+  | CnsDecl FreeVarName (STerm Cns a)
   | CmdDecl FreeVarName (Command a)
   | TypDecl TypeName TypeScheme
   | DataDecl DataDecl
   deriving (Show)
 
 data Environment = Environment
-  { prdEnv :: Map FreeVarName (Term Prd ())
-  , cnsEnv :: Map FreeVarName (Term Cns ())
+  { prdEnv :: Map FreeVarName (STerm Prd ())
+  , cnsEnv :: Map FreeVarName (STerm Cns ())
   , cmdEnv :: Map FreeVarName (Command ())
   , typEnv :: Map TypeName TypeScheme
   , declEnv :: [DataDecl]

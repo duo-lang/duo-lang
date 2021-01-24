@@ -17,7 +17,7 @@ import TypeAutomata.Subsume (typeAutEqual)
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
-checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
+checkTerm :: Environment -> (FreeVarName, STerm Prd ()) -> SpecWith ()
 checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
 
 typecheckExample :: Environment -> String -> String -> Spec

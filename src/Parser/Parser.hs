@@ -22,7 +22,7 @@ import Syntax.Types
 -- Parsing for Repl
 ---------------------------------------------------------------------------------
 
-bindingP :: Parser (TypeName, Term Prd ())
+bindingP :: Parser (TypeName, STerm Prd ())
 bindingP = do
   v <- typeNameP
   _ <- lexeme (symbol "<-")
