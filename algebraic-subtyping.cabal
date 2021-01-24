@@ -57,17 +57,17 @@ library
       Parser.Lexer
       Parser.Parser
       Parser.Program
-      Parser.Terms
+      Parser.STerms
       Parser.Types
       Pretty.Pretty
       Pretty.TypeAutomata
       SolveConstraints
-      Syntax.AsymmetricTerm
+      Syntax.ATerms
       Syntax.CommonTerm
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
-      Syntax.SymmetricTerm
+      Syntax.STerms
       TypeAutomata.Determinize
       TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton

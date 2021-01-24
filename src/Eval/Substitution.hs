@@ -20,7 +20,7 @@ import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 
 import Utils
-import Syntax.SymmetricTerm
+import Syntax.STerms
 
 ---------------------------------------------------------------------------------
 -- Variable Opening

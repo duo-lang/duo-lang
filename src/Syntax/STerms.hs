@@ -1,4 +1,4 @@
-module Syntax.SymmetricTerm
+module Syntax.STerms
   ( module Syntax.CommonTerm
   , XtorArgs(..)
   , SCase(..)

@@ -1,4 +1,4 @@
-module Syntax.AsymmetricTerm where
+module Syntax.ATerms where
 
 import Syntax.CommonTerm
 

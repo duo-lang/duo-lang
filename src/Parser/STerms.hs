@@ -1,4 +1,4 @@
-module Parser.Terms
+module Parser.STerms
   ( termP
   , commandP
   )where
@@ -12,7 +12,7 @@ import Eval.Substitution
 import Parser.Definition
 import Parser.Lexer
 import Syntax.Program
-import Syntax.SymmetricTerm
+import Syntax.STerms
 import Utils
 
 --------------------------------------------------------------------------------------------

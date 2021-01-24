@@ -9,7 +9,7 @@ import Prettyprinter
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.List (find)
-import Syntax.SymmetricTerm
+import Syntax.STerms
 import Eval.Substitution
 import Utils
 import Pretty.Pretty

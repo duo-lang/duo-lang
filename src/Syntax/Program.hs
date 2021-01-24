@@ -3,7 +3,7 @@ module Syntax.Program where
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Foldable (find)
-import Syntax.SymmetricTerm
+import Syntax.STerms
 import Syntax.Types
 import Utils
 

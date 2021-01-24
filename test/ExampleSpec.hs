@@ -8,7 +8,7 @@ import Data.Either (isRight)
 
 import TestUtils
 import Parser.Parser
-import Syntax.SymmetricTerm
+import Syntax.STerms
 import Syntax.Program
 import InferTypes
 import TypeAutomata.ToAutomaton

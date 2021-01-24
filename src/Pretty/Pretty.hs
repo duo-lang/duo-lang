@@ -4,8 +4,8 @@ module Pretty.Pretty where
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 
-import Syntax.SymmetricTerm
-import Syntax.AsymmetricTerm
+import Syntax.STerms
+import Syntax.ATerms
 import Syntax.Types
 import Utils
 

@@ -13,9 +13,9 @@ module Parser.Parser
 import Parser.Definition
 import Parser.Lexer
 import Parser.Program
-import Parser.Terms
+import Parser.STerms
 import Parser.Types
-import Syntax.SymmetricTerm
+import Syntax.STerms
 import Syntax.Types
 
 ---------------------------------------------------------------------------------
