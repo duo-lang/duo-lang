@@ -1,4 +1,4 @@
-module GenerateConstraints
+module TypeInference.GenerateConstraints
   ( generateConstraints
   , typedTermToType
   ) where

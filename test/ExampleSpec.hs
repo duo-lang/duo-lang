@@ -10,7 +10,7 @@ import TestUtils
 import Parser.Parser
 import Syntax.STerms
 import Syntax.Program
-import InferTypes
+import TypeInference.InferTypes
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 

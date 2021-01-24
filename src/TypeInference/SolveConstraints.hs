@@ -1,4 +1,4 @@
-module SolveConstraints
+module TypeInference.SolveConstraints
   ( VariableState(..)
   , SolverResult
   , solveConstraints

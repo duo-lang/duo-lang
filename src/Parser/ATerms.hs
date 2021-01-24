@@ -50,5 +50,5 @@ comatchP = do
   return (Comatch cocases)
 
 atermP :: Parser (ATerm ())
-atermP = matchP <|> comatchP <|> fvarP <|> ctorP <|> dtorP 
+atermP = matchP <|> comatchP <|> fvarP <|> ctorP <|> dtorP
 

@@ -7,7 +7,7 @@ import Utils
 import TypeAutomata.FlowAnalysis
 import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
 import TypeAutomata.Minimize (minimize)
-import SolveConstraints
+import TypeInference.SolveConstraints
 
 import Control.Monad.Reader
 import Control.Monad.State

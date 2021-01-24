@@ -5,7 +5,7 @@ import System.FilePath ((</>), (<.>))
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
-
+import Data.GraphViz
 import Data.List (isPrefixOf, find)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
@@ -18,12 +18,10 @@ import Parser.Parser
 import Pretty.Pretty
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
-import InferTypes
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
-
-import Data.GraphViz
+import TypeInference.InferTypes
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl

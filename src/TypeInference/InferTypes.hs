@@ -1,18 +1,19 @@
-module InferTypes where
+module TypeInference.InferTypes where
 
 import Syntax.STerms
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
 import Syntax.Program
-import GenerateConstraints
-import SolveConstraints (solveConstraints)
+
+
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
 import TypeAutomata.FlowAnalysis
-
+import TypeInference.GenerateConstraints
+import TypeInference.SolveConstraints (solveConstraints)
 
 data TypeInferenceTrace = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
