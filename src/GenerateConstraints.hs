@@ -12,7 +12,6 @@ import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import Utils
-import Eval.Substitution
 
 {-
 Constraint generation is split in two phases:

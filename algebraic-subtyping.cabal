@@ -49,7 +49,6 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
-      Eval.Substitution
       Eval.Eval
       GenerateConstraints
       InferTypes

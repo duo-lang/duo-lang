@@ -8,7 +8,6 @@ import qualified Data.Map as M
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 
-import Eval.Substitution
 import Parser.Definition
 import Parser.Lexer
 import Syntax.Program
