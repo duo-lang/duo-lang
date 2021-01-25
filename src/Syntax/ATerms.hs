@@ -5,6 +5,7 @@ module Syntax.ATerms
   , atermClosing
   -- Variable Opening
   , atermOpening
+  , module Syntax.CommonTerm
   ) where
 
 import Data.List (elemIndex)
