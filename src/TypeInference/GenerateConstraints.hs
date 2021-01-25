@@ -1,5 +1,6 @@
-module TypeInference.SGenerateConstraints
+module TypeInference.GenerateConstraints
   ( sgenerateConstraints
+  , agenerateConstraints
   , typedSTermToType
   ) where
 
@@ -10,25 +11,11 @@ import Control.Monad.State
 
 
 import Pretty.Pretty
+import Syntax.ATerms
 import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import Utils
-
-{-
-Constraint generation is split in two phases:
-
-  1) The term is annotated with fresh unification variables
-  2) The term is traversed and constraints are collected
-
-This seperation is only possible because in our system, there is a 1-to-1 correspondence between program variables
-and unifcation variables. Thus, during the actual constraint generation, we don't ever have to come up with new
-unifcation variables.
--}
-
--------------------------------------------------------------------------------------
--- Phase 1: Term annotation
--------------------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------------------------
 -- State of GenM
@@ -47,6 +34,7 @@ stateToConstraintSet GenerateState {..} = ConstraintSet
   { cs_constraints = constraints
   , cs_uvars = (\i -> MkTVar (show i)) <$> [0..varCount]
   }
+
 ---------------------------------------------------------------------------------------------
 -- Reader of GenM
 ---------------------------------------------------------------------------------------------
@@ -71,6 +59,29 @@ runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) in
   Left err -> Left err
   Right (x, state) -> Right (x, stateToConstraintSet state)
 
+---------------------------------------------------------------------------------------------
+-- Helper functions
+---------------------------------------------------------------------------------------------
+
+freshTVar :: GenM SimpleType
+freshTVar = do
+  var <- gets varCount
+  modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
+  return (TyVar Normal (MkTVar (show var)))
+
+freshVars :: Int -> PrdCnsRep pc -> GenM [(SimpleType, STerm pc SimpleType)]
+freshVars k pc = do
+  n <- gets varCount
+  modify (\gs@GenerateState { varCount } -> gs {varCount = varCount + k })
+  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar Normal (MkTVar (show i))]
+
+lookupType :: Index -> GenM SimpleType
+lookupType (i,j) = do
+  ctx <- asks context
+  return $ (ctx !! i) !! j
+
+addConstraint :: Constraint -> GenM ()
+addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
 lookupCase :: XtorName -> GenM (Twice [SimpleType], XtorArgs SimpleType)
 lookupCase xt = do
@@ -82,12 +93,9 @@ lookupCase xt = do
       let cnss = (\ty -> FreeVar CnsRep "y" ty) <$> cnsTypes
       return (types, MkXtorArgs prds cnss)
 
-
-freshVars :: Int -> PrdCnsRep pc -> GenM [(SimpleType, STerm pc SimpleType)]
-freshVars k pc = do
-  n <- gets varCount
-  modify (\gs@GenerateState { varCount } -> gs {varCount = varCount + k })
-  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar Normal (MkTVar (show i))]
+---------------------------------------------------------------------------------------------
+-- Symmetric Terms
+---------------------------------------------------------------------------------------------
 
 annotateCase :: SCase () -> GenM (SCase SimpleType)
 -- In Matches on Structural types, all arguments to xtors have to be annotated by a unification variable, since
@@ -217,3 +225,51 @@ sgenerateConstraints t0 env = do
   return (t1, constraintSet')
 
 
+---------------------------------------------------------------------------------------------
+-- Asymmetric Terms
+---------------------------------------------------------------------------------------------
+
+genConstraints :: ATerm () -> GenM (ATerm SimpleType, SimpleType)
+genConstraints (BVar idx) = do
+  ty <- lookupType idx
+  return (BVar idx, ty)
+genConstraints (FVar fv) = throwError $ GenConstraintsError $ "Free type var: " ++ fv
+genConstraints (Ctor xt args) = do
+  args' <- sequence (genConstraints <$> args)
+  let ty = TySimple Data [MkXtorSig xt (Twice (snd <$> args') [])]
+  return (Ctor xt (fst <$> args'), ty)
+genConstraints (Dtor xt t args) = do
+  args' <- sequence (genConstraints <$> args)
+  retType <- freshTVar
+  let codataType = TySimple Codata [MkXtorSig xt (Twice (snd <$> args') [retType])]
+  (t', ty') <- genConstraints t
+  addConstraint (SubType ty' codataType)
+  return (Dtor xt t' (fst <$> args'), retType)
+genConstraints (Match t cases) = do
+  (t', matchType) <- genConstraints t
+  retType <- freshTVar
+  cases' <- sequence (genConstraintsCase retType <$> cases)
+  addConstraint (SubType matchType (TySimple Data (snd <$> cases')))
+  return (Match t' (fst <$> cases'), retType)
+genConstraints (Comatch cocases) = do
+  cocases' <- sequence (genConstraintsCocase <$> cocases)
+  let ty = TySimple Codata (snd <$> cocases')
+  return (Comatch (fst <$> cocases'), ty)
+
+genConstraintsCase :: SimpleType -> ACase () -> GenM (ACase SimpleType, XtorSig SimpleType)
+genConstraintsCase retType (MkACase { acase_name, acase_args, acase_term }) = do
+  argts <- forM acase_args (\_ -> freshTVar)
+  (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = argts:context }) (genConstraints acase_term)
+  addConstraint (SubType retTypeInf retType)
+  return (MkACase acase_name argts acase_term', MkXtorSig acase_name (Twice argts []))
+
+genConstraintsCocase :: ACase () -> GenM (ACase SimpleType, XtorSig SimpleType)
+genConstraintsCocase (MkACase { acase_name, acase_args, acase_term }) = do
+  argts <- forM acase_args (\_ -> freshTVar)
+  (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = argts:context }) (genConstraints acase_term)
+  let sig = MkXtorSig acase_name (Twice argts [retType])
+  return (MkACase acase_name argts acase_term', sig)
+
+agenerateConstraints :: ATerm () -> Environment -> Either Error ((ATerm SimpleType, SimpleType), ConstraintSet)
+agenerateConstraints tm env = do
+  runGenM env (genConstraints tm)
