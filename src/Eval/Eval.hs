@@ -3,15 +3,22 @@ module Eval.Eval
   , runEval
   , eval
   , evalSteps
+  -- Asymmetric Terms
+  , isValue
+  , evalATermComplete
   ) where
 
-import Prettyprinter
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.List (find)
-import Syntax.STerms
-import Utils
+import Data.Maybe (fromJust)
+import Prettyprinter
+
 import Pretty.Pretty
+import Syntax.STerms
+import Syntax.ATerms
+import Utils
+
 
 data EvalOrder = CBV | CBN
 
@@ -79,4 +86,48 @@ evalSteps cmd = evalSteps' [cmd] cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
+
+---------------------------------------------------------------------------------
+-- Asymmetric Terms
+---------------------------------------------------------------------------------
+
+isValue :: ATerm a -> Bool
+isValue (BVar _) = True
+isValue (FVar _) = True
+isValue (Ctor _ args) = and (isValue <$> args)
+isValue (Dtor _ _ _) = False
+isValue (Match _ _ ) = False
+isValue (Comatch _) = True
+
+evalArgsSingleStep :: [ATerm a] -> Maybe [ATerm a]
+evalArgsSingleStep [] = Nothing
+evalArgsSingleStep (a:args) | isValue a = case evalArgsSingleStep args of
+                                         Nothing -> Nothing
+                                         Just args' -> Just (a:args')
+                            | otherwise = Just ((fromJust $ evalATermSingleStep a) : args)
+
+evalATermSingleStep :: ATerm a -> Maybe (ATerm a)
+evalATermSingleStep (BVar _) = Nothing
+evalATermSingleStep (FVar _) = Nothing
+evalATermSingleStep (Ctor xt args) | and (isValue <$> args) = Nothing
+                                   | otherwise = Just (Ctor xt (fromJust (evalArgsSingleStep args)))
+evalATermSingleStep (Match t cases) | not (isValue t) = Just (Match (fromJust (evalATermSingleStep t)) cases)
+evalATermSingleStep (Match (Ctor xt args) cases) =
+  case find (\MkACase { acase_name } -> acase_name == xt) cases of
+    Nothing -> error "Pattern match error"
+    Just acase -> Just $ atermOpening args (acase_term acase)
+evalATermSingleStep (Match _ _) = error "unreachable if properly typechecked"
+evalATermSingleStep (Dtor xt t args) | not (isValue t) = Just (Dtor xt (fromJust (evalATermSingleStep t)) args)
+evalATermSingleStep (Dtor xt t args) | (not . and) (isValue <$> args) = Just (Dtor xt t (fromJust $ evalArgsSingleStep args))
+evalATermSingleStep (Dtor xt (Comatch cocases) args) =
+  case find (\MkACase { acase_name } -> acase_name == xt) cocases of
+    Nothing -> error "Copattern match error"
+    Just cocase -> Just $ atermOpening args (acase_term cocase)
+evalATermSingleStep (Dtor _ _ _) = error "unreachable if properly typechecked"
+evalATermSingleStep (Comatch _) = Nothing
+
+evalATermComplete :: ATerm a-> ATerm a
+evalATermComplete t = case evalATermSingleStep t of
+  Nothing -> t
+  Just t' -> evalATermComplete t'
 

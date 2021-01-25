@@ -1,8 +1,10 @@
 module Syntax.ATerms
   ( ACase(..)
   , ATerm(..)
-  -- Variable Opening
+  -- Variable Closing
   , atermClosing
+  -- Variable Opening
+  , atermOpening
   ) where
 
 import Data.List (elemIndex)
@@ -30,7 +32,7 @@ data ATerm a where
   deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
--- Variable Opening
+-- Variable Closing
 ---------------------------------------------------------------------------------
 
 atermClosingRec :: Int -> [FreeVarName] -> ATerm a -> ATerm a
@@ -42,5 +44,23 @@ atermClosingRec k args (Dtor xt t args') = Dtor xt (atermClosingRec k args t) (a
 atermClosingRec k args (Match t cases) = Match (atermClosingRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cases)
 atermClosingRec k args (Comatch cocases) = Comatch ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cocases)
 
-atermClosing :: [FreeVarName] -> ATerm () -> ATerm ()
+atermClosing :: [FreeVarName] -> ATerm a -> ATerm a
 atermClosing = atermClosingRec 0
+
+---------------------------------------------------------------------------------
+-- Variable Opening
+---------------------------------------------------------------------------------
+
+atermOpening :: [ATerm a] -> ATerm a -> ATerm a
+atermOpening = atermOpeningRec 0
+
+atermOpeningRec :: Int -> [ATerm a] -> ATerm a -> ATerm a
+atermOpeningRec k args bv@(BVar (i,j)) | i == k = args !! j
+                                    | otherwise = bv
+atermOpeningRec _ _ fv@(FVar _) = fv
+atermOpeningRec k args (Ctor xt args') = Ctor xt (atermOpeningRec k args <$> args')
+atermOpeningRec k args (Dtor xt t args') = Dtor xt (atermOpeningRec k args t) (atermOpeningRec k args <$> args')
+atermOpeningRec k args (Match t cases) = Match (atermOpeningRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermOpeningRec (k + 1) args acase_term }) <$> cases)
+atermOpeningRec k args (Comatch cocases) = Comatch ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermOpeningRec (k + 1) args acase_term }) <$> cocases)
+
+
