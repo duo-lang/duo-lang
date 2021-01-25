@@ -8,10 +8,11 @@ import Text.Megaparsec hiding (State)
 
 import Parser.Definition
 import Parser.Lexer
-import Parser.Terms
+import Parser.STerms
+import Parser.ATerms
 import Parser.Types
 import Syntax.Program
-import Syntax.Terms
+import Syntax.STerms
 import Syntax.Types
 
 ---------------------------------------------------------------------------------
@@ -19,14 +20,14 @@ import Syntax.Types
 ---------------------------------------------------------------------------------
 
 declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> typeDeclarationP <|> dataDeclP
+declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> defDeclarationP <|> typeDeclarationP <|> dataDeclP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
   _ <- try $ lexeme (symbol "prd")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
-  t <- lexeme (termP PrdRep)
+  t <- lexeme (stermP PrdRep)
   _ <- symbol ";"
   return (PrdDecl v t)
 
@@ -35,7 +36,7 @@ cnsDeclarationP = do
   _ <- try $ lexeme (symbol "cns")
   v <- freeVarName
   _ <- lexeme (symbol ":=")
-  t <- lexeme (termP CnsRep)
+  t <- lexeme (stermP CnsRep)
   _ <- symbol ";"
   return (CnsDecl v t)
 
@@ -47,6 +48,15 @@ cmdDeclarationP = do
   t <- lexeme commandP
   _ <- symbol ";"
   return (CmdDecl v t)
+
+defDeclarationP :: Parser (Declaration ())
+defDeclarationP = do
+  _ <- try $ (lexeme (symbol "def"))
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme atermP
+  _ <- symbol ";"
+  return (DefDecl v t)
 
 typeDeclarationP :: Parser (Declaration ())
 typeDeclarationP = do

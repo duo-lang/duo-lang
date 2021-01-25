@@ -24,7 +24,7 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Parser.Definition
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
 import Utils
 

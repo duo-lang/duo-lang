@@ -1,4 +1,4 @@
-module SolveConstraints
+module TypeInference.SolveConstraints
   ( VariableState(..)
   , SolverResult
   , solveConstraints
@@ -14,7 +14,7 @@ import qualified Data.Set as S
 import Data.Void
 
 import Syntax.Types
-import Syntax.Terms (XtorName)
+import Syntax.CommonTerm (XtorName)
 import Utils
 import Pretty.Pretty
 

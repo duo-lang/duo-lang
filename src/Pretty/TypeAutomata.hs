@@ -10,7 +10,7 @@ import Data.Text.Lazy (pack)
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.TypeGraph
 
 

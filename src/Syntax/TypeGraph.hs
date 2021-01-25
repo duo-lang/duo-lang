@@ -9,7 +9,7 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 import Syntax.Types
-import Syntax.Terms
+import Syntax.CommonTerm
 
 -------------------------------------------------------
 -- Graph syntax

@@ -1,10 +1,9 @@
 module TypeAutomata.FlowAnalysis
-  ( genFlowGraph
-  , removeAdmissableFlowEdges
+  ( removeAdmissableFlowEdges
   , getFlowAnalysisMap
   ) where
 
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.TypeGraph
 

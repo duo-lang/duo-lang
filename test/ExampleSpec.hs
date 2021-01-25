@@ -8,22 +8,22 @@ import Data.Either (isRight)
 
 import TestUtils
 import Parser.Parser
-import Syntax.Terms
+import Syntax.STerms
 import Syntax.Program
-import InferTypes
+import TypeInference.InferTypes
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
-checkTerm :: Environment -> (FreeVarName, Term Prd ()) -> SpecWith ()
+checkTerm :: Environment -> (FreeVarName, STerm Prd ()) -> SpecWith ()
 checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
 
 typecheckExample :: Environment -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
-      let Right term = runEnvParser (termP PrdRep) env termS
+      let Right term = runEnvParser (stermP PrdRep) env termS
       let Right inferredTypeAut = inferPrdAut term env
       let Right specTypeScheme = runEnvParser typeSchemeP mempty typS
       let Right specTypeAut = typeToAut specTypeScheme

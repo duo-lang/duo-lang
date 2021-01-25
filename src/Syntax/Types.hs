@@ -4,7 +4,7 @@ import Data.Kind (Type)
 import Data.List (nub)
 import Data.Void
 
-import Syntax.Terms
+import Syntax.CommonTerm
 import Utils
 
 ------------------------------------------------------------------------------

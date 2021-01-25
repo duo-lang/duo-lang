@@ -10,7 +10,7 @@ import Text.Megaparsec hiding (State)
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
 
 ---------------------------------------------------------------------------------

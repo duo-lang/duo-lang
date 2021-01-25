@@ -5,11 +5,10 @@ import qualified Data.Map as M
 import Data.Either (isLeft, isRight)
 import Control.Monad (forM_, when)
 
-import Syntax.Terms
+import Syntax.STerms
 import Syntax.Program
 import Utils
 import TestUtils
-import Eval.Substitution 
 
 failingExamples :: [String]
 failingExamples = []

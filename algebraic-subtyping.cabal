@@ -49,29 +49,32 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
-      Eval.Substitution
       Eval.Eval
-      GenerateConstraints
-      InferTypes
+      Parser.ATerms
       Parser.Definition
       Parser.Lexer
       Parser.Parser
       Parser.Program
-      Parser.Terms
+      Parser.STerms
       Parser.Types
       Pretty.Pretty
       Pretty.TypeAutomata
-      SolveConstraints
-      Syntax.Terms
+      Syntax.ATerms
+      Syntax.CommonTerm
       Syntax.Types
       Syntax.TypeGraph
       Syntax.Program
+      Syntax.STerms
       TypeAutomata.Determinize
       TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
+      TypeInference.AGenerateConstraints
+      TypeInference.SGenerateConstraints
+      TypeInference.InferTypes
+      TypeInference.SolveConstraints
       Utils
   other-modules:
       Paths_algebraic_subtyping

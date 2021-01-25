@@ -15,7 +15,7 @@ import Data.Tuple (swap)
 import Data.Functor.Identity
 import Control.Monad.State
 
-import Syntax.Terms (PrdCns(..))
+import Syntax.CommonTerm (PrdCns(..))
 import Syntax.TypeGraph
 
 import TypeAutomata.Determinize (determinize)

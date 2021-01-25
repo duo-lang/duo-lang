@@ -1,13 +1,13 @@
 module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol, solverStateToTypeAut) where
 
-import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
 import TypeAutomata.FlowAnalysis
 import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
 import TypeAutomata.Minimize (minimize)
-import SolveConstraints
+import TypeInference.SolveConstraints
 
 import Control.Monad.Reader
 import Control.Monad.State

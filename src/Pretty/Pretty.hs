@@ -4,7 +4,8 @@ module Pretty.Pretty where
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 
-import Syntax.Terms
+import Syntax.STerms
+import Syntax.ATerms
 import Syntax.Types
 import Utils
 
@@ -34,8 +35,12 @@ instance Pretty XtorName where
   pretty (MkXtorName Structural xt) = "'" <> pretty xt
   pretty (MkXtorName Nominal    xt) = pretty xt
 
-instance Pretty a => Pretty (Case a) where
-  pretty MkCase{..} = pretty case_name <> prettyTwice (constString case_args) <+> "=>" <+> pretty case_cmd
+---------------------------------------------------------------------------------
+-- Symmetric Terms
+---------------------------------------------------------------------------------
+
+instance Pretty a => Pretty (SCase a) where
+  pretty MkSCase{..} = pretty scase_name <> prettyTwice (constString scase_args) <+> "=>" <+> pretty scase_cmd
     where
       constString :: Twice [a] -> Twice [String]
       constString (Twice a b) = Twice (const "-" <$> a) (const "-" <$> b)
@@ -43,20 +48,20 @@ instance Pretty a => Pretty (Case a) where
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
 
-isNum :: Term pc a -> Maybe Int
+isNum :: STerm pc a -> Maybe Int
 isNum (XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])) = Just 0
 isNum (XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [n] [])) = case isNum n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNum _ = Nothing
 
-instance Pretty a => Pretty (Term pc a) where
+instance Pretty a => Pretty (STerm pc a) where
   pretty (isNum -> Just n) = pretty n -- View Pattern !
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
-  pretty (Match PrdRep _ cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
-  pretty (Match CnsRep _ cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (XMatch PrdRep _ cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (XMatch CnsRep _ cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (MuAbs pc a cmd) =
     case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
 
@@ -64,6 +69,22 @@ instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"
   pretty (Print t) = "Print" <> parens (pretty t)
   pretty (Apply t1 t2) = group (nest 3 (line' <> vsep [pretty t1, ">>", pretty t2]))
+
+---------------------------------------------------------------------------------
+-- Asymmetric Terms
+---------------------------------------------------------------------------------
+
+instance Pretty a => Pretty (ACase a) where
+  pretty MkACase{ acase_name, acase_args, acase_term } =
+    pretty acase_name <> parens (intercalateComma (map (const "-") acase_args)) <+> "=>" <+> pretty acase_term
+
+instance Pretty a => Pretty (ATerm a) where
+  pretty (BVar (i,j)) = parens (pretty i <> "," <> pretty j)
+  pretty (FVar v) = pretty v
+  pretty (Ctor xt args) = pretty xt <> parens (intercalateComma (map pretty args))
+  pretty (Dtor xt t args) = parens ( pretty t <> "." <> pretty xt <> parens (intercalateComma (map pretty args)))
+  pretty (Match t cases) = "match" <+> pretty t <+> "with" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (Comatch cocases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cocases)))))
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Types

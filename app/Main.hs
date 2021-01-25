@@ -5,12 +5,12 @@ import System.FilePath ((</>), (<.>))
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
-
+import Data.GraphViz
 import Data.List (isPrefixOf, find)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
-import Syntax.Terms
+import Syntax.STerms
 import Syntax.Types
 import Syntax.TypeGraph
 import Syntax.Program
@@ -18,12 +18,10 @@ import Parser.Parser
 import Pretty.Pretty
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
-import InferTypes
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
-
-import Data.GraphViz
+import TypeInference.InferTypes
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -75,18 +73,28 @@ parseRepl s p env = fromRight (runEnvParser p env s)
 cmd :: String -> Repl ()
 cmd s = do
   env <- gets replEnv
-  com <- parseRepl s commandP env
-  steps <- gets steps
-  evalOrder <- gets evalOrder
-  case steps of
-    NoSteps -> do
-      case runEval (eval com) evalOrder of
-        Right res -> prettyRepl res
-        Left err -> prettyRepl err
-    Steps -> do
-      case runEval (evalSteps com) evalOrder of
-        Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
-        Left err -> prettyRepl err
+  case runEnvParser commandP env s of
+    Right com -> do
+      steps <- gets steps
+      evalOrder <- gets evalOrder
+      case steps of
+        NoSteps -> do
+          case runEval (eval com) evalOrder of
+            Right res -> prettyRepl res
+            Left err -> prettyRepl err
+        Steps -> do
+          case runEval (evalSteps com) evalOrder of
+            Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
+            Left err -> prettyRepl err
+    Left err1 -> case runEnvParser atermP env s of
+      Right aterm -> do
+        let res = evalATermComplete aterm
+        prettyRepl res
+      Left err2 -> do
+        prettyRepl "Could not parse as command:"
+        prettyRepl err1
+        prettyRepl "Could not parse as aterm:"
+        prettyRepl err2
 
 ------------------------------------------------------------------------------
 -- Options
@@ -133,9 +141,20 @@ unset_option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  t <- parseRepl s (termP PrdRep) env
-  res <- fromRight $ inferPrd t env
-  prettyRepl (" :: " ++ ppPrint res)
+  case runEnvParser (stermP PrdRep) env s of
+    Right t -> do
+      res <- fromRight $ inferPrd t env
+      prettyRepl (" S :: " ++ ppPrint res)
+    Left err1 -> do
+      case runEnvParser atermP env s of
+        Right t -> do
+          res <- fromRight $ inferATerm t env
+          prettyRepl (" A :: " ++ ppPrint res)
+        Left err2 -> do
+          prettyRepl "Cannot parse as sterm:"
+          prettyRepl err1
+          prettyRepl "Cannot parse as aterm:"
+          prettyRepl err2
 
 type_option :: Option
 type_option = Option
@@ -149,15 +168,17 @@ type_option = Option
 show_cmd :: String -> Repl ()
 show_cmd s = do
   env <- gets replEnv
-  case runEnvParser typeSchemeP env s of
-    Right ty -> prettyRepl ty
-    Left err1 -> case runEnvParser (termP PrdRep) env s of
-      Right t -> prettyRepl t
-      Left err2 -> prettyRepl $ unlines [ "Type parsing error:"
-                                        , ppPrint err1
-                                        , "Term parsing error:"
-                                        , ppPrint err2
-                                        ]
+  case M.lookup s (prdEnv env) of
+    Just prd -> prettyRepl prd
+    Nothing -> case M.lookup s (cnsEnv env) of
+      Just cns -> prettyRepl cns
+      Nothing -> case M.lookup s (cmdEnv env) of
+        Just cmd -> prettyRepl cmd
+        Nothing -> case M.lookup s (defEnv env) of
+          Just def -> prettyRepl def
+          Nothing -> case M.lookup (MkTypeName s) (typEnv env) of
+            Just typ -> prettyRepl typ
+            Nothing -> prettyRepl "Not in environment."
 
 show_option :: Option
 show_option = Option
@@ -208,7 +229,7 @@ save_cmd s = do
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runEnvParser (termP PrdRep) env s of
+    Left err1 -> case runEnvParser (stermP PrdRep) env s of
       Right t -> do
         trace <- fromRight $ inferPrdTraced t env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
@@ -366,7 +387,14 @@ all_options = [ type_option, show_option, help_option, def_option, save_option, 
 completer :: String -> ReplInner [String]
 completer s = do
   env <- gets replEnv
-  return $ filter (s `isPrefixOf`) (M.keys (prdEnv env) ++ M.keys (cnsEnv env) ++ M.keys (cmdEnv env) ++ (unTypeName <$> M.keys (typEnv env)) ++ ((unTypeName . data_name) <$> (declEnv env)))
+  let keys = concat [ M.keys (prdEnv env)
+                    , M.keys (cnsEnv env)
+                    , M.keys (cmdEnv env)
+                    , M.keys (defEnv env)
+                    , unTypeName <$> M.keys (typEnv env)
+                    , (unTypeName . data_name) <$> (declEnv env)
+                    ]
+  return $ filter (s `isPrefixOf`) keys
 
 ini :: Repl ()
 ini = do
