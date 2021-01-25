@@ -27,6 +27,11 @@ import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
 -- Symmetric Terms
+--
+-- We use the locally nameless representation for terms, which combines names for
+-- free variables with  anonymous deBruijn indexes for bound variables.
+-- The locally namelesss representation is well documented here:
+-- https://www.chargueraud.org/softs/ln/
 ---------------------------------------------------------------------------------
 
 data XtorArgs a = MkXtorArgs { prdArgs :: [STerm Prd a]

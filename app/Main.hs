@@ -73,18 +73,28 @@ parseRepl s p env = fromRight (runEnvParser p env s)
 cmd :: String -> Repl ()
 cmd s = do
   env <- gets replEnv
-  com <- parseRepl s commandP env
-  steps <- gets steps
-  evalOrder <- gets evalOrder
-  case steps of
-    NoSteps -> do
-      case runEval (eval com) evalOrder of
-        Right res -> prettyRepl res
-        Left err -> prettyRepl err
-    Steps -> do
-      case runEval (evalSteps com) evalOrder of
-        Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
-        Left err -> prettyRepl err
+  case runEnvParser commandP env s of
+    Right com -> do
+      steps <- gets steps
+      evalOrder <- gets evalOrder
+      case steps of
+        NoSteps -> do
+          case runEval (eval com) evalOrder of
+            Right res -> prettyRepl res
+            Left err -> prettyRepl err
+        Steps -> do
+          case runEval (evalSteps com) evalOrder of
+            Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
+            Left err -> prettyRepl err
+    Left err1 -> case runEnvParser atermP env s of
+      Right aterm -> do
+        let res = evalATermComplete aterm
+        prettyRepl res
+      Left err2 -> do
+        prettyRepl "Could not parse as command:"
+        prettyRepl err1
+        prettyRepl "Could not parse as aterm:"
+        prettyRepl err2
 
 ------------------------------------------------------------------------------
 -- Options
