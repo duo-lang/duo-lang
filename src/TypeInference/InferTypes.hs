@@ -35,8 +35,7 @@ data TypeInferenceTrace = TypeInferenceTrace
 
 inferPrdTraced :: STerm Prd () -> Environment -> Either Error TypeInferenceTrace
 inferPrdTraced tm env = do
-  (typedTerm, constraintSet) <- sgenerateConstraints tm env
-  ty <- typedSTermToType env typedTerm
+  ((_,ty), constraintSet) <- sgenerateConstraints tm env
   solverState <- solveConstraints constraintSet
   typeAut <- solverStateToTypeAut solverState ty Prd
   let typeAutDet = determinize typeAut
