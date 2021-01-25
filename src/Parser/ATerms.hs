@@ -7,9 +7,9 @@ import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.ATerms
 
-acaseP :: Parser (ACase ())
-acaseP = do
-  xt <- xtorName Structural
+acaseP :: NominalStructural -> Parser (ACase ())
+acaseP ns = do
+  xt <- xtorName ns
   args <- parens (freeVarName `sepBy` comma)
   _ <- symbol "=>"
   res <- atermP
@@ -20,35 +20,43 @@ fvarP = do
   fv <- freeVarName
   return (FVar fv)
 
-ctorP :: Parser (ATerm ())
-ctorP = do
-  xt <- xtorName Structural
+ctorP :: NominalStructural -> Parser (ATerm ())
+ctorP ns = do
+  xt <- xtorName ns
   args <- parens (atermP `sepBy` comma)
   return (Ctor xt args)
 
 
-dtorP :: Parser (ATerm ())
-dtorP = parens $ do
+dtorP :: NominalStructural -> Parser (ATerm ())
+dtorP ns = parens $ do
   destructee <- atermP
   _ <- symbol "."
-  xt <- xtorName Structural
+  xt <- xtorName ns
   args <- parens (atermP `sepBy` comma)
   return (Dtor xt destructee args)
 
-matchP :: Parser (ATerm ())
-matchP = do
+matchP :: NominalStructural -> Parser (ATerm ())
+matchP ns = do
   _ <- symbol "match"
   arg <- atermP
   _ <- symbol "with"
-  cases <- braces $ acaseP `sepBy` comma
+  cases <- braces $ acaseP ns `sepBy` comma
   return (Match arg cases)
 
-comatchP :: Parser (ATerm ())
-comatchP = do
+comatchP :: NominalStructural -> Parser (ATerm ())
+comatchP ns = do
   _ <- symbol "comatch"
-  cocases <- braces $ acaseP `sepBy` comma
+  cocases <- braces $ acaseP ns `sepBy` comma
   return (Comatch cocases)
 
 atermP :: Parser (ATerm ())
-atermP = matchP <|> comatchP <|> fvarP <|> ctorP <|> dtorP
+atermP = matchP Structural <|>
+         matchP Nominal <|>
+         comatchP Structural <|>
+         comatchP Nominal <|>
+         ctorP Structural <|>
+         ctorP Nominal <|>
+         dtorP Structural <|>
+         dtorP Nominal <|>
+         fvarP
 
