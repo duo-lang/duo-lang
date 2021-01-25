@@ -19,6 +19,8 @@ import Utils
 
 ---------------------------------------------------------------------------------------------
 -- State of GenM
+--
+-- We use varCount for generating fresh type variables, and collect the constraints.
 ---------------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState
@@ -29,6 +31,7 @@ data GenerateState = GenerateState
 initialState :: GenerateState
 initialState = GenerateState { varCount = 0, constraints = [] }
 
+-- | After constraint generation is finished, we can turn the final state into a ConstraintSet.
 stateToConstraintSet :: GenerateState -> ConstraintSet
 stateToConstraintSet GenerateState {..} = ConstraintSet
   { cs_constraints = constraints
@@ -37,6 +40,8 @@ stateToConstraintSet GenerateState {..} = ConstraintSet
 
 ---------------------------------------------------------------------------------------------
 -- Reader of GenM
+--
+-- We have access to a program environment and a local variable context.
 ---------------------------------------------------------------------------------------------
 
 data GenerateReader = GenerateReader { context :: [Twice [SimpleType]]
@@ -63,6 +68,7 @@ runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) in
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
+-- | Generate a fresh type variable.
 freshTVar :: GenM SimpleType
 freshTVar = do
   var <- gets varCount
@@ -75,18 +81,18 @@ freshTVars (Twice prdArgs cnsArgs) = do
   cnsArgs' <- forM cnsArgs (\_ -> freshTVar)
   return (Twice prdArgs' cnsArgs')
 
-lookupPrdType :: Index -> GenM SimpleType
-lookupPrdType (i,j) = do
+-- | Lookup a type of a bound variable in the context.
+lookupType :: PrdCnsRep pc -> Index -> GenM SimpleType
+lookupType PrdRep (i,j) = do
   ctx <- asks context
   let (Twice prdTypes _) = ctx !! i
   return $ prdTypes !! j
-
-lookupCnsType :: Index -> GenM SimpleType
-lookupCnsType (i,j) = do
+lookupType CnsRep (i,j) = do
   ctx <- asks context
   let (Twice _ cnsTypes) = ctx !! i
   return $ cnsTypes !! j
 
+-- | Add a constraint to the state.
 addConstraint :: Constraint -> GenM ()
 addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
@@ -128,12 +134,9 @@ genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), Twice (snd <$> prdArgs') (snd <$> cnsArgs'))
 
 genConstraintsSTerm :: STerm pc () -> GenM (STerm pc SimpleType, SimpleType)
-genConstraintsSTerm (BoundVar PrdRep idx) = do
-  ty <- lookupPrdType idx
-  return (BoundVar PrdRep idx, ty)
-genConstraintsSTerm (BoundVar CnsRep idx) = do
-  ty <- lookupCnsType idx
-  return (BoundVar CnsRep idx, ty)
+genConstraintsSTerm (BoundVar rep idx) = do
+  ty <- lookupType rep idx
+  return (BoundVar rep idx, ty)
 genConstraintsSTerm (FreeVar _ _ _) = throwError $ GenConstraintsError "Should not occur"
 genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
@@ -199,7 +202,7 @@ sgenerateConstraints tm env = runGenM env (genConstraintsSTerm tm)
 
 genConstraintsATerm :: ATerm () -> GenM (ATerm SimpleType, SimpleType)
 genConstraintsATerm (BVar idx) = do
-  ty <- lookupPrdType idx
+  ty <- lookupType PrdRep idx
   return (BVar idx, ty)
 genConstraintsATerm (FVar fv) = throwError $ GenConstraintsError $ "Free type var: " ++ fv
 genConstraintsATerm (Ctor xt args) = do
