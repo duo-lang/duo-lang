@@ -105,7 +105,7 @@ genConstraintsCase :: SimpleType -> ACase () -> GenM (ACase SimpleType, XtorSig 
 genConstraintsCase retType (MkACase { acase_name, acase_args, acase_term }) = do
   argts <- forM acase_args (\_ -> freshTVar)
   (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = argts:context }) (genConstraints acase_term)
-  addConstraint (SubType retType retTypeInf)
+  addConstraint (SubType retTypeInf retType)
   return (MkACase acase_name argts acase_term', MkXtorSig acase_name (Twice argts []))
 
 genConstraintsCocase :: ACase () -> GenM (ACase SimpleType, XtorSig SimpleType)

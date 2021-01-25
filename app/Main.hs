@@ -141,9 +141,20 @@ unset_option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  t <- parseRepl s (stermP PrdRep) env
-  res <- fromRight $ inferPrd t env
-  prettyRepl (" :: " ++ ppPrint res)
+  case runEnvParser (stermP PrdRep) env s of
+    Right t -> do
+      res <- fromRight $ inferPrd t env
+      prettyRepl (" S :: " ++ ppPrint res)
+    Left err1 -> do
+      case runEnvParser atermP env s of
+        Right t -> do
+          res <- fromRight $ inferATerm t env
+          prettyRepl (" A :: " ++ ppPrint res)
+        Left err2 -> do
+          prettyRepl "Cannot parse as sterm:"
+          prettyRepl err1
+          prettyRepl "Cannot parse as aterm:"
+          prettyRepl err2
 
 type_option :: Option
 type_option = Option
