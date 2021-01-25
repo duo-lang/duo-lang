@@ -4,8 +4,10 @@ module TypeInference.SGenerateConstraints
   ) where
 
 import qualified Data.Map as M
-import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.State
+
 
 import Pretty.Pretty
 import Syntax.STerms
@@ -28,12 +30,51 @@ unifcation variables.
 -- Phase 1: Term annotation
 -------------------------------------------------------------------------------------
 
-data GenerateState = GenerateState { varGen :: Int, envGen :: Environment }
-type GenerateM a = StateT GenerateState (Except Error) a
+---------------------------------------------------------------------------------------------
+-- State of GenM
+---------------------------------------------------------------------------------------------
 
-lookupCase :: XtorName -> GenerateM (Twice [SimpleType], XtorArgs SimpleType)
+data GenerateState = GenerateState
+  { varCount :: Int
+  , constraints :: [Constraint]
+  }
+
+initialState :: GenerateState
+initialState = GenerateState { varCount = 0, constraints = [] }
+
+stateToConstraintSet :: GenerateState -> ConstraintSet
+stateToConstraintSet GenerateState {..} = ConstraintSet
+  { cs_constraints = constraints
+  , cs_uvars = (\i -> MkTVar (show i)) <$> [0..varCount]
+  }
+---------------------------------------------------------------------------------------------
+-- Reader of GenM
+---------------------------------------------------------------------------------------------
+
+data GenerateReader = GenerateReader { context :: [[SimpleType]]
+                                     , env :: Environment
+                                     }
+
+initialReader :: Environment -> GenerateReader
+initialReader env = GenerateReader { context = []
+                                   , env = env
+                                   }
+
+---------------------------------------------------------------------------------------------
+-- GenM
+---------------------------------------------------------------------------------------------
+
+type GenM a = ReaderT GenerateReader (StateT GenerateState (Except Error)) a
+
+runGenM :: Environment -> GenM a -> Either Error (a, ConstraintSet)
+runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) initialState) of
+  Left err -> Left err
+  Right (x, state) -> Right (x, stateToConstraintSet state)
+
+
+lookupCase :: XtorName -> GenM (Twice [SimpleType], XtorArgs SimpleType)
 lookupCase xt = do
-  env <- gets envGen
+  env <- asks env
   case M.lookup xt (envToXtorMap env) of
     Nothing -> throwError $ GenConstraintsError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
     Just types@(Twice prdTypes cnsTypes) -> do
@@ -42,13 +83,13 @@ lookupCase xt = do
       return (types, MkXtorArgs prds cnss)
 
 
-freshVars :: Int -> PrdCnsRep pc -> GenerateM [(SimpleType, STerm pc SimpleType)]
+freshVars :: Int -> PrdCnsRep pc -> GenM [(SimpleType, STerm pc SimpleType)]
 freshVars k pc = do
-  n <- gets varGen
-  modify (\gs@GenerateState { varGen } -> gs {varGen = varGen + k })
-  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar Normal (MkTVar ("u" ++ show i))]
+  n <- gets varCount
+  modify (\gs@GenerateState { varCount } -> gs {varCount = varCount + k })
+  return [(uv, FreeVar pc ("x" ++ show i) uv) | i <- [n..n+k-1], let uv = TyVar Normal (MkTVar (show i))]
 
-annotateCase :: SCase () -> GenerateM (SCase SimpleType)
+annotateCase :: SCase () -> GenM (SCase SimpleType)
 -- In Matches on Structural types, all arguments to xtors have to be annotated by a unification variable, since
 -- we don't know their type yet.
 annotateCase (MkSCase xt@(MkXtorName { xtorNominalStructural = Structural }) (Twice prds cnss) cmd) = do
@@ -62,7 +103,7 @@ annotateCase (MkSCase xt@(MkXtorName { xtorNominalStructural = Nominal }) _caseA
   (vars, args) <- lookupCase xt
   return (MkSCase xt vars (commandOpening args cmd'))
 
-annotateTerm :: STerm pc () -> GenerateM (STerm pc SimpleType)
+annotateTerm :: STerm pc () -> GenM (STerm pc SimpleType)
 annotateTerm (FreeVar _ v _)     = throwError $ GenConstraintsError ("Unknown free variable: \"" ++ v ++ "\"")
 annotateTerm (BoundVar idx pc) = return (BoundVar idx pc)
 annotateTerm (XtorCall s xt (MkXtorArgs prdArgs cnsArgs)) = do
@@ -81,7 +122,7 @@ annotateTerm (MuAbs CnsRep _ cmd) = do
   cmd' <- annotateCommand cmd
   return (MuAbs CnsRep uv (commandOpeningSingle PrdRep freeVar cmd'))
 
-annotateCommand :: Command () -> GenerateM (Command SimpleType)
+annotateCommand :: Command () -> GenM (Command SimpleType)
 annotateCommand Done = return Done
 annotateCommand (Print t) = Print <$> (annotateTerm t)
 annotateCommand (Apply t1 t2) = do
@@ -170,9 +211,9 @@ sgenerateConstraints :: STerm pc ()
                      -> Either Error (STerm pc SimpleType, ConstraintSet)
 sgenerateConstraints t0 env = do
   termLocallyClosed t0
-  (t1, GenerateState numVars _) <- runExcept (runStateT (annotateTerm t0) (GenerateState 0 env))
+  (t1, constraintSet) <- runGenM env (annotateTerm t0)
   css <- getConstraintsTerm env t1
-  let constraintSet = ConstraintSet css (MkTVar <$> ((\i -> "u" ++ show i) <$> [0..numVars-1]))
-  return (t1, constraintSet)
+  let constraintSet' = ConstraintSet css (cs_uvars constraintSet)
+  return (t1, constraintSet')
 
 
