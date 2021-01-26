@@ -24,7 +24,7 @@ termEnvP PrdRep = do
   prdEnv <- asks (prdEnv . parseEnv)
   Just t <- return $  M.lookup v prdEnv
   return t
-termEnvP CnsRep = do
+termEnvP CnsRep = dop
   v <- lexeme (many alphaNumChar)
   cnsEnv <- asks (cnsEnv . parseEnv)
   Just t <- return $ M.lookup v cnsEnv
@@ -40,8 +40,8 @@ numLit CnsRep = empty
 numLit PrdRep = numToTerm . read <$> some numberChar
   where
     numToTerm :: Int -> STerm Prd ()
-    numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
-    numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
+    numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Zero") (MkXtorArgs [] [])
+    numToTerm n = XtorCall PrdRep (MkXtorName Structural "Succ") (MkXtorArgs [numToTerm (n-1)] [])
 
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc ())
 lambdaSugar CnsRep = empty

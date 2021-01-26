@@ -1,6 +1,7 @@
 module Parser.ATerms ( atermP ) where
 
 import Text.Megaparsec hiding (State)
+import Text.Megaparsec.Char
 
 import Parser.Definition
 import Parser.Lexer
@@ -49,10 +50,18 @@ comatchP ns = do
   cocases <- braces $ acaseP ns `sepBy` comma
   return (Comatch cocases)
 
+numLitP :: Parser (ATerm ())
+numLitP = lexeme $ numToTerm . read <$> some numberChar
+  where
+    numToTerm :: Int -> ATerm ()
+    numToTerm 0 = Ctor (MkXtorName Nominal "Zero") []
+    numToTerm n = Ctor (MkXtorName Nominal "Succ") [numToTerm (n-1)]
+
 atermP :: Parser (ATerm ())
-atermP = matchP Structural <|>
+atermP = numLitP <|>
+         try (matchP Structural) <|>
          matchP Nominal <|>
-         comatchP Structural <|>
+         try (comatchP Structural) <|>
          comatchP Nominal <|>
          ctorP Structural <|>
          ctorP Nominal <|>
