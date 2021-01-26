@@ -1,8 +1,16 @@
 module TestUtils where
 
+import System.Directory (listDirectory)
+
 import Parser.Parser
 import Syntax.Program
 import qualified Data.Map as M
+
+
+getAvailableExamples :: IO [FilePath]
+getAvailableExamples = do
+  examples <- listDirectory "examples/"
+  return (("examples/" ++) <$> examples)
 
 filterEnvironment :: [String] -> Environment -> Environment
 filterEnvironment failingExamples Environment {..} =

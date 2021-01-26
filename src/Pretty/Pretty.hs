@@ -48,15 +48,15 @@ instance Pretty a => Pretty (SCase a) where
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
 
-isNum :: STerm pc a -> Maybe Int
-isNum (XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])) = Just 0
-isNum (XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [n] [])) = case isNum n of
+isNumSTerm :: STerm pc a -> Maybe Int
+isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Zero") (MkXtorArgs [] [])) = Just 0
+isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Succ") (MkXtorArgs [n] [])) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
-isNum _ = Nothing
+isNumSTerm _ = Nothing
 
 instance Pretty a => Pretty (STerm pc a) where
-  pretty (isNum -> Just n) = pretty n -- View Pattern !
+  pretty (isNumSTerm -> Just n) = pretty n -- View Pattern !
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
@@ -74,11 +74,19 @@ instance Pretty a => Pretty (Command a) where
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------
 
+isNumATerm :: ATerm a -> Maybe Int
+isNumATerm (Ctor (MkXtorName Nominal "Zero") []) = Just 0
+isNumATerm (Ctor (MkXtorName Nominal "Succ") [n]) = case isNumATerm n of
+  Nothing -> Nothing
+  Just n -> Just (n + 1)
+isNumATerm _ = Nothing
+
 instance Pretty a => Pretty (ACase a) where
   pretty MkACase{ acase_name, acase_args, acase_term } =
     pretty acase_name <> parens (intercalateComma (map (const "-") acase_args)) <+> "=>" <+> pretty acase_term
 
 instance Pretty a => Pretty (ATerm a) where
+  pretty (isNumATerm -> Just n) = pretty n -- View Pattern !
   pretty (BVar (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FVar v) = pretty v
   pretty (Ctor xt args) = pretty xt <> parens (intercalateComma (map pretty args))

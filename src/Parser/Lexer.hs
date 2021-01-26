@@ -3,6 +3,7 @@ module Parser.Lexer
   , lexeme
   , sepBy2
   , sc
+  , numP
     -- Names
   , freeVarName
   , xtorName
@@ -43,6 +44,12 @@ sepBy2 p sep = (:) <$> (p <* sep) <*> (sepBy1 p sep)
 
 sc :: Parser ()
 sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
+
+
+numP :: Parser Int
+numP = do
+  numStr <- lexeme (some numberChar)
+  return (read numStr)
 
 -------------------------------------------------------------------------------------------
 -- Names
