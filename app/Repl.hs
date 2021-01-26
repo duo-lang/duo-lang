@@ -1,4 +1,4 @@
-module Repl where
+module Repl (runRepl) where
 
 import System.Console.Repline hiding (Command)
 import System.FilePath ((</>), (<.>))
@@ -6,7 +6,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.GraphViz
-import Data.List (isPrefixOf, find)
+import Data.List (isPrefixOf, find, intersperse)
 import qualified Data.Map as M
 import Prettyprinter (Pretty)
 
@@ -29,18 +29,23 @@ import TypeInference.InferTypes
 
 data EvalSteps = Steps | NoSteps
 
+data Mode = Symmetric | Asymmetric
+
 data ReplState = ReplState
   { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
+  , mode :: Mode
   }
+
 
 initialReplState :: ReplState
 initialReplState = ReplState { replEnv = mempty
                              , loadedFiles = []
                              , steps = NoSteps
                              , evalOrder = CBV
+                             , mode = Symmetric
                              }
 
 ------------------------------------------------------------------------------
@@ -63,8 +68,10 @@ fromRight :: Pretty err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseRepl :: String -> Parser a -> Environment -> Repl a
-parseRepl s p env = fromRight (runEnvParser p env s)
+parseRepl ::Parser a -> String -> Repl a
+parseRepl p s = do
+  env <- gets replEnv
+  fromRight (runEnvParser p env s)
 
 ------------------------------------------------------------------------------
 -- Command
@@ -72,29 +79,30 @@ parseRepl s p env = fromRight (runEnvParser p env s)
 
 cmd :: String -> Repl ()
 cmd s = do
-  env <- gets replEnv
-  case runEnvParser commandP env s of
-    Right com -> do
-      steps <- gets steps
-      evalOrder <- gets evalOrder
-      case steps of
-        NoSteps -> do
-          case runEval (eval com) evalOrder of
-            Right res -> prettyRepl res
-            Left err -> prettyRepl err
-        Steps -> do
-          case runEval (evalSteps com) evalOrder of
-            Right res -> forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
-            Left err -> prettyRepl err
-    Left err1 -> case runEnvParser atermP env s of
-      Right aterm -> do
-        let res = evalATermComplete aterm
-        prettyRepl res
-      Left err2 -> do
-        prettyRepl "Could not parse as command:"
-        prettyRepl err1
-        prettyRepl "Could not parse as aterm:"
-        prettyRepl err2
+  mode <- gets mode
+  case mode of
+    Symmetric  -> cmdSymmetric  s
+    Asymmetric -> cmdAsymmetric s
+
+
+cmdSymmetric :: String -> Repl ()
+cmdSymmetric s = do
+  com <- parseRepl commandP s
+  evalOrder <- gets evalOrder
+  steps <- gets steps
+  case steps of
+    NoSteps -> do
+      res <- fromRight $ runEval (eval com) evalOrder
+      prettyRepl res
+    Steps -> do
+      res <- fromRight $ runEval (evalSteps com) evalOrder
+      forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
+
+cmdAsymmetric :: String -> Repl ()
+cmdAsymmetric s = do
+  tm <- parseRepl atermP s
+  let res = evalATermComplete tm
+  prettyRepl res
 
 ------------------------------------------------------------------------------
 -- Options
@@ -108,14 +116,19 @@ data Option = Option
 
 -- Set & Unset
 
+set_cmd_variants :: [(String, Repl ())]
+set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
+                   , ("cbn", modify (\rs -> rs { evalOrder = CBV }))
+                   , ("steps", modify (\rs -> rs { steps = Steps }))
+                   , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
+                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
 set_cmd :: String -> Repl ()
-set_cmd "cbv" = do
-  modify (\rs -> rs { evalOrder = CBV })
-set_cmd "cbn" = do
-  modify (\rs -> rs { evalOrder = CBN })
-set_cmd "steps" = do
-  modify (\rs -> rs { steps = Steps })
-set_cmd s = prettyRepl $ "The option " ++ s ++ " is not recognized."
+set_cmd s = case lookup s set_cmd_variants of
+  Just action -> action
+  Nothing -> do
+    prettyRepl $ unlines [ "The option " ++ s ++ " is not recognized."
+                         , "Available options: " ++ concat (intersperse ", " (fst <$> set_cmd_variants))]
+
 
 set_option :: Option
 set_option = Option
@@ -124,10 +137,15 @@ set_option = Option
   , option_help = ["Set a Repl option."]
   }
 
+unset_cmd_variants :: [(String, Repl ())]
+unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) ]
+
 unset_cmd :: String -> Repl ()
-unset_cmd "steps" = do
-  modify (\rs -> rs { steps = NoSteps })
-unset_cmd s = prettyRepl $ "The option " ++ s ++ " is not recognized."
+unset_cmd s = case lookup s unset_cmd_variants of
+  Just action -> action
+  Nothing -> do
+    prettyRepl $ unlines [ "The option " ++ s ++ " is not recognized."
+                         , "Available options: " ++ concat (intersperse ", " (fst <$> unset_cmd_variants))]
 
 unset_option :: Option
 unset_option = Option
@@ -269,7 +287,7 @@ save_option = Option
 bind_cmd :: String -> Repl ()
 bind_cmd s = do
   env <- gets replEnv
-  (v,t) <- parseRepl s bindingP env
+  (v,t) <- parseRepl bindingP s
   resType <- fromRight $ inferPrd t env
   modifyEnvironment (insertDecl (TypDecl v resType))
 
@@ -285,8 +303,7 @@ bind_option = Option
 
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
-  env <- gets replEnv
-  (t1,t2) <- parseRepl s subtypingProblemP env
+  (t1,t2) <- parseRepl subtypingProblemP s
   case (typeToAutPol Prd t1, typeToAutPol Prd t2) of
     (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
     _ -> case (typeToAutPol Cns t1, typeToAutPol Cns t2) of
@@ -306,8 +323,7 @@ sub_option = Option
 
 simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
-  env <- gets replEnv
-  ty <- parseRepl s typeSchemeP env
+  ty <- parseRepl typeSchemeP s
   aut <- fromRight (typeToAut ty)
   prettyRepl (autToType aut)
 
@@ -327,9 +343,8 @@ load_cmd s = do
 
 load_file :: FilePath -> Repl ()
 load_file s = do
-  env <- gets replEnv
   defs <- liftIO $ readFile ("examples" </> s)
-  newEnv <- parseRepl defs environmentP env
+  newEnv <- parseRepl environmentP defs
   modifyEnvironment ((<>) newEnv)
   prettyRepl $ "Successfully loaded: " ++ s
 
