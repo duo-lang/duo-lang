@@ -1,5 +1,7 @@
-# Algebraic Subtyping
+# DualSub
 ![CI](https://github.com/ps-tuebingen/algebraic-subtyping-implementation/workflows/CI/badge.svg?branch=main)
+
+DualSub is research language focused on the combination of subtyping, type inference and type-theoretic dualities.
 
 ## Installation
 
@@ -11,7 +13,7 @@ Use the following commands to build, test and run the program:
 ```
 stack build
 stack test
-stack run
+stack run dualsub
 ```
 
 ## Features and Tutorial

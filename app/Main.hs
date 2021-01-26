@@ -398,7 +398,7 @@ completer s = do
 
 ini :: Repl ()
 ini = do
-  prettyRepl $ unlines ["Algebraic subtyping for structural Ouroboro."
+  prettyRepl $ unlines [ "DualSub: Algebraic subtyping for data and codata."
                        , "Press Ctrl+D to exit."
                        , "Enter :help for a list of available commands."
                        ]

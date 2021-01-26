@@ -1,5 +1,5 @@
 cabal-version:  2.2
-name:           algebraic-subtyping
+name:           dualsub
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/ps-tuebingen/algebraic-subtyping-implementation#readme>
 homepage:       https://github.com/ps-tuebingen/algebraic-subtyping-implementation#readme
@@ -76,36 +76,36 @@ library
       TypeInference.SolveConstraints
       Utils
   other-modules:
-      Paths_algebraic_subtyping
+      Paths_dualsub
   hs-source-dirs:
       src
   ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors
 
-executable simple-exe
+executable dualsub
   import: shared-build-depends
   main-is: Main.hs
   other-modules:
-      Paths_algebraic_subtyping
+      Paths_dualsub
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors
   build-depends:
-      algebraic-subtyping
+      dualsub
 
-test-suite simple-test
+test-suite dualsub-test
   import: shared-build-depends
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
       ExampleSpec
     , Eval.SubstitutionSpec
-    , Paths_algebraic_subtyping
+    , Paths_dualsub
     , Spec
     , TestUtils
   hs-source-dirs:
       test
   ghc-options: -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      algebraic-subtyping
+      dualsub
     , QuickCheck
     , hspec
