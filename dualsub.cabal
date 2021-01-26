@@ -85,6 +85,7 @@ executable dualsub
   import: shared-build-depends
   main-is: Main.hs
   other-modules:
+      Repl
       Paths_dualsub
   hs-source-dirs:
       app
