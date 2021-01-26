@@ -1,7 +1,6 @@
 module Parser.ATerms ( atermP ) where
 
 import Text.Megaparsec hiding (State)
-import Text.Megaparsec.Char
 
 import Parser.Definition
 import Parser.Lexer
@@ -51,7 +50,7 @@ comatchP ns = do
   return (Comatch cocases)
 
 numLitP :: Parser (ATerm ())
-numLitP = lexeme $ numToTerm . read <$> some numberChar
+numLitP = numToTerm <$> numP
   where
     numToTerm :: Int -> ATerm ()
     numToTerm 0 = Ctor (MkXtorName Nominal "Zero") []

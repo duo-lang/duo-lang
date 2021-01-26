@@ -6,7 +6,7 @@ module Parser.STerms
 import Control.Monad.Reader
 import qualified Data.Map as M
 import Text.Megaparsec hiding (State)
-import Text.Megaparsec.Char
+
 
 import Parser.Definition
 import Parser.Lexer
@@ -20,12 +20,12 @@ import Utils
 
 termEnvP :: PrdCnsRep pc -> Parser (STerm pc ())
 termEnvP PrdRep = do
-  v <- lexeme (many alphaNumChar)
+  v <- freeVarName
   prdEnv <- asks (prdEnv . parseEnv)
   Just t <- return $  M.lookup v prdEnv
   return t
-termEnvP CnsRep = dop
-  v <- lexeme (many alphaNumChar)
+termEnvP CnsRep = do
+  v <- freeVarName
   cnsEnv <- asks (cnsEnv . parseEnv)
   Just t <- return $ M.lookup v cnsEnv
   return t
@@ -35,9 +35,9 @@ freeVar pc = do
   v <- freeVarName
   return (FreeVar pc v ())
 
-numLit :: PrdCnsRep pc -> Parser (STerm pc ())
-numLit CnsRep = empty
-numLit PrdRep = numToTerm . read <$> some numberChar
+numLitP :: PrdCnsRep pc -> Parser (STerm pc ())
+numLitP CnsRep = empty
+numLitP PrdRep = numToTerm <$> numP
   where
     numToTerm :: Int -> STerm Prd ()
     numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Zero") (MkXtorArgs [] [])
@@ -109,7 +109,7 @@ stermP pc = try (parens (stermP pc))
   <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
                         -- if the variable is in the environment, which might cause it to fail
   <|> freeVar pc
-  <|> numLit pc
+  <|> numLitP pc
   <|> lambdaSugar pc
 
 --------------------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ stermP pc = try (parens (stermP pc))
 
 cmdEnvP :: Parser (Command ())
 cmdEnvP = do
-  v <- lexeme (many alphaNumChar)
+  v <- freeVarName
   prdEnv <- asks (cmdEnv . parseEnv)
   Just t <- return $  M.lookup v prdEnv
   return t
