@@ -28,8 +28,9 @@ ctorP ns = do
 
 
 dtorP :: NominalStructural -> Parser (ATerm ())
-dtorP ns = parens $ do
-  destructee <- atermP
+dtorP ns = do
+  -- Must use atermP' here in order to avoid left-recursion in grammar!
+  destructee <- atermP'
   _ <- symbol "."
   xt <- xtorName ns
   args <- option [] (parens $ atermP `sepBy` comma)
@@ -56,15 +57,33 @@ numLitP = numToTerm <$> numP
     numToTerm 0 = Ctor (MkXtorName Nominal "Zero") []
     numToTerm n = Ctor (MkXtorName Nominal "Succ") [numToTerm (n-1)]
 
+
+-- | Like atermP but without dtorP, since dtorP
+-- uses left-recursion in the grammar.
+atermP' :: Parser (ATerm ())
+atermP' =
+  parens atermP <|>
+  numLitP <|>
+  try (matchP Structural) <|>
+  matchP Nominal <|>
+  try (comatchP Structural) <|>
+  comatchP Nominal <|>
+  ctorP Structural <|>
+  ctorP Nominal <|>
+  fvarP
+
 atermP :: Parser (ATerm ())
-atermP = numLitP <|>
-         try (matchP Structural) <|>
-         matchP Nominal <|>
-         try (comatchP Structural) <|>
-         comatchP Nominal <|>
-         ctorP Structural <|>
-         ctorP Nominal <|>
-         dtorP Structural <|>
-         dtorP Nominal <|>
-         fvarP
+atermP =
+  parens atermP <|>
+  try (dtorP Structural) <|>
+  try (dtorP Nominal) <|>
+  numLitP <|>
+  try (matchP Structural) <|>
+  matchP Nominal <|>
+  try (comatchP Structural) <|>
+  comatchP Nominal <|>
+  ctorP Structural <|>
+  ctorP Nominal <|>
+
+  fvarP
 
