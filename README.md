@@ -11,5 +11,10 @@ Use the following commands to build, test and run the program:
 ```
 stack build
 stack test
-stack run simple-exe
+stack run
 ```
+
+## Features and Tutorial
+
+There is a four-part tutorial on the features of the language in the  `examples/` subfolder.
+

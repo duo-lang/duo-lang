@@ -32,12 +32,12 @@ typecheckExample env termS typS = do
 spec :: Spec
 spec = do
   describe "All examples typecheck" $ do
-    env <- runIO $ getEnvironment "prg.txt" failingExamples
+    env <- runIO $ getEnvironment "examples/prg.txt" failingExamples
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_  (M.toList (prdEnv env)) $ \term -> do
       checkTerm env term
   describe "Typecheck specific examples" $ do
-    env <- runIO $ getEnvironment "prg.txt" []
+    env <- runIO $ getEnvironment "examples/prg.txt" []
     typecheckExample env "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
     typecheckExample env "'S('Z)" "< 'S(< 'Z >) >"
     typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"

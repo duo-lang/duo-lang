@@ -16,12 +16,12 @@ failingExamples = []
 spec :: Spec
 spec = do
   describe "All examples are closed" $ do
-    env <- runIO $ getEnvironment "prg.txt" failingExamples
+    env <- runIO $ getEnvironment "examples/prg.txt" failingExamples
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
       it (name ++ " does not contain free variables") $ isClosed_term term `shouldBe` True
   describe "All examples are locally closed" $ do
-    env <- runIO $ getEnvironment "prg.txt" failingExamples
+    env <- runIO $ getEnvironment "examples/prg.txt" failingExamples
     when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
     forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
       it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` Right ()

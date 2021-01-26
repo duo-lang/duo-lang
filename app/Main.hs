@@ -38,7 +38,7 @@ data ReplState = ReplState
 
 initialReplState :: ReplState
 initialReplState = ReplState { replEnv = mempty
-                             , loadedFiles = ["prg.txt"]
+                             , loadedFiles = []
                              , steps = NoSteps
                              , evalOrder = CBV
                              }
@@ -328,7 +328,7 @@ load_cmd s = do
 load_file :: FilePath -> Repl ()
 load_file s = do
   env <- gets replEnv
-  defs <- liftIO $ readFile s
+  defs <- liftIO $ readFile ("examples" </> s)
   newEnv <- parseRepl defs environmentP env
   modifyEnvironment ((<>) newEnv)
   prettyRepl $ "Successfully loaded: " ++ s
@@ -398,7 +398,10 @@ completer s = do
 
 ini :: Repl ()
 ini = do
-  prettyRepl "Algebraic subtyping for structural Ouroboro.\nPress Ctrl+D to exit."
+  prettyRepl $ unlines ["Algebraic subtyping for structural Ouroboro."
+                       , "Press Ctrl+D to exit."
+                       , "Enter :help for a list of available commands."
+                       ]
   reload_cmd ""
 
 final :: Repl ExitDecision
