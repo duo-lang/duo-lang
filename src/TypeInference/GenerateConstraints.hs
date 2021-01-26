@@ -167,7 +167,7 @@ genConstraintsSTerm (XMatch rep Nominal (pmcase:pmcases)) = do
   tn <- lookupXtor (scase_name pmcase)
   cases' <- forM (pmcase:pmcases) (\MkSCase {..} -> do
                                       scase_name `isContainedIn` (data_xtors tn)
-                                      (x,y) <- lookupCase scase_name
+                                      (x,_) <- lookupCase scase_name
                                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
                                       return (MkSCase scase_name x cmd'))
   return (XMatch rep Nominal cases', TyNominal (data_name tn))
