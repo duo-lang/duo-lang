@@ -10,6 +10,7 @@ import Control.Monad.State
 import Data.GraphViz
 import Data.List (isPrefixOf, find, intersperse)
 import qualified Data.Map as M
+import Data.Maybe (catMaybes)
 import Prettyprinter (Pretty)
 
 import Syntax.STerms
@@ -24,6 +25,7 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
 import TypeAutomata.Subsume (isSubtype)
 import TypeInference.InferTypes
+import Utils (trim)
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -77,10 +79,11 @@ parseRepl p s = do
 
 safeRead :: FilePath -> Repl String
 safeRead file =  do
-  res <- liftIO $ tryIOError (readFile file)
+  let file' = trim file
+  res <- liftIO $ tryIOError (readFile file')
   case res of
     (Left _) -> do
-      liftIO $ putStrLn $ "File with name " ++ file ++ " does not exist."
+      liftIO $ putStrLn $ "File with name " ++ file' ++ " does not exist."
       abort
     (Right s) -> return $ s
 
@@ -135,11 +138,13 @@ set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
                    , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
 set_cmd :: String -> Repl ()
-set_cmd s = case lookup s set_cmd_variants of
-  Just action -> action
-  Nothing -> do
-    prettyRepl $ unlines [ "The option " ++ s ++ " is not recognized."
-                         , "Available options: " ++ concat (intersperse ", " (fst <$> set_cmd_variants))]
+set_cmd s = do
+  let s' = trim s
+  case lookup s' set_cmd_variants of
+    Just action -> action
+    Nothing -> do
+      prettyRepl $ unlines [ "The option " ++ s' ++ " is not recognized."
+                           , "Available options: " ++ concat (intersperse ", " (fst <$> set_cmd_variants))]
 
 setCompleter :: CompletionFunc ReplInner
 setCompleter = mkWordCompleter (x f)
@@ -168,11 +173,13 @@ unset_cmd_variants :: [(String, Repl ())]
 unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) ]
 
 unset_cmd :: String -> Repl ()
-unset_cmd s = case lookup s unset_cmd_variants of
-  Just action -> action
-  Nothing -> do
-    prettyRepl $ unlines [ "The option " ++ s ++ " is not recognized."
-                         , "Available options: " ++ concat (intersperse ", " (fst <$> unset_cmd_variants))]
+unset_cmd s = do
+  let s' = trim s
+  case lookup s' unset_cmd_variants of
+    Just action -> action
+    Nothing -> do
+      prettyRepl $ unlines [ "The option " ++ s' ++ " is not recognized."
+                           , "Available options: " ++ concat (intersperse ", " (fst <$> unset_cmd_variants))]
 
 unset_option :: Option
 unset_option = Option
@@ -379,7 +386,7 @@ load_cmd s = do
 
 load_file :: FilePath -> Repl ()
 load_file s = do
-  defs <- safeRead ("examples" </> s)
+  defs <- safeRead s
   newEnv <- parseRepl environmentP defs
   modifyEnvironment ((<>) newEnv)
   prettyRepl $ "Successfully loaded: " ++ s
@@ -438,12 +445,21 @@ all_options = [ type_option, show_option, help_option, def_option, save_option, 
 -- Repl Configuration
 ------------------------------------------------------------------------------
 
-completer :: CompleterStyle ReplInner
-completer = Word0 completer'
+prefixCompleters :: [(String, CompletionFunc ReplInner)]
+prefixCompleters = catMaybes (mkCompleter <$> all_options)
   where
-    completer' :: String -> ReplInner [String]
-    completer' s = do
+    mkCompleter Option { option_completer = Nothing } = Nothing
+    mkCompleter Option { option_name = name, option_completer = Just completer } = Just (':' : name, completer)
+
+newCompleter :: CompleterStyle ReplInner
+newCompleter = Prefix cmdCompleter prefixCompleters
+
+cmdCompleter :: CompletionFunc ReplInner
+cmdCompleter = mkWordCompleter (_simpleComplete f)
+  where
+    f n = do
       env <- gets replEnv
+      let completionList = (':' :) . option_name <$> all_options
       let keys = concat [ M.keys (prdEnv env)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
@@ -451,7 +467,23 @@ completer = Word0 completer'
                         , unTypeName <$> M.keys (typEnv env)
                         , (unTypeName . data_name) <$> (declEnv env)
                         ]
-      return $ filter (s `isPrefixOf`) keys
+      return $ filter (isPrefixOf n) (completionList ++ keys)
+    _simpleComplete f word = f word >>= return . map simpleCompletion
+
+-- completer :: CompleterStyle ReplInner
+-- completer = Word0 completer'
+--   where
+--     completer' :: String -> ReplInner [String]
+--     completer' s = do
+--       env <- gets replEnv
+--       let keys = concat [ M.keys (prdEnv env)
+--                         , M.keys (cnsEnv env)
+--                         , M.keys (cmdEnv env)
+--                         , M.keys (defEnv env)
+--                         , unTypeName <$> M.keys (typEnv env)
+--                         , (unTypeName . data_name) <$> (declEnv env)
+--                         ]
+--       return $ filter (s `isPrefixOf`) keys
 
 ini :: Repl ()
 ini = do
@@ -476,7 +508,7 @@ opts = ReplOpts
   , options          = (\opt -> (option_name opt, \s -> dontCrash ((option_cmd opt) s))) <$> all_options
   , prefix           = Just ':'
   , multilineCommand = Nothing
-  , tabComplete      = completer
+  , tabComplete      = newCompleter
   , initialiser      = ini
   , finaliser        = final
   }
