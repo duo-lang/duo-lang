@@ -40,7 +40,7 @@ spec = do
         forM_  (M.toList (prdEnv env)) $ \term -> do
           checkTerm env term
   describe "Typecheck specific examples" $ do
-    env <- runIO $ getEnvironment "examples/prg.txt" []
+    env <- runIO $ getEnvironment "examples/prg.ds" []
     typecheckExample env "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
     typecheckExample env "'S('Z)" "< 'S(< 'Z >) >"
     typecheckExample env "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
