@@ -1,8 +1,10 @@
 module Repl (runRepl) where
 
 import System.Console.Repline hiding (Command)
-import System.FilePath ((</>), (<.>))
+import System.Console.Haskeline.Completion
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
+import System.FilePath ((</>), (<.>))
+import System.IO.Error(tryIOError)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.GraphViz
@@ -73,6 +75,15 @@ parseRepl p s = do
   env <- gets replEnv
   fromRight (runEnvParser p env s)
 
+safeRead :: FilePath -> Repl String
+safeRead file =  do
+  res <- liftIO $ tryIOError (readFile file)
+  case res of
+    (Left _) -> do
+      liftIO $ putStrLn $ "File with name " ++ file ++ " does not exist."
+      abort
+    (Right s) -> return $ s
+
 ------------------------------------------------------------------------------
 -- Command
 ------------------------------------------------------------------------------
@@ -112,6 +123,7 @@ data Option = Option
   { option_name :: String
   , option_cmd  :: String -> Repl ()
   , option_help :: [String]
+  , option_completer :: Maybe (CompletionFunc ReplInner)
   }
 
 -- Set & Unset
@@ -129,12 +141,27 @@ set_cmd s = case lookup s set_cmd_variants of
     prettyRepl $ unlines [ "The option " ++ s ++ " is not recognized."
                          , "Available options: " ++ concat (intersperse ", " (fst <$> set_cmd_variants))]
 
+setCompleter :: CompletionFunc ReplInner
+setCompleter = mkWordCompleter (x f)
+  where
+    f n = return $ filter (isPrefixOf n) (fst <$> set_cmd_variants)
+    x f word = f word >>= return . map simpleCompletion
+
+unsetCompleter :: CompletionFunc ReplInner
+unsetCompleter = mkWordCompleter (x f)
+  where
+    f n = return $ filter (isPrefixOf n) (fst <$> unset_cmd_variants)
+    x f word = f word >>= return . map simpleCompletion
+
+mkWordCompleter :: Monad m =>  (String -> m [Completion]) -> CompletionFunc m
+mkWordCompleter = completeWord (Just '\\') " \t()[]"
 
 set_option :: Option
 set_option = Option
   { option_name = "set"
   , option_cmd = set_cmd
   , option_help = ["Set a Repl option."]
+  , option_completer = Just setCompleter
   }
 
 unset_cmd_variants :: [(String, Repl ())]
@@ -152,6 +179,7 @@ unset_option = Option
   { option_name = "unset"
   , option_cmd = unset_cmd
   , option_help = ["Unset a Repl option."]
+  , option_completer = Just unsetCompleter
   }
 
 -- Type
@@ -179,6 +207,7 @@ type_option = Option
   { option_name = "type"
   , option_cmd = type_cmd
   , option_help = ["Enter a producer term and show the inferred type."]
+  , option_completer = Nothing
   }
 
 -- Show
@@ -203,6 +232,7 @@ show_option = Option
   { option_name = "show"
   , option_cmd = show_cmd
   , option_help = ["Display term or type on the command line."]
+  , option_completer = Nothing
   }
 
 -- Show TypeDeclaration
@@ -219,6 +249,7 @@ show_type_option = Option
   { option_name = "showtype"
   , option_cmd = show_type_cmd
   , option_help = ["Show the definition of a nominal type"]
+  , option_completer = Nothing
   }
 
 -- Define
@@ -236,6 +267,7 @@ def_option = Option
   , option_cmd = def_cmd
   , option_help = [ "Add a declaration to the current environment. E.g."
                   , "\":def prd myTrue := {- Ap(x)[y] => x >> y -};\""]
+  , option_completer = Nothing
   }
 
 -- Save
@@ -280,6 +312,7 @@ save_option = Option
   { option_name = "save"
   , option_cmd = save_cmd
   , option_help = ["Save generated type automata to disk as jpgs."]
+  , option_completer = Nothing
   }
 
 -- Bind
@@ -297,6 +330,7 @@ bind_option = Option
   { option_name = "bind"
   , option_cmd = bind_cmd
   , option_help = ["Infer the type of producer term, and add corresponding type declaration to environment."]
+  , option_completer = Nothing
   }
 
 -- Subsume
@@ -317,6 +351,7 @@ sub_option = Option
   , option_cmd = sub_cmd
   , option_help = [ "Check whether subsumption holds between two types. E.g."
                   , "\":sub {+ True +} <: {+ True, False +}\""]
+  , option_completer = Nothing
   }
 
 -- Simplify
@@ -332,6 +367,7 @@ simplify_option = Option
   { option_name = "simplify"
   , option_cmd = simplify_cmd
   , option_help = ["Simplify the given type."]
+  , option_completer = Nothing
   }
 
 -- Load
@@ -343,7 +379,7 @@ load_cmd s = do
 
 load_file :: FilePath -> Repl ()
 load_file s = do
-  defs <- liftIO $ readFile ("examples" </> s)
+  defs <- safeRead ("examples" </> s)
   newEnv <- parseRepl environmentP defs
   modifyEnvironment ((<>) newEnv)
   prettyRepl $ "Successfully loaded: " ++ s
@@ -353,6 +389,7 @@ load_option = Option
   { option_name = "load"
   , option_cmd = load_cmd
   , option_help = ["Load the given file from disk and add it to the environment."]
+  , option_completer = Just fileCompleter
   }
 
 -- Reload
@@ -368,6 +405,7 @@ reload_option = Option
   { option_name = "reload"
   , option_cmd = reload_cmd
   , option_help = ["Reload all loaded files from disk."]
+  , option_completer = Nothing
   }
 
 -- Help
@@ -387,6 +425,7 @@ help_option = Option
   { option_name = "help"
   , option_cmd = help_cmd
   , option_help = ["Show all available commands."]
+  , option_completer = Nothing
   }
 
 -- All Options
@@ -399,17 +438,20 @@ all_options = [ type_option, show_option, help_option, def_option, save_option, 
 -- Repl Configuration
 ------------------------------------------------------------------------------
 
-completer :: String -> ReplInner [String]
-completer s = do
-  env <- gets replEnv
-  let keys = concat [ M.keys (prdEnv env)
-                    , M.keys (cnsEnv env)
-                    , M.keys (cmdEnv env)
-                    , M.keys (defEnv env)
-                    , unTypeName <$> M.keys (typEnv env)
-                    , (unTypeName . data_name) <$> (declEnv env)
-                    ]
-  return $ filter (s `isPrefixOf`) keys
+completer :: CompleterStyle ReplInner
+completer = Word0 completer'
+  where
+    completer' :: String -> ReplInner [String]
+    completer' s = do
+      env <- gets replEnv
+      let keys = concat [ M.keys (prdEnv env)
+                        , M.keys (cnsEnv env)
+                        , M.keys (cmdEnv env)
+                        , M.keys (defEnv env)
+                        , unTypeName <$> M.keys (typEnv env)
+                        , (unTypeName . data_name) <$> (declEnv env)
+                        ]
+      return $ filter (s `isPrefixOf`) keys
 
 ini :: Repl ()
 ini = do
@@ -434,7 +476,7 @@ opts = ReplOpts
   , options          = (\opt -> (option_name opt, \s -> dontCrash ((option_cmd opt) s))) <$> all_options
   , prefix           = Just ':'
   , multilineCommand = Nothing
-  , tabComplete      = Word0 completer
+  , tabComplete      = completer
   , initialiser      = ini
   , finaliser        = final
   }
