@@ -22,13 +22,15 @@ termEnvP :: PrdCnsRep pc -> Parser (STerm pc ())
 termEnvP PrdRep = do
   v <- freeVarName
   prdEnv <- asks (prdEnv . parseEnv)
-  Just t <- return $  M.lookup v prdEnv
-  return t
+  case M.lookup v prdEnv of
+    Just t -> return t
+    Nothing -> empty
 termEnvP CnsRep = do
   v <- freeVarName
   cnsEnv <- asks (cnsEnv . parseEnv)
-  Just t <- return $ M.lookup v cnsEnv
-  return t
+  case M.lookup v cnsEnv of
+    Just t -> return t
+    Nothing -> empty
 
 freeVar :: PrdCnsRep pc -> Parser (STerm pc ())
 freeVar pc = do
@@ -120,8 +122,9 @@ cmdEnvP :: Parser (Command ())
 cmdEnvP = do
   v <- freeVarName
   prdEnv <- asks (cmdEnv . parseEnv)
-  Just t <- return $  M.lookup v prdEnv
-  return t
+  case M.lookup v prdEnv of
+    Just t -> return t
+    Nothing -> empty
 
 applyCmdP :: Parser (Command ())
 applyCmdP = do

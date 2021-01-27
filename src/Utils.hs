@@ -1,8 +1,9 @@
 module Utils where
 
-import Data.Set (Set)
+import Data.Char (isSpace)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Set (Set)
 import qualified Data.Set as S
 
 ----------------------------------------------------------------------------------
@@ -35,3 +36,7 @@ intersections (s :| ss) = foldl' S.intersection s ss
 
 enumerate :: [a] -> [(Int,a)]
 enumerate xs = zip [0..] xs
+
+trim :: String -> String
+trim = f . f
+  where f = reverse . dropWhile isSpace
