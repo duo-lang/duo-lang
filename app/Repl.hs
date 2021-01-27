@@ -470,21 +470,6 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
       return $ filter (isPrefixOf n) (completionList ++ keys)
     _simpleComplete f word = f word >>= return . map simpleCompletion
 
--- completer :: CompleterStyle ReplInner
--- completer = Word0 completer'
---   where
---     completer' :: String -> ReplInner [String]
---     completer' s = do
---       env <- gets replEnv
---       let keys = concat [ M.keys (prdEnv env)
---                         , M.keys (cnsEnv env)
---                         , M.keys (cmdEnv env)
---                         , M.keys (defEnv env)
---                         , unTypeName <$> M.keys (typEnv env)
---                         , (unTypeName . data_name) <$> (declEnv env)
---                         ]
---       return $ filter (s `isPrefixOf`) keys
-
 ini :: Repl ()
 ini = do
   prettyRepl $ unlines [ "DualSub: Algebraic subtyping for data and codata."
