@@ -18,6 +18,33 @@ newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Show, Ord)
 newtype TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
 
 ------------------------------------------------------------------------------
+-- Polarity
+------------------------------------------------------------------------------
+
+data Polarity = Pos | Neg deriving (Eq, Ord, Show)
+
+data PolarityRep pol where
+  PosRep :: PolarityRep Pos
+  NegRep :: PolarityRep Neg
+deriving instance Show (PolarityRep pol)
+
+flipPol :: Polarity -> Polarity
+flipPol Pos = Neg
+flipPol Neg = Pos
+
+type family FlipPol (pol :: Polarity) :: Polarity where
+  FlipPol Pos = Neg
+  FlipPol Neg = Pos
+
+flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
+flipPolarityRep PosRep = NegRep
+flipPolarityRep NegRep = PosRep
+
+data SomePol (f :: Polarity -> Type) where
+  SomePos :: f Pos -> SomePol f
+  SomeNeg :: f Neg -> SomePol f
+
+------------------------------------------------------------------------------
 -- Tags
 ------------------------------------------------------------------------------
 
@@ -49,12 +76,12 @@ data XtorSig a = MkXtorSig
   , sig_args :: Twice [a]
   } deriving (Eq, Show, Ord)
 
-data Typ a
-  = TyVar TVarKind TVar
-  | TySimple DataCodata [XtorSig (Typ a)]
-  | TyNominal TypeName
-  | TySet (TargetF a) UnionInter [Typ a]
-  | TyRec (TargetF a) TVar (Typ a)
+data Typ a where
+  TyVar :: TVarKind -> TVar -> Typ a
+  TySimple :: DataCodata -> [XtorSig (Typ a)] -> Typ a
+  TyNominal :: TypeName -> Typ a
+  TySet :: TargetF a -> UnionInter -> [Typ a] -> Typ a
+  TyRec :: TargetF a -> TVar -> Typ a -> Typ a
 
 type SimpleType = Typ Simple
 type TargetType = Typ Target
