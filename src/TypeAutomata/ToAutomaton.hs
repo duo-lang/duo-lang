@@ -147,7 +147,7 @@ insertEpsilonEdges solverResult =
       node <- insertType Cns ty
       insertEdges [(j, node, EpsilonEdge ())]
 
-solverStateToTypeAut :: SolverResult -> SimpleType -> PrdCns -> Either Error TypeAut
+solverStateToTypeAut :: SolverResult -> Typ Simple -> PrdCns -> Either Error TypeAut
 solverStateToTypeAut solverResult ty pc = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)

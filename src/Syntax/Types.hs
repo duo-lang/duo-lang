@@ -72,7 +72,7 @@ data TypArgs a = MkTypArgs
   }
 
 {-# DEPRECATED demote "This function will be removed once we have polar types" #-}
-demote :: TypArgs Simple -> Twice [SimpleType]
+demote :: TypArgs Simple -> Twice [Typ Simple]
 demote (MkTypArgs prdTypes cnsTypes) = Twice prdTypes cnsTypes
 
 deriving instance Eq (TypArgs Simple)
@@ -101,15 +101,12 @@ data Typ a where
   TySet :: UnionInter -> [Typ a] -> Typ a
   TyRec :: TVar -> Typ a -> Typ a
 
-type SimpleType = Typ Simple
-type TargetType = Typ Target
-
-deriving instance Eq SimpleType
-deriving instance Eq TargetType
-deriving instance Show SimpleType
-deriving instance Show TargetType
-deriving instance Ord SimpleType
-deriving instance Ord TargetType
+deriving instance Eq (Typ Simple)
+deriving instance Eq (Typ Target)
+deriving instance Show (Typ Simple)
+deriving instance Show (Typ Target)
+deriving instance Ord (Typ Simple)
+deriving instance Ord (Typ Target)
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -117,13 +114,13 @@ deriving instance Ord TargetType
 
 data TypeScheme = TypeScheme
   { ts_vars :: [TVar]
-  , ts_monotype :: TargetType
+  , ts_monotype :: Typ Target
   } deriving (Show, Eq)
 
-freeTypeVars :: TargetType -> [TVar]
+freeTypeVars :: Typ Target -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
-    freeTypeVars' :: TargetType -> [TVar]
+    freeTypeVars' :: Typ Target -> [TVar]
     freeTypeVars' (TyVar Normal tv) = [tv]
     freeTypeVars' (TyVar Recursive _)  = []
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
@@ -137,14 +134,14 @@ freeTypeVars = nub . freeTypeVars'
 
 
 -- | Generalize over all free type variables of a type.
-generalize :: TargetType -> TypeScheme
+generalize :: Typ Target -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
 ------------------------------------------------------------------------------
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType SimpleType SimpleType deriving (Eq, Show, Ord)
+data Constraint = SubType (Typ Simple) (Typ Simple) deriving (Eq, Show, Ord)
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
@@ -177,7 +174,7 @@ applyVariance Data Cns = switchPrdCns
 applyVariance Codata Prd = switchPrdCns
 applyVariance Codata Cns = id
 
-unionOrInter :: PrdCns -> [TargetType] -> TargetType
+unionOrInter :: PrdCns -> [Typ Target] -> (Typ Target)
 unionOrInter _ [t] = t
 unionOrInter Prd tys = TySet Union tys
 unionOrInter Cns tys = TySet Inter tys

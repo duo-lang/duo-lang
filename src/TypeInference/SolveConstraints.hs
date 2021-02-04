@@ -22,8 +22,8 @@ import Pretty.Pretty
 ------------------------------------------------------------------------------
 
 data VariableState = VariableState
-  { vst_upperbounds :: [SimpleType]
-  , vst_lowerbounds :: [SimpleType] }
+  { vst_upperbounds :: [Typ Simple]
+  , vst_lowerbounds :: [Typ Simple] }
 
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
@@ -66,13 +66,13 @@ inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-addUpperBound :: TVar -> SimpleType -> SolverM [Constraint]
+addUpperBound :: TVar -> Typ Simple -> SolverM [Constraint]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
   lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
   return [SubType lb ty | lb <- lbs]
 
-addLowerBound :: TVar -> SimpleType -> SolverM [Constraint]
+addLowerBound :: TVar -> Typ Simple -> SolverM [Constraint]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)

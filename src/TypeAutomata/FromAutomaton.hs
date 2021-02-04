@@ -51,7 +51,7 @@ checkCache i = do
   cache <- asks cache
   return (i `S.member` cache)
 
-nodeToTVars :: Node -> AutToTypeM [TargetType]
+nodeToTVars :: Node -> AutToTypeM [Typ Target]
 nodeToTVars i = do
   tvMap <- asks tvMap
   return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
@@ -100,7 +100,7 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
     return $ unionOrInter (applyVariance dc Cns pol) typs
   return (MkTypArgs prdTypes cnsTypes)
 
-nodeToType :: Node -> AutToTypeM TargetType
+nodeToType :: Node -> AutToTypeM (Typ Target)
 nodeToType i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
