@@ -221,7 +221,7 @@ generalize ty = TypeScheme (freeTypeVars ty) ty
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType (Typ Pos) (Typ Pos) deriving (Eq, Ord)
+data Constraint = SubType (Typ Pos) (Typ Neg) deriving (Eq, Ord)
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
