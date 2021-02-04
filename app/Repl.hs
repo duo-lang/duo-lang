@@ -345,9 +345,9 @@ bind_option = Option
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
   (t1,t2) <- parseRepl subtypingProblemP s
-  case (typeToAutPol Prd t1, typeToAutPol Prd t2) of
+  case (typeToAutPol Pos t1, typeToAutPol Pos t2) of
     (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
-    _ -> case (typeToAutPol Cns t1, typeToAutPol Cns t2) of
+    _ -> case (typeToAutPol Neg t1, typeToAutPol Neg t2) of
         (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
         -- TODO: Make this error message better
         _ -> prettyRepl "Invalid input. Either the types have non-matching polarities, they aren't polar at all or the covariance rule is violated."

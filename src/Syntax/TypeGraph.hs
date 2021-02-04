@@ -16,16 +16,16 @@ import Syntax.CommonTerm
 -------------------------------------------------------
 
 data NodeLabel = HeadCons
-  { hc_pol :: PrdCns
+  { hc_pol :: Polarity
   , hc_data :: Maybe (Set XtorName)
   , hc_codata :: Maybe (Set XtorName)
   , hc_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
-emptyHeadCons :: PrdCns -> NodeLabel
+emptyHeadCons :: Polarity -> NodeLabel
 emptyHeadCons pol = HeadCons pol Nothing Nothing S.empty
 
-singleHeadCons :: PrdCns -> DataCodata -> Set XtorName -> NodeLabel
+singleHeadCons :: Polarity -> DataCodata -> Set XtorName -> NodeLabel
 singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
 singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 

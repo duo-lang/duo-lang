@@ -37,7 +37,7 @@ inferPrdTraced :: STerm Prd () -> Environment -> Either Error TypeInferenceTrace
 inferPrdTraced tm env = do
   ((_,ty), constraintSet) <- sgenerateConstraints tm env
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState ty Prd
+  typeAut <- solverStateToTypeAut solverState ty Pos
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
@@ -69,7 +69,7 @@ inferATermTraced :: ATerm () -> Environment -> Either Error TypeInferenceTrace
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- agenerateConstraints tm env
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState ty Prd
+  typeAut <- solverStateToTypeAut solverState ty Pos
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms

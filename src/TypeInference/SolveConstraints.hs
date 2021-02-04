@@ -91,10 +91,10 @@ solve (cs:css) = do
     False -> do
       addToCache cs
       case cs of
-        (SubType (TyVar Normal uv) ub) -> do
+        (SubType (TyVar PosRep Normal uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
-        (SubType lb (TyVar Normal uv)) -> do
+        (SubType lb (TyVar PosRep Normal uv)) -> do
           newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
@@ -116,44 +116,44 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
 
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Set constraints
-subConstraints (SubType (TySet Union tys) ty)  = return [SubType ty' ty | ty' <- tys]
-subConstraints (SubType (TySet Inter _) _)  = error "Cannot occur if types are polarized"
-subConstraints (SubType ty (TySet Inter tys))  = return [SubType ty ty' | ty' <- tys]
-subConstraints (SubType _ (TySet Union _))  = error "Cannot occur if types are polarized"
+subConstraints (SubType (TySet Pos tys) ty)  = return [SubType ty' ty | ty' <- tys]
+subConstraints (SubType (TySet Neg _) _)  = error "Cannot occur if types are polarized"
+subConstraints (SubType ty (TySet Neg tys))  = return [SubType ty ty' | ty' <- tys]
+subConstraints (SubType _ (TySet Pos _))  = error "Cannot occur if types are polarized"
 -- Recursive constraints
-subConstraints (SubType (TyRec _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
-subConstraints (SubType ty' (TyRec _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
+subConstraints (SubType (TyRec _rep _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
+subConstraints (SubType ty' (TyRec _rep _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
 -- Data/Data and Codata/Codata constraints
-subConstraints (SubType (TyStructural Data xtors1) (TyStructural Data xtors2)) = do
+subConstraints (SubType (TyStructural _ Data xtors1) (TyStructural _ Data xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
   pure $ concat constraints
-subConstraints (SubType (TyStructural Codata xtors1) (TyStructural Codata xtors2)) = do
+subConstraints (SubType (TyStructural _ Codata xtors1) (TyStructural _ Codata xtors2)) = do
   constraints <- forM xtors2 (checkXtor xtors1)
   pure $ concat constraints
 -- Nominal/Nominal Constraint
-subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return []
-                                                         | otherwise = throwSolverError ["The following nominal types are incompatible:"
-                                                                                        , "    " ++ ppPrint tn1
-                                                                                        , "and"
-                                                                                        , "    " ++ ppPrint tn2 ]
+subConstraints (SubType (TyNominal _ tn1) (TyNominal _ tn2)) | tn1 == tn2 = return []
+                                                             | otherwise = throwSolverError ["The following nominal types are incompatible:"
+                                                                                            , "    " ++ ppPrint tn1
+                                                                                            , "and"
+                                                                                            , "    " ++ ppPrint tn2 ]
 -- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (TyStructural Data _) (TyStructural Codata _))
+subConstraints cs@(SubType (TyStructural _ Data _) (TyStructural _ Codata _))
   = throwSolverError [ "Constraint:"
                      , "     " ++ ppPrint cs
                      , "is unsolvable. A data type can't be a subtype of a codata type!" ]
-subConstraints cs@(SubType (TyStructural Codata _) (TyStructural Data _))
+subConstraints cs@(SubType (TyStructural _ Codata _) (TyStructural _ Data _))
   = throwSolverError [ "Constraint:"
                      , "     "++ ppPrint cs
                      , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (TyStructural _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType (TyNominal _) (TyStructural _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyStructural _ _ _) (TyNominal _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyNominal _ _) (TyStructural _ _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
-subConstraints (SubType (TyVar _ _) _) =
+subConstraints (SubType (TyVar _ _ _) _) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
-subConstraints (SubType _ (TyVar _ _)) =
+subConstraints (SubType _ (TyVar _ _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
-
+  
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------

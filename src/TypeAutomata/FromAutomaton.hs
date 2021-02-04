@@ -54,7 +54,7 @@ checkCache i = do
 nodeToTVars :: Node -> AutToTypeM [Typ Pos]
 nodeToTVars i = do
   tvMap <- asks tvMap
-  return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  return (TyVar PosRep Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -88,16 +88,48 @@ computeArgNodes outs dc xt =
     Twice (groupeds' Prd) (groupeds' Cns)
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Pos)
-argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> Polarity -> AutToTypeM (TypArgs Pos)
+-- Data
+argNodesToArgTypes (Twice prdNodes cnsNodes) Data Pos = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc Prd pol) typs
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc Cns pol) typs
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
+  return (MkTypArgs prdTypes cnsTypes)
+argNodesToArgTypes (Twice prdNodes cnsNodes) Data Neg = do
+  prdTypes <- forM prdNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
+  return (MkTypArgs prdTypes cnsTypes)
+-- Codata
+argNodesToArgTypes (Twice prdNodes cnsNodes) Codata Pos = do
+  prdTypes <- forM prdNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
+  return (MkTypArgs prdTypes cnsTypes)
+argNodesToArgTypes (Twice prdNodes cnsNodes) Codata Neg = do
+  prdTypes <- forM prdNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
   return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: Node -> AutToTypeM (Typ Pos)
@@ -106,7 +138,7 @@ nodeToType i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TyVar Recursive (MkTVar ("r" ++ show i))
+    True -> return $ TyVar PosRep Recursive (MkTVar ("r" ++ show i))
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
@@ -123,7 +155,7 @@ nodeToType i = do
               let nodes = computeArgNodes outs Data xt
               argTypes <- argNodesToArgTypes nodes Data pol
               return (MkXtorSig xt argTypes)
-            return [TyStructural Data sig]
+            return [TyStructural PosRep Data sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
@@ -132,13 +164,14 @@ nodeToType i = do
               let nodes = computeArgNodes outs Codata xt
               argTypes <- argNodesToArgTypes nodes Codata pol
               return (MkXtorSig xt argTypes)
-            return [TyStructural Codata sig]
+            return [TyStructural PosRep Codata sig]
         -- Creating Nominal types
-        let nominals = TyNominal <$> (S.toList tns)
-        return $ unionOrInter pol (varL ++ datL ++ codatL ++ nominals)
+        let nominals = TyNominal PosRep <$> (S.toList tns)
+        let typs = varL ++ datL ++ codatL ++ nominals
+        return $ case typs of [t] -> t; _ -> TySet pol typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
-        then return $ TyRec (MkTVar ("r" ++ show i)) resType
+        then return $ TyRec PosRep (MkTVar ("r" ++ show i)) resType
         else return resType
 

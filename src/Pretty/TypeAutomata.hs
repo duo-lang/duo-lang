@@ -10,8 +10,9 @@ import Data.Text.Lazy (pack)
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.CommonTerm
+import Syntax.CommonTerm (PrdCns(..))
 import Syntax.TypeGraph
+import Syntax.Types
 
 
 ---------------------------------------------------------------------------------
@@ -43,7 +44,7 @@ typeAutParams :: GraphvizParams Node NodeLabel EdgeLabelEpsilon () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,nl) ->
     [ style filled
-    , fillColor $ case hc_pol nl of {Prd -> White; Cns -> Gray}
+    , fillColor $ case hc_pol nl of {Pos -> White; Neg -> Gray}
     , textLabel (pack (ppPrint (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el

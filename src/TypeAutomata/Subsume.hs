@@ -15,7 +15,7 @@ import Data.Tuple (swap)
 import Data.Functor.Identity
 import Control.Monad.State
 
-import Syntax.CommonTerm (PrdCns(..))
+import Syntax.Types
 import Syntax.TypeGraph
 
 import TypeAutomata.Determinize (determinize)
@@ -43,8 +43,8 @@ typeAutUnion aut1@TypeAut{..} aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
 
 isSubtype :: TypeAutDet -> TypeAutDet -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
-  (Prd,Prd) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut2
-  (Cns,Cns) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
+  (Pos,Pos) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut2
+  (Neg,Neg) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
     startPolarity TypeAut{..} = hc_pol (fromJust (lab ta_gr (runIdentity ta_starts)))
