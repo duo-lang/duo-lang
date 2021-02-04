@@ -54,7 +54,7 @@ checkCache i = do
 nodeToTVars :: Node -> AutToTypeM [Typ Pos]
 nodeToTVars i = do
   tvMap <- asks tvMap
-  return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  return (TyVar PosRep Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -106,7 +106,7 @@ nodeToType i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TyVar Recursive (MkTVar ("r" ++ show i))
+    True -> return $ TyVar PosRep Recursive (MkTVar ("r" ++ show i))
     False -> do
       outs <- nodeToOuts i
       gr <- asks graph
@@ -123,7 +123,7 @@ nodeToType i = do
               let nodes = computeArgNodes outs Data xt
               argTypes <- argNodesToArgTypes nodes Data pol
               return (MkXtorSig xt argTypes)
-            return [TyStructural Data sig]
+            return [TyStructural PosRep Data sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
@@ -132,13 +132,13 @@ nodeToType i = do
               let nodes = computeArgNodes outs Codata xt
               argTypes <- argNodesToArgTypes nodes Codata pol
               return (MkXtorSig xt argTypes)
-            return [TyStructural Codata sig]
+            return [TyStructural PosRep Codata sig]
         -- Creating Nominal types
-        let nominals = TyNominal <$> (S.toList tns)
+        let nominals = TyNominal PosRep <$> (S.toList tns)
         return $ unionOrInter pol (varL ++ datL ++ codatL ++ nominals)
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
-        then return $ TyRec (MkTVar ("r" ++ show i)) resType
+        then return $ TyRec PosRep (MkTVar ("r" ++ show i)) resType
         else return resType
 

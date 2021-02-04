@@ -19,67 +19,67 @@ import Utils
 -- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
 
-typArgListP :: PolarityRep st -> Parser (TypArgs st)
+typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
 typArgListP rep = do
   (Twice prdArgs cnsArgs) <- argListP (lexeme (typP rep)) (lexeme (typP rep))
   return (MkTypArgs prdArgs cnsArgs)
 
-nominalTypeP :: Parser (Typ st)
-nominalTypeP = TyNominal <$> typeNameP
+nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
+nominalTypeP rep = TyNominal rep <$> typeNameP
 
-dataTypeP :: PolarityRep st -> Parser (Typ st)
+dataTypeP :: PolarityRep pol -> Parser (Typ pol)
 dataTypeP rep = angles $ do
   xtorSigs <- xtorSignatureP rep `sepBy` pipe
-  return (TyStructural Data xtorSigs)
+  return (TyStructural rep Data xtorSigs)
 
-codataTypeP :: PolarityRep st -> Parser (Typ st)
+codataTypeP :: PolarityRep pol -> Parser (Typ pol)
 codataTypeP rep = braces $ do
   xtorSigs <- xtorSignatureP rep `sepBy` comma
-  return (TyStructural Codata xtorSigs)
+  return (TyStructural rep Codata xtorSigs)
 
-xtorSignatureP :: PolarityRep st -> Parser (XtorSig st)
+xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP rep = do
   xt <- xtorName Structural
   args <- typArgListP rep
   return (MkXtorSig xt args)
 
-recVar :: Parser (Typ st)
-recVar = do
+recVar :: PolarityRep pol -> Parser (Typ pol)
+recVar rep = do
   rvs <- asks rvars
   rv <- MkTVar <$> freeVarName
   guard (rv `S.member` rvs)
-  return $ TyVar Recursive rv
+  return $ TyVar rep Recursive rv
 
-typeVariable :: Parser (Typ st)
-typeVariable = do
+typeVariable :: PolarityRep pol -> Parser (Typ pol)
+typeVariable rep = do
   tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyVar Normal tv
+  return $ TyVar rep Normal tv
 
-setType :: PolarityRep st -> UnionInter -> Parser (Typ st)
+setType :: PolarityRep pol -> UnionInter -> Parser (Typ pol)
 setType rep Union = TySet Union <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
 setType rep Inter = TySet Inter <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
 
-recType :: PolarityRep st -> Parser (Typ st)
+recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
   _ <- symbol "rec"
   rv <- MkTVar <$> freeVarName
   _ <- dot
   ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) (typP rep)
-  return $ TyRec rv ty
+  return $ TyRec rep rv ty
 
 -- Without joins and meets
-typP' :: PolarityRep st -> Parser (Typ st)
+typP' :: PolarityRep pol -> Parser (Typ pol)
 typP' rep = try (parens (typP rep)) <|>
-  nominalTypeP <|>
+  nominalTypeP rep <|>
   dataTypeP rep <|>
   codataTypeP rep <|>
-  try recVar <|>
+  try (recVar rep) <|>
   recType rep <|>
-  typeVariable
+  typeVariable rep
 
-typP :: PolarityRep st -> Parser (Typ st)
+typP :: PolarityRep pol -> Parser (Typ pol)
 typP rep = try (setType rep Union) <|> try (setType rep Inter) <|> typP' rep
 
 ---------------------------------------------------------------------------------

@@ -60,11 +60,11 @@ lookupTVar tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
-insertType :: Polarity -> Typ a -> TypeToAutM Node
-insertType pol (TyVar Normal tv) = do
+insertType :: Polarity -> Typ pol -> TypeToAutM Node
+insertType pol (TyVar _ Normal tv) = do
   (i,j) <- lookupTVar tv
   return $ case pol of {Pos -> i; Neg -> j}
-insertType pol (TyVar Recursive rv) = do
+insertType pol (TyVar _ Recursive rv) = do
   rvarEnv <- asks rvarEnv
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
@@ -83,13 +83,13 @@ insertType Neg (TySet Inter tys) = do
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType Pos (TySet Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType pol (TyRec rv ty) = do
+insertType pol (TyRec _ rv ty) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType pol (TyStructural s xtors) = do
+insertType pol (TyStructural _ s xtors) = do
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol s (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
@@ -100,7 +100,7 @@ insertType pol (TyStructural s xtors) = do
       cnsNode <- insertType (applyVariance s Neg pol) cnsType
       insertEdges [(newNode, cnsNode, EdgeSymbol s xt Cns j)]
   return newNode
-insertType pol (TyNominal tn) = do
+insertType pol (TyNominal _ tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
   return newNode

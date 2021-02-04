@@ -26,6 +26,8 @@ data PolarityRep pol where
   PosRep :: PolarityRep Pos
   NegRep :: PolarityRep Neg
 deriving instance Show (PolarityRep pol)
+deriving instance Eq (PolarityRep pol)
+deriving instance Ord (PolarityRep pol)
 
 flipPol :: Polarity -> Polarity
 flipPol Pos = Neg
@@ -86,11 +88,11 @@ deriving instance Ord (XtorSig Pos)
 deriving instance Ord (XtorSig Neg)
 
 data Typ (pol :: Polarity) where
-  TyVar :: TVarKind -> TVar -> Typ a
-  TyStructural :: DataCodata -> [XtorSig a] -> Typ a
-  TyNominal :: TypeName -> Typ a
-  TySet :: UnionInter -> [Typ a] -> Typ a
-  TyRec :: TVar -> Typ a -> Typ a
+  TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
+  TyStructural :: PolarityRep pol -> DataCodata -> [XtorSig pol] -> Typ pol
+  TyNominal :: PolarityRep pol -> TypeName -> Typ pol
+  TySet :: UnionInter -> [Typ pol] -> Typ pol
+  TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
 deriving instance Eq (Typ Pos)
 deriving instance Eq (Typ Neg)
@@ -119,12 +121,12 @@ freeTypeVars :: Typ pol -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: Typ pol -> [TVar]
-    freeTypeVars' (TyVar Normal tv) = [tv]
-    freeTypeVars' (TyVar Recursive _)  = []
+    freeTypeVars' (TyVar _ Normal tv) = [tv]
+    freeTypeVars' (TyVar _ Recursive _)  = []
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
-    freeTypeVars' (TyRec _ t)  = freeTypeVars' t
-    freeTypeVars' (TyNominal _) = []
-    freeTypeVars' (TyStructural _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyRec _ _ t)  = freeTypeVars' t
+    freeTypeVars' (TyNominal _ _) = []
+    freeTypeVars' (TyStructural _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
     freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =

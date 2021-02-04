@@ -101,18 +101,18 @@ instance Pretty a => Pretty (ATerm a) where
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
 
-instance Pretty (Typ a) where
+instance Pretty (Typ pol) where
   pretty (TySet Union []) = "Bot"
   pretty (TySet Union [t]) = pretty t
   pretty (TySet Union tts) = parens (intercalateX " \\/ " (map pretty tts))
   pretty (TySet Inter []) = "Top"
   pretty (TySet Inter [t]) = pretty t
   pretty (TySet Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
-  pretty (TyVar _ tv) = pretty tv -- Normal + Recursive
-  pretty (TyRec rv t) = "rec " <> pretty rv <> "." <> pretty t
-  pretty (TyNominal tn) = pretty (unTypeName tn)
-  pretty (TyStructural Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (TyStructural Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (TyVar _ _ tv) = pretty tv -- Normal + Recursive
+  pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t
+  pretty (TyNominal _ tn) = pretty (unTypeName tn)
+  pretty (TyStructural _ Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural _ Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty (TypArgs a) where
   pretty (MkTypArgs prdArgs cnsArgs) = prettyTwice' prdArgs cnsArgs
