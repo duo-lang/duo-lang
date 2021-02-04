@@ -89,15 +89,47 @@ computeArgNodes outs dc xt =
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> Polarity -> AutToTypeM (TypArgs Pos)
-argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
+-- Data
+argNodesToArgTypes (Twice prdNodes cnsNodes) Data Pos = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc Pos pol) typs
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc Neg pol) typs
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
+  return (MkTypArgs prdTypes cnsTypes)
+argNodesToArgTypes (Twice prdNodes cnsNodes) Data Neg = do
+  prdTypes <- forM prdNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
+  return (MkTypArgs prdTypes cnsTypes)
+-- Codata
+argNodesToArgTypes (Twice prdNodes cnsNodes) Codata Pos = do
+  prdTypes <- forM prdNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
+  return (MkTypArgs prdTypes cnsTypes)
+argNodesToArgTypes (Twice prdNodes cnsNodes) Codata Neg = do
+  prdTypes <- forM prdNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Pos typs
+  cnsTypes <- forM cnsNodes $ \ns -> do
+    typs <- forM ns $ \n -> do
+      nodeToType n
+    return $ case typs of [t] -> t; _ -> TySet Neg typs
   return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: Node -> AutToTypeM (Typ Pos)
@@ -135,7 +167,8 @@ nodeToType i = do
             return [TyStructural PosRep Codata sig]
         -- Creating Nominal types
         let nominals = TyNominal PosRep <$> (S.toList tns)
-        return $ unionOrInter pol (varL ++ datL ++ codatL ++ nominals)
+        let typs = varL ++ datL ++ codatL ++ nominals
+        return $ case typs of [t] -> t; _ -> TySet pol typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
