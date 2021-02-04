@@ -26,7 +26,7 @@ data TypeInferenceTrace = TypeInferenceTrace
   , trace_typeAutDet :: TypeAutDet
   , trace_typeAutDetAdms :: TypeAutDet
   , trace_minTypeAut :: TypeAutDet
-  , trace_resType :: TypeScheme
+  , trace_resType :: TypeScheme Pos
   }
 
 ------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ inferPrdAut tm env = do
   trace <- inferPrdTraced tm env
   return $ trace_minTypeAut trace
 
-inferPrd :: STerm Prd () -> Environment -> Either Error TypeScheme
+inferPrd :: STerm Prd () -> Environment -> Either Error (TypeScheme Pos)
 inferPrd tm env = do
   trace <- inferPrdTraced tm env
   return $ trace_resType trace
@@ -83,7 +83,7 @@ inferATermTraced tm env = do
     , trace_resType = resType
     }
 
-inferATerm :: ATerm () -> Environment -> Either Error TypeScheme
+inferATerm :: ATerm () -> Environment -> Either Error (TypeScheme Pos)
 inferATerm tm env = do
   trace <- inferATermTraced tm env
   return $ trace_resType trace

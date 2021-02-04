@@ -6,7 +6,6 @@ import Data.Foldable (find)
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
-import Utils
 
 ---------------------------------------------------------------------------------
 -- Program
@@ -17,7 +16,7 @@ data Declaration a
   | CnsDecl FreeVarName (STerm Cns a)
   | CmdDecl FreeVarName (Command a)
   | DefDecl FreeVarName (ATerm a)
-  | TypDecl TypeName TypeScheme
+  | TypDecl TypeName (TypeScheme Pos)
   | DataDecl DataDecl
   deriving (Show)
 
@@ -26,7 +25,7 @@ data Environment = Environment
   , cnsEnv :: Map FreeVarName (STerm Cns ())
   , cmdEnv :: Map FreeVarName (Command ())
   , defEnv :: Map FreeVarName (ATerm ())
-  , typEnv :: Map TypeName TypeScheme
+  , typEnv :: Map TypeName (TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 
@@ -58,7 +57,7 @@ insertDecl (DefDecl v t)  env@Environment { defEnv }  = env { defEnv  = M.insert
 insertDecl (TypDecl n t)  env@Environment { typEnv }  = env { typEnv  = M.insert n t typEnv }
 insertDecl (DataDecl dcl) env@Environment { declEnv } = env { declEnv = dcl : declEnv }
 
-envToXtorMap :: Environment -> Map XtorName (Twice [SimpleType])
+envToXtorMap :: Environment -> Map XtorName (TypArgs Pos)
 envToXtorMap Environment { declEnv } = M.unions xtorMaps
   where
     xtorMaps = xtorSigsToAssocList <$> declEnv
@@ -72,6 +71,6 @@ lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
     typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors) = True
                                    | otherwise = False
 
-    containsXtor :: XtorSig SimpleType -> Bool
+    containsXtor :: XtorSig Pos -> Bool
     containsXtor sig = sig_name sig == xt
 

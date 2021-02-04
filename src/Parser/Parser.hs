@@ -31,7 +31,7 @@ bindingP = do
   t <- lexeme (stermP PrdRep)
   return (v,t)
 
-subtypingProblemP :: Parser (TypeScheme, TypeScheme)
+subtypingProblemP :: Parser (TypeScheme Pos, TypeScheme Pos)
 subtypingProblemP = do
   t1 <- typeSchemeP
   _ <- symbol "<:"

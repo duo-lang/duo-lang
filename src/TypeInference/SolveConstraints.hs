@@ -11,7 +11,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Void
 
 import Syntax.Types
 import Syntax.CommonTerm (XtorName)
@@ -23,8 +22,8 @@ import Pretty.Pretty
 ------------------------------------------------------------------------------
 
 data VariableState = VariableState
-  { vst_upperbounds :: [SimpleType]
-  , vst_lowerbounds :: [SimpleType] }
+  { vst_upperbounds :: [Typ Pos]
+  , vst_lowerbounds :: [Typ Pos] }
 
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
@@ -67,13 +66,13 @@ inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-addUpperBound :: TVar -> SimpleType -> SolverM [Constraint]
+addUpperBound :: TVar -> Typ Pos -> SolverM [Constraint]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
   lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
   return [SubType lb ty | lb <- lbs]
 
-addLowerBound :: TVar -> SimpleType -> SolverM [Constraint]
+addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
@@ -102,7 +101,7 @@ solve (cs:css) = do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
-lookupXtor :: XtorName -> [XtorSig SimpleType] -> SolverM (XtorSig SimpleType)
+lookupXtor :: XtorName -> [XtorSig Pos] -> SolverM (XtorSig Pos)
 lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
   Nothing -> throwSolverError ["The xtor"
                               , ppPrint xtName
@@ -110,17 +109,25 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
                               , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [XtorSig SimpleType] -> XtorSig SimpleType ->  SolverM [Constraint]
-checkXtor xtors2 (MkXtorSig xtName (Twice prd1 cns1)) = do
-  MkXtorSig _ (Twice prd2 cns2) <- lookupXtor xtName xtors2
+checkXtor :: [XtorSig Pos] -> XtorSig Pos ->  SolverM [Constraint]
+checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
+  MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
   pure $ zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 
 subConstraints :: Constraint -> SolverM [Constraint]
+-- Set constraints
+subConstraints (SubType (TySet Union tys) ty)  = return [SubType ty' ty | ty' <- tys]
+subConstraints (SubType (TySet Inter _) _)  = error "Cannot occur if types are polarized"
+subConstraints (SubType ty (TySet Inter tys))  = return [SubType ty ty' | ty' <- tys]
+subConstraints (SubType _ (TySet Union _))  = error "Cannot occur if types are polarized"
+-- Recursive constraints
+subConstraints (SubType (TyRec _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
+subConstraints (SubType ty' (TyRec _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
 -- Data/Data and Codata/Codata constraints
-subConstraints (SubType (TySimple Data xtors1) (TySimple Data xtors2)) = do
+subConstraints (SubType (TyStructural Data xtors1) (TyStructural Data xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
   pure $ concat constraints
-subConstraints (SubType (TySimple Codata xtors1) (TySimple Codata xtors2)) = do
+subConstraints (SubType (TyStructural Codata xtors1) (TyStructural Codata xtors2)) = do
   constraints <- forM xtors2 (checkXtor xtors1)
   pure $ concat constraints
 -- Nominal/Nominal Constraint
@@ -130,27 +137,22 @@ subConstraints (SubType (TyNominal tn1) (TyNominal tn2)) | tn1 == tn2 = return [
                                                                                         , "and"
                                                                                         , "    " ++ ppPrint tn2 ]
 -- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (TySimple Data _) (TySimple Codata _))
+subConstraints cs@(SubType (TyStructural Data _) (TyStructural Codata _))
   = throwSolverError [ "Constraint:"
                      , "     " ++ ppPrint cs
                      , "is unsolvable. A data type can't be a subtype of a codata type!" ]
-subConstraints cs@(SubType (TySimple Codata _) (TySimple Data _))
+subConstraints cs@(SubType (TyStructural Codata _) (TyStructural Data _))
   = throwSolverError [ "Constraint:"
                      , "     "++ ppPrint cs
                      , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (TySimple _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType (TyNominal _) (TySimple _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyStructural _ _) (TyNominal _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyNominal _) (TyStructural _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
 subConstraints (SubType (TyVar _ _) _) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
 subConstraints (SubType _ (TyVar _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
--- Impossible constructors. Constraints must be between simple types.
-subConstraints (SubType (TySet v _ _) _)  = absurd v
-subConstraints (SubType _ (TySet v _ _))  = absurd v
-subConstraints (SubType (TyRec v _ _) _)  = absurd v
-subConstraints (SubType _ (TyRec v _ _))  = absurd v
 
 ------------------------------------------------------------------------------
 -- Exported Function

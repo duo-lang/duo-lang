@@ -101,23 +101,26 @@ instance Pretty a => Pretty (ATerm a) where
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
 
-instance Pretty a => Pretty (XtorSig a) where
-  pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
-
 instance Pretty (Typ a) where
-  pretty (TySet _ Union []) = "Bot"
-  pretty (TySet _ Union [t]) = pretty t
-  pretty (TySet _ Union tts) = parens (intercalateX " \\/ " (map pretty tts))
-  pretty (TySet _ Inter []) = "Top"
-  pretty (TySet _ Inter [t]) = pretty t
-  pretty (TySet _ Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
+  pretty (TySet Union []) = "Bot"
+  pretty (TySet Union [t]) = pretty t
+  pretty (TySet Union tts) = parens (intercalateX " \\/ " (map pretty tts))
+  pretty (TySet Inter []) = "Top"
+  pretty (TySet Inter [t]) = pretty t
+  pretty (TySet Inter tts) = parens (intercalateX " /\\ " (map pretty tts))
   pretty (TyVar _ tv) = pretty tv -- Normal + Recursive
-  pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t
+  pretty (TyRec rv t) = "rec " <> pretty rv <> "." <> pretty t
   pretty (TyNominal tn) = pretty (unTypeName tn)
-  pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (TySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
-instance Pretty TypeScheme where
+instance Pretty (TypArgs a) where
+  pretty (MkTypArgs prdArgs cnsArgs) = prettyTwice' prdArgs cnsArgs
+
+instance Pretty (XtorSig a) where
+  pretty (MkXtorSig xt args) = pretty xt <> pretty args
+
+instance Pretty (TypeScheme pol) where
   pretty (TypeScheme [] ty) = pretty ty
   pretty (TypeScheme tvs ty) = "forall " <> intercalateX "" (map pretty tvs) <> ". " <> pretty ty
 

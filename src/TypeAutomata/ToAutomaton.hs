@@ -69,30 +69,30 @@ insertType pol (TyVar Recursive rv) = do
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
-insertType Prd (TySet _ Union tys) = do
+insertType Prd (TySet Union tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Prd)
   ns <- mapM (insertType Prd) tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Cns (TySet _ Union _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType Cns (TySet _ Inter tys) = do
+insertType Cns (TySet Union _) = throwError $ OtherError "insertType: type has wrong polarity."
+insertType Cns (TySet Inter tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Cns)
   ns <- mapM (insertType Cns) tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Prd (TySet _ Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType pol (TyRec _ rv ty) = do
+insertType Prd (TySet Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
+insertType pol (TyRec rv ty) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType pol (TySimple s xtors) = do
+insertType pol (TyStructural s xtors) = do
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol s (S.fromList (map sig_name xtors)))
-  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
+  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType (applyVariance s Prd pol) prdType
       insertEdges [(newNode, prdNode, EdgeSymbol s xt Prd i)]
@@ -122,7 +122,7 @@ createInitialFromTypeScheme tvars =
 
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: PrdCns -> TypeScheme -> Either Error TypeAutDet
+typeToAutPol :: PrdCns -> TypeScheme Pos -> Either Error TypeAutDet
 typeToAutPol pol (TypeScheme tvars ty) = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme tvars
   (start, aut) <- runTypeAut initAut lookupEnv (insertType pol ty)
@@ -131,7 +131,7 @@ typeToAutPol pol (TypeScheme tvars ty) = do
 
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
-typeToAut :: TypeScheme -> Either Error TypeAutDet
+typeToAut :: TypeScheme Pos -> Either Error TypeAutDet
 typeToAut ty = (typeToAutPol Prd ty) <> (typeToAutPol Cns ty)
 
 
@@ -147,7 +147,7 @@ insertEpsilonEdges solverResult =
       node <- insertType Cns ty
       insertEdges [(j, node, EpsilonEdge ())]
 
-solverStateToTypeAut :: SolverResult -> SimpleType -> PrdCns -> Either Error TypeAut
+solverStateToTypeAut :: SolverResult -> Typ Pos -> PrdCns -> Either Error TypeAut
 solverStateToTypeAut solverResult ty pc = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)

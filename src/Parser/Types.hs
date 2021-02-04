@@ -1,6 +1,7 @@
 module Parser.Types
   ( typeSchemeP
-  , simpleTypeP
+  , typP
+  , typArgListP
   ) where
 
 import Control.Monad.State
@@ -12,84 +13,83 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
 
+typArgListP :: PolarityRep st -> Parser (TypArgs st)
+typArgListP rep = do
+  (Twice prdArgs cnsArgs) <- argListP (lexeme (typP rep)) (lexeme (typP rep))
+  return (MkTypArgs prdArgs cnsArgs)
+
 nominalTypeP :: Parser (Typ st)
 nominalTypeP = TyNominal <$> typeNameP
 
-dataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+dataTypeP :: PolarityRep st -> Parser (Typ st)
 dataTypeP rep = angles $ do
   xtorSigs <- xtorSignatureP rep `sepBy` pipe
-  return (TySimple Data xtorSigs)
+  return (TyStructural Data xtorSigs)
 
-codataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+codataTypeP :: PolarityRep st -> Parser (Typ st)
 codataTypeP rep = braces $ do
   xtorSigs <- xtorSignatureP rep `sepBy` comma
-  return (TySimple Codata xtorSigs)
+  return (TyStructural Codata xtorSigs)
 
-xtorSignatureP :: SimpleTargetRep st -> Parser (XtorSig (Typ st))
+xtorSignatureP :: PolarityRep st -> Parser (XtorSig st)
 xtorSignatureP rep = do
   xt <- xtorName Structural
-  args <- argListP (lexeme (typP rep)) (lexeme (typP rep))
+  args <- typArgListP rep
   return (MkXtorSig xt args)
 
-recVar :: Parser TargetType
+recVar :: Parser (Typ st)
 recVar = do
   rvs <- asks rvars
   rv <- MkTVar <$> freeVarName
   guard (rv `S.member` rvs)
   return $ TyVar Recursive rv
 
-typeVariable :: Parser TargetType
+typeVariable :: Parser (Typ st)
 typeVariable = do
   tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
   return $ TyVar Normal tv
 
-setType :: UnionInter -> Parser TargetType
-setType Union = TySet () Union <$> (lexeme targetTypeP' `sepBy2` (symbol "\\/"))
-setType Inter = TySet () Inter <$> (lexeme targetTypeP' `sepBy2` (symbol "/\\"))
+setType :: PolarityRep st -> UnionInter -> Parser (Typ st)
+setType rep Union = TySet Union <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
+setType rep Inter = TySet Inter <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
 
-recType :: Parser TargetType
-recType = do
+recType :: PolarityRep st -> Parser (Typ st)
+recType rep = do
   _ <- symbol "rec"
   rv <- MkTVar <$> freeVarName
   _ <- dot
-  ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) targetTypeP
-  return $ TyRec () rv ty
+  ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) (typP rep)
+  return $ TyRec rv ty
 
 -- Without joins and meets
-targetTypeP' :: Parser TargetType
-targetTypeP' = try (parens targetTypeP) <|>
+typP' :: PolarityRep st -> Parser (Typ st)
+typP' rep = try (parens (typP rep)) <|>
   nominalTypeP <|>
-  dataTypeP TargetRep <|>
-  codataTypeP TargetRep <|>
+  dataTypeP rep <|>
+  codataTypeP rep <|>
   try recVar <|>
-  recType <|>
+  recType rep <|>
   typeVariable
 
-targetTypeP :: Parser TargetType
-targetTypeP = try (setType Union) <|> try (setType Inter) <|> targetTypeP'
-
-simpleTypeP :: Parser SimpleType
-simpleTypeP = nominalTypeP <|> dataTypeP SimpleRep <|> codataTypeP SimpleRep
-
-typP :: SimpleTargetRep st -> Parser (Typ st)
-typP SimpleRep = simpleTypeP
-typP TargetRep = targetTypeP
+typP :: PolarityRep st -> Parser (Typ st)
+typP rep = try (setType rep Union) <|> try (setType rep Inter) <|> typP' rep
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
-typeSchemeP :: Parser TypeScheme
+typeSchemeP :: Parser (TypeScheme 'Pos)
 typeSchemeP = do
   tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) targetTypeP
+  monotype <- local (\s -> s { tvars = tvars' }) (typP PosRep)
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)
     else fail "Forall annotation in type scheme is incorrect"

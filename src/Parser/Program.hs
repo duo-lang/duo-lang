@@ -93,9 +93,9 @@ dataDeclP = DataDecl <$> dataDeclP'
     dataCodataDeclP :: Parser DataCodata
     dataCodataDeclP = (symbol "data" >> return Data) <|> (symbol "codata" >> return Codata)
 
-    xtorDeclP :: Parser (XtorSig SimpleType)
+    xtorDeclP :: Parser (XtorSig 'Pos)
     xtorDeclP = do
       xt <- xtorName Nominal
-      args <- argListP (lexeme simpleTypeP) (lexeme simpleTypeP)
+      args <- typArgListP PosRep
       return (MkXtorSig xt args)
 
