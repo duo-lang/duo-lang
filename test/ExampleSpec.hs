@@ -8,11 +8,16 @@ import Data.Either (isRight)
 
 import TestUtils
 import Parser.Parser
+import Pretty.Pretty
 import Syntax.STerms
+import Syntax.Types
 import Syntax.Program
 import TypeInference.InferTypes
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
+
+instance Show (TypeScheme pol) where
+  show = ppPrint
 
 failingExamples :: [String]
 failingExamples = ["div2and3"]

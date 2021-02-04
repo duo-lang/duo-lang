@@ -94,42 +94,42 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) Data Pos = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Pos typs
+    return $ case typs of [t] -> t; _ -> TySet PosRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Neg typs
+    return $ case typs of [t] -> t; _ -> TySet NegRep typs
   return (MkTypArgs prdTypes cnsTypes)
 argNodesToArgTypes (Twice prdNodes cnsNodes) Data Neg = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Neg typs
+    return $ case typs of [t] -> t; _ -> TySet NegRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Pos typs
+    return $ case typs of [t] -> t; _ -> TySet PosRep typs
   return (MkTypArgs prdTypes cnsTypes)
 -- Codata
 argNodesToArgTypes (Twice prdNodes cnsNodes) Codata Pos = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Neg typs
+    return $ case typs of [t] -> t; _ -> TySet NegRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Pos typs
+    return $ case typs of [t] -> t; _ -> TySet PosRep typs
   return (MkTypArgs prdTypes cnsTypes)
 argNodesToArgTypes (Twice prdNodes cnsNodes) Codata Neg = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Pos typs
+    return $ case typs of [t] -> t; _ -> TySet PosRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ case typs of [t] -> t; _ -> TySet Neg typs
+    return $ case typs of [t] -> t; _ -> TySet NegRep typs
   return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: Node -> AutToTypeM (Typ Pos)
@@ -139,39 +139,44 @@ nodeToType i = do
   inCache <- checkCache i
   case inCache of
     True -> return $ TyVar PosRep Recursive (MkTVar ("r" ++ show i))
-    False -> do
-      outs <- nodeToOuts i
-      gr <- asks graph
-      let (_,_,(HeadCons pol datSet codatSet tns),_) = context gr i
-      let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-      resType <- local (visitNode i) $ do
-        -- Creating type variables
-        varL <- nodeToTVars i
-        -- Creating data types
-        datL <- case maybeDat of
-          Nothing -> return []
-          Just xtors -> do
-            sig <- forM xtors $ \xt -> do
-              let nodes = computeArgNodes outs Data xt
-              argTypes <- argNodesToArgTypes nodes Data pol
-              return (MkXtorSig xt argTypes)
-            return [TyStructural PosRep Data sig]
-        -- Creating codata types
-        codatL <- case maybeCodat of
-          Nothing -> return []
-          Just xtors -> do
-            sig <- forM xtors $ \xt -> do
-              let nodes = computeArgNodes outs Codata xt
-              argTypes <- argNodesToArgTypes nodes Codata pol
-              return (MkXtorSig xt argTypes)
-            return [TyStructural PosRep Codata sig]
-        -- Creating Nominal types
-        let nominals = TyNominal PosRep <$> (S.toList tns)
-        let typs = varL ++ datL ++ codatL ++ nominals
-        return $ case typs of [t] -> t; _ -> TySet pol typs
+    False -> nodeToTypeNoCache i
 
-      -- If the graph is cyclic, make a recursive type
-      if i `elem` dfs (suc gr i) gr
-        then return $ TyRec PosRep (MkTVar ("r" ++ show i)) resType
-        else return resType
+-- | Should only be called if node is not in cache.
+nodeToTypeNoCache :: Node -> AutToTypeM (Typ Pos)
+nodeToTypeNoCache i = do
+  outs <- nodeToOuts i
+  gr <- asks graph
+  let (_,_,(HeadCons pol datSet codatSet tns),_) = context gr i
+  let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
+  resType <- local (visitNode i) $ do
+    -- Creating type variables
+    varL <- nodeToTVars i
+    -- Creating data types
+    datL <- case maybeDat of
+      Nothing -> return []
+      Just xtors -> do
+        sig <- forM xtors $ \xt -> do
+          let nodes = computeArgNodes outs Data xt
+          argTypes <- argNodesToArgTypes nodes Data pol
+          return (MkXtorSig xt argTypes)
+        return [TyStructural PosRep DataRep sig]
+    -- Creating codata types
+    codatL <- case maybeCodat of
+      Nothing -> return []
+      Just xtors -> do
+        sig <- forM xtors $ \xt -> do
+          let nodes = computeArgNodes outs Codata xt
+          argTypes <- argNodesToArgTypes nodes Codata pol
+          return (MkXtorSig xt argTypes)
+        return [TyStructural PosRep CodataRep sig]
+    -- Creating Nominal types
+    let nominals = TyNominal PosRep <$> (S.toList tns)
+    let typs = varL ++ datL ++ codatL ++ nominals
+    return $ case typs of [t] -> t; _ -> case pol of
+                            Pos -> TySet PosRep typs
+                            Neg -> TySet NegRep typs
 
+  -- If the graph is cyclic, make a recursive type
+  if i `elem` dfs (suc gr i) gr
+    then return $ TyRec PosRep (MkTVar ("r" ++ show i)) resType
+    else return resType

@@ -116,18 +116,18 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
 
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Set constraints
-subConstraints (SubType (TySet Pos tys) ty)  = return [SubType ty' ty | ty' <- tys]
-subConstraints (SubType (TySet Neg _) _)  = error "Cannot occur if types are polarized"
-subConstraints (SubType ty (TySet Neg tys))  = return [SubType ty ty' | ty' <- tys]
-subConstraints (SubType _ (TySet Pos _))  = error "Cannot occur if types are polarized"
+subConstraints (SubType (TySet PosRep tys) ty)  = return [SubType ty' ty | ty' <- tys]
+subConstraints (SubType (TySet NegRep _) _)  = error "Cannot occur if types are polarized"
+subConstraints (SubType ty (TySet NegRep tys))  = return [SubType ty ty' | ty' <- tys]
+subConstraints (SubType _ (TySet PosRep _))  = error "Cannot occur if types are polarized"
 -- Recursive constraints
 subConstraints (SubType (TyRec _rep _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
 subConstraints (SubType ty' (TyRec _rep _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
 -- Data/Data and Codata/Codata constraints
-subConstraints (SubType (TyStructural _ Data xtors1) (TyStructural _ Data xtors2)) = do
+subConstraints (SubType (TyStructural _ DataRep xtors1) (TyStructural _ DataRep xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
   pure $ concat constraints
-subConstraints (SubType (TyStructural _ Codata xtors1) (TyStructural _ Codata xtors2)) = do
+subConstraints (SubType (TyStructural _ CodataRep xtors1) (TyStructural _ CodataRep xtors2)) = do
   constraints <- forM xtors2 (checkXtor xtors1)
   pure $ concat constraints
 -- Nominal/Nominal Constraint
@@ -137,11 +137,11 @@ subConstraints (SubType (TyNominal _ tn1) (TyNominal _ tn2)) | tn1 == tn2 = retu
                                                                                             , "and"
                                                                                             , "    " ++ ppPrint tn2 ]
 -- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (TyStructural _ Data _) (TyStructural _ Codata _))
+subConstraints cs@(SubType (TyStructural _ DataRep _) (TyStructural _ CodataRep _))
   = throwSolverError [ "Constraint:"
                      , "     " ++ ppPrint cs
                      , "is unsolvable. A data type can't be a subtype of a codata type!" ]
-subConstraints cs@(SubType (TyStructural _ Codata _) (TyStructural _ Data _))
+subConstraints cs@(SubType (TyStructural _ CodataRep _) (TyStructural _ DataRep _))
   = throwSolverError [ "Constraint:"
                      , "     "++ ppPrint cs
                      , "is unsolvable. A codata type can't be a subtype of a data type!" ]

@@ -18,7 +18,6 @@ data Declaration a
   | DefDecl FreeVarName (ATerm a)
   | TypDecl TypeName (TypeScheme Pos)
   | DataDecl DataDecl
-  deriving (Show)
 
 data Environment = Environment
   { prdEnv :: Map FreeVarName (STerm Prd ())
