@@ -139,6 +139,6 @@ nodeToType i = do
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
-        then return $ TyRec () (MkTVar ("r" ++ show i)) resType
+        then return $ TyRec (MkTVar ("r" ++ show i)) resType
         else return resType
 

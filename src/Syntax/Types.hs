@@ -2,7 +2,6 @@ module Syntax.Types where
 
 import Data.Kind (Type)
 import Data.List (nub)
-import Data.Void
 
 import Syntax.CommonTerm
 import Utils
@@ -67,10 +66,6 @@ data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
 -- Types
 ------------------------------------------------------------------------------
 
-type family TargetF (k :: SimpleTarget) :: Type where
-  TargetF Target = ()
-  TargetF Simple = Void
-
 data TypArgs a = MkTypArgs
   { prdTypes :: [Typ a]
   , cnsTypes :: [Typ a]
@@ -103,8 +98,8 @@ data Typ a where
   TyVar :: TVarKind -> TVar -> Typ a
   TySimple :: DataCodata -> [XtorSig a] -> Typ a
   TyNominal :: TypeName -> Typ a
-  TySet :: TargetF a -> UnionInter -> [Typ a] -> Typ a
-  TyRec :: TargetF a -> TVar -> Typ a -> Typ a
+  TySet :: UnionInter -> [Typ a] -> Typ a
+  TyRec :: TVar -> Typ a -> Typ a
 
 type SimpleType = Typ Simple
 type TargetType = Typ Target
@@ -131,8 +126,8 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' :: TargetType -> [TVar]
     freeTypeVars' (TyVar Normal tv) = [tv]
     freeTypeVars' (TyVar Recursive _)  = []
-    freeTypeVars' (TySet () _ ts) = concat $ map freeTypeVars' ts
-    freeTypeVars' (TyRec () _ t)  = freeTypeVars' t
+    freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
+    freeTypeVars' (TyRec _ t)  = freeTypeVars' t
     freeTypeVars' (TyNominal _) = []
     freeTypeVars' (TySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
@@ -184,6 +179,6 @@ applyVariance Codata Cns = id
 
 unionOrInter :: PrdCns -> [TargetType] -> TargetType
 unionOrInter _ [t] = t
-unionOrInter Prd tys = TySet () Union tys
-unionOrInter Cns tys = TySet () Inter tys
+unionOrInter Prd tys = TySet Union tys
+unionOrInter Cns tys = TySet Inter tys
 

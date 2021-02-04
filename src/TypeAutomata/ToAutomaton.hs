@@ -69,21 +69,21 @@ insertType pol (TyVar Recursive rv) = do
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
-insertType Prd (TySet _ Union tys) = do
+insertType Prd (TySet Union tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Prd)
   ns <- mapM (insertType Prd) tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Cns (TySet _ Union _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType Cns (TySet _ Inter tys) = do
+insertType Cns (TySet Union _) = throwError $ OtherError "insertType: type has wrong polarity."
+insertType Cns (TySet Inter tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Cns)
   ns <- mapM (insertType Cns) tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Prd (TySet _ Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType pol (TyRec _ rv ty) = do
+insertType Prd (TySet Inter _) = throwError $ OtherError "insertType: type has wrong polarity."
+insertType pol (TyRec rv ty) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)

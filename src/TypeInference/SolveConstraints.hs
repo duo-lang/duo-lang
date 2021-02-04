@@ -11,7 +11,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Void
 
 import Syntax.Types
 import Syntax.CommonTerm (XtorName)
@@ -116,6 +115,14 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
   pure $ zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 
 subConstraints :: Constraint -> SolverM [Constraint]
+-- Set constraints
+subConstraints (SubType (TySet Union tys) ty)  = return [SubType ty' ty | ty' <- tys]
+subConstraints (SubType (TySet Inter _) _)  = error "Cannot occur if types are polarized"
+subConstraints (SubType ty (TySet Inter tys))  = return [SubType ty ty' | ty' <- tys]
+subConstraints (SubType _ (TySet Union _))  = error "Cannot occur if types are polarized"
+-- Recursive constraints
+subConstraints (SubType (TyRec _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
+subConstraints (SubType ty' (TyRec _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
 -- Data/Data and Codata/Codata constraints
 subConstraints (SubType (TySimple Data xtors1) (TySimple Data xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
@@ -146,11 +153,6 @@ subConstraints (SubType (TyVar _ _) _) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
 subConstraints (SubType _ (TyVar _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
--- Impossible constructors. Constraints must be between simple types.
-subConstraints (SubType (TySet v _ _) _)  = absurd v
-subConstraints (SubType _ (TySet v _ _))  = absurd v
-subConstraints (SubType (TyRec v _ _) _)  = absurd v
-subConstraints (SubType _ (TyRec v _ _))  = absurd v
 
 ------------------------------------------------------------------------------
 -- Exported Function
