@@ -51,8 +51,6 @@ data SomePol (f :: Polarity -> Type) where
 
 data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
-data UnionInter = Union | Inter deriving (Eq, Show, Ord)
-
 data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
 
 ------------------------------------------------------------------------------
@@ -91,7 +89,8 @@ data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
   TyStructural :: PolarityRep pol -> DataCodata -> [XtorSig pol] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
-  TySet :: UnionInter -> [Typ pol] -> Typ pol
+  -- | PosRep = Union, NegRep = Intersection
+  TySet :: Polarity -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
 deriving instance Eq (Typ Pos)
@@ -172,6 +171,6 @@ applyVariance Codata Neg = id
 
 unionOrInter :: Polarity -> [Typ Pos] -> (Typ Pos)
 unionOrInter _ [t] = t
-unionOrInter Pos tys = TySet Union tys
-unionOrInter Neg tys = TySet Inter tys
+unionOrInter Pos tys = TySet Pos tys
+unionOrInter Neg tys = TySet Neg tys
 

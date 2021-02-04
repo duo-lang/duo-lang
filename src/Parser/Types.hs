@@ -57,9 +57,9 @@ typeVariable rep = do
   guard (tv `S.member` tvs)
   return $ TyVar rep Normal tv
 
-setType :: PolarityRep pol -> UnionInter -> Parser (Typ pol)
-setType rep Union = TySet Union <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
-setType rep Inter = TySet Inter <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
+setType :: PolarityRep pol -> Polarity -> Parser (Typ pol)
+setType rep Pos = TySet Pos <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
+setType rep Neg = TySet Neg <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
@@ -80,7 +80,7 @@ typP' rep = try (parens (typP rep)) <|>
   typeVariable rep
 
 typP :: PolarityRep pol -> Parser (Typ pol)
-typP rep = try (setType rep Union) <|> try (setType rep Inter) <|> typP' rep
+typP rep = try (setType rep Pos) <|> try (setType rep Neg) <|> typP' rep
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.

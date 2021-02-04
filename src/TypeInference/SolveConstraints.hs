@@ -116,10 +116,10 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
 
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Set constraints
-subConstraints (SubType (TySet Union tys) ty)  = return [SubType ty' ty | ty' <- tys]
-subConstraints (SubType (TySet Inter _) _)  = error "Cannot occur if types are polarized"
-subConstraints (SubType ty (TySet Inter tys))  = return [SubType ty ty' | ty' <- tys]
-subConstraints (SubType _ (TySet Union _))  = error "Cannot occur if types are polarized"
+subConstraints (SubType (TySet Pos tys) ty)  = return [SubType ty' ty | ty' <- tys]
+subConstraints (SubType (TySet Neg _) _)  = error "Cannot occur if types are polarized"
+subConstraints (SubType ty (TySet Neg tys))  = return [SubType ty ty' | ty' <- tys]
+subConstraints (SubType _ (TySet Pos _))  = error "Cannot occur if types are polarized"
 -- Recursive constraints
 subConstraints (SubType (TyRec _rep _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
 subConstraints (SubType ty' (TyRec _rep _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
