@@ -159,18 +159,3 @@ data DataDecl = NominalDecl
   }
   deriving (Show, Eq)
 
-------------------------------------------------------------------------------
--- Helper Functions
-------------------------------------------------------------------------------
-
-applyVariance :: DataCodata -> Polarity -> (Polarity -> Polarity)
-applyVariance Data Pos = id
-applyVariance Data Neg = flipPol
-applyVariance Codata Pos = flipPol
-applyVariance Codata Neg = id
-
-unionOrInter :: Polarity -> [Typ Pos] -> (Typ Pos)
-unionOrInter _ [t] = t
-unionOrInter Pos tys = TySet Pos tys
-unionOrInter Neg tys = TySet Neg tys
-

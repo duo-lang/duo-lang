@@ -89,16 +89,27 @@ insertType pol (TyRec _ rv ty) = do
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType pol (TyStructural _ s xtors) = do
+insertType pol (TyStructural _ Data xtors) = do
   newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol s (S.fromList (map sig_name xtors)))
+  insertNode newNode (singleHeadCons pol Data (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- insertType (applyVariance s Pos pol) prdType
-      insertEdges [(newNode, prdNode, EdgeSymbol s xt Prd i)]
+      prdNode <- insertType pol prdType
+      insertEdges [(newNode, prdNode, EdgeSymbol Data xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- insertType (applyVariance s Neg pol) cnsType
-      insertEdges [(newNode, cnsNode, EdgeSymbol s xt Cns j)]
+      cnsNode <- insertType (flipPol pol) cnsType
+      insertEdges [(newNode, cnsNode, EdgeSymbol Data xt Cns j)]
+  return newNode
+insertType pol (TyStructural _ Codata xtors) = do
+  newNode <- newNodeM
+  insertNode newNode (singleHeadCons pol Codata (S.fromList (map sig_name xtors)))
+  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
+    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
+      prdNode <- insertType (flipPol pol) prdType
+      insertEdges [(newNode, prdNode, EdgeSymbol Codata xt Prd i)]
+    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
+      cnsNode <- insertType pol cnsType
+      insertEdges [(newNode, cnsNode, EdgeSymbol Codata xt Cns j)]
   return newNode
 insertType pol (TyNominal _ tn) = do
   newNode <- newNodeM
