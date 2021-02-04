@@ -120,7 +120,7 @@ instance Pretty (TypArgs a) where
 instance Pretty (XtorSig a) where
   pretty (MkXtorSig xt args) = pretty xt <> pretty args
 
-instance Pretty TypeScheme where
+instance Pretty (TypeScheme pol) where
   pretty (TypeScheme [] ty) = pretty ty
   pretty (TypeScheme tvs ty) = "forall " <> intercalateX "" (map pretty tvs) <> ". " <> pretty ty
 

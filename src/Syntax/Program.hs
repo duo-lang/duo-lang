@@ -16,7 +16,7 @@ data Declaration a
   | CnsDecl FreeVarName (STerm Cns a)
   | CmdDecl FreeVarName (Command a)
   | DefDecl FreeVarName (ATerm a)
-  | TypDecl TypeName TypeScheme
+  | TypDecl TypeName (TypeScheme Pos)
   | DataDecl DataDecl
   deriving (Show)
 
@@ -25,7 +25,7 @@ data Environment = Environment
   , cnsEnv :: Map FreeVarName (STerm Cns ())
   , cmdEnv :: Map FreeVarName (Command ())
   , defEnv :: Map FreeVarName (ATerm ())
-  , typEnv :: Map TypeName TypeScheme
+  , typEnv :: Map TypeName (TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 

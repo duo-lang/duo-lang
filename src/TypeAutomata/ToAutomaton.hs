@@ -122,7 +122,7 @@ createInitialFromTypeScheme tvars =
 
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: PrdCns -> TypeScheme -> Either Error TypeAutDet
+typeToAutPol :: PrdCns -> TypeScheme Pos -> Either Error TypeAutDet
 typeToAutPol pol (TypeScheme tvars ty) = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme tvars
   (start, aut) <- runTypeAut initAut lookupEnv (insertType pol ty)
@@ -131,7 +131,7 @@ typeToAutPol pol (TypeScheme tvars ty) = do
 
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
-typeToAut :: TypeScheme -> Either Error TypeAutDet
+typeToAut :: TypeScheme Pos -> Either Error TypeAutDet
 typeToAut ty = (typeToAutPol Prd ty) <> (typeToAutPol Cns ty)
 
 

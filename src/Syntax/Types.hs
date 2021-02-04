@@ -103,15 +103,22 @@ deriving instance Ord (Typ Neg)
 -- Type Schemes
 ------------------------------------------------------------------------------
 
-data TypeScheme = TypeScheme
+data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_vars :: [TVar]
-  , ts_monotype :: Typ Neg
-  } deriving (Show, Eq)
+  , ts_monotype :: Typ pol
+  }
 
-freeTypeVars :: Typ Neg -> [TVar]
+deriving instance Eq (TypeScheme Pos)
+deriving instance Eq (TypeScheme Neg)
+deriving instance Show (TypeScheme Pos)
+deriving instance Show (TypeScheme Neg)
+deriving instance Ord (TypeScheme Pos)
+deriving instance Ord (TypeScheme Neg)
+
+freeTypeVars :: Typ pol -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
-    freeTypeVars' :: Typ Neg -> [TVar]
+    freeTypeVars' :: Typ pol -> [TVar]
     freeTypeVars' (TyVar Normal tv) = [tv]
     freeTypeVars' (TyVar Recursive _)  = []
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
@@ -119,13 +126,13 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyNominal _) = []
     freeTypeVars' (TyStructural _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
-    freeTypeVarsXtorSig :: XtorSig Neg -> [TVar]
+    freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
       concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)
 
 
 -- | Generalize over all free type variables of a type.
-generalize :: Typ Neg -> TypeScheme
+generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
 ------------------------------------------------------------------------------
@@ -165,7 +172,7 @@ applyVariance Data Cns = switchPrdCns
 applyVariance Codata Prd = switchPrdCns
 applyVariance Codata Cns = id
 
-unionOrInter :: PrdCns -> [Typ Neg] -> (Typ Neg)
+unionOrInter :: PrdCns -> [Typ Pos] -> (Typ Pos)
 unionOrInter _ [t] = t
 unionOrInter Prd tys = TySet Union tys
 unionOrInter Cns tys = TySet Inter tys

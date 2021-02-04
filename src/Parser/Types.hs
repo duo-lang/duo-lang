@@ -86,10 +86,10 @@ typP rep = try (setType rep Union) <|> try (setType rep Inter) <|> typP' rep
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
-typeSchemeP :: Parser TypeScheme
+typeSchemeP :: Parser (TypeScheme 'Pos)
 typeSchemeP = do
   tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) (typP NegRep)
+  monotype <- local (\s -> s { tvars = tvars' }) (typP PosRep)
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)
     else fail "Forall annotation in type scheme is incorrect"

@@ -21,7 +21,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 
 --------------------------------------------------------------------------
--- Type automata -> Neg types
+-- Type automata -> Types
 --------------------------------------------------------------------------
 
 data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
@@ -31,7 +31,7 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
 
 type AutToTypeM a = Reader AutToTypeState a
 
-autToType :: TypeAutDet -> TypeScheme
+autToType :: TypeAutDet -> TypeScheme Pos
 autToType aut@TypeAut{..} =
   let
     mp = getFlowAnalysisMap aut
@@ -51,7 +51,7 @@ checkCache i = do
   cache <- asks cache
   return (i `S.member` cache)
 
-nodeToTVars :: Node -> AutToTypeM [Typ Neg]
+nodeToTVars :: Node -> AutToTypeM [Typ Pos]
 nodeToTVars i = do
   tvMap <- asks tvMap
   return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
@@ -88,7 +88,7 @@ computeArgNodes outs dc xt =
     Twice (groupeds' Prd) (groupeds' Cns)
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Neg)
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Pos)
 argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
@@ -100,7 +100,7 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
     return $ unionOrInter (applyVariance dc Cns pol) typs
   return (MkTypArgs prdTypes cnsTypes)
 
-nodeToType :: Node -> AutToTypeM (Typ Neg)
+nodeToType :: Node -> AutToTypeM (Typ Pos)
 nodeToType i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
