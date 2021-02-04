@@ -102,7 +102,7 @@ solve (cs:css) = do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
-lookupXtor :: XtorName -> [XtorSig SimpleType] -> SolverM (XtorSig SimpleType)
+lookupXtor :: XtorName -> [XtorSig Simple] -> SolverM (XtorSig Simple)
 lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
   Nothing -> throwSolverError ["The xtor"
                               , ppPrint xtName
@@ -110,9 +110,9 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
                               , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [XtorSig SimpleType] -> XtorSig SimpleType ->  SolverM [Constraint]
-checkXtor xtors2 (MkXtorSig xtName (Twice prd1 cns1)) = do
-  MkXtorSig _ (Twice prd2 cns2) <- lookupXtor xtName xtors2
+checkXtor :: [XtorSig Simple] -> XtorSig Simple ->  SolverM [Constraint]
+checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
+  MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
   pure $ zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
 
 subConstraints :: Constraint -> SolverM [Constraint]

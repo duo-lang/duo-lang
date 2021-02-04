@@ -1,6 +1,7 @@
 module Parser.Types
   ( typeSchemeP
   , simpleTypeP
+  , typArgListP
   ) where
 
 import Control.Monad.State
@@ -12,10 +13,16 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
+
+typArgListP :: SimpleTargetRep st -> Parser (TypArgs st)
+typArgListP rep = do
+  (Twice prdArgs cnsArgs) <- argListP (lexeme (typP rep)) (lexeme (typP rep))
+  return (MkTypArgs prdArgs cnsArgs)
 
 nominalTypeP :: Parser (Typ st)
 nominalTypeP = TyNominal <$> typeNameP
@@ -30,10 +37,10 @@ codataTypeP rep = braces $ do
   xtorSigs <- xtorSignatureP rep `sepBy` comma
   return (TySimple Codata xtorSigs)
 
-xtorSignatureP :: SimpleTargetRep st -> Parser (XtorSig (Typ st))
+xtorSignatureP :: SimpleTargetRep st -> Parser (XtorSig st)
 xtorSignatureP rep = do
   xt <- xtorName Structural
-  args <- argListP (lexeme (typP rep)) (lexeme (typP rep))
+  args <- typArgListP rep
   return (MkXtorSig xt args)
 
 recVar :: Parser TargetType

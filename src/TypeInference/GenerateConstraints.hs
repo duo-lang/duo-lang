@@ -44,7 +44,7 @@ stateToConstraintSet GenerateState {..} = ConstraintSet
 -- We have access to a program environment and a local variable context.
 ---------------------------------------------------------------------------------------------
 
-data GenerateReader = GenerateReader { context :: [Twice [SimpleType]]
+data GenerateReader = GenerateReader { context :: [TypArgs Simple]
                                      , env :: Environment
                                      }
 
@@ -75,33 +75,33 @@ freshTVar = do
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   return (TyVar Normal (MkTVar (show var)))
 
-freshTVars :: Twice [()] -> GenM (Twice [SimpleType])
+freshTVars :: Twice [()] -> GenM (TypArgs Simple)
 freshTVars (Twice prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs (\_ -> freshTVar)
   cnsArgs' <- forM cnsArgs (\_ -> freshTVar)
-  return (Twice prdArgs' cnsArgs')
+  return (MkTypArgs prdArgs' cnsArgs')
 
 -- | Lookup a type of a bound variable in the context.
 lookupType :: PrdCnsRep pc -> Index -> GenM SimpleType
 lookupType PrdRep (i,j) = do
   ctx <- asks context
-  let (Twice prdTypes _) = ctx !! i
+  let (MkTypArgs { prdTypes }) = ctx !! i
   return $ prdTypes !! j
 lookupType CnsRep (i,j) = do
   ctx <- asks context
-  let (Twice _ cnsTypes) = ctx !! i
+  let (MkTypArgs { cnsTypes }) = ctx !! i
   return $ cnsTypes !! j
 
 -- | Add a constraint to the state.
 addConstraint :: Constraint -> GenM ()
 addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
-lookupCase :: XtorName -> GenM (Twice [SimpleType], XtorArgs SimpleType)
+lookupCase :: XtorName -> GenM (TypArgs Simple, XtorArgs SimpleType)
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (P.envToXtorMap env) of
     Nothing -> throwError $ GenConstraintsError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
-    Just types@(Twice prdTypes cnsTypes) -> do
+    Just types@(MkTypArgs prdTypes cnsTypes) -> do
       let prds = (\ty -> FreeVar PrdRep "y" ty) <$> prdTypes
       let cnss = (\ty -> FreeVar CnsRep "y" ty) <$> cnsTypes
       return (types, MkXtorArgs prds cnss)
@@ -117,21 +117,21 @@ lookupXtor xt = do
 -- Symmetric Terms
 ---------------------------------------------------------------------------------------------
 
-isContainedIn :: XtorName -> [XtorSig SimpleType] -> GenM ()
+isContainedIn :: XtorName -> [XtorSig Simple] -> GenM ()
 isContainedIn xt xtors =
   if or (isContainedIn' <$> xtors)
   then return ()
   else throwError $ GenConstraintsError ("Pattern match fail with xtor" ++ ppPrint xt)
     where
-      isContainedIn' :: XtorSig SimpleType -> Bool
+      isContainedIn' :: XtorSig Simple -> Bool
       isContainedIn' MkXtorSig { sig_name } | xt == sig_name = True
                                             | otherwise      = False
 
-genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs SimpleType, Twice [SimpleType])
+genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs SimpleType, TypArgs Simple)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm
-  return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), Twice (snd <$> prdArgs') (snd <$> cnsArgs'))
+  return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), MkTypArgs (snd <$> prdArgs') (snd <$> cnsArgs'))
 
 genConstraintsSTerm :: STerm pc () -> GenM (STerm pc SimpleType, SimpleType)
 genConstraintsSTerm (BoundVar rep idx) = do
@@ -153,13 +153,13 @@ genConstraintsSTerm (XMatch PrdRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       fvars <- freshTVars scase_args
                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvars:context }) (genConstraintsCommand scase_cmd)
-                      return (MkSCase scase_name fvars cmd', MkXtorSig scase_name fvars))
+                      return (MkSCase scase_name (demote fvars) cmd', MkXtorSig scase_name fvars))
   return (XMatch PrdRep Structural (fst <$> cases'), TySimple Codata (snd <$> cases'))
 genConstraintsSTerm (XMatch CnsRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       fvars <- freshTVars scase_args
                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvars:context }) (genConstraintsCommand scase_cmd)
-                      return (MkSCase scase_name fvars cmd', MkXtorSig scase_name fvars))
+                      return (MkSCase scase_name (demote fvars) cmd', MkXtorSig scase_name fvars))
   return (XMatch CnsRep Structural (fst <$> cases'), TySimple Data (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable"
@@ -169,15 +169,15 @@ genConstraintsSTerm (XMatch rep Nominal (pmcase:pmcases)) = do
                                       scase_name `isContainedIn` (data_xtors tn)
                                       (x,_) <- lookupCase scase_name
                                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
-                                      return (MkSCase scase_name x cmd'))
+                                      return (MkSCase scase_name (demote x) cmd'))
   return (XMatch rep Nominal cases', TyNominal (data_name tn))
 genConstraintsSTerm (MuAbs PrdRep () cmd) = do
   fv <- freshTVar
-  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (Twice [] [fv]):context }) (genConstraintsCommand cmd)
+  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [] [fv]):context }) (genConstraintsCommand cmd)
   return (MuAbs PrdRep fv cmd', fv)
 genConstraintsSTerm (MuAbs CnsRep () cmd) = do
   fv <- freshTVar
-  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (Twice [fv] []):context }) (genConstraintsCommand cmd)
+  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [fv] []):context }) (genConstraintsCommand cmd)
   return (MuAbs CnsRep fv cmd', fv)
 
 genConstraintsCommand :: Command () -> GenM (Command SimpleType)
@@ -207,12 +207,12 @@ genConstraintsATerm (BVar idx) = do
 genConstraintsATerm (FVar fv) = throwError $ GenConstraintsError $ "Free type var: " ++ fv
 genConstraintsATerm (Ctor xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  let ty = TySimple Data [MkXtorSig xt (Twice (snd <$> args') [])]
+  let ty = TySimple Data [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
   return (Ctor xt (fst <$> args'), ty)
 genConstraintsATerm (Dtor xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   retType <- freshTVar
-  let codataType = TySimple Codata [MkXtorSig xt (Twice (snd <$> args') [retType])]
+  let codataType = TySimple Codata [MkXtorSig xt (MkTypArgs (snd <$> args') [retType])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType ty' codataType)
   return (Dtor xt t' (fst <$> args'), retType)
@@ -227,18 +227,18 @@ genConstraintsATerm (Comatch cocases) = do
   let ty = TySimple Codata (snd <$> cocases')
   return (Comatch (fst <$> cocases'), ty)
 
-genConstraintsATermCase :: SimpleType -> ACase () -> GenM (ACase SimpleType, XtorSig SimpleType)
+genConstraintsATermCase :: SimpleType -> ACase () -> GenM (ACase SimpleType, XtorSig Simple)
 genConstraintsATermCase retType (MkACase { acase_name, acase_args, acase_term }) = do
   argts <- forM acase_args (\_ -> freshTVar)
-  (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (Twice argts []):context }) (genConstraintsATerm acase_term)
+  (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argts []):context }) (genConstraintsATerm acase_term)
   addConstraint (SubType retTypeInf retType)
-  return (MkACase acase_name argts acase_term', MkXtorSig acase_name (Twice argts []))
+  return (MkACase acase_name argts acase_term', MkXtorSig acase_name (MkTypArgs argts []))
 
-genConstraintsATermCocase :: ACase () -> GenM (ACase SimpleType, XtorSig SimpleType)
+genConstraintsATermCocase :: ACase () -> GenM (ACase SimpleType, XtorSig Simple)
 genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
   argts <- forM acase_args (\_ -> freshTVar)
-  (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (Twice argts []):context }) (genConstraintsATerm acase_term)
-  let sig = MkXtorSig acase_name (Twice argts [retType])
+  (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argts []):context }) (genConstraintsATerm acase_term)
+  let sig = MkXtorSig acase_name (MkTypArgs argts [retType])
   return (MkACase acase_name argts acase_term', sig)
 
 agenerateConstraints :: ATerm () -> Environment -> Either Error ((ATerm SimpleType, SimpleType), ConstraintSet)

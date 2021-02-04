@@ -92,7 +92,7 @@ insertType pol (TyRec _ rv ty) = do
 insertType pol (TySimple s xtors) = do
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol s (S.fromList (map sig_name xtors)))
-  forM_ xtors $ \(MkXtorSig xt (Twice prdTypes cnsTypes)) -> do
+  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType (applyVariance s Prd pol) prdType
       insertEdges [(newNode, prdNode, EdgeSymbol s xt Prd i)]

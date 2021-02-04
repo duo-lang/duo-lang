@@ -101,9 +101,6 @@ instance Pretty a => Pretty (ATerm a) where
 instance Pretty TVar where
   pretty (MkTVar tv) = pretty tv
 
-instance Pretty a => Pretty (XtorSig a) where
-  pretty (MkXtorSig xt args) = pretty xt <> prettyTwice args
-
 instance Pretty (Typ a) where
   pretty (TySet _ Union []) = "Bot"
   pretty (TySet _ Union [t]) = pretty t
@@ -116,6 +113,12 @@ instance Pretty (Typ a) where
   pretty (TyNominal tn) = pretty (unTypeName tn)
   pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
   pretty (TySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+
+instance Pretty (TypArgs a) where
+  pretty (MkTypArgs prdArgs cnsArgs) = prettyTwice' prdArgs cnsArgs
+
+instance Pretty (XtorSig a) where
+  pretty (MkXtorSig xt args) = pretty xt <> pretty args
 
 instance Pretty TypeScheme where
   pretty (TypeScheme [] ty) = pretty ty

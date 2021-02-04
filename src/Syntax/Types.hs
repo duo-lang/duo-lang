@@ -71,14 +71,37 @@ type family TargetF (k :: SimpleTarget) :: Type where
   TargetF Target = ()
   TargetF Simple = Void
 
-data XtorSig a = MkXtorSig
+data TypArgs a = MkTypArgs
+  { prdTypes :: [Typ a]
+  , cnsTypes :: [Typ a]
+  }
+
+{-# DEPRECATED demote "This function will be removed once we have polar types" #-}
+demote :: TypArgs Simple -> Twice [SimpleType]
+demote (MkTypArgs prdTypes cnsTypes) = Twice prdTypes cnsTypes
+
+deriving instance Eq (TypArgs Simple)
+deriving instance Eq (TypArgs Target)
+deriving instance Show (TypArgs Simple)
+deriving instance Show (TypArgs Target)
+deriving instance Ord (TypArgs Simple)
+deriving instance Ord (TypArgs Target)
+
+data XtorSig (a :: SimpleTarget) = MkXtorSig
   { sig_name :: XtorName
-  , sig_args :: Twice [a]
-  } deriving (Eq, Show, Ord)
+  , sig_args :: TypArgs a
+  }
+
+deriving instance Eq (XtorSig Simple)
+deriving instance Eq (XtorSig Target)
+deriving instance Show (XtorSig Simple)
+deriving instance Show (XtorSig Target)
+deriving instance Ord (XtorSig Simple)
+deriving instance Ord (XtorSig Target)
 
 data Typ a where
   TyVar :: TVarKind -> TVar -> Typ a
-  TySimple :: DataCodata -> [XtorSig (Typ a)] -> Typ a
+  TySimple :: DataCodata -> [XtorSig a] -> Typ a
   TyNominal :: TypeName -> Typ a
   TySet :: TargetF a -> UnionInter -> [Typ a] -> Typ a
   TyRec :: TargetF a -> TVar -> Typ a -> Typ a
@@ -113,8 +136,8 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyNominal _) = []
     freeTypeVars' (TySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
-    freeTypeVarsXtorSig :: XtorSig TargetType -> [TVar]
-    freeTypeVarsXtorSig (MkXtorSig _ (Twice prdTypes cnsTypes)) =
+    freeTypeVarsXtorSig :: XtorSig Target -> [TVar]
+    freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
       concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)
 
 
@@ -141,7 +164,7 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint]
 data DataDecl = NominalDecl
   { data_name :: TypeName
   , data_polarity :: DataCodata
-  , data_xtors :: [XtorSig SimpleType]
+  , data_xtors :: [XtorSig Simple]
   }
   deriving (Show, Eq)
 

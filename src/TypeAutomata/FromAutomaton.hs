@@ -88,7 +88,7 @@ computeArgNodes outs dc xt =
     Twice (groupeds' Prd) (groupeds' Cns)
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (Twice [TargetType])
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Target)
 argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
@@ -98,7 +98,7 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
     typs <- forM ns $ \n -> do
       nodeToType n
     return $ unionOrInter (applyVariance dc Cns pol) typs
-  return (Twice prdTypes cnsTypes)
+  return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: Node -> AutToTypeM TargetType
 nodeToType i = do
