@@ -30,7 +30,7 @@ singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
 singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 
 data EdgeLabel a
-  = EdgeSymbol DataCodata XtorName Polarity Int
+  = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
   deriving (Eq,Show, Ord)
 

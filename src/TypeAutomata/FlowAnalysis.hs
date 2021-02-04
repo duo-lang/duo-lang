@@ -3,6 +3,7 @@ module TypeAutomata.FlowAnalysis
   , getFlowAnalysisMap
   ) where
 
+import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import Syntax.TypeGraph
 
@@ -41,10 +42,10 @@ admissableM aut@TypeAut{..} e@(i,j) =
         (HeadCons Pos (Just dat2) _ _) <- lab ta_gr j
         _ <- forM (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
         _ <- forM (S.toList dat1) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Pos _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Neg _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
           return ()
@@ -54,10 +55,10 @@ admissableM aut@TypeAut{..} e@(i,j) =
         (HeadCons Pos _ (Just codat2) _) <- lab ta_gr j
         _ <- forM (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
         _ <- forM (S.toList codat2) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Pos _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Neg _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
           return ()

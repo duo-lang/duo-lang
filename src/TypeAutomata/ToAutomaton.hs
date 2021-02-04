@@ -1,5 +1,6 @@
 module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol, solverStateToTypeAut) where
 
+import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import Syntax.TypeGraph
 import Utils
@@ -94,10 +95,10 @@ insertType pol (TyStructural s xtors) = do
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType (applyVariance s Pos pol) prdType
-      insertEdges [(newNode, prdNode, EdgeSymbol s xt Pos i)]
+      insertEdges [(newNode, prdNode, EdgeSymbol s xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
       cnsNode <- insertType (applyVariance s Neg pol) cnsType
-      insertEdges [(newNode, cnsNode, EdgeSymbol s xt Neg j)]
+      insertEdges [(newNode, cnsNode, EdgeSymbol s xt Cns j)]
   return newNode
 insertType pol (TyNominal tn) = do
   newNode <- newNodeM

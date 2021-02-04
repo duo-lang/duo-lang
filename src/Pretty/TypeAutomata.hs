@@ -10,6 +10,7 @@ import Data.Text.Lazy (pack)
 import Prettyprinter
 
 import Pretty.Pretty
+import Syntax.CommonTerm (PrdCns(..))
 import Syntax.TypeGraph
 import Syntax.Types
 
@@ -28,8 +29,8 @@ instance Pretty NodeLabel where
       printNominal tns = Just (intercalateX ";" (pretty <$> (S.toList tns)))
 
 instance Pretty (EdgeLabel a) where
-  pretty (EdgeSymbol _ xt Pos i) = pretty xt <> parens (pretty i)
-  pretty (EdgeSymbol _ xt Neg i) = pretty xt <> brackets (pretty i)
+  pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
+  pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
   pretty (EpsilonEdge _) = "e"
 
 typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
