@@ -45,6 +45,17 @@ data SomePol (f :: Polarity -> Type) where
   SomePos :: f Pos -> SomePol f
   SomeNeg :: f Neg -> SomePol f
 
+wrap :: Typ pol -> SomePol Typ
+wrap ty = case getPolarityRep ty of
+  PosRep -> SomePos ty
+  NegRep -> SomeNeg ty
+
+{-# DEPRECATED unwrap "This function is unsafe and will be removed" #-}
+unwrap :: PolarityRep pol -> SomePol f -> f pol
+unwrap PosRep (SomePos t) = t
+unwrap NegRep (SomeNeg t) = t
+unwrap _ _ = error "unwrap: Should not occur!"
+
 ------------------------------------------------------------------------------
 -- Tags
 ------------------------------------------------------------------------------
