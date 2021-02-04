@@ -88,9 +88,12 @@ deriving instance Eq (XtorSig Neg)
 deriving instance Ord (XtorSig Pos)
 deriving instance Ord (XtorSig Neg)
 
+type family XtorF (a :: Polarity) (b :: DataCodata) :: Polarity where
+  XtorF pol _ = pol
+
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
-  TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig pol] -> Typ pol
+  TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig (XtorF pol dc)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol' -> [Typ pol] -> Typ pol
