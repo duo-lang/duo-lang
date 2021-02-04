@@ -30,12 +30,12 @@ nominalTypeP rep = TyNominal rep <$> typeNameP
 dataTypeP :: PolarityRep pol -> Parser (Typ pol)
 dataTypeP rep = angles $ do
   xtorSigs <- xtorSignatureP rep `sepBy` pipe
-  return (TyStructural rep Data xtorSigs)
+  return (TyStructural rep DataRep xtorSigs)
 
 codataTypeP :: PolarityRep pol -> Parser (Typ pol)
 codataTypeP rep = braces $ do
   xtorSigs <- xtorSignatureP rep `sepBy` comma
-  return (TyStructural rep Codata xtorSigs)
+  return (TyStructural rep CodataRep xtorSigs)
 
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP rep = do
@@ -58,8 +58,8 @@ typeVariable rep = do
   return $ TyVar rep Normal tv
 
 setType :: PolarityRep pol -> Polarity -> Parser (Typ pol)
-setType rep Pos = TySet Pos <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
-setType rep Neg = TySet Neg <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
+setType rep Pos = TySet PosRep <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
+setType rep Neg = TySet NegRep <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do

@@ -51,6 +51,13 @@ data SomePol (f :: Polarity -> Type) where
 
 data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
+data DataCodataRep (dc :: DataCodata) where
+  DataRep :: DataCodataRep Data
+  CodataRep :: DataCodataRep Codata
+deriving instance Show (DataCodataRep pol)
+deriving instance Eq (DataCodataRep pol)
+deriving instance Ord (DataCodataRep pol)
+
 data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
 
 ------------------------------------------------------------------------------
@@ -68,8 +75,6 @@ demote (MkTypArgs prdTypes cnsTypes) = Twice prdTypes cnsTypes
 
 deriving instance Eq (TypArgs Pos)
 deriving instance Eq (TypArgs Neg)
-deriving instance Show (TypArgs Pos)
-deriving instance Show (TypArgs Neg)
 deriving instance Ord (TypArgs Pos)
 deriving instance Ord (TypArgs Neg)
 
@@ -80,25 +85,82 @@ data XtorSig (pol :: Polarity) = MkXtorSig
 
 deriving instance Eq (XtorSig Pos)
 deriving instance Eq (XtorSig Neg)
-deriving instance Show (XtorSig Pos)
-deriving instance Show (XtorSig Neg)
 deriving instance Ord (XtorSig Pos)
 deriving instance Ord (XtorSig Neg)
 
+type family XtorF (a :: Polarity) (b :: DataCodata) :: Polarity where
+  XtorF pol _ = pol
+
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
-  TyStructural :: PolarityRep pol -> DataCodata -> [XtorSig pol] -> Typ pol
+  TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig (XtorF pol dc)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
-  TySet :: Polarity -> [Typ pol] -> Typ pol
+  TySet :: PolarityRep pol' -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
-deriving instance Eq (Typ Pos)
-deriving instance Eq (Typ Neg)
-deriving instance Show (Typ Pos)
-deriving instance Show (Typ Neg)
-deriving instance Ord (Typ Pos)
-deriving instance Ord (Typ Neg)
+-- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
+instance Eq (Typ Pos) where
+  (TyVar PosRep Recursive tv) == (TyVar PosRep Recursive tv') = tv == tv'
+  (TyVar PosRep Normal tv) == (TyVar PosRep Normal tv') = tv == tv'
+  (TyStructural PosRep DataRep xtors) == (TyStructural PosRep DataRep xtors') = xtors == xtors'
+  (TyStructural PosRep CodataRep xtors) == (TyStructural PosRep CodataRep xtors') = xtors == xtors'
+  (TyNominal PosRep tn) == (TyNominal PosRep tn') = tn == tn'
+  (TySet PosRep tys) == (TySet PosRep tys') = tys == tys'
+  (TyRec PosRep v t) == (TyRec PosRep v' t') = v == v' && t == t'
+  _ == _ = False
+instance Eq (Typ Neg) where
+  (TyVar NegRep Recursive tv) == (TyVar NegRep Recursive tv') = tv == tv'
+  (TyVar NegRep Normal tv) == (TyVar NegRep Normal tv') = tv == tv'
+  (TyStructural NegRep DataRep xtors) == (TyStructural NegRep DataRep xtors') = xtors == xtors'
+  (TyStructural NegRep CodataRep xtors) == (TyStructural NegRep CodataRep xtors') = xtors == xtors'
+  (TyNominal NegRep tn) == (TyNominal NegRep tn') = tn == tn'
+  (TySet NegRep tys) == (TySet NegRep tys') = tys == tys'
+  (TyRec NegRep v t) == (TyRec NegRep v' t') = v == v' && t == t'
+  _ == _ = False
+
+-- | Lexicographic ordering for two arguments
+compare2 :: (Ord a, Ord b) => a -> a -> b -> b -> Ordering
+compare2 x1 x2 y1 y2 = case x1 `compare` x2 of
+  LT -> LT
+  GT -> GT
+  EQ -> y1 `compare` y2
+
+instance Ord (Typ Pos) where
+  -- Cases where same type constructor is used type constructor:
+  (TyVar PosRep rn tv) `compare` (TyVar PosRep rn' tv') = compare2 rn rn' tv tv'
+  (TyStructural PosRep dc xtors) `compare` (TyStructural PosRep dc' xtors') = case (dc,dc') of
+    (DataRep,DataRep) -> xtors `compare` xtors'
+    (CodataRep,CodataRep) -> xtors `compare` xtors'
+    (DataRep, CodataRep) -> LT
+    (CodataRep, DataRep) -> GT
+  (TyNominal PosRep tn) `compare` (TyNominal PosRep tn') = tn `compare` tn'
+  (TySet PosRep tys) `compare` (TySet PosRep tys') = tys `compare` tys'
+  (TyRec PosRep v t) `compare` (TyRec PosRep v' t') = compare2 v v' t t'
+  -- Cases where different constructors are used: TyVar < TyStructural < TyNominal < TySet < TyRec
+  (TyVar _ _ _) `compare`_ = LT
+  (TyStructural _ _ _) `compare` _ = LT
+  (TyNominal _ _) `compare` _ = LT
+  (TySet _ _) `compare` _ = LT
+  (TyRec _ _ _) `compare` _ = GT
+
+instance Ord (Typ Neg) where
+  -- Cases where same type constructor is used type constructor:
+  (TyVar NegRep rn tv) `compare` (TyVar NegRep rn' tv') = compare2 rn rn' tv tv'
+  (TyStructural NegRep dc xtors) `compare` (TyStructural NegRep dc' xtors') = case (dc,dc') of
+    (DataRep,DataRep) -> xtors `compare` xtors'
+    (CodataRep,CodataRep) -> xtors `compare` xtors'
+    (DataRep, CodataRep) -> LT
+    (CodataRep, DataRep) -> GT
+  (TyNominal NegRep tn) `compare` (TyNominal NegRep tn') = tn `compare` tn'
+  (TySet NegRep tys) `compare` (TySet NegRep tys') = tys `compare` tys'
+  (TyRec NegRep v t) `compare` (TyRec NegRep v' t') = compare2 v v' t t'
+  -- Cases where different constructors are used: TyVar < TyStructural < TyNominal < TySet < TyRec
+  (TyVar _ _ _) `compare`_ = LT
+  (TyStructural _ _ _) `compare` _ = LT
+  (TyNominal _ _) `compare` _ = LT
+  (TySet _ _) `compare` _ = LT
+  (TyRec _ _ _) `compare` _ = GT
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -111,8 +173,6 @@ data TypeScheme (pol :: Polarity) = TypeScheme
 
 deriving instance Eq (TypeScheme Pos)
 deriving instance Eq (TypeScheme Neg)
-deriving instance Show (TypeScheme Pos)
-deriving instance Show (TypeScheme Neg)
 deriving instance Ord (TypeScheme Pos)
 deriving instance Ord (TypeScheme Neg)
 
@@ -140,13 +200,13 @@ generalize ty = TypeScheme (freeTypeVars ty) ty
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType (Typ Pos) (Typ Pos) deriving (Eq, Show, Ord)
+data Constraint = SubType (Typ Pos) (Typ Pos) deriving (Eq, Ord)
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint]
                                    , cs_uvars :: [TVar]
-                                   } deriving (Eq, Show)
+                                   } deriving (Eq)
 
 ------------------------------------------------------------------------------
 -- Data Type declarations
@@ -157,5 +217,5 @@ data DataDecl = NominalDecl
   , data_polarity :: DataCodata
   , data_xtors :: [XtorSig Pos]
   }
-  deriving (Show, Eq)
+  deriving (Eq)
 
