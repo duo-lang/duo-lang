@@ -10,8 +10,8 @@ import Data.Text.Lazy (pack)
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.CommonTerm
 import Syntax.TypeGraph
+import Syntax.Types
 
 
 ---------------------------------------------------------------------------------
@@ -28,8 +28,8 @@ instance Pretty NodeLabel where
       printNominal tns = Just (intercalateX ";" (pretty <$> (S.toList tns)))
 
 instance Pretty (EdgeLabel a) where
-  pretty (EdgeSymbol _ xt Prd i) = pretty xt <> parens (pretty i)
-  pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
+  pretty (EdgeSymbol _ xt Pos i) = pretty xt <> parens (pretty i)
+  pretty (EdgeSymbol _ xt Neg i) = pretty xt <> brackets (pretty i)
   pretty (EpsilonEdge _) = "e"
 
 typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
@@ -43,7 +43,7 @@ typeAutParams :: GraphvizParams Node NodeLabel EdgeLabelEpsilon () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,nl) ->
     [ style filled
-    , fillColor $ case hc_pol nl of {Prd -> White; Cns -> Gray}
+    , fillColor $ case hc_pol nl of {Pos -> White; Neg -> Gray}
     , textLabel (pack (ppPrint (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el

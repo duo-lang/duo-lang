@@ -85,19 +85,19 @@ computeArgNodes outs dc xt =
     groupeds pc = groupBy groupFun (sorteds pc)
     groupeds' pc = (fmap . fmap) snd $ groupeds pc
   in
-    Twice (groupeds' Prd) (groupeds' Cns)
+    Twice (groupeds' Pos) (groupeds' Neg)
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Pos)
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> Polarity -> AutToTypeM (TypArgs Pos)
 argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc Prd pol) typs
+    return $ unionOrInter (applyVariance dc Pos pol) typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
       nodeToType n
-    return $ unionOrInter (applyVariance dc Cns pol) typs
+    return $ unionOrInter (applyVariance dc Neg pol) typs
   return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: Node -> AutToTypeM (Typ Pos)

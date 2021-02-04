@@ -162,18 +162,14 @@ data DataDecl = NominalDecl
 -- Helper Functions
 ------------------------------------------------------------------------------
 
-switchPrdCns :: PrdCns -> PrdCns
-switchPrdCns Cns = Prd
-switchPrdCns Prd = Cns
+applyVariance :: DataCodata -> Polarity -> (Polarity -> Polarity)
+applyVariance Data Pos = id
+applyVariance Data Neg = flipPol
+applyVariance Codata Pos = flipPol
+applyVariance Codata Neg = id
 
-applyVariance :: DataCodata -> PrdCns -> (PrdCns -> PrdCns)
-applyVariance Data Prd = id
-applyVariance Data Cns = switchPrdCns
-applyVariance Codata Prd = switchPrdCns
-applyVariance Codata Cns = id
-
-unionOrInter :: PrdCns -> [Typ Pos] -> (Typ Pos)
+unionOrInter :: Polarity -> [Typ Pos] -> (Typ Pos)
 unionOrInter _ [t] = t
-unionOrInter Prd tys = TySet Union tys
-unionOrInter Cns tys = TySet Inter tys
+unionOrInter Pos tys = TySet Union tys
+unionOrInter Neg tys = TySet Inter tys
 

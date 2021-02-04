@@ -3,7 +3,6 @@ module TypeAutomata.FlowAnalysis
   , getFlowAnalysisMap
   ) where
 
-import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.TypeGraph
 
@@ -38,34 +37,34 @@ admissableM :: TypeAutDet -> FlowEdge -> Maybe ()
 admissableM aut@TypeAut{..} e@(i,j) =
     let
       subtypeData = do -- Maybe monad
-        (HeadCons Cns (Just dat1) _ _) <- lab ta_gr i
-        (HeadCons Prd (Just dat2) _ _) <- lab ta_gr j
+        (HeadCons Neg (Just dat1) _ _) <- lab ta_gr i
+        (HeadCons Pos (Just dat2) _ _) <- lab ta_gr j
         _ <- forM (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
         _ <- forM (S.toList dat1) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Pos _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Neg _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
           return ()
         return ()
       subtypeCodata = do -- Maybe monad
-        (HeadCons Cns _ (Just codat1) _) <- lab ta_gr i
-        (HeadCons Prd _ (Just codat2) _) <- lab ta_gr j
+        (HeadCons Neg _ (Just codat1) _) <- lab ta_gr i
+        (HeadCons Pos _ (Just codat2) _) <- lab ta_gr j
         _ <- forM (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
         _ <- forM (S.toList codat2) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Pos _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Neg _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
           return ()
         return ()
       subTypeNominal = do -- Maybe monad
-        (HeadCons Cns _ _ nominal1) <- lab ta_gr i
-        (HeadCons Prd _ _ nominal2) <- lab ta_gr j
+        (HeadCons Neg _ _ nominal1) <- lab ta_gr i
+        (HeadCons Pos _ _ nominal2) <- lab ta_gr j
         guard $ not . S.null $ S.intersection nominal1 nominal2
     in
       guard (e `elem` ta_flowEdges) <|> subtypeData <|> subtypeCodata <|> subTypeNominal
