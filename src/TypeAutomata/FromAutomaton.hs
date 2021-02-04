@@ -21,7 +21,7 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 
 --------------------------------------------------------------------------
--- Type automata -> Target types
+-- Type automata -> Neg types
 --------------------------------------------------------------------------
 
 data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
@@ -51,7 +51,7 @@ checkCache i = do
   cache <- asks cache
   return (i `S.member` cache)
 
-nodeToTVars :: Node -> AutToTypeM [Typ Target]
+nodeToTVars :: Node -> AutToTypeM [Typ Neg]
 nodeToTVars i = do
   tvMap <- asks tvMap
   return (TyVar Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
@@ -88,7 +88,7 @@ computeArgNodes outs dc xt =
     Twice (groupeds' Prd) (groupeds' Cns)
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Target)
+argNodesToArgTypes :: Twice [[Node]] -> DataCodata -> PrdCns -> AutToTypeM (TypArgs Neg)
 argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
@@ -100,7 +100,7 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) dc pol = do
     return $ unionOrInter (applyVariance dc Cns pol) typs
   return (MkTypArgs prdTypes cnsTypes)
 
-nodeToType :: Node -> AutToTypeM (Typ Target)
+nodeToType :: Node -> AutToTypeM (Typ Neg)
 nodeToType i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
@@ -123,7 +123,7 @@ nodeToType i = do
               let nodes = computeArgNodes outs Data xt
               argTypes <- argNodesToArgTypes nodes Data pol
               return (MkXtorSig xt argTypes)
-            return [TySimple Data sig]
+            return [TyStructural Data sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
@@ -132,7 +132,7 @@ nodeToType i = do
               let nodes = computeArgNodes outs Codata xt
               argTypes <- argNodesToArgTypes nodes Codata pol
               return (MkXtorSig xt argTypes)
-            return [TySimple Codata sig]
+            return [TyStructural Codata sig]
         -- Creating Nominal types
         let nominals = TyNominal <$> (S.toList tns)
         return $ unionOrInter pol (varL ++ datL ++ codatL ++ nominals)

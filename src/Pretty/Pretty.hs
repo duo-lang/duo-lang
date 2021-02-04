@@ -111,8 +111,8 @@ instance Pretty (Typ a) where
   pretty (TyVar _ tv) = pretty tv -- Normal + Recursive
   pretty (TyRec rv t) = "rec " <> pretty rv <> "." <> pretty t
   pretty (TyNominal tn) = pretty (unTypeName tn)
-  pretty (TySimple Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (TySimple Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural Data   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural Codata xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty (TypArgs a) where
   pretty (MkTypArgs prdArgs cnsArgs) = prettyTwice' prdArgs cnsArgs

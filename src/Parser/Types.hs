@@ -19,7 +19,7 @@ import Utils
 -- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
 
-typArgListP :: SimpleTargetRep st -> Parser (TypArgs st)
+typArgListP :: PolarityRep st -> Parser (TypArgs st)
 typArgListP rep = do
   (Twice prdArgs cnsArgs) <- argListP (lexeme (typP rep)) (lexeme (typP rep))
   return (MkTypArgs prdArgs cnsArgs)
@@ -27,17 +27,17 @@ typArgListP rep = do
 nominalTypeP :: Parser (Typ st)
 nominalTypeP = TyNominal <$> typeNameP
 
-dataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+dataTypeP :: PolarityRep st -> Parser (Typ st)
 dataTypeP rep = angles $ do
   xtorSigs <- xtorSignatureP rep `sepBy` pipe
-  return (TySimple Data xtorSigs)
+  return (TyStructural Data xtorSigs)
 
-codataTypeP :: SimpleTargetRep st -> Parser (Typ st)
+codataTypeP :: PolarityRep st -> Parser (Typ st)
 codataTypeP rep = braces $ do
   xtorSigs <- xtorSignatureP rep `sepBy` comma
-  return (TySimple Codata xtorSigs)
+  return (TyStructural Codata xtorSigs)
 
-xtorSignatureP :: SimpleTargetRep st -> Parser (XtorSig st)
+xtorSignatureP :: PolarityRep st -> Parser (XtorSig st)
 xtorSignatureP rep = do
   xt <- xtorName Structural
   args <- typArgListP rep
@@ -57,11 +57,11 @@ typeVariable = do
   guard (tv `S.member` tvs)
   return $ TyVar Normal tv
 
-setType :: SimpleTargetRep st -> UnionInter -> Parser (Typ st)
+setType :: PolarityRep st -> UnionInter -> Parser (Typ st)
 setType rep Union = TySet Union <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
 setType rep Inter = TySet Inter <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
 
-recType :: SimpleTargetRep st -> Parser (Typ st)
+recType :: PolarityRep st -> Parser (Typ st)
 recType rep = do
   _ <- symbol "rec"
   rv <- MkTVar <$> freeVarName
@@ -70,7 +70,7 @@ recType rep = do
   return $ TyRec rv ty
 
 -- Without joins and meets
-typP' :: SimpleTargetRep st -> Parser (Typ st)
+typP' :: PolarityRep st -> Parser (Typ st)
 typP' rep = try (parens (typP rep)) <|>
   nominalTypeP <|>
   dataTypeP rep <|>
@@ -79,7 +79,7 @@ typP' rep = try (parens (typP rep)) <|>
   recType rep <|>
   typeVariable
 
-typP :: SimpleTargetRep st -> Parser (Typ st)
+typP :: PolarityRep st -> Parser (Typ st)
 typP rep = try (setType rep Union) <|> try (setType rep Inter) <|> typP' rep
 
 ---------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ typP rep = try (setType rep Union) <|> try (setType rep Inter) <|> typP' rep
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) (typP TargetRep)
+  monotype <- local (\s -> s { tvars = tvars' }) (typP NegRep)
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)
     else fail "Forall annotation in type scheme is incorrect"

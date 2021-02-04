@@ -47,15 +47,6 @@ data SomePol (f :: Polarity -> Type) where
 -- Tags
 ------------------------------------------------------------------------------
 
-data SimpleTarget = Simple | Target deriving (Eq, Ord, Show)
-
--- | Singleton Type for SimpleTarget
-data SimpleTargetRep st where
-  SimpleRep :: SimpleTargetRep Simple
-  TargetRep :: SimpleTargetRep Target
-deriving instance Show (SimpleTargetRep st)
-
-
 data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data UnionInter = Union | Inter deriving (Eq, Show, Ord)
@@ -66,47 +57,47 @@ data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
 -- Types
 ------------------------------------------------------------------------------
 
-data TypArgs a = MkTypArgs
-  { prdTypes :: [Typ a]
-  , cnsTypes :: [Typ a]
+data TypArgs (pol :: Polarity) = MkTypArgs
+  { prdTypes :: [Typ pol]
+  , cnsTypes :: [Typ pol]
   }
 
 {-# DEPRECATED demote "This function will be removed once we have polar types" #-}
-demote :: TypArgs Simple -> Twice [Typ Simple]
+demote :: TypArgs pol -> Twice [Typ pol]
 demote (MkTypArgs prdTypes cnsTypes) = Twice prdTypes cnsTypes
 
-deriving instance Eq (TypArgs Simple)
-deriving instance Eq (TypArgs Target)
-deriving instance Show (TypArgs Simple)
-deriving instance Show (TypArgs Target)
-deriving instance Ord (TypArgs Simple)
-deriving instance Ord (TypArgs Target)
+deriving instance Eq (TypArgs Pos)
+deriving instance Eq (TypArgs Neg)
+deriving instance Show (TypArgs Pos)
+deriving instance Show (TypArgs Neg)
+deriving instance Ord (TypArgs Pos)
+deriving instance Ord (TypArgs Neg)
 
-data XtorSig (a :: SimpleTarget) = MkXtorSig
+data XtorSig (pol :: Polarity) = MkXtorSig
   { sig_name :: XtorName
-  , sig_args :: TypArgs a
+  , sig_args :: TypArgs pol
   }
 
-deriving instance Eq (XtorSig Simple)
-deriving instance Eq (XtorSig Target)
-deriving instance Show (XtorSig Simple)
-deriving instance Show (XtorSig Target)
-deriving instance Ord (XtorSig Simple)
-deriving instance Ord (XtorSig Target)
+deriving instance Eq (XtorSig Pos)
+deriving instance Eq (XtorSig Neg)
+deriving instance Show (XtorSig Pos)
+deriving instance Show (XtorSig Neg)
+deriving instance Ord (XtorSig Pos)
+deriving instance Ord (XtorSig Neg)
 
-data Typ a where
+data Typ (pol :: Polarity) where
   TyVar :: TVarKind -> TVar -> Typ a
-  TySimple :: DataCodata -> [XtorSig a] -> Typ a
+  TyStructural :: DataCodata -> [XtorSig a] -> Typ a
   TyNominal :: TypeName -> Typ a
   TySet :: UnionInter -> [Typ a] -> Typ a
   TyRec :: TVar -> Typ a -> Typ a
 
-deriving instance Eq (Typ Simple)
-deriving instance Eq (Typ Target)
-deriving instance Show (Typ Simple)
-deriving instance Show (Typ Target)
-deriving instance Ord (Typ Simple)
-deriving instance Ord (Typ Target)
+deriving instance Eq (Typ Pos)
+deriving instance Eq (Typ Neg)
+deriving instance Show (Typ Pos)
+deriving instance Show (Typ Neg)
+deriving instance Ord (Typ Pos)
+deriving instance Ord (Typ Neg)
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -114,34 +105,34 @@ deriving instance Ord (Typ Target)
 
 data TypeScheme = TypeScheme
   { ts_vars :: [TVar]
-  , ts_monotype :: Typ Target
+  , ts_monotype :: Typ Neg
   } deriving (Show, Eq)
 
-freeTypeVars :: Typ Target -> [TVar]
+freeTypeVars :: Typ Neg -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
-    freeTypeVars' :: Typ Target -> [TVar]
+    freeTypeVars' :: Typ Neg -> [TVar]
     freeTypeVars' (TyVar Normal tv) = [tv]
     freeTypeVars' (TyVar Recursive _)  = []
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec _ t)  = freeTypeVars' t
     freeTypeVars' (TyNominal _) = []
-    freeTypeVars' (TySimple _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyStructural _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
-    freeTypeVarsXtorSig :: XtorSig Target -> [TVar]
+    freeTypeVarsXtorSig :: XtorSig Neg -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
       concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)
 
 
 -- | Generalize over all free type variables of a type.
-generalize :: Typ Target -> TypeScheme
+generalize :: Typ Neg -> TypeScheme
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
 ------------------------------------------------------------------------------
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType (Typ Simple) (Typ Simple) deriving (Eq, Show, Ord)
+data Constraint = SubType (Typ Pos) (Typ Pos) deriving (Eq, Show, Ord)
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
@@ -156,7 +147,7 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint]
 data DataDecl = NominalDecl
   { data_name :: TypeName
   , data_polarity :: DataCodata
-  , data_xtors :: [XtorSig Simple]
+  , data_xtors :: [XtorSig Pos]
   }
   deriving (Show, Eq)
 
@@ -174,7 +165,7 @@ applyVariance Data Cns = switchPrdCns
 applyVariance Codata Prd = switchPrdCns
 applyVariance Codata Cns = id
 
-unionOrInter :: PrdCns -> [Typ Target] -> (Typ Target)
+unionOrInter :: PrdCns -> [Typ Neg] -> (Typ Neg)
 unionOrInter _ [t] = t
 unionOrInter Prd tys = TySet Union tys
 unionOrInter Cns tys = TySet Inter tys

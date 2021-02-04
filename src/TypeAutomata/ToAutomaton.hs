@@ -89,7 +89,7 @@ insertType pol (TyRec rv ty) = do
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType pol (TySimple s xtors) = do
+insertType pol (TyStructural s xtors) = do
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol s (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
@@ -147,7 +147,7 @@ insertEpsilonEdges solverResult =
       node <- insertType Cns ty
       insertEdges [(j, node, EpsilonEdge ())]
 
-solverStateToTypeAut :: SolverResult -> Typ Simple -> PrdCns -> Either Error TypeAut
+solverStateToTypeAut :: SolverResult -> Typ Pos -> PrdCns -> Either Error TypeAut
 solverStateToTypeAut solverResult ty pc = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)
