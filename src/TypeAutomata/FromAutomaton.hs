@@ -87,55 +87,48 @@ computeArgNodes outs dc xt =
   in
     Twice (groupeds' Prd) (groupeds' Cns)
 
--- | Easier to delete with editor :)
-deleteMe :: PolarityRep Pos
-deleteMe = PosRep
-
-deleteMeToo :: PolarityRep Neg
-deleteMeToo = NegRep
-
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: Twice [[Node]] -> DataCodataRep dc -> PolarityRep pol -> AutToTypeM (TypArgs (XtorF pol dc))
 -- Data
 argNodesToArgTypes (Twice prdNodes cnsNodes) DataRep PosRep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMe n
+      nodeToType PosRep n
     return $ case typs of [t] -> t; _ -> TySet PosRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMe n
+      nodeToType NegRep n
     return $ case typs of [t] -> t; _ -> TySet NegRep typs
   return (MkTypArgs prdTypes cnsTypes)
 argNodesToArgTypes (Twice prdNodes cnsNodes) DataRep NegRep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMeToo n
+      nodeToType NegRep n
     return $ case typs of [t] -> t; _ -> TySet NegRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMeToo n
+      nodeToType PosRep n
     return $ case typs of [t] -> t; _ -> TySet PosRep typs
   return (MkTypArgs prdTypes cnsTypes)
 -- Codata
 argNodesToArgTypes (Twice prdNodes cnsNodes) CodataRep PosRep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMe n
+      nodeToType NegRep n
     return $ case typs of [t] -> t; _ -> TySet NegRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMe n
+      nodeToType PosRep n
     return $ case typs of [t] -> t; _ -> TySet PosRep typs
   return (MkTypArgs prdTypes cnsTypes)
 argNodesToArgTypes (Twice prdNodes cnsNodes) CodataRep NegRep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMeToo n
+      nodeToType PosRep n
     return $ case typs of [t] -> t; _ -> TySet PosRep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType deleteMeToo n
+      nodeToType NegRep n
     return $ case typs of [t] -> t; _ -> TySet NegRep typs
   return (MkTypArgs prdTypes cnsTypes)
 
