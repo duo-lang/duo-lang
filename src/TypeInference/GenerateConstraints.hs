@@ -69,20 +69,30 @@ runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) in
 ---------------------------------------------------------------------------------------------
 
 -- | Generate a fresh type variable.
-freshTVar :: GenM (Typ Pos)
+freshTVar :: GenM (Typ Pos, Typ Neg)
 freshTVar = do
   var <- gets varCount
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
-  return (TyVar PosRep Normal (MkTVar (show var)))
+  return (TyVar PosRep Normal (MkTVar (show var))
+         ,TyVar NegRep Normal (MkTVar (show var)))
 
-freshTVars :: Twice [()] -> GenM (TypArgs Pos)
+freshTVars :: Twice [()] -> GenM (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
-  prdArgs' <- forM prdArgs (\_ -> freshTVar)
-  cnsArgs' <- forM cnsArgs (\_ -> freshTVar)
-  return (MkTypArgs prdArgs' cnsArgs')
+  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\_ -> freshTVar)
+  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\_ -> freshTVar)
+  return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
+
+-- | We map producer terms to positive types, and consumer terms to negative types.
+type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
+  PrdCnsToPol Prd = Pos
+  PrdCnsToPol Cns = Neg
+
+foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
+foo PrdRep = PosRep
+foo CnsRep = NegRep
 
 -- | Lookup a type of a bound variable in the context.
-lookupType :: PrdCnsRep pc -> Index -> GenM (Typ Pos)
+lookupType :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
 lookupType PrdRep (i,j) = do
   ctx <- asks context
   let (MkTypArgs { prdTypes }) = ctx !! i
@@ -96,14 +106,14 @@ lookupType CnsRep (i,j) = do
 addConstraint :: Constraint -> GenM ()
 addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
-lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs (Typ Pos))
+lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs ())
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (P.envToXtorMap env) of
     Nothing -> throwError $ GenConstraintsError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
-      let prds = (\ty -> FreeVar PrdRep "y" ty) <$> prdTypes
-      let cnss = (\ty -> FreeVar CnsRep "y" ty) <$> cnsTypes
+      let prds = (\_ -> FreeVar PrdRep "y" ()) <$> prdTypes
+      let cnss = (\_ -> FreeVar CnsRep "y" ()) <$> cnsTypes
       return (types, MkXtorArgs prds cnss)
 
 lookupXtor :: XtorName -> GenM DataDecl
@@ -127,13 +137,13 @@ isContainedIn xt xtors =
       isContainedIn' MkXtorSig { sig_name } | xt == sig_name = True
                                             | otherwise      = False
 
-genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs (Typ Pos), TypArgs Pos)
+genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs (), TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm
   return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), MkTypArgs (snd <$> prdArgs') (snd <$> cnsArgs'))
 
-genConstraintsSTerm :: STerm pc () -> GenM (STerm pc (Typ Pos), (Typ Pos))
+genConstraintsSTerm :: STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTerm (BoundVar rep idx) = do
   ty <- lookupType rep idx
   return (BoundVar rep idx, ty)
@@ -143,44 +153,52 @@ genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = St
   return (XtorCall PrdRep xt args', TyStructural PosRep DataRep [MkXtorSig xt argTypes])
 genConstraintsSTerm (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
-  return (XtorCall CnsRep xt args', TyStructural PosRep CodataRep [MkXtorSig xt argTypes])
+  return (XtorCall CnsRep xt args', TyStructural NegRep CodataRep [MkXtorSig xt argTypes])
 genConstraintsSTerm (XtorCall rep xt@(MkXtorName { xtorNominalStructural = Nominal }) args) = do
   (args', _argTypes) <- genConstraintsArgs args
   tn <- lookupXtor xt
   -- TODO: Check if args of xtor are correct?
-  return (XtorCall rep xt args', TyNominal PosRep (data_name tn))
+  return (XtorCall rep xt args', TyNominal (foo rep) (data_name tn))
 genConstraintsSTerm (XMatch PrdRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
-                      fvars <- freshTVars scase_args
-                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvars:context }) (genConstraintsCommand scase_cmd)
-                      return (MkSCase scase_name (demote fvars) cmd', MkXtorSig scase_name fvars))
+                      (fvarsPos, fvarsNeg) <- freshTVars scase_args
+                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvarsPos:context }) (genConstraintsCommand scase_cmd)
+                      return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   return (XMatch PrdRep Structural (fst <$> cases'), TyStructural PosRep CodataRep (snd <$> cases'))
 genConstraintsSTerm (XMatch CnsRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
-                      fvars <- freshTVars scase_args
-                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvars:context }) (genConstraintsCommand scase_cmd)
-                      return (MkSCase scase_name (demote fvars) cmd', MkXtorSig scase_name fvars))
-  return (XMatch CnsRep Structural (fst <$> cases'), TyStructural PosRep DataRep (snd <$> cases'))
+                      (fvarsPos, fvarsNeg) <- freshTVars scase_args
+                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvarsPos:context }) (genConstraintsCommand scase_cmd)
+                      return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
+  return (XMatch CnsRep Structural (fst <$> cases'), TyStructural NegRep DataRep (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable"
-genConstraintsSTerm (XMatch rep Nominal (pmcase:pmcases)) = do
+genConstraintsSTerm (XMatch PrdRep Nominal (pmcase:pmcases)) = do
   tn <- lookupXtor (scase_name pmcase)
   cases' <- forM (pmcase:pmcases) (\MkSCase {..} -> do
                                       scase_name `isContainedIn` (data_xtors tn)
                                       (x,_) <- lookupCase scase_name
                                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
-                                      return (MkSCase scase_name (demote x) cmd'))
-  return (XMatch rep Nominal cases', TyNominal PosRep (data_name tn))
+                                      return (MkSCase scase_name scase_args cmd'))
+  return (XMatch PrdRep Nominal cases', TyNominal PosRep (data_name tn))
+genConstraintsSTerm (XMatch CnsRep Nominal (pmcase:pmcases)) = do
+  tn <- lookupXtor (scase_name pmcase)
+  cases' <- forM (pmcase:pmcases) (\MkSCase {..} -> do
+                                      scase_name `isContainedIn` (data_xtors tn)
+                                      (x,_) <- lookupCase scase_name
+                                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
+                                      return (MkSCase scase_name undefined cmd'))
+  return (XMatch CnsRep Nominal cases', TyNominal NegRep (data_name tn))
 genConstraintsSTerm (MuAbs PrdRep () cmd) = do
-  fv <- freshTVar
-  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [] [fv]):context }) (genConstraintsCommand cmd)
-  return (MuAbs PrdRep fv cmd', fv)
+  (fvpos, fvneg) <- freshTVar
+  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [] [fvneg]):context }) (genConstraintsCommand cmd)
+  return (MuAbs PrdRep () cmd', fvpos)
 genConstraintsSTerm (MuAbs CnsRep () cmd) = do
-  fv <- freshTVar
-  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [fv] []):context }) (genConstraintsCommand cmd)
-  return (MuAbs CnsRep fv cmd', fv)
+  (fvpos, fvneg) <- freshTVar
+  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [fvpos] []):context }) (genConstraintsCommand cmd)
+  return (MuAbs CnsRep () cmd', fvneg)
 
-genConstraintsCommand :: Command () -> GenM (Command (Typ Pos))
+genConstraintsCommand :: Command () -> GenM (Command ())
 genConstraintsCommand Done = return Done
 genConstraintsCommand (Print t) = do
   (t',_) <- genConstraintsSTerm t
@@ -193,13 +211,14 @@ genConstraintsCommand (Apply t1 t2) = do
 
 sgenerateConstraints :: STerm pc ()
                       -> Environment
-                      -> Either Error ((STerm pc (Typ Pos), Typ Pos), ConstraintSet)
+                      -> Either Error ((STerm pc (), Typ (PrdCnsToPol pc)), ConstraintSet)
 sgenerateConstraints tm env = runGenM env (genConstraintsSTerm tm)
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------------------
 
+-- | Every asymmetric terms gets assigned a positive type.
 genConstraintsATerm :: ATerm () -> GenM (ATerm (Typ Pos), Typ Pos)
 genConstraintsATerm (BVar idx) = do
   ty <- lookupType PrdRep idx
@@ -211,35 +230,35 @@ genConstraintsATerm (Ctor xt args) = do
   return (Ctor xt (fst <$> args'), ty)
 genConstraintsATerm (Dtor xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  retType <- freshTVar
-  let codataType = TyStructural PosRep CodataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retType])]
+  (retTypePos, retTypeNeg) <- freshTVar
+  let codataType = TyStructural NegRep CodataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType ty' codataType)
-  return (Dtor xt t' (fst <$> args'), retType)
+  return (Dtor xt t' (fst <$> args'), retTypePos)
 genConstraintsATerm (Match t cases) = do
   (t', matchType) <- genConstraintsATerm t
-  retType <- freshTVar
-  cases' <- sequence (genConstraintsATermCase retType <$> cases)
-  addConstraint (SubType matchType (TyStructural PosRep DataRep (snd <$> cases')))
-  return (Match t' (fst <$> cases'), retType)
+  (retTypePos, retTypeNeg) <- freshTVar
+  cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
+  addConstraint (SubType matchType (TyStructural NegRep DataRep (snd <$> cases')))
+  return (Match t' (fst <$> cases'), retTypePos)
 genConstraintsATerm (Comatch cocases) = do
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
   let ty = TyStructural PosRep CodataRep (snd <$> cocases')
   return (Comatch (fst <$> cocases'), ty)
 
-genConstraintsATermCase :: Typ Pos -> ACase () -> GenM (ACase (Typ Pos), XtorSig Pos)
+genConstraintsATermCase :: Typ Neg -> ACase () -> GenM (ACase (Typ Pos), XtorSig Neg)
 genConstraintsATermCase retType (MkACase { acase_name, acase_args, acase_term }) = do
-  argts <- forM acase_args (\_ -> freshTVar)
-  (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argts []):context }) (genConstraintsATerm acase_term)
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
+  (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   addConstraint (SubType retTypeInf retType)
-  return (MkACase acase_name argts acase_term', MkXtorSig acase_name (MkTypArgs argts []))
+  return (MkACase acase_name argtsPos acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
-genConstraintsATermCocase :: ACase () -> GenM (ACase (Typ Pos), XtorSig Pos)
+genConstraintsATermCocase :: ACase () -> GenM (ACase (Typ Pos), XtorSig Neg)
 genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
-  argts <- forM acase_args (\_ -> freshTVar)
-  (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argts []):context }) (genConstraintsATerm acase_term)
-  let sig = MkXtorSig acase_name (MkTypArgs argts [retType])
-  return (MkACase acase_name argts acase_term', sig)
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
+  (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
+  let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
+  return (MkACase acase_name argtsPos acase_term', sig)
 
 agenerateConstraints :: ATerm () -> Environment -> Either Error ((ATerm (Typ Pos), Typ Pos), ConstraintSet)
 agenerateConstraints tm env = runGenM env (genConstraintsATerm tm)
