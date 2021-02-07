@@ -13,7 +13,6 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Types
-import Utils
 
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types
@@ -21,21 +20,28 @@ import Utils
 
 typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
 typArgListP rep = do
-  (Twice prdArgs cnsArgs) <- argListP (lexeme (typP rep)) (lexeme (typP rep))
+  prdArgs <- option [] (parens   $ (lexeme (typP rep)) `sepBy` comma)
+  cnsArgs <- option [] (brackets $ (lexeme (typP (flipPolarityRep rep))) `sepBy` comma)
   return (MkTypArgs prdArgs cnsArgs)
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
 nominalTypeP rep = TyNominal rep <$> typeNameP
 
 dataTypeP :: PolarityRep pol -> Parser (Typ pol)
-dataTypeP rep = angles $ do
-  xtorSigs <- xtorSignatureP rep `sepBy` pipe
-  return (TyStructural rep DataRep xtorSigs)
+dataTypeP PosRep = angles $ do
+  xtorSigs <- xtorSignatureP PosRep `sepBy` pipe
+  return (TyStructural PosRep DataRep xtorSigs)
+dataTypeP NegRep = angles $ do
+  xtorSigs <- xtorSignatureP NegRep `sepBy` pipe
+  return (TyStructural NegRep DataRep xtorSigs)
 
 codataTypeP :: PolarityRep pol -> Parser (Typ pol)
-codataTypeP rep = braces $ do
-  xtorSigs <- xtorSignatureP rep `sepBy` comma
-  return (TyStructural rep CodataRep xtorSigs)
+codataTypeP PosRep = braces $ do
+  xtorSigs <- xtorSignatureP NegRep `sepBy` comma
+  return (TyStructural PosRep CodataRep xtorSigs)
+codataTypeP NegRep = braces $ do
+  xtorSigs <- xtorSignatureP PosRep `sepBy` comma
+  return (TyStructural NegRep CodataRep xtorSigs)
 
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP rep = do
@@ -57,9 +63,9 @@ typeVariable rep = do
   guard (tv `S.member` tvs)
   return $ TyVar rep Normal tv
 
-setType :: PolarityRep pol -> Polarity -> Parser (Typ pol)
-setType rep Pos = TySet PosRep <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
-setType rep Neg = TySet NegRep <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
+setType :: PolarityRep pol -> Parser (Typ pol)
+setType PosRep = TySet PosRep <$> (lexeme (typP' PosRep) `sepBy2` (symbol "\\/"))
+setType NegRep = TySet NegRep <$> (lexeme (typP' NegRep) `sepBy2` (symbol "/\\"))
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
@@ -80,7 +86,7 @@ typP' rep = try (parens (typP rep)) <|>
   typeVariable rep
 
 typP :: PolarityRep pol -> Parser (Typ pol)
-typP rep = try (setType rep Pos) <|> try (setType rep Neg) <|> typP' rep
+typP rep = try (setType rep) <|> typP' rep
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.
