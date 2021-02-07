@@ -140,10 +140,10 @@ genConstraintsSTerm (BoundVar rep idx) = do
 genConstraintsSTerm (FreeVar _ _ _) = throwError $ GenConstraintsError "Should not occur"
 genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
-  return (XtorCall PrdRep xt args', TyStructural PosRep Data [MkXtorSig xt argTypes])
+  return (XtorCall PrdRep xt args', TyStructural PosRep DataRep [MkXtorSig xt argTypes])
 genConstraintsSTerm (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
-  return (XtorCall CnsRep xt args', TyStructural PosRep Codata [MkXtorSig xt argTypes])
+  return (XtorCall CnsRep xt args', TyStructural PosRep CodataRep [MkXtorSig xt argTypes])
 genConstraintsSTerm (XtorCall rep xt@(MkXtorName { xtorNominalStructural = Nominal }) args) = do
   (args', _argTypes) <- genConstraintsArgs args
   tn <- lookupXtor xt
@@ -154,13 +154,13 @@ genConstraintsSTerm (XMatch PrdRep Structural cases) = do
                       fvars <- freshTVars scase_args
                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvars:context }) (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name (demote fvars) cmd', MkXtorSig scase_name fvars))
-  return (XMatch PrdRep Structural (fst <$> cases'), TyStructural PosRep Codata (snd <$> cases'))
+  return (XMatch PrdRep Structural (fst <$> cases'), TyStructural PosRep CodataRep (snd <$> cases'))
 genConstraintsSTerm (XMatch CnsRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       fvars <- freshTVars scase_args
                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvars:context }) (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name (demote fvars) cmd', MkXtorSig scase_name fvars))
-  return (XMatch CnsRep Structural (fst <$> cases'), TyStructural PosRep Data (snd <$> cases'))
+  return (XMatch CnsRep Structural (fst <$> cases'), TyStructural PosRep DataRep (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable"
 genConstraintsSTerm (XMatch rep Nominal (pmcase:pmcases)) = do
@@ -207,12 +207,12 @@ genConstraintsATerm (BVar idx) = do
 genConstraintsATerm (FVar fv) = throwError $ GenConstraintsError $ "Free type var: " ++ fv
 genConstraintsATerm (Ctor xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  let ty = TyStructural PosRep Data [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
+  let ty = TyStructural PosRep DataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
   return (Ctor xt (fst <$> args'), ty)
 genConstraintsATerm (Dtor xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   retType <- freshTVar
-  let codataType = TyStructural PosRep Codata [MkXtorSig xt (MkTypArgs (snd <$> args') [retType])]
+  let codataType = TyStructural PosRep CodataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retType])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType ty' codataType)
   return (Dtor xt t' (fst <$> args'), retType)
@@ -220,11 +220,11 @@ genConstraintsATerm (Match t cases) = do
   (t', matchType) <- genConstraintsATerm t
   retType <- freshTVar
   cases' <- sequence (genConstraintsATermCase retType <$> cases)
-  addConstraint (SubType matchType (TyStructural PosRep Data (snd <$> cases')))
+  addConstraint (SubType matchType (TyStructural PosRep DataRep (snd <$> cases')))
   return (Match t' (fst <$> cases'), retType)
 genConstraintsATerm (Comatch cocases) = do
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
-  let ty = TyStructural PosRep Codata (snd <$> cocases')
+  let ty = TyStructural PosRep CodataRep (snd <$> cocases')
   return (Comatch (fst <$> cocases'), ty)
 
 genConstraintsATermCase :: Typ Pos -> ACase () -> GenM (ACase (Typ Pos), XtorSig Pos)

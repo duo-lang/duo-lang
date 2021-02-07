@@ -86,8 +86,11 @@ demote (MkTypArgs prdTypes _cnsTypes) = Twice prdTypes undefined -- cnsTypes
 
 deriving instance Eq (TypArgs Pos)
 deriving instance Eq (TypArgs Neg)
+<<<<<<< HEAD
 --deriving instance Show (TypArgs Pos)
 --deriving instance Show (TypArgs Neg)
+=======
+>>>>>>> main
 deriving instance Ord (TypArgs Pos)
 deriving instance Ord (TypArgs Neg)
 
@@ -98,22 +101,30 @@ data XtorSig (pol :: Polarity) = MkXtorSig
 
 deriving instance Eq (XtorSig Pos)
 deriving instance Eq (XtorSig Neg)
+<<<<<<< HEAD
 --deriving instance Show (XtorSig Pos)
 --deriving instance Show (XtorSig Neg)
+=======
+>>>>>>> main
 deriving instance Ord (XtorSig Pos)
 deriving instance Ord (XtorSig Neg)
 
 type family XtorF (a :: Polarity) (b :: DataCodata) :: Polarity where
+<<<<<<< HEAD
   XtorF Pos Data = Pos
   XtorF Pos Codata = Neg
   XtorF Neg Data = Neg
   XtorF Neg Codata = Pos
+=======
+  XtorF pol _ = pol
+>>>>>>> main
 
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
   TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig (XtorF pol dc)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
+<<<<<<< HEAD
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
@@ -125,6 +136,11 @@ getPolarityRep (TyNominal rep _) = rep
 getPolarityRep (TySet rep _) = rep
 getPolarityRep (TyRec rep _ _) = rep
 
+=======
+  TySet :: PolarityRep pol' -> [Typ pol] -> Typ pol
+  TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
+
+>>>>>>> main
 -- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
 instance Eq (Typ Pos) where
   (TyVar PosRep Recursive tv) == (TyVar PosRep Recursive tv') = tv == tv'
@@ -145,9 +161,12 @@ instance Eq (Typ Neg) where
   (TyRec NegRep v t) == (TyRec NegRep v' t') = v == v' && t == t'
   _ == _ = False
 
+<<<<<<< HEAD
 --deriving instance Show (Typ Pos)
 --deriving instance Show (Typ Neg)
 
+=======
+>>>>>>> main
 -- | Lexicographic ordering for two arguments
 compare2 :: (Ord a, Ord b) => a -> a -> b -> b -> Ordering
 compare2 x1 x2 y1 y2 = case x1 `compare` x2 of
@@ -203,8 +222,6 @@ data TypeScheme (pol :: Polarity) = TypeScheme
 
 deriving instance Eq (TypeScheme Pos)
 deriving instance Eq (TypeScheme Neg)
---deriving instance Show (TypeScheme Pos)
---deriving instance Show (TypeScheme Neg)
 deriving instance Ord (TypeScheme Pos)
 deriving instance Ord (TypeScheme Neg)
 
@@ -233,6 +250,7 @@ generalize ty = TypeScheme (freeTypeVars ty) ty
 ------------------------------------------------------------------------------
 
 data Constraint = SubType (Typ Pos) (Typ Neg) deriving (Eq, Ord)
+
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.

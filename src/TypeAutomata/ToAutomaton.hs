@@ -69,27 +69,27 @@ insertType pol (TyVar _ Recursive rv) = do
   case M.lookup (pol, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
-insertType Pos (TySet Pos tys) = do
+insertType Pos (TySet PosRep tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Pos)
   ns <- mapM (insertType Pos) tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Neg (TySet Pos _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType Neg (TySet Neg tys) = do
+insertType Neg (TySet PosRep _) = throwError $ OtherError "insertType: type has wrong polarity."
+insertType Neg (TySet NegRep tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Neg)
   ns <- mapM (insertType Neg) tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Pos (TySet Neg _) = throwError $ OtherError "insertType: type has wrong polarity."
+insertType Pos (TySet NegRep _) = throwError $ OtherError "insertType: type has wrong polarity."
 insertType pol (TyRec _ rv ty) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType pol (TyStructural _ Data xtors) = do
+insertType pol (TyStructural _ DataRep xtors) = do
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol Data (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
@@ -100,7 +100,7 @@ insertType pol (TyStructural _ Data xtors) = do
       cnsNode <- insertType (flipPol pol) cnsType
       insertEdges [(newNode, cnsNode, EdgeSymbol Data xt Cns j)]
   return newNode
-insertType pol (TyStructural _ Codata xtors) = do
+insertType pol (TyStructural _ CodataRep xtors) = do
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol Codata (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
