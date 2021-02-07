@@ -22,7 +22,7 @@ import Pretty.Pretty
 ------------------------------------------------------------------------------
 
 data VariableState = VariableState
-  { vst_upperbounds :: [Typ Pos]
+  { vst_upperbounds :: [Typ Neg]
   , vst_lowerbounds :: [Typ Pos] }
 
 emptyVarState :: VariableState
@@ -66,7 +66,7 @@ inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-addUpperBound :: TVar -> Typ Pos -> SolverM [Constraint]
+addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
   lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
@@ -94,14 +94,14 @@ solve (cs:css) = do
         (SubType (TyVar PosRep Normal uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
-        (SubType lb (TyVar PosRep Normal uv)) -> do
+        (SubType lb (TyVar NegRep Normal uv)) -> do
           newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
           subCss <- subConstraints cs
           solve (subCss ++ css)
 
-lookupXtor :: XtorName -> [XtorSig Pos] -> SolverM (XtorSig Pos)
+lookupXtor :: XtorName -> [XtorSig pol] -> SolverM (XtorSig pol)
 lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
   Nothing -> throwSolverError ["The xtor"
                               , ppPrint xtName
@@ -109,7 +109,7 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
                               , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [XtorSig Pos] -> XtorSig Pos ->  SolverM [Constraint]
+checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint]
 checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
   MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
   pure $ zipWith SubType prd1 prd2 ++ zipWith SubType cns2 cns1
@@ -117,17 +117,15 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
 subConstraints :: Constraint -> SolverM [Constraint]
 -- Set constraints
 subConstraints (SubType (TySet PosRep tys) ty)  = return [SubType ty' ty | ty' <- tys]
-subConstraints (SubType (TySet NegRep _) _)  = error "Cannot occur if types are polarized"
 subConstraints (SubType ty (TySet NegRep tys))  = return [SubType ty ty' | ty' <- tys]
-subConstraints (SubType _ (TySet PosRep _))  = error "Cannot occur if types are polarized"
 -- Recursive constraints
 subConstraints (SubType (TyRec _rep _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
 subConstraints (SubType ty' (TyRec _rep _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
 -- Data/Data and Codata/Codata constraints
-subConstraints (SubType (TyStructural _ DataRep xtors1) (TyStructural _ DataRep xtors2)) = do
+subConstraints (SubType (TyStructural PosRep DataRep xtors1) (TyStructural NegRep DataRep xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
   pure $ concat constraints
-subConstraints (SubType (TyStructural _ CodataRep xtors1) (TyStructural _ CodataRep xtors2)) = do
+subConstraints (SubType (TyStructural PosRep CodataRep xtors1) (TyStructural NegRep CodataRep xtors2)) = do
   constraints <- forM xtors2 (checkXtor xtors1)
   pure $ concat constraints
 -- Nominal/Nominal Constraint
@@ -153,7 +151,7 @@ subConstraints (SubType (TyVar _ _ _) _) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
 subConstraints (SubType _ (TyVar _ _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
-  
+
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
