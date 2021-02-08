@@ -1,10 +1,8 @@
 module Syntax.Types where
 
-import Data.Kind (Type)
 import Data.List (nub)
 
 import Syntax.CommonTerm
-import Utils
 
 ------------------------------------------------------------------------------
 -- Type Variables and Names
@@ -41,21 +39,6 @@ flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
 flipPolarityRep PosRep = NegRep
 flipPolarityRep NegRep = PosRep
 
-data SomePol (f :: Polarity -> Type) where
-  SomePos :: f Pos -> SomePol f
-  SomeNeg :: f Neg -> SomePol f
-
-wrap :: Typ pol -> SomePol Typ
-wrap ty = case getPolarityRep ty of
-  PosRep -> SomePos ty
-  NegRep -> SomeNeg ty
-
-{-# DEPRECATED unwrap "This function is unsafe and will be removed" #-}
-unwrap :: PolarityRep pol -> SomePol f -> f pol
-unwrap PosRep (SomePos t) = t
-unwrap NegRep (SomeNeg t) = t
-unwrap _ _ = error "unwrap: Should not occur!"
-
 ------------------------------------------------------------------------------
 -- Tags
 ------------------------------------------------------------------------------
@@ -79,10 +62,6 @@ data TypArgs (pol :: Polarity) = MkTypArgs
   { prdTypes :: [Typ pol]
   , cnsTypes :: [Typ (FlipPol pol)]
   }
-
-{-# DEPRECATED demote "This function will be removed once we have polar types" #-}
-demote :: TypArgs pol -> Twice [Typ pol]
-demote (MkTypArgs prdTypes _cnsTypes) = Twice prdTypes undefined -- cnsTypes
 
 deriving instance Eq (TypArgs Pos)
 deriving instance Eq (TypArgs Neg)
@@ -113,14 +92,6 @@ data Typ (pol :: Polarity) where
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
-getPolarityRep :: Typ pol -> PolarityRep pol
-getPolarityRep (TyVar rep _ _) = rep
-getPolarityRep (TyStructural rep _ _) = rep
-getPolarityRep (TyNominal rep _) = rep
-getPolarityRep (TySet rep _) = rep
-getPolarityRep (TyRec rep _ _) = rep
-
-
 -- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
 instance Eq (Typ Pos) where
   (TyVar PosRep Recursive tv) == (TyVar PosRep Recursive tv') = tv == tv'
@@ -131,6 +102,7 @@ instance Eq (Typ Pos) where
   (TySet PosRep tys) == (TySet PosRep tys') = tys == tys'
   (TyRec PosRep v t) == (TyRec PosRep v' t') = v == v' && t == t'
   _ == _ = False
+
 instance Eq (Typ Neg) where
   (TyVar NegRep Recursive tv) == (TyVar NegRep Recursive tv') = tv == tv'
   (TyVar NegRep Normal tv) == (TyVar NegRep Normal tv') = tv == tv'
