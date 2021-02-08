@@ -13,7 +13,6 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Types
-import Utils
 
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types
@@ -21,26 +20,37 @@ import Utils
 
 typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
 typArgListP rep = do
-  (Twice prdArgs cnsArgs) <- argListP (lexeme (typP rep)) (lexeme (typP rep))
+  prdArgs <- option [] (parens   $ (lexeme (typP rep)) `sepBy` comma)
+  cnsArgs <- option [] (brackets $ (lexeme (typP (flipPolarityRep rep))) `sepBy` comma)
   return (MkTypArgs prdArgs cnsArgs)
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
 nominalTypeP rep = TyNominal rep <$> typeNameP
 
-dataTypeP :: PolarityRep pol -> Parser (Typ pol)
-dataTypeP rep = angles $ do
-  xtorSigs <- xtorSignatureP rep `sepBy` pipe
-  return (TyStructural rep DataRep xtorSigs)
+dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
+dataTypeP DataRep polrep = angles $ do
+  xtorSigs <- xtorSignatureP polrep DataRep `sepBy` pipe
+  return (TyStructural polrep DataRep xtorSigs)
+dataTypeP CodataRep polrep = braces $ do
+  xtorSigs <- xtorSignatureP polrep CodataRep `sepBy` comma
+  return (TyStructural polrep CodataRep xtorSigs)
 
-codataTypeP :: PolarityRep pol -> Parser (Typ pol)
-codataTypeP rep = braces $ do
-  xtorSigs <- xtorSignatureP rep `sepBy` comma
-  return (TyStructural rep CodataRep xtorSigs)
-
-xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
-xtorSignatureP rep = do
+xtorSignatureP :: PolarityRep pol -> DataCodataRep dc -> Parser (XtorSig (XtorF pol dc))
+xtorSignatureP PosRep DataRep = do
   xt <- xtorName Structural
-  args <- typArgListP rep
+  args <- typArgListP PosRep
+  return (MkXtorSig xt args)
+xtorSignatureP PosRep CodataRep = do
+  xt <- xtorName Structural
+  args <- typArgListP NegRep
+  return (MkXtorSig xt args)
+xtorSignatureP NegRep DataRep = do
+  xt <- xtorName Structural
+  args <- typArgListP NegRep
+  return (MkXtorSig xt args)
+xtorSignatureP NegRep CodataRep = do
+  xt <- xtorName Structural
+  args <- typArgListP PosRep
   return (MkXtorSig xt args)
 
 recVar :: PolarityRep pol -> Parser (Typ pol)
@@ -57,9 +67,9 @@ typeVariable rep = do
   guard (tv `S.member` tvs)
   return $ TyVar rep Normal tv
 
-setType :: PolarityRep pol -> Polarity -> Parser (Typ pol)
-setType rep Pos = TySet PosRep <$> (lexeme (typP' rep) `sepBy2` (symbol "\\/"))
-setType rep Neg = TySet NegRep <$> (lexeme (typP' rep) `sepBy2` (symbol "/\\"))
+setType :: PolarityRep pol -> Parser (Typ pol)
+setType PosRep = TySet PosRep <$> (lexeme (typP' PosRep) `sepBy2` (symbol "\\/"))
+setType NegRep = TySet NegRep <$> (lexeme (typP' NegRep) `sepBy2` (symbol "/\\"))
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
@@ -73,14 +83,14 @@ recType rep = do
 typP' :: PolarityRep pol -> Parser (Typ pol)
 typP' rep = try (parens (typP rep)) <|>
   nominalTypeP rep <|>
-  dataTypeP rep <|>
-  codataTypeP rep <|>
+  dataTypeP DataRep rep <|>
+  dataTypeP CodataRep rep <|>
   try (recVar rep) <|>
   recType rep <|>
   typeVariable rep
 
 typP :: PolarityRep pol -> Parser (Typ pol)
-typP rep = try (setType rep Pos) <|> try (setType rep Neg) <|> typP' rep
+typP rep = try (setType rep) <|> typP' rep
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.

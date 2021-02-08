@@ -1,10 +1,8 @@
 module Syntax.Types where
 
-import Data.Kind (Type)
 import Data.List (nub)
 
 import Syntax.CommonTerm
-import Utils
 
 ------------------------------------------------------------------------------
 -- Type Variables and Names
@@ -41,10 +39,6 @@ flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
 flipPolarityRep PosRep = NegRep
 flipPolarityRep NegRep = PosRep
 
-data SomePol (f :: Polarity -> Type) where
-  SomePos :: f Pos -> SomePol f
-  SomeNeg :: f Neg -> SomePol f
-
 ------------------------------------------------------------------------------
 -- Tags
 ------------------------------------------------------------------------------
@@ -66,12 +60,8 @@ data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
 
 data TypArgs (pol :: Polarity) = MkTypArgs
   { prdTypes :: [Typ pol]
-  , cnsTypes :: [Typ pol]
+  , cnsTypes :: [Typ (FlipPol pol)]
   }
-
-{-# DEPRECATED demote "This function will be removed once we have polar types" #-}
-demote :: TypArgs pol -> Twice [Typ pol]
-demote (MkTypArgs prdTypes cnsTypes) = Twice prdTypes cnsTypes
 
 deriving instance Eq (TypArgs Pos)
 deriving instance Eq (TypArgs Neg)
@@ -89,14 +79,17 @@ deriving instance Ord (XtorSig Pos)
 deriving instance Ord (XtorSig Neg)
 
 type family XtorF (a :: Polarity) (b :: DataCodata) :: Polarity where
-  XtorF pol _ = pol
+  XtorF Pos Data = Pos
+  XtorF Pos Codata = Neg
+  XtorF Neg Data = Neg
+  XtorF Neg Codata = Pos
 
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
   TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig (XtorF pol dc)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
-  TySet :: PolarityRep pol' -> [Typ pol] -> Typ pol
+  TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
 -- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
@@ -109,6 +102,7 @@ instance Eq (Typ Pos) where
   (TySet PosRep tys) == (TySet PosRep tys') = tys == tys'
   (TyRec PosRep v t) == (TyRec PosRep v' t') = v == v' && t == t'
   _ == _ = False
+
 instance Eq (Typ Neg) where
   (TyVar NegRep Recursive tv) == (TyVar NegRep Recursive tv') = tv == tv'
   (TyVar NegRep Normal tv) == (TyVar NegRep Normal tv') = tv == tv'
@@ -162,6 +156,7 @@ instance Ord (Typ Neg) where
   (TySet _ _) `compare` _ = LT
   (TyRec _ _ _) `compare` _ = GT
 
+
 ------------------------------------------------------------------------------
 -- Type Schemes
 ------------------------------------------------------------------------------
@@ -200,7 +195,8 @@ generalize ty = TypeScheme (freeTypeVars ty) ty
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType (Typ Pos) (Typ Pos) deriving (Eq, Ord)
+data Constraint = SubType (Typ Pos) (Typ Neg) deriving (Eq, Ord)
+
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
