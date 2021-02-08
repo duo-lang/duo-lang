@@ -27,26 +27,30 @@ typArgListP rep = do
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
 nominalTypeP rep = TyNominal rep <$> typeNameP
 
-dataTypeP :: PolarityRep pol -> Parser (Typ pol)
-dataTypeP PosRep = angles $ do
-  xtorSigs <- xtorSignatureP PosRep `sepBy` pipe
-  return (TyStructural PosRep DataRep xtorSigs)
-dataTypeP NegRep = angles $ do
-  xtorSigs <- xtorSignatureP NegRep `sepBy` pipe
-  return (TyStructural NegRep DataRep xtorSigs)
+dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
+dataTypeP DataRep polrep = angles $ do
+  xtorSigs <- xtorSignatureP polrep DataRep `sepBy` pipe
+  return (TyStructural polrep DataRep xtorSigs)
+dataTypeP CodataRep polrep = braces $ do
+  xtorSigs <- xtorSignatureP polrep CodataRep `sepBy` comma
+  return (TyStructural polrep CodataRep xtorSigs)
 
-codataTypeP :: PolarityRep pol -> Parser (Typ pol)
-codataTypeP PosRep = braces $ do
-  xtorSigs <- xtorSignatureP NegRep `sepBy` comma
-  return (TyStructural PosRep CodataRep xtorSigs)
-codataTypeP NegRep = braces $ do
-  xtorSigs <- xtorSignatureP PosRep `sepBy` comma
-  return (TyStructural NegRep CodataRep xtorSigs)
-
-xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
-xtorSignatureP rep = do
+xtorSignatureP :: PolarityRep pol -> DataCodataRep dc -> Parser (XtorSig (XtorF pol dc))
+xtorSignatureP PosRep DataRep = do
   xt <- xtorName Structural
-  args <- typArgListP rep
+  args <- typArgListP PosRep
+  return (MkXtorSig xt args)
+xtorSignatureP PosRep CodataRep = do
+  xt <- xtorName Structural
+  args <- typArgListP NegRep
+  return (MkXtorSig xt args)
+xtorSignatureP NegRep DataRep = do
+  xt <- xtorName Structural
+  args <- typArgListP NegRep
+  return (MkXtorSig xt args)
+xtorSignatureP NegRep CodataRep = do
+  xt <- xtorName Structural
+  args <- typArgListP PosRep
   return (MkXtorSig xt args)
 
 recVar :: PolarityRep pol -> Parser (Typ pol)
@@ -79,8 +83,8 @@ recType rep = do
 typP' :: PolarityRep pol -> Parser (Typ pol)
 typP' rep = try (parens (typP rep)) <|>
   nominalTypeP rep <|>
-  dataTypeP rep <|>
-  codataTypeP rep <|>
+  dataTypeP DataRep rep <|>
+  dataTypeP CodataRep rep <|>
   try (recVar rep) <|>
   recType rep <|>
   typeVariable rep
