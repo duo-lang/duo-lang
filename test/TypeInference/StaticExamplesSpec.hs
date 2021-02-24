@@ -43,9 +43,6 @@ spec = do
                          "{ 'Ap(Bool)[(Bool \\/ Nat)] }"
     typecheckExample env "\\(x)[k] => x >> match { TT => FF >> k, FF => Zero >> k }"
                          "{ 'Ap(Bool)[(Nat \\/ Bool)] }"
-    -- predNominal
-    typecheckExample env "comatch { 'Ap(n)[k] => n >> match { Succ(m) => m >> k } }"
-                         "{ 'Ap(Nat)[Nat] }"
     -- addNominal
     typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. Succ(w) >> k] }} >> k })['Ap(m)[k]] }"
                          "forall t0. { 'Ap(t0,Nat)[(t0 \\/ Nat)] }"
@@ -55,9 +52,6 @@ spec = do
     -- expNominal
     typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Succ(Zero) >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] }"
                          "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"
-    -- subNominal
-    typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu*w. predNominal >> 'Ap(w)[k]] }} >> k })['Ap(m)[k]] }"
-                         "{ 'Ap(Nat,Nat)[Nat] }"
     -- subSafeNominal
     typecheckExample env "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(mp) => n >> match { Zero => n >> k, Succ(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]}"
                          "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }"

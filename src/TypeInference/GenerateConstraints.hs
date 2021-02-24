@@ -127,15 +127,16 @@ lookupXtor xt = do
 -- Symmetric Terms
 ---------------------------------------------------------------------------------------------
 
-isContainedIn :: XtorName -> [XtorSig Pos] -> GenM ()
-isContainedIn xt xtors =
-  if or (isContainedIn' <$> xtors)
-  then return ()
-  else throwError $ GenConstraintsError ("Pattern match fail with xtor" ++ ppPrint xt)
-    where
-      isContainedIn' :: XtorSig Pos -> Bool
-      isContainedIn' MkXtorSig { sig_name } | xt == sig_name = True
-                                            | otherwise      = False
+-- | Checks for a given list of XtorNames and a type declaration whether:
+-- (1) All the xtornames occur in the type declaration. (Correctness)
+-- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
+checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
+                    -> DataDecl   -- ^ The type declaration to check against.
+                    -> GenM ()
+checkExhaustiveness matched decl = do
+  let declared = sig_name <$> (data_xtors decl)
+  forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwError $ GenConstraintsError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
+  forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwError $ GenConstraintsError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
 genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs (), TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
@@ -172,22 +173,22 @@ genConstraintsSTerm (XMatch CnsRep Structural cases) = do
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   return (XMatch CnsRep Structural (fst <$> cases'), TyStructural NegRep DataRep (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
-genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable"
-genConstraintsSTerm (XMatch PrdRep Nominal (pmcase:pmcases)) = do
+genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
+genConstraintsSTerm (XMatch PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupXtor (scase_name pmcase)
-  cases' <- forM (pmcase:pmcases) (\MkSCase {..} -> do
-                                      scase_name `isContainedIn` (data_xtors tn)
-                                      (x,_) <- lookupCase scase_name
-                                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
-                                      return (MkSCase scase_name scase_args cmd'))
+  checkExhaustiveness (scase_name <$> cases) tn
+  cases' <- forM cases (\MkSCase {..} -> do
+                           (x,_) <- lookupCase scase_name
+                           cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
+                           return (MkSCase scase_name scase_args cmd'))
   return (XMatch PrdRep Nominal cases', TyNominal PosRep (data_name tn))
-genConstraintsSTerm (XMatch CnsRep Nominal (pmcase:pmcases)) = do
+genConstraintsSTerm (XMatch CnsRep Nominal cases@(pmcase:_)) = do
   tn <- lookupXtor (scase_name pmcase)
-  cases' <- forM (pmcase:pmcases) (\MkSCase {..} -> do
-                                      scase_name `isContainedIn` (data_xtors tn)
-                                      (x,_) <- lookupCase scase_name
-                                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
-                                      return (MkSCase scase_name undefined cmd'))
+  checkExhaustiveness (scase_name <$> cases) tn
+  cases' <- forM cases (\MkSCase {..} -> do
+                           (x,_) <- lookupCase scase_name
+                           cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
+                           return (MkSCase scase_name undefined cmd'))
   return (XMatch CnsRep Nominal cases', TyNominal NegRep (data_name tn))
 genConstraintsSTerm (MuAbs PrdRep () cmd) = do
   (fvpos, fvneg) <- freshTVar
