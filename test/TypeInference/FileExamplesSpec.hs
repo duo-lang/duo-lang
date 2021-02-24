@@ -19,8 +19,8 @@ instance Show (TypeScheme pol) where
 failingExamples :: [String]
 failingExamples = ["div2and3"]
 
-checkTerm :: Environment -> (FreeVarName, STerm Prd ()) -> SpecWith ()
-checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
+checkPrd :: Environment -> (FreeVarName, STerm Prd ()) -> SpecWith ()
+checkPrd env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: Spec
@@ -32,4 +32,4 @@ spec = do
         env <- runIO $ getEnvironment example failingExamples
         when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
         forM_  (M.toList (prdEnv env)) $ \term -> do
-          checkTerm env term
+          checkPrd env term
