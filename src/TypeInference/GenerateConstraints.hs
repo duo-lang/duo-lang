@@ -1,6 +1,8 @@
 module TypeInference.GenerateConstraints
   ( sgenerateConstraints
   , agenerateConstraints
+  , PrdCnsToPol
+  , prdCnsToPol
   ) where
 
 import qualified Data.Map as M
@@ -86,6 +88,10 @@ freshTVars (Twice prdArgs cnsArgs) = do
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
   PrdCnsToPol Prd = Pos
   PrdCnsToPol Cns = Neg
+
+prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
+prdCnsToPol PrdRep = PosRep
+prdCnsToPol CnsRep = NegRep
 
 foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep

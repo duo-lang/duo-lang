@@ -20,28 +20,28 @@ import TypeInference.SolveConstraints (solveConstraints)
 -- TypeInference Trace
 ------------------------------------------------------------------------------
 
-data TypeInferenceTrace = TypeInferenceTrace
+data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
   , trace_typeAut :: TypeAut
   , trace_typeAutDet :: TypeAutDet
   , trace_typeAutDetAdms :: TypeAutDet
   , trace_minTypeAut :: TypeAutDet
-  , trace_resType :: TypeScheme Pos
+  , trace_resType :: TypeScheme pol
   }
 
 ------------------------------------------------------------------------------
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferPrdTraced :: STerm Prd () -> Environment -> Either Error TypeInferenceTrace
-inferPrdTraced tm env = do
+inferSTermTraced :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
+inferSTermTraced rep tm env = do
   ((_,ty), constraintSet) <- sgenerateConstraints tm env
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState ty Pos
+  typeAut <- solverStateToTypeAut solverState (prdCnsToPol rep) ty
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
+  let resType = autToType (prdCnsToPol rep) minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut
@@ -51,29 +51,29 @@ inferPrdTraced tm env = do
     , trace_resType = resType
     }
 
-inferPrdAut :: STerm Prd () -> Environment -> Either Error TypeAutDet
-inferPrdAut tm env = do
-  trace <- inferPrdTraced tm env
+inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error TypeAutDet
+inferSTermAut rep tm env = do
+  trace <- inferSTermTraced rep tm env
   return $ trace_minTypeAut trace
 
-inferPrd :: STerm Prd () -> Environment -> Either Error (TypeScheme Pos)
-inferPrd tm env = do
-  trace <- inferPrdTraced tm env
+inferSTerm :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm rep tm env = do
+  trace <- inferSTermTraced rep tm env
   return $ trace_resType trace
 
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATermTraced :: ATerm () -> Environment -> Either Error TypeInferenceTrace
+inferATermTraced :: ATerm () -> Environment -> Either Error (TypeInferenceTrace Pos)
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- agenerateConstraints tm env
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState ty Pos
+  typeAut <- solverStateToTypeAut solverState PosRep ty
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
+  let resType = autToType PosRep minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut
