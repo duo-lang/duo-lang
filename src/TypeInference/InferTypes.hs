@@ -34,14 +34,14 @@ data TypeInferenceTrace pol = TypeInferenceTrace
 ------------------------------------------------------------------------------
 
 inferSTermTraced :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
-inferSTermTraced PrdRep tm env = do
+inferSTermTraced rep tm env = do
   ((_,ty), constraintSet) <- sgenerateConstraints tm env
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState ty Pos
+  typeAut <- solverStateToTypeAut solverState (prdCnsToPol rep) ty
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
+  let resType = autToType (prdCnsToPol rep) minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut
@@ -50,7 +50,6 @@ inferSTermTraced PrdRep tm env = do
     , trace_minTypeAut = minTypeAut
     , trace_resType = resType
     }
-inferSTermTraced CnsRep _tm _env = error "TODO"
 
 inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error TypeAutDet
 inferSTermAut rep tm env = do
@@ -70,11 +69,11 @@ inferATermTraced :: ATerm () -> Environment -> Either Error (TypeInferenceTrace 
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- agenerateConstraints tm env
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState ty Pos
+  typeAut <- solverStateToTypeAut solverState PosRep ty
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
+  let resType = autToType PosRep minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut

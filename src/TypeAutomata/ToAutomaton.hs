@@ -158,9 +158,9 @@ insertEpsilonEdges solverResult =
       node <- insertType Neg ty
       insertEdges [(j, node, EpsilonEdge ())]
 
-solverStateToTypeAut :: SolverResult -> Typ Pos -> Polarity -> Either Error TypeAut
-solverStateToTypeAut solverResult ty pol = do
+solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error TypeAut
+solverStateToTypeAut solverResult pol ty = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)
-  (start, aut1) <- runTypeAut aut0 lookupEnv (insertType pol ty)
+  (start, aut1) <- runTypeAut aut0 lookupEnv (insertType (case pol of PosRep -> Pos; NegRep -> Neg) ty)
   return $ (removeIslands . removeEpsilonEdges) (aut1 { ta_starts = [start] })

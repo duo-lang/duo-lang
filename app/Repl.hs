@@ -367,7 +367,7 @@ simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
   ty <- parseRepl typeSchemeP s
   aut <- fromRight (typeToAut ty)
-  prettyRepl (autToType aut)
+  prettyRepl (autToType PosRep aut)
 
 simplify_option :: Option
 simplify_option = Option

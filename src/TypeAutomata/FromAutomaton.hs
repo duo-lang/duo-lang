@@ -31,12 +31,12 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
 
 type AutToTypeM a = Reader AutToTypeState a
 
-autToType :: TypeAutDet -> TypeScheme Pos
-autToType aut@TypeAut{..} =
+autToType :: PolarityRep pol -> TypeAutDet -> TypeScheme pol
+autToType rep aut@TypeAut{..} =
   let
     mp = getFlowAnalysisMap aut
     startState = AutToTypeState mp ta_gr S.empty
-    monotype = runReader (nodeToType PosRep (runIdentity ta_starts)) startState
+    monotype = runReader (nodeToType rep (runIdentity ta_starts)) startState
     tvars = S.toList $ S.unions (M.elems mp)
   in
     TypeScheme tvars monotype
