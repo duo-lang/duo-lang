@@ -1,0 +1,1 @@
+prd foo := comatch { 'Ap => 'A >> 'B };

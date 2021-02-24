@@ -1,10 +1,6 @@
-module ExampleSpec where
+module TypeInference.StaticExamplesSpec ( spec )  where
 
-import           Test.Hspec
-import           Control.Monad (forM_, when)
-
-import qualified Data.Map as M
-import Data.Either (isRight)
+import Test.Hspec
 
 import TestUtils
 import Parser.Parser
@@ -19,12 +15,6 @@ import TypeAutomata.Subsume (typeAutEqual)
 instance Show (TypeScheme pol) where
   show = ppPrint
 
-failingExamples :: [String]
-failingExamples = ["div2and3"]
-
-checkTerm :: Environment -> (FreeVarName, STerm Prd ()) -> SpecWith ()
-checkTerm env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
-
 typecheckExample :: Environment -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
@@ -36,14 +26,6 @@ typecheckExample env termS typS = do
 
 spec :: Spec
 spec = do
-  describe "All examples typecheck." $ do
-    examples <- runIO getAvailableExamples
-    forM_ examples $ \example -> do
-      describe ("Examples in " ++ example ++ " typecheck.") $ do
-        env <- runIO $ getEnvironment example failingExamples
-        when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-        forM_  (M.toList (prdEnv env)) $ \term -> do
-          checkTerm env term
   describe "Typecheck specific examples" $ do
     env <- runIO $ getEnvironment "examples/prg.ds" []
     typecheckExample env "\\(x)[k] => x >> k" "forall a. { 'Ap(a)[a] }"
