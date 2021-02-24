@@ -20,7 +20,7 @@ failingExamples :: [String]
 failingExamples = ["div2and3"]
 
 checkPrd :: Environment -> (FreeVarName, STerm Prd ()) -> SpecWith ()
-checkPrd env (name,term) = it (name ++ " can be typechecked correctly") $ inferPrd term env `shouldSatisfy` isRight
+checkPrd env (name,term) = it (name ++ " can be typechecked correctly") $ inferSTerm PrdRep term env `shouldSatisfy` isRight
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: Spec

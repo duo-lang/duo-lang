@@ -196,7 +196,7 @@ type_cmd s = do
   env <- gets replEnv
   case runEnvParser (stermP PrdRep) env s of
     Right t -> do
-      res <- fromRight $ inferPrd t env
+      res <- fromRight $ inferSTerm PrdRep t env
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
       case runEnvParser atermP env s of
@@ -288,7 +288,7 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runEnvParser (stermP PrdRep) env s of
       Right t -> do
-        trace <- fromRight $ inferPrdTraced t env
+        trace <- fromRight $ inferSTermTraced PrdRep t env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
@@ -328,7 +328,7 @@ bind_cmd :: String -> Repl ()
 bind_cmd s = do
   env <- gets replEnv
   (v,t) <- parseRepl bindingP s
-  resType <- fromRight $ inferPrd t env
+  resType <- fromRight $ inferSTerm PrdRep t env
   modifyEnvironment (insertDecl (TypDecl v resType))
 
 

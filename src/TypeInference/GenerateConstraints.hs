@@ -1,6 +1,7 @@
 module TypeInference.GenerateConstraints
   ( sgenerateConstraints
   , agenerateConstraints
+  , PrdCnsToPol
   ) where
 
 import qualified Data.Map as M
