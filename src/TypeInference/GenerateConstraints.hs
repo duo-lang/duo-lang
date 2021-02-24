@@ -131,12 +131,12 @@ lookupXtor xt = do
 -- (1) All the xtornames occur in the type declaration. (Correctness)
 -- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
 checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
-                    -> [XtorName] -- ^ The xtor names declared in the type declaration
+                    -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness matched decl = do
-  let declared = decl
-  forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwError $ GenConstraintsError ("Pattern Match Error. Xtor " ++ ppPrint xn ++ " does not occur in type tn"))
-  forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwError $ GenConstraintsError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " is not matched against." ))
+  let declared = sig_name <$> (data_xtors decl)
+  forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwError $ GenConstraintsError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
+  forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwError $ GenConstraintsError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
 genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs (), TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
@@ -176,7 +176,7 @@ genConstraintsSTerm (XMatch CnsRep Structural cases) = do
 genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
 genConstraintsSTerm (XMatch PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupXtor (scase_name pmcase)
-  checkExhaustiveness (scase_name <$> cases) (sig_name <$> (data_xtors tn))
+  checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            (x,_) <- lookupCase scase_name
                            cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
@@ -184,7 +184,7 @@ genConstraintsSTerm (XMatch PrdRep Nominal cases@(pmcase:_)) = do
   return (XMatch PrdRep Nominal cases', TyNominal PosRep (data_name tn))
 genConstraintsSTerm (XMatch CnsRep Nominal cases@(pmcase:_)) = do
   tn <- lookupXtor (scase_name pmcase)
-  checkExhaustiveness (scase_name <$> cases) (sig_name <$> (data_xtors tn))
+  checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            (x,_) <- lookupCase scase_name
                            cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
