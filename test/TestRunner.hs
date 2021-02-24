@@ -5,4 +5,4 @@ import Test.Hspec.Formatters
 import qualified Spec
 
 main :: IO ()
-main = hspecWith defaultConfig {configFormatter = Just specdoc} Spec.spec
+main = hspecWith defaultConfig { configFormatter = Just specdoc } Spec.spec

@@ -1,4 +1,4 @@
-module ExampleSpec where
+module TypeInference.ExampleSpec where
 
 import           Test.Hspec
 import           Control.Monad (forM_, when)
