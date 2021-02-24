@@ -101,6 +101,7 @@ test-suite dualsub-test
   other-modules:
       TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
+    , TypeInference.CounterExampleSpec
     , Eval.SubstitutionSpec
     , Paths_dualsub
     , Spec

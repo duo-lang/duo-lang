@@ -6,6 +6,10 @@ import Parser.Parser
 import Syntax.Program
 import qualified Data.Map as M
 
+getAvailableCounterExamples :: IO [FilePath]
+getAvailableCounterExamples = do
+  examples <- listDirectory "test/counterexamples/"
+  return (("test/counterexamples/" ++) <$> examples)
 
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
