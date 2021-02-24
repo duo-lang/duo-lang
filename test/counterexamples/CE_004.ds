@@ -1,0 +1,3 @@
+data Nat { Zero, Succ(Nat) };
+prd predNominal := comatch { 'Ap(n)[k] => n >> match { Succ(m) => m >> k } };
+
