@@ -1,6 +1,7 @@
 module TypeInference.GenerateConstraints
   ( sgenerateConstraints
   , agenerateConstraints
+  , sgenerateConstraintsCmd
   , PrdCnsToPol
   , prdCnsToPol
   ) where
@@ -220,6 +221,9 @@ sgenerateConstraints :: STerm pc ()
                       -> Environment
                       -> Either Error ((STerm pc (), Typ (PrdCnsToPol pc)), ConstraintSet)
 sgenerateConstraints tm env = runGenM env (genConstraintsSTerm tm)
+
+sgenerateConstraintsCmd :: Command () -> Environment -> Either Error ConstraintSet
+sgenerateConstraintsCmd cmd env = snd <$> runGenM env (genConstraintsCommand cmd)
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
