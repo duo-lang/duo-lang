@@ -61,6 +61,12 @@ inferSTerm rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_resType trace
 
+checkCmd :: Command () -> Environment -> Either Error ()
+checkCmd cmd env = do
+  constraints <- sgenerateConstraintsCmd cmd env
+  _ <- solveConstraints constraints
+  return ()
+  
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
 ------------------------------------------------------------------------------

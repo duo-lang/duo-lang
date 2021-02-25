@@ -22,6 +22,9 @@ failingExamples = ["div2and3"]
 checkTerm :: PrdCnsRep pc -> Environment -> (FreeVarName, STerm pc ()) -> SpecWith ()
 checkTerm rep env (name,term) = it (name ++ " can be typechecked correctly") $ inferSTerm rep term env `shouldSatisfy` isRight
 
+checkCommand :: Environment -> (FreeVarName, Command ()) -> SpecWith ()
+checkCommand env (name,cmd) = it (name ++ " can be typechecked") $ checkCmd cmd env `shouldSatisfy` isRight
+
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: Spec
 spec = do
@@ -35,3 +38,5 @@ spec = do
           checkTerm PrdRep env term
         forM_  (M.toList (cnsEnv env)) $ \term -> do
           checkTerm CnsRep env term
+        forM_  (M.toList (cmdEnv env)) $ \cmd -> do
+          checkCommand env cmd

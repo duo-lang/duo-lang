@@ -18,6 +18,9 @@ instance Show (TypeScheme pol) where
 checkTerm :: PrdCnsRep pc -> Environment -> (FreeVarName, STerm pc ()) -> SpecWith ()
 checkTerm rep env (name,term) = it (name ++ " doesn't typecheck") $ inferSTerm rep term env `shouldSatisfy` isLeft
 
+checkCommand :: Environment -> (FreeVarName, Command ()) -> SpecWith ()
+checkCommand env (name,cmd) = it (name ++ " doesn't typecheck") $ checkCmd cmd env `shouldSatisfy` isLeft
+
 -- | Check that the programs in "test/counterexamples/" subfolder dont typecheck.
 spec :: Spec
 spec = do
@@ -30,4 +33,6 @@ spec = do
           checkTerm PrdRep env prd
         forM_  (M.toList (cnsEnv env)) $ \cns -> do
           checkTerm CnsRep env cns
+        forM_  (M.toList (cmdEnv env)) $ \cmd -> do
+          checkCommand env cmd
 
