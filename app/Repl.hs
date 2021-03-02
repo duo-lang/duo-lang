@@ -103,13 +103,14 @@ cmdSymmetric :: String -> Repl ()
 cmdSymmetric s = do
   com <- parseRepl commandP s
   evalOrder <- gets evalOrder
+  env <- gets replEnv
   steps <- gets steps
   case steps of
     NoSteps -> do
-      res <- fromRight $ runEval (eval com) evalOrder
+      res <- fromRight $ runEval (eval com) evalOrder env
       prettyRepl res
     Steps -> do
-      res <- fromRight $ runEval (evalSteps com) evalOrder
+      res <- fromRight $ runEval (evalSteps com) evalOrder env
       forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
 
 cmdAsymmetric :: String -> Repl ()
