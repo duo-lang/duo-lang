@@ -104,11 +104,8 @@ isValue (Comatch _) = True
 
 evalArgsSingleStep :: [ATerm ()] -> EvalM (Maybe [ATerm ()])
 evalArgsSingleStep [] = return Nothing
-evalArgsSingleStep (a:args) | isValue a = evalArgsSingleStep args >>= \args' -> case args' of
-                                                                                  Nothing -> return Nothing
-                                                                                  Just args' -> return $ Just (a:args')
-                            | otherwise = (evalATermSingleStep a) >>=
-                                          (\a' -> return $ Just ((fromJust a') : args))
+evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
+                            | otherwise = fmap (:args) <$> evalATermSingleStep a
 
 evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep (BVar _) = return Nothing
