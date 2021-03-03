@@ -116,7 +116,8 @@ cmdSymmetric s = do
 cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
   tm <- parseRepl atermP s
-  let res = evalATermComplete tm
+  res <- evalATermComplete tm
+--  let res = evalATermComplete tm
   prettyRepl res
 
 ------------------------------------------------------------------------------

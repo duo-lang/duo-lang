@@ -102,22 +102,22 @@ isValue (Dtor _ _ _) = False
 isValue (Match _ _ ) = False
 isValue (Comatch _) = True
 
-evalArgsSingleStep :: [ATerm a] -> EvalM (Maybe [ATerm a])
+evalArgsSingleStep :: [ATerm ()] -> EvalM (Maybe [ATerm ()])
 evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = evalArgsSingleStep args >>= \args' -> case args' of
                                                                                   Nothing -> return Nothing
                                                                                   Just args' -> return $ Just (a:args')
                             | otherwise = (evalATermSingleStep a) >>=
-							  (\a' -> return $ Just ((fromJust a') : args))
+                                          (\a' -> return $ Just ((fromJust a') : args))
 
-evalATermSingleStep :: ATerm a -> EvalM (Maybe (ATerm a))
+evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep (BVar _) = return Nothing
 evalATermSingleStep (FVar x) = do
   ordAndEnv <- ask
   return $ lookup x (defEnv (snd ordAndEnv))
 evalATermSingleStep (Ctor xt args) | and (isValue <$> args) = return Nothing
                                    | otherwise = evalArgsSingleStep args >>= 
-								                 \args' -> return (Just (Ctor xt (fromJust args')))
+                                                 \args' -> return (Just (Ctor xt (fromJust args')))
 evalATermSingleStep (Match t cases) | not (isValue t) = do 
   t' <- (evalATermSingleStep t)
   return (Just (Match (fromJust t') cases))
@@ -138,7 +138,7 @@ evalATermSingleStep (Dtor xt (Comatch cocases) args) =
 evalATermSingleStep (Dtor _ _ _) = throwError $ EvalError ("unreachable if properly typechecked")
 evalATermSingleStep (Comatch _) = return Nothing
 
-evalATermComplete :: ATerm a-> EvalM (ATerm a)
+evalATermComplete :: ATerm () -> EvalM (ATerm ())
 evalATermComplete t = do
   t' <- evalATermSingleStep t
   case t' of
