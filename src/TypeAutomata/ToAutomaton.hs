@@ -60,58 +60,60 @@ lookupTVar tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
-insertType :: Polarity -> Typ pol -> TypeToAutM pol' Node
-insertType pol (TyVar _ Normal tv) = do
+insertType :: Typ pol -> TypeToAutM pol' Node
+insertType (TyVar rep Normal tv) = do
   (i,j) <- lookupTVar tv
-  return $ case pol of {Pos -> i; Neg -> j}
-insertType pol (TyVar _ Recursive rv) = do
+  return $ case rep of {PosRep -> i; NegRep -> j}
+insertType (TyVar rep Recursive rv) = do
   rvarEnv <- asks rvarEnv
-  case M.lookup (pol, rv) rvarEnv of
+  case M.lookup (polarityRepToPol rep, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
-insertType Pos (TySet PosRep tys) = do
+insertType (TySet PosRep tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Pos)
-  ns <- mapM (insertType Pos) tys
+  ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Neg (TySet PosRep _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType Neg (TySet NegRep tys) = do
+insertType (TySet NegRep tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons Neg)
-  ns <- mapM (insertType Neg) tys
+  ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType Pos (TySet NegRep _) = throwError $ OtherError "insertType: type has wrong polarity."
-insertType pol (TyRec _ rv ty) = do
+insertType (TyRec rep rv ty) = do
+  let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
-  n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType pol ty)
+  n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType pol (TyStructural _ DataRep xtors) = do
+insertType (TyStructural rep DataRep xtors) = do
+  let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol Data (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- insertType pol prdType
+      prdNode <- insertType prdType
       insertEdges [(newNode, prdNode, EdgeSymbol Data xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- insertType (flipPol pol) cnsType
+      cnsNode <- insertType cnsType
       insertEdges [(newNode, cnsNode, EdgeSymbol Data xt Cns j)]
   return newNode
-insertType pol (TyStructural _ CodataRep xtors) = do
+insertType (TyStructural rep CodataRep xtors) = do
+  let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (singleHeadCons pol Codata (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- insertType (flipPol pol) prdType
+      prdNode <- insertType prdType
       insertEdges [(newNode, prdNode, EdgeSymbol Codata xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- insertType pol cnsType
+      cnsNode <- insertType cnsType
       insertEdges [(newNode, cnsNode, EdgeSymbol Codata xt Cns j)]
   return newNode
-insertType pol (TyNominal _ tn) = do
+insertType (TyNominal rep tn) = do
+  let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
   return newNode
@@ -137,7 +139,7 @@ createInitialFromTypeScheme rep tvars =
 typeToAut :: TypeScheme pol -> Either Error (TypeAutDet pol)
 typeToAut (TypeScheme tvars ty) = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (getPolarity ty) tvars
-  (start, aut) <- runTypeAut initAut lookupEnv (insertType (case (getPolarity ty) of PosRep -> Pos; NegRep -> Neg) ty)
+  (start, aut) <- runTypeAut initAut lookupEnv (insertType ty)
   let newaut = aut { ta_starts = [start] }
   pure $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) newaut
 
@@ -147,15 +149,15 @@ insertEpsilonEdges solverResult =
   forM_ (M.toList solverResult) $ \(tv, vstate) -> do
     (i,j) <- lookupTVar tv
     forM_ (vst_lowerbounds vstate) $ \ty -> do
-      node <- insertType Pos ty
+      node <- insertType ty
       insertEdges [(i, node, EpsilonEdge ())]
     forM_ (vst_upperbounds vstate) $ \ty -> do
-      node <- insertType Neg ty
+      node <- insertType ty
       insertEdges [(j, node, EpsilonEdge ())]
 
 solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol)
 solverStateToTypeAut solverResult pol ty = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme pol (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)
-  (start, aut1) <- runTypeAut aut0 lookupEnv (insertType (case pol of PosRep -> Pos; NegRep -> Neg) ty)
+  (start, aut1) <- runTypeAut aut0 lookupEnv (insertType ty)
   return $ (removeIslands . removeEpsilonEdges) (aut1 { ta_starts = [start] })

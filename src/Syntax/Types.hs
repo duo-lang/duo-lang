@@ -39,6 +39,10 @@ flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
 flipPolarityRep PosRep = NegRep
 flipPolarityRep NegRep = PosRep
 
+polarityRepToPol :: PolarityRep pol -> Polarity
+polarityRepToPol PosRep = Pos
+polarityRepToPol NegRep = Neg
+
 ------------------------------------------------------------------------------
 -- Tags
 ------------------------------------------------------------------------------
