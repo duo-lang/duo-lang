@@ -116,12 +116,13 @@ insertType pol (TyNominal _ tn) = do
   insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
   return newNode
 
-createInitialFromTypeScheme :: [TVar] -> (TypeAutEps pol, LookupEnv)
-createInitialFromTypeScheme tvars =
+createInitialFromTypeScheme :: PolarityRep pol -> [TVar] -> (TypeAutEps pol, LookupEnv)
+createInitialFromTypeScheme rep tvars =
   let
     nodes = [(2 * i + offset, emptyHeadCons pol) | i <- [0..length tvars - 1], pol <- [Pos, Neg],
                                                                  let offset = case pol of {Pos -> 0; Neg -> 1}]
-    initAut = TypeAut { ta_gr = G.mkGraph nodes []
+    initAut = TypeAut { ta_pol = rep
+                      , ta_gr = G.mkGraph nodes []
                       , ta_starts = []
                       , ta_flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
                       }
@@ -135,7 +136,7 @@ createInitialFromTypeScheme tvars =
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
 typeToAutPol :: Polarity -> TypeScheme Pos -> Either Error (TypeAutDet pol)
 typeToAutPol pol (TypeScheme tvars ty) = do
-  let (initAut, lookupEnv) = createInitialFromTypeScheme tvars
+  let (initAut, lookupEnv) = createInitialFromTypeScheme undefined tvars -- TODO
   (start, aut) <- runTypeAut initAut lookupEnv (insertType pol ty)
   let newaut = aut { ta_starts = [start] }
   pure $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) newaut
@@ -158,9 +159,9 @@ insertEpsilonEdges solverResult =
       node <- insertType Neg ty
       insertEdges [(j, node, EpsilonEdge ())]
 
-solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol')
+solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol)
 solverStateToTypeAut solverResult pol ty = do
-  let (initAut, lookupEnv) = createInitialFromTypeScheme (M.keys solverResult)
+  let (initAut, lookupEnv) = createInitialFromTypeScheme pol (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)
   (start, aut1) <- runTypeAut aut0 lookupEnv (insertType (case pol of PosRep -> Pos; NegRep -> Neg) ty)
   return $ (removeIslands . removeEpsilonEdges) (aut1 { ta_starts = [start] })

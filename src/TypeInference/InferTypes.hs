@@ -41,7 +41,7 @@ inferSTermTraced rep tm env = do
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType (prdCnsToPol rep) minTypeAut
+  let resType = autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut
@@ -66,7 +66,7 @@ checkCmd cmd env = do
   constraints <- sgenerateConstraintsCmd cmd env
   _ <- solveConstraints constraints
   return ()
-  
+
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ inferATermTraced tm env = do
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType PosRep minTypeAut
+  let resType = autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut

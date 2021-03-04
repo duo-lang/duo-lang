@@ -51,7 +51,8 @@ type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
 data TypeAut' a f (pol :: Polarity) = TypeAut
-  { ta_gr :: Gr NodeLabel a
+  { ta_pol :: PolarityRep pol
+  , ta_gr :: Gr NodeLabel a
   , ta_starts :: f Node
   , ta_flowEdges :: [FlowEdge]
   }
@@ -75,7 +76,8 @@ instance Nubable [] where
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
 mapTypeAut f TypeAut {..} = TypeAut
-  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
+  { ta_pol = ta_pol
+  , ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
                     (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
   , ta_starts = nub (f <$> ta_starts)
   , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
