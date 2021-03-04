@@ -69,15 +69,9 @@ insertType (TyVar rep Recursive rv) = do
   case M.lookup (polarityRepToPol rep, rv) rvarEnv of
     Just i -> return i
     Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
-insertType (TySet PosRep tys) = do
+insertType (TySet rep tys) = do
   newNode <- newNodeM
-  insertNode newNode (emptyHeadCons Pos)
-  ns <- mapM insertType tys
-  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
-  return newNode
-insertType (TySet NegRep tys) = do
-  newNode <- newNodeM
-  insertNode newNode (emptyHeadCons Neg)
+  insertNode newNode (emptyHeadCons (polarityRepToPol rep))
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
@@ -88,29 +82,18 @@ insertType (TyRec rep rv ty) = do
   n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyStructural rep DataRep xtors) = do
-  let pol = polarityRepToPol rep
+insertType (TyStructural polrep dcrep xtors) = do
+  let pol = polarityRepToPol polrep
+  let dc = case dcrep of DataRep -> Data; CodataRep -> Codata
   newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol Data (S.fromList (map sig_name xtors)))
+  insertNode newNode (singleHeadCons pol dc (S.fromList (map sig_name xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType
-      insertEdges [(newNode, prdNode, EdgeSymbol Data xt Prd i)]
+      insertEdges [(newNode, prdNode, EdgeSymbol dc xt Prd i)]
     forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
       cnsNode <- insertType cnsType
-      insertEdges [(newNode, cnsNode, EdgeSymbol Data xt Cns j)]
-  return newNode
-insertType (TyStructural rep CodataRep xtors) = do
-  let pol = polarityRepToPol rep
-  newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol Codata (S.fromList (map sig_name xtors)))
-  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
-    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- insertType prdType
-      insertEdges [(newNode, prdNode, EdgeSymbol Codata xt Prd i)]
-    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- insertType cnsType
-      insertEdges [(newNode, cnsNode, EdgeSymbol Codata xt Cns j)]
+      insertEdges [(newNode, cnsNode, EdgeSymbol dc xt Cns j)]
   return newNode
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
