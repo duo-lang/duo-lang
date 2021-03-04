@@ -11,7 +11,7 @@ import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.CommonTerm (PrdCns(..))
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Syntax.Types
 
 

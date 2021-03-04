@@ -16,7 +16,7 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.FlowAnalysis

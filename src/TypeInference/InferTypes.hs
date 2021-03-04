@@ -3,7 +3,7 @@ module TypeInference.InferTypes where
 import Syntax.ATerms
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Utils
 import Syntax.Program
 

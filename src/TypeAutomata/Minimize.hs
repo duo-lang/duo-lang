@@ -6,7 +6,7 @@ import Data.List (intersect, (\\), delete, partition)
 import Data.Set (Set)
 import qualified Data.Set as S
 
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 
 
 getAlphabet :: (DynGraph gr, Ord b) => gr a b -> [b]

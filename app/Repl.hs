@@ -15,7 +15,7 @@ import Prettyprinter (Pretty)
 
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty

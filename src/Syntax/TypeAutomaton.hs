@@ -1,4 +1,4 @@
-module Syntax.TypeGraph where
+module Syntax.TypeAutomaton where
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree

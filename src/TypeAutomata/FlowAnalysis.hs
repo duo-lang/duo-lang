@@ -5,7 +5,7 @@ module TypeAutomata.FlowAnalysis
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree

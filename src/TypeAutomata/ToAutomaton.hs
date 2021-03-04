@@ -2,7 +2,7 @@ module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol, solverStateToTypeAut)
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Utils
 import TypeAutomata.FlowAnalysis
 import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
