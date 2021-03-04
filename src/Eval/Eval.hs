@@ -8,11 +8,10 @@ module Eval.Eval
   , evalATermComplete
   ) where
 
-import Prelude hiding (lookup)
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.List (find)
-import Data.Map (lookup)
+import qualified Data.Map as M (lookup)
 import Data.Maybe (fromJust)
 import Prettyprinter
 
@@ -61,8 +60,8 @@ evalOneStep cmd@(Apply (XMatch PrdRep _ cases) (XtorCall CnsRep xt args)) = do
   checkArgs cmd argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 evalOneStep (Apply prd@(MuAbs PrdRep _ cmd) cns@(MuAbs CnsRep _ cmd')) = do
-  evaLOrdAndEnv <- ask
-  case fst evaLOrdAndEnv of
+  order <- asks fst
+  case order of
     CBV -> return (Just (commandOpeningSingle CnsRep cns cmd))
     CBN -> return (Just (commandOpeningSingle PrdRep prd cmd'))
 evalOneStep (Apply (MuAbs PrdRep _ cmd) cns) = return (Just (commandOpeningSingle CnsRep cns cmd))
@@ -110,8 +109,8 @@ evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args
 evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep (BVar _) = return Nothing
 evalATermSingleStep (FVar x) = do
-  ordAndEnv <- ask
-  return $ lookup x (defEnv (snd ordAndEnv))
+  env <- asks snd
+  return $ M.lookup x (defEnv env)
 evalATermSingleStep (Ctor xt args) | and (isValue <$> args) = return Nothing
                                    | otherwise = evalArgsSingleStep args >>= 
                                                  \args' -> return (Just (Ctor xt (fromJust args')))
