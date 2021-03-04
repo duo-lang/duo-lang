@@ -92,6 +92,13 @@ data Typ (pol :: Polarity) where
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
+getPolarity :: Typ pol -> PolarityRep pol
+getPolarity (TyVar rep _ _)        = rep
+getPolarity (TyStructural rep _ _) = rep
+getPolarity (TyNominal rep _)      = rep
+getPolarity (TySet rep _)          = rep
+getPolarity (TyRec rep _ _)        = rep
+
 -- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
 instance Eq (Typ Pos) where
   (TyVar PosRep Recursive tv) == (TyVar PosRep Recursive tv') = tv == tv'

@@ -1,4 +1,4 @@
-module TypeAutomata.ToAutomaton ( typeToAut, typeToAutPol, solverStateToTypeAut) where
+module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
@@ -134,18 +134,12 @@ createInitialFromTypeScheme rep tvars =
 
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: Polarity -> TypeScheme Pos -> Either Error (TypeAutDet pol)
-typeToAutPol pol (TypeScheme tvars ty) = do
-  let (initAut, lookupEnv) = createInitialFromTypeScheme undefined tvars -- TODO
-  (start, aut) <- runTypeAut initAut lookupEnv (insertType pol ty)
+typeToAut :: TypeScheme pol -> Either Error (TypeAutDet pol)
+typeToAut (TypeScheme tvars ty) = do
+  let (initAut, lookupEnv) = createInitialFromTypeScheme (getPolarity ty) tvars
+  (start, aut) <- runTypeAut initAut lookupEnv (insertType (case (getPolarity ty) of PosRep -> Pos; NegRep -> Neg) ty)
   let newaut = aut { ta_starts = [start] }
   pure $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) newaut
-
-
--- tries both polarites (positive by default). Throws an error if the type is not polar.
-typeToAut :: TypeScheme Pos -> Either Error (TypeAutDet pol)
-typeToAut ty = (typeToAutPol Pos ty) <> (typeToAutPol Neg ty)
-
 
 -- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
 insertEpsilonEdges :: SolverResult -> TypeToAutM pol ()
