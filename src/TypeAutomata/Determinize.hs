@@ -50,7 +50,7 @@ fromEpsGr gr = gmap mapfun gr
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeEpsilonEdges :: TypeAutEps -> TypeAut
+removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
 removeEpsilonEdges TypeAut { ta_gr, ta_starts, ta_flowEdges } =
   let
     (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes ta_gr)) (ta_gr, ta_starts)
@@ -64,7 +64,7 @@ removeEpsilonEdges TypeAut { ta_gr, ta_starts, ta_flowEdges } =
 -- Remove islands not reachable from starting states.
 ---------------------------------------------------------------------------------------
 
-removeIslands :: TypeAut -> TypeAut
+removeIslands :: TypeAut pol -> TypeAut pol
 removeIslands TypeAut{..} =
   let
     reachableNodes = dfs ta_starts ta_gr
@@ -135,7 +135,7 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
-determinize :: TypeAut -> TypeAutDet
+determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{..} =
   let
     (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)

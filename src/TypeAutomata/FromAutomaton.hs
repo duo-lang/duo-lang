@@ -31,7 +31,7 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
 
 type AutToTypeM a = Reader AutToTypeState a
 
-autToType :: PolarityRep pol -> TypeAutDet -> TypeScheme pol
+autToType :: PolarityRep pol -> TypeAutDet pol' -> TypeScheme pol --TODO: Simplify
 autToType rep aut@TypeAut{..} =
   let
     mp = getFlowAnalysisMap aut

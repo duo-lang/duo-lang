@@ -27,30 +27,30 @@ import qualified Data.Graph.Inductive.Graph as G
 data LookupEnv = LookupEnv { rvarEnv :: Map (Polarity, TVar) Node
                            , tvarEnv :: Map TVar (Node, Node)
                            }
-type TypeToAutM a = StateT TypeAutEps (ReaderT LookupEnv (Except Error)) a
+type TypeToAutM pol a = StateT (TypeAutEps pol) (ReaderT LookupEnv (Except Error)) a
 
-runTypeAut :: TypeAutEps -> LookupEnv -> TypeToAutM a -> Either Error (a, TypeAutEps)
+runTypeAut :: TypeAutEps pol -> LookupEnv -> TypeToAutM pol a -> Either Error (a, TypeAutEps pol)
 runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
 
 --------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------
 
-modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM ()
+modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM pol ()
 modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
 
-insertNode :: Node -> NodeLabel -> TypeToAutM ()
+insertNode :: Node -> NodeLabel -> TypeToAutM pol ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
-insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TypeToAutM ()
+insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TypeToAutM pol ()
 insertEdges edges = modifyGraph (G.insEdges edges)
 
-newNodeM :: TypeToAutM Node
+newNodeM :: TypeToAutM pol Node
 newNodeM = do
   graph <- gets ta_gr
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: TVar -> TypeToAutM (Node, Node)
+lookupTVar :: TVar -> TypeToAutM pol (Node, Node)
 lookupTVar tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
@@ -60,7 +60,7 @@ lookupTVar tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
-insertType :: Polarity -> Typ pol -> TypeToAutM Node
+insertType :: Polarity -> Typ pol -> TypeToAutM pol' Node
 insertType pol (TyVar _ Normal tv) = do
   (i,j) <- lookupTVar tv
   return $ case pol of {Pos -> i; Neg -> j}
@@ -116,7 +116,7 @@ insertType pol (TyNominal _ tn) = do
   insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
   return newNode
 
-createInitialFromTypeScheme :: [TVar] -> (TypeAutEps, LookupEnv)
+createInitialFromTypeScheme :: [TVar] -> (TypeAutEps pol, LookupEnv)
 createInitialFromTypeScheme tvars =
   let
     nodes = [(2 * i + offset, emptyHeadCons pol) | i <- [0..length tvars - 1], pol <- [Pos, Neg],
@@ -133,7 +133,7 @@ createInitialFromTypeScheme tvars =
 
 
 -- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
-typeToAutPol :: Polarity -> TypeScheme Pos -> Either Error TypeAutDet
+typeToAutPol :: Polarity -> TypeScheme Pos -> Either Error (TypeAutDet pol)
 typeToAutPol pol (TypeScheme tvars ty) = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme tvars
   (start, aut) <- runTypeAut initAut lookupEnv (insertType pol ty)
@@ -142,12 +142,12 @@ typeToAutPol pol (TypeScheme tvars ty) = do
 
 
 -- tries both polarites (positive by default). Throws an error if the type is not polar.
-typeToAut :: TypeScheme Pos -> Either Error TypeAutDet
+typeToAut :: TypeScheme Pos -> Either Error (TypeAutDet pol)
 typeToAut ty = (typeToAutPol Pos ty) <> (typeToAutPol Neg ty)
 
 
 -- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
-insertEpsilonEdges :: SolverResult -> TypeToAutM ()
+insertEpsilonEdges :: SolverResult -> TypeToAutM pol ()
 insertEpsilonEdges solverResult =
   forM_ (M.toList solverResult) $ \(tv, vstate) -> do
     (i,j) <- lookupTVar tv
@@ -158,7 +158,7 @@ insertEpsilonEdges solverResult =
       node <- insertType Neg ty
       insertEdges [(j, node, EpsilonEdge ())]
 
-solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error TypeAut
+solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol')
 solverStateToTypeAut solverResult pol ty = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (M.keys solverResult)
   ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)

@@ -24,11 +24,11 @@ import TypeAutomata.Minimize (minimize)
 
 
 -- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
-shiftGraph :: Int -> TypeAutDet -> TypeAutDet
+shiftGraph :: Int -> TypeAutDet pol -> TypeAutDet pol
 shiftGraph shift = mapTypeAut (+shift)
 
 -- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
-unsafeUnion :: TypeAutDet -> TypeAutDet -> TypeAut
+unsafeUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
 unsafeUnion (TypeAut gr1 (Identity starts1) flowEdges1) (TypeAut gr2 (Identity starts2) flowEdges2) =
   TypeAut { ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
           , ta_starts = [starts1, starts2]
@@ -36,12 +36,12 @@ unsafeUnion (TypeAut gr1 (Identity starts1) flowEdges1) (TypeAut gr2 (Identity s
           }
 
 -- Constructs the union of two TypeAuts
-typeAutUnion :: TypeAutDet -> TypeAutDet -> TypeAut
+typeAutUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
 typeAutUnion aut1@TypeAut{..} aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
   where
     shift = 1 + snd (nodeRange ta_gr)
 
-isSubtype :: TypeAutDet -> TypeAutDet -> Bool
+isSubtype :: TypeAutDet pol -> TypeAutDet pol -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   (Pos,Pos) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut2
   (Neg,Neg) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
@@ -50,7 +50,7 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
     startPolarity TypeAut{..} = hc_pol (fromJust (lab ta_gr (runIdentity ta_starts)))
     fun = minimize . removeAdmissableFlowEdges . determinize
 
-typeAutEqual :: TypeAutDet -> TypeAutDet -> Bool
+typeAutEqual :: TypeAutDet pol -> TypeAutDet pol -> Bool
 typeAutEqual (TypeAut gr1 (Identity start1) flowEdges1) (TypeAut gr2 (Identity start2) flowEdges2)
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False

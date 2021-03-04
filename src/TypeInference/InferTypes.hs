@@ -22,10 +22,10 @@ import TypeInference.SolveConstraints (solveConstraints)
 
 data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
-  , trace_typeAut :: TypeAut
-  , trace_typeAutDet :: TypeAutDet
-  , trace_typeAutDetAdms :: TypeAutDet
-  , trace_minTypeAut :: TypeAutDet
+  , trace_typeAut :: TypeAut pol
+  , trace_typeAutDet :: TypeAutDet pol
+  , trace_typeAutDetAdms :: TypeAutDet pol
+  , trace_minTypeAut :: TypeAutDet pol
   , trace_resType :: TypeScheme pol
   }
 
@@ -51,7 +51,7 @@ inferSTermTraced rep tm env = do
     , trace_resType = resType
     }
 
-inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error TypeAutDet
+inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeAutDet (PrdCnsToPol pc))
 inferSTermAut rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_minTypeAut trace

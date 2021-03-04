@@ -33,7 +33,7 @@ instance Pretty (EdgeLabel a) where
   pretty (EdgeSymbol _ xt Cns i) = pretty xt <> brackets (pretty i)
   pretty (EpsilonEdge _) = "e"
 
-typeAutToDot :: TypeAut' EdgeLabelNormal f -> DotGraph Node
+typeAutToDot :: TypeAut' EdgeLabelNormal f pol -> DotGraph Node
 typeAutToDot TypeAut {..} =
     let
       grWithFlow = insEdges [(i,j,EpsilonEdge ()) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr) -- Should be modified!
