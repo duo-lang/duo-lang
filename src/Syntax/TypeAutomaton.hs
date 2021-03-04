@@ -1,4 +1,4 @@
-module Syntax.TypeGraph where
+module Syntax.TypeAutomaton where
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -50,20 +50,21 @@ type FlowEdge = (Node, Node)
 type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
-data TypeAut' a f = TypeAut
-  { ta_gr :: Gr NodeLabel a
+data TypeAut' a f (pol :: Polarity) = TypeAut
+  { ta_pol :: PolarityRep pol
+  , ta_gr :: Gr NodeLabel a
   , ta_starts :: f Node
   , ta_flowEdges :: [FlowEdge]
   }
-deriving instance Show TypeAut
-deriving instance Show TypeAutDet
-deriving instance Show TypeAutEps
-deriving instance Show TypeAutEpsDet
+deriving instance Show (TypeAut pol)
+deriving instance Show (TypeAutDet pol)
+deriving instance Show (TypeAutEps pol)
+deriving instance Show (TypeAutEpsDet pol)
 
-type TypeAut       = TypeAut' EdgeLabelNormal  []
-type TypeAutDet    = TypeAut' EdgeLabelNormal  Identity
-type TypeAutEps    = TypeAut' EdgeLabelEpsilon []
-type TypeAutEpsDet = TypeAut' EdgeLabelEpsilon Identity
+type TypeAut pol       = TypeAut' EdgeLabelNormal  [] pol
+type TypeAutDet pol    = TypeAut' EdgeLabelNormal  Identity pol
+type TypeAutEps pol    = TypeAut' EdgeLabelEpsilon [] pol
+type TypeAutEpsDet pol = TypeAut' EdgeLabelEpsilon Identity pol
 
 class Nubable f where
   nub :: Ord a => f a -> f a
@@ -73,9 +74,10 @@ instance Nubable [] where
   nub = nubOrd
 
 -- Maps a function on nodes over a type automaton
-mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f -> TypeAut' a f
+mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
 mapTypeAut f TypeAut {..} = TypeAut
-  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
+  { ta_pol = ta_pol
+  , ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
                     (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
   , ta_starts = nub (f <$> ta_starts)
   , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)

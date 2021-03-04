@@ -20,7 +20,7 @@ import Control.Monad.State
 import Data.Void
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Utils
 
 ---------------------------------------------------------------------------------------
@@ -50,12 +50,13 @@ fromEpsGr gr = gmap mapfun gr
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeEpsilonEdges :: TypeAutEps -> TypeAut
-removeEpsilonEdges TypeAut { ta_gr, ta_starts, ta_flowEdges } =
+removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
+removeEpsilonEdges TypeAut { ta_pol, ta_gr, ta_starts, ta_flowEdges } =
   let
     (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes ta_gr)) (ta_gr, ta_starts)
   in
-   TypeAut { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
+   TypeAut { ta_pol = ta_pol
+           , ta_gr = (removeRedundantEdges . fromEpsGr) gr'
            , ta_starts = starts'
            , ta_flowEdges = ta_flowEdges
            }
@@ -64,13 +65,14 @@ removeEpsilonEdges TypeAut { ta_gr, ta_starts, ta_flowEdges } =
 -- Remove islands not reachable from starting states.
 ---------------------------------------------------------------------------------------
 
-removeIslands :: TypeAut -> TypeAut
+removeIslands :: TypeAut pol -> TypeAut pol
 removeIslands TypeAut{..} =
   let
     reachableNodes = dfs ta_starts ta_gr
     reachableFlowEdges = [(i,j) | (i,j) <- ta_flowEdges, i `elem` reachableNodes, j `elem` reachableNodes]
   in
-    TypeAut { ta_gr = subgraph reachableNodes ta_gr
+    TypeAut { ta_pol = ta_pol
+            , ta_gr = subgraph reachableNodes ta_gr
             , ta_starts = ta_starts
             , ta_flowEdges = reachableFlowEdges
             }
@@ -135,14 +137,15 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
-determinize :: TypeAut -> TypeAutDet
+determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{..} =
   let
     (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in
-    TypeAut { ta_gr = removeFaultyEdges newgr
+    TypeAut { ta_pol = ta_pol
+            , ta_gr = removeFaultyEdges newgr
             , ta_starts = Identity newstart
             , ta_flowEdges = newFlowEdges
             }

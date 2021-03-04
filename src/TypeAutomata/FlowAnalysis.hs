@@ -5,7 +5,7 @@ module TypeAutomata.FlowAnalysis
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -31,10 +31,10 @@ sucWith gr i el = lookup el (map swap (lsuc gr i))
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
-admissable :: TypeAutDet -> FlowEdge -> Bool
+admissable :: TypeAutDet pol -> FlowEdge -> Bool
 admissable aut@TypeAut {..} e = isJust $ admissableM (aut { ta_flowEdges = delete e ta_flowEdges }) e
 
-admissableM :: TypeAutDet -> FlowEdge -> Maybe ()
+admissableM :: TypeAutDet pol -> FlowEdge -> Maybe ()
 admissableM aut@TypeAut{..} e@(i,j) =
     let
       subtypeData = do -- Maybe monad
@@ -71,7 +71,7 @@ admissableM aut@TypeAut{..} e@(i,j) =
       guard (e `elem` ta_flowEdges) <|> subtypeData <|> subtypeCodata <|> subTypeNominal
 
 
-removeAdmissableFlowEdges :: TypeAutDet -> TypeAutDet
+removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
 removeAdmissableFlowEdges aut@TypeAut{..} = aut { ta_flowEdges = filter (not . admissable aut) ta_flowEdges }
 
 -------------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ removeAdmissableFlowEdges aut@TypeAut{..} = aut { ta_flowEdges = filter (not . a
 
 type FlowGraph = Gr () ()
 
-genFlowGraph :: TypeAut' EdgeLabelNormal f -> FlowGraph
+genFlowGraph :: TypeAut' EdgeLabelNormal f pol -> FlowGraph
 genFlowGraph TypeAut{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
 
 flowComponent :: FlowGraph -> Node -> [Node]
@@ -112,5 +112,5 @@ flowAnalysisState flgr =
           rest <- flowAnalysisState newGr
           return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
 
-getFlowAnalysisMap :: TypeAut' EdgeLabelNormal f -> Map Node (Set TVar)
+getFlowAnalysisMap :: TypeAut' EdgeLabelNormal f pol -> Map Node (Set TVar)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0

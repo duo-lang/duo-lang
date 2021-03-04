@@ -2,7 +2,7 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Utils
 import TypeAutomata.FlowAnalysis
 
@@ -31,12 +31,12 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
 
 type AutToTypeM a = Reader AutToTypeState a
 
-autToType :: PolarityRep pol -> TypeAutDet -> TypeScheme pol
-autToType rep aut@TypeAut{..} =
+autToType :: TypeAutDet pol -> TypeScheme pol
+autToType aut@TypeAut{..} =
   let
     mp = getFlowAnalysisMap aut
     startState = AutToTypeState mp ta_gr S.empty
-    monotype = runReader (nodeToType rep (runIdentity ta_starts)) startState
+    monotype = runReader (nodeToType ta_pol (runIdentity ta_starts)) startState
     tvars = S.toList $ S.unions (M.elems mp)
   in
     TypeScheme tvars monotype

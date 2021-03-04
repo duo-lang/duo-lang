@@ -15,14 +15,14 @@ import Prettyprinter (Pretty)
 
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
 import TypeAutomata.FromAutomaton (autToType)
-import TypeAutomata.ToAutomaton (typeToAut, typeToAutPol)
+import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import TypeInference.InferTypes
 import Utils (trim)
@@ -297,7 +297,7 @@ save_cmd s = do
       Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
                                "Term parsing error:\n"++ ppPrint err2)
 
-saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f -> Repl ()
+saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
 saveGraphFiles fileName aut = do
   let graphDir = "graphs"
   let fileUri = "  file://"
@@ -345,12 +345,10 @@ bind_option = Option
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
   (t1,t2) <- parseRepl subtypingProblemP s
-  case (typeToAutPol Pos t1, typeToAutPol Pos t2) of
-    (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
-    _ -> case (typeToAutPol Neg t1, typeToAutPol Neg t2) of
-        (Right aut1, Right aut2) -> prettyRepl $ isSubtype aut1 aut2
-        -- TODO: Make this error message better
-        _ -> prettyRepl "Invalid input. Either the types have non-matching polarities, they aren't polar at all or the covariance rule is violated."
+  aut1 <- fromRight (typeToAut t1)
+  aut2 <- fromRight (typeToAut t2)
+  prettyRepl $ isSubtype aut1 aut2
+
 
 sub_option :: Option
 sub_option = Option
@@ -367,7 +365,7 @@ simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
   ty <- parseRepl typeSchemeP s
   aut <- fromRight (typeToAut ty)
-  prettyRepl (autToType PosRep aut)
+  prettyRepl (autToType aut)
 
 simplify_option :: Option
 simplify_option = Option

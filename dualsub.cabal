@@ -63,7 +63,7 @@ library
       Syntax.ATerms
       Syntax.CommonTerm
       Syntax.Types
-      Syntax.TypeGraph
+      Syntax.TypeAutomaton
       Syntax.Program
       Syntax.STerms
       TypeAutomata.Determinize

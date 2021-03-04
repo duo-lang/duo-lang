@@ -3,7 +3,7 @@ module TypeInference.InferTypes where
 import Syntax.ATerms
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeGraph
+import Syntax.TypeAutomaton
 import Utils
 import Syntax.Program
 
@@ -22,10 +22,10 @@ import TypeInference.SolveConstraints (solveConstraints)
 
 data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
-  , trace_typeAut :: TypeAut
-  , trace_typeAutDet :: TypeAutDet
-  , trace_typeAutDetAdms :: TypeAutDet
-  , trace_minTypeAut :: TypeAutDet
+  , trace_typeAut :: TypeAut pol
+  , trace_typeAutDet :: TypeAutDet pol
+  , trace_typeAutDetAdms :: TypeAutDet pol
+  , trace_minTypeAut :: TypeAutDet pol
   , trace_resType :: TypeScheme pol
   }
 
@@ -41,7 +41,7 @@ inferSTermTraced rep tm env = do
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType (prdCnsToPol rep) minTypeAut
+  let resType = autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut
@@ -51,7 +51,7 @@ inferSTermTraced rep tm env = do
     , trace_resType = resType
     }
 
-inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error TypeAutDet
+inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeAutDet (PrdCnsToPol pc))
 inferSTermAut rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_minTypeAut trace
@@ -66,7 +66,7 @@ checkCmd cmd env = do
   constraints <- sgenerateConstraintsCmd cmd env
   _ <- solveConstraints constraints
   return ()
-  
+
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ inferATermTraced tm env = do
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType PosRep minTypeAut
+  let resType = autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_typeAut = typeAut

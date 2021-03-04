@@ -39,6 +39,10 @@ flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
 flipPolarityRep PosRep = NegRep
 flipPolarityRep NegRep = PosRep
 
+polarityRepToPol :: PolarityRep pol -> Polarity
+polarityRepToPol PosRep = Pos
+polarityRepToPol NegRep = Neg
+
 ------------------------------------------------------------------------------
 -- Tags
 ------------------------------------------------------------------------------
@@ -91,6 +95,13 @@ data Typ (pol :: Polarity) where
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
+
+getPolarity :: Typ pol -> PolarityRep pol
+getPolarity (TyVar rep _ _)        = rep
+getPolarity (TyStructural rep _ _) = rep
+getPolarity (TyNominal rep _)      = rep
+getPolarity (TySet rep _)          = rep
+getPolarity (TyRec rep _ _)        = rep
 
 -- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
 instance Eq (Typ Pos) where
