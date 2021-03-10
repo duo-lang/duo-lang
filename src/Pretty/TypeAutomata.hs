@@ -19,6 +19,10 @@ import Syntax.Types
 -- Prettyprinting of Type Automata
 ---------------------------------------------------------------------------------
 
+instance Pretty XtorLabel where
+  pretty MkXtorLabel { labelName, labelPrdArity, labelCnsArity } =
+    pretty labelName <> parens (pretty labelPrdArity) <> brackets (pretty labelCnsArity)
+
 instance Pretty NodeLabel where
   pretty (HeadCons _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat

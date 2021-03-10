@@ -40,8 +40,8 @@ admissableM aut@TypeAut{..} e@(i,j) =
       subtypeData = do -- Maybe monad
         (HeadCons Neg (Just dat1) _ _) <- lab ta_gr i
         (HeadCons Pos (Just dat2) _ _) <- lab ta_gr j
-        _ <- forM (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
-        _ <- forM (S.toList dat1) $ \xt -> do
+        _ <- forM (labelName <$> S.toList dat1) $ \xt -> guard (xt `S.member` (labelName `S.map` dat2))
+        _ <- forM (labelName <$> S.toList dat1) $ \xt -> do
           _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
@@ -53,8 +53,8 @@ admissableM aut@TypeAut{..} e@(i,j) =
       subtypeCodata = do -- Maybe monad
         (HeadCons Neg _ (Just codat1) _) <- lab ta_gr i
         (HeadCons Pos _ (Just codat2) _) <- lab ta_gr j
-        _ <- forM (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
-        _ <- forM (S.toList codat2) $ \xt -> do
+        _ <- forM (labelName <$> S.toList codat2) $ \xt -> guard (xt `S.member` (labelName `S.map` codat1))
+        _ <- forM (labelName <$> S.toList codat2) $ \xt -> do
           _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
