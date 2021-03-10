@@ -15,17 +15,20 @@ import Syntax.CommonTerm
 -- Graph syntax
 -------------------------------------------------------
 
+newtype XtorLabel = XtorLabel { labelName :: XtorName }
+  deriving (Eq, Show, Ord)
+
 data NodeLabel = HeadCons
   { hc_pol :: Polarity
-  , hc_data :: Maybe (Set XtorName)
-  , hc_codata :: Maybe (Set XtorName)
+  , hc_data :: Maybe (Set XtorLabel)
+  , hc_codata :: Maybe (Set XtorLabel)
   , hc_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
 emptyHeadCons :: Polarity -> NodeLabel
 emptyHeadCons pol = HeadCons pol Nothing Nothing S.empty
 
-singleHeadCons :: Polarity -> DataCodata -> Set XtorName -> NodeLabel
+singleHeadCons :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
 singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
 singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
 

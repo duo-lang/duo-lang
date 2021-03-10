@@ -156,18 +156,18 @@ nodeToTypeNoCache rep i = do
       Nothing -> return []
       Just xtors -> do
         sig <- forM xtors $ \xt -> do
-          let nodes = computeArgNodes outs Data xt
+          let nodes = computeArgNodes outs Data (labelName xt)
           argTypes <- argNodesToArgTypes nodes DataRep rep
-          return (MkXtorSig xt argTypes)
+          return (MkXtorSig (labelName xt) argTypes)
         return [TyStructural rep DataRep sig]
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
       Just xtors -> do
         sig <- forM xtors $ \xt -> do
-          let nodes = computeArgNodes outs Codata xt
+          let nodes = computeArgNodes outs Codata (labelName xt)
           argTypes <- argNodesToArgTypes nodes CodataRep rep
-          return (MkXtorSig xt argTypes)
+          return (MkXtorSig (labelName xt) argTypes)
         return [TyStructural rep CodataRep sig]
     -- Creating Nominal types
     let nominals = TyNominal rep <$> (S.toList tns)

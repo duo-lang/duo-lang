@@ -86,7 +86,7 @@ insertType (TyStructural polrep dcrep xtors) = do
   let pol = polarityRepToPol polrep
   let dc = case dcrep of DataRep -> Data; CodataRep -> Codata
   newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol dc (S.fromList (map sig_name xtors)))
+  insertNode newNode (singleHeadCons pol dc (S.fromList (map (XtorLabel . sig_name) xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType

@@ -19,6 +19,9 @@ import Syntax.Types
 -- Prettyprinting of Type Automata
 ---------------------------------------------------------------------------------
 
+instance Pretty XtorLabel where
+  pretty XtorLabel { labelName } = pretty labelName
+
 instance Pretty NodeLabel where
   pretty (HeadCons _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat

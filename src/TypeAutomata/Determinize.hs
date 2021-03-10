@@ -157,8 +157,8 @@ determinize TypeAut{..} =
 containsXtor :: DataCodata -> NodeLabel -> XtorName -> Bool
 containsXtor Data (HeadCons _ Nothing _ _) _ = False
 containsXtor Codata (HeadCons _ _ Nothing _) _ = False
-containsXtor Data (HeadCons _ (Just xtors) _ _) xt = xt `S.member` xtors
-containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` xtors
+containsXtor Data (HeadCons _ (Just xtors) _ _) xt = xt `S.member` (labelName `S.map` xtors)
+containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` (labelName `S.map` xtors)
 
 isFaultyEdge :: TypeGr -> LEdge EdgeLabelNormal -> Bool
 isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt
