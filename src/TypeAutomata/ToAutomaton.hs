@@ -60,6 +60,10 @@ lookupTVar tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
+
+sigToLabel :: XtorSig pol -> XtorLabel
+sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = XtorLabel name (length prds) (length cnss)
+
 insertType :: Typ pol -> TypeToAutM pol' Node
 insertType (TyVar rep Normal tv) = do
   (i,j) <- lookupTVar tv
@@ -86,7 +90,7 @@ insertType (TyStructural polrep dcrep xtors) = do
   let pol = polarityRepToPol polrep
   let dc = case dcrep of DataRep -> Data; CodataRep -> Codata
   newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol dc (S.fromList (map (XtorLabel . sig_name) xtors)))
+  insertNode newNode (singleHeadCons pol dc (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType

@@ -15,7 +15,11 @@ import Syntax.CommonTerm
 -- Graph syntax
 -------------------------------------------------------
 
-newtype XtorLabel = XtorLabel { labelName :: XtorName }
+data XtorLabel = XtorLabel
+  { labelName :: XtorName
+  , labelPrdArity :: Int
+  , labelCnsArity :: Int
+  }
   deriving (Eq, Show, Ord)
 
 data NodeLabel = HeadCons
