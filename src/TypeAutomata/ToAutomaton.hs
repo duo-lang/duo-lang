@@ -62,7 +62,7 @@ lookupTVar tv = do
 
 
 sigToLabel :: XtorSig pol -> XtorLabel
-sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = XtorLabel name (length prds) (length cnss)
+sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prds) (length cnss)
 
 insertType :: Typ pol -> TypeToAutM pol' Node
 insertType (TyVar rep Normal tv) = do

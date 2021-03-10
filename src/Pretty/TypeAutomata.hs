@@ -20,7 +20,8 @@ import Syntax.Types
 ---------------------------------------------------------------------------------
 
 instance Pretty XtorLabel where
-  pretty XtorLabel { labelName } = pretty labelName
+  pretty MkXtorLabel { labelName, labelPrdArity, labelCnsArity } =
+    pretty labelName <> parens (pretty labelPrdArity) <> brackets (pretty labelCnsArity)
 
 instance Pretty NodeLabel where
   pretty (HeadCons _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat

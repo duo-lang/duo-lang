@@ -15,7 +15,7 @@ import Syntax.CommonTerm
 -- Graph syntax
 -------------------------------------------------------
 
-data XtorLabel = XtorLabel
+data XtorLabel = MkXtorLabel
   { labelName :: XtorName
   , labelPrdArity :: Int
   , labelCnsArity :: Int
