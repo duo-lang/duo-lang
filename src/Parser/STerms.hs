@@ -3,34 +3,17 @@ module Parser.STerms
   , commandP
   )where
 
-import Control.Monad.Reader
-import qualified Data.Map as M
 import Text.Megaparsec hiding (State)
 
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Program
 import Syntax.STerms
 import Utils
 
 --------------------------------------------------------------------------------------------
 -- Symmetric Terms
 --------------------------------------------------------------------------------------------
-
-termEnvP :: PrdCnsRep pc -> Parser (STerm pc ())
-termEnvP PrdRep = do
-  v <- freeVarName
-  prdEnv <- asks (prdEnv . parseEnv)
-  case M.lookup v prdEnv of
-    Just t -> return t
-    Nothing -> empty
-termEnvP CnsRep = do
-  v <- freeVarName
-  cnsEnv <- asks (cnsEnv . parseEnv)
-  case M.lookup v cnsEnv of
-    Just t -> return t
-    Nothing -> empty
 
 freeVar :: PrdCnsRep pc -> Parser (STerm pc ())
 freeVar pc = do
@@ -108,8 +91,6 @@ stermP pc = try (parens (stermP pc))
   <|> try (patternMatch Structural pc) 
   <|> try (patternMatch Nominal pc)
   <|> muAbstraction pc
-  <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
-                        -- if the variable is in the environment, which might cause it to fail
   <|> freeVar pc
   <|> numLitP pc
   <|> lambdaSugar pc
@@ -117,14 +98,6 @@ stermP pc = try (parens (stermP pc))
 --------------------------------------------------------------------------------------------
 -- Commands
 --------------------------------------------------------------------------------------------
-
-cmdEnvP :: Parser (Command ())
-cmdEnvP = do
-  v <- freeVarName
-  prdEnv <- asks (cmdEnv . parseEnv)
-  case M.lookup v prdEnv of
-    Just t -> return t
-    Nothing -> empty
 
 applyCmdP :: Parser (Command ())
 applyCmdP = do
@@ -142,7 +115,6 @@ printCmdP = lexeme (symbol "Print") >> (Print <$> lexeme (stermP PrdRep))
 commandP :: Parser (Command ())
 commandP =
   try (parens commandP) <|>
-  try cmdEnvP <|>
   doneCmdP <|>
   printCmdP <|>
   applyCmdP

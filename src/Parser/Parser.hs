@@ -4,7 +4,7 @@ module Parser.Parser
   , atermP
   , commandP
   , declarationP
-  , environmentP
+  , programP
   , typeSchemeP
   , subtypingProblemP
   , bindingP

@@ -1,9 +1,8 @@
 module Parser.Program
   ( declarationP
-  , environmentP
+  , programP
   ) where
 
-import Control.Monad.Reader
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
@@ -14,13 +13,6 @@ import Parser.Types
 import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
-
----------------------------------------------------------------------------------
--- Parsing a program
----------------------------------------------------------------------------------
-
-declarationP :: Parser (Declaration ())
-declarationP = prdDeclarationP <|> cnsDeclarationP <|> cmdDeclarationP <|> defDeclarationP <|> typeDeclarationP <|> dataDeclP
 
 prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
@@ -65,12 +57,6 @@ typeDeclarationP = do
   t <- typeSchemeP
   return (TypDecl v t)
 
--- Multiple definitions seperated by ';'. Later definition may depend on earlier ones
-environmentP :: Parser Syntax.Program.Environment
-environmentP = (eof >> asks parseEnv) <|> do
-  decl <- sc >> declarationP
-  local (\pr@ParseReader {parseEnv} -> pr { parseEnv = insertDecl decl parseEnv }) environmentP
-
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
@@ -99,3 +85,22 @@ dataDeclP = DataDecl <$> dataDeclP'
       args <- typArgListP PosRep
       return (MkXtorSig xt args)
 
+---------------------------------------------------------------------------------
+-- Parsing a program
+---------------------------------------------------------------------------------
+
+declarationP :: Parser (Declaration ())
+declarationP =
+  prdDeclarationP <|>
+  cnsDeclarationP <|>
+  cmdDeclarationP <|>
+  defDeclarationP <|>
+  typeDeclarationP <|>
+  dataDeclP
+
+programP :: Parser [Declaration ()]
+programP = do
+  sc
+  decls <- many declarationP
+  eof
+  return decls

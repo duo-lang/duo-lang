@@ -56,6 +56,9 @@ insertDecl (DefDecl v t)  env@Environment { defEnv }  = env { defEnv  = M.insert
 insertDecl (TypDecl n t)  env@Environment { typEnv }  = env { typEnv  = M.insert n t typEnv }
 insertDecl (DataDecl dcl) env@Environment { declEnv } = env { declEnv = dcl : declEnv }
 
+createEnv :: [Declaration ()] -> Environment
+createEnv = foldr insertDecl mempty 
+
 envToXtorMap :: Environment -> Map XtorName (TypArgs Pos)
 envToXtorMap Environment { declEnv } = M.unions xtorMaps
   where
