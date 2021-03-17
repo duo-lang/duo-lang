@@ -155,7 +155,20 @@ genConstraintsSTerm :: STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTerm (BoundVar rep idx) = do
   ty <- lookupType rep idx
   return (BoundVar rep idx, ty)
-genConstraintsSTerm (FreeVar _ _ _) = throwError $ GenConstraintsError "Should not occur"
+-- The following code for free variables is a temporary hack. Free variables which are bound in the environment are
+-- typechecked by substituting the bound term in place of the free variable. This only works because the examples use
+-- a fixpoint combinator instead of explicit recursion. Otherwise generation of constraints would not terminate.
+-- This will be implemented properly in a future PR.
+genConstraintsSTerm (FreeVar PrdRep v _) = do
+  prdEnv <- asks (P.prdEnv . env)
+  case M.lookup v prdEnv of
+    Just prd -> genConstraintsSTerm prd
+    Nothing -> throwError $ GenConstraintsError $ "Unbound free producer variable in STerm: " ++ ppPrint v
+genConstraintsSTerm (FreeVar CnsRep v _) = do
+  cnsEnv <- asks (P.cnsEnv . env)
+  case M.lookup v cnsEnv of
+    Just cns -> genConstraintsSTerm cns
+    Nothing -> throwError $ GenConstraintsError $ "Unbound free consumer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
   return (XtorCall PrdRep xt args', TyStructural PosRep DataRep [MkXtorSig xt argTypes])
