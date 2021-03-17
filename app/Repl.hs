@@ -445,21 +445,12 @@ help_option = Option
 compile_cmd :: String -> Repl ()
 compile_cmd s = do
   env <- gets replEnv
-  case runEnvParser (stermP PrdRep) env s of
-    Right t -> do
-      prettyRepl "Is an STerm, expected an ATerm:"
-      prettyRepl (ppPrint t)
-    Left err1 -> do
-      case runEnvParser atermP env s of
-        Right t -> do
-            case compile t of
-              Left  res -> do prettyRepl (" compile " ++ ppPrint t ++ "= " ++ ppPrint res)
-              Right res -> do prettyRepl (" compile " ++ ppPrint t ++ "= " ++ ppPrint res)
-        Left err2 -> do
-          prettyRepl "Cannot parse as sterm:"
-          prettyRepl err1
-          prettyRepl "Cannot parse as aterm:"
-          prettyRepl err2
+  case runEnvParser atermP env s of
+    Right t ->
+      prettyRepl (" compile " ++ ppPrint t ++ " = " ++ ppPrint (compile t))
+    Left err2 -> do
+      prettyRepl "Cannot parse as aterm:"
+      prettyRepl err2
 
 compile_option :: Option
 compile_option = Option
