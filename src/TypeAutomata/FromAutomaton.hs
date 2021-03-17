@@ -68,9 +68,9 @@ computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a no
 computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } =
   let
     prdFun n = [ node | ((EdgeSymbol dc' xt pc pos), node) <- outs, dc' == dc, xt == labelName, pc == Prd, pos == n]
-    prdArgs = prdFun <$> [0..labelPrdArity]
+    prdArgs = prdFun <$> [0..(labelPrdArity - 1)]
     cnsFun n = [ node | ((EdgeSymbol dc' xt pc pos), node) <- outs, dc' == dc, xt == labelName, pc == Cns, pos == n]
-    cnsArgs = cnsFun <$> [0..labelCnsArity]
+    cnsArgs = cnsFun <$> [0..(labelCnsArity - 1)]
   in
     Twice prdArgs cnsArgs
 
