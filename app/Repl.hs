@@ -225,7 +225,8 @@ type_option = Option
 -- Show
 
 show_cmd :: String -> Repl ()
-show_cmd s = do
+show_cmd str = do
+  let s = trim str
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
     Just prd -> prettyRepl prd
