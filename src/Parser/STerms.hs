@@ -54,11 +54,11 @@ xtorCall ns pc = do
 patternMatch :: PrdCnsRep pc -> Parser (STerm pc ())
 patternMatch PrdRep = do
   _ <- symbol "comatch"
-  (cases,ns) <- braces casesP
+  (cases,ns) <- casesP
   return $ XMatch PrdRep ns cases
 patternMatch CnsRep = do
   _ <- symbol "match"
-  (cases,ns) <- braces casesP
+  (cases,ns) <- casesP
   return $ XMatch CnsRep ns cases
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
@@ -66,11 +66,12 @@ patternMatch CnsRep = do
 casesP :: Parser ([SCase ()], NominalStructural)
 casesP = try structuralCases <|> nominalCases
   where
-    structuralCases = do
-      cases <- singleCase Structural `sepBy` comma
+    structuralCases = braces $ do
+      cases <- try (singleCase Structural `sepBy` comma)
       return (cases, Structural)
-    nominalCases = do
-      cases <- singleCase Nominal `sepBy` comma
+    nominalCases = braces $ do
+      -- There must be at least one case for a nominal type to be inferred
+      cases <- singleCase Nominal `sepBy1` comma
       return (cases, Nominal)
 
 singleCase :: NominalStructural -> Parser (SCase ())
