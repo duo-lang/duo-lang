@@ -268,7 +268,10 @@ show_type_option = Option
 
 def_cmd :: String -> Repl ()
 def_cmd s = case runEnvParser declarationP s of
-              Right decl -> modifyEnvironment (insertDecl decl)
+              Right decl -> do
+                oldEnv <- gets replEnv
+                newEnv <- fromRight $ insertDecl decl oldEnv
+                modifyEnvironment (const newEnv)
               Left err -> prettyRepl err
 
 def_option :: Option
