@@ -6,17 +6,18 @@ import Data.Foldable (find)
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
 data Declaration a
-  = PrdDecl FreeVarName (STerm Prd a)
-  | CnsDecl FreeVarName (STerm Cns a)
-  | CmdDecl FreeVarName (Command a)
-  | DefDecl FreeVarName (ATerm a)
-  | DataDecl DataDecl
+  = PrdDecl Loc FreeVarName (STerm Prd a)
+  | CnsDecl Loc FreeVarName (STerm Cns a)
+  | CmdDecl Loc FreeVarName (Command a)
+  | DefDecl Loc FreeVarName (ATerm a)
+  | DataDecl Loc DataDecl
 
 ---------------------------------------------------------------------------------
 -- Environment

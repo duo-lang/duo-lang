@@ -25,6 +25,8 @@ instance Functor Twice where
 
 data Loc = Loc SourcePos SourcePos
 
+data Located a = Located Loc a
+
 ----------------------------------------------------------------------------------
 -- Errors
 ----------------------------------------------------------------------------------
@@ -36,6 +38,8 @@ data Error
   | SolveConstraintsError String
   | OtherError String
   deriving (Show, Eq)
+
+type LocatedError = Located Error
 
 ----------------------------------------------------------------------------------
 -- Helper Functions

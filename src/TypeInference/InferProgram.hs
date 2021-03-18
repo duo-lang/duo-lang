@@ -8,19 +8,19 @@ import Syntax.Program
 import Utils
 
 insertDecl :: Declaration () -> Environment -> Either Error Environment
-insertDecl (PrdDecl v t)  env@Environment { prdEnv }  = do
+insertDecl (PrdDecl loc v t)  env@Environment { prdEnv }  = do
   ty <- inferSTerm PrdRep t env
   return $ env { prdEnv  = M.insert v (t,ty) prdEnv }
-insertDecl (CnsDecl v t)  env@Environment { cnsEnv }  = do
+insertDecl (CnsDecl loc v t)  env@Environment { cnsEnv }  = do
   ty <- inferSTerm CnsRep t env
   return $ env { cnsEnv  = M.insert v (t,ty) cnsEnv }
-insertDecl (CmdDecl v t)  env@Environment { cmdEnv }  = do
+insertDecl (CmdDecl loc v t)  env@Environment { cmdEnv }  = do
   checkCmd t env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
-insertDecl (DefDecl v t)  env@Environment { defEnv }  = do
+insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
   ty <- inferATerm t env
   return $ env { defEnv  = M.insert v (t,ty) defEnv }
-insertDecl (DataDecl dcl) env@Environment { declEnv } = do
+insertDecl (DataDecl loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 
 inferProgram :: [Declaration ()] -> Either Error Environment
