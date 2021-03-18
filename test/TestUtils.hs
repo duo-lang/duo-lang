@@ -23,7 +23,6 @@ filterEnvironment failingExamples Environment {..} =
               , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
               , cmdEnv = cmdEnv
               , defEnv = defEnv
-              , typEnv = typEnv
               , declEnv = declEnv
               }
 

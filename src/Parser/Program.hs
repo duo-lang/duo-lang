@@ -50,13 +50,6 @@ defDeclarationP = do
   _ <- symbol ";"
   return (DefDecl v t)
 
-typeDeclarationP :: Parser (Declaration ())
-typeDeclarationP = do
-  v <- typeNameP
-  _ <- symbol ":="
-  t <- typeSchemeP
-  return (TypDecl v t)
-
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
@@ -95,7 +88,6 @@ declarationP =
   cnsDeclarationP <|>
   cmdDeclarationP <|>
   defDeclarationP <|>
-  typeDeclarationP <|>
   dataDeclP
 
 programP :: Parser [Declaration ()]

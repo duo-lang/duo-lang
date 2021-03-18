@@ -237,9 +237,7 @@ show_cmd str = do
         Just cmd -> prettyRepl cmd
         Nothing -> case M.lookup s (defEnv env) of
           Just def -> prettyRepl def
-          Nothing -> case M.lookup (MkTypeName s) (typEnv env) of
-            Just typ -> prettyRepl typ
-            Nothing -> prettyRepl "Not in environment."
+          Nothing -> prettyRepl "Not in environment."
 
 show_option :: Option
 show_option = Option
@@ -324,24 +322,6 @@ save_option = Option
   { option_name = "save"
   , option_cmd = save_cmd
   , option_help = ["Save generated type automata to disk as jpgs."]
-  , option_completer = Nothing
-  }
-
--- Bind
-
-bind_cmd :: String -> Repl ()
-bind_cmd s = do
-  env <- gets replEnv
-  (v,t) <- parseRepl bindingP s
-  resType <- fromRight $ inferSTerm PrdRep t env
-  modifyEnvironment (insertDecl (TypDecl v resType))
-
-
-bind_option :: Option
-bind_option = Option
-  { option_name = "bind"
-  , option_cmd = bind_cmd
-  , option_help = ["Infer the type of producer term, and add corresponding type declaration to environment."]
   , option_completer = Nothing
   }
 
@@ -443,7 +423,7 @@ help_option = Option
 
 all_options :: [Option]
 all_options = [ type_option, show_option, help_option, def_option, save_option, set_option, unset_option
-              , sub_option, bind_option, simplify_option, load_option, reload_option, show_type_option]
+              , sub_option, simplify_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
 -- Repl Configuration
@@ -468,7 +448,6 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
                         , M.keys (defEnv env)
-                        , unTypeName <$> M.keys (typEnv env)
                         , (unTypeName . data_name) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ keys)
