@@ -4,6 +4,7 @@ import System.Directory (listDirectory)
 
 import Parser.Parser
 import Syntax.Program
+import TypeInference.InferProgram (createEnv)
 import qualified Data.Map as M
 
 getAvailableCounterExamples :: IO [FilePath]

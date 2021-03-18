@@ -25,6 +25,7 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import TypeInference.InferTypes
+import TypeInference.InferProgram
 import Utils (trim)
 
 ------------------------------------------------------------------------------
