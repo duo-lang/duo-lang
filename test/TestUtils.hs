@@ -34,5 +34,5 @@ getEnvironment fp failingExamples = do
   case runEnvParser programP s of
     Right decls -> case inferProgram decls of
       Right env -> return $ Right (filterEnvironment failingExamples env)
-      Left err -> return $ Left err
+      Left (Located _ err) -> return $ Left err
     Left err -> return $ Left err
