@@ -1,5 +1,6 @@
 module Parser.Parser
-  ( runEnvParser
+  ( runFileParser
+  , runInteractiveParser
   , stermP
   , atermP
   , commandP

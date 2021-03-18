@@ -1,7 +1,8 @@
 module Parser.Definition
   ( Parser
   , ParseReader(..)
-  , runEnvParser
+  , runInteractiveParser
+  , runFileParser
   ) where
 
 import Control.Monad.Reader
@@ -26,8 +27,11 @@ defaultParseReader = ParseReader S.empty S.empty
 -- A parser that can read values from an environment
 type Parser a = ReaderT ParseReader (Parsec Void String) a
 
-runEnvParser :: Parser a -> String -> Either Error a
-runEnvParser p input = case runParser (runReaderT (lexeme (p <* eof)) defaultParseReader) "<interactive>" input of
+runInteractiveParser :: Parser a -> String -> Either Error a
+runInteractiveParser p input = runFileParser "<interactive>" p input
+
+runFileParser :: FilePath -> Parser a -> String -> Either Error a
+runFileParser fp p input = case runParser (runReaderT (lexeme (p <* eof)) defaultParseReader) fp input of
   Left err -> Left $ ParseError (errorBundlePretty err)
   Right x -> Right x
   where
@@ -37,4 +41,3 @@ runEnvParser p input = case runParser (runReaderT (lexeme (p <* eof)) defaultPar
 
     lexeme :: (MonadParsec Void String m) => m a -> m a
     lexeme = L.lexeme sc
-
