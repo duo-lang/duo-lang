@@ -7,14 +7,6 @@ import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.ATerms
 
-acaseP :: NominalStructural -> Parser (ACase ())
-acaseP ns = do
-  xt <- xtorName ns
-  args <- option [] (parens $ freeVarName `sepBy` comma)
-  _ <- symbol "=>"
-  res <- atermP
-  return (MkACase xt ((const ()) <$> args) (atermClosing args res))
-
 fvarP :: Parser (ATerm ())
 fvarP = do
   fv <- freeVarName
@@ -36,18 +28,34 @@ dtorP ns = do
   args <- option [] (parens $ atermP `sepBy` comma)
   return (Dtor xt destructee args)
 
-matchP :: NominalStructural -> Parser (ATerm ())
-matchP ns = do
+
+
+acaseP :: NominalStructural -> Parser (ACase ())
+acaseP ns = do
+  xt <- xtorName ns
+  args <- option [] (parens $ freeVarName `sepBy` comma)
+  _ <- symbol "=>"
+  res <- atermP
+  return (MkACase xt ((const ()) <$> args) (atermClosing args res))
+
+acasesP :: Parser [ACase ()]
+acasesP = try structuralCases <|> nominalCases
+  where
+    structuralCases = braces $ acaseP Structural `sepBy` comma
+    nominalCases = braces $ acaseP Nominal `sepBy` comma
+
+matchP :: Parser (ATerm ())
+matchP = do
   _ <- symbol "match"
   arg <- atermP
   _ <- symbol "with"
-  cases <- braces $ acaseP ns `sepBy` comma
+  cases <- acasesP
   return (Match arg cases)
 
-comatchP :: NominalStructural -> Parser (ATerm ())
-comatchP ns = do
+comatchP :: Parser (ATerm ())
+comatchP = do
   _ <- symbol "comatch"
-  cocases <- braces $ acaseP ns `sepBy` comma
+  cocases <- acasesP
   return (Comatch cocases)
 
 numLitP :: Parser (ATerm ())
@@ -64,10 +72,8 @@ atermP' :: Parser (ATerm ())
 atermP' =
   parens atermP <|>
   numLitP <|>
-  try (matchP Structural) <|>
-  matchP Nominal <|>
-  try (comatchP Structural) <|>
-  comatchP Nominal <|>
+  matchP <|>
+  comatchP <|>
   ctorP Structural <|>
   ctorP Nominal <|>
   fvarP
@@ -78,10 +84,8 @@ atermP =
   try (dtorP Structural) <|>
   try (dtorP Nominal) <|>
   numLitP <|>
-  try (matchP Structural) <|>
-  matchP Nominal <|>
-  try (comatchP Structural) <|>
-  comatchP Nominal <|>
+  matchP <|>
+  comatchP <|>
   ctorP Structural <|>
   ctorP Nominal <|>
 

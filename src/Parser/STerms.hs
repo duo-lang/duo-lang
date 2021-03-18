@@ -51,15 +51,28 @@ xtorCall ns pc = do
   args <- xtorArgsP
   return $ XtorCall pc xt args
 
-patternMatch :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc ())
-patternMatch ns PrdRep = do
+patternMatch :: PrdCnsRep pc -> Parser (STerm pc ())
+patternMatch PrdRep = do
   _ <- symbol "comatch"
-  cases <- braces $ singleCase ns `sepBy` comma
+  (cases,ns) <- casesP
   return $ XMatch PrdRep ns cases
-patternMatch ns CnsRep = do
+patternMatch CnsRep = do
   _ <- symbol "match"
-  cases <- braces $ singleCase ns `sepBy` comma
+  (cases,ns) <- casesP
   return $ XMatch CnsRep ns cases
+
+-- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
+-- infer a structural type, not a nominal one.
+casesP :: Parser ([SCase ()], NominalStructural)
+casesP = try structuralCases <|> nominalCases
+  where
+    structuralCases = braces $ do
+      cases <- singleCase Structural `sepBy` comma
+      return (cases, Structural)
+    nominalCases = braces $ do
+      -- There must be at least one case for a nominal type to be inferred
+      cases <- singleCase Nominal `sepBy1` comma
+      return (cases, Nominal)
 
 singleCase :: NominalStructural -> Parser (SCase ())
 singleCase ns = do
@@ -83,13 +96,10 @@ muAbstraction pc = do
     CnsRep -> return $ MuAbs pc () (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc ())
-stermP pc = try (parens (stermP pc))
+stermP pc = parens (stermP pc)
   <|> xtorCall Structural pc
   <|> xtorCall Nominal pc
-  -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
-  -- infer a structural type, not a nominal one.
-  <|> try (patternMatch Structural pc) 
-  <|> try (patternMatch Nominal pc)
+  <|> patternMatch pc
   <|> muAbstraction pc
   <|> freeVar pc
   <|> numLitP pc
