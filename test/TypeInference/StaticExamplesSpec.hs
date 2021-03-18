@@ -19,9 +19,9 @@ instance Show (TypeScheme pol) where
 typecheckExample :: Environment -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
-      let Right term = runEnvParser (stermP PrdRep) termS
+      let Right term = runInteractiveParser (stermP PrdRep) termS
       let Right inferredTypeAut = inferSTermAut PrdRep term env
-      let Right specTypeScheme = runEnvParser typeSchemeP typS
+      let Right specTypeScheme = runInteractiveParser typeSchemeP typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 

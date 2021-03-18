@@ -73,9 +73,14 @@ fromRight :: Pretty err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseRepl ::Parser a -> String -> Repl a
-parseRepl p s = do
-  fromRight (runEnvParser p s)
+parseInteractive :: Parser a -> String -> Repl a
+parseInteractive p s = do
+  fromRight (runInteractiveParser p s)
+
+parseFile :: FilePath -> Parser a -> Repl a
+parseFile fp p = do
+  s <- safeRead fp
+  fromRight (runFileParser fp p s)
 
 safeRead :: FilePath -> Repl String
 safeRead file =  do
@@ -101,7 +106,7 @@ cmd s = do
 
 cmdSymmetric :: String -> Repl ()
 cmdSymmetric s = do
-  com <- parseRepl commandP s
+  com <- parseInteractive commandP s
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
@@ -115,7 +120,7 @@ cmdSymmetric s = do
 
 cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
-  tm <- parseRepl atermP s
+  tm <- parseInteractive atermP s
   evalOrder <- gets evalOrder
   env <- gets replEnv  
   let res = runEval (evalATermComplete tm) evalOrder env
@@ -200,12 +205,12 @@ unset_option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  case runEnvParser (stermP PrdRep) s of
+  case runInteractiveParser (stermP PrdRep) s of
     Right t -> do
       res <- fromRight $ inferSTerm PrdRep t env
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
-      case runEnvParser atermP s of
+      case runInteractiveParser atermP s of
         Right t -> do
           res <- fromRight $ inferATerm t env
           prettyRepl (" A :: " ++ ppPrint res)
@@ -267,7 +272,7 @@ show_type_option = Option
 -- Define
 
 def_cmd :: String -> Repl ()
-def_cmd s = case runEnvParser declarationP s of
+def_cmd s = case runInteractiveParser declarationP s of
               Right decl -> do
                 oldEnv <- gets replEnv
                 newEnv <- fromRight $ insertDecl decl oldEnv
@@ -288,11 +293,11 @@ def_option = Option
 save_cmd :: String -> Repl ()
 save_cmd s = do
   env <- gets replEnv
-  case runEnvParser typeSchemeP s of
+  case runInteractiveParser typeSchemeP s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runEnvParser (stermP PrdRep) s of
+    Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right t -> do
         trace <- fromRight $ inferSTermTraced PrdRep t env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
@@ -332,7 +337,7 @@ save_option = Option
 
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
-  (t1,t2) <- parseRepl subtypingProblemP s
+  (t1,t2) <- parseInteractive subtypingProblemP s
   aut1 <- fromRight (typeToAut t1)
   aut2 <- fromRight (typeToAut t2)
   prettyRepl $ isSubtype aut1 aut2
@@ -351,7 +356,7 @@ sub_option = Option
 
 simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
-  ty <- parseRepl typeSchemeP s
+  ty <- parseInteractive typeSchemeP s
   aut <- fromRight (typeToAut ty)
   prettyRepl (autToType aut)
 
@@ -371,12 +376,11 @@ load_cmd s = do
   load_file s
 
 load_file :: FilePath -> Repl ()
-load_file s = do
-  defs <- safeRead s
-  decls <- parseRepl programP defs
+load_file fp = do
+  decls <- parseFile fp programP
   newEnv <- fromRight $ inferProgram decls
   modifyEnvironment ((<>) newEnv)
-  prettyRepl $ "Successfully loaded: " ++ s
+  prettyRepl $ "Successfully loaded: " ++ fp
 
 load_option :: Option
 load_option = Option

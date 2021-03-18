@@ -3,6 +3,7 @@ module Pretty.Pretty where
 
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import Text.Megaparsec.Pos
 
 import Syntax.STerms
 import Syntax.ATerms
@@ -144,4 +145,14 @@ instance Pretty Error where
   pretty (GenConstraintsError err) = "Constraint generation error:" <+> pretty err
   pretty (SolveConstraintsError err) = "Constraint solving error:" <+> pretty err
   pretty (OtherError err) = "Other Error:" <+> pretty err
+
+instance Pretty Pos where
+  pretty p = pretty (unPos p)
+
+instance Pretty Loc where
+  pretty (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
+    pretty fp <> ":" <> pretty line1 <> ":" <> pretty column1 <> "-" <> pretty line2 <> ":" <> pretty column2
+
+instance Pretty LocatedError where
+  pretty (Located loc err) = vsep ["Error at:" <+> pretty loc, pretty err]
 

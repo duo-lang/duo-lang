@@ -5,6 +5,7 @@ import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Set (Set)
 import qualified Data.Set as S
+import Text.Megaparsec.Pos
 
 ----------------------------------------------------------------------------------
 -- Twice functor
@@ -18,6 +19,17 @@ twiceMap f g (Twice x y) = Twice (f x) (g y)
 instance Functor Twice where
   fmap f = twiceMap f f
 
+----------------------------------------------------------------------------------
+-- Source code locations
+----------------------------------------------------------------------------------
+
+data Loc = Loc SourcePos SourcePos
+
+data Located a = Located Loc a
+
+----------------------------------------------------------------------------------
+-- Errors
+----------------------------------------------------------------------------------
 
 data Error
   = ParseError String
@@ -26,6 +38,12 @@ data Error
   | SolveConstraintsError String
   | OtherError String
   deriving (Show, Eq)
+
+type LocatedError = Located Error
+
+----------------------------------------------------------------------------------
+-- Helper Functions
+----------------------------------------------------------------------------------
 
 allEq :: Eq a => [a] -> Bool
 allEq [] = True

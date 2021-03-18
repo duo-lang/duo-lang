@@ -31,8 +31,8 @@ filterEnvironment failingExamples Environment {..} =
 getEnvironment :: FilePath -> [String] -> IO (Either Error Environment)
 getEnvironment fp failingExamples = do
   s <- readFile fp
-  case runEnvParser programP s of
+  case runFileParser fp programP s of
     Right decls -> case inferProgram decls of
       Right env -> return $ Right (filterEnvironment failingExamples env)
-      Left err -> return $ Left err
+      Left (Located _ err) -> return $ Left err
     Left err -> return $ Left err
