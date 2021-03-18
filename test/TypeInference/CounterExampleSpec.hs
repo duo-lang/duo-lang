@@ -2,15 +2,11 @@ module TypeInference.CounterExampleSpec ( spec ) where
 
 import Control.Monad (forM_)
 import Data.Either (isLeft)
-import qualified Data.Map as M
 import Test.Hspec
 
 import TestUtils
 import Pretty.Pretty
-import Syntax.STerms
 import Syntax.Types
-import Syntax.Program
-import TypeInference.InferTypes
 
 instance Show (TypeScheme pol) where
   show = ppPrint
