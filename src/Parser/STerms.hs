@@ -67,7 +67,7 @@ casesP :: Parser ([SCase ()], NominalStructural)
 casesP = try structuralCases <|> nominalCases
   where
     structuralCases = braces $ do
-      cases <- try (singleCase Structural `sepBy` comma)
+      cases <- singleCase Structural `sepBy` comma
       return (cases, Structural)
     nominalCases = braces $ do
       -- There must be at least one case for a nominal type to be inferred
@@ -96,7 +96,7 @@ muAbstraction pc = do
     CnsRep -> return $ MuAbs pc () (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc ())
-stermP pc = try (parens (stermP pc))
+stermP pc = parens (stermP pc)
   <|> xtorCall Structural pc
   <|> xtorCall Nominal pc
   <|> patternMatch pc
