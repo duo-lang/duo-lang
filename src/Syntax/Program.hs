@@ -30,6 +30,9 @@ data Environment = Environment
   , declEnv :: [DataDecl]
   }
 
+instance Show Environment where
+  show _ = "<Environment>"
+
 instance Semigroup Environment where
   (Environment prdEnv1 cnsEnv1 cmdEnv1 defEnv1 declEnv1) <> (Environment prdEnv2 cnsEnv2 cmdEnv2 defEnv2 declEnv2) =
     Environment { prdEnv = M.union prdEnv1 prdEnv2

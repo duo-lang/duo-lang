@@ -12,12 +12,13 @@ import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import TypeInference.InferTypes
+import Utils
 
 instance Show (TypeScheme pol) where
   show = ppPrint
 
 failingExamples :: [String]
-failingExamples = ["div2and3"]
+failingExamples = []
 
 checkTerm :: PrdCnsRep pc -> Environment -> (FreeVarName, STerm pc ()) -> SpecWith ()
 checkTerm rep env (name,term) = it (name ++ " can be typechecked correctly") $ inferSTerm rep term env `shouldSatisfy` isRight
@@ -33,10 +34,11 @@ spec = do
     forM_ examples $ \example -> do
       describe ("The file " ++ example ++ " typechecks.") $ do
         env <- runIO $ getEnvironment example failingExamples
+        let env' = unsafeFromRight env
         when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-        forM_  (M.toList (prdEnv env)) $ \(name, (prd,_)) -> do
-          checkTerm PrdRep env (name, prd)
-        forM_  (M.toList (cnsEnv env)) $ \(name, (cns,_)) -> do
-          checkTerm CnsRep env (name, cns)
-        forM_  (M.toList (cmdEnv env)) $ \cmd -> do
-          checkCommand env cmd
+        forM_  (M.toList (prdEnv env')) $ \(name, (prd,_)) -> do
+          checkTerm PrdRep env' (name, prd)
+        forM_  (M.toList (cnsEnv env')) $ \(name, (cns,_)) -> do
+          checkTerm CnsRep env' (name, cns)
+        forM_  (M.toList (cmdEnv env')) $ \cmd -> do
+          checkCommand env' cmd

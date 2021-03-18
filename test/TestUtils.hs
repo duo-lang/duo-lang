@@ -1,11 +1,13 @@
 module TestUtils where
 
+import qualified Data.Map as M
 import System.Directory (listDirectory)
 
 import Parser.Parser
 import Syntax.Program
 import TypeInference.InferProgram (inferProgram)
-import qualified Data.Map as M
+import Utils
+
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
@@ -26,11 +28,11 @@ filterEnvironment failingExamples Environment {..} =
               , declEnv = declEnv
               }
 
-getEnvironment :: FilePath -> [String] -> IO Environment
+getEnvironment :: FilePath -> [String] -> IO (Either Error Environment)
 getEnvironment fp failingExamples = do
   s <- readFile fp
   case runEnvParser programP s of
     Right decls -> case inferProgram decls of
-      Right env -> return (filterEnvironment failingExamples env)
-      Left _err -> error $ "Could not load file: " ++ fp
-    Left _err -> error $ "Could not load file: " ++ fp
+      Right env -> return $ Right (filterEnvironment failingExamples env)
+      Left err -> return $ Left err
+    Left err -> return $ Left err
