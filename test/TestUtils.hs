@@ -29,6 +29,6 @@ filterEnvironment failingExamples Environment {..} =
 getEnvironment :: FilePath -> [String] -> IO Environment
 getEnvironment fp failingExamples = do
   s <- readFile fp
-  case runEnvParser environmentP mempty s of
-    Right env -> return (filterEnvironment failingExamples env)
+  case runEnvParser programP s of
+    Right decls -> return (filterEnvironment failingExamples (createEnv decls))
     Left _err -> error $ "Could not load file: " ++ fp

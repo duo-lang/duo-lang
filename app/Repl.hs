@@ -74,8 +74,7 @@ fromRight (Left err) = prettyRepl err >> abort
 
 parseRepl ::Parser a -> String -> Repl a
 parseRepl p s = do
-  env <- gets replEnv
-  fromRight (runEnvParser p env s)
+  fromRight (runEnvParser p s)
 
 safeRead :: FilePath -> Repl String
 safeRead file =  do
@@ -200,12 +199,12 @@ unset_option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  case runEnvParser (stermP PrdRep) env s of
+  case runEnvParser (stermP PrdRep) s of
     Right t -> do
       res <- fromRight $ inferSTerm PrdRep t env
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
-      case runEnvParser atermP env s of
+      case runEnvParser atermP s of
         Right t -> do
           res <- fromRight $ inferATerm t env
           prettyRepl (" A :: " ++ ppPrint res)
@@ -226,7 +225,8 @@ type_option = Option
 -- Show
 
 show_cmd :: String -> Repl ()
-show_cmd s = do
+show_cmd str = do
+  let s = trim str
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
     Just prd -> prettyRepl prd
@@ -268,11 +268,9 @@ show_type_option = Option
 -- Define
 
 def_cmd :: String -> Repl ()
-def_cmd s = do
-  env <- gets replEnv
-  case runEnvParser declarationP env s of
-    Right decl -> modifyEnvironment (insertDecl decl)
-    Left err -> prettyRepl err
+def_cmd s = case runEnvParser declarationP s of
+              Right decl -> modifyEnvironment (insertDecl decl)
+              Left err -> prettyRepl err
 
 def_option :: Option
 def_option = Option
@@ -288,11 +286,11 @@ def_option = Option
 save_cmd :: String -> Repl ()
 save_cmd s = do
   env <- gets replEnv
-  case runEnvParser typeSchemeP env s of
+  case runEnvParser typeSchemeP s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runEnvParser (stermP PrdRep) env s of
+    Left err1 -> case runEnvParser (stermP PrdRep) s of
       Right t -> do
         trace <- fromRight $ inferSTermTraced PrdRep t env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
@@ -391,7 +389,8 @@ load_cmd s = do
 load_file :: FilePath -> Repl ()
 load_file s = do
   defs <- safeRead s
-  newEnv <- parseRepl environmentP defs
+  decls <- parseRepl programP defs
+  let newEnv = createEnv decls
   modifyEnvironment ((<>) newEnv)
   prettyRepl $ "Successfully loaded: " ++ s
 

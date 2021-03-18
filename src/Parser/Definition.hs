@@ -13,23 +13,21 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import Syntax.Types
-import Syntax.Program
 import Utils
 
 data ParseReader = ParseReader
   { rvars :: Set TVar
   , tvars :: Set TVar
-  , parseEnv :: Syntax.Program.Environment
   }
 
-defaultParseReader :: Syntax.Program.Environment -> ParseReader
-defaultParseReader env = ParseReader S.empty S.empty env
+defaultParseReader :: ParseReader
+defaultParseReader = ParseReader S.empty S.empty
 
 -- A parser that can read values from an environment
 type Parser a = ReaderT ParseReader (Parsec Void String) a
 
-runEnvParser :: Parser a -> Syntax.Program.Environment -> String -> Either Error a
-runEnvParser p env input = case runParser (runReaderT (lexeme (p <* eof)) (defaultParseReader env)) "<interactive>" input of
+runEnvParser :: Parser a -> String -> Either Error a
+runEnvParser p input = case runParser (runReaderT (lexeme (p <* eof)) defaultParseReader) "<interactive>" input of
   Left err -> Left $ ParseError (errorBundlePretty err)
   Right x -> Right x
   where

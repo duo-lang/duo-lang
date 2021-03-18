@@ -15,15 +15,6 @@ failingExamples = []
 
 spec :: Spec
 spec = do
-  describe "All examples are closed." $ do
-    examples <- runIO getAvailableExamples
-    forM_ examples $ \example -> do
-      describe ("Examples in " ++ example ++ " are closed") $ do
-        env <- runIO $ getEnvironment example failingExamples
-        when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-        forM_ (M.toList (prdEnv env)) $ \(name,term) -> do
-          it (name ++ " does not contain free variables") $ isClosed_term term `shouldBe` True
-
   describe "All examples are locally closed." $ do
     examples <- runIO getAvailableExamples
     forM_ examples $ \example -> do
