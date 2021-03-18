@@ -12,5 +12,5 @@ insertDecl (CmdDecl v t)  env@Environment { cmdEnv }  = env { cmdEnv  = M.insert
 insertDecl (DefDecl v t)  env@Environment { defEnv }  = env { defEnv  = M.insert v (t,undefined) defEnv }
 insertDecl (DataDecl dcl) env@Environment { declEnv } = env { declEnv = dcl : declEnv }
 
-inferProgram :: [Declaration ()] -> Environment
-inferProgram = foldr insertDecl mempty 
+inferProgram :: [Declaration ()] -> Either Error Environment
+inferProgram decls = return $ foldr insertDecl mempty decls

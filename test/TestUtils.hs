@@ -30,5 +30,7 @@ getEnvironment :: FilePath -> [String] -> IO Environment
 getEnvironment fp failingExamples = do
   s <- readFile fp
   case runEnvParser programP s of
-    Right decls -> return (filterEnvironment failingExamples (inferProgram decls))
+    Right decls -> case inferProgram decls of
+      Right env -> return (filterEnvironment failingExamples env)
+      Left _err -> error $ "Could not load file: " ++ fp
     Left _err -> error $ "Could not load file: " ++ fp
