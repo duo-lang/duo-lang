@@ -63,12 +63,12 @@ evalApplyOnce (FreeVar PrdRep n _) cns = do
   env <- asks snd
   case M.lookup n (prdEnv env) of
     Nothing -> throwError $ EvalError $ "Encountered unbound free variable: " ++ show n
-    Just prd -> return (Just (Apply prd cns))
+    Just (prd,_) -> return (Just (Apply prd cns))
 evalApplyOnce prd (FreeVar CnsRep n _) = do
   env <- asks snd
   case M.lookup n (cnsEnv env) of
     Nothing -> throwError $ EvalError $ "Encountered unbound free variable: " ++ show n
-    Just cns -> return (Just (Apply prd cns))
+    Just (cns,_) -> return (Just (Apply prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall PrdRep xt args) cns@(XMatch CnsRep _ cases) = do
   (MkSCase _ argTypes cmd') <- lookupCase xt cases
@@ -133,7 +133,7 @@ evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep (BVar _) = return Nothing
 evalATermSingleStep (FVar x) = do
   env <- asks snd
-  return $ M.lookup x (defEnv env)
+  return $ fst <$> M.lookup x (defEnv env)
 evalATermSingleStep (Ctor xt args) | and (isValue <$> args) = return Nothing
                                    | otherwise = evalArgsSingleStep args >>= 
                                                  \args' -> return (Just (Ctor xt (fromJust args')))

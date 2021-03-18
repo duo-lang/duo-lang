@@ -34,9 +34,9 @@ spec = do
       describe ("The file " ++ example ++ " typechecks.") $ do
         env <- runIO $ getEnvironment example failingExamples
         when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-        forM_  (M.toList (prdEnv env)) $ \term -> do
-          checkTerm PrdRep env term
-        forM_  (M.toList (cnsEnv env)) $ \term -> do
-          checkTerm CnsRep env term
+        forM_  (M.toList (prdEnv env)) $ \(name, (prd,_)) -> do
+          checkTerm PrdRep env (name, prd)
+        forM_  (M.toList (cnsEnv env)) $ \(name, (cns,_)) -> do
+          checkTerm CnsRep env (name, cns)
         forM_  (M.toList (cmdEnv env)) $ \cmd -> do
           checkCommand env cmd

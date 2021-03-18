@@ -23,10 +23,10 @@ data Declaration a
 ---------------------------------------------------------------------------------
 
 data Environment = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd ())
-  , cnsEnv :: Map FreeVarName (STerm Cns ())
+  { prdEnv :: Map FreeVarName (STerm Prd (), TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns (), TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command ())
-  , defEnv :: Map FreeVarName (ATerm ())
+  , defEnv :: Map FreeVarName (ATerm (), TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 

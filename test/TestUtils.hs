@@ -4,7 +4,7 @@ import System.Directory (listDirectory)
 
 import Parser.Parser
 import Syntax.Program
-import TypeInference.InferProgram (createEnv)
+import TypeInference.InferProgram (inferProgram)
 import qualified Data.Map as M
 
 getAvailableCounterExamples :: IO [FilePath]
@@ -30,5 +30,5 @@ getEnvironment :: FilePath -> [String] -> IO Environment
 getEnvironment fp failingExamples = do
   s <- readFile fp
   case runEnvParser programP s of
-    Right decls -> return (filterEnvironment failingExamples (createEnv decls))
+    Right decls -> return (filterEnvironment failingExamples (inferProgram decls))
     Left _err -> error $ "Could not load file: " ++ fp

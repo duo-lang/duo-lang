@@ -371,7 +371,7 @@ load_file :: FilePath -> Repl ()
 load_file s = do
   defs <- safeRead s
   decls <- parseRepl programP defs
-  let newEnv = createEnv decls
+  let newEnv = inferProgram decls
   modifyEnvironment ((<>) newEnv)
   prettyRepl $ "Successfully loaded: " ++ s
 

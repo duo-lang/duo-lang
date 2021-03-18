@@ -29,10 +29,10 @@ spec = do
     forM_ examples $ \example -> do
       describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
         env <- runIO $ getEnvironment example []
-        forM_  (M.toList (prdEnv env)) $ \prd -> do
-          checkTerm PrdRep env prd
-        forM_  (M.toList (cnsEnv env)) $ \cns -> do
-          checkTerm CnsRep env cns
+        forM_  (M.toList (prdEnv env)) $ \(name, (prd,_)) -> do
+          checkTerm PrdRep env (name,prd)
+        forM_  (M.toList (cnsEnv env)) $ \(name, (cns,_)) -> do
+          checkTerm CnsRep env (name,cns)
         forM_  (M.toList (cmdEnv env)) $ \cmd -> do
           checkCommand env cmd
 
