@@ -40,3 +40,7 @@ enumerate xs = zip [0..] xs
 trim :: String -> String
 trim = f . f
   where f = reverse . dropWhile isSpace
+
+unsafeFromRight :: Either a b -> b
+unsafeFromRight (Left _) = error "unsafeFromRight applied to Left"
+unsafeFromRight (Right x) = x

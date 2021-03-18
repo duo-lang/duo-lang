@@ -162,12 +162,12 @@ genConstraintsSTerm (BoundVar rep idx) = do
 genConstraintsSTerm (FreeVar PrdRep v _) = do
   prdEnv <- asks (P.prdEnv . env)
   case M.lookup v prdEnv of
-    Just prd -> genConstraintsSTerm prd
+    Just (prd,_) -> genConstraintsSTerm prd -- TODO, replace with rhs.
     Nothing -> throwError $ GenConstraintsError $ "Unbound free producer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm (FreeVar CnsRep v _) = do
   cnsEnv <- asks (P.cnsEnv . env)
   case M.lookup v cnsEnv of
-    Just cns -> genConstraintsSTerm cns
+    Just (cns,_) -> genConstraintsSTerm cns -- TODO, replace with rhs.
     Nothing -> throwError $ GenConstraintsError $ "Unbound free consumer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args

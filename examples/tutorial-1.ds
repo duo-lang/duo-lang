@@ -96,13 +96,13 @@ def isZero := comatch { Ap(x) => match x with { Zero => True, Succ(x) => False }
 # All toplevel declarations are defined by mutual recursion, so it is possible to define a
 # recursive function like `isEven`:
 
-def isEven := comatch { Ap(x) => match x with
-       { Zero => True
-       , Succ(x) => isOdd.Ap(x) }};
+# def isEven := comatch { Ap(x) => match x with
+#        { Zero => True
+#        , Succ(x) => isOdd.Ap(x) }};
 
-def isOdd := comatch { Ap(x) => match x with
-       { Zero => False
-       , Succ(x) => isEven.Ap(x) }};
+# def isOdd := comatch { Ap(x) => match x with
+#        { Zero => False
+#        , Succ(x) => isEven.Ap(x) }};
 
 # The focus of DualSub is on the exploration of dualities in programming language design, so we want to
 # provide a minimal set of different kinds of types in the language.

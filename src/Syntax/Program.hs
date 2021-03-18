@@ -8,7 +8,7 @@ import Syntax.ATerms
 import Syntax.Types
 
 ---------------------------------------------------------------------------------
--- Program
+-- Declarations
 ---------------------------------------------------------------------------------
 
 data Declaration a
@@ -16,25 +16,29 @@ data Declaration a
   | CnsDecl FreeVarName (STerm Cns a)
   | CmdDecl FreeVarName (Command a)
   | DefDecl FreeVarName (ATerm a)
-  | TypDecl TypeName (TypeScheme Pos)
   | DataDecl DataDecl
 
+---------------------------------------------------------------------------------
+-- Environment
+---------------------------------------------------------------------------------
+
 data Environment = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd ())
-  , cnsEnv :: Map FreeVarName (STerm Cns ())
+  { prdEnv :: Map FreeVarName (STerm Prd (), TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns (), TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command ())
-  , defEnv :: Map FreeVarName (ATerm ())
-  , typEnv :: Map TypeName (TypeScheme Pos)
+  , defEnv :: Map FreeVarName (ATerm (), TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 
+instance Show Environment where
+  show _ = "<Environment>"
+
 instance Semigroup Environment where
-  (Environment prdEnv1 cnsEnv1 cmdEnv1 defEnv1 typEnv1 declEnv1) <> (Environment prdEnv2 cnsEnv2 cmdEnv2 defEnv2 typEnv2 declEnv2) =
+  (Environment prdEnv1 cnsEnv1 cmdEnv1 defEnv1 declEnv1) <> (Environment prdEnv2 cnsEnv2 cmdEnv2 defEnv2 declEnv2) =
     Environment { prdEnv = M.union prdEnv1 prdEnv2
                 , cnsEnv = M.union cnsEnv1 cnsEnv2
                 , cmdEnv = M.union cmdEnv1 cmdEnv2
                 , defEnv = M.union defEnv1 defEnv2
-                , typEnv = M.union typEnv1 typEnv2
                 , declEnv = declEnv1 ++ declEnv2
                 }
 
@@ -44,20 +48,8 @@ instance Monoid Environment where
     , cnsEnv = M.empty
     , cmdEnv = M.empty
     , defEnv = M.empty
-    , typEnv = M.empty
     , declEnv = []
     }
-
-insertDecl :: Declaration () -> Environment -> Environment
-insertDecl (PrdDecl v t)  env@Environment { prdEnv }  = env { prdEnv  = M.insert v t prdEnv }
-insertDecl (CnsDecl v t)  env@Environment { cnsEnv }  = env { cnsEnv  = M.insert v t cnsEnv }
-insertDecl (CmdDecl v t)  env@Environment { cmdEnv }  = env { cmdEnv  = M.insert v t cmdEnv }
-insertDecl (DefDecl v t)  env@Environment { defEnv }  = env { defEnv  = M.insert v t defEnv }
-insertDecl (TypDecl n t)  env@Environment { typEnv }  = env { typEnv  = M.insert n t typEnv }
-insertDecl (DataDecl dcl) env@Environment { declEnv } = env { declEnv = dcl : declEnv }
-
-createEnv :: [Declaration ()] -> Environment
-createEnv = foldr insertDecl mempty 
 
 envToXtorMap :: Environment -> Map XtorName (TypArgs Pos)
 envToXtorMap Environment { declEnv } = M.unions xtorMaps

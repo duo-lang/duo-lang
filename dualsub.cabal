@@ -73,6 +73,7 @@ library
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
       TypeInference.GenerateConstraints
+      TypeInference.InferProgram
       TypeInference.InferTypes
       TypeInference.SolveConstraints
       Utils

@@ -361,10 +361,6 @@ prd div2or3 := comatch {
                    match { 'True  => div2 >> 'Ap(n)[k]
                          , 'False => div3 >> 'Ap(n)[k] }};
 
-## div2and3 doesn't typecheck
-## divides n by two and three
-prd div2and3 := comatch { 'Ap(n)[k] => comp >> 'Ap(div2,div3)['Ap(n)[k]]};
-
 ## pairs (data type)
 
 ## fst :: forall t0. { 'Ap(< 'Pair(t0,Top) >)[t0] }
@@ -573,5 +569,4 @@ prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k
 cmd exampleCommand1 := Print(2);
 cmd exampleCommand2 := mu x.Print(2) >> mu* y. Print(4);
 
-def newStylePred := match x with { 'Z() => 'Z(), 'S(x) => x };
 def newStylePredTwo := (comatch { 'Ap(x) => match x with { 'Z() => 'Z(), 'S(x) => x }}.'Ap('S('S('S('Z())))));
