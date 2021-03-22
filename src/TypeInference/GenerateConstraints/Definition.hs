@@ -65,6 +65,9 @@ runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) in
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
+throwGenError :: String -> GenM a
+throwGenError msg = throwError $ GenConstraintsError msg
+
 -- | Generate a fresh type variable.
 freshTVar :: GenM (Typ Pos, Typ Neg)
 freshTVar = do
@@ -111,7 +114,7 @@ lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs ())
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (P.envToXtorMap env) of
-    Nothing -> throwError $ GenConstraintsError ("GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up.")
+    Nothing -> throwGenError $ "GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up."
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
       let prds = (\_ -> FreeVar PrdRep "y" ()) <$> prdTypes
       let cnss = (\_ -> FreeVar CnsRep "y" ()) <$> cnsTypes
@@ -121,5 +124,5 @@ lookupXtor :: XtorName -> GenM DataDecl
 lookupXtor xt = do
   env <- asks env
   case P.lookupXtor xt env of
-    Nothing -> throwError $ GenConstraintsError ("Constructor " ++ ppPrint xt ++ " is not contained in program")
+    Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
     Just decl -> return decl

@@ -4,7 +4,6 @@ module TypeInference.GenerateConstraints.STerms
   ) where
 
 import Control.Monad.Reader
-import Control.Monad.Except
 import qualified Data.Map as M
 
 
@@ -13,7 +12,6 @@ import Syntax.STerms
 import qualified Syntax.Program as P
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
-import Utils
 
 ---------------------------------------------------------------------------------------------
 -- Symmetric Terms
@@ -27,8 +25,8 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> GenM ()
 checkExhaustiveness matched decl = do
   let declared = sig_name <$> (data_xtors decl)
-  forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwError $ GenConstraintsError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
-  forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwError $ GenConstraintsError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
+  forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
+  forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
 genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs (), TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
@@ -48,12 +46,12 @@ genConstraintsSTerm (FreeVar PrdRep v _) = do
   prdEnv <- asks (P.prdEnv . env)
   case M.lookup v prdEnv of
     Just (prd,_) -> genConstraintsSTerm prd -- TODO, replace with rhs.
-    Nothing -> throwError $ GenConstraintsError $ "Unbound free producer variable in STerm: " ++ ppPrint v
+    Nothing -> throwGenError $ "Unbound free producer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm (FreeVar CnsRep v _) = do
   cnsEnv <- asks (P.cnsEnv . env)
   case M.lookup v cnsEnv of
     Just (cns,_) -> genConstraintsSTerm cns -- TODO, replace with rhs.
-    Nothing -> throwError $ GenConstraintsError $ "Unbound free consumer variable in STerm: " ++ ppPrint v
+    Nothing -> throwGenError $ "Unbound free consumer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
   return (XtorCall PrdRep xt args', TyStructural PosRep DataRep [MkXtorSig xt argTypes])
@@ -78,7 +76,7 @@ genConstraintsSTerm (XMatch CnsRep Structural cases) = do
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   return (XMatch CnsRep Structural (fst <$> cases'), TyStructural NegRep DataRep (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
-genConstraintsSTerm (XMatch _ Nominal []) = throwError $ GenConstraintsError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
+genConstraintsSTerm (XMatch _ Nominal []) = throwGenError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
 genConstraintsSTerm (XMatch PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupXtor (scase_name pmcase)
   checkExhaustiveness (scase_name <$> cases) tn

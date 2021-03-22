@@ -3,11 +3,9 @@ module TypeInference.GenerateConstraints.ATerms
   ) where
 
 import Control.Monad.Reader
-import Control.Monad.Except
 
 import Syntax.ATerms
 import Syntax.Types
-import Utils
 import TypeInference.GenerateConstraints.Definition
 
 ---------------------------------------------------------------------------------------------
@@ -19,7 +17,7 @@ genConstraintsATerm :: ATerm () -> GenM (ATerm (Typ Pos), Typ Pos)
 genConstraintsATerm (BVar idx) = do
   ty <- lookupType PrdRep idx
   return (BVar idx, ty)
-genConstraintsATerm (FVar fv) = throwError $ GenConstraintsError $ "Free type var: " ++ fv
+genConstraintsATerm (FVar fv) = throwGenError $ "Free type var: " ++ fv
 genConstraintsATerm (Ctor xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   let ty = TyStructural PosRep DataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
