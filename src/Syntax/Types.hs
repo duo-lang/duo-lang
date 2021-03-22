@@ -1,5 +1,7 @@
 module Syntax.Types where
 
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.List (nub)
 
 import Syntax.CommonTerm
@@ -202,6 +204,8 @@ freeTypeVars = nub . freeTypeVars'
 generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
+substituteType :: Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
+substituteType = undefined
 ------------------------------------------------------------------------------
 -- Constraints
 ------------------------------------------------------------------------------
