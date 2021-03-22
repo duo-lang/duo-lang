@@ -3,10 +3,57 @@ module TypeInference.InferProgram ( insertDecl, inferProgram )where
 import Data.Bifunctor (first)
 import qualified Data.Map as M
 
-import TypeInference.InferTypes
-import Syntax.CommonTerm
+import Syntax.ATerms
+import Syntax.STerms
+import Syntax.Types
 import Syntax.Program
 import Utils
+
+import TypeAutomata.ToAutomaton
+import TypeAutomata.Determinize
+import TypeAutomata.Minimize
+import TypeAutomata.FromAutomaton
+import TypeAutomata.FlowAnalysis
+import TypeInference.GenerateConstraints.Definition
+import TypeInference.GenerateConstraints.ATerms
+import TypeInference.GenerateConstraints.STerms
+import TypeInference.SolveConstraints (solveConstraints)
+
+------------------------------------------------------------------------------
+-- Symmetric Terms and Commands
+------------------------------------------------------------------------------
+
+inferSTerm :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm rep tm env = do
+  ((_,ty), constraintSet) <- runGenM env (genConstraintsSTerm tm)
+  solverState <- solveConstraints constraintSet
+  typeAut <- solverStateToTypeAut solverState (prdCnsToPol rep) ty
+  let typeAutDet = determinize typeAut
+  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
+  let minTypeAut = minimize typeAutDetAdms
+  let resType = autToType minTypeAut
+  return resType
+
+checkCmd :: Command () -> Environment -> Either Error ()
+checkCmd cmd env = do
+  constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
+  _ <- solveConstraints constraints
+  return ()
+
+------------------------------------------------------------------------------
+-- ASymmetric Terms
+------------------------------------------------------------------------------
+
+inferATerm :: ATerm () -> Environment -> Either Error (TypeScheme Pos)
+inferATerm tm env = do
+  ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
+  solverState <- solveConstraints constraintSet
+  typeAut <- solverStateToTypeAut solverState PosRep ty
+  let typeAutDet = determinize typeAut
+  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
+  let minTypeAut = minimize typeAutDetAdms
+  let resType = autToType minTypeAut
+  return resType
 
 insertDecl :: Declaration () -> Environment -> Either LocatedError Environment
 insertDecl (PrdDecl loc v t)  env@Environment { prdEnv }  = do
