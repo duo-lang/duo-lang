@@ -380,6 +380,7 @@ load_file fp = do
   decls <- parseFile fp programP
   newEnv <- fromRight $ inferProgram decls
   modifyEnvironment ((<>) newEnv)
+  prettyRepl newEnv
   prettyRepl $ "Successfully loaded: " ++ fp
 
 load_option :: Option
