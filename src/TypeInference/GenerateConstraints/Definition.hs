@@ -82,6 +82,10 @@ freshTVars (Twice prdArgs cnsArgs) = do
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\_ -> freshTVar)
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
+
+instantiateTypeScheme :: TypeScheme pol -> GenM (Typ pol)
+instantiateTypeScheme = undefined
+
 -- | We map producer terms to positive types, and consumer terms to negative types.
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
   PrdCnsToPol Prd = Pos
