@@ -205,7 +205,26 @@ generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme (freeTypeVars ty) ty
 
 substituteType :: Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
-substituteType = undefined
+substituteType _ ty@(TyVar _ Recursive _) = ty
+substituteType m (TyVar PosRep Normal tv) =
+  case M.lookup tv m of
+    Nothing -> (TyVar PosRep Normal tv)
+    Just (ty,_) -> ty
+substituteType m (TyVar NegRep Normal tv) =
+  case M.lookup tv m of
+    Nothing -> (TyVar NegRep Normal tv)
+    Just (_,ty) -> ty
+substituteType m (TyStructural polrep dcrep args) = TyStructural polrep dcrep (substituteTypeArg m <$> args)
+substituteType _ ty@(TyNominal _ _) = ty
+substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
+substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
+
+substituteTypeArg :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
+substituteTypeArg m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArg' m sig_args)
+
+substituteTypeArg' :: Map TVar (Typ Pos, Typ Neg) -> TypArgs pol -> TypArgs pol
+substituteTypeArg' m MkTypArgs { prdTypes, cnsTypes } = MkTypArgs (substituteType m <$> prdTypes) (substituteType m <$> cnsTypes)
+
 ------------------------------------------------------------------------------
 -- Constraints
 ------------------------------------------------------------------------------
