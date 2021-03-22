@@ -119,8 +119,8 @@ subConstraints :: Constraint -> SolverM [Constraint]
 subConstraints (SubType (TySet PosRep tys) ty)  = return [SubType ty' ty | ty' <- tys]
 subConstraints (SubType ty (TySet NegRep tys))  = return [SubType ty ty' | ty' <- tys]
 -- Recursive constraints
-subConstraints (SubType (TyRec _rep _tv _ty) ty')  = return [SubType (error "TODO: implement unrolling of rec type") ty']
-subConstraints (SubType ty' (TyRec _rep _tv _ty))  = return [SubType ty' (error "TODO: implement unrolling of rec type")]
+subConstraints (SubType ty@(TyRec _ _ _) ty')  = return [SubType (unfoldRecType ty) ty']
+subConstraints (SubType ty' ty@(TyRec _ _ _))  = return [SubType ty' (unfoldRecType ty)]
 -- Data/Data and Codata/Codata constraints
 subConstraints (SubType (TyStructural PosRep DataRep xtors1) (TyStructural NegRep DataRep xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
@@ -147,10 +147,18 @@ subConstraints cs@(SubType (TyStructural _ CodataRep _) (TyStructural _ DataRep 
 subConstraints (SubType (TyStructural _ _ _) (TyNominal _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType (TyNominal _ _) (TyStructural _ _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
-subConstraints (SubType (TyVar _ _ _) _) =
-  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
-subConstraints (SubType _ (TyVar _ _ _)) =
-  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"]
+subConstraints (SubType ty1@(TyVar _ _ _) ty2) =
+  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
+                   , ppPrint ty1
+                   , "<:"
+                   , ppPrint ty2
+                   ]
+subConstraints (SubType ty1 ty2@(TyVar _ _ _)) =
+  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
+                   , ppPrint ty1
+                   , "<:"
+                   , ppPrint ty2
+                   ]
 
 ------------------------------------------------------------------------------
 -- Exported Function

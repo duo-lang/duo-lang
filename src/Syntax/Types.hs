@@ -1,5 +1,7 @@
 module Syntax.Types where
 
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.List (nub)
 
 import Syntax.CommonTerm
@@ -201,6 +203,52 @@ freeTypeVars = nub . freeTypeVars'
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme (freeTypeVars ty) ty
+
+------------------------------------------------------------------------------
+-- Substitution
+------------------------------------------------------------------------------
+
+-- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
+unfoldRecType :: Typ pol -> Typ pol
+unfoldRecType recty@(TyRec PosRep var ty) = substituteType' Recursive (M.fromList [(var,(recty, undefined))]) ty
+unfoldRecType recty@(TyRec NegRep var ty) = substituteType' Recursive (M.fromList [(var,(undefined,recty))]) ty
+unfoldRecType ty = ty
+
+substituteType' :: TVarKind -> Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
+substituteType' Recursive m (TyVar PosRep Recursive tv) =
+  case M.lookup tv m of
+    Nothing -> (TyVar PosRep Recursive tv)
+    Just (ty,_) -> ty
+substituteType' Recursive m (TyVar NegRep Recursive tv) =
+  case M.lookup tv m of
+    Nothing -> (TyVar NegRep Recursive tv)
+    Just (_,ty) -> ty
+substituteType' Normal _ ty@(TyVar _ Recursive _) = ty
+-- Normal Type Variables
+substituteType' Normal m (TyVar PosRep Normal tv) =
+  case M.lookup tv m of
+    Nothing -> (TyVar PosRep Normal tv)
+    Just (ty,_) -> ty
+substituteType' Normal m (TyVar NegRep Normal tv) =
+  case M.lookup tv m of
+    Nothing -> (TyVar NegRep Normal tv)
+    Just (_,ty) -> ty
+substituteType' Recursive _ ty@(TyVar _ Normal _) = ty
+-- Other cases
+substituteType' k m (TyStructural polrep dcrep args) = TyStructural polrep dcrep (substituteXtorSig k m <$> args)
+substituteType' _ _ ty@(TyNominal _ _) = ty
+substituteType' k m (TySet rep args) = TySet rep (substituteType' k m <$> args)
+substituteType' k m (TyRec rep tv arg) = TyRec rep tv (substituteType' k m arg)
+
+substituteXtorSig :: TVarKind -> Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
+substituteXtorSig k m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArgs k m sig_args)
+
+substituteTypeArgs :: TVarKind -> Map TVar (Typ Pos, Typ Neg) -> TypArgs pol -> TypArgs pol
+substituteTypeArgs k m MkTypArgs { prdTypes, cnsTypes } =
+  MkTypArgs (substituteType' k m <$> prdTypes) (substituteType' k m <$> cnsTypes)
+
+substituteType :: Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
+substituteType = substituteType' Normal
 
 ------------------------------------------------------------------------------
 -- Constraints

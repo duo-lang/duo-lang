@@ -3,9 +3,12 @@ module TypeInference.GenerateConstraints.ATerms
   ) where
 
 import Control.Monad.Reader
+import qualified Data.Map as M
 
+import Pretty.Pretty
 import Syntax.ATerms
 import Syntax.Types
+import qualified Syntax.Program as P
 import TypeInference.GenerateConstraints.Definition
 
 ---------------------------------------------------------------------------------------------
@@ -17,7 +20,13 @@ genConstraintsATerm :: ATerm () -> GenM (ATerm (Typ Pos), Typ Pos)
 genConstraintsATerm (BVar idx) = do
   ty <- lookupType PrdRep idx
   return (BVar idx, ty)
-genConstraintsATerm (FVar fv) = throwGenError $ "Free type var: " ++ fv
+genConstraintsATerm (FVar fv) = do
+  defEnv <- asks (P.defEnv . env)
+  case M.lookup fv defEnv of
+    Just (_,tys) -> do
+      ty <- instantiateTypeScheme tys
+      return (FVar fv, ty)
+    Nothing -> throwGenError $ "Unbound free producer variable in ATerm: " ++ ppPrint fv
 genConstraintsATerm (Ctor xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   let ty = TyStructural PosRep DataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
