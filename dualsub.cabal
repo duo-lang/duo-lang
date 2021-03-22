@@ -45,7 +45,8 @@ common shared-build-depends
                      KindSignatures,
                      StandaloneDeriving,
                      TypeFamilies,
-                     ViewPatterns
+                     ViewPatterns,
+                     GeneralizedNewtypeDeriving
 
 library
   import: shared-build-depends
