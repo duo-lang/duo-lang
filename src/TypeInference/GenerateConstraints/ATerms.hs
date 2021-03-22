@@ -1,4 +1,6 @@
-module TypeInference.GenerateConstraints.ATerms where
+module TypeInference.GenerateConstraints.ATerms
+  ( genConstraintsATerm
+  ) where
 
 import Control.Monad.Reader
 import Control.Monad.Except
