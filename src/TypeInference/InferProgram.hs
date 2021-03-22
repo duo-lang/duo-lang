@@ -44,9 +44,9 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATerm :: ATerm () -> Environment -> Either Error (TypeScheme Pos)
-inferATerm tm env = do
-  ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
+inferATerm :: FreeVarName -> ATerm () -> Environment -> Either Error (TypeScheme Pos)
+inferATerm v tm env = do
+  ((_, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
   solverState <- solveConstraints constraintSet
   typeAut <- solverStateToTypeAut solverState PosRep ty
   let typeAutDet = determinize typeAut
@@ -66,7 +66,7 @@ insertDecl (CmdDecl loc v t)  env@Environment { cmdEnv }  = do
   first (Located loc) $ checkCmd t env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
 insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
-  ty <- first (Located loc) $ inferATerm t env
+  ty <- first (Located loc) $ inferATerm v t env
   return $ env { defEnv  = M.insert v (t,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }

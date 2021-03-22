@@ -1,5 +1,6 @@
 module TypeInference.GenerateConstraints.ATerms
   ( genConstraintsATerm
+  , genConstraintsATermRecursive
   ) where
 
 import Control.Monad.Reader
@@ -8,7 +9,7 @@ import qualified Data.Map as M
 import Pretty.Pretty
 import Syntax.ATerms
 import Syntax.Types
-import qualified Syntax.Program as P
+import Syntax.Program
 import TypeInference.GenerateConstraints.Definition
 
 ---------------------------------------------------------------------------------------------
@@ -21,7 +22,7 @@ genConstraintsATerm (BVar idx) = do
   ty <- lookupType PrdRep idx
   return (BVar idx, ty)
 genConstraintsATerm (FVar fv) = do
-  defEnv <- asks (P.defEnv . env)
+  defEnv <- asks (defEnv . env)
   case M.lookup fv defEnv of
     Just (_,tys) -> do
       ty <- instantiateTypeScheme tys
@@ -63,3 +64,11 @@ genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
   return (MkACase acase_name argtsPos acase_term', sig)
 
+
+genConstraintsATermRecursive :: FreeVarName -> ATerm () -> GenM (ATerm (Typ Pos), Typ Pos)
+genConstraintsATermRecursive fv tm = do
+  (x,y) <- freshTVar
+  let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar fv, TypeScheme [] x) defEnv }
+  (tm, ty) <- local modifyEnv (genConstraintsATerm tm)
+  addConstraint (SubType ty y)
+  return (tm, ty)
