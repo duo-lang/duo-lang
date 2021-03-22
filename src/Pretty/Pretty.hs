@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty.Pretty where
 
+import qualified Data.Map as M
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Text.Megaparsec.Pos
@@ -8,6 +9,7 @@ import Text.Megaparsec.Pos
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
+import Syntax.Program
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -134,6 +136,20 @@ instance Pretty TypeName where
 instance Pretty DataDecl where
   pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
   pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+
+---------------------------------------------------------------------------------
+-- Prettyprinting of Environments
+---------------------------------------------------------------------------------
+
+instance Pretty Environment where
+  pretty Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
+    vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
+    where
+      ppPrds = vsep $ "Producers:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> pretty ty) <$> (M.toList prdEnv))
+      ppCns  = vsep $ "Consumers:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> pretty ty) <$> (M.toList cnsEnv))
+      ppCmds = vsep $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
+      ppDefs = vsep $ "Definitions:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> pretty ty) <$> (M.toList defEnv))
+      ppDecls = vsep $ "Type declarations:" : (pretty <$> declEnv)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
