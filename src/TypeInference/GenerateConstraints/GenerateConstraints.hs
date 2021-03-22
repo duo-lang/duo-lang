@@ -1,4 +1,4 @@
-module TypeInference.GenerateConstraints
+module TypeInference.GenerateConstraints.GenerateConstraints
   ( sgenerateConstraints
   , agenerateConstraints
   , sgenerateConstraintsCmd

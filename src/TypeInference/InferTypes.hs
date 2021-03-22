@@ -13,7 +13,7 @@ import TypeAutomata.Determinize
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
 import TypeAutomata.FlowAnalysis
-import TypeInference.GenerateConstraints
+import TypeInference.GenerateConstraints.GenerateConstraints
 import TypeInference.SolveConstraints (solveConstraints)
 
 ------------------------------------------------------------------------------
