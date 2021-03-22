@@ -1,0 +1,8 @@
+# prd add := comatch { 'Ap(x,y)[k] =>
+#                        x
+#                        >>
+#                        match { 'Zero    => y >> k
+#                              , 'Succ(z) => add >> 'Ap(z,'Succ(y))[k]
+#                              }
+#                    };
+

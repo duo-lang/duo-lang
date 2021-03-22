@@ -73,7 +73,9 @@ library
       TypeAutomata.Minimize
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
-      TypeInference.GenerateConstraints
+      TypeInference.GenerateConstraints.ATerms
+      TypeInference.GenerateConstraints.Definition
+      TypeInference.GenerateConstraints.STerms
       TypeInference.InferProgram
       TypeInference.InferTypes
       TypeInference.SolveConstraints
