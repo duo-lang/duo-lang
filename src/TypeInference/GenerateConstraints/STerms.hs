@@ -7,7 +7,6 @@ import qualified Data.Map as M
 
 import Pretty.Pretty
 import Syntax.STerms
-import Syntax.Program (Environment)
 import qualified Syntax.Program as P
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
@@ -113,10 +112,3 @@ genConstraintsCommand (Apply t1 t2) = do
   addConstraint (SubType ty1 ty2)
   return (Apply t1' t2')
 
-sgenerateConstraints :: STerm pc ()
-                      -> Environment
-                      -> Either Error ((STerm pc (), Typ (PrdCnsToPol pc)), ConstraintSet)
-sgenerateConstraints tm env = runGenM env (genConstraintsSTerm tm)
-
-sgenerateConstraintsCmd :: Command () -> Environment -> Either Error ConstraintSet
-sgenerateConstraintsCmd cmd env = snd <$> runGenM env (genConstraintsCommand cmd)

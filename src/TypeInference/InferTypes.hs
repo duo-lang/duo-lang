@@ -37,7 +37,7 @@ data TypeInferenceTrace pol = TypeInferenceTrace
 
 inferSTermTraced :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
 inferSTermTraced rep tm env = do
-  ((_,ty), constraintSet) <- sgenerateConstraints tm env
+  ((_,ty), constraintSet) <- runGenM env (genConstraintsSTerm tm)
   solverState <- solveConstraints constraintSet
   typeAut <- solverStateToTypeAut solverState (prdCnsToPol rep) ty
   let typeAutDet = determinize typeAut
@@ -65,7 +65,7 @@ inferSTerm rep tm env = do
 
 checkCmd :: Command () -> Environment -> Either Error ()
 checkCmd cmd env = do
-  constraints <- sgenerateConstraintsCmd cmd env
+  constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   _ <- solveConstraints constraints
   return ()
 
@@ -75,7 +75,7 @@ checkCmd cmd env = do
 
 inferATermTraced :: ATerm () -> Environment -> Either Error (TypeInferenceTrace Pos)
 inferATermTraced tm env = do
-  ((_, ty), constraintSet) <- agenerateConstraints tm env
+  ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
   solverState <- solveConstraints constraintSet
   typeAut <- solverStateToTypeAut solverState PosRep ty
   let typeAutDet = determinize typeAut

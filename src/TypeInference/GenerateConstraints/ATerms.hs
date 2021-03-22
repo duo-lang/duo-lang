@@ -5,9 +5,9 @@ import Control.Monad.Except
 
 import Syntax.ATerms
 import Syntax.Types
-import Syntax.Program (Environment)
 import Utils
 import TypeInference.GenerateConstraints.Definition
+
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------------------
@@ -53,7 +53,4 @@ genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
   (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
   return (MkACase acase_name argtsPos acase_term', sig)
-
-agenerateConstraints :: ATerm () -> Environment -> Either Error ((ATerm (Typ Pos), Typ Pos), ConstraintSet)
-agenerateConstraints tm env = runGenM env (genConstraintsATerm tm)
 
