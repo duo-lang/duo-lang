@@ -21,6 +21,8 @@ import Syntax.CommonTerm
 -- This terminology is motivated by their distinction w.r.t. the symmetric terms
 -- which support both sorts of terms on equal footing.
 --
+-- ## Variable representation
+--
 -- We use the locally nameless representation for terms, which combines names for
 -- free variables with  anonymous deBruijn indexes for bound variables.
 -- The locally namelesss representation is well documented here:
