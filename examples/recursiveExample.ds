@@ -1,8 +1,12 @@
-# prd add := comatch { 'Ap(x,y)[k] =>
-#                        x
-#                        >>
-#                        match { 'Zero    => y >> k
-#                              , 'Succ(z) => add >> 'Ap(z,'Succ(y))[k]
-#                              }
-#                    };
+prd addS := comatch { 'Ap(x,y)[k] =>
+                       x
+                       >>
+                       match { 'Zero    => y >> k
+                             , 'Succ(z) => addS >> 'Ap(z,'Succ(y))[k]
+                             }
+                   };
 
+def addA := comatch { 'Ap(x,y) => match x with { 'Zero => y
+                                               , 'Succ(z) => addA.'Ap(z, 'Succ(y))
+					      }
+		     };

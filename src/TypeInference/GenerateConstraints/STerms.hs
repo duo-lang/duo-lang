@@ -1,5 +1,6 @@
 module TypeInference.GenerateConstraints.STerms
   ( genConstraintsSTerm
+  , genConstraintsSTermRecursive
   , genConstraintsCommand
   ) where
 
@@ -9,7 +10,7 @@ import qualified Data.Map as M
 
 import Pretty.Pretty
 import Syntax.STerms
-import qualified Syntax.Program as P
+import Syntax.Program hiding (lookupXtor)
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
 
@@ -39,14 +40,14 @@ genConstraintsSTerm (BoundVar rep idx) = do
   ty <- lookupType rep idx
   return (BoundVar rep idx, ty)
 genConstraintsSTerm tm@(FreeVar PrdRep v _) = do
-  prdEnv <- asks (P.prdEnv . env)
+  prdEnv <- asks (prdEnv . env)
   case M.lookup v prdEnv of
     Just (_,tys) -> do
       ty <- instantiateTypeScheme tys
       return (tm, ty)
     Nothing -> throwGenError $ "Unbound free producer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm tm@(FreeVar CnsRep v _) = do
-  cnsEnv <- asks (P.cnsEnv . env)
+  cnsEnv <- asks (cnsEnv . env)
   case M.lookup v cnsEnv of
     Just (_,tys) -> do
       ty <- instantiateTypeScheme tys
@@ -112,4 +113,23 @@ genConstraintsCommand (Apply t1 t2) = do
   (t2',ty2) <- genConstraintsSTerm t2
   addConstraint (SubType ty1 ty2)
   return (Apply t1' t2')
+
+
+---------------------------------------------------------------------------------------------
+-- Symmetric Terms with recursive binding
+---------------------------------------------------------------------------------------------
+
+genConstraintsSTermRecursive :: FreeVarName -> PrdCnsRep pc -> STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
+genConstraintsSTermRecursive fv PrdRep tm = do
+  (x,y) <- freshTVar
+  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar PrdRep fv (), TypeScheme [] x) prdEnv }
+  (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
+  addConstraint (SubType ty y)
+  return (tm, ty)
+genConstraintsSTermRecursive fv CnsRep tm = do
+  (x,y) <- freshTVar
+  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar CnsRep fv (), TypeScheme [] y) cnsEnv }
+  (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
+  addConstraint (SubType x ty)
+  return (tm, ty)
 
