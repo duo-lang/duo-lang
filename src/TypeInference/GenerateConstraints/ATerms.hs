@@ -64,6 +64,9 @@ genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
   return (MkACase acase_name argtsPos acase_term', sig)
 
+---------------------------------------------------------------------------------------------
+-- Asymmetric Terms with recursive binding
+---------------------------------------------------------------------------------------------
 
 genConstraintsATermRecursive :: FreeVarName -> ATerm () -> GenM (ATerm (Typ Pos), Typ Pos)
 genConstraintsATermRecursive fv tm = do
