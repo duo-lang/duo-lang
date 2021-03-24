@@ -21,6 +21,8 @@ import Parser.Parser
 import Pretty.Pretty
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
+import Eval.ATerms
+import Eval.STerms
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
