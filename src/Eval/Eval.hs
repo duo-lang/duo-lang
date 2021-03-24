@@ -6,22 +6,15 @@ module Eval.Eval
 
 import Control.Monad.Reader
 import Control.Monad.Except
-import Data.List (find)
-import qualified Data.Map as M (lookup)
-import Data.Maybe (fromJust)
-import Prettyprinter
 
-import Pretty.Pretty
-import Syntax.Program (Environment, defEnv, prdEnv, cnsEnv)
-
-
+import Syntax.Program (Environment)
 import Utils
-
 
 data EvalOrder = CBV | CBN
 
-type EvalM a = ReaderT (EvalOrder, Environment) (Except Error) a
+newtype EvalM a = EvalM { unEvalM :: ReaderT (EvalOrder, Environment) (Except Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (EvalOrder, Environment))
 
 runEval :: EvalM a -> EvalOrder -> Environment -> Either Error a
-runEval e evalorder env = runExcept (runReaderT e (evalorder, env))
+runEval e evalorder env = runExcept (runReaderT (unEvalM e) (evalorder, env))
 
