@@ -432,8 +432,7 @@ help_option = Option
 
 compile_cmd :: String -> Repl ()
 compile_cmd s = do
-  env <- gets replEnv
-  case runEnvParser atermP env s of
+  case runInteractiveParser atermP s of
     Right t ->
       prettyRepl (" compile " ++ ppPrint t ++ " = " ++ ppPrint (compile t))
     Left err2 -> do
