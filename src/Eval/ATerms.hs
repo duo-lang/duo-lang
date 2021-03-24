@@ -4,13 +4,11 @@ module Eval.ATerms
   ) where
 
 import Control.Monad.Reader
-import Control.Monad.Except
 import Data.List (find)
 import Data.Maybe (fromJust)
 import Eval.Eval
 import Syntax.ATerms
 import qualified Data.Map as M (lookup)
-import Utils
 import Syntax.Program (defEnv)
 
 ---------------------------------------------------------------------------------
@@ -43,19 +41,19 @@ evalATermSingleStep (Match t cases) | not (isValue t) = do
   return (Just (Match (fromJust t') cases))
 evalATermSingleStep (Match (Ctor xt args) cases) =
   case find (\MkACase { acase_name } -> acase_name == xt) cases of
-    Nothing -> throwError $ EvalError "Pattern match error"
+    Nothing -> throwEvalError "Pattern match error"
     Just acase -> return (Just $ atermOpening args (acase_term acase))
-evalATermSingleStep (Match _ _) = throwError $ EvalError ("unreachable if properly typechecked")
+evalATermSingleStep (Match _ _) = throwEvalError "unreachable if properly typechecked"
 evalATermSingleStep (Dtor xt t args) | not (isValue t) = do
   t' <- evalATermSingleStep t
   return (Just (Dtor xt (fromJust t') args))
-evalATermSingleStep (Dtor xt t args) | (not . and) (isValue <$> args) = evalArgsSingleStep args >>= 
+evalATermSingleStep (Dtor xt t args) | (not . and) (isValue <$> args) = evalArgsSingleStep args >>=
                                                                         (\args' -> return $ Just (Dtor xt t (fromJust args')))
 evalATermSingleStep (Dtor xt (Comatch cocases) args) =
   case find (\MkACase { acase_name } -> acase_name == xt) cocases of
-    Nothing -> throwError $ EvalError ("Copattern match error")
+    Nothing -> throwEvalError "Copattern match error"
     Just cocase -> return (Just $ atermOpening args (acase_term cocase))
-evalATermSingleStep (Dtor _ _ _) = throwError $ EvalError ("unreachable if properly typechecked")
+evalATermSingleStep (Dtor _ _ _) = throwEvalError "unreachable if properly typechecked"
 evalATermSingleStep (Comatch _) = return Nothing
 
 evalATermComplete :: ATerm () -> EvalM (ATerm ())
