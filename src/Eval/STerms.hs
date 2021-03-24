@@ -6,8 +6,8 @@ module Eval.STerms
 import Data.List (find)
 import Prettyprinter
 
-import Pretty.Pretty
 import Eval.Eval
+import Pretty.Pretty
 import Syntax.STerms
 import Utils
 
@@ -29,7 +29,7 @@ lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length 
 checkArgs :: Pretty a => Command a -> Twice [a] -> XtorArgs a -> EvalM ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
-  then return ()
+  then return ()g
   else throwEvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                         "\"\nArgument lengths don't coincide.")
 

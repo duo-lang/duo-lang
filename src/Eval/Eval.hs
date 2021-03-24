@@ -11,16 +11,16 @@ module Eval.Eval
   , lookupEvalOrder
   ) where
 
-import Control.Monad.Reader
 import Control.Monad.Except
-
+import Control.Monad.Reader
 import qualified Data.Map as M
-import Syntax.STerms
-import Syntax.ATerms
-import Syntax.Types
-import Syntax.Program (Environment(..))
-import Utils
+
 import Pretty.Pretty
+import Syntax.ATerms
+import Syntax.Program (Environment(..))
+import Syntax.STerms
+import Syntax.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
@@ -68,3 +68,4 @@ lookupCns fv = do
 
 lookupEvalOrder :: EvalM EvalOrder
 lookupEvalOrder = asks fst
+
