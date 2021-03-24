@@ -29,7 +29,7 @@ lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length 
 checkArgs :: Pretty a => Command a -> Twice [a] -> XtorArgs a -> EvalM ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
-  then return ()g
+  then return ()
   else throwEvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
                         "\"\nArgument lengths don't coincide.")
 
