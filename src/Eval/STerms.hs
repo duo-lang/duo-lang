@@ -4,12 +4,9 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
-import Control.Monad.Reader
-import qualified Data.Map as M (lookup)
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.Program ( prdEnv, cnsEnv )
 import Eval.Eval
 import Syntax.STerms
 import Utils
@@ -44,16 +41,12 @@ evalSTermOnce (Apply prd cns) = evalApplyOnce prd cns
 
 evalApplyOnce :: STerm Prd () -> STerm Cns () -> EvalM (Maybe (Command ()))
 -- Free variables have to be looked up in the environment.
-evalApplyOnce (FreeVar PrdRep n _) cns = do
-  env <- asks snd
-  case M.lookup n (prdEnv env) of
-    Nothing -> throwEvalError $ "Encountered unbound free variable: " ++ show n
-    Just (prd,_) -> return (Just (Apply prd cns))
-evalApplyOnce prd (FreeVar CnsRep n _) = do
-  env <- asks snd
-  case M.lookup n (cnsEnv env) of
-    Nothing -> throwEvalError $ "Encountered unbound free variable: " ++ show n
-    Just (cns,_) -> return (Just (Apply prd cns))
+evalApplyOnce (FreeVar PrdRep fv _) cns = do
+  (prd,_) <- lookupPrd fv
+  return (Just (Apply prd cns))
+evalApplyOnce prd (FreeVar CnsRep fv _) = do
+  (cns,_) <- lookupCns fv
+  return (Just (Apply prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall PrdRep xt args) cns@(XMatch CnsRep _ cases) = do
   (MkSCase _ argTypes cmd') <- lookupCase xt cases
@@ -65,7 +58,7 @@ evalApplyOnce prd@(XMatch PrdRep _ cases) cns@(XtorCall CnsRep xt args) = do
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce prd@(MuAbs PrdRep _ cmd) cns@(MuAbs CnsRep _ cmd') = do
-  order <- asks fst
+  order <- lookupEvalOrder
   case order of
     CBV -> return (Just (commandOpeningSingle CnsRep cns cmd))
     CBN -> return (Just (commandOpeningSingle PrdRep prd cmd'))

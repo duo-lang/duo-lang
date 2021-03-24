@@ -3,13 +3,10 @@ module Eval.ATerms
   , evalATermComplete
   ) where
 
-import Control.Monad.Reader
 import Data.List (find)
 import Data.Maybe (fromJust)
 import Eval.Eval
 import Syntax.ATerms
-import qualified Data.Map as M (lookup)
-import Syntax.Program (defEnv)
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -30,9 +27,9 @@ evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args
 
 evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep (BVar _) = return Nothing
-evalATermSingleStep (FVar x) = do
-  env <- asks snd
-  return $ fst <$> M.lookup x (defEnv env)
+evalATermSingleStep (FVar fv) = do
+  (tm,_) <- lookupDef fv
+  return (Just tm)
 evalATermSingleStep (Ctor xt args) | and (isValue <$> args) = return Nothing
                                    | otherwise = evalArgsSingleStep args >>= 
                                                  \args' -> return (Just (Ctor xt (fromJust args')))
