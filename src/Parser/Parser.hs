@@ -1,13 +1,13 @@
 module Parser.Parser
-  ( runEnvParser
+  ( runFileParser
+  , runInteractiveParser
   , stermP
   , atermP
   , commandP
   , declarationP
-  , environmentP
+  , programP
   , typeSchemeP
   , subtypingProblemP
-  , bindingP
   , Parser
   ) where
 
@@ -17,19 +17,11 @@ import Parser.Program
 import Parser.ATerms
 import Parser.STerms
 import Parser.Types
-import Syntax.STerms
 import Syntax.Types
 
 ---------------------------------------------------------------------------------
 -- Parsing for Repl
 ---------------------------------------------------------------------------------
-
-bindingP :: Parser (TypeName, STerm Prd ())
-bindingP = do
-  v <- typeNameP
-  _ <- lexeme (symbol "<-")
-  t <- lexeme (stermP PrdRep)
-  return (v,t)
 
 subtypingProblemP :: Parser (TypeScheme Pos, TypeScheme Pos)
 subtypingProblemP = do

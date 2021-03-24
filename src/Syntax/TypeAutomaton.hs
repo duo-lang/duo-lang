@@ -11,9 +11,96 @@ import Data.Void
 import Syntax.Types
 import Syntax.CommonTerm
 
--------------------------------------------------------
--- Graph syntax
--------------------------------------------------------
+--------------------------------------------------------------------------------
+-- # Type Automata
+--
+-- Type automata are an alternative representation of types, that is, there is a
+-- 1:1 correspondence between (syntactic) types and type automata, which is witnessed by
+-- the two functions  `fromAutomaton` and `toAutomaton` (not defined in this module).
+--
+--                    toAutomaton
+--        Typ pol <----------------> TypeAut pol
+--                   fromAutomaton
+--
+-- The reason for representing types as automata is that the automata representation
+-- allows to define type simplification as a standard simplification algorithm on
+-- DFAs/NFAs. A type automaton is represented as a graph with some extra structure
+-- on top.
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+-- # Representation of Types
+--
+-- Types are represented as a combination of node labels and node edges:
+--
+-- ## Nominal Types:
+--
+-- A nominal type is represented as a node with the `hc_nominal` field set to the
+-- name of the nominal type:
+--
+--    ------------------------
+--    |                      |
+--    | hc_nominal = { Nat } |    =   Nat
+--    |                      |
+--    ------------------------
+--
+-- ## Recursive Types:
+--
+-- Recursive types are represented as a cycle in the type graph:
+--
+--    ------
+--    |    |
+--    | ty | -----|
+--    |    |      |               = mu alpha. ty
+--    ------      |
+--      /\        |
+--       |        |
+--       ----------
+--
+-- ## Structural Types:
+--
+-- Let's consider the encoding of structural data types. A list of `ty` is
+-- represented as the following graph. At the node we record the names of the
+-- constructors (or destructors) of the type, together with their arity.
+-- The types of the producer and consumer arguments of the xtors are recorded
+-- as edges to other nodes which encode those argument types.
+--
+--
+--    |----------------------------------------|                |---------|
+--    |                                        |    Cons(1)     |         |
+--    | hc_data =  { 'Nil(0)[0], 'Cons(2)[0] } |--------------->|   ty    |
+--    |                                        |                |         |
+--    |----------------------------------------|                |---------|
+--           |                      /\
+--           |                       |
+--           -------------------------
+--                   Cons(2)
+--
+--                    = mu r. < Nil | Cons(ty,r) >
+--
+--
+-- ## Union and Intersection Types:
+--
+-- Unions and intersections are recorded within a same node label. Whether a node
+-- is interpreted as a union or intersection depends on it's polarity. E.g.:
+--
+--
+--    ------------------------------
+--    |                            |
+--    | hc_polarity = Pos          |
+--    | hc_nominal = { Nat, Bool } |    =   Nat \/ Bool
+--    |                            |
+--    ------------------------------
+--
+--    ------------------------------
+--    |                            |
+--    | hc_polarity = Neg          |
+--    | hc_nominal = { Nat, Bool } |    =   Nat /\ Bool
+--    |                            |
+--    ------------------------------
+--
+--------------------------------------------------------------------------------
 
 data XtorLabel = MkXtorLabel
   { labelName :: XtorName

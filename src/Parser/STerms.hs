@@ -3,34 +3,17 @@ module Parser.STerms
   , commandP
   )where
 
-import Control.Monad.Reader
-import qualified Data.Map as M
 import Text.Megaparsec hiding (State)
 
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Program
 import Syntax.STerms
 import Utils
 
 --------------------------------------------------------------------------------------------
 -- Symmetric Terms
 --------------------------------------------------------------------------------------------
-
-termEnvP :: PrdCnsRep pc -> Parser (STerm pc ())
-termEnvP PrdRep = do
-  v <- freeVarName
-  prdEnv <- asks (prdEnv . parseEnv)
-  case M.lookup v prdEnv of
-    Just t -> return t
-    Nothing -> empty
-termEnvP CnsRep = do
-  v <- freeVarName
-  cnsEnv <- asks (cnsEnv . parseEnv)
-  case M.lookup v cnsEnv of
-    Just t -> return t
-    Nothing -> empty
 
 freeVar :: PrdCnsRep pc -> Parser (STerm pc ())
 freeVar pc = do
@@ -68,15 +51,28 @@ xtorCall ns pc = do
   args <- xtorArgsP
   return $ XtorCall pc xt args
 
-patternMatch :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc ())
-patternMatch ns PrdRep = do
+patternMatch :: PrdCnsRep pc -> Parser (STerm pc ())
+patternMatch PrdRep = do
   _ <- symbol "comatch"
-  cases <- braces $ singleCase ns `sepBy` comma
+  (cases,ns) <- casesP
   return $ XMatch PrdRep ns cases
-patternMatch ns CnsRep = do
+patternMatch CnsRep = do
   _ <- symbol "match"
-  cases <- braces $ singleCase ns `sepBy` comma
+  (cases,ns) <- casesP
   return $ XMatch CnsRep ns cases
+
+-- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
+-- infer a structural type, not a nominal one.
+casesP :: Parser ([SCase ()], NominalStructural)
+casesP = try structuralCases <|> nominalCases
+  where
+    structuralCases = braces $ do
+      cases <- singleCase Structural `sepBy` comma
+      return (cases, Structural)
+    nominalCases = braces $ do
+      -- There must be at least one case for a nominal type to be inferred
+      cases <- singleCase Nominal `sepBy1` comma
+      return (cases, Nominal)
 
 singleCase :: NominalStructural -> Parser (SCase ())
 singleCase ns = do
@@ -100,16 +96,11 @@ muAbstraction pc = do
     CnsRep -> return $ MuAbs pc () (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc ())
-stermP pc = try (parens (stermP pc))
+stermP pc = parens (stermP pc)
   <|> xtorCall Structural pc
   <|> xtorCall Nominal pc
-  -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
-  -- infer a structural type, not a nominal one.
-  <|> try (patternMatch Structural pc) 
-  <|> try (patternMatch Nominal pc)
+  <|> patternMatch pc
   <|> muAbstraction pc
-  <|> try (termEnvP pc) -- needs to be tried, because the parser has to consume the string, before it checks
-                        -- if the variable is in the environment, which might cause it to fail
   <|> freeVar pc
   <|> numLitP pc
   <|> lambdaSugar pc
@@ -117,14 +108,6 @@ stermP pc = try (parens (stermP pc))
 --------------------------------------------------------------------------------------------
 -- Commands
 --------------------------------------------------------------------------------------------
-
-cmdEnvP :: Parser (Command ())
-cmdEnvP = do
-  v <- freeVarName
-  prdEnv <- asks (cmdEnv . parseEnv)
-  case M.lookup v prdEnv of
-    Just t -> return t
-    Nothing -> empty
 
 applyCmdP :: Parser (Command ())
 applyCmdP = do
@@ -142,7 +125,6 @@ printCmdP = lexeme (symbol "Print") >> (Print <$> lexeme (stermP PrdRep))
 commandP :: Parser (Command ())
 commandP =
   try (parens commandP) <|>
-  try cmdEnvP <|>
   doneCmdP <|>
   printCmdP <|>
   applyCmdP

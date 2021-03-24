@@ -16,7 +16,7 @@ import Data.Maybe (fromJust)
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.Program (Environment, defEnv)
+import Syntax.Program (Environment, defEnv, prdEnv, cnsEnv)
 import Syntax.STerms
 import Syntax.ATerms
 import Utils
@@ -28,6 +28,10 @@ type EvalM a = ReaderT (EvalOrder, Environment) (Except Error) a
 
 runEval :: EvalM a -> EvalOrder -> Environment -> Either Error a
 runEval e evalorder env = runExcept (runReaderT e (evalorder, env))
+
+---------------------------------------------------------------------------------
+-- Symmetric Terms
+---------------------------------------------------------------------------------
 
 lookupCase :: XtorName -> [SCase a] -> EvalM (SCase a)
 lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
@@ -48,43 +52,62 @@ checkArgs cmd argTypes args =
                                "\"\nArgument lengths don't coincide.")
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalOneStep :: Pretty a => Command a -> EvalM (Maybe (Command a))
-evalOneStep Done = return Nothing
-evalOneStep (Print _) = return Nothing
-evalOneStep cmd@(Apply (XtorCall PrdRep xt args) (XMatch CnsRep _ cases)) = do
+evalSTermOnce :: Command () -> EvalM (Maybe (Command ()))
+evalSTermOnce Done = return Nothing
+evalSTermOnce (Print _) = return Nothing
+evalSTermOnce (Apply prd cns) = evalApplyOnce prd cns
+
+evalApplyOnce :: STerm Prd () -> STerm Cns () -> EvalM (Maybe (Command ()))
+-- Free variables have to be looked up in the environment.
+evalApplyOnce (FreeVar PrdRep n _) cns = do
+  env <- asks snd
+  case M.lookup n (prdEnv env) of
+    Nothing -> throwError $ EvalError $ "Encountered unbound free variable: " ++ show n
+    Just (prd,_) -> return (Just (Apply prd cns))
+evalApplyOnce prd (FreeVar CnsRep n _) = do
+  env <- asks snd
+  case M.lookup n (cnsEnv env) of
+    Nothing -> throwError $ EvalError $ "Encountered unbound free variable: " ++ show n
+    Just (cns,_) -> return (Just (Apply prd cns))
+-- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
+evalApplyOnce prd@(XtorCall PrdRep xt args) cns@(XMatch CnsRep _ cases) = do
   (MkSCase _ argTypes cmd') <- lookupCase xt cases
-  checkArgs cmd argTypes args
+  checkArgs (Apply prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalOneStep cmd@(Apply (XMatch PrdRep _ cases) (XtorCall CnsRep xt args)) = do
+evalApplyOnce prd@(XMatch PrdRep _ cases) cns@(XtorCall CnsRep xt args) = do
   (MkSCase _ argTypes cmd') <- lookupCase xt cases
-  checkArgs cmd argTypes args
+  checkArgs (Apply prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
-evalOneStep (Apply prd@(MuAbs PrdRep _ cmd) cns@(MuAbs CnsRep _ cmd')) = do
+-- Mu abstractions have to be evaluated while taking care of evaluation order.
+evalApplyOnce prd@(MuAbs PrdRep _ cmd) cns@(MuAbs CnsRep _ cmd') = do
   order <- asks fst
   case order of
     CBV -> return (Just (commandOpeningSingle CnsRep cns cmd))
     CBN -> return (Just (commandOpeningSingle PrdRep prd cmd'))
-evalOneStep (Apply (MuAbs PrdRep _ cmd) cns) = return (Just (commandOpeningSingle CnsRep cns cmd))
-evalOneStep (Apply prd (MuAbs CnsRep _ cmd)) = return (Just (commandOpeningSingle PrdRep prd cmd))
--- Error handling
-evalOneStep cmd@(Apply _ _) = throwError $ EvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                                                      "\"\n Free variable encountered!")
+evalApplyOnce (MuAbs PrdRep _ cmd) cns = return (Just (commandOpeningSingle CnsRep cns cmd))
+evalApplyOnce prd (MuAbs CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
+-- Bound variables should not occur at the toplevel during evaluation.
+evalApplyOnce (BoundVar PrdRep i) _ = throwError $ EvalError $ "Found bound variable during evaluation. Index: " ++ show i
+evalApplyOnce _ (BoundVar CnsRep i) = throwError $ EvalError $ "Found bound variable during evaluation. Index: " ++ show i
+-- Match applied to Match, or Xtor to Xtor can't evaluate
+evalApplyOnce (XMatch _ _ _) (XMatch _ _ _) = throwError $ EvalError "Cannot evaluate match applied to match"
+evalApplyOnce (XtorCall _ _ _) (XtorCall _ _ _) = throwError $ EvalError "Cannot evaluate constructor applied to destructor"
 
 -- | Return just thef final evaluation result
-eval :: Pretty a => Command a -> EvalM (Command a)
+eval :: Command () -> EvalM (Command ())
 eval cmd = do
-  cmd' <- evalOneStep cmd
+  cmd' <- evalSTermOnce cmd
   case cmd' of
     Nothing -> return cmd
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
-evalSteps :: Pretty a => Command a -> EvalM [Command a]
+evalSteps :: Command () -> EvalM [Command ()]
 evalSteps cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: Pretty a => [Command a] -> Command a -> EvalM [Command a]
+    evalSteps' :: [Command ()] -> Command () -> EvalM [Command ()]
     evalSteps' cmds cmd = do
-      cmd' <- evalOneStep cmd
+      cmd' <- evalSTermOnce cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
@@ -110,7 +133,7 @@ evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep (BVar _) = return Nothing
 evalATermSingleStep (FVar x) = do
   env <- asks snd
-  return $ M.lookup x (defEnv env)
+  return $ fst <$> M.lookup x (defEnv env)
 evalATermSingleStep (Ctor xt args) | and (isValue <$> args) = return Nothing
                                    | otherwise = evalArgsSingleStep args >>= 
                                                  \args' -> return (Just (Ctor xt (fromJust args')))

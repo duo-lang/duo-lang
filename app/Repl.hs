@@ -26,6 +26,7 @@ import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import TypeInference.InferTypes
 import Translate.Translate (compile)
+import TypeInference.InferProgram
 import Utils (trim)
 
 ------------------------------------------------------------------------------
@@ -73,10 +74,14 @@ fromRight :: Pretty err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseRepl ::Parser a -> String -> Repl a
-parseRepl p s = do
-  env <- gets replEnv
-  fromRight (runEnvParser p env s)
+parseInteractive :: Parser a -> String -> Repl a
+parseInteractive p s = do
+  fromRight (runInteractiveParser p s)
+
+parseFile :: FilePath -> Parser a -> Repl a
+parseFile fp p = do
+  s <- safeRead fp
+  fromRight (runFileParser fp p s)
 
 safeRead :: FilePath -> Repl String
 safeRead file =  do
@@ -102,7 +107,7 @@ cmd s = do
 
 cmdSymmetric :: String -> Repl ()
 cmdSymmetric s = do
-  com <- parseRepl commandP s
+  com <- parseInteractive commandP s
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
@@ -116,7 +121,7 @@ cmdSymmetric s = do
 
 cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
-  tm <- parseRepl atermP s
+  tm <- parseInteractive atermP s
   evalOrder <- gets evalOrder
   env <- gets replEnv  
   let res = runEval (evalATermComplete tm) evalOrder env
@@ -201,12 +206,12 @@ unset_option = Option
 type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
-  case runEnvParser (stermP PrdRep) env s of
+  case runInteractiveParser (stermP PrdRep) s of
     Right t -> do
       res <- fromRight $ inferSTerm PrdRep t env
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
-      case runEnvParser atermP env s of
+      case runInteractiveParser atermP s of
         Right t -> do
           res <- fromRight $ inferATerm t env
           prettyRepl (" A :: " ++ ppPrint res)
@@ -227,7 +232,8 @@ type_option = Option
 -- Show
 
 show_cmd :: String -> Repl ()
-show_cmd s = do
+show_cmd str = do
+  let s = trim str
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
     Just prd -> prettyRepl prd
@@ -237,9 +243,7 @@ show_cmd s = do
         Just cmd -> prettyRepl cmd
         Nothing -> case M.lookup s (defEnv env) of
           Just def -> prettyRepl def
-          Nothing -> case M.lookup (MkTypeName s) (typEnv env) of
-            Just typ -> prettyRepl typ
-            Nothing -> prettyRepl "Not in environment."
+          Nothing -> prettyRepl "Not in environment."
 
 show_option :: Option
 show_option = Option
@@ -269,11 +273,12 @@ show_type_option = Option
 -- Define
 
 def_cmd :: String -> Repl ()
-def_cmd s = do
-  env <- gets replEnv
-  case runEnvParser declarationP env s of
-    Right decl -> modifyEnvironment (insertDecl decl)
-    Left err -> prettyRepl err
+def_cmd s = case runInteractiveParser declarationP s of
+              Right decl -> do
+                oldEnv <- gets replEnv
+                newEnv <- fromRight $ insertDecl decl oldEnv
+                modifyEnvironment (const newEnv)
+              Left err -> prettyRepl err
 
 def_option :: Option
 def_option = Option
@@ -289,11 +294,11 @@ def_option = Option
 save_cmd :: String -> Repl ()
 save_cmd s = do
   env <- gets replEnv
-  case runEnvParser typeSchemeP env s of
+  case runInteractiveParser typeSchemeP s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runEnvParser (stermP PrdRep) env s of
+    Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right t -> do
         trace <- fromRight $ inferSTermTraced PrdRep t env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
@@ -329,29 +334,11 @@ save_option = Option
   , option_completer = Nothing
   }
 
--- Bind
-
-bind_cmd :: String -> Repl ()
-bind_cmd s = do
-  env <- gets replEnv
-  (v,t) <- parseRepl bindingP s
-  resType <- fromRight $ inferSTerm PrdRep t env
-  modifyEnvironment (insertDecl (TypDecl v resType))
-
-
-bind_option :: Option
-bind_option = Option
-  { option_name = "bind"
-  , option_cmd = bind_cmd
-  , option_help = ["Infer the type of producer term, and add corresponding type declaration to environment."]
-  , option_completer = Nothing
-  }
-
 -- Subsume
 
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
-  (t1,t2) <- parseRepl subtypingProblemP s
+  (t1,t2) <- parseInteractive subtypingProblemP s
   aut1 <- fromRight (typeToAut t1)
   aut2 <- fromRight (typeToAut t2)
   prettyRepl $ isSubtype aut1 aut2
@@ -370,7 +357,7 @@ sub_option = Option
 
 simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
-  ty <- parseRepl typeSchemeP s
+  ty <- parseInteractive typeSchemeP s
   aut <- fromRight (typeToAut ty)
   prettyRepl (autToType aut)
 
@@ -390,11 +377,12 @@ load_cmd s = do
   load_file s
 
 load_file :: FilePath -> Repl ()
-load_file s = do
-  defs <- safeRead s
-  newEnv <- parseRepl environmentP defs
+load_file fp = do
+  decls <- parseFile fp programP
+  newEnv <- fromRight $ inferProgram decls
   modifyEnvironment ((<>) newEnv)
-  prettyRepl $ "Successfully loaded: " ++ s
+  prettyRepl newEnv
+  prettyRepl $ "Successfully loaded: " ++ fp
 
 load_option :: Option
 load_option = Option
@@ -464,7 +452,7 @@ compile_option = Option
 
 all_options :: [Option]
 all_options = [ type_option, show_option, help_option, def_option, save_option, set_option, unset_option
-              , sub_option, bind_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
+              , sub_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
 -- Repl Configuration
@@ -489,7 +477,6 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
                         , M.keys (defEnv env)
-                        , unTypeName <$> M.keys (typEnv env)
                         , (unTypeName . data_name) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ keys)

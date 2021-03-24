@@ -1,12 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty.Pretty where
 
+import qualified Data.Map as M
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import Text.Megaparsec.Pos
 
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
+import Syntax.Program
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -135,6 +138,20 @@ instance Pretty DataDecl where
   pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 ---------------------------------------------------------------------------------
+-- Prettyprinting of Environments
+---------------------------------------------------------------------------------
+
+instance Pretty Environment where
+  pretty Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
+    vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
+    where
+      ppPrds = vsep $ "Producers:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> pretty ty) <$> (M.toList prdEnv))
+      ppCns  = vsep $ "Consumers:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> pretty ty) <$> (M.toList cnsEnv))
+      ppCmds = vsep $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
+      ppDefs = vsep $ "Definitions:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> pretty ty) <$> (M.toList defEnv))
+      ppDecls = vsep $ "Type declarations:" : (pretty <$> declEnv)
+
+---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
 ---------------------------------------------------------------------------------
 
@@ -144,4 +161,14 @@ instance Pretty Error where
   pretty (GenConstraintsError err) = "Constraint generation error:" <+> pretty err
   pretty (SolveConstraintsError err) = "Constraint solving error:" <+> pretty err
   pretty (OtherError err) = "Other Error:" <+> pretty err
+
+instance Pretty Pos where
+  pretty p = pretty (unPos p)
+
+instance Pretty Loc where
+  pretty (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
+    pretty fp <> ":" <> pretty line1 <> ":" <> pretty column1 <> "-" <> pretty line2 <> ":" <> pretty column2
+
+instance Pretty LocatedError where
+  pretty (Located loc err) = vsep ["Error at:" <+> pretty loc, pretty err]
 

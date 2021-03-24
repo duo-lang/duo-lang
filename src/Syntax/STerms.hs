@@ -26,7 +26,22 @@ import Utils
 import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
--- Symmetric Terms
+-- # Symmetric Terms
+--
+-- Symmetric terms are called symmetric for two reasons:
+-- 1.) They treat producers and consumers of a type as equally first class. This
+-- is in distinction to asymmetric terms, which only have a first class representation
+-- for producers.
+-- 2.) The "producer" and "consumer" terms are completely isomorphic, and therefore
+-- represented using one representation `STerm` which is parameterized by a `PrdCns` tag.
+--
+-- The correspondence between asymmetric and symmetric terms is therefore:
+--
+--          ATerm    <->  Producer  = STerm Prd
+--                        Consumer  = STerm Cns
+--
+--
+-- ## Variable representation
 --
 -- We use the locally nameless representation for terms, which combines names for
 -- free variables with  anonymous deBruijn indexes for bound variables.
@@ -34,31 +49,54 @@ import Syntax.CommonTerm
 -- https://www.chargueraud.org/softs/ln/
 ---------------------------------------------------------------------------------
 
+-- | Represents an argument list to a constructor or destructor.
 data XtorArgs a = MkXtorArgs { prdArgs :: [STerm Prd a]
                              , cnsArgs :: [STerm Cns a]
                              }
                   deriving (Show)
 
+-- | Represents one case in a pattern match or copattern match.
+--
+--        X(x_1,...,x_n)[k_1,...,k_m] => c
+--        ^ ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+--        |              |               |
+--    scase_name     scase_args      scase_cmd
+--
 data SCase a = MkSCase
   { scase_name :: XtorName
   , scase_args :: Twice [a]
   , scase_cmd  :: Command a
   } deriving (Show)
 
+
+-- | A symmetric term.
 data STerm (pc :: PrdCns) a where
+  -- | A bound variable in the locally nameless system.
   BoundVar :: PrdCnsRep pc -> Index -> STerm pc a
+  -- | A free variable in the locally nameless system.
   FreeVar  :: PrdCnsRep pc -> FreeVarName -> a -> STerm pc a
+  -- | A constructor or destructor.
+  -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
   XtorCall :: PrdCnsRep pc -> XtorName -> XtorArgs a -> STerm pc a
+  -- | A pattern or copattern match.
+  -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
   XMatch   :: PrdCnsRep pc -> NominalStructural -> [SCase a] -> STerm pc a
+  -- | A Mu or TildeMu abstraction:
+  --
+  --  mu k.c    =   MuAbs PrdRep c
+  -- ~mu x.c    =   MuAbs CnsRep c
   MuAbs    :: PrdCnsRep pc -> a -> Command a -> STerm pc a
-  -- The PrdCns parameter describes the result of the abstraction!
 deriving instance Show a => Show (STerm pc a)
 
 ---------------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------------
 
+-- | An executable command.
 data Command a
+  -- | A producer applied to a consumer:
+  --
+  --   p >> c
   = Apply (STerm Prd a) (STerm Cns a)
   | Print (STerm Prd a)
   | Done
