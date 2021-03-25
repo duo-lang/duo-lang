@@ -93,7 +93,7 @@ isNumATerm _ = Nothing
 
 instance Pretty a => Pretty (ACase a) where
   pretty MkACase{ acase_name, acase_args, acase_term } =
-    pretty acase_name <> parens (intercalateComma (map (const "-") acase_args)) <+> "=>" <+> pretty acase_term
+    pretty acase_name <> parens (intercalateComma (pretty <$> acase_args)) <+> "=>" <+> pretty acase_term
 
 instance Pretty a => Pretty (ATerm a) where
   pretty (isNumATerm -> Just n) = pretty n -- View Pattern !
@@ -104,6 +104,8 @@ instance Pretty a => Pretty (ATerm a) where
   pretty (Match t cases) = "match" <+> pretty t <+> "with" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (Comatch cocases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cocases)))))
 
+instance Pretty (NamedRep (ATerm FreeVarName)) where
+  pretty (NamedRep tm) = pretty (openATermComplete tm)
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Types
 ---------------------------------------------------------------------------------
@@ -159,7 +161,7 @@ instance Pretty (NamedRep (Declaration FreeVarName)) where
   pretty (NamedRep (PrdDecl _ fv tm)) = "prd" <+> pretty fv <+> ":=" <+> pretty (openSTermComplete tm) <> semi
   pretty (NamedRep (CnsDecl _ fv tm)) = "cns" <+> pretty fv <+> ":=" <+> pretty (openSTermComplete tm) <> semi
   pretty (NamedRep (CmdDecl _ fv cm)) = "cmd" <+> pretty fv <+> ":=" <+> pretty (openCommandComplete cm) <> semi
-  pretty (NamedRep (DefDecl _ fv tm)) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (NamedRep (DefDecl _ fv tm)) = "def" <+> pretty fv <+> ":=" <+> pretty (openATermComplete tm) <> semi
   pretty (NamedRep (DataDecl _ decl)) = pretty decl
 
 instance {-# OVERLAPPING #-} Pretty [Declaration FreeVarName] where

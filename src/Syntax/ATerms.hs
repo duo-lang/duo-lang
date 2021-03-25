@@ -5,6 +5,8 @@ module Syntax.ATerms
   , atermClosing
   -- Variable Opening
   , atermOpening
+  -- Transform to named representation for prettyprinting
+  , openATermComplete
   , module Syntax.CommonTerm
   ) where
 
@@ -112,4 +114,29 @@ atermOpeningRec k args (Match t cases) =
   Match (atermOpeningRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermOpeningRec (k + 1) args acase_term }) <$> cases)
 atermOpeningRec k args (Comatch cocases) =
   Comatch ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermOpeningRec (k + 1) args acase_term }) <$> cocases)
+
+
+---------------------------------------------------------------------------------
+-- These functions  translate a locally nameless term into a named representation.
+--
+-- Use only for prettyprinting! These functions only "undo" the steps in the parser
+-- and do not fulfil any semantic properties w.r.t shadowing etc.!
+---------------------------------------------------------------------------------
+
+openACase :: ACase FreeVarName -> ACase FreeVarName
+openACase MkACase { acase_name, acase_args, acase_term } =
+    MkACase { acase_name = acase_name
+            , acase_args = acase_args
+            , acase_term = atermOpening ((\fv -> FVar fv) <$> acase_args) (openATermComplete acase_term)
+            }
+
+openATermComplete :: ATerm FreeVarName -> ATerm FreeVarName
+openATermComplete (BVar idx) = BVar idx
+openATermComplete (FVar v) = FVar v
+openATermComplete (Ctor name args) = Ctor name (openATermComplete <$> args)
+openATermComplete (Dtor name t args) = Dtor name (openATermComplete t) (openATermComplete <$> args)
+openATermComplete (Match t cases) = Match (openATermComplete t) (openACase <$> cases)
+openATermComplete (Comatch cocases) = Comatch (openACase <$> cocases)
+
+
 
