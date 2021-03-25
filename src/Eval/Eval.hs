@@ -32,40 +32,40 @@ data EvalOrder
   | CBN -- ^ Call-by-name
   deriving (Show, Eq)
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT (EvalOrder, Environment) (Except Error) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (EvalOrder, Environment))
+newtype EvalM bs a = EvalM { unEvalM :: ReaderT (EvalOrder, Environment bs) (Except Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (EvalOrder, Environment bs))
 
-runEval :: EvalM a -> EvalOrder -> Environment -> Either Error a
+runEval :: EvalM bs a -> EvalOrder -> Environment bs -> Either Error a
 runEval e evalorder env = runExcept (runReaderT (unEvalM e) (evalorder, env))
 
 ---------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------
 
-throwEvalError :: String -> EvalM a
+throwEvalError :: String -> EvalM bs a
 throwEvalError msg = throwError $ EvalError msg
 
-lookupDef :: FreeVarName -> EvalM (ATerm (), TypeScheme Pos)
+lookupDef :: FreeVarName -> EvalM bs (ATerm bs, TypeScheme Pos)
 lookupDef fv = do
   env <- asks snd
   case M.lookup fv (defEnv env) of
     Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
     Just res -> return res
 
-lookupPrd :: FreeVarName -> EvalM (STerm Prd (), TypeScheme Pos)
+lookupPrd :: FreeVarName -> EvalM bs (STerm Prd bs, TypeScheme Pos)
 lookupPrd fv = do
   env <- asks snd
   case M.lookup fv (prdEnv env) of
     Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
     Just res -> return res
 
-lookupCns :: FreeVarName -> EvalM (STerm Cns (), TypeScheme Neg)
+lookupCns :: FreeVarName -> EvalM bs (STerm Cns bs, TypeScheme Neg)
 lookupCns fv = do
   env <- asks snd
   case M.lookup fv (cnsEnv env) of
     Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
     Just res -> return res
 
-lookupEvalOrder :: EvalM EvalOrder
+lookupEvalOrder :: EvalM bs EvalOrder
 lookupEvalOrder = asks fst
 

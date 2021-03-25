@@ -38,15 +38,16 @@ instance Pretty XtorName where
   pretty (MkXtorName Structural xt) = "'" <> pretty xt
   pretty (MkXtorName Nominal    xt) = pretty xt
 
+-- | This identity wrapper is used to indicate that we want to transform the element to
+-- a named representation before prettyprinting it.
+newtype NamedRep a = NamedRep a
+
 ---------------------------------------------------------------------------------
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
 instance Pretty a => Pretty (SCase a) where
-  pretty MkSCase{..} = pretty scase_name <> prettyTwice (constString scase_args) <+> "=>" <+> pretty scase_cmd
-    where
-      constString :: Twice [a] -> Twice [String]
-      constString (Twice a b) = Twice (const "-" <$> a) (const "-" <$> b)
+  pretty MkSCase{..} = pretty scase_name <> prettyTwice scase_args <+> "=>" <+> pretty scase_cmd
 
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
@@ -61,17 +62,23 @@ isNumSTerm _ = Nothing
 instance Pretty a => Pretty (STerm pc a) where
   pretty (isNumSTerm -> Just n) = pretty n -- View Pattern !
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
-  pretty (FreeVar _ v a) = parens (pretty v <+> ":" <+> pretty a)
+  pretty (FreeVar _ v) = pretty v
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
   pretty (XMatch PrdRep _ cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (XMatch CnsRep _ cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (MuAbs pc a cmd) =
-    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
+    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <+> pretty a <> "." <> parens (pretty cmd)
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"
   pretty (Print t) = "Print" <> parens (pretty t)
   pretty (Apply t1 t2) = group (nest 3 (line' <> vsep [pretty t1, ">>", pretty t2]))
+
+instance Pretty (NamedRep (STerm pc FreeVarName)) where
+  pretty (NamedRep tm) = pretty (openSTermComplete tm)
+
+instance Pretty (NamedRep (Command FreeVarName)) where
+  pretty (NamedRep cmd) = pretty (openCommandComplete cmd)
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -86,7 +93,7 @@ isNumATerm _ = Nothing
 
 instance Pretty a => Pretty (ACase a) where
   pretty MkACase{ acase_name, acase_args, acase_term } =
-    pretty acase_name <> parens (intercalateComma (map (const "-") acase_args)) <+> "=>" <+> pretty acase_term
+    pretty acase_name <> parens (intercalateComma (pretty <$> acase_args)) <+> "=>" <+> pretty acase_term
 
 instance Pretty a => Pretty (ATerm a) where
   pretty (isNumATerm -> Just n) = pretty n -- View Pattern !
@@ -97,6 +104,8 @@ instance Pretty a => Pretty (ATerm a) where
   pretty (Match t cases) = "match" <+> pretty t <+> "with" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (Comatch cocases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cocases)))))
 
+instance Pretty (NamedRep (ATerm FreeVarName)) where
+  pretty (NamedRep tm) = pretty (openATermComplete tm)
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Types
 ---------------------------------------------------------------------------------
@@ -133,15 +142,36 @@ instance Pretty Constraint where
 instance Pretty TypeName where
   pretty (MkTypeName tn) = pretty tn
 
+---------------------------------------------------------------------------------
+-- Prettyprinting of Declarations
+---------------------------------------------------------------------------------
+
 instance Pretty DataDecl where
-  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
-  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <> semi
+  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <> semi
+
+instance Pretty a => Pretty (Declaration a) where
+  pretty (PrdDecl _ fv tm) = "prd" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (CnsDecl _ fv tm) = "cns" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (CmdDecl _ fv cm) = "cmd" <+> pretty fv <+> ":=" <+> pretty cm <> semi
+  pretty (DefDecl _ fv tm) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (DataDecl _ decl) = pretty decl
+
+instance Pretty (NamedRep (Declaration FreeVarName)) where
+  pretty (NamedRep (PrdDecl _ fv tm)) = "prd" <+> pretty fv <+> ":=" <+> pretty (openSTermComplete tm) <> semi
+  pretty (NamedRep (CnsDecl _ fv tm)) = "cns" <+> pretty fv <+> ":=" <+> pretty (openSTermComplete tm) <> semi
+  pretty (NamedRep (CmdDecl _ fv cm)) = "cmd" <+> pretty fv <+> ":=" <+> pretty (openCommandComplete cm) <> semi
+  pretty (NamedRep (DefDecl _ fv tm)) = "def" <+> pretty fv <+> ":=" <+> pretty (openATermComplete tm) <> semi
+  pretty (NamedRep (DataDecl _ decl)) = pretty decl
+
+instance {-# OVERLAPPING #-} Pretty [Declaration FreeVarName] where
+  pretty decls = vsep (pretty . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments
 ---------------------------------------------------------------------------------
 
-instance Pretty Environment where
+instance Pretty (Environment bs) where
   pretty Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
     vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
     where
