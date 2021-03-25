@@ -39,14 +39,14 @@ genConstraintsSTerm :: STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTerm (BoundVar rep idx) = do
   ty <- lookupType rep idx
   return (BoundVar rep idx, ty)
-genConstraintsSTerm tm@(FreeVar PrdRep v _) = do
+genConstraintsSTerm tm@(FreeVar PrdRep v) = do
   prdEnv <- asks (prdEnv . env)
   case M.lookup v prdEnv of
     Just (_,tys) -> do
       ty <- instantiateTypeScheme tys
       return (tm, ty)
     Nothing -> throwGenError $ "Unbound free producer variable in STerm: " ++ ppPrint v
-genConstraintsSTerm tm@(FreeVar CnsRep v _) = do
+genConstraintsSTerm tm@(FreeVar CnsRep v) = do
   cnsEnv <- asks (cnsEnv . env)
   case M.lookup v cnsEnv of
     Just (_,tys) -> do
@@ -122,13 +122,13 @@ genConstraintsCommand (Apply t1 t2) = do
 genConstraintsSTermRecursive :: FreeVarName -> PrdCnsRep pc -> STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTermRecursive fv PrdRep tm = do
   (x,y) <- freshTVar
-  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar PrdRep fv (), TypeScheme [] x) prdEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar PrdRep fv, TypeScheme [] x) prdEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
   addConstraint (SubType ty y)
   return (tm, ty)
 genConstraintsSTermRecursive fv CnsRep tm = do
   (x,y) <- freshTVar
-  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar CnsRep fv (), TypeScheme [] y) cnsEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar CnsRep fv, TypeScheme [] y) cnsEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
   addConstraint (SubType x ty)
   return (tm, ty)

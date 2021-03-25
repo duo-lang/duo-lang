@@ -18,7 +18,7 @@ import Utils
 freeVar :: PrdCnsRep pc -> Parser (STerm pc ())
 freeVar pc = do
   v <- freeVarName
-  return (FreeVar pc v ())
+  return (FreeVar pc v)
 
 numLitP :: PrdCnsRep pc -> Parser (STerm pc ())
 numLitP CnsRep = empty
