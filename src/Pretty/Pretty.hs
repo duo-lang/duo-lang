@@ -67,7 +67,7 @@ instance Pretty a => Pretty (STerm pc a) where
   pretty (XMatch PrdRep _ cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (XMatch CnsRep _ cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (MuAbs pc a cmd) =
-    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <> brackets (pretty a) <> "." <> parens (pretty cmd)
+    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <+> pretty a <> "." <> parens (pretty cmd)
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"

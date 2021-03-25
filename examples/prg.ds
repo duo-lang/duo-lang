@@ -1,5 +1,5 @@
 ## Generic print consumer ##
-cns print := mu* x.Print x;
+cns print := mu* x.Print(x);
 
 ## Boolean functions ##
 

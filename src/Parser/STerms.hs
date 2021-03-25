@@ -115,10 +115,15 @@ applyCmdP = do
   return (Apply prd cns)
 
 doneCmdP :: Parser (Command FreeVarName)
-doneCmdP = lexeme (symbol "Done") >> return Done
+doneCmdP = do
+  _ <- lexeme (symbol "Done")
+  return Done
 
 printCmdP :: Parser (Command FreeVarName)
-printCmdP = lexeme (symbol "Print") >> (Print <$> lexeme (stermP PrdRep))
+printCmdP = do
+  _ <- lexeme (symbol "Print")
+  arg <- parens $ lexeme (stermP PrdRep)
+  return $ Print arg
 
 commandP :: Parser (Command FreeVarName)
 commandP =
