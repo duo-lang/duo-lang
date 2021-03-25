@@ -38,6 +38,10 @@ instance Pretty XtorName where
   pretty (MkXtorName Structural xt) = "'" <> pretty xt
   pretty (MkXtorName Nominal    xt) = pretty xt
 
+-- | This identity wrapper is used to indicate that we want to transform the element to
+-- a named representation before prettyprinting it.
+newtype NamedRep a = NamedRep a
+
 ---------------------------------------------------------------------------------
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
@@ -72,6 +76,12 @@ instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"
   pretty (Print t) = "Print" <> parens (pretty t)
   pretty (Apply t1 t2) = group (nest 3 (line' <> vsep [pretty t1, ">>", pretty t2]))
+
+instance Pretty (NamedRep (STerm pc FreeVarName)) where
+  pretty (NamedRep tm) = pretty (openTermComplete tm)
+
+instance Pretty (NamedRep (Command FreeVarName)) where
+  pretty (NamedRep cmd) = pretty (openCommandComplete cmd)
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms

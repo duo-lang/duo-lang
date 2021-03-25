@@ -242,11 +242,11 @@ show_cmd str = do
   let s = trim str
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
-    Just prd -> prettyRepl prd
+    Just (prd,_) -> prettyRepl (NamedRep prd)
     Nothing -> case M.lookup s (cnsEnv env) of
-      Just cns -> prettyRepl cns
+      Just (cns,_) -> prettyRepl (NamedRep cns)
       Nothing -> case M.lookup s (cmdEnv env) of
-        Just cmd -> prettyRepl cmd
+        Just cmd -> prettyRepl (NamedRep cmd)
         Nothing -> case M.lookup s (defEnv env) of
           Just def -> prettyRepl def
           Nothing -> prettyRepl "Not in environment."
