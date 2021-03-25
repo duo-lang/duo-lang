@@ -60,3 +60,8 @@ trim :: String -> String
 trim = f . f
   where f = reverse . dropWhile isSpace
 
+
+indexMaybe :: [a] -> Int -> Maybe a
+indexMaybe xs i | 0 <= i && i <= (length xs) -1 = Just (xs !! i)
+                | otherwise = Nothing
+

@@ -103,14 +103,19 @@ foo CnsRep = NegRep
 
 -- | Lookup a type of a bound variable in the context.
 lookupType :: PrdCnsRep pc -> Index -> GenM bs (Typ (PrdCnsToPol pc))
-lookupType PrdRep (i,j) = do
+lookupType rep (i,j) = do
   ctx <- asks context
-  let (MkTypArgs { prdTypes }) = ctx !! i
-  return $ prdTypes !! j
-lookupType CnsRep (i,j) = do
-  ctx <- asks context
-  let (MkTypArgs { cnsTypes }) = ctx !! i
-  return $ cnsTypes !! j
+  case indexMaybe ctx i of
+    Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+    Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
+      PrdRep -> do
+        case indexMaybe prdTypes j of
+          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+          Just ty -> return ty
+      CnsRep -> do
+        case indexMaybe cnsTypes j of
+          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+          Just ty -> return ty
 
 -- | Add a constraint to the state.
 addConstraint :: Constraint -> GenM bs ()
