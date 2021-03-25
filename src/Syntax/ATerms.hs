@@ -38,39 +38,40 @@ import Syntax.CommonTerm
 --        |
 --    acase_name
 --
-data ACase a = MkACase
+data ACase bs = MkACase
   { acase_name :: XtorName
-  , acase_args :: [a]
-  , acase_term :: ATerm a
+  , acase_args :: [bs]
+  , acase_term :: ATerm bs
   } deriving (Eq, Show, Ord)
 
 -- | An asymmetric term.
-data ATerm a where
+-- The bs parameter indicates the type of additional information stored at binding sites.
+data ATerm bs where
   -- | A bound variable in the locally nameless system.
-  BVar :: Index -> ATerm a
+  BVar :: Index -> ATerm bs
   -- | A free variable in the locally nameless system.
-  FVar :: FreeVarName -> ATerm a
+  FVar :: FreeVarName -> ATerm bs
   -- | A constructor applied to a list of arguments:
   --
   --   C(e_1,...,e_n)
   --
-  Ctor :: XtorName -> [ATerm a] -> ATerm a
+  Ctor :: XtorName -> [ATerm bs] -> ATerm bs
   -- | An expression on which a destructor is called, where the destructor is
   -- applied to a list of arguments:
   --
   --   e.D(e_1,...,e_n)
   --
-  Dtor :: XtorName -> ATerm a -> [ATerm a] -> ATerm a
+  Dtor :: XtorName -> ATerm bs -> [ATerm bs] -> ATerm bs
   -- | A pattern match:
   --
   -- match e with { ... }
   --
-  Match :: ATerm a -> [ACase a] -> ATerm a
+  Match :: ATerm bs -> [ACase bs] -> ATerm bs
   -- | A copattern match:
   --
   -- comatch { ... }
   --
-  Comatch :: [ACase a] -> ATerm a
+  Comatch :: [ACase bs] -> ATerm bs
   deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
