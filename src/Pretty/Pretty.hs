@@ -155,8 +155,15 @@ instance Pretty a => Pretty (Declaration a) where
   pretty (DefDecl _ fv tm) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
   pretty (DataDecl _ decl) = pretty decl
 
-instance {-# OVERLAPPING #-} Pretty a => Pretty [Declaration a] where
-  pretty decls = vsep (pretty <$> decls)
+instance Pretty (NamedRep (Declaration FreeVarName)) where
+  pretty (NamedRep (PrdDecl _ fv tm)) = "prd" <+> pretty fv <+> ":=" <+> pretty (openTermComplete tm) <> semi
+  pretty (NamedRep (CnsDecl _ fv tm)) = "cns" <+> pretty fv <+> ":=" <+> pretty (openTermComplete tm) <> semi
+  pretty (NamedRep (CmdDecl _ fv cm)) = "cmd" <+> pretty fv <+> ":=" <+> pretty (openCommandComplete cm) <> semi
+  pretty (NamedRep (DefDecl _ fv tm)) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (NamedRep (DataDecl _ decl)) = pretty decl
+
+instance {-# OVERLAPPING #-} Pretty [Declaration FreeVarName] where
+  pretty decls = vsep (pretty . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments
