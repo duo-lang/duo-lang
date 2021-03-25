@@ -47,10 +47,7 @@ newtype NamedRep a = NamedRep a
 ---------------------------------------------------------------------------------
 
 instance Pretty a => Pretty (SCase a) where
-  pretty MkSCase{..} = pretty scase_name <> prettyTwice (constString scase_args) <+> "=>" <+> pretty scase_cmd
-    where
-      constString :: Twice [a] -> Twice [String]
-      constString (Twice a b) = Twice (const "-" <$> a) (const "-" <$> b)
+  pretty MkSCase{..} = pretty scase_name <> prettyTwice scase_args <+> "=>" <+> pretty scase_cmd
 
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns

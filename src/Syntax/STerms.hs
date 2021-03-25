@@ -254,9 +254,10 @@ openTermComplete (XMatch pc ns cases) = let
             , scase_cmd = commandOpening (freeVarNamesToXtorArgs scase_args) (openCommandComplete scase_cmd)
             }
   in XMatch pc ns (openSCase <$> cases)
-openTermComplete (MuAbs pc fv cmd) =
-  let cmd' = openCommandComplete cmd
-  in MuAbs pc fv (commandOpeningSingle pc (FreeVar pc fv) cmd')
+openTermComplete (MuAbs PrdRep fv cmd) =
+  MuAbs PrdRep fv (commandOpeningSingle CnsRep (FreeVar CnsRep fv) (openCommandComplete cmd))
+openTermComplete (MuAbs CnsRep fv cmd) =
+  MuAbs CnsRep fv (commandOpeningSingle PrdRep (FreeVar PrdRep fv) (openCommandComplete cmd))
 
 openCommandComplete :: Command FreeVarName -> Command FreeVarName
 openCommandComplete (Apply t1 t2) = Apply (openTermComplete t1) (openTermComplete t2)
