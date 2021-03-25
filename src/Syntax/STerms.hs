@@ -17,7 +17,7 @@ module Syntax.STerms
   -- Free Variables
   , isClosed_term
   -- Transform to named representation for prettyprinting
-  , openTermComplete
+  , openSTermComplete
   , openCommandComplete
   ) where
 
@@ -237,16 +237,16 @@ isClosed_term t = freeVars_term t == Twice [] []
 
 openXtorArgsComplete :: XtorArgs FreeVarName -> XtorArgs FreeVarName
 openXtorArgsComplete (MkXtorArgs prdArgs cnsArgs) =
-  MkXtorArgs (openTermComplete <$> prdArgs) (openTermComplete <$> cnsArgs)
+  MkXtorArgs (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
 
 freeVarNamesToXtorArgs :: Twice [FreeVarName] -> XtorArgs FreeVarName
 freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\n -> FreeVar PrdRep n) <$> prds) ((\n -> FreeVar CnsRep n) <$> cnss)
 
-openTermComplete :: STerm pc FreeVarName -> STerm pc FreeVarName
-openTermComplete (BoundVar pc idx) = BoundVar pc idx
-openTermComplete (FreeVar pc v) = FreeVar pc v
-openTermComplete (XtorCall pc name args) = XtorCall pc name (openXtorArgsComplete args)
-openTermComplete (XMatch pc ns cases) = let
+openSTermComplete :: STerm pc FreeVarName -> STerm pc FreeVarName
+openSTermComplete (BoundVar pc idx) = BoundVar pc idx
+openSTermComplete (FreeVar pc v) = FreeVar pc v
+openSTermComplete (XtorCall pc name args) = XtorCall pc name (openXtorArgsComplete args)
+openSTermComplete (XMatch pc ns cases) = let
   openSCase :: SCase FreeVarName -> SCase FreeVarName
   openSCase MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase { scase_name = scase_name
@@ -254,12 +254,12 @@ openTermComplete (XMatch pc ns cases) = let
             , scase_cmd = commandOpening (freeVarNamesToXtorArgs scase_args) (openCommandComplete scase_cmd)
             }
   in XMatch pc ns (openSCase <$> cases)
-openTermComplete (MuAbs PrdRep fv cmd) =
+openSTermComplete (MuAbs PrdRep fv cmd) =
   MuAbs PrdRep fv (commandOpeningSingle CnsRep (FreeVar CnsRep fv) (openCommandComplete cmd))
-openTermComplete (MuAbs CnsRep fv cmd) =
+openSTermComplete (MuAbs CnsRep fv cmd) =
   MuAbs CnsRep fv (commandOpeningSingle PrdRep (FreeVar PrdRep fv) (openCommandComplete cmd))
 
 openCommandComplete :: Command FreeVarName -> Command FreeVarName
-openCommandComplete (Apply t1 t2) = Apply (openTermComplete t1) (openTermComplete t2)
-openCommandComplete (Print t) = Print (openTermComplete t)
+openCommandComplete (Apply t1 t2) = Apply (openSTermComplete t1) (openSTermComplete t2)
+openCommandComplete (Print t) = Print (openSTermComplete t)
 openCommandComplete Done = Done

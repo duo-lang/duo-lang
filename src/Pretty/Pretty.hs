@@ -75,7 +75,7 @@ instance Pretty a => Pretty (Command a) where
   pretty (Apply t1 t2) = group (nest 3 (line' <> vsep [pretty t1, ">>", pretty t2]))
 
 instance Pretty (NamedRep (STerm pc FreeVarName)) where
-  pretty (NamedRep tm) = pretty (openTermComplete tm)
+  pretty (NamedRep tm) = pretty (openSTermComplete tm)
 
 instance Pretty (NamedRep (Command FreeVarName)) where
   pretty (NamedRep cmd) = pretty (openCommandComplete cmd)
@@ -156,8 +156,8 @@ instance Pretty a => Pretty (Declaration a) where
   pretty (DataDecl _ decl) = pretty decl
 
 instance Pretty (NamedRep (Declaration FreeVarName)) where
-  pretty (NamedRep (PrdDecl _ fv tm)) = "prd" <+> pretty fv <+> ":=" <+> pretty (openTermComplete tm) <> semi
-  pretty (NamedRep (CnsDecl _ fv tm)) = "cns" <+> pretty fv <+> ":=" <+> pretty (openTermComplete tm) <> semi
+  pretty (NamedRep (PrdDecl _ fv tm)) = "prd" <+> pretty fv <+> ":=" <+> pretty (openSTermComplete tm) <> semi
+  pretty (NamedRep (CnsDecl _ fv tm)) = "cns" <+> pretty fv <+> ":=" <+> pretty (openSTermComplete tm) <> semi
   pretty (NamedRep (CmdDecl _ fv cm)) = "cmd" <+> pretty fv <+> ":=" <+> pretty (openCommandComplete cm) <> semi
   pretty (NamedRep (DefDecl _ fv tm)) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
   pretty (NamedRep (DataDecl _ decl)) = pretty decl
