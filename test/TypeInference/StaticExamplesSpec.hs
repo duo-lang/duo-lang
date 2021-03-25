@@ -15,7 +15,7 @@ import TypeAutomata.Subsume (typeAutEqual)
 instance Show (TypeScheme pol) where
   show = ppPrint
 
-typecheckExample :: Environment -> String -> String -> Spec
+typecheckExample :: Environment FreeVarName -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right term = runInteractiveParser (stermP PrdRep) termS

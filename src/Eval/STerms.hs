@@ -15,7 +15,7 @@ import Utils
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
-lookupCase :: XtorName -> [SCase a] -> EvalM (SCase a)
+lookupCase :: XtorName -> [SCase bs] -> EvalM bs (SCase bs)
 lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError $ unlines ["Error during evaluation. The xtor: "
@@ -23,10 +23,10 @@ lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) ca
                                       , "doesn't occur in match."
                                       ]
 
-lengthXtorArgs :: XtorArgs a -> Twice Int
+lengthXtorArgs :: XtorArgs bs -> Twice Int
 lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: Pretty a => Command a -> Twice [a] -> XtorArgs a -> EvalM ()
+checkArgs :: Pretty bs => Command bs -> Twice [bs] -> XtorArgs bs -> EvalM bs ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
@@ -34,12 +34,12 @@ checkArgs cmd argTypes args =
                         "\"\nArgument lengths don't coincide.")
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalSTermOnce :: Command () -> EvalM (Maybe (Command ()))
+evalSTermOnce :: Pretty bs => Command bs -> EvalM bs (Maybe (Command bs))
 evalSTermOnce Done = return Nothing
 evalSTermOnce (Print _) = return Nothing
 evalSTermOnce (Apply prd cns) = evalApplyOnce prd cns
 
-evalApplyOnce :: STerm Prd () -> STerm Cns () -> EvalM (Maybe (Command ()))
+evalApplyOnce :: Pretty bs => STerm Prd bs -> STerm Cns bs -> EvalM bs (Maybe (Command bs))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar PrdRep fv) cns = do
   (prd,_) <- lookupPrd fv
@@ -72,7 +72,7 @@ evalApplyOnce (XMatch _ _ _) (XMatch _ _ _) = throwEvalError "Cannot evaluate ma
 evalApplyOnce (XtorCall _ _ _) (XtorCall _ _ _) = throwEvalError "Cannot evaluate constructor applied to destructor"
 
 -- | Return just thef final evaluation result
-eval :: Command () -> EvalM (Command ())
+eval :: Pretty bs => Command bs -> EvalM bs (Command bs)
 eval cmd = do
   cmd' <- evalSTermOnce cmd
   case cmd' of
@@ -80,10 +80,10 @@ eval cmd = do
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
-evalSteps :: Command () -> EvalM [Command ()]
+evalSteps :: Pretty bs => Command bs -> EvalM bs [Command bs]
 evalSteps cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: [Command ()] -> Command () -> EvalM [Command ()]
+    evalSteps' :: Pretty bs => [Command bs] -> Command bs -> EvalM bs [Command bs]
     evalSteps' cmds cmd = do
       cmd' <- evalSTermOnce cmd
       case cmd' of

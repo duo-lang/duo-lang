@@ -155,7 +155,7 @@ instance {-# OVERLAPPING #-} Pretty a => Pretty [Declaration a] where
 -- Prettyprinting of Environments
 ---------------------------------------------------------------------------------
 
-instance Pretty Environment where
+instance Pretty (Environment bs) where
   pretty Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
     vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
     where

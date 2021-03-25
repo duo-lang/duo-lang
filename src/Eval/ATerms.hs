@@ -13,7 +13,7 @@ import Syntax.ATerms
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------
 
-isValue :: ATerm a -> Bool
+isValue :: ATerm bs -> Bool
 isValue (BVar _) = True
 isValue (FVar _) = False
 isValue (Ctor _ args) = and (isValue <$> args)
@@ -21,12 +21,12 @@ isValue (Dtor _ _ _) = False
 isValue (Match _ _ ) = False
 isValue (Comatch _) = True
 
-evalArgsSingleStep :: [ATerm ()] -> EvalM (Maybe [ATerm ()])
+evalArgsSingleStep :: [ATerm bs] -> EvalM bs (Maybe [ATerm bs])
 evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
-evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
+evalATermSingleStep :: ATerm bs -> EvalM bs (Maybe (ATerm bs))
 evalATermSingleStep (BVar _) = return Nothing
 evalATermSingleStep (FVar fv) = do
   (tm,_) <- lookupDef fv
@@ -54,7 +54,7 @@ evalATermSingleStep (Dtor xt (Comatch cocases) args) =
 evalATermSingleStep (Dtor _ _ _) = throwEvalError "unreachable if properly typechecked"
 evalATermSingleStep (Comatch _) = return Nothing
 
-evalATermComplete :: ATerm () -> EvalM (ATerm ())
+evalATermComplete :: ATerm bs -> EvalM bs (ATerm bs)
 evalATermComplete t = do
   t' <- evalATermSingleStep t
   case t' of

@@ -3,6 +3,7 @@ module TestUtils where
 import System.Directory (listDirectory)
 
 import Parser.Parser
+import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
 import TypeInference.InferProgram (inferProgram)
 import Utils
@@ -18,12 +19,12 @@ getAvailableExamples = do
   examples <- listDirectory "examples/"
   return (("examples/" ++) <$> examples)
 
-getParsedDeclarations :: FilePath -> IO (Either Error [Declaration ()])
+getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName])
 getParsedDeclarations fp = do
   s <- readFile fp
   return (runFileParser fp programP s)
 
-getEnvironment :: FilePath -> IO (Either Error Environment)
+getEnvironment :: FilePath -> IO (Either Error (Environment FreeVarName))
 getEnvironment fp = do
   decls <- getParsedDeclarations fp
   case decls of

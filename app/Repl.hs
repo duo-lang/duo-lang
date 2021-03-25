@@ -39,7 +39,7 @@ data EvalSteps = Steps | NoSteps
 data Mode = Symmetric | Asymmetric
 
 data ReplState = ReplState
-  { replEnv :: Environment
+  { replEnv :: Environment FreeVarName
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
@@ -62,7 +62,7 @@ initialReplState = ReplState { replEnv = mempty
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment -> Environment) -> Repl ()
+modifyEnvironment :: (Environment FreeVarName -> Environment FreeVarName) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
