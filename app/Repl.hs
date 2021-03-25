@@ -233,6 +233,11 @@ type_option = Option
 -- Show
 
 show_cmd :: String -> Repl ()
+show_cmd "" = do
+  loadedFiles <- gets loadedFiles
+  forM_ loadedFiles $ \fp -> do
+    decls <- parseFile fp programP
+    prettyRepl decls
 show_cmd str = do
   let s = trim str
   env <- gets replEnv

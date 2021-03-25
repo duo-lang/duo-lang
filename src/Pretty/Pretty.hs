@@ -133,9 +133,23 @@ instance Pretty Constraint where
 instance Pretty TypeName where
   pretty (MkTypeName tn) = pretty tn
 
+---------------------------------------------------------------------------------
+-- Prettyprinting of Declarations
+---------------------------------------------------------------------------------
+
 instance Pretty DataDecl where
-  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
-  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <> semi
+  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <> semi
+
+instance Pretty a => Pretty (Declaration a) where
+  pretty (PrdDecl _ fv tm) = "prd" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (CnsDecl _ fv tm) = "cns" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (CmdDecl _ fv cm) = "cmd" <+> pretty fv <+> ":=" <+> pretty cm <> semi
+  pretty (DefDecl _ fv tm) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
+  pretty (DataDecl _ decl) = pretty decl
+
+instance {-# OVERLAPPING #-} Pretty a => Pretty [Declaration a] where
+  pretty decls = vsep (pretty <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments
