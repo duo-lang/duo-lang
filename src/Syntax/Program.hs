@@ -19,6 +19,9 @@ data Declaration a
   | DefDecl Loc FreeVarName (ATerm a)
   | DataDecl Loc DataDecl
 
+instance Show (Declaration a) where
+  show _ = "<Show for Declaration not implemented>"
+
 ---------------------------------------------------------------------------------
 -- Environment
 ---------------------------------------------------------------------------------

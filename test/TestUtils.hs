@@ -28,10 +28,15 @@ filterEnvironment failingExamples Environment {..} =
               , declEnv = declEnv
               }
 
+getParsedDeclarations :: FilePath -> IO (Either Error [Declaration ()])
+getParsedDeclarations fp = do
+  s <- readFile fp
+  return (runFileParser fp programP s)
+
 getEnvironment :: FilePath -> [String] -> IO (Either Error Environment)
 getEnvironment fp failingExamples = do
-  s <- readFile fp
-  case runFileParser fp programP s of
+  decls <- getParsedDeclarations fp
+  case decls of
     Right decls -> case inferProgram decls of
       Right env -> return $ Right (filterEnvironment failingExamples env)
       Left (Located _ err) -> return $ Left err

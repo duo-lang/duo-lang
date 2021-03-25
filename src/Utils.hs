@@ -24,6 +24,7 @@ instance Functor Twice where
 ----------------------------------------------------------------------------------
 
 data Loc = Loc SourcePos SourcePos
+  deriving (Show)
 
 data Located a = Located Loc a
 
