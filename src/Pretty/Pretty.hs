@@ -13,6 +13,21 @@ import Syntax.Program
 import Utils
 
 ---------------------------------------------------------------------------------
+-- Annotations
+---------------------------------------------------------------------------------
+
+data Annotation
+  = AnnKeyword
+  | AnnSymbol
+  deriving (Show, Eq)
+
+annKeyword :: Doc Annotation -> Doc Annotation
+annKeyword = annotate AnnKeyword
+
+annSymbol :: Doc Annotation -> Doc Annotation
+annSymbol = annotate AnnSymbol
+
+---------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------
 
