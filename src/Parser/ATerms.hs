@@ -62,8 +62,8 @@ numLitP :: Parser (ATerm bs)
 numLitP = numToTerm <$> numP
   where
     numToTerm :: Int -> ATerm bs
-    numToTerm 0 = Ctor (MkXtorName Nominal "Zero") []
-    numToTerm n = Ctor (MkXtorName Nominal "Succ") [numToTerm (n-1)]
+    numToTerm 0 = Ctor (MkXtorName Nominal "Z") []
+    numToTerm n = Ctor (MkXtorName Nominal "S") [numToTerm (n-1)]
 
 
 -- | Like atermP but without dtorP, since dtorP

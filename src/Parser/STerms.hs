@@ -24,8 +24,8 @@ numLitP CnsRep = empty
 numLitP PrdRep = numToTerm <$> numP
   where
     numToTerm :: Int -> STerm Prd bs
-    numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Zero") (MkXtorArgs [] [])
-    numToTerm n = XtorCall PrdRep (MkXtorName Structural "Succ") (MkXtorArgs [numToTerm (n-1)] [])
+    numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
+    numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 lambdaSugar CnsRep = empty

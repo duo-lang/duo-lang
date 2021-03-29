@@ -144,8 +144,8 @@ instance PrettyAnn a => PrettyAnn (XtorArgs a) where
   prettyAnn (MkXtorArgs prds cns) = prettyTwice' prds cns
 
 isNumSTerm :: STerm pc a -> Maybe Int
-isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Zero") (MkXtorArgs [] [])) = Just 0
-isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Succ") (MkXtorArgs [n] [])) = case isNumSTerm n of
+isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Z") (MkXtorArgs [] [])) = Just 0
+isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "S") (MkXtorArgs [n] [])) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
@@ -181,8 +181,8 @@ instance PrettyAnn (NamedRep (Command FreeVarName)) where
 ---------------------------------------------------------------------------------
 
 isNumATerm :: ATerm a -> Maybe Int
-isNumATerm (Ctor (MkXtorName Nominal "Zero") []) = Just 0
-isNumATerm (Ctor (MkXtorName Nominal "Succ") [n]) = case isNumATerm n of
+isNumATerm (Ctor (MkXtorName Nominal "Z") []) = Just 0
+isNumATerm (Ctor (MkXtorName Nominal "S") [n]) = case isNumATerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumATerm _ = Nothing
