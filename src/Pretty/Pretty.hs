@@ -21,6 +21,8 @@ import Utils
 data Annotation
   = AnnKeyword
   | AnnSymbol
+  | AnnTypeName
+  | AnnXtorName
   deriving (Show, Eq)
 
 annKeyword :: Doc Annotation -> Doc Annotation
@@ -28,6 +30,12 @@ annKeyword = annotate AnnKeyword
 
 annSymbol :: Doc Annotation -> Doc Annotation
 annSymbol = annotate AnnSymbol
+
+annTypeName :: Doc Annotation -> Doc Annotation
+annTypeName = annotate AnnTypeName
+
+annXtorName :: Doc Annotation -> Doc Annotation
+annXtorName = annotate AnnXtorName
 
 -- A variant of the `Pretty` typeclass which uses our annotations.
 -- Why the builtin  Pretty class is not sufficient, see: https://github.com/quchen/prettyprinter/issues/102
@@ -58,13 +66,11 @@ ppPrint doc =
 -- Console Backend with ANSI Colors
 ---------------------------------------------------------------------------------
 
--- | How to color keywords.
-keywordOpts :: [SGR]
-keywordOpts = [SetColor Foreground Vivid Blue]
-
--- | How to color symbols.
-symbolOpts :: [SGR]
-symbolOpts = [SetColor Foreground Vivid Red]
+annotationToOpts :: Annotation -> [SGR]
+annotationToOpts AnnKeyword  = [SetColor Foreground Vivid Blue]
+annotationToOpts AnnSymbol   = [SetColor Foreground Dull Red]
+annotationToOpts AnnTypeName = [SetColor Foreground Dull Green]
+annotationToOpts AnnXtorName = [SetColor Foreground Dull Magenta]
 
 ppPrintIO :: PrettyAnn a => a -> IO ()
 ppPrintIO doc =
@@ -89,11 +95,8 @@ renderConsole' = \case
   SLine i x    -> do
     putStr ('\n' : T.unpack (T.replicate i (T.singleton ' ')))
     renderConsole' x
-  SAnnPush AnnKeyword x -> do
-    setSGR keywordOpts
-    renderConsole' x
-  SAnnPush AnnSymbol x -> do
-    setSGR symbolOpts
+  SAnnPush ann x -> do
+    setSGR (annotationToOpts ann)
     renderConsole' x
   SAnnPop x    -> do
     setSGR [Reset]
@@ -119,8 +122,8 @@ prettyTwice :: PrettyAnn a => Twice [a] -> Doc Annotation
 prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
 instance PrettyAnn XtorName where
-  prettyAnn (MkXtorName Structural xt) = "'" <> prettyAnn xt
-  prettyAnn (MkXtorName Nominal    xt) = prettyAnn xt
+  prettyAnn (MkXtorName Structural xt) = annXtorName $ "'" <> prettyAnn xt
+  prettyAnn (MkXtorName Nominal    xt) = annXtorName $ prettyAnn xt
 
 -- | This identity wrapper is used to indicate that we want to transform the element to
 -- a named representation before prettyprinting it.
@@ -218,15 +221,15 @@ instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv
 
 instance PrettyAnn (Typ pol) where
-  prettyAnn (TySet PosRep []) = "Bot"
+  prettyAnn (TySet PosRep []) = annKeyword "Bot"
   prettyAnn (TySet PosRep [t]) = prettyAnn t
   prettyAnn (TySet PosRep tts) = parens (intercalateX " \\/ " (map prettyAnn tts))
-  prettyAnn (TySet NegRep []) = "Top"
+  prettyAnn (TySet NegRep []) = annKeyword "Top"
   prettyAnn (TySet NegRep [t]) = prettyAnn t
   prettyAnn (TySet NegRep tts) = parens (intercalateX " /\\ " (map prettyAnn tts))
   prettyAnn (TyVar _ _ tv) = prettyAnn tv -- Normal + Recursive
-  prettyAnn (TyRec _ rv t) = "rec " <> prettyAnn rv <> "." <> prettyAnn t
-  prettyAnn (TyNominal _ tn) = pretty (unTypeName tn)
+  prettyAnn (TyRec _ rv t) = annKeyword "rec " <> prettyAnn rv <> "." <> prettyAnn t
+  prettyAnn (TyNominal _ tn) = prettyAnn tn
   prettyAnn (TyStructural _ DataRep   xtors) =
     angles (mempty <+> cat (punctuate " | " (prettyAnn <$> xtors)) <+> mempty)
   prettyAnn (TyStructural _ CodataRep xtors) =
@@ -242,7 +245,7 @@ instance PrettyAnn (TypeScheme pol) where
   prettyAnn (TypeScheme [] ty) = prettyAnn ty
   prettyAnn (TypeScheme tvs ty) =
     annKeyword "forall" <+>
-    intercalateX "" (map prettyAnn tvs) <>
+    intercalateX " " (map prettyAnn tvs) <>
     "." <+>
     prettyAnn ty
 
@@ -251,7 +254,7 @@ instance PrettyAnn Constraint where
     prettyAnn t1 <+> "<:" <+> prettyAnn t2
 
 instance PrettyAnn TypeName where
-  prettyAnn (MkTypeName tn) = pretty tn
+  prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
