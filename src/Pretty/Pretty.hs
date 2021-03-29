@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty.Pretty where
 
+import qualified Data.Text as T
 import qualified Data.Map as M
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import System.Console.ANSI
 import Text.Megaparsec.Pos
 
 import Syntax.STerms
@@ -40,8 +42,9 @@ instance PrettyAnn a => PrettyAnn [a] where
 
 instance PrettyAnn Bool where
   prettyAnn = pretty
+
 ---------------------------------------------------------------------------------
--- Helper functions
+-- Render to String Backend
 ---------------------------------------------------------------------------------
 
 ppPrint :: PrettyAnn a => a -> String
@@ -50,6 +53,55 @@ ppPrint doc =
     layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
   in
     renderString (layoutPretty layout (prettyAnn doc))
+
+---------------------------------------------------------------------------------
+-- Console Backend with ANSI Colors
+---------------------------------------------------------------------------------
+
+-- | How to color keywords.
+keywordOpts :: [SGR]
+keywordOpts = [SetColor Foreground Vivid Blue]
+
+-- | How to color symbols.
+symbolOpts :: [SGR]
+symbolOpts = [SetColor Foreground Vivid Red]
+
+ppPrintIO :: PrettyAnn a => a -> IO ()
+ppPrintIO doc =
+  let
+    layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
+  in
+    renderConsole (layoutPretty layout (prettyAnn doc))
+
+renderConsole :: SimpleDocStream Annotation -> IO ()
+renderConsole str = (renderConsole' str) >> putStrLn ""
+
+renderConsole' :: SimpleDocStream Annotation -> IO ()
+renderConsole' = \case
+  SFail        -> return ()
+  SEmpty       -> return ()
+  SChar c x    -> do
+    putStr $ c : []
+    renderConsole' x
+  SText _l t x -> do
+    putStr (T.unpack t)
+    renderConsole' x
+  SLine i x    -> do
+    putStr ('\n' : T.unpack (T.replicate i (T.singleton ' ')))
+    renderConsole' x
+  SAnnPush AnnKeyword x -> do
+    setSGR keywordOpts
+    renderConsole' x
+  SAnnPush AnnSymbol x -> do
+    setSGR symbolOpts
+    renderConsole' x
+  SAnnPop x    -> do
+    setSGR [Reset]
+    renderConsole' x
+
+---------------------------------------------------------------------------------
+-- Helper functions
+---------------------------------------------------------------------------------
 
 intercalateX :: Doc ann -> [Doc ann] -> Doc ann
 intercalateX  x xs = cat (punctuate x xs)

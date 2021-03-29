@@ -68,7 +68,7 @@ modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
 modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedFiles }
 
 prettyRepl :: PrettyAnn a => a -> Repl ()
-prettyRepl s = liftIO $ putStrLn (ppPrint s)
+prettyRepl s = liftIO $ ppPrintIO s
 
 fromRight :: PrettyAnn err => Either err b -> Repl b
 fromRight (Right b) = return b
