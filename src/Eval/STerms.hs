@@ -4,7 +4,6 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
-import Prettyprinter
 
 import Eval.Eval
 import Pretty.Pretty
@@ -26,7 +25,7 @@ lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) ca
 lengthXtorArgs :: XtorArgs bs -> Twice Int
 lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: Pretty bs => Command bs -> Twice [bs] -> XtorArgs bs -> EvalM bs ()
+checkArgs :: PrettyAnn bs => Command bs -> Twice [bs] -> XtorArgs bs -> EvalM bs ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
@@ -34,12 +33,12 @@ checkArgs cmd argTypes args =
                         "\"\nArgument lengths don't coincide.")
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalSTermOnce :: Pretty bs => Command bs -> EvalM bs (Maybe (Command bs))
+evalSTermOnce :: PrettyAnn bs => Command bs -> EvalM bs (Maybe (Command bs))
 evalSTermOnce Done = return Nothing
 evalSTermOnce (Print _) = return Nothing
 evalSTermOnce (Apply prd cns) = evalApplyOnce prd cns
 
-evalApplyOnce :: Pretty bs => STerm Prd bs -> STerm Cns bs -> EvalM bs (Maybe (Command bs))
+evalApplyOnce :: PrettyAnn bs => STerm Prd bs -> STerm Cns bs -> EvalM bs (Maybe (Command bs))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar PrdRep fv) cns = do
   (prd,_) <- lookupPrd fv
@@ -72,7 +71,7 @@ evalApplyOnce (XMatch _ _ _) (XMatch _ _ _) = throwEvalError "Cannot evaluate ma
 evalApplyOnce (XtorCall _ _ _) (XtorCall _ _ _) = throwEvalError "Cannot evaluate constructor applied to destructor"
 
 -- | Return just thef final evaluation result
-eval :: Pretty bs => Command bs -> EvalM bs (Command bs)
+eval :: PrettyAnn bs => Command bs -> EvalM bs (Command bs)
 eval cmd = do
   cmd' <- evalSTermOnce cmd
   case cmd' of
@@ -80,10 +79,10 @@ eval cmd = do
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
-evalSteps :: Pretty bs => Command bs -> EvalM bs [Command bs]
+evalSteps :: PrettyAnn bs => Command bs -> EvalM bs [Command bs]
 evalSteps cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: Pretty bs => [Command bs] -> Command bs -> EvalM bs [Command bs]
+    evalSteps' :: PrettyAnn bs => [Command bs] -> Command bs -> EvalM bs [Command bs]
     evalSteps' cmds cmd = do
       cmd' <- evalSTermOnce cmd
       case cmd' of
