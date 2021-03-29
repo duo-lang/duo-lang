@@ -32,7 +32,11 @@ annSymbol = annotate AnnSymbol
 ---------------------------------------------------------------------------------
 
 ppPrint :: Pretty a => a -> String
-ppPrint doc = renderString (layoutPretty defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }(pretty doc))
+ppPrint doc =
+  let
+    layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
+  in
+    renderString (layoutPretty layout (pretty doc))
 
 intercalateX :: Doc ann -> [Doc ann] -> Doc ann
 intercalateX  x xs = cat (punctuate x xs)
@@ -62,7 +66,11 @@ newtype NamedRep a = NamedRep a
 ---------------------------------------------------------------------------------
 
 instance Pretty a => Pretty (SCase a) where
-  pretty MkSCase{..} = pretty scase_name <> prettyTwice scase_args <+> "=>" <+> pretty scase_cmd
+  pretty MkSCase{..} =
+    pretty scase_name <>
+    prettyTwice scase_args <+>
+    "=>" <+>
+    pretty scase_cmd
 
 instance Pretty a => Pretty (XtorArgs a) where
   pretty (MkXtorArgs prds cns) = prettyTwice' prds cns
@@ -75,14 +83,19 @@ isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Succ") (MkXtorArgs [n] [])) = c
 isNumSTerm _ = Nothing
 
 instance Pretty a => Pretty (STerm pc a) where
-  pretty (isNumSTerm -> Just n) = pretty n -- View Pattern !
+  pretty (isNumSTerm -> Just n) = pretty n
   pretty (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FreeVar _ v) = pretty v
   pretty (XtorCall _ xt args) = pretty xt <> pretty args
-  pretty (XMatch PrdRep _ cases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
-  pretty (XMatch CnsRep _ cases) = "match"   <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (XMatch PrdRep _ cases) =
+    "comatch" <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (XMatch CnsRep _ cases) =
+    "match"   <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
   pretty (MuAbs pc a cmd) =
-    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <+> pretty a <> "." <> parens (pretty cmd)
+    case pc of {PrdRep -> "mu"; CnsRep -> "mu*"} <+>
+    pretty a <> "." <> parens (pretty cmd)
 
 instance Pretty a => Pretty (Command a) where
   pretty Done = "Done"
@@ -108,19 +121,30 @@ isNumATerm _ = Nothing
 
 instance Pretty a => Pretty (ACase a) where
   pretty MkACase{ acase_name, acase_args, acase_term } =
-    pretty acase_name <> parens (intercalateComma (pretty <$> acase_args)) <+> "=>" <+> pretty acase_term
+    pretty acase_name <>
+    parens (intercalateComma (pretty <$> acase_args)) <+>
+    "=>" <+>
+    pretty acase_term
 
 instance Pretty a => Pretty (ATerm a) where
-  pretty (isNumATerm -> Just n) = pretty n -- View Pattern !
+  pretty (isNumATerm -> Just n) = pretty n
   pretty (BVar (i,j)) = parens (pretty i <> "," <> pretty j)
   pretty (FVar v) = pretty v
   pretty (Ctor xt args) = pretty xt <> parens (intercalateComma (map pretty args))
-  pretty (Dtor xt t args) = parens ( pretty t <> "." <> pretty xt <> parens (intercalateComma (map pretty args)))
-  pretty (Match t cases) = "match" <+> pretty t <+> "with" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
-  pretty (Comatch cocases) = "comatch" <+> braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cocases)))))
+  pretty (Dtor xt t args) =
+    parens ( pretty t <> "." <> pretty xt <> parens (intercalateComma (map pretty args)))
+  pretty (Match t cases) =
+    "match" <+>
+    pretty t <+>
+    "with" <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cases)))))
+  pretty (Comatch cocases) =
+    "comatch" <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (pretty <$> cocases)))))
 
 instance Pretty (NamedRep (ATerm FreeVarName)) where
   pretty (NamedRep tm) = pretty (openATermComplete tm)
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Types
 ---------------------------------------------------------------------------------
@@ -138,8 +162,10 @@ instance Pretty (Typ pol) where
   pretty (TyVar _ _ tv) = pretty tv -- Normal + Recursive
   pretty (TyRec _ rv t) = "rec " <> pretty rv <> "." <> pretty t
   pretty (TyNominal _ tn) = pretty (unTypeName tn)
-  pretty (TyStructural _ DataRep   xtors) = angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
-  pretty (TyStructural _ CodataRep xtors) = braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural _ DataRep   xtors) =
+    angles (mempty <+> cat (punctuate " | " (pretty <$> xtors)) <+> mempty)
+  pretty (TyStructural _ CodataRep xtors) =
+    braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty)
 
 instance Pretty (TypArgs a) where
   pretty (MkTypArgs prdArgs cnsArgs) = prettyTwice' prdArgs cnsArgs
@@ -149,10 +175,15 @@ instance Pretty (XtorSig a) where
 
 instance Pretty (TypeScheme pol) where
   pretty (TypeScheme [] ty) = pretty ty
-  pretty (TypeScheme tvs ty) = "forall " <> intercalateX "" (map pretty tvs) <> ". " <> pretty ty
+  pretty (TypeScheme tvs ty) =
+    "forall" <+>
+    intercalateX "" (map pretty tvs) <>
+    "." <+>
+    pretty ty
 
 instance Pretty Constraint where
-  pretty (SubType t1 t2) = pretty t1 <+> "<:" <+> pretty t2
+  pretty (SubType t1 t2) =
+    pretty t1 <+> "<:" <+> pretty t2
 
 instance Pretty TypeName where
   pretty (MkTypeName tn) = pretty tn
@@ -162,13 +193,21 @@ instance Pretty TypeName where
 ---------------------------------------------------------------------------------
 
 instance Pretty DataDecl where
-  pretty (NominalDecl tn Data xtors)   = "data" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <> semi
-  pretty (NominalDecl tn Codata xtors) = "codata" <+> pretty tn <+> braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <> semi
+  pretty (NominalDecl tn Data xtors) =
+    "data" <+>
+    pretty tn <+>
+    braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <>
+    semi
+  pretty (NominalDecl tn Codata xtors) =
+    "codata" <+>
+    pretty tn <+>
+    braces (mempty <+> cat (punctuate " , " (pretty <$> xtors)) <+> mempty) <>
+    semi
 
 instance Pretty a => Pretty (Declaration a) where
   pretty (PrdDecl _ fv tm) = "prd" <+> pretty fv <+> ":=" <+> pretty tm <> semi
   pretty (CnsDecl _ fv tm) = "cns" <+> pretty fv <+> ":=" <+> pretty tm <> semi
-  pretty (CmdDecl _ fv cm) = "cmd" <+> pretty fv <+> ":=" <+> pretty cm <> semi
+  pretty (CmdDecl _ fv cm) ="cmd" <+> pretty fv <+> ":=" <+> pretty cm <> semi
   pretty (DefDecl _ fv tm) = "def" <+> pretty fv <+> ":=" <+> pretty tm <> semi
   pretty (DataDecl _ decl) = pretty decl
 
