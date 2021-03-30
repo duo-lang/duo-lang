@@ -19,22 +19,25 @@ data Declaration a
   | DefDecl Loc FreeVarName (ATerm a)
   | DataDecl Loc DataDecl
 
+instance Show (Declaration a) where
+  show _ = "<Show for Declaration not implemented>"
+
 ---------------------------------------------------------------------------------
 -- Environment
 ---------------------------------------------------------------------------------
 
-data Environment = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd (), TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (STerm Cns (), TypeScheme Neg)
-  , cmdEnv :: Map FreeVarName (Command ())
-  , defEnv :: Map FreeVarName (ATerm (), TypeScheme Pos)
+data Environment bs = Environment
+  { prdEnv :: Map FreeVarName (STerm Prd bs, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns bs, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command bs)
+  , defEnv :: Map FreeVarName (ATerm bs, TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 
-instance Show Environment where
+instance Show (Environment bs) where
   show _ = "<Environment>"
 
-instance Semigroup Environment where
+instance Semigroup (Environment bs) where
   (Environment prdEnv1 cnsEnv1 cmdEnv1 defEnv1 declEnv1) <> (Environment prdEnv2 cnsEnv2 cmdEnv2 defEnv2 declEnv2) =
     Environment { prdEnv = M.union prdEnv1 prdEnv2
                 , cnsEnv = M.union cnsEnv1 cnsEnv2
@@ -43,7 +46,7 @@ instance Semigroup Environment where
                 , declEnv = declEnv1 ++ declEnv2
                 }
 
-instance Monoid Environment where
+instance Monoid (Environment bs) where
   mempty = Environment
     { prdEnv = M.empty
     , cnsEnv = M.empty
@@ -52,14 +55,14 @@ instance Monoid Environment where
     , declEnv = []
     }
 
-envToXtorMap :: Environment -> Map XtorName (TypArgs Pos)
+envToXtorMap :: Environment bs -> Map XtorName (TypArgs Pos)
 envToXtorMap Environment { declEnv } = M.unions xtorMaps
   where
     xtorMaps = xtorSigsToAssocList <$> declEnv
     xtorSigsToAssocList NominalDecl { data_xtors } =
       M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors)
 
-lookupXtor :: XtorName -> Environment -> Maybe DataDecl
+lookupXtor :: XtorName -> Environment bs -> Maybe DataDecl
 lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
   where
     typeContainsXtor :: DataDecl -> Bool

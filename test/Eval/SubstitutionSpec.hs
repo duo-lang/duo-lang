@@ -3,15 +3,13 @@ module Eval.SubstitutionSpec where
 import Test.Hspec
 import qualified Data.Map as M
 import Data.Either (isLeft, isRight)
-import Control.Monad (forM_, when)
+import Control.Monad (forM_)
 
+import Pretty.Pretty
 import Syntax.STerms
 import Syntax.Program
 import Utils
 import TestUtils
-
-failingExamples :: [String]
-failingExamples = []
 
 spec :: Spec
 spec = do
@@ -19,10 +17,13 @@ spec = do
     examples <- runIO getAvailableExamples
     forM_ examples $ \example -> do
       describe ("Examples in " ++ example ++ " are locally closed") $ do
-        env <- runIO $ getEnvironment example failingExamples
-        when (failingExamples /= []) $ it "Some examples were ignored:" $ pendingWith $ unwords failingExamples
-        forM_ (M.toList (prdEnv (unsafeFromRight env))) $ \(name,(term,_)) -> do
-          it (name ++ " does not contain dangling deBruijn indizes") $ termLocallyClosed term `shouldBe` Right ()
+        env <- runIO $ getEnvironment example
+        case env of
+          Left err -> it "Could not load examples." $ expectationFailure (ppPrint err)
+          Right env -> do
+            forM_ (M.toList (prdEnv env)) $ \(name,(term,_)) -> do
+              it (name ++ " does not contain dangling deBruijn indizes") $
+                termLocallyClosed term `shouldBe` Right ()
 
   describe "checkIfBound works" $ do
     it "checkIfBound [] PrdRep (0,0) `shouldBe` False" $ do

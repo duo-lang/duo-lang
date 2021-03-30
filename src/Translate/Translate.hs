@@ -8,9 +8,9 @@ import Syntax.ATerms
 import Utils
 
 
-compile :: ATerm () -> STerm Prd ()
+compile :: ATerm a -> STerm Prd ()
 compile (BVar i) = BoundVar PrdRep i 
-compile (FVar n) = FreeVar PrdRep n ()
+compile (FVar n) = FreeVar PrdRep n
 compile (Ctor xt args')   = XtorCall PrdRep xt $ compileArgs args' []
 -- we want to compile e.D(args')
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]
@@ -28,16 +28,16 @@ compile (Match t cases)   = MuAbs PrdRep () $
 compile (Comatch cocases) = XMatch PrdRep Nominal $ (aToSCase CnsRep) <$> cocases
 
 
-compileArgs :: [ATerm ()] -> [STerm Cns ()] -> XtorArgs ()
+compileArgs :: [ATerm a] -> [STerm Cns ()] -> XtorArgs ()
 compileArgs args' cnsLst = MkXtorArgs (compile <$> args') cnsLst
 
-aToSCase :: PrdCnsRep pc -> ACase () -> SCase ()
+aToSCase :: PrdCnsRep pc -> ACase a -> SCase ()
 -- we want to compile: C (args) => t
 -- C (args) => (compile t) >> k 
-aToSCase PrdRep (MkACase xt args t) = MkSCase xt (Twice args [])   $ Apply (compile t) (BoundVar CnsRep (1,0))
+aToSCase PrdRep (MkACase xt args t) = MkSCase xt (Twice (const () <$> args) [])   $ Apply (compile t) (BoundVar CnsRep (1,0))
 -- we want to compile: D(args) => t
 -- D(args)[k] => (compile t) >> k 
-aToSCase _      (MkACase xt args t) = MkSCase xt (Twice args [()]) $ Apply (compile t) (BoundVar CnsRep (0,0))
+aToSCase _      (MkACase xt args t) = MkSCase xt (Twice (const () <$> args) [()]) $ Apply (compile t) (BoundVar CnsRep (0,0))
 
 
 -- Shift indexes
@@ -48,7 +48,7 @@ shiftAllOnce = shift 0
 shift :: Int -> STerm Prd () -> STerm Prd ()
 shift k bv@(BoundVar pc (i,j)) | k <= i    = BoundVar pc (i+1,j)
                                 | otherwise = bv
-shift _ fv@(FreeVar _ _ _)   = fv
+shift _ fv@(FreeVar _ _)   = fv
 --Ctor
 shift k (XtorCall PrdRep xt (MkXtorArgs prds [])) = XtorCall PrdRep xt (MkXtorArgs (shift k <$> prds) [])
 --Dtor

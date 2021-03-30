@@ -13,7 +13,7 @@ compileExample termA termS = do
   it (termA ++  " compiles to: " ++ termS) $ do
       let Right termS' = runInteractiveParser (stermP PrdRep) termS
       let Right termA' = runInteractiveParser atermP termA
-      compile termA' `shouldBe` termS'
+      compile termA' `shouldBe` (const () <$> termS')
 
 isClosed :: String -> Spec
 isClosed termA = do

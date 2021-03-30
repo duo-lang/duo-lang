@@ -5,6 +5,8 @@ module Syntax.ATerms
   , atermClosing
   -- Variable Opening
   , atermOpening
+  -- Transform to named representation for prettyprinting
+  , openATermComplete
   , module Syntax.CommonTerm
   ) where
 
@@ -38,39 +40,40 @@ import Syntax.CommonTerm
 --        |
 --    acase_name
 --
-data ACase a = MkACase
+data ACase bs = MkACase
   { acase_name :: XtorName
-  , acase_args :: [a]
-  , acase_term :: ATerm a
+  , acase_args :: [bs]
+  , acase_term :: ATerm bs
   } deriving (Eq, Show, Ord)
 
 -- | An asymmetric term.
-data ATerm a where
+-- The bs parameter indicates the type of additional information stored at binding sites.
+data ATerm bs where
   -- | A bound variable in the locally nameless system.
-  BVar :: Index -> ATerm a
+  BVar :: Index -> ATerm bs
   -- | A free variable in the locally nameless system.
-  FVar :: FreeVarName -> ATerm a
+  FVar :: FreeVarName -> ATerm bs
   -- | A constructor applied to a list of arguments:
   --
   --   C(e_1,...,e_n)
   --
-  Ctor :: XtorName -> [ATerm a] -> ATerm a
+  Ctor :: XtorName -> [ATerm bs] -> ATerm bs
   -- | An expression on which a destructor is called, where the destructor is
   -- applied to a list of arguments:
   --
   --   e.D(e_1,...,e_n)
   --
-  Dtor :: XtorName -> ATerm a -> [ATerm a] -> ATerm a
+  Dtor :: XtorName -> ATerm bs -> [ATerm bs] -> ATerm bs
   -- | A pattern match:
   --
   -- match e with { ... }
   --
-  Match :: ATerm a -> [ACase a] -> ATerm a
+  Match :: ATerm bs -> [ACase bs] -> ATerm bs
   -- | A copattern match:
   --
   -- comatch { ... }
   --
-  Comatch :: [ACase a] -> ATerm a
+  Comatch :: [ACase bs] -> ATerm bs
   deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
@@ -111,4 +114,29 @@ atermOpeningRec k args (Match t cases) =
   Match (atermOpeningRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermOpeningRec (k + 1) args acase_term }) <$> cases)
 atermOpeningRec k args (Comatch cocases) =
   Comatch ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermOpeningRec (k + 1) args acase_term }) <$> cocases)
+
+
+---------------------------------------------------------------------------------
+-- These functions  translate a locally nameless term into a named representation.
+--
+-- Use only for prettyprinting! These functions only "undo" the steps in the parser
+-- and do not fulfil any semantic properties w.r.t shadowing etc.!
+---------------------------------------------------------------------------------
+
+openACase :: ACase FreeVarName -> ACase FreeVarName
+openACase MkACase { acase_name, acase_args, acase_term } =
+    MkACase { acase_name = acase_name
+            , acase_args = acase_args
+            , acase_term = atermOpening ((\fv -> FVar fv) <$> acase_args) (openATermComplete acase_term)
+            }
+
+openATermComplete :: ATerm FreeVarName -> ATerm FreeVarName
+openATermComplete (BVar idx) = BVar idx
+openATermComplete (FVar v) = FVar v
+openATermComplete (Ctor name args) = Ctor name (openATermComplete <$> args)
+openATermComplete (Dtor name t args) = Dtor name (openATermComplete t) (openATermComplete <$> args)
+openATermComplete (Match t cases) = Match (openATermComplete t) (openACase <$> cases)
+openATermComplete (Comatch cocases) = Comatch (openACase <$> cocases)
+
+
 
