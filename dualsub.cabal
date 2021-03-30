@@ -104,8 +104,8 @@ test-suite dualsub-test
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
-  	  --Translate.TranslateExamplesSpec
-      TypeInference.StaticExamplesSpec
+      Translate.TranslateExamplesSpec
+    , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
     , Eval.SubstitutionSpec

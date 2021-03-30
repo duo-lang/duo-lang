@@ -53,7 +53,7 @@ import Syntax.CommonTerm
 data XtorArgs a = MkXtorArgs { prdArgs :: [STerm Prd a]
                              , cnsArgs :: [STerm Cns a]
                              }
-                  deriving (Show)
+                  deriving (Show, Eq)
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -66,7 +66,7 @@ data SCase a = MkSCase
   { scase_name :: XtorName
   , scase_args :: Twice [a]
   , scase_cmd  :: Command a
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 
 -- | A symmetric term.
@@ -86,6 +86,7 @@ data STerm (pc :: PrdCns) a where
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
   MuAbs    :: PrdCnsRep pc -> a -> Command a -> STerm pc a
+  deriving (Eq)
 deriving instance Show a => Show (STerm pc a)
 
 ---------------------------------------------------------------------------------
@@ -100,7 +101,7 @@ data Command a
   = Apply (STerm Prd a) (STerm Cns a)
   | Print (STerm Prd a)
   | Done
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------------------------------------------------
 -- Variable Opening

@@ -434,7 +434,7 @@ compile_cmd :: String -> Repl ()
 compile_cmd s = do
   case runInteractiveParser atermP s of
     Right t ->
-      prettyRepl (" compile " ++ ppPrint t ++ " = " ++ ppPrint (compile t))
+      prettyRepl (" compile " ++ ppPrint t ++ "\n = " ++ ppPrint (compile t))
     Left err2 -> do
       prettyRepl "Cannot parse as aterm:"
       prettyRepl err2
