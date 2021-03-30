@@ -15,7 +15,7 @@
 # syntax:
 
 data Bool { True, False };
-data Nat { Zero, Succ(Nat) };
+data Nat { Z, S(Nat) };
 
 # Note that type and value constructors have to start with an uppercase letter, and how arguments
 # to constructors are indicated in parentheses.
@@ -24,7 +24,7 @@ data Nat { Zero, Succ(Nat) };
 # to start with a lowercase letter.
 
 def true := True;
-def two := Succ(Succ(Zero));
+def two := S(S(Z));
 
 # We also provide some syntactic sugar for (Peano) natural numbers, so that `two` can
 # alternatively be written in the following way.
@@ -40,7 +40,7 @@ def twoSugared := 2;
 # Datatypes would be quite useless if you couldn't also destruct them via pattern matching.
 # A convoluted way to define the number two is to define it as the predecessor of 3:
 
-def convolutedTwo := match 3 with { Zero => Zero, Succ(x) => x };
+def convolutedTwo := match 3 with { Z => Z, S(x) => x };
 
 # Pattern matches on the constructors of a declared datatype have to be exhaustive,
 # otherwise an error is reported.
@@ -74,14 +74,14 @@ codata Fun { Ap(Nat)[Bool] };
 def constTrue := comatch { Ap(x) => True };
 def constFalse := comatch { Ap(x) => False };
 
-# or, we can combine a copattern match with a pattern match to implement the `isZero` function:
+# or, we can combine a copattern match with a pattern match to implement the `isZ` function:
 
-def isZero := comatch { Ap(x) => match x with { Zero => True, Succ(x) => False } };
+def isZ := comatch { Ap(x) => match x with { Z => True, S(x) => False } };
 
 # We can call a function which is declared in this way by using its destructor on it.
 # For example, in order to check whether 5 is zero, we can write:
 
-# def isFiveZero := isZero.Ap(5);
+# def isFiveZ := isZ.Ap(5);
 
 # Here is how this syntax corresponds to the more usual syntax for lambda abstractions in, e.g. Haskell.
 #
@@ -97,12 +97,12 @@ def isZero := comatch { Ap(x) => match x with { Zero => True, Succ(x) => False }
 # recursive function like `isEven`:
 
 # def isEven := comatch { Ap(x) => match x with
-#        { Zero => True
-#        , Succ(x) => isOdd.Ap(x) }};
+#        { Z => True
+#        , S(x) => isOdd.Ap(x) }};
 
 # def isOdd := comatch { Ap(x) => match x with
-#        { Zero => False
-#        , Succ(x) => isEven.Ap(x) }};
+#        { Z => False
+#        , S(x) => isEven.Ap(x) }};
 
 # The focus of DualSub is on the exploration of dualities in programming language design, so we want to
 # provide a minimal set of different kinds of types in the language.
@@ -112,7 +112,7 @@ def isZero := comatch { Ap(x) => match x with { Zero => True, Succ(x) => False }
 #    |-------------|------------------------------|---------------------|
 #    |             |       Nominal                |        Structural   |
 #    |-------------|------------------------------|---------------------|
-#    |   Data      | data Nat { Zero, Succ(Nat) } |      (Part 2)       |
+#    |   Data      | data Nat { Z, S(Nat) } |      (Part 2)       |
 #    |-------------|------------------------------|---------------------|
 #    |  Codata     | codata Fun { Ap(Nat)[Bool] } |      (Part 2)       |
 #    |-------------|------------------------------|---------------------|
