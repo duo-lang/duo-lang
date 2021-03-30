@@ -1,5 +1,5 @@
 ## Generic print consumer ##
-cns print := mu* x.Print(x);
+cns print := mu* x.Print x;
 
 ## Boolean functions ##
 
@@ -112,9 +112,9 @@ prd fixLazy := comatch { 'Ap(f)[k] =>
 
 ## basic recursive functions ##
 
-## recZ :: { 'Ap(rec r0.< 'S(r0) | 'Z >)[< 'Z >] }
+## recZero :: { 'Ap(rec r0.< 'S(r0) | 'Z >)[< 'Z >] }
 ## iterates n times and gives zero out
-prd recZ := comatch { 'Ap(n)[k] => fix >>
+prd recZero := comatch { 'Ap(n)[k] => fix >>
                            'Ap(comatch { 'Ap(alpha)[k] => 
                               comatch { 'Ap(n)[k] => n >> 
                                 match { 'Z => 'Z >> k
@@ -557,14 +557,14 @@ prd parserTest2 := \(x)[x] => x >> x;
 ## Nominal Types
 
 data Bool { TT, FF };
-data Nat { Z, S(Nat) };
+data Nat { Zero, Succ(Nat) };
 codata NatBoolFun { Ap(Nat)[Bool] };
 prd nominalNot := \(x)[k] => x >> match { TT => FF >> k, FF => TT >> k };
 
-prd addNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu* w. S(w) >> k] }} >> k })['Ap(m)[k]] };
-prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu* w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
-prd expNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
-prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
+prd addNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. Succ(w) >> k] }} >> k })['Ap(m)[k]] };
+prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Zero >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
+prd expNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => Succ(Zero) >> k, Succ(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
+prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Zero => n >> k, Succ(mp) => n >> match { Zero => n >> k, Succ(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
 
 cmd exampleCommand1 := Print(2);
 cmd exampleCommand2 := mu x.Print(2) >> mu* y. Print(4);

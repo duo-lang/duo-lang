@@ -35,7 +35,7 @@ data TypeInferenceTrace pol = TypeInferenceTrace
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferSTermTraced :: PrdCnsRep pc -> STerm pc bs -> Environment bs -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
+inferSTermTraced :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
 inferSTermTraced rep tm env = do
   ((_,ty), constraintSet) <- runGenM env (genConstraintsSTerm tm)
   solverState <- solveConstraints constraintSet
@@ -53,17 +53,17 @@ inferSTermTraced rep tm env = do
     , trace_resType = resType
     }
 
-inferSTermAut :: PrdCnsRep pc -> STerm pc bs -> Environment bs -> Either Error (TypeAutDet (PrdCnsToPol pc))
+inferSTermAut :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeAutDet (PrdCnsToPol pc))
 inferSTermAut rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_minTypeAut trace
 
-inferSTerm :: PrdCnsRep pc -> STerm pc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm :: PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTerm rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_resType trace
 
-checkCmd :: Command bs -> Environment bs -> Either Error ()
+checkCmd :: Command () -> Environment -> Either Error ()
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   _ <- solveConstraints constraints
@@ -73,7 +73,7 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATermTraced :: ATerm bs -> Environment bs -> Either Error (TypeInferenceTrace Pos)
+inferATermTraced :: ATerm () -> Environment -> Either Error (TypeInferenceTrace Pos)
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
   solverState <- solveConstraints constraintSet
@@ -91,7 +91,7 @@ inferATermTraced tm env = do
     , trace_resType = resType
     }
 
-inferATerm :: ATerm bs -> Environment bs -> Either Error (TypeScheme Pos)
+inferATerm :: ATerm () -> Environment -> Either Error (TypeScheme Pos)
 inferATerm tm env = do
   trace <- inferATermTraced tm env
   return $ trace_resType trace

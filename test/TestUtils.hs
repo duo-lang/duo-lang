@@ -1,9 +1,9 @@
 module TestUtils where
 
+import qualified Data.Map as M
 import System.Directory (listDirectory)
 
 import Parser.Parser
-import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
 import TypeInference.InferProgram (inferProgram)
 import Utils
@@ -19,16 +19,20 @@ getAvailableExamples = do
   examples <- listDirectory "examples/"
   return (("examples/" ++) <$> examples)
 
-getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName])
-getParsedDeclarations fp = do
-  s <- readFile fp
-  return (runFileParser fp programP s)
+filterEnvironment :: [String] -> Environment -> Environment
+filterEnvironment failingExamples Environment {..} =
+  Environment { prdEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) prdEnv
+              , cnsEnv = M.filterWithKey (\k _ -> not (k `elem` failingExamples)) cnsEnv
+              , cmdEnv = cmdEnv
+              , defEnv = defEnv
+              , declEnv = declEnv
+              }
 
-getEnvironment :: FilePath -> IO (Either Error (Environment FreeVarName))
-getEnvironment fp = do
-  decls <- getParsedDeclarations fp
-  case decls of
+getEnvironment :: FilePath -> [String] -> IO (Either Error Environment)
+getEnvironment fp failingExamples = do
+  s <- readFile fp
+  case runFileParser fp programP s of
     Right decls -> case inferProgram decls of
-      Right env -> return (Right env)
-      Left (Located _ err) -> return (Left err)
-    Left err -> return (Left err)
+      Right env -> return $ Right (filterEnvironment failingExamples env)
+      Left (Located _ err) -> return $ Left err
+    Left err -> return $ Left err

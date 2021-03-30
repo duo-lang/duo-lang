@@ -18,7 +18,7 @@ spec = do
     examples <- runIO getAvailableCounterExamples
     forM_ examples $ \example -> do
       describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
-        env <- runIO $ getEnvironment example
+        env <- runIO $ getEnvironment example []
         it "Doesn't typecheck" $  env `shouldSatisfy` isLeft
 
 

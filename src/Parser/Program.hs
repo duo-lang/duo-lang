@@ -14,7 +14,7 @@ import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
 
-prdDeclarationP :: Parser (Declaration FreeVarName)
+prdDeclarationP :: Parser (Declaration ())
 prdDeclarationP = do
   (loc, (v,t)) <- withLoc $ do
     _ <- try $ lexeme (symbol "prd")
@@ -25,7 +25,7 @@ prdDeclarationP = do
     return (v,t)
   return (PrdDecl loc v t)
 
-cnsDeclarationP :: Parser (Declaration FreeVarName)
+cnsDeclarationP :: Parser (Declaration ())
 cnsDeclarationP = do
   (loc, (v,t)) <- withLoc $ do
     _ <- try $ lexeme (symbol "cns")
@@ -36,7 +36,7 @@ cnsDeclarationP = do
     return (v,t)
   return (CnsDecl loc v t)
 
-cmdDeclarationP :: Parser (Declaration FreeVarName)
+cmdDeclarationP :: Parser (Declaration ())
 cmdDeclarationP = do
   (loc, (v,t)) <- withLoc $ do
     _ <- try $ lexeme (symbol "cmd")
@@ -47,7 +47,7 @@ cmdDeclarationP = do
     return (v,t)
   return (CmdDecl loc v t)
 
-defDeclarationP :: Parser (Declaration FreeVarName)
+defDeclarationP :: Parser (Declaration ())
 defDeclarationP = do
   (loc, (v,t)) <- withLoc $ do
     _ <- try $ (lexeme (symbol "def"))
@@ -62,7 +62,7 @@ defDeclarationP = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
-dataDeclP :: Parser (Declaration FreeVarName)
+dataDeclP :: Parser (Declaration ())
 dataDeclP = do
   (loc, decl) <- withLoc dataDeclP'
   return (DataDecl loc decl)
@@ -92,7 +92,7 @@ dataDeclP = do
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
-declarationP :: Parser (Declaration FreeVarName)
+declarationP :: Parser (Declaration ())
 declarationP =
   prdDeclarationP <|>
   cnsDeclarationP <|>
@@ -100,7 +100,7 @@ declarationP =
   defDeclarationP <|>
   dataDeclP
 
-programP :: Parser [Declaration FreeVarName]
+programP :: Parser [Declaration ()]
 programP = do
   sc
   decls <- many declarationP

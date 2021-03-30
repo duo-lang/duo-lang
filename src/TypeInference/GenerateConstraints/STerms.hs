@@ -23,30 +23,30 @@ import TypeInference.GenerateConstraints.Definition
 -- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
 checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
-                    -> GenM bs ()
+                    -> GenM ()
 checkExhaustiveness matched decl = do
   let declared = sig_name <$> (data_xtors decl)
   forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
   forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
-genConstraintsArgs :: XtorArgs bs -> GenM bs (XtorArgs bs, TypArgs Pos)
+genConstraintsArgs :: XtorArgs () -> GenM (XtorArgs (), TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm
   return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), MkTypArgs (snd <$> prdArgs') (snd <$> cnsArgs'))
 
-genConstraintsSTerm :: STerm pc bs -> GenM bs (STerm pc bs, Typ (PrdCnsToPol pc))
+genConstraintsSTerm :: STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTerm (BoundVar rep idx) = do
   ty <- lookupType rep idx
   return (BoundVar rep idx, ty)
-genConstraintsSTerm tm@(FreeVar PrdRep v) = do
+genConstraintsSTerm tm@(FreeVar PrdRep v _) = do
   prdEnv <- asks (prdEnv . env)
   case M.lookup v prdEnv of
     Just (_,tys) -> do
       ty <- instantiateTypeScheme tys
       return (tm, ty)
     Nothing -> throwGenError $ "Unbound free producer variable in STerm: " ++ ppPrint v
-genConstraintsSTerm tm@(FreeVar CnsRep v) = do
+genConstraintsSTerm tm@(FreeVar CnsRep v _) = do
   cnsEnv <- asks (cnsEnv . env)
   case M.lookup v cnsEnv of
     Just (_,tys) -> do
@@ -94,16 +94,16 @@ genConstraintsSTerm (XMatch CnsRep Nominal cases@(pmcase:_)) = do
                            cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name undefined cmd'))
   return (XMatch CnsRep Nominal cases', TyNominal NegRep (data_name tn))
-genConstraintsSTerm (MuAbs PrdRep bs cmd) = do
+genConstraintsSTerm (MuAbs PrdRep () cmd) = do
   (fvpos, fvneg) <- freshTVar
   cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [] [fvneg]):context }) (genConstraintsCommand cmd)
-  return (MuAbs PrdRep bs cmd', fvpos)
-genConstraintsSTerm (MuAbs CnsRep bs cmd) = do
+  return (MuAbs PrdRep () cmd', fvpos)
+genConstraintsSTerm (MuAbs CnsRep () cmd) = do
   (fvpos, fvneg) <- freshTVar
   cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [fvpos] []):context }) (genConstraintsCommand cmd)
-  return (MuAbs CnsRep bs cmd', fvneg)
+  return (MuAbs CnsRep () cmd', fvneg)
 
-genConstraintsCommand :: Command bs -> GenM bs (Command bs)
+genConstraintsCommand :: Command () -> GenM (Command ())
 genConstraintsCommand Done = return Done
 genConstraintsCommand (Print t) = do
   (t',_) <- genConstraintsSTerm t
@@ -119,16 +119,16 @@ genConstraintsCommand (Apply t1 t2) = do
 -- Symmetric Terms with recursive binding
 ---------------------------------------------------------------------------------------------
 
-genConstraintsSTermRecursive :: FreeVarName -> PrdCnsRep pc -> STerm pc bs -> GenM bs (STerm pc bs, Typ (PrdCnsToPol pc))
+genConstraintsSTermRecursive :: FreeVarName -> PrdCnsRep pc -> STerm pc () -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTermRecursive fv PrdRep tm = do
   (x,y) <- freshTVar
-  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar PrdRep fv, TypeScheme [] x) prdEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar PrdRep fv (), TypeScheme [] x) prdEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
   addConstraint (SubType ty y)
   return (tm, ty)
 genConstraintsSTermRecursive fv CnsRep tm = do
   (x,y) <- freshTVar
-  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar CnsRep fv, TypeScheme [] y) cnsEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar CnsRep fv (), TypeScheme [] y) cnsEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
   addConstraint (SubType x ty)
   return (tm, ty)

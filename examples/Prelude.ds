@@ -1,4 +1,4 @@
 # Standard Prelude
 
 data Bool { True, False };
-data Nat { Z, S(Nat) };
+data Nat { Zero, Succ(Nat) };
