@@ -23,7 +23,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferSTerm :: FreeVarName -> PrdCnsRep pc -> STerm pc () -> Environment -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm :: FreeVarName -> PrdCnsRep pc -> STerm pc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTerm fv rep tm env = do
   ((_,ty), constraintSet) <- runGenM env (genConstraintsSTermRecursive fv rep tm)
   solverState <- solveConstraints constraintSet
@@ -34,7 +34,7 @@ inferSTerm fv rep tm env = do
   let resType = autToType minTypeAut
   return resType
 
-checkCmd :: Command () -> Environment -> Either Error ()
+checkCmd :: Command bs -> Environment bs -> Either Error ()
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   _ <- solveConstraints constraints
@@ -44,7 +44,7 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATerm :: FreeVarName -> ATerm () -> Environment -> Either Error (TypeScheme Pos)
+inferATerm :: FreeVarName -> ATerm bs -> Environment bs -> Either Error (TypeScheme Pos)
 inferATerm v tm env = do
   ((_, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
   solverState <- solveConstraints constraintSet
@@ -55,7 +55,7 @@ inferATerm v tm env = do
   let resType = autToType minTypeAut
   return resType
 
-insertDecl :: Declaration () -> Environment -> Either LocatedError Environment
+insertDecl :: Declaration bs -> Environment bs -> Either LocatedError (Environment bs)
 insertDecl (PrdDecl loc v t)  env@Environment { prdEnv }  = do
   ty <- first (Located loc) $ inferSTerm v PrdRep t env
   return $ env { prdEnv  = M.insert v (t,ty) prdEnv }
@@ -71,10 +71,10 @@ insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 
-inferProgram :: [Declaration ()] -> Either LocatedError Environment
+inferProgram :: [Declaration bs] -> Either LocatedError (Environment bs)
 inferProgram = inferProgram' mempty
   where
-    inferProgram' :: Environment -> [Declaration ()] -> Either LocatedError Environment
+    inferProgram' :: Environment bs -> [Declaration bs] -> Either LocatedError (Environment bs)
     inferProgram' env [] = return env
     inferProgram' env (decl:decls) = do
       env' <- insertDecl decl env

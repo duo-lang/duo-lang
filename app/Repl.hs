@@ -11,7 +11,6 @@ import Data.GraphViz
 import Data.List (isPrefixOf, find, intersperse)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
-import Prettyprinter (Pretty)
 
 import Syntax.STerms
 import Syntax.Types
@@ -21,6 +20,8 @@ import Parser.Parser
 import Pretty.Pretty
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
+import Eval.ATerms
+import Eval.STerms
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
@@ -38,7 +39,7 @@ data EvalSteps = Steps | NoSteps
 data Mode = Symmetric | Asymmetric
 
 data ReplState = ReplState
-  { replEnv :: Environment
+  { replEnv :: Environment FreeVarName
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
@@ -61,16 +62,16 @@ initialReplState = ReplState { replEnv = mempty
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment -> Environment) -> Repl ()
+modifyEnvironment :: (Environment FreeVarName -> Environment FreeVarName) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
 modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedFiles }
 
-prettyRepl :: Pretty a => a -> Repl ()
-prettyRepl s = liftIO $ putStrLn (ppPrint s)
+prettyRepl :: PrettyAnn a => a -> Repl ()
+prettyRepl s = liftIO $ ppPrintIO s
 
-fromRight :: Pretty err => Either err b -> Repl b
+fromRight :: PrettyAnn err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
@@ -232,17 +233,22 @@ type_option = Option
 -- Show
 
 show_cmd :: String -> Repl ()
+show_cmd "" = do
+  loadedFiles <- gets loadedFiles
+  forM_ loadedFiles $ \fp -> do
+    decls <- parseFile fp programP
+    prettyRepl decls
 show_cmd str = do
   let s = trim str
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
-    Just prd -> prettyRepl prd
+    Just (prd,_) -> prettyRepl (NamedRep prd)
     Nothing -> case M.lookup s (cnsEnv env) of
-      Just cns -> prettyRepl cns
+      Just (cns,_) -> prettyRepl (NamedRep cns)
       Nothing -> case M.lookup s (cmdEnv env) of
-        Just cmd -> prettyRepl cmd
+        Just cmd -> prettyRepl (NamedRep cmd)
         Nothing -> case M.lookup s (defEnv env) of
-          Just def -> prettyRepl def
+          Just (def,_) -> prettyRepl (NamedRep def)
           Nothing -> prettyRepl "Not in environment."
 
 show_option :: Option

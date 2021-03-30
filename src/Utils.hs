@@ -24,6 +24,7 @@ instance Functor Twice where
 ----------------------------------------------------------------------------------
 
 data Loc = Loc SourcePos SourcePos
+  deriving (Show)
 
 data Located a = Located Loc a
 
@@ -59,6 +60,8 @@ trim :: String -> String
 trim = f . f
   where f = reverse . dropWhile isSpace
 
-unsafeFromRight :: Either a b -> b
-unsafeFromRight (Left _) = error "unsafeFromRight applied to Left"
-unsafeFromRight (Right x) = x
+
+indexMaybe :: [a] -> Int -> Maybe a
+indexMaybe xs i | 0 <= i && i <= (length xs) -1 = Just (xs !! i)
+                | otherwise = Nothing
+

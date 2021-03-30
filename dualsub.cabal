@@ -20,7 +20,8 @@ source-repository head
 
 common shared-build-depends
   build-depends:
-      base >=4.7 && <5
+      ansi-terminal
+    , base >=4.7 && <5
     , containers
     , directory
     , filepath
@@ -46,12 +47,15 @@ common shared-build-depends
                      StandaloneDeriving,
                      TypeFamilies,
                      ViewPatterns,
-                     GeneralizedNewtypeDeriving
+                     GeneralizedNewtypeDeriving,
+                     LambdaCase
 
 library
   import: shared-build-depends
   exposed-modules:
       Eval.Eval
+      Eval.ATerms
+      Eval.STerms
       Parser.ATerms
       Parser.Definition
       Parser.Lexer
@@ -109,6 +113,7 @@ test-suite dualsub-test
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
     , Eval.SubstitutionSpec
+    , ParserPrettyprinter.ParserPrettyprinterSpec
     , Paths_dualsub
     , Spec
     , TestUtils
