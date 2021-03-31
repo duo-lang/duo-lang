@@ -26,6 +26,7 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import TypeInference.InferTypes
+import Translate.Translate (compile)
 import TypeInference.InferProgram
 import Utils (trim)
 
@@ -433,11 +434,30 @@ help_option = Option
   , option_completer = Nothing
   }
 
+-- Compile
+
+compile_cmd :: String -> Repl ()
+compile_cmd s = do
+  case runInteractiveParser atermP s of
+    Right t ->
+      prettyRepl (" compile " ++ ppPrint t ++ "\n = " ++ ppPrint (compile t))
+    Left err2 -> do
+      prettyRepl "Cannot parse as aterm:"
+      prettyRepl err2
+
+compile_option :: Option
+compile_option = Option
+  { option_name = "compile"
+  , option_cmd = compile_cmd
+  , option_help = ["Enter a ATerm and show the translated STerm."]
+  , option_completer = Nothing
+  }
+  
 -- All Options
 
 all_options :: [Option]
 all_options = [ type_option, show_option, help_option, def_option, save_option, set_option, unset_option
-              , sub_option, simplify_option, load_option, reload_option, show_type_option]
+              , sub_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
 -- Repl Configuration

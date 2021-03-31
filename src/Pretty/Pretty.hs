@@ -51,6 +51,9 @@ instance PrettyAnn a => PrettyAnn [a] where
 instance PrettyAnn Bool where
   prettyAnn = pretty
 
+instance PrettyAnn () where
+  prettyAnn = pretty
+
 ---------------------------------------------------------------------------------
 -- Render to String Backend
 ---------------------------------------------------------------------------------

@@ -48,7 +48,8 @@ common shared-build-depends
                      TypeFamilies,
                      ViewPatterns,
                      GeneralizedNewtypeDeriving,
-                     LambdaCase
+                     LambdaCase,
+                     DeriveFunctor
 
 library
   import: shared-build-depends
@@ -84,6 +85,7 @@ library
       TypeInference.InferTypes
       TypeInference.SolveConstraints
       Utils
+      Translate.Translate
   other-modules:
       Paths_dualsub
   hs-source-dirs:
@@ -107,7 +109,8 @@ test-suite dualsub-test
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
-      TypeInference.StaticExamplesSpec
+      Translate.TranslateExamplesSpec
+    , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
     , Eval.SubstitutionSpec

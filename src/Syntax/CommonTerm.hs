@@ -14,6 +14,7 @@ data PrdCnsRep pc where
   PrdRep :: PrdCnsRep Prd
   CnsRep :: PrdCnsRep Cns
 deriving instance Show (PrdCnsRep pc)
+deriving instance Eq (PrdCnsRep pc)
 
 ---------------------------------------------------------------------------------
 -- Names
