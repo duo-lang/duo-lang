@@ -114,10 +114,12 @@ prd fixLazy := comatch { 'Ap(f)[k] =>
 
 ## recZ :: { 'Ap(rec r0.< 'S(r0) | 'Z >)[< 'Z >] }
 ## iterates n times and gives zero out
-prd recZ := comatch { 
-              'Ap(n)[k] => n >>
-                match { 'Z    => 'Z >> k,
-                        'S(p) => recZ >> 'Ap(p)[k] } };
+prd recZ := comatch { 'Ap(n)[k] => fix >>
+                           'Ap(comatch { 'Ap(alpha)[k] => 
+                              comatch { 'Ap(n)[k] => n >> 
+                                match { 'Z => 'Z >> k
+                                      , 'S(p) => alpha >> 
+                                          'Ap(p)[k] }} >> k})['Ap(n)[k]] };
 
 ## retItself :: rec r1.{ 'Ap(Top)[r1] }
 ## iterates over arbitrary recursive data and gives the base-case out
@@ -147,108 +149,168 @@ prd pred := comatch { 'Ap(n)[k] => n >>
 
 ## add :: forall t0. { 'Ap(t0,rec r1.< 'S(r1) | 'Z >)[rec r3.(t0 \/ < 'S(r3) >)] }
 ## adds two nats n and m
-prd add := comatch {
-            'Ap(n,m)[k] => m >>
-              match { 'Z    => n >> k,
-                      'S(p) => add >> 'Ap('S(n),p)[k] } };
+prd add := comatch { 
+             'Ap(n,m)[k] => fix >> 
+               'Ap( comatch { 'Ap(alpha)[k] => 
+                      comatch { 'Ap(m)[k] => m >> 
+                        match { 'Z => n >> k
+                              , 'S(p) => alpha >> 
+                                  'Ap(p)[mu* w. 'S(w) >> k] }} >> k })['Ap(m)[k]] };
 
 ## mlt :: forall t0. { 'Ap((t0 /\ < 'S(rec r1.< 'S(r1) | 'Z >) | 'Z >)
 ##                         , rec r1.< 'S(r1) | 'Z >)[(t0 \/ < 'S(rec r5.(t0 \/ < 'S(r5) >)) | 'Z >)] }
 ## multiplies two nats n and m
-prd mlt := comatch {
-            'Ap(n,m)[k] => m >>
-              match { 'Z    => 'Z >> k, 
-                      'S(p) => mlt >> 'Ap(n,p)[mu* w. add >> 'Ap(n,w)[k]] } };
+prd mlt := comatch { 
+             'Ap(n,m)[k] => fix >> 
+               'Ap(comatch { 'Ap(alpha)[k] =>
+                     comatch { 'Ap(m)[k] => m >> 
+                       match { 'Z => 'Z >> k
+                             , 'S(p) => alpha >> 
+                                 'Ap(p)[mu* w. add >> 
+                                   'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
 
 ## exp :: forall t0. { 'Ap((t0 /\ < 'S(rec r1.< 'S(r1) | 'Z >) | 'Z >) , rec r1.< 'S(r1) | 'Z >)
 ##                        [(t0 \/ < 'S((t0 \/ < 'S(rec r6.(t0 \/ < 'S(r6) >)) | 'Z >)) | 'Z >)] }
 ## evaluates n raised to the power of m
 prd exp := comatch {
-            'Ap(n,m)[k] => m >>
-              match { 'Z    => 'S('Z) >> k,
-                      'S(p) => exp >> 'Ap(n,p)[mu* w. mlt >> 'Ap(n,w)[k]] } };
+             'Ap(n,m)[k] => fix >>
+               'Ap(comatch { 'Ap(alpha)[k] => 
+                     comatch { 'Ap(m)[k] => m >> 
+                       match { 'Z => 'S('Z) >> k
+                             , 'S(p) => alpha >> 
+                                 'Ap(p)[mu* w. mlt >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
 
 ## sub :: forall t0. { 'Ap(rec r0.(t0 /\ < 'S(r0) >),rec r1.< 'S(r1) | 'Z >)[t0] }
 ## subtraction m from n
 prd sub := comatch {
-            'Ap(n,m)[k] => m >>
-              match { 'Z    => n >> k,
-                      'S(p) => sub >> 'Ap(n,p)[mu* w. pred >> 'Ap(w)[k]] } };
+             'Ap(n,m)[k] => fix >>
+               'Ap(comatch { 'Ap(alpha)[k] => 
+                     comatch { 'Ap(m)[k] => m >> 
+                       match { 'Z => n >> k
+                             , 'S(p) => alpha >> 
+                                 'Ap(p)[mu*w. pred >> 'Ap(w)[k]] }} >> k })['Ap(m)[k]] };
 
 ## subSafe :: forall t0. { 'Ap(rec r0.(t0 /\ < 'S(r0) | 'Z >),rec r1.< 'S(r1) | 'Z >)[t0] }
 ## total subtraction m from n 
 prd subSafe := comatch {
-                'Ap(n,m)[k] => m >>
-                  match { 'Z    => n >> k,
-                          'S(mp) => n >>
-                            match { 'Z    => n >> k,
-                                    'S(np) => subSafe >> 'Ap(np,mp)[k]} } };
+                 'Ap(n,m)[k] => fix >>
+                   'Ap(comatch { 'Ap(alpha)[k] =>
+                         comatch { 'Ap(n)[k] => 
+                           comatch { 'Ap(m)[k] => m >> 
+                             match { 'Z => n >> k
+                                   , 'S(mp) => n >> 
+                                       match { 'Z => n >> k
+                                             , 'S(np) => alpha >> 
+                                                 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
 
 ## foldNat :: forall t0. { 'Ap(rec r0.< 'S(r0) | 'Z >,t0,{ 'Ap(t0)[t0] })[t0] }
 ## folding over nats
 prd foldNat := comatch {
-                'Ap(n,x,f)[k] => n >>
-                  match { 'Z    => x >> k,
-                          'S(p) => foldNat >> 'Ap(p,x,f)[mu* w. f >> 'Ap(w)[k]] } };
+                'Ap(n,x,f)[k] => fix >>
+                  'Ap( comatch { 'Ap(alpha)[k] => 
+                         comatch { 'Ap(n)[k] => 
+                           comatch { 'Ap(x)[k] => n >> 
+                             match { 'Z => x >> k
+                                   , 'S(p) => f >> 
+                                       'Ap(x)[mu*w. alpha >> 
+                                         'Ap(p)['Ap(w)[k]]] } } >> k } >> k })
+                     ['Ap(n)['Ap(x)[k]]] };
 
 ## foldNat1 :: forall t0t1. { 'Ap(rec r0.< 'S(r0) >,t1,{ 'Ap((t0 \/ t1))[t0] })[t0] }
 ## folding over nats
 prd foldNat1 := comatch {
-                  'Ap(n,x,f)[k] => n >>
-                    match { 'S(m) => m >>
-                      match { 'Z    => f >> 'Ap(x)[k],
-                              'S(p) => foldNat1 >> 'Ap(m,x,f)[mu* w. f >> 'Ap(w)[k]] } } };
+                  'Ap(n,x,f)[k] => fix >> 
+                    'Ap( comatch { 'Ap(alpha)[k] => 
+                           comatch { 'Ap(n)[k] => 
+                             comatch { 'Ap(x)[k] => n >> 
+                               match { 'S(m) => m >> 
+                                 match { 'Z => f >> 
+                                   'Ap(x)[k], 'S(p) => f >> 
+                                     'Ap(x)[mu*w. alpha >> 
+                                       'Ap(m)['Ap(w)[k]]] }}} >> k } >> k })
+                       ['Ap(n)['Ap(x)[k]]]};
 
 
 ## ltUnsafe :: { 'Ap(rec r0.< 'S(r0) | 'Z >,rec r1.< 'S(r1) >)[< 'True >] }
 ## "m < n" operator, where n > 0
-prd ltUnsafe := comatch {
-                  'Ap(n,m)[k] => n >>
-                    match { 'Z     => 'True >> k,
-                            'S(np) => m >>
-                              match { 'S(mp) => ltUnsafe >> 'Ap(np,mp)[k] } } };
+prd ltUnsafe := comatch { 
+                  'Ap(n,m)[k] => fix >> 
+                    'Ap( comatch { 'Ap(alpha)[k] => 
+                           comatch { 'Ap(n)[k] => 
+                             comatch { 'Ap(m)[k] => n >> 
+                               match { 'Z => 'True >> k
+                                     , 'S(np) => m >> 
+                                         match { 'S(mp) => alpha >> 
+                                                   'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })
+                       ['Ap(n)['Ap(m)[k]]] };
 
 ## ltSafe  :: { 'Ap(rec r0.< 'S(r0) | 'Z >,rec r0.< 'S(r0) | 'Z >)[< 'False | 'True >] }
 ## "m < n" operator
-prd ltSafe := comatch {
-                'Ap(n,m)[k] => n >>
-                  match { 'Z     => 'True >> k,
-                          'S(np) => m >>
-                            match { 'Z     => 'False >> k,
-                                    'S(mp) => ltSafe >> 'Ap(np,mp)[k] } } };
+prd ltSafe := comatch { 
+                'Ap(n,m)[k] => fix >> 
+                  'Ap(comatch { 
+                    'Ap(alpha)[k] => 
+                      comatch { 'Ap(n)[k] => 
+                        comatch { 'Ap(m)[k] => n >> 
+                                    match { 'Z => 'True >> k
+                                          , 'S(np) => m >> 
+                                            match { 'Z => 'False >> k
+                                                  , 'S(mp) => alpha >> 
+                                                      'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })
+                     ['Ap(n)['Ap(m)[k]]] };
 
 ## eqUnsafe :: { 'Ap(rec r0.< 'S(r0) | 'Z >,<  >)[< 'True >] }
 ## checks if n equals m
-prd eqUnsafe := comatch {
-                  'Ap(n,m)[k] => n >>
-                    match { 'Z     => m >> match {'Z => 'True >> k },
-                            'S(np) => m >> match {'S(mp) => eqUnsafe >> 'Ap(np,mp)[k] } } };
+prd eqUnsafe := comatch { 
+                  'Ap(n,m)[k] => fix >> 
+                    'Ap( comatch { 'Ap(alpha)[k] => 
+                      comatch { 'Ap(n)[k] => 
+                        comatch { 'Ap(m)[k] => n >> 
+                          match { 'Z => m >> match { 'Z => 'True >> k }
+                                , 'S(np) => m >> match { 'S(mp) => alpha >> 
+                                                           'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })
+                       ['Ap(n)['Ap(m)[k]]] };
 
 ## eqSafe :: { 'Ap(rec r0.< 'S(r0) | 'Z >,rec r0.< 'S(r0) | 'Z >)[< 'False | 'True >] }
 ## checks if n equals m
-prd eqSafe := comatch {
-                'Ap(n,m)[k] => n >>
-                  match { 'Z     => m >> 
-                    match { 'Z     => 'True >> k,
-                            'S(mp) => 'False >> k },
-                          'S(np) => m >>
-                    match { 'Z     => 'False >> k,
-                            'S(mp) => eqSafe >> 'Ap(np,mp)[k] } } };
+prd eqSafe := comatch { 
+                'Ap(n,m)[k] => fix >> 
+                  'Ap(comatch { 
+                    'Ap(alpha)[k] => 
+                      comatch { 'Ap(n)[k] => 
+                        comatch { 'Ap(m)[k] => n >> 
+                          match { 'Z => m >> 
+                            match { 'Z => 'True >> k
+                                  , 'S(mp) => 'False >> k }
+                                , 'S(np) => m >> 
+                                    match { 'Z => 'False >> k
+                                          , 'S(mp) => alpha >> 
+                                              'Ap(np)['Ap(mp)[k]] } } } >> k } >> k })
+                     ['Ap(n)['Ap(m)[k]]] };
 
 ## times2 :: { 'Ap(rec r0.< 'S(r0) | 'Z >)[rec r1.< 'S(< 'S(r1) >) | 'Z >] }
 ## multiplies n by two
 prd times2 := comatch {
-                'Ap(n)[k] => n >>
-                  match { 'Z    => 'Z >> k,
-                          'S(m) => times2 >> 'Ap(m)[mu* w. 'S('S(w)) >> k] } };
+                'Ap(n)[k] => fix >> 
+                  'Ap( comatch { 
+                         'Ap(alpha)[k] => 
+                           comatch { 'Ap(n)[k] => n >> 
+                             match { 'Z => 'Z >> k
+                                   , 'S(m) => alpha >> 'Ap(m)[mu*w. 'S('S(w)) >> k]}} >> k })
+                     ['Ap(n)[k]]};
 
 ## times3 :: { 'Ap(rec r0.< 'S(r0) | 'Z >)
 ##                [rec r1.< 'S(< 'S(< 'S(r1) >) >) | 'Z >] }
 ## multiplies n by three
-prd times3 := comatch {
-                'Ap(n)[k] => n >>
-                  match { 'Z    => 'Z >> k,
-                          'S(m) => times3 >> 'Ap(m)[mu* w. 'S('S('S(w))) >> k] } };
+prd times3 := comatch { 
+                'Ap(n)[k] => fix >> 
+                  'Ap( comatch { 
+                         'Ap(alpha)[k] => 
+                           comatch { 'Ap(n)[k] => n >> 
+                            match { 'Z => 'Z >> k
+                                  , 'S(m) => alpha >> 
+                                      'Ap(m)[mu*w. 'S('S('S(w))) >> k] } } >> k })
+                     ['Ap(n)[k]] };
 
 ## times2or3 :: { 'Ap(< 'False | 'True >
 ##                   , rec r1.< 'S(r1) | 'Z >)
@@ -267,20 +329,28 @@ prd times2and3 := comatch {
 
 ## div2 :: { 'Ap(rec r0.< 'S(< 'S(r0) >) | 'Z >)[rec r1.< 'S(r1) | 'Z >] }
 ## divides n by two
-prd div2 := comatch {
-              'Ap(n)[k] => n >>
-                match { 'Z    => 'Z >> k,
-                        'S(m) => m >>
-                          match { 'S(p) => div2 >> 'Ap(p)[mu* w. 'S(w) >> k] } } };
+prd div2 := comatch { 
+              'Ap(n)[k] => fix >> 
+                'Ap( comatch { 'Ap(alpha)[k] => 
+                       comatch { 'Ap(n)[k] => n >> 
+                                   match { 'Z => 'Z >> k
+                                         , 'S(m) => m >> 
+                                             match { 'S(p) => alpha >> 
+                                              'Ap(p)[mu*w. 'S(w) >> k]}}} >> k })
+                   ['Ap(n)[k]] };
 
 ## div3 :: { 'Ap(rec r0.< 'S(< 'S(< 'S(r0) >) >) | 'Z >)[rec r1.< 'S(r1) | 'Z >] }
 ## divides n by three
-prd div3 := comatch {
-              'Ap(n)[k] => n >>
-                match { 'Z => 'Z >> k,
-                        'S(m) => m >>
-                          match { 'S(p) => p >>
-                            match { 'S(r) => div3 >> 'Ap(r)[mu* w. 'S(w) >> k] } } } };
+prd div3 := comatch { 
+              'Ap(n)[k] => fix >> 
+                'Ap( comatch { 'Ap(alpha)[k] => 
+                       comatch { 'Ap(n)[k] => n >>
+                         match { 'Z => 'Z >> k
+                               , 'S(m) => m >> 
+                                   match { 'S(p) => p >> 
+                                     match { 'S(r) => alpha >>
+                                       'Ap(r)[mu*w. 'S(w) >> k] }}}} >> k })
+                  ['Ap(n)[k]]};
 
 ## div2or3 :: { 'Ap(< 'False | 'True >
 ##                 , rec r1.< 'S(< 'S(< 'S(< 'S(< 'S(< 'S(r1) >) >) >) >) >) | 'Z >)
