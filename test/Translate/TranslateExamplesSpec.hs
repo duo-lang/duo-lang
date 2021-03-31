@@ -50,5 +50,7 @@ spec = do
         compileExample "comatch { Ap(x) => match x with { Zero => match x with { Zero => True }}}"
                        "comatch { Ap(x)[k] => (mu m1. x >> match { Zero => (mu m2. x >> match {Zero => True >> m2}) >> m1} ) >> k}"
         compileExample "True.Ap(False)" "mu k. True >> Ap(False)[k]"
+        compileExample "comatch {Ap(x,y) => x.Ap2(y) }"
+                       "comatch { Ap(x,y)[k] => (mu k2. x >> Ap2(y)[k2]) >> k }"
         compileExample "comatch {Ap(x,y,z) => z.Ap(x,y)}"
                        "comatch { Ap(x,y,z)[k] => (mu m.z >> Ap(x,y)[m]) >> k}"
