@@ -12,6 +12,7 @@ import Syntax.Program
 import TypeInference.InferTypes
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
+import Control.Monad (forM_)
 
 instance Show (TypeScheme pol) where
   show = ppPrint
@@ -75,7 +76,7 @@ typecheckInFile fp =
         case env of
             Left err -> it "Could not load environment" $ expectationFailure (ppPrint err)
             Right env' -> do
-                sequence_ $ uncurry (typecheckExample env') <$> prgExamples
+                forM_ prgExamples $ uncurry $ typecheckExample env'
 
 spec :: Spec
-spec = sequence_ $ typecheckInFile <$> testFiles
+spec = forM_ testFiles typecheckInFile
