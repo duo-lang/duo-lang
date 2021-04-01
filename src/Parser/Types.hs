@@ -29,28 +29,20 @@ nominalTypeP rep = TyNominal rep <$> typeNameP
 
 dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
 dataTypeP DataRep polrep = angles $ do
-  xtorSigs <- xtorSignatureP polrep DataRep `sepBy` pipe
+  xtorSigs <- xtorSignatureP polrep `sepBy` pipe
   return (TyData polrep xtorSigs)
 dataTypeP CodataRep polrep = braces $ do
-  xtorSigs <- xtorSignatureP polrep CodataRep `sepBy` comma
+  xtorSigs <- xtorSignatureP (flipPolarityRep polrep) `sepBy` comma
   return (TyCodata polrep xtorSigs)
 
-xtorSignatureP :: PolarityRep pol -> DataCodataRep dc -> Parser (XtorSig (XtorF pol dc))
-xtorSignatureP PosRep DataRep = do
+xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
+xtorSignatureP PosRep = do
   xt <- xtorName Structural
   args <- typArgListP PosRep
   return (MkXtorSig xt args)
-xtorSignatureP PosRep CodataRep = do
+xtorSignatureP NegRep = do
   xt <- xtorName Structural
   args <- typArgListP NegRep
-  return (MkXtorSig xt args)
-xtorSignatureP NegRep DataRep = do
-  xt <- xtorName Structural
-  args <- typArgListP NegRep
-  return (MkXtorSig xt args)
-xtorSignatureP NegRep CodataRep = do
-  xt <- xtorName Structural
-  args <- typArgListP PosRep
   return (MkXtorSig xt args)
 
 typeVariable :: PolarityRep pol -> Parser (Typ pol)
