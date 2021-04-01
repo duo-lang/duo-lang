@@ -23,7 +23,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 ------------------------------------------------------------------------------
 
 data TypeInferenceTrace pol = TypeInferenceTrace
-  { trace_constraintSet :: ConstraintSet
+  { trace_constraintSet :: ConstraintSet ()
   , trace_typeAut :: TypeAut pol
   , trace_typeAutDet :: TypeAutDet pol
   , trace_typeAutDetAdms :: TypeAutDet pol
