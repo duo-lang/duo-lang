@@ -44,7 +44,7 @@ prd nor        := comatch {
 ## impl :: forall t0. { 'Ap(< 'False | 'True >,t0)[(t0 \/ < 'True >)] }
 ## boolean implication operation
 prd impl       := comatch {
-                    'Ap(x,y)[k]   => x >> 
+                    'Ap(x,y)[k]   => or >> 
                       match { 'True => y >> k
                             , 'False => 'True >> k } };
 

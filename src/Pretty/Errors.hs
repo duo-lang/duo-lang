@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty.Errors where
 
-import Text.Megaparsec.Pos
+import Control.Monad (forM_)
 import Prettyprinter
+import Text.Megaparsec.Pos
+
 
 import Pretty.Pretty
 import Utils
@@ -26,7 +28,33 @@ instance PrettyAnn Loc where
   prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
     pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
 
-instance PrettyAnn LocatedError where
-  prettyAnn (Located loc err) = vsep ["Error at:" <+> prettyAnn loc, prettyAnn err]
+---------------------------------------------------------------------------------
+-- Prettyprinting a region from a source file
+---------------------------------------------------------------------------------
+
+printLocatedError :: LocatedError -> IO ()
+printLocatedError (Located loc err) = do
+  putStrLn ("Error at: " ++ ppPrint loc)
+  putStrLn ""
+  printRegion loc
+  putStrLn ""
+  putStrLn (ppPrint err)
+
+printRegion :: Loc -> IO ()
+printRegion (Loc (SourcePos fp line1 _) (SourcePos _ line2 _)) = do
+  file <- readFile fp
+  let region = getRegion file (unPos line1) (unPos line2)
+  let annotatedRegion = generatePrefixes region
+  forM_ annotatedRegion $ \line -> putStrLn line
+
+
+getRegion :: String -> Int -> Int -> [(Int, String)]
+getRegion str start end = take (end - (start - 1)) . drop (start - 1) $ zip [1..] (lines str)
+
+generatePrefixes :: [(Int, String)] -> [String]
+generatePrefixes lines = foo <$> lines
+  where
+    foo (line, content) = show line ++ " | " ++ content
+
 
 

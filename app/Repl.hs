@@ -18,7 +18,7 @@ import Syntax.TypeAutomaton
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
-import Pretty.Errors ()
+import Pretty.Errors (printLocatedError)
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
@@ -284,8 +284,9 @@ def_cmd :: String -> Repl ()
 def_cmd s = case runInteractiveParser declarationP s of
               Right decl -> do
                 oldEnv <- gets replEnv
-                newEnv <- fromRight $ insertDecl decl oldEnv
-                modifyEnvironment (const newEnv)
+                case insertDecl decl oldEnv of
+                  Left err -> liftIO $ printLocatedError err
+                  Right newEnv -> modifyEnvironment (const newEnv)
               Left err -> prettyRepl err
 
 def_option :: Option
@@ -387,10 +388,12 @@ load_cmd s = do
 load_file :: FilePath -> Repl ()
 load_file fp = do
   decls <- parseFile fp programP
-  newEnv <- fromRight $ inferProgram decls
-  modifyEnvironment ((<>) newEnv)
-  prettyRepl newEnv
-  prettyRepl $ "Successfully loaded: " ++ fp
+  case inferProgram decls of
+    Left err -> liftIO $ printLocatedError err
+    Right newEnv -> do
+      modifyEnvironment ((<>) newEnv)
+      prettyRepl newEnv
+      prettyRepl $ "Successfully loaded: " ++ fp
 
 load_option :: Option
 load_option = Option
