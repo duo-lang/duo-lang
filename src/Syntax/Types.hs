@@ -58,8 +58,6 @@ deriving instance Show (DataCodataRep pol)
 deriving instance Eq (DataCodataRep pol)
 deriving instance Ord (DataCodataRep pol)
 
-data TVarKind = Normal | Recursive deriving (Eq, Show, Ord)
-
 ------------------------------------------------------------------------------
 -- Types
 ------------------------------------------------------------------------------
@@ -91,7 +89,7 @@ type family XtorF (a :: Polarity) (b :: DataCodata) :: Polarity where
   XtorF Neg Codata = Pos
 
 data Typ (pol :: Polarity) where
-  TyVar :: PolarityRep pol -> TVarKind -> TVar -> Typ pol
+  TyVar :: PolarityRep pol -> TVar -> Typ pol
   TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig (XtorF pol dc)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
@@ -99,7 +97,7 @@ data Typ (pol :: Polarity) where
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TyVar rep _ _)        = rep
+getPolarity (TyVar rep _)        = rep
 getPolarity (TyStructural rep _ _) = rep
 getPolarity (TyNominal rep _)      = rep
 getPolarity (TySet rep _)          = rep
@@ -107,8 +105,7 @@ getPolarity (TyRec rep _ _)        = rep
 
 -- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
 instance Eq (Typ Pos) where
-  (TyVar PosRep Recursive tv) == (TyVar PosRep Recursive tv') = tv == tv'
-  (TyVar PosRep Normal tv) == (TyVar PosRep Normal tv') = tv == tv'
+  (TyVar PosRep tv) == (TyVar PosRep tv') = tv == tv'
   (TyStructural PosRep DataRep xtors) == (TyStructural PosRep DataRep xtors') = xtors == xtors'
   (TyStructural PosRep CodataRep xtors) == (TyStructural PosRep CodataRep xtors') = xtors == xtors'
   (TyNominal PosRep tn) == (TyNominal PosRep tn') = tn == tn'
@@ -117,8 +114,7 @@ instance Eq (Typ Pos) where
   _ == _ = False
 
 instance Eq (Typ Neg) where
-  (TyVar NegRep Recursive tv) == (TyVar NegRep Recursive tv') = tv == tv'
-  (TyVar NegRep Normal tv) == (TyVar NegRep Normal tv') = tv == tv'
+  (TyVar NegRep tv) == (TyVar NegRep tv') = tv == tv'
   (TyStructural NegRep DataRep xtors) == (TyStructural NegRep DataRep xtors') = xtors == xtors'
   (TyStructural NegRep CodataRep xtors) == (TyStructural NegRep CodataRep xtors') = xtors == xtors'
   (TyNominal NegRep tn) == (TyNominal NegRep tn') = tn == tn'
@@ -135,7 +131,7 @@ compare2 x1 x2 y1 y2 = case x1 `compare` x2 of
 
 instance Ord (Typ Pos) where
   -- Cases where same type constructor is used type constructor:
-  (TyVar PosRep rn tv) `compare` (TyVar PosRep rn' tv') = compare2 rn rn' tv tv'
+  (TyVar PosRep tv) `compare` (TyVar PosRep tv') = compare tv tv'
   (TyStructural PosRep dc xtors) `compare` (TyStructural PosRep dc' xtors') = case (dc,dc') of
     (DataRep,DataRep) -> xtors `compare` xtors'
     (CodataRep,CodataRep) -> xtors `compare` xtors'
@@ -145,7 +141,7 @@ instance Ord (Typ Pos) where
   (TySet PosRep tys) `compare` (TySet PosRep tys') = tys `compare` tys'
   (TyRec PosRep v t) `compare` (TyRec PosRep v' t') = compare2 v v' t t'
   -- Cases where different constructors are used: TyVar < TyStructural < TyNominal < TySet < TyRec
-  (TyVar _ _ _) `compare`_ = LT
+  (TyVar _ _) `compare`_ = LT
   (TyStructural _ _ _) `compare` _ = LT
   (TyNominal _ _) `compare` _ = LT
   (TySet _ _) `compare` _ = LT
@@ -153,7 +149,7 @@ instance Ord (Typ Pos) where
 
 instance Ord (Typ Neg) where
   -- Cases where same type constructor is used type constructor:
-  (TyVar NegRep rn tv) `compare` (TyVar NegRep rn' tv') = compare2 rn rn' tv tv'
+  (TyVar NegRep tv) `compare` (TyVar NegRep tv') = compare tv tv'
   (TyStructural NegRep dc xtors) `compare` (TyStructural NegRep dc' xtors') = case (dc,dc') of
     (DataRep,DataRep) -> xtors `compare` xtors'
     (CodataRep,CodataRep) -> xtors `compare` xtors'
@@ -163,7 +159,7 @@ instance Ord (Typ Neg) where
   (TySet NegRep tys) `compare` (TySet NegRep tys') = tys `compare` tys'
   (TyRec NegRep v t) `compare` (TyRec NegRep v' t') = compare2 v v' t t'
   -- Cases where different constructors are used: TyVar < TyStructural < TyNominal < TySet < TyRec
-  (TyVar _ _ _) `compare`_ = LT
+  (TyVar _ _) `compare`_ = LT
   (TyStructural _ _ _) `compare` _ = LT
   (TyNominal _ _) `compare` _ = LT
   (TySet _ _) `compare` _ = LT
@@ -188,10 +184,9 @@ freeTypeVars :: Typ pol -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: Typ pol -> [TVar]
-    freeTypeVars' (TyVar _ Normal tv) = [tv]
-    freeTypeVars' (TyVar _ Recursive _)  = []
+    freeTypeVars' (TyVar _ tv) = [tv]
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
-    freeTypeVars' (TyRec _ _ t)  = freeTypeVars' t
+    freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _) = []
     freeTypeVars' (TyStructural _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
@@ -210,45 +205,31 @@ generalize ty = TypeScheme (freeTypeVars ty) ty
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
-unfoldRecType recty@(TyRec PosRep var ty) = substituteType' Recursive (M.fromList [(var,(recty, undefined))]) ty
-unfoldRecType recty@(TyRec NegRep var ty) = substituteType' Recursive (M.fromList [(var,(undefined,recty))]) ty
+unfoldRecType recty@(TyRec PosRep var ty) = substituteType (M.fromList [(var,(recty, error "unfoldRecType"))]) ty
+unfoldRecType recty@(TyRec NegRep var ty) = substituteType (M.fromList [(var,(error "unfoldRecType",recty))]) ty
 unfoldRecType ty = ty
 
-substituteType' :: TVarKind -> Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
-substituteType' Recursive m (TyVar PosRep Recursive tv) =
-  case M.lookup tv m of
-    Nothing -> (TyVar PosRep Recursive tv)
-    Just (ty,_) -> ty
-substituteType' Recursive m (TyVar NegRep Recursive tv) =
-  case M.lookup tv m of
-    Nothing -> (TyVar NegRep Recursive tv)
-    Just (_,ty) -> ty
-substituteType' Normal _ ty@(TyVar _ Recursive _) = ty
--- Normal Type Variables
-substituteType' Normal m (TyVar PosRep Normal tv) =
-  case M.lookup tv m of
-    Nothing -> (TyVar PosRep Normal tv)
-    Just (ty,_) -> ty
-substituteType' Normal m (TyVar NegRep Normal tv) =
-  case M.lookup tv m of
-    Nothing -> (TyVar NegRep Normal tv)
-    Just (_,ty) -> ty
-substituteType' Recursive _ ty@(TyVar _ Normal _) = ty
--- Other cases
-substituteType' k m (TyStructural polrep dcrep args) = TyStructural polrep dcrep (substituteXtorSig k m <$> args)
-substituteType' _ _ ty@(TyNominal _ _) = ty
-substituteType' k m (TySet rep args) = TySet rep (substituteType' k m <$> args)
-substituteType' k m (TyRec rep tv arg) = TyRec rep tv (substituteType' k m arg)
-
-substituteXtorSig :: TVarKind -> Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
-substituteXtorSig k m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArgs k m sig_args)
-
-substituteTypeArgs :: TVarKind -> Map TVar (Typ Pos, Typ Neg) -> TypArgs pol -> TypArgs pol
-substituteTypeArgs k m MkTypArgs { prdTypes, cnsTypes } =
-  MkTypArgs (substituteType' k m <$> prdTypes) (substituteType' k m <$> cnsTypes)
-
 substituteType :: Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
-substituteType = substituteType' Normal
+substituteType m var@(TyVar PosRep tv) =
+  case M.lookup tv m of
+    Nothing -> var
+    Just (ty,_) -> ty
+substituteType m var@(TyVar NegRep tv) =
+  case M.lookup tv m of
+    Nothing -> var
+    Just (_,ty) -> ty
+-- Other cases
+substituteType m (TyStructural polrep dcrep args) = TyStructural polrep dcrep (substituteXtorSig m <$> args)
+substituteType _ ty@(TyNominal _ _) = ty
+substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
+substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
+
+substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
+substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArgs m sig_args)
+
+substituteTypeArgs :: Map TVar (Typ Pos, Typ Neg) -> TypArgs pol -> TypArgs pol
+substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
+  MkTypArgs (substituteType m <$> prdTypes) (substituteType m <$> cnsTypes)
 
 ------------------------------------------------------------------------------
 -- Constraints
