@@ -13,50 +13,51 @@ import Parser.Types
 import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
+import Utils (Loc(..))
 
 prdDeclarationP :: Parser (Declaration FreeVarName)
 prdDeclarationP = do
-  (loc, (v,t)) <- withLoc $ do
-    _ <- try $ lexeme (symbol "prd")
-    v <- freeVarName
-    _ <- lexeme (symbol ":=")
-    t <- lexeme (stermP PrdRep)
-    _ <- symbol ";"
-    return (v,t)
-  return (PrdDecl loc v t)
+  startPos <- getSourcePos
+  _ <- try $ lexeme (symbol "prd")
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme (stermP PrdRep)
+  endPos <- getSourcePos
+  _ <- symbol ";"
+  return (PrdDecl (Loc startPos endPos) v t)
 
 cnsDeclarationP :: Parser (Declaration FreeVarName)
 cnsDeclarationP = do
-  (loc, (v,t)) <- withLoc $ do
-    _ <- try $ lexeme (symbol "cns")
-    v <- freeVarName
-    _ <- lexeme (symbol ":=")
-    t <- lexeme (stermP CnsRep)
-    _ <- symbol ";"
-    return (v,t)
-  return (CnsDecl loc v t)
+  startPos <- getSourcePos
+  _ <- try $ lexeme (symbol "cns")
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme (stermP CnsRep)
+  endPos <- getSourcePos
+  _ <- symbol ";"
+  return (CnsDecl (Loc startPos endPos) v t)
 
 cmdDeclarationP :: Parser (Declaration FreeVarName)
 cmdDeclarationP = do
-  (loc, (v,t)) <- withLoc $ do
-    _ <- try $ lexeme (symbol "cmd")
-    v <- freeVarName
-    _ <- lexeme (symbol ":=")
-    t <- lexeme commandP
-    _ <- symbol ";"
-    return (v,t)
-  return (CmdDecl loc v t)
+  startPos <- getSourcePos
+  _ <- try $ lexeme (symbol "cmd")
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme commandP
+  endPos <- getSourcePos
+  _ <- symbol ";"
+  return (CmdDecl (Loc startPos endPos) v t)
 
 defDeclarationP :: Parser (Declaration FreeVarName)
 defDeclarationP = do
-  (loc, (v,t)) <- withLoc $ do
-    _ <- try $ (lexeme (symbol "def"))
-    v <- freeVarName
-    _ <- lexeme (symbol ":=")
-    t <- lexeme atermP
-    _ <- symbol ";"
-    return (v,t)
-  return (DefDecl loc v t)
+  startPos <- getSourcePos
+  _ <- try $ (lexeme (symbol "def"))
+  v <- freeVarName
+  _ <- lexeme (symbol ":=")
+  t <- lexeme atermP
+  endPos <- getSourcePos
+  _ <- symbol ";"
+  return (DefDecl (Loc startPos endPos) v t)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
@@ -64,21 +65,19 @@ defDeclarationP = do
 
 dataDeclP :: Parser (Declaration FreeVarName)
 dataDeclP = do
-  (loc, decl) <- withLoc dataDeclP'
-  return (DataDecl loc decl)
-  where
-    dataDeclP' :: Parser DataDecl
-    dataDeclP' = do
-      dataCodata <- dataCodataDeclP
-      tn <- typeNameP
-      xtors <- braces $ xtorDeclP `sepBy` comma
-      _ <- symbol ";"
-      return NominalDecl
+  startPos <- getSourcePos
+  dataCodata <- dataCodataDeclP
+  tn <- typeNameP
+  xtors <- braces $ xtorDeclP `sepBy` comma
+  endPos <- getSourcePos
+  _ <- symbol ";"
+  let decl = NominalDecl
         { data_name = tn
         , data_polarity = dataCodata
         , data_xtors = xtors
         }
-
+  return (DataDecl (Loc startPos endPos) decl)
+  where
     dataCodataDeclP :: Parser DataCodata
     dataCodataDeclP = (symbol "data" >> return Data) <|> (symbol "codata" >> return Codata)
 

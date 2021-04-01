@@ -8,6 +8,7 @@ import Data.Either (isRight)
 
 import TestUtils
 import Pretty.Pretty
+import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Types
 import Syntax.Program

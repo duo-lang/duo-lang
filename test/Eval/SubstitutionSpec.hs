@@ -6,6 +6,7 @@ import Data.Either (isLeft, isRight)
 import Control.Monad (forM_)
 
 import Pretty.Pretty
+import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Program
 import Utils
