@@ -18,6 +18,8 @@ import Syntax.TypeAutomaton
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
+import Pretty.Errors ()
+import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
 import Eval.ATerms

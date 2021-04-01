@@ -9,7 +9,8 @@ import qualified Data.Set as S
 import Data.Text.Lazy (pack)
 import Prettyprinter
 
-import Pretty.Pretty
+import Pretty.Pretty (ppPrint, PrettyAnn(..), intercalateX)
+import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.TypeAutomaton
 import Syntax.Types

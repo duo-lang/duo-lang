@@ -65,6 +65,11 @@ library
       Parser.STerms
       Parser.Types
       Pretty.Pretty
+      Pretty.STerms
+      Pretty.ATerms
+      Pretty.Types
+      Pretty.Program
+      Pretty.Errors
       Pretty.TypeAutomata
       Syntax.ATerms
       Syntax.CommonTerm
