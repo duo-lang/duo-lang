@@ -24,7 +24,9 @@ import qualified Data.Graph.Inductive.Graph as G
 -- The Monad
 --------------------------------------------------------------------------
 
+
 data LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
+
 type TypeToAutM pol a = StateT (TypeAutEps pol) (ReaderT LookupEnv (Except Error)) a
 
 runTypeAut :: TypeAutEps pol -> LookupEnv -> TypeToAutM pol a -> Either Error (a, TypeAutEps pol)
@@ -33,6 +35,9 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 --------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------
+
+throwAutomatonError :: [String] -> TypeToAutM pol a
+throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM pol ()
 modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
@@ -52,15 +57,35 @@ lookupTVar :: PolarityRep pol -> TVar -> TypeToAutM pol' Node
 lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
+    Nothing -> throwAutomatonError [ "Could not insert type into automaton."
+                                   , "The type variable:"
+                                   , "    " <> tvar_name tv
+                                   , "is not available in the automaton."
+                                   ]
+    Just (Nothing,_) -> throwAutomatonError $ [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> tvar_name tv
+                                              , "exists, but not with the correct polarity."
+                                              ]
     Just (Just pos,_) -> return pos
-    Just (Nothing,_) -> throwError $ OtherError $ "POLARITY ERROR: " ++ (tvar_name tv)
-    Nothing -> throwError $ OtherError $ "unknown free type variable: " ++ (tvar_name tv)
+
+
 lookupTVar NegRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
+    Nothing -> throwAutomatonError [ "Could not insert type into automaton."
+                                   , "The type variable:"
+                                   , "    " <> tvar_name tv
+                                   , "is not available in the automaton."
+                                   ]
+    Just (_,Nothing) -> throwAutomatonError $ [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> tvar_name tv
+                                              , "exists, but not with the correct polarity."
+                                              ]
     Just (_,Just neg) -> return neg
-    Just (_,Nothing) -> throwError $ OtherError $ "POLARITY ERROR: " ++ (tvar_name tv)
-    Nothing -> throwError $ OtherError $ "unknown free type variable: " ++ (tvar_name tv)
+
+
 
 --------------------------------------------------------------------------
 -- Inserting a type into an automaton
@@ -122,7 +147,7 @@ createInitialFromTypeScheme rep tvars =
     (initAut, lookupEnv)
 
 
--- turns a type into a type automaton with prescribed start polarity (throws an error if the type doesn't match the polarity)
+-- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutDet pol)
 typeToAut (TypeScheme tvars ty) = do
   let (initAut, lookupEnv) = createInitialFromTypeScheme (getPolarity ty) tvars
