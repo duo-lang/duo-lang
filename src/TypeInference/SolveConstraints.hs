@@ -122,10 +122,10 @@ subConstraints (SubType ty (TySet NegRep tys))  = return [SubType ty ty' | ty' <
 subConstraints (SubType ty@(TyRec _ _ _) ty')  = return [SubType (unfoldRecType ty) ty']
 subConstraints (SubType ty' ty@(TyRec _ _ _))  = return [SubType ty' (unfoldRecType ty)]
 -- Data/Data and Codata/Codata constraints
-subConstraints (SubType (TyStructural PosRep DataRep xtors1) (TyStructural NegRep DataRep xtors2)) = do
+subConstraints (SubType (TyData PosRep xtors1) (TyData NegRep xtors2)) = do
   constraints <- forM xtors1 (checkXtor xtors2)
   pure $ concat constraints
-subConstraints (SubType (TyStructural PosRep CodataRep xtors1) (TyStructural NegRep CodataRep xtors2)) = do
+subConstraints (SubType (TyCodata PosRep xtors1) (TyCodata NegRep xtors2)) = do
   constraints <- forM xtors2 (checkXtor xtors1)
   pure $ concat constraints
 -- Nominal/Nominal Constraint
@@ -135,17 +135,19 @@ subConstraints (SubType (TyNominal _ tn1) (TyNominal _ tn2)) | tn1 == tn2 = retu
                                                                                             , "and"
                                                                                             , "    " ++ ppPrint tn2 ]
 -- Data/Codata and Codata/Data Constraints
-subConstraints cs@(SubType (TyStructural _ DataRep _) (TyStructural _ CodataRep _))
+subConstraints cs@(SubType (TyData _ _) (TyCodata _ _))
   = throwSolverError [ "Constraint:"
                      , "     " ++ ppPrint cs
                      , "is unsolvable. A data type can't be a subtype of a codata type!" ]
-subConstraints cs@(SubType (TyStructural _ CodataRep _) (TyStructural _ DataRep _))
+subConstraints cs@(SubType (TyCodata _ _) (TyData _ _))
   = throwSolverError [ "Constraint:"
                      , "     "++ ppPrint cs
                      , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Nominal/XData and XData/Nominal Constraints
-subConstraints (SubType (TyStructural _ _ _) (TyNominal _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType (TyNominal _ _) (TyStructural _ _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyData _ _) (TyNominal _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyCodata _ _) (TyNominal _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyNominal _ _) (TyData _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType (TyNominal _ _) (TyCodata _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
 subConstraints (SubType ty1@(TyVar _ _) ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"

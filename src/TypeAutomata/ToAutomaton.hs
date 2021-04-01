@@ -95,6 +95,19 @@ lookupTVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prds) (length cnss)
 
+insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TypeToAutM pol' Node
+insertXtors dc pol xtors = do
+  newNode <- newNodeM
+  insertNode newNode (singleHeadCons pol dc (S.fromList (sigToLabel <$> xtors)))
+  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
+    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
+      prdNode <- insertType prdType
+      insertEdges [(newNode, prdNode, EdgeSymbol dc xt Prd i)]
+    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
+      cnsNode <- insertType cnsType
+      insertEdges [(newNode, cnsNode, EdgeSymbol dc xt Cns j)]
+  return newNode
+
 insertType :: Typ pol -> TypeToAutM pol' Node
 insertType (TyVar rep tv) = lookupTVar rep tv
 insertType (TySet rep tys) = do
@@ -112,19 +125,8 @@ insertType (TyRec rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyStructural polrep dcrep xtors) = do
-  let pol = polarityRepToPol polrep
-  let dc = case dcrep of DataRep -> Data; CodataRep -> Codata
-  newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol dc (S.fromList (sigToLabel <$> xtors)))
-  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
-    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- insertType prdType
-      insertEdges [(newNode, prdNode, EdgeSymbol dc xt Prd i)]
-    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- insertType cnsType
-      insertEdges [(newNode, cnsNode, EdgeSymbol dc xt Cns j)]
-  return newNode
+insertType (TyData polrep xtors)   = insertXtors Data   (polarityRepToPol polrep) xtors
+insertType (TyCodata polrep xtors) = insertXtors Codata (polarityRepToPol polrep) xtors
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM

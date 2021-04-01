@@ -75,48 +75,16 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } 
     Twice prdArgs cnsArgs
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> DataCodataRep dc -> PolarityRep pol -> AutToTypeM (TypArgs (XtorF pol dc))
--- Data
-argNodesToArgTypes (Twice prdNodes cnsNodes) DataRep PosRep = do
+argNodesToArgTypes :: Twice [[Node]] -> PolarityRep pol -> AutToTypeM (TypArgs pol)
+argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType PosRep n
-    return $ case typs of [t] -> t; _ -> TySet PosRep typs
+      nodeToType rep n
+    return $ case typs of [t] -> t; _ -> TySet rep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType NegRep n
-    return $ case typs of [t] -> t; _ -> TySet NegRep typs
-  return (MkTypArgs prdTypes cnsTypes)
-argNodesToArgTypes (Twice prdNodes cnsNodes) DataRep NegRep = do
-  prdTypes <- forM prdNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType NegRep n
-    return $ case typs of [t] -> t; _ -> TySet NegRep typs
-  cnsTypes <- forM cnsNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType PosRep n
-    return $ case typs of [t] -> t; _ -> TySet PosRep typs
-  return (MkTypArgs prdTypes cnsTypes)
--- Codata
-argNodesToArgTypes (Twice prdNodes cnsNodes) CodataRep PosRep = do
-  prdTypes <- forM prdNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType NegRep n
-    return $ case typs of [t] -> t; _ -> TySet NegRep typs
-  cnsTypes <- forM cnsNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType PosRep n
-    return $ case typs of [t] -> t; _ -> TySet PosRep typs
-  return (MkTypArgs prdTypes cnsTypes)
-argNodesToArgTypes (Twice prdNodes cnsNodes) CodataRep NegRep = do
-  prdTypes <- forM prdNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType PosRep n
-    return $ case typs of [t] -> t; _ -> TySet PosRep typs
-  cnsTypes <- forM cnsNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType NegRep n
-    return $ case typs of [t] -> t; _ -> TySet NegRep typs
+      nodeToType (flipPolarityRep rep) n
+    return $ case typs of [t] -> t; _ -> TySet (flipPolarityRep rep) typs
   return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
@@ -144,18 +112,18 @@ nodeToTypeNoCache rep i = do
       Just xtors -> do
         sig <- forM xtors $ \xt -> do
           let nodes = computeArgNodes outs Data xt
-          argTypes <- argNodesToArgTypes nodes DataRep rep
+          argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyStructural rep DataRep sig]
+        return [TyData rep sig]
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
       Just xtors -> do
         sig <- forM xtors $ \xt -> do
           let nodes = computeArgNodes outs Codata xt
-          argTypes <- argNodesToArgTypes nodes CodataRep rep
+          argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyStructural rep CodataRep sig]
+        return [TyCodata rep sig]
     -- Creating Nominal types
     let nominals = TyNominal rep <$> (S.toList tns)
     let typs = varL ++ datL ++ codatL ++ nominals
