@@ -53,19 +53,12 @@ xtorSignatureP NegRep CodataRep = do
   args <- typArgListP PosRep
   return (MkXtorSig xt args)
 
-recVar :: PolarityRep pol -> Parser (Typ pol)
-recVar rep = do
-  rvs <- asks rvars
-  rv <- MkTVar <$> freeVarName
-  guard (rv `S.member` rvs)
-  return $ TyVar rep Recursive rv
-
 typeVariable :: PolarityRep pol -> Parser (Typ pol)
 typeVariable rep = do
   tvs <- asks tvars
   tv <- MkTVar <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyVar rep Normal tv
+  return $ TyVar rep tv
 
 setType :: PolarityRep pol -> Parser (Typ pol)
 setType PosRep = TySet PosRep <$> (lexeme (typP' PosRep) `sepBy2` (symbol "\\/"))
@@ -76,7 +69,7 @@ recType rep = do
   _ <- symbol "rec"
   rv <- MkTVar <$> freeVarName
   _ <- dot
-  ty <- local (\tpr@ParseReader{ rvars } -> tpr { rvars = S.insert rv rvars }) (typP rep)
+  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) (typP rep)
   return $ TyRec rep rv ty
 
 -- Without joins and meets
@@ -85,7 +78,6 @@ typP' rep = try (parens (typP rep)) <|>
   nominalTypeP rep <|>
   dataTypeP DataRep rep <|>
   dataTypeP CodataRep rep <|>
-  try (recVar rep) <|>
   recType rep <|>
   typeVariable rep
 

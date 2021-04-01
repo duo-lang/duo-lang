@@ -37,6 +37,7 @@ data Error
   | GenConstraintsError String
   | EvalError String
   | SolveConstraintsError String
+  | TypeAutomatonError String
   | OtherError String
   deriving (Show, Eq)
 

@@ -230,7 +230,7 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TySet NegRep []) = annKeyword "Top"
   prettyAnn (TySet NegRep [t]) = prettyAnn t
   prettyAnn (TySet NegRep tts) = parens (intercalateX " /\\ " (map prettyAnn tts))
-  prettyAnn (TyVar _ _ tv) = prettyAnn tv -- Normal + Recursive
+  prettyAnn (TyVar _ tv) = prettyAnn tv
   prettyAnn (TyRec _ rv t) = annKeyword "rec " <> prettyAnn rv <> "." <> prettyAnn t
   prettyAnn (TyNominal _ tn) = prettyAnn tn
   prettyAnn (TyStructural _ DataRep   xtors) =
@@ -263,14 +263,13 @@ instance PrettyAnn TypeName where
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
 
+instance PrettyAnn DataCodata where
+  prettyAnn Data = annKeyword "data"
+  prettyAnn Codata = annKeyword "codata"
+
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl tn Data xtors) =
-    annKeyword "data" <+>
-    prettyAnn tn <+>
-    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
-    semi
-  prettyAnn (NominalDecl tn Codata xtors) =
-    annKeyword "codata" <+>
+  prettyAnn (NominalDecl tn dc xtors) =
+    prettyAnn dc <+>
     prettyAnn tn <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
@@ -323,6 +322,7 @@ instance PrettyAnn Error where
   prettyAnn (EvalError err) = "Evaluation error:" <+> pretty err
   prettyAnn (GenConstraintsError err) = "Constraint generation error:" <+> pretty err
   prettyAnn (SolveConstraintsError err) = "Constraint solving error:" <+> pretty err
+  prettyAnn (TypeAutomatonError err) = "Type simplification error:" <+> pretty err
   prettyAnn (OtherError err) = "Other Error:" <+> pretty err
 
 instance PrettyAnn Pos where
