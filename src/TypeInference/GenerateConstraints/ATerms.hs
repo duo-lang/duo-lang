@@ -30,12 +30,12 @@ genConstraintsATerm (FVar fv) = do
     Nothing -> throwGenError $ "Unbound free producer variable in ATerm: " ++ ppPrint fv
 genConstraintsATerm (Ctor xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  let ty = TyStructural PosRep DataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
+  let ty = TyData PosRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
   return (Ctor xt (fst <$> args'), ty)
 genConstraintsATerm (Dtor xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar
-  let codataType = TyStructural NegRep CodataRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
+  let codataType = TyCodata NegRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType ty' codataType)
   return (Dtor xt t' (fst <$> args'), retTypePos)
@@ -43,11 +43,11 @@ genConstraintsATerm (Match t cases) = do
   (t', matchType) <- genConstraintsATerm t
   (retTypePos, retTypeNeg) <- freshTVar
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
-  addConstraint (SubType matchType (TyStructural NegRep DataRep (snd <$> cases')))
+  addConstraint (SubType matchType (TyData NegRep (snd <$> cases')))
   return (Match t' (fst <$> cases'), retTypePos)
 genConstraintsATerm (Comatch cocases) = do
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
-  let ty = TyStructural PosRep CodataRep (snd <$> cocases')
+  let ty = TyCodata PosRep (snd <$> cocases')
   return (Comatch (fst <$> cocases'), ty)
 
 genConstraintsATermCase :: Typ Neg -> ACase bs -> GenM bs (ACase bs, XtorSig Neg)

@@ -55,10 +55,10 @@ genConstraintsSTerm tm@(FreeVar CnsRep v) = do
     Nothing -> throwGenError $ "Unbound free consumer variable in STerm: " ++ ppPrint v
 genConstraintsSTerm (XtorCall PrdRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
-  return (XtorCall PrdRep xt args', TyStructural PosRep DataRep [MkXtorSig xt argTypes])
+  return (XtorCall PrdRep xt args', TyData PosRep [MkXtorSig xt argTypes])
 genConstraintsSTerm (XtorCall CnsRep xt@(MkXtorName { xtorNominalStructural = Structural }) args) = do
   (args', argTypes) <- genConstraintsArgs args
-  return (XtorCall CnsRep xt args', TyStructural NegRep CodataRep [MkXtorSig xt argTypes])
+  return (XtorCall CnsRep xt args', TyCodata NegRep [MkXtorSig xt argTypes])
 genConstraintsSTerm (XtorCall rep xt@(MkXtorName { xtorNominalStructural = Nominal }) args) = do
   (args', _argTypes) <- genConstraintsArgs args
   tn <- lookupXtor xt
@@ -69,13 +69,13 @@ genConstraintsSTerm (XMatch PrdRep Structural cases) = do
                       (fvarsPos, fvarsNeg) <- freshTVars scase_args
                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvarsPos:context }) (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
-  return (XMatch PrdRep Structural (fst <$> cases'), TyStructural PosRep CodataRep (snd <$> cases'))
+  return (XMatch PrdRep Structural (fst <$> cases'), TyCodata PosRep (snd <$> cases'))
 genConstraintsSTerm (XMatch CnsRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       (fvarsPos, fvarsNeg) <- freshTVars scase_args
                       cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvarsPos:context }) (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
-  return (XMatch CnsRep Structural (fst <$> cases'), TyStructural NegRep DataRep (snd <$> cases'))
+  return (XMatch CnsRep Structural (fst <$> cases'), TyData NegRep (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
 genConstraintsSTerm (XMatch _ Nominal []) = throwGenError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
 genConstraintsSTerm (XMatch PrdRep Nominal cases@(pmcase:_)) = do

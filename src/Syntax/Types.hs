@@ -90,81 +90,26 @@ type family XtorF (a :: Polarity) (b :: DataCodata) :: Polarity where
 
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVar -> Typ pol
-  TyStructural :: PolarityRep pol -> DataCodataRep dc -> [XtorSig (XtorF pol dc)] -> Typ pol
+  -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
+  TyData   :: PolarityRep pol ->  [XtorSig (XtorF pol Data)]   -> Typ pol
+  TyCodata :: PolarityRep pol ->  [XtorSig (XtorF pol Codata)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
+deriving instance Eq (Typ Pos)
+deriving instance Eq (Typ Neg)
+deriving instance Ord (Typ Pos)
+deriving instance Ord (Typ Neg)
+
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TyVar rep _)        = rep
-getPolarity (TyStructural rep _ _) = rep
-getPolarity (TyNominal rep _)      = rep
-getPolarity (TySet rep _)          = rep
-getPolarity (TyRec rep _ _)        = rep
-
--- | We need to write Eq and Ord instances by hand, due to the existential type variable dc in "TyStructural"
-instance Eq (Typ Pos) where
-  (TyVar PosRep tv) == (TyVar PosRep tv') = tv == tv'
-  (TyStructural PosRep DataRep xtors) == (TyStructural PosRep DataRep xtors') = xtors == xtors'
-  (TyStructural PosRep CodataRep xtors) == (TyStructural PosRep CodataRep xtors') = xtors == xtors'
-  (TyNominal PosRep tn) == (TyNominal PosRep tn') = tn == tn'
-  (TySet PosRep tys) == (TySet PosRep tys') = tys == tys'
-  (TyRec PosRep v t) == (TyRec PosRep v' t') = v == v' && t == t'
-  _ == _ = False
-
-instance Eq (Typ Neg) where
-  (TyVar NegRep tv) == (TyVar NegRep tv') = tv == tv'
-  (TyStructural NegRep DataRep xtors) == (TyStructural NegRep DataRep xtors') = xtors == xtors'
-  (TyStructural NegRep CodataRep xtors) == (TyStructural NegRep CodataRep xtors') = xtors == xtors'
-  (TyNominal NegRep tn) == (TyNominal NegRep tn') = tn == tn'
-  (TySet NegRep tys) == (TySet NegRep tys') = tys == tys'
-  (TyRec NegRep v t) == (TyRec NegRep v' t') = v == v' && t == t'
-  _ == _ = False
-
--- | Lexicographic ordering for two arguments
-compare2 :: (Ord a, Ord b) => a -> a -> b -> b -> Ordering
-compare2 x1 x2 y1 y2 = case x1 `compare` x2 of
-  LT -> LT
-  GT -> GT
-  EQ -> y1 `compare` y2
-
-instance Ord (Typ Pos) where
-  -- Cases where same type constructor is used type constructor:
-  (TyVar PosRep tv) `compare` (TyVar PosRep tv') = compare tv tv'
-  (TyStructural PosRep dc xtors) `compare` (TyStructural PosRep dc' xtors') = case (dc,dc') of
-    (DataRep,DataRep) -> xtors `compare` xtors'
-    (CodataRep,CodataRep) -> xtors `compare` xtors'
-    (DataRep, CodataRep) -> LT
-    (CodataRep, DataRep) -> GT
-  (TyNominal PosRep tn) `compare` (TyNominal PosRep tn') = tn `compare` tn'
-  (TySet PosRep tys) `compare` (TySet PosRep tys') = tys `compare` tys'
-  (TyRec PosRep v t) `compare` (TyRec PosRep v' t') = compare2 v v' t t'
-  -- Cases where different constructors are used: TyVar < TyStructural < TyNominal < TySet < TyRec
-  (TyVar _ _) `compare`_ = LT
-  (TyStructural _ _ _) `compare` _ = LT
-  (TyNominal _ _) `compare` _ = LT
-  (TySet _ _) `compare` _ = LT
-  (TyRec _ _ _) `compare` _ = GT
-
-instance Ord (Typ Neg) where
-  -- Cases where same type constructor is used type constructor:
-  (TyVar NegRep tv) `compare` (TyVar NegRep tv') = compare tv tv'
-  (TyStructural NegRep dc xtors) `compare` (TyStructural NegRep dc' xtors') = case (dc,dc') of
-    (DataRep,DataRep) -> xtors `compare` xtors'
-    (CodataRep,CodataRep) -> xtors `compare` xtors'
-    (DataRep, CodataRep) -> LT
-    (CodataRep, DataRep) -> GT
-  (TyNominal NegRep tn) `compare` (TyNominal NegRep tn') = tn `compare` tn'
-  (TySet NegRep tys) `compare` (TySet NegRep tys') = tys `compare` tys'
-  (TyRec NegRep v t) `compare` (TyRec NegRep v' t') = compare2 v v' t t'
-  -- Cases where different constructors are used: TyVar < TyStructural < TyNominal < TySet < TyRec
-  (TyVar _ _) `compare`_ = LT
-  (TyStructural _ _ _) `compare` _ = LT
-  (TyNominal _ _) `compare` _ = LT
-  (TySet _ _) `compare` _ = LT
-  (TyRec _ _ _) `compare` _ = GT
-
+getPolarity (TyVar rep _)     = rep
+getPolarity (TyData rep _)    = rep
+getPolarity (TyCodata rep _)  = rep
+getPolarity (TyNominal rep _) = rep
+getPolarity (TySet rep _)     = rep
+getPolarity (TyRec rep _ _)   = rep
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -188,7 +133,8 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _) = []
-    freeTypeVars' (TyStructural _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyData _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyCodata _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
     freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
@@ -219,7 +165,8 @@ substituteType m var@(TyVar NegRep tv) =
     Nothing -> var
     Just (_,ty) -> ty
 -- Other cases
-substituteType m (TyStructural polrep dcrep args) = TyStructural polrep dcrep (substituteXtorSig m <$> args)
+substituteType m (TyData polrep args) = TyData polrep (substituteXtorSig m <$> args)
+substituteType m (TyCodata polrep args) = TyCodata polrep (substituteXtorSig m <$> args)
 substituteType _ ty@(TyNominal _ _) = ty
 substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
