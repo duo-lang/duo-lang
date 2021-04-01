@@ -73,8 +73,8 @@ freshTVar :: GenM bs (Typ Pos, Typ Neg)
 freshTVar = do
   var <- gets varCount
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
-  return (TyVar PosRep Normal (MkTVar (show var))
-         ,TyVar NegRep Normal (MkTVar (show var)))
+  return (TyVar PosRep (MkTVar (show var))
+         ,TyVar NegRep (MkTVar (show var)))
 
 freshTVars :: Twice [bs] -> GenM bs (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do

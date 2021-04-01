@@ -52,7 +52,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar rep Normal <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  return (TyVar rep <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -125,7 +125,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TyVar rep Recursive (MkTVar ("r" ++ show i))
+    True -> return $ TyVar rep (MkTVar ("r" ++ show i))
     False -> nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.

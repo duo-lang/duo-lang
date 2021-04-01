@@ -24,9 +24,7 @@ import qualified Data.Graph.Inductive.Graph as G
 -- The Monad
 --------------------------------------------------------------------------
 
-data LookupEnv = LookupEnv { rvarEnv :: Map (Polarity, TVar) Node
-                           , tvarEnv :: Map TVar (Node, Node)
-                           }
+data LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 type TypeToAutM pol a = StateT (TypeAutEps pol) (ReaderT LookupEnv (Except Error)) a
 
 runTypeAut :: TypeAutEps pol -> LookupEnv -> TypeToAutM pol a -> Either Error (a, TypeAutEps pol)
@@ -50,12 +48,20 @@ newNodeM = do
   graph <- gets ta_gr
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: TVar -> TypeToAutM pol (Node, Node)
-lookupTVar tv = do
+lookupTVar :: PolarityRep pol -> TVar -> TypeToAutM pol' Node
+lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
-    Just pair -> return pair
+    Just (Just pos,_) -> return pos
+    Just (Nothing,_) -> throwError $ OtherError $ "POLARITY ERROR: " ++ (tvar_name tv)
     Nothing -> throwError $ OtherError $ "unknown free type variable: " ++ (tvar_name tv)
+lookupTVar NegRep tv = do
+  tvarEnv <- asks tvarEnv
+  case M.lookup tv tvarEnv of
+    Just (_,Just neg) -> return neg
+    Just (_,Nothing) -> throwError $ OtherError $ "POLARITY ERROR: " ++ (tvar_name tv)
+    Nothing -> throwError $ OtherError $ "unknown free type variable: " ++ (tvar_name tv)
+
 --------------------------------------------------------------------------
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
@@ -65,14 +71,7 @@ sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prds) (length cnss)
 
 insertType :: Typ pol -> TypeToAutM pol' Node
-insertType (TyVar rep Normal tv) = do
-  (i,j) <- lookupTVar tv
-  return $ case rep of {PosRep -> i; NegRep -> j}
-insertType (TyVar rep Recursive rv) = do
-  rvarEnv <- asks rvarEnv
-  case M.lookup (polarityRepToPol rep, rv) rvarEnv of
-    Just i -> return i
-    Nothing -> throwError $ OtherError $ "covariance rule violated: " ++ (tvar_name rv)
+insertType (TyVar rep tv) = lookupTVar rep tv
 insertType (TySet rep tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons (polarityRepToPol rep))
@@ -83,7 +82,9 @@ insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyHeadCons pol)
-  n <- local (\(LookupEnv rvars tvars) -> LookupEnv ((M.insert (pol, rv) newNode) rvars) tvars) (insertType ty)
+  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
+      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
+  n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType (TyStructural polrep dcrep xtors) = do
@@ -115,8 +116,7 @@ createInitialFromTypeScheme rep tvars =
                       , ta_starts = []
                       , ta_flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
                       }
-    lookupEnv = LookupEnv { rvarEnv = M.empty
-                          , tvarEnv = M.fromList [(tv, (2*i,2*i+1)) | i <- [0..length tvars - 1], let tv = tvars !! i]
+    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just (2*i),Just(2*i+1))) | i <- [0..length tvars - 1], let tv = tvars !! i]
                           }
   in
     (initAut, lookupEnv)
@@ -134,7 +134,8 @@ typeToAut (TypeScheme tvars ty) = do
 insertEpsilonEdges :: SolverResult -> TypeToAutM pol ()
 insertEpsilonEdges solverResult =
   forM_ (M.toList solverResult) $ \(tv, vstate) -> do
-    (i,j) <- lookupTVar tv
+    i <- lookupTVar PosRep tv
+    j <- lookupTVar NegRep tv
     forM_ (vst_lowerbounds vstate) $ \ty -> do
       node <- insertType ty
       insertEdges [(i, node, EpsilonEdge ())]

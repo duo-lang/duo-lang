@@ -19,13 +19,10 @@ import Utils
 -- Definition of the Parsing Monad
 -------------------------------------------------------------------------------------------
 
-data ParseReader = ParseReader
-  { rvars :: Set TVar
-  , tvars :: Set TVar
-  }
+data ParseReader = ParseReader { tvars :: Set TVar }
 
 defaultParseReader :: ParseReader
-defaultParseReader = ParseReader S.empty S.empty
+defaultParseReader = ParseReader S.empty
 
 newtype Parser a = Parser { unParser :: ReaderT ParseReader (Parsec Void String) a }
   deriving (Functor, Applicative, Monad, MonadFail, Alternative, MonadPlus

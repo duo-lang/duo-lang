@@ -91,10 +91,10 @@ solve (cs:css) = do
     False -> do
       addToCache cs
       case cs of
-        (SubType (TyVar PosRep Normal uv) ub) -> do
+        (SubType (TyVar PosRep uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
-        (SubType lb (TyVar NegRep Normal uv)) -> do
+        (SubType lb (TyVar NegRep uv)) -> do
           newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
@@ -147,13 +147,13 @@ subConstraints cs@(SubType (TyStructural _ CodataRep _) (TyStructural _ DataRep 
 subConstraints (SubType (TyStructural _ _ _) (TyNominal _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType (TyNominal _ _) (TyStructural _ _ _)) = throwSolverError ["Cannot constrain nominal by structural type"]
 -- subConstraints should never be called if the upper or lower bound is a unification variable.
-subConstraints (SubType ty1@(TyVar _ _ _) ty2) =
+subConstraints (SubType ty1@(TyVar _ _) ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"
                    , ppPrint ty2
                    ]
-subConstraints (SubType ty1 ty2@(TyVar _ _ _)) =
+subConstraints (SubType ty1 ty2@(TyVar _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"

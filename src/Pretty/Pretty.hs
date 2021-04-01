@@ -230,7 +230,7 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TySet NegRep []) = annKeyword "Top"
   prettyAnn (TySet NegRep [t]) = prettyAnn t
   prettyAnn (TySet NegRep tts) = parens (intercalateX " /\\ " (map prettyAnn tts))
-  prettyAnn (TyVar _ _ tv) = prettyAnn tv -- Normal + Recursive
+  prettyAnn (TyVar _ tv) = prettyAnn tv -- Normal + Recursive
   prettyAnn (TyRec _ rv t) = annKeyword "rec " <> prettyAnn rv <> "." <> prettyAnn t
   prettyAnn (TyNominal _ tn) = prettyAnn tn
   prettyAnn (TyStructural _ DataRep   xtors) =
