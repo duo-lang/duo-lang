@@ -76,25 +76,15 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } 
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: Twice [[Node]] -> PolarityRep pol -> AutToTypeM (TypArgs pol)
-argNodesToArgTypes (Twice prdNodes cnsNodes) PosRep = do
+argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType PosRep n
-    return $ case typs of [t] -> t; _ -> TySet PosRep typs
+      nodeToType rep n
+    return $ case typs of [t] -> t; _ -> TySet rep typs
   cnsTypes <- forM cnsNodes $ \ns -> do
     typs <- forM ns $ \n -> do
-      nodeToType NegRep n
-    return $ case typs of [t] -> t; _ -> TySet NegRep typs
-  return (MkTypArgs prdTypes cnsTypes)
-argNodesToArgTypes (Twice prdNodes cnsNodes) NegRep = do
-  prdTypes <- forM prdNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType NegRep n
-    return $ case typs of [t] -> t; _ -> TySet NegRep typs
-  cnsTypes <- forM cnsNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType PosRep n
-    return $ case typs of [t] -> t; _ -> TySet PosRep typs
+      nodeToType (flipPolarityRep rep) n
+    return $ case typs of [t] -> t; _ -> TySet (flipPolarityRep rep) typs
   return (MkTypArgs prdTypes cnsTypes)
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
