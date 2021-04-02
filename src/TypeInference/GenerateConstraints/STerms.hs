@@ -8,7 +8,9 @@ import Control.Monad.Reader
 import qualified Data.Map as M
 
 
-import Pretty.Pretty
+import Pretty.Pretty (ppPrint)
+import Pretty.STerms ()
+import Pretty.Types ()
 import Syntax.STerms
 import Syntax.Program hiding (lookupXtor)
 import Syntax.Types
