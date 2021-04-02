@@ -124,12 +124,17 @@ cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
   tm <- parseInteractive atermP s
   evalOrder <- gets evalOrder
-  env <- gets replEnv  
-  let res = runEval (evalATermComplete tm) evalOrder env
-  case res of
-    Left error -> prettyRepl error
-    Right res' -> prettyRepl res'
-  
+  env <- gets replEnv
+  steps <- gets steps
+  case steps of
+    NoSteps -> do
+      let res = runEval (evalATermComplete tm) evalOrder env
+      case res of
+        Left error -> prettyRepl error
+        Right res' -> prettyRepl res'
+    Steps -> do
+      res <- fromRight $ runEval (evalATermSteps tm) evalOrder env
+      forM_ res (\t -> prettyRepl t >> prettyRepl "----")
 
 ------------------------------------------------------------------------------
 -- Options
