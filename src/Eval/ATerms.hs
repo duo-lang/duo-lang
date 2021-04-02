@@ -1,6 +1,7 @@
 module Eval.ATerms
   ( isValue
   , evalATermComplete
+  , evalATermSteps
   ) where
 
 import Data.List (find)
@@ -54,6 +55,7 @@ evalATermSingleStep (Dtor xt (Comatch cocases) args) =
 evalATermSingleStep (Dtor _ _ _) = throwEvalError "unreachable if properly typechecked"
 evalATermSingleStep (Comatch _) = return Nothing
 
+-- | Return just thef final evaluation result
 evalATermComplete :: ATerm bs -> EvalM bs (ATerm bs)
 evalATermComplete t = do
   t' <- evalATermSingleStep t
@@ -61,3 +63,13 @@ evalATermComplete t = do
     Nothing -> return t
     Just t'' -> evalATermComplete t''
 
+-- | Return all intermediate evaluation results
+evalATermSteps :: ATerm bs -> EvalM bs [ATerm bs]
+evalATermSteps t = evalATermSteps' [t] t
+  where
+    evalATermSteps' :: [ATerm bs] -> ATerm bs -> EvalM bs [ATerm bs]
+    evalATermSteps' ts t = do
+      t' <- evalATermSingleStep t
+      case t' of
+        Nothing -> return ts
+        Just t' -> evalATermSteps' (ts ++ [t']) t'
