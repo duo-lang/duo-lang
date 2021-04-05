@@ -30,10 +30,10 @@ numLitP PrdRep = numToTerm <$> numP
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
-  _ <- lexeme (symbol "\\")
+  _ <- symbol "\\"
   args <- argListP freeVarName freeVarName
-  _ <- lexeme (symbol "=>")
-  cmd <- lexeme commandP
+  _ <- symbol "=>"
+  cmd <- commandP
   return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
@@ -74,10 +74,10 @@ casesP = try structuralCases <|> nominalCases
 
 singleCase :: NominalStructural -> Parser (SCase FreeVarName)
 singleCase ns = do
-  xt <- lexeme (xtorName ns)
+  xt <- xtorName ns
   args <- argListP freeVarName freeVarName
   _ <- symbol "=>"
-  cmd <- lexeme commandP
+  cmd <- commandP
   return MkSCase { scase_name = xt
                  , scase_args = args
                  , scase_cmd = commandClosing args cmd -- de brujin transformation
@@ -86,9 +86,9 @@ singleCase ns = do
 muAbstraction :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 muAbstraction pc = do
   _ <- symbol (case pc of { PrdRep -> "mu"; CnsRep -> "mu*" })
-  v <- lexeme freeVarName
+  v <- freeVarName
   _ <- dot
-  cmd <- lexeme commandP
+  cmd <- commandP
   case pc of
     PrdRep -> return $ MuAbs pc v (commandClosingSingle CnsRep v cmd)
     CnsRep -> return $ MuAbs pc v (commandClosingSingle PrdRep v cmd)
@@ -109,20 +109,20 @@ stermP pc = parens (stermP pc)
 
 applyCmdP :: Parser (Command FreeVarName)
 applyCmdP = do
-  prd <- lexeme (stermP PrdRep)
-  _ <- lexeme (symbol ">>")
-  cns <- lexeme (stermP CnsRep)
+  prd <- stermP PrdRep
+  _ <- symbol ">>"
+  cns <- stermP CnsRep
   return (Apply prd cns)
 
 doneCmdP :: Parser (Command FreeVarName)
 doneCmdP = do
-  _ <- lexeme (symbol "Done")
+  _ <- symbol "Done"
   return Done
 
 printCmdP :: Parser (Command FreeVarName)
 printCmdP = do
-  _ <- lexeme (symbol "Print")
-  arg <- parens $ lexeme (stermP PrdRep)
+  _ <- symbol "Print"
+  arg <- parens (stermP PrdRep)
   return $ Print arg
 
 commandP :: Parser (Command FreeVarName)

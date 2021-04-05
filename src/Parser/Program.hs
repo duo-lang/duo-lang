@@ -18,10 +18,10 @@ import Utils (Loc(..))
 prdDeclarationP :: Parser (Declaration FreeVarName)
 prdDeclarationP = do
   startPos <- getSourcePos
-  _ <- try $ lexeme (symbol "prd")
+  _ <- try (symbol "prd")
   v <- freeVarName
-  _ <- lexeme (symbol ":=")
-  t <- lexeme (stermP PrdRep)
+  _ <- symbol ":="
+  t <- stermP PrdRep
   endPos <- getSourcePos
   _ <- symbol ";"
   return (PrdDecl (Loc startPos endPos) v t)
@@ -29,10 +29,10 @@ prdDeclarationP = do
 cnsDeclarationP :: Parser (Declaration FreeVarName)
 cnsDeclarationP = do
   startPos <- getSourcePos
-  _ <- try $ lexeme (symbol "cns")
+  _ <- try (symbol "cns")
   v <- freeVarName
-  _ <- lexeme (symbol ":=")
-  t <- lexeme (stermP CnsRep)
+  _ <- symbol ":="
+  t <- stermP CnsRep
   endPos <- getSourcePos
   _ <- symbol ";"
   return (CnsDecl (Loc startPos endPos) v t)
@@ -40,10 +40,10 @@ cnsDeclarationP = do
 cmdDeclarationP :: Parser (Declaration FreeVarName)
 cmdDeclarationP = do
   startPos <- getSourcePos
-  _ <- try $ lexeme (symbol "cmd")
+  _ <- try (symbol "cmd")
   v <- freeVarName
-  _ <- lexeme (symbol ":=")
-  t <- lexeme commandP
+  _ <- symbol ":="
+  t <- commandP
   endPos <- getSourcePos
   _ <- symbol ";"
   return (CmdDecl (Loc startPos endPos) v t)
@@ -51,10 +51,10 @@ cmdDeclarationP = do
 defDeclarationP :: Parser (Declaration FreeVarName)
 defDeclarationP = do
   startPos <- getSourcePos
-  _ <- try $ (lexeme (symbol "def"))
+  _ <- try (symbol "def")
   v <- freeVarName
-  _ <- lexeme (symbol ":=")
-  t <- lexeme atermP
+  _ <- symbol ":="
+  t <- atermP
   endPos <- getSourcePos
   _ <- symbol ";"
   return (DefDecl (Loc startPos endPos) v t)
