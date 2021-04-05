@@ -176,14 +176,15 @@ substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
 -- Constraints
 ------------------------------------------------------------------------------
 
-data Constraint = SubType (Typ Pos) (Typ Neg) deriving (Eq, Ord)
+data Constraint a = SubType a (Typ Pos) (Typ Neg)
+  deriving (Eq, Ord)
 
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
-data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint]
-                                   , cs_uvars :: [TVar]
-                                   } deriving (Eq)
+data ConstraintSet a = ConstraintSet { cs_constraints :: [Constraint a]
+                                     , cs_uvars :: [TVar]
+                                     } deriving (Eq)
 
 ------------------------------------------------------------------------------
 -- Data Type declarations

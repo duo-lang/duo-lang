@@ -42,8 +42,8 @@ instance PrettyAnn (TypeScheme pol) where
     "." <+>
     prettyAnn ty
 
-instance PrettyAnn Constraint where
-  prettyAnn (SubType t1 t2) =
+instance PrettyAnn (Constraint a) where
+  prettyAnn (SubType _ t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2
 
 instance PrettyAnn TypeName where

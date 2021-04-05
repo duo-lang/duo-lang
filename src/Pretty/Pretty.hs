@@ -127,4 +127,3 @@ instance PrettyAnn XtorName where
 -- | This identity wrapper is used to indicate that we want to transform the element to
 -- a named representation before prettyprinting it.
 newtype NamedRep a = NamedRep a
-
