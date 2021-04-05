@@ -32,6 +32,7 @@ import Syntax.CommonTerm
 ---------------------------------------------------------------------------------
 
 -- | Represents one case in a pattern match or copattern match.
+-- The `ext` field is used to save additional information, such as source code locations.
 --
 --        X(x_1,...,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
@@ -48,7 +49,8 @@ data ACase ext bs = MkACase
   } deriving (Eq, Show, Ord)
 
 -- | An asymmetric term.
--- The bs parameter indicates the type of additional information stored at binding sites.
+-- The `ext` field is used to save additional information, such as source code locations.
+-- The `bs` parameter indicates the type of additional information stored at binding sites.
 data ATerm ext bs where
   -- | A bound variable in the locally nameless system.
   BVar :: ext -> Index -> ATerm ext bs
