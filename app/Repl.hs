@@ -153,7 +153,7 @@ data Option = Option
 
 set_cmd_variants :: [(String, Repl ())]
 set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                   , ("cbn", modify (\rs -> rs { evalOrder = CBV }))
+                   , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
                    , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
