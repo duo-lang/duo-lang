@@ -18,8 +18,6 @@ module Parser.Lexer
   , brackets
   , braces
   , argListP
-    -- Source positions
-  , withLoc
   ) where
 
 import Text.Megaparsec hiding (State)
@@ -98,15 +96,4 @@ argListP p q = do
   xs <- option [] (parens   $ p `sepBy` comma)
   ys <- option [] (brackets $ q `sepBy` comma)
   return $ Twice xs ys
-
--------------------------------------------------------------------------------------------
--- Parse source positions
--------------------------------------------------------------------------------------------
-
-withLoc :: Parser a -> Parser (Loc, a)
-withLoc p = do
-  pos1 <- getSourcePos
-  res <- p
-  pos2 <- getSourcePos
-  return (Loc pos1 pos2, res)
 

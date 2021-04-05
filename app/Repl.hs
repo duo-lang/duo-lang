@@ -18,6 +18,8 @@ import Syntax.TypeAutomaton
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
+import Pretty.Errors (printLocatedError)
+import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
 import Eval.Eval
 import Eval.ATerms
@@ -124,12 +126,17 @@ cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
   tm <- parseInteractive atermP s
   evalOrder <- gets evalOrder
-  env <- gets replEnv  
-  let res = runEval (evalATermComplete tm) evalOrder env
-  case res of
-    Left error -> prettyRepl error
-    Right res' -> prettyRepl res'
-  
+  env <- gets replEnv
+  steps <- gets steps
+  case steps of
+    NoSteps -> do
+      let res = runEval (evalATermComplete tm) evalOrder env
+      case res of
+        Left error -> prettyRepl error
+        Right res' -> prettyRepl res'
+    Steps -> do
+      res <- fromRight $ runEval (evalATermSteps tm) evalOrder env
+      forM_ res (\t -> prettyRepl t >> prettyRepl "----")
 
 ------------------------------------------------------------------------------
 -- Options
@@ -146,7 +153,7 @@ data Option = Option
 
 set_cmd_variants :: [(String, Repl ())]
 set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                   , ("cbn", modify (\rs -> rs { evalOrder = CBV }))
+                   , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
                    , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
@@ -282,8 +289,9 @@ def_cmd :: String -> Repl ()
 def_cmd s = case runInteractiveParser declarationP s of
               Right decl -> do
                 oldEnv <- gets replEnv
-                newEnv <- fromRight $ insertDecl decl oldEnv
-                modifyEnvironment (const newEnv)
+                case insertDecl decl oldEnv of
+                  Left err -> liftIO $ printLocatedError err
+                  Right newEnv -> modifyEnvironment (const newEnv)
               Left err -> prettyRepl err
 
 def_option :: Option
@@ -385,10 +393,12 @@ load_cmd s = do
 load_file :: FilePath -> Repl ()
 load_file fp = do
   decls <- parseFile fp programP
-  newEnv <- fromRight $ inferProgram decls
-  modifyEnvironment ((<>) newEnv)
-  prettyRepl newEnv
-  prettyRepl $ "Successfully loaded: " ++ fp
+  case inferProgram decls of
+    Left err -> liftIO $ printLocatedError err
+    Right newEnv -> do
+      modifyEnvironment ((<>) newEnv)
+      prettyRepl newEnv
+      prettyRepl $ "Successfully loaded: " ++ fp
 
 load_option :: Option
 load_option = Option

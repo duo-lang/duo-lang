@@ -6,6 +6,7 @@ import System.FilePath
 import TestUtils
 import Parser.Parser
 import Pretty.Pretty
+import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Types
 import Syntax.Program

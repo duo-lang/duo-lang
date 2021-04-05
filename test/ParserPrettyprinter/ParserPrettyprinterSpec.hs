@@ -6,6 +6,8 @@ import Test.Hspec
 
 import Parser.Parser
 import Pretty.Pretty
+import Pretty.Errors ()
+import Pretty.Program ()
 import TestUtils
 
 -- Check that all the examples in `examples/..` can be:

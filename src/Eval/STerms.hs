@@ -7,6 +7,7 @@ import Data.List (find)
 
 import Eval.Eval
 import Pretty.Pretty
+import Pretty.STerms ()
 import Syntax.STerms
 import Utils
 
