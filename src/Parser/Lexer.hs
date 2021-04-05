@@ -1,17 +1,39 @@
 module Parser.Lexer
-  ( symbol
-  , lexeme
+  ( sc
   , sepBy2
-  , sc
   , numP
     -- Names
   , freeVarName
   , xtorName
   , typeNameP
-    -- Punctuation
+    -- Keywords
+  , matchKwP
+  , comatchKwP
+  , prdKwP
+  , cnsKwP
+  , cmdKwP
+  , defKwP
+  , withKwP
+  , doneKwP
+  , printKwP
+  , forallKwP
+  , dataKwP
+  , codataKwP
+  , recKwP
+  , muKwP
+  , muStarKwP
+    -- Symbols
   , dot
   , pipe
   , comma
+  , semi
+  , backslash
+  , coloneq
+  , rightarrow
+  , commandSym
+  , unionSym
+  , intersectionSym
+  , subtypeSym
     -- Parens
   , angles
   , parens
@@ -33,18 +55,20 @@ import Utils
 -- Various
 -------------------------------------------------------------------------------------------
 
-symbol :: String -> Parser String
-symbol = L.symbol sc
+symbol :: String -> Parser ()
+symbol str = L.symbol sc str >> return ()
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
+
+keywordP :: String -> Parser ()
+keywordP str = lexeme (string str <* notFollowedBy alphaNumChar) >> return ()
 
 sepBy2 :: Parser a -> Parser sep -> Parser [a]
 sepBy2 p sep = (:) <$> (p <* sep) <*> (sepBy1 p sep)
 
 sc :: Parser ()
 sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
-
 
 numP :: Parser Int
 numP = do
@@ -56,29 +80,124 @@ numP = do
 -------------------------------------------------------------------------------------------
 
 freeVarName :: Parser FreeVarName
-freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
+freeVarName = do
+  name <- lexeme $ ((:) <$> lowerChar <*> many alphaNumChar)
+  checkReserved name
+  return name
+
 
 xtorName :: NominalStructural -> Parser XtorName
 xtorName Structural = do
-  _ <- tick
-  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  tick
+  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  checkReserved name
   return (MkXtorName Structural name) -- Saved without tick!
 xtorName Nominal = do
-  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  checkReserved name
   return (MkXtorName Nominal name)
 
 typeNameP :: Parser TypeName
-typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+typeNameP = do
+  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  checkReserved name
+  return (MkTypeName name)
 
 -------------------------------------------------------------------------------------------
--- Punctuation
+-- Keywords
 -------------------------------------------------------------------------------------------
 
-comma, dot, pipe, tick :: Parser String
+keywords :: [String]
+keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
+
+checkReserved :: String -> Parser ()
+checkReserved str | str `elem` keywords = fail $ "Keyword " <> str <> " cannot be used as an identifier."
+                  | otherwise = return ()
+
+matchKwP :: Parser ()
+matchKwP = keywordP "match"
+
+comatchKwP :: Parser ()
+comatchKwP = keywordP "comatch"
+
+prdKwP :: Parser ()
+prdKwP = keywordP "prd"
+
+cnsKwP :: Parser ()
+cnsKwP = keywordP "cns"
+
+cmdKwP :: Parser ()
+cmdKwP = keywordP "cmd"
+
+defKwP :: Parser ()
+defKwP = keywordP "def"
+
+withKwP :: Parser ()
+withKwP = keywordP "with"
+
+doneKwP :: Parser ()
+doneKwP = keywordP "Done"
+
+printKwP :: Parser ()
+printKwP = keywordP "Print"
+
+forallKwP :: Parser ()
+forallKwP = keywordP "forall"
+
+dataKwP :: Parser ()
+dataKwP = keywordP "data"
+
+codataKwP :: Parser ()
+codataKwP = keywordP "codata"
+
+recKwP :: Parser ()
+recKwP = keywordP "rec"
+
+muKwP :: Parser ()
+muKwP = keywordP "mu"
+
+muStarKwP :: Parser ()
+muStarKwP = keywordP "mu*"
+
+-------------------------------------------------------------------------------------------
+-- Symbols
+-------------------------------------------------------------------------------------------
+
+comma :: Parser ()
 comma = symbol ","
+
+dot :: Parser ()
 dot = symbol "."
+
+semi :: Parser ()
+semi = symbol ";"
+
+pipe :: Parser ()
 pipe = symbol "|"
+
+tick :: Parser ()
 tick = symbol "'"
+
+backslash :: Parser ()
+backslash = symbol "\\"
+
+coloneq :: Parser ()
+coloneq = symbol ":="
+
+rightarrow :: Parser ()
+rightarrow = symbol "=>"
+
+commandSym :: Parser ()
+commandSym = symbol ">>"
+
+unionSym :: Parser ()
+unionSym = symbol "\\/"
+
+intersectionSym :: Parser ()
+intersectionSym = symbol "/\\"
+
+subtypeSym :: Parser ()
+subtypeSym = symbol "<:"
 
 -------------------------------------------------------------------------------------------
 -- Parens

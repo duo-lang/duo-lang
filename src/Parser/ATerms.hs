@@ -23,7 +23,7 @@ dtorP :: NominalStructural -> Parser (ATerm () FreeVarName)
 dtorP ns = do
   -- Must use atermP' here in order to avoid left-recursion in grammar!
   destructee <- atermP'
-  _ <- symbol "."
+  dot
   xt <- xtorName ns
   args <- option [] (parens $ atermP `sepBy` comma)
   return (Dtor () xt destructee args)
@@ -34,7 +34,7 @@ acaseP :: NominalStructural -> Parser (ACase () FreeVarName)
 acaseP ns = do
   xt <- xtorName ns
   args <- option [] (parens $ freeVarName `sepBy` comma)
-  _ <- symbol "=>"
+  rightarrow
   res <- atermP
   return (MkACase () xt args (atermClosing args res))
 
@@ -46,15 +46,15 @@ acasesP = try structuralCases <|> nominalCases
 
 matchP :: Parser (ATerm () FreeVarName)
 matchP = do
-  _ <- symbol "match"
+  matchKwP
   arg <- atermP
-  _ <- symbol "with"
+  withKwP
   cases <- acasesP
   return (Match () arg cases)
 
 comatchP :: Parser (ATerm () FreeVarName)
 comatchP = do
-  _ <- symbol "comatch"
+  comatchKwP
   cocases <- acasesP
   return (Comatch () cocases)
 
@@ -88,6 +88,5 @@ atermP =
   comatchP <|>
   ctorP Structural <|>
   ctorP Nominal <|>
-
   fvarP
 

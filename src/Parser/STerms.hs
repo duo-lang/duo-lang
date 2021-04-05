@@ -30,10 +30,10 @@ numLitP PrdRep = numToTerm <$> numP
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
-  _ <- lexeme (symbol "\\")
+  backslash
   args <- argListP freeVarName freeVarName
-  _ <- lexeme (symbol "=>")
-  cmd <- lexeme commandP
+  rightarrow
+  cmd <- commandP
   return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
@@ -51,11 +51,11 @@ xtorCall ns pc = do
 
 patternMatch :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 patternMatch PrdRep = do
-  _ <- symbol "comatch"
+  comatchKwP
   (cases,ns) <- casesP
   return $ XMatch PrdRep ns cases
 patternMatch CnsRep = do
-  _ <- symbol "match"
+  matchKwP
   (cases,ns) <- casesP
   return $ XMatch CnsRep ns cases
 
@@ -74,24 +74,28 @@ casesP = try structuralCases <|> nominalCases
 
 singleCase :: NominalStructural -> Parser (SCase FreeVarName)
 singleCase ns = do
-  xt <- lexeme (xtorName ns)
+  xt <- xtorName ns
   args <- argListP freeVarName freeVarName
-  _ <- symbol "=>"
-  cmd <- lexeme commandP
+  rightarrow
+  cmd <- commandP
   return MkSCase { scase_name = xt
                  , scase_args = args
                  , scase_cmd = commandClosing args cmd -- de brujin transformation
                  }
 
 muAbstraction :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
-muAbstraction pc = do
-  _ <- symbol (case pc of { PrdRep -> "mu"; CnsRep -> "mu*" })
-  v <- lexeme freeVarName
-  _ <- dot
-  cmd <- lexeme commandP
-  case pc of
-    PrdRep -> return $ MuAbs pc v (commandClosingSingle CnsRep v cmd)
-    CnsRep -> return $ MuAbs pc v (commandClosingSingle PrdRep v cmd)
+muAbstraction PrdRep = do
+  muKwP
+  v <- freeVarName
+  dot
+  cmd <- commandP
+  return $ MuAbs PrdRep v (commandClosingSingle CnsRep v cmd)
+muAbstraction CnsRep = do
+  muStarKwP
+  v <- freeVarName
+  dot
+  cmd <- commandP
+  return $ MuAbs CnsRep v (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 stermP pc = parens (stermP pc)
@@ -109,20 +113,20 @@ stermP pc = parens (stermP pc)
 
 applyCmdP :: Parser (Command FreeVarName)
 applyCmdP = do
-  prd <- lexeme (stermP PrdRep)
-  _ <- lexeme (symbol ">>")
-  cns <- lexeme (stermP CnsRep)
+  prd <- stermP PrdRep
+  commandSym
+  cns <- stermP CnsRep
   return (Apply prd cns)
 
 doneCmdP :: Parser (Command FreeVarName)
 doneCmdP = do
-  _ <- lexeme (symbol "Done")
+  doneKwP
   return Done
 
 printCmdP :: Parser (Command FreeVarName)
 printCmdP = do
-  _ <- lexeme (symbol "Print")
-  arg <- parens $ lexeme (stermP PrdRep)
+  printKwP
+  arg <- parens (stermP PrdRep)
   return $ Print arg
 
 commandP :: Parser (Command FreeVarName)
