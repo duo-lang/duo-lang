@@ -37,7 +37,7 @@ prgExamples =
         , "forall a. { 'Ap(< 'True | 'False >, a, a)[a] }" )
     , ( "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
         , "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }" )
-    , ( "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu*y. f >> 'Ap(y)[k]]) >> k"
+    , ( "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu* y. f >> 'Ap(y)[k]]) >> k"
         , "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }" )
 
     -- Nominal Examples

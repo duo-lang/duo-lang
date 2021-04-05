@@ -89,7 +89,7 @@ prd twice   := comatch { 'Ap(f)[k] =>
 ## evaluates f(f(f(x)))
 prd thrice  := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => comp >> 
-                   'Ap(f,f)[mu*g. comp >> 
+                   'Ap(f,f)[mu* g. comp >> 
                      'Ap(g,f)['Ap(x)[k]]] } >> k };
 
 ## fixed point combinators ##
@@ -106,9 +106,9 @@ prd fix := comatch { 'Ap(f)[k] =>
 ## layz variant of fix
 prd fixLazy := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => x >> 
-                   'Ap(x)[mu*xx. f >> 'Ap(xx)[k]] } >> 
+                   'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] } >> 
                       'Ap(comatch { 'Ap(x)[k] => x >> 
-                        'Ap(x)[mu*xx. f >> 'Ap(xx)[k]] })[k]};
+                        'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] })[k]};
 
 ## basic recursive functions ##
 
@@ -306,8 +306,8 @@ prd snd := comatch { 'Ap(p)[k] => p >> match { 'Pair(x,y) => y >> k }};
 ## given two functions f and g, maps f to the first and g to the second component
 prd bimapDat := comatch { 'Ap(f,g,p)[k] => p >> 
                             match { 'Pair(x,y) => f >> 
-                                      'Ap(x)[mu*fx. g >> 
-                                              'Ap(y)[mu*gy. 'Pair(fx,gy) >> k]] }};
+                                      'Ap(x)[mu* fx. g >> 
+                                              'Ap(y)[mu* gy. 'Pair(fx,gy) >> k]] }};
 
 ## pairs (codata type)
 
@@ -323,9 +323,9 @@ prd pair := comatch { 'Ap(x,y)[k] =>
 prd bimapCodat := comatch { 'Ap(f,g,p)[k] => 
                     comatch { 
                       'Fst[k1] => p >> 
-                        'Fst[mu*x. f >> 'Ap(x)[k1]]
+                        'Fst[mu* x. f >> 'Ap(x)[k1]]
                     , 'Snd[k2] => p >> 
-                        'Snd[mu*y. g >> 'Ap(y)[k2]] }
+                        'Snd[mu* y. g >> 'Ap(y)[k2]] }
                      >> k };
 
 ## lists (data type)
@@ -368,7 +368,7 @@ prd append := comatch { 'Ap(xs,ys)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >> 
                          match { 'Nil          => ys >> k
                                , 'Cons(x,rest) => alpha >> 
-                                   'Ap(rest)[mu*w. 'Cons(x,w) >> k] }} >> k })
+                                   'Ap(rest)[mu* w. 'Cons(x,w) >> k] }} >> k })
                    ['Ap(xs)[k]]};
 
 ## elemAt :: forall t0. { 'Ap(rec r0.< 'Cons(t0,r0) >,rec r1.< 'S(r1) | 'Z >)[t0] }
@@ -379,7 +379,7 @@ prd elemAt := comatch { 'Ap(xs,n)[k] => fix >>
                         comatch { 'Ap(n)[k] => n >> 
                           match { 'Z    => head >> 'Ap(xs)[k]
                                 , 'S(p) => tail >> 
-                                    'Ap(xs)[mu*w. alpha >> 
+                                    'Ap(xs)[mu* w. alpha >> 
                                                     'Ap(w)['Ap(p)[k]]] }} >> k } >> k })
                   ['Ap(xs)['Ap(n)[k]]] };
 
@@ -391,7 +391,7 @@ prd foldl := comatch { 'Ap(f,x,xs)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >> 
                          match { 'Nil => x >> k
                                , 'Cons(y,ys) => f >> 
-                                   'Ap(x,y)[mu*fxy.alpha >> 
+                                   'Ap(x,y)[mu* fxy.alpha >> 
                                                     'Ap(fxy)['Ap(ys)[k]]] } } >> k } >> k })
                  ['Ap(x)['Ap(xs)[k]]] };
 
@@ -402,7 +402,7 @@ prd reverse := comatch { 'Ap(xs)[k] => fix >> #
                         comatch { 'Ap(xs)[k] => xs >> 
                           match { 'Nil => 'Nil >> k
                                 , 'Cons(x,rest) => alpha >> 
-                                    'Ap(rest)[mu*w. append >> 
+                                    'Ap(rest)[mu* w. append >> 
                                                       'Ap(w,'Cons(x,'Nil))[k]] }} >> k })
                     ['Ap(xs)[k]] };
 
@@ -413,7 +413,7 @@ prd length := comatch { 'Ap(xs)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >> 
                          match { 'Nil => 'Z >> k
                                , 'Cons(x,rest) => alpha >>
-                                   'Ap(rest)[mu*w. 'S(w) >> k]}} >> k })
+                                   'Ap(rest)[mu* w. 'S(w) >> k]}} >> k })
                    ['Ap(xs)[k]]};
 
 ## filter :: forall t0. { 'Ap( { 'Ap(t0)[< 'False | 'True >] }
@@ -425,7 +425,7 @@ prd filter := comatch { 'Ap(p,xs)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >>
                          match { 'Nil => 'Nil >> k
                                , 'Cons(x,rest) => p >> 
-                                   'Ap(x)[ match { 'True  => alpha >> 'Ap(rest)[mu*w. 'Cons(x,w) >> k]
+                                   'Ap(x)[ match { 'True  => alpha >> 'Ap(rest)[mu* w. 'Cons(x,w) >> k]
                                                  , 'False => alpha >> 'Ap(rest)[k] }] } } >> k })
                    ['Ap(xs)[k]]};
 
@@ -445,8 +445,8 @@ prd consNeg := comatch { 'Ap(x,xs)[k] =>
 prd mapNeg := comatch { 'Ap(f,xs)[k] => fix >>
                'Ap( comatch { 'Ap(alpha)[k] => 
                       comatch { 'Ap(xs)[k] => 
-                        comatch { 'Head[k] => xs >> 'Head[mu*w. f >> 'Ap(w)[k]]#
-                                , 'Tail[k] => xs >> 'Tail[mu*w. alpha >> 
+                        comatch { 'Head[k] => xs >> 'Head[mu* w. f >> 'Ap(w)[k]]#
+                                , 'Tail[k] => xs >> 'Tail[mu* w. alpha >> 
                                                       'Ap(w)[k]]} >> k } >> k })
                   ['Ap(xs)[k]] };
 
@@ -459,7 +459,7 @@ prd elemAtNeg := comatch { 'Ap(xs,n)[k] => fix >>
                           comatch { 'Ap(xs)[k] => 
                             comatch { 'Ap(n)[k] => n >> 
                               match { 'Z => xs >> 'Head[k]
-                                    , 'S(m) => xs >> 'Tail[mu*ys. alpha >> 
+                                    , 'S(m) => xs >> 'Tail[mu* ys. alpha >> 
                                                        'Ap(ys)['Ap(m)[k]]] }} >> k } >> k })
                       ['Ap(xs)['Ap(n)[k]]]};
 

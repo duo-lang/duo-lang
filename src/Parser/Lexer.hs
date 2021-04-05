@@ -61,6 +61,9 @@ symbol str = L.symbol sc str >> return ()
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
 
+keywordP :: String -> Parser ()
+keywordP str = lexeme (string str <* notFollowedBy alphaNumChar) >> return ()
+
 sepBy2 :: Parser a -> Parser sep -> Parser [a]
 sepBy2 p sep = (:) <$> (p <* sep) <*> (sepBy1 p sep)
 
@@ -99,49 +102,49 @@ keywords :: [String]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
 
 matchKwP :: Parser ()
-matchKwP = symbol "match"
+matchKwP = keywordP "match"
 
 comatchKwP :: Parser ()
-comatchKwP = symbol "comatch"
+comatchKwP = keywordP "comatch"
 
 prdKwP :: Parser ()
-prdKwP = symbol "prd"
+prdKwP = keywordP "prd"
 
 cnsKwP :: Parser ()
-cnsKwP = symbol "cns"
+cnsKwP = keywordP "cns"
 
 cmdKwP :: Parser ()
-cmdKwP = symbol "cmd"
+cmdKwP = keywordP "cmd"
 
 defKwP :: Parser ()
-defKwP = symbol "def"
+defKwP = keywordP "def"
 
 withKwP :: Parser ()
-withKwP = symbol "with"
+withKwP = keywordP "with"
 
 doneKwP :: Parser ()
-doneKwP = symbol "Done"
+doneKwP = keywordP "Done"
 
 printKwP :: Parser ()
-printKwP = symbol "Print"
+printKwP = keywordP "Print"
 
 forallKwP :: Parser ()
-forallKwP = symbol "forall"
+forallKwP = keywordP "forall"
 
 dataKwP :: Parser ()
-dataKwP = symbol "data"
+dataKwP = keywordP "data"
 
 codataKwP :: Parser ()
-codataKwP = symbol "codata"
+codataKwP = keywordP "codata"
 
 recKwP :: Parser ()
-recKwP = symbol "rec"
+recKwP = keywordP "rec"
 
 muKwP :: Parser ()
-muKwP = symbol "mu"
+muKwP = keywordP "mu"
 
 muStarKwP :: Parser ()
-muStarKwP = symbol "mu*"
+muStarKwP = keywordP "mu*"
 
 -------------------------------------------------------------------------------------------
 -- Symbols
