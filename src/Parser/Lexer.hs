@@ -1,17 +1,39 @@
 module Parser.Lexer
-  ( symbol
-  , lexeme
+  ( sc
   , sepBy2
-  , sc
   , numP
     -- Names
   , freeVarName
   , xtorName
   , typeNameP
-    -- Punctuation
+    -- Keywords
+  , matchKwP
+  , comatchKwP
+  , prdKwP
+  , cnsKwP
+  , cmdKwP
+  , defKwP
+  , withKwP
+  , doneKwP
+  , printKwP
+  , forallKwP
+  , dataKwP
+  , codataKwP
+  , recKwP
+  , muKwP
+  , muStarKwP
+    -- Symbols
   , dot
   , pipe
   , comma
+  , semi
+  , backslash
+  , coloneq
+  , rightarrow
+  , commandSym
+  , unionSym
+  , intersectionSym
+  , subtypeSym
     -- Parens
   , angles
   , parens
@@ -33,8 +55,8 @@ import Utils
 -- Various
 -------------------------------------------------------------------------------------------
 
-symbol :: String -> Parser String
-symbol = L.symbol sc
+symbol :: String -> Parser ()
+symbol str = L.symbol sc str >> return ()
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -44,7 +66,6 @@ sepBy2 p sep = (:) <$> (p <* sep) <*> (sepBy1 p sep)
 
 sc :: Parser ()
 sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
-
 
 numP :: Parser Int
 numP = do
@@ -56,11 +77,11 @@ numP = do
 -------------------------------------------------------------------------------------------
 
 freeVarName :: Parser FreeVarName
-freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) <|> symbol "_"
+freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) 
 
 xtorName :: NominalStructural -> Parser XtorName
 xtorName Structural = do
-  _ <- tick
+  tick
   name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
   return (MkXtorName Structural name) -- Saved without tick!
 xtorName Nominal = do
@@ -71,14 +92,96 @@ typeNameP :: Parser TypeName
 typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
 -------------------------------------------------------------------------------------------
--- Punctuation
+-- Keywords
 -------------------------------------------------------------------------------------------
 
-comma, dot, pipe, tick :: Parser String
+keywords :: [String]
+keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
+
+matchKwP :: Parser ()
+matchKwP = symbol "match"
+
+comatchKwP :: Parser ()
+comatchKwP = symbol "comatch"
+
+prdKwP :: Parser ()
+prdKwP = symbol "prd"
+
+cnsKwP :: Parser ()
+cnsKwP = symbol "cns"
+
+cmdKwP :: Parser ()
+cmdKwP = symbol "cmd"
+
+defKwP :: Parser ()
+defKwP = symbol "def"
+
+withKwP :: Parser ()
+withKwP = symbol "with"
+
+doneKwP :: Parser ()
+doneKwP = symbol "Done"
+
+printKwP :: Parser ()
+printKwP = symbol "Print"
+
+forallKwP :: Parser ()
+forallKwP = symbol "forall"
+
+dataKwP :: Parser ()
+dataKwP = symbol "data"
+
+codataKwP :: Parser ()
+codataKwP = symbol "codata"
+
+recKwP :: Parser ()
+recKwP = symbol "rec"
+
+muKwP :: Parser ()
+muKwP = symbol "mu"
+
+muStarKwP :: Parser ()
+muStarKwP = symbol "mu*"
+
+-------------------------------------------------------------------------------------------
+-- Symbols
+-------------------------------------------------------------------------------------------
+
+comma :: Parser ()
 comma = symbol ","
+
+dot :: Parser ()
 dot = symbol "."
+
+semi :: Parser ()
+semi = symbol ";"
+
+pipe :: Parser ()
 pipe = symbol "|"
+
+tick :: Parser ()
 tick = symbol "'"
+
+backslash :: Parser ()
+backslash = symbol "\\"
+
+coloneq :: Parser ()
+coloneq = symbol ":="
+
+rightarrow :: Parser ()
+rightarrow = symbol "=>"
+
+commandSym :: Parser ()
+commandSym = symbol ">>"
+
+unionSym :: Parser ()
+unionSym = symbol "\\/"
+
+intersectionSym :: Parser ()
+intersectionSym = symbol "/\\"
+
+subtypeSym :: Parser ()
+subtypeSym = symbol "<:"
 
 -------------------------------------------------------------------------------------------
 -- Parens

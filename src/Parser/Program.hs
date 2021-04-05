@@ -18,45 +18,45 @@ import Utils (Loc(..))
 prdDeclarationP :: Parser (Declaration FreeVarName)
 prdDeclarationP = do
   startPos <- getSourcePos
-  _ <- try (symbol "prd")
+  try prdKwP
   v <- freeVarName
-  _ <- symbol ":="
+  coloneq
   t <- stermP PrdRep
   endPos <- getSourcePos
-  _ <- symbol ";"
+  semi
   return (PrdDecl (Loc startPos endPos) v t)
 
 cnsDeclarationP :: Parser (Declaration FreeVarName)
 cnsDeclarationP = do
   startPos <- getSourcePos
-  _ <- try (symbol "cns")
+  try cnsKwP
   v <- freeVarName
-  _ <- symbol ":="
+  coloneq
   t <- stermP CnsRep
   endPos <- getSourcePos
-  _ <- symbol ";"
+  semi
   return (CnsDecl (Loc startPos endPos) v t)
 
 cmdDeclarationP :: Parser (Declaration FreeVarName)
 cmdDeclarationP = do
   startPos <- getSourcePos
-  _ <- try (symbol "cmd")
+  try cmdKwP
   v <- freeVarName
-  _ <- symbol ":="
+  coloneq
   t <- commandP
   endPos <- getSourcePos
-  _ <- symbol ";"
+  semi
   return (CmdDecl (Loc startPos endPos) v t)
 
 defDeclarationP :: Parser (Declaration FreeVarName)
 defDeclarationP = do
   startPos <- getSourcePos
-  _ <- try (symbol "def")
+  try defKwP
   v <- freeVarName
-  _ <- symbol ":="
+  coloneq
   t <- atermP
   endPos <- getSourcePos
-  _ <- symbol ";"
+  semi
   return (DefDecl (Loc startPos endPos) v t)
 
 ---------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ dataDeclP = do
   tn <- typeNameP
   xtors <- braces $ xtorDeclP `sepBy` comma
   endPos <- getSourcePos
-  _ <- symbol ";"
+  semi
   let decl = NominalDecl
         { data_name = tn
         , data_polarity = dataCodata
@@ -79,7 +79,7 @@ dataDeclP = do
   return (DataDecl (Loc startPos endPos) decl)
   where
     dataCodataDeclP :: Parser DataCodata
-    dataCodataDeclP = (symbol "data" >> return Data) <|> (symbol "codata" >> return Codata)
+    dataCodataDeclP = (dataKwP >> return Data) <|> (codataKwP >> return Codata)
 
     xtorDeclP :: Parser (XtorSig 'Pos)
     xtorDeclP = do

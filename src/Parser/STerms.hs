@@ -30,9 +30,9 @@ numLitP PrdRep = numToTerm <$> numP
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
-  _ <- symbol "\\"
+  backslash
   args <- argListP freeVarName freeVarName
-  _ <- symbol "=>"
+  rightarrow
   cmd <- commandP
   return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
 
@@ -51,11 +51,11 @@ xtorCall ns pc = do
 
 patternMatch :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 patternMatch PrdRep = do
-  _ <- symbol "comatch"
+  comatchKwP
   (cases,ns) <- casesP
   return $ XMatch PrdRep ns cases
 patternMatch CnsRep = do
-  _ <- symbol "match"
+  matchKwP
   (cases,ns) <- casesP
   return $ XMatch CnsRep ns cases
 
@@ -76,7 +76,7 @@ singleCase :: NominalStructural -> Parser (SCase FreeVarName)
 singleCase ns = do
   xt <- xtorName ns
   args <- argListP freeVarName freeVarName
-  _ <- symbol "=>"
+  rightarrow
   cmd <- commandP
   return MkSCase { scase_name = xt
                  , scase_args = args
@@ -84,14 +84,18 @@ singleCase ns = do
                  }
 
 muAbstraction :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
-muAbstraction pc = do
-  _ <- symbol (case pc of { PrdRep -> "mu"; CnsRep -> "mu*" })
+muAbstraction PrdRep = do
+  muKwP
   v <- freeVarName
-  _ <- dot
+  dot
   cmd <- commandP
-  case pc of
-    PrdRep -> return $ MuAbs pc v (commandClosingSingle CnsRep v cmd)
-    CnsRep -> return $ MuAbs pc v (commandClosingSingle PrdRep v cmd)
+  return $ MuAbs PrdRep v (commandClosingSingle CnsRep v cmd)
+muAbstraction CnsRep = do
+  muStarKwP
+  v <- freeVarName
+  dot
+  cmd <- commandP
+  return $ MuAbs CnsRep v (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 stermP pc = parens (stermP pc)
@@ -110,18 +114,18 @@ stermP pc = parens (stermP pc)
 applyCmdP :: Parser (Command FreeVarName)
 applyCmdP = do
   prd <- stermP PrdRep
-  _ <- symbol ">>"
+  commandSym
   cns <- stermP CnsRep
   return (Apply prd cns)
 
 doneCmdP :: Parser (Command FreeVarName)
 doneCmdP = do
-  _ <- symbol "Done"
+  doneKwP
   return Done
 
 printCmdP :: Parser (Command FreeVarName)
 printCmdP = do
-  _ <- symbol "Print"
+  printKwP
   arg <- parens (stermP PrdRep)
   return $ Print arg
 

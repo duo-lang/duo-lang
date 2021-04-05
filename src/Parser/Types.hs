@@ -53,14 +53,14 @@ typeVariable rep = do
   return $ TyVar rep tv
 
 setType :: PolarityRep pol -> Parser (Typ pol)
-setType PosRep = TySet PosRep <$> (typP' PosRep) `sepBy2` (symbol "\\/")
-setType NegRep = TySet NegRep <$> (typP' NegRep) `sepBy2` (symbol "/\\")
+setType PosRep = TySet PosRep <$> (typP' PosRep) `sepBy2` unionSym
+setType NegRep = TySet NegRep <$> (typP' NegRep) `sepBy2` intersectionSym
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
-  _ <- symbol "rec"
+  recKwP
   rv <- MkTVar <$> freeVarName
-  _ <- dot
+  dot
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) (typP rep)
   return $ TyRec rep rv ty
 
@@ -82,7 +82,7 @@ typP rep = try (setType rep) <|> typP' rep
 
 typeSchemeP :: Parser (TypeScheme 'Pos)
 typeSchemeP = do
-  tvars' <- S.fromList <$> option [] (symbol "forall" >> some (MkTVar <$> freeVarName) <* dot)
+  tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar <$> freeVarName) <* dot)
   monotype <- local (\s -> s { tvars = tvars' }) (typP PosRep)
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)
