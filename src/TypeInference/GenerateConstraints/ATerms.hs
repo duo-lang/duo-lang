@@ -55,14 +55,14 @@ genConstraintsATermCase retType (MkACase { acase_name, acase_args, acase_term })
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
   (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   addConstraint (SubType retTypeInf retType)
-  return (MkACase acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
+  return (MkACase () acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
 genConstraintsATermCocase :: ACase () bs -> GenM bs (ACase () bs, XtorSig Neg)
 genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
   (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
-  return (MkACase acase_name acase_args acase_term', sig)
+  return (MkACase () acase_name acase_args acase_term', sig)
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms with recursive binding

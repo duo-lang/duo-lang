@@ -41,7 +41,8 @@ import Syntax.CommonTerm
 --    acase_name
 --
 data ACase ext bs = MkACase
-  { acase_name :: XtorName
+  { acase_ext :: ext
+  , acase_name :: XtorName
   , acase_args :: [bs]
   , acase_term :: ATerm ext bs
   } deriving (Eq, Show, Ord)
@@ -124,8 +125,9 @@ atermOpeningRec k args (Comatch cocases) =
 ---------------------------------------------------------------------------------
 
 openACase :: ACase () FreeVarName -> ACase () FreeVarName
-openACase MkACase { acase_name, acase_args, acase_term } =
-    MkACase { acase_name = acase_name
+openACase MkACase { acase_ext, acase_name, acase_args, acase_term } =
+    MkACase { acase_ext = acase_ext
+            , acase_name = acase_name
             , acase_args = acase_args
             , acase_term = atermOpening ((\fv -> FVar fv) <$> acase_args) (openATermComplete acase_term)
             }

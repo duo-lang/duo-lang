@@ -36,7 +36,7 @@ acaseP ns = do
   args <- option [] (parens $ freeVarName `sepBy` comma)
   _ <- symbol "=>"
   res <- atermP
-  return (MkACase xt args (atermClosing args res))
+  return (MkACase () xt args (atermClosing args res))
 
 acasesP :: Parser [ACase () FreeVarName]
 acasesP = try structuralCases <|> nominalCases

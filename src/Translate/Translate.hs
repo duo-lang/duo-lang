@@ -34,10 +34,10 @@ compileArgs args' cnsLst = MkXtorArgs (compile <$> args') cnsLst
 aToSCase :: PrdCnsRep pc -> ACase () a -> SCase ()
 -- we want to compile: C (args) => t
 -- C (args) => (compile t) >> k 
-aToSCase PrdRep (MkACase xt args t) = MkSCase xt (Twice (const () <$> args) [])   $ Apply (compile t) (BoundVar CnsRep (1,0))
+aToSCase PrdRep (MkACase _ xt args t) = MkSCase xt (Twice (const () <$> args) [])   $ Apply (compile t) (BoundVar CnsRep (1,0))
 -- we want to compile: D(args) => t
 -- D(args)[k] => (compile t) >> k 
-aToSCase _      (MkACase xt args t) = MkSCase xt (Twice (const () <$> args) [()]) $ Apply (compile t) (BoundVar CnsRep (0,0))
+aToSCase _      (MkACase _ xt args t) = MkSCase xt (Twice (const () <$> args) [()]) $ Apply (compile t) (BoundVar CnsRep (0,0))
 
 
 -- Shift indexes
