@@ -11,10 +11,10 @@ import Utils
 compile :: ATerm () a -> STerm Prd ()
 compile (BVar _ i) = BoundVar PrdRep i 
 compile (FVar _ n) = FreeVar PrdRep n
-compile (Ctor xt args')   = XtorCall PrdRep xt $ compileArgs args' []
+compile (Ctor _ xt args')   = XtorCall PrdRep xt $ compileArgs args' []
 -- we want to compile e.D(args')
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]
-compile (Dtor xt t args') = shiftAllOnce $ 
+compile (Dtor _ xt t args') = shiftAllOnce $ 
                               MuAbs PrdRep () $
                                 Apply (compile t) $
                                        XtorCall CnsRep xt $ compileArgs args' [BoundVar CnsRep (0,0)]

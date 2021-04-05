@@ -28,17 +28,17 @@ genConstraintsATerm (FVar _ fv) = do
       ty <- instantiateTypeScheme tys
       return (FVar () fv, ty)
     Nothing -> throwGenError $ "Unbound free producer variable in ATerm: " ++ ppPrint fv
-genConstraintsATerm (Ctor xt args) = do
+genConstraintsATerm (Ctor _ xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   let ty = TyData PosRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
-  return (Ctor xt (fst <$> args'), ty)
-genConstraintsATerm (Dtor xt t args) = do
+  return (Ctor () xt (fst <$> args'), ty)
+genConstraintsATerm (Dtor _ xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar
   let codataType = TyCodata NegRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType ty' codataType)
-  return (Dtor xt t' (fst <$> args'), retTypePos)
+  return (Dtor () xt t' (fst <$> args'), retTypePos)
 genConstraintsATerm (Match t cases) = do
   (t', matchType) <- genConstraintsATerm t
   (retTypePos, retTypeNeg) <- freshTVar

@@ -16,7 +16,7 @@ ctorP :: NominalStructural -> Parser (ATerm () FreeVarName)
 ctorP ns = do
   xt <- xtorName ns
   args <- option [] (parens $ atermP `sepBy` comma)
-  return (Ctor xt args)
+  return (Ctor () xt args)
 
 
 dtorP :: NominalStructural -> Parser (ATerm () FreeVarName)
@@ -26,7 +26,7 @@ dtorP ns = do
   _ <- symbol "."
   xt <- xtorName ns
   args <- option [] (parens $ atermP `sepBy` comma)
-  return (Dtor xt destructee args)
+  return (Dtor () xt destructee args)
 
 
 
@@ -62,8 +62,8 @@ numLitP :: Parser (ATerm () bs)
 numLitP = numToTerm <$> numP
   where
     numToTerm :: Int -> ATerm () bs
-    numToTerm 0 = Ctor (MkXtorName Nominal "Z") []
-    numToTerm n = Ctor (MkXtorName Nominal "S") [numToTerm (n-1)]
+    numToTerm 0 = Ctor () (MkXtorName Nominal "Z") []
+    numToTerm n = Ctor () (MkXtorName Nominal "S") [numToTerm (n-1)]
 
 
 -- | Like atermP but without dtorP, since dtorP
