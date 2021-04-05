@@ -31,12 +31,12 @@ instance PrettyAnn a => PrettyAnn (ATerm ext a) where
   prettyAnn (Ctor _ xt args) = prettyAnn xt <> parens (intercalateComma (map prettyAnn args))
   prettyAnn (Dtor _ xt t args) =
     parens ( prettyAnn t <> "." <> prettyAnn xt <> parens (intercalateComma (map prettyAnn args)))
-  prettyAnn (Match t cases) =
+  prettyAnn (Match _ t cases) =
     annKeyword "match" <+>
     prettyAnn t <+>
     annKeyword "with" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (Comatch cocases) =
+  prettyAnn (Comatch _ cocases) =
     annKeyword "comatch" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
 

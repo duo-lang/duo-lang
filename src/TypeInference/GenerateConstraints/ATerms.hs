@@ -39,16 +39,16 @@ genConstraintsATerm (Dtor _ xt t args) = do
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType ty' codataType)
   return (Dtor () xt t' (fst <$> args'), retTypePos)
-genConstraintsATerm (Match t cases) = do
+genConstraintsATerm (Match _ t cases) = do
   (t', matchType) <- genConstraintsATerm t
   (retTypePos, retTypeNeg) <- freshTVar
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
   addConstraint (SubType matchType (TyData NegRep (snd <$> cases')))
-  return (Match t' (fst <$> cases'), retTypePos)
-genConstraintsATerm (Comatch cocases) = do
+  return (Match () t' (fst <$> cases'), retTypePos)
+genConstraintsATerm (Comatch _ cocases) = do
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
   let ty = TyCodata PosRep (snd <$> cocases')
-  return (Comatch (fst <$> cocases'), ty)
+  return (Comatch () (fst <$> cocases'), ty)
 
 genConstraintsATermCase :: Typ Neg -> ACase () bs -> GenM bs (ACase () bs, XtorSig Neg)
 genConstraintsATermCase retType (MkACase { acase_name, acase_args, acase_term }) = do

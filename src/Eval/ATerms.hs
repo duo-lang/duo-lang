@@ -19,16 +19,16 @@ isValue (BVar _ _) = True
 isValue (FVar _ _) = False
 isValue (Ctor _ _ args) = and (isValue <$> args)
 isValue (Dtor _ _ _ _) = False
-isValue (Match _ _ ) = False
-isValue (Comatch _) = True
+isValue (Match _ _ _ ) = False
+isValue (Comatch _ _) = True
 
 isWHNF :: ATerm () bs -> Bool
 isWHNF (BVar _ _) = True
 isWHNF (FVar _ _) = False
 isWHNF (Ctor _ _ _) = True
 isWHNF (Dtor _ _ _ _) = False
-isWHNF (Match _ _ ) = False
-isWHNF (Comatch _) = True
+isWHNF (Match _ _ _ ) = False
+isWHNF (Comatch _ _) = True
 
 evalArgsSingleStep :: [ATerm () bs] -> EvalM bs (Maybe [ATerm () bs])
 evalArgsSingleStep [] = return Nothing
@@ -43,29 +43,29 @@ evalATermSingleStep' (FVar _ fv) _ = do
 evalATermSingleStep' (Ctor _ xt args) _ | and (isValue <$> args) = return Nothing
                                         | otherwise = evalArgsSingleStep args >>= 
                                                       \args' -> return (Just (Ctor () xt (fromJust args')))
-evalATermSingleStep' (Match t cases) CBV | not (isValue t) = do
+evalATermSingleStep' (Match _ t cases) CBV | not (isValue t) = do
   t' <- (evalATermSingleStep' t CBV)
-  return (Just (Match (fromJust t') cases))
-evalATermSingleStep' (Match t cases) CBN | not (isWHNF t) = do 
+  return (Just (Match () (fromJust t') cases))
+evalATermSingleStep' (Match _ t cases) CBN | not (isWHNF t) = do 
   t' <- (evalATermSingleStep' t CBN)
-  return (Just (Match (fromJust t') cases))
-evalATermSingleStep' (Match (Ctor _ xt args) cases) _ =
+  return (Just (Match () (fromJust t') cases))
+evalATermSingleStep' (Match _ (Ctor _ xt args) cases) _ =
   case find (\MkACase { acase_name } -> acase_name == xt) cases of
     Nothing -> throwEvalError "Pattern match error"
     Just acase -> return (Just $ atermOpening args (acase_term acase))
-evalATermSingleStep' (Match _ _) _ = throwEvalError "unreachable if properly typechecked"
+evalATermSingleStep' (Match _ _ _) _ = throwEvalError "unreachable if properly typechecked"
 evalATermSingleStep' (Dtor _ xt t args) order | not (isValue t) = do
   t' <- evalATermSingleStep' t order
   return (Just (Dtor () xt (fromJust t') args))
 evalATermSingleStep' (Dtor _ xt t args) CBV | (not . and) (isValue <$> args) =
   evalArgsSingleStep args >>=
     (\args' -> return $ Just (Dtor () xt t (fromJust args')))
-evalATermSingleStep' (Dtor _ xt (Comatch cocases) args) _ =
+evalATermSingleStep' (Dtor _ xt (Comatch _ cocases) args) _ =
   case find (\MkACase { acase_name } -> acase_name == xt) cocases of
     Nothing -> throwEvalError "Copattern match error"
     Just cocase -> return (Just $ atermOpening args (acase_term cocase))
 evalATermSingleStep' (Dtor _ _ _ _) _ = throwEvalError "unreachable if properly typechecked"
-evalATermSingleStep' (Comatch _) _ = return Nothing
+evalATermSingleStep' (Comatch _ _) _ = return Nothing
 
 -- | Choose the correct evaluation strategy
 evalATermSingleStep :: ATerm () bs -> EvalM bs (Maybe (ATerm () bs))

@@ -50,13 +50,13 @@ matchP = do
   arg <- atermP
   _ <- symbol "with"
   cases <- acasesP
-  return (Match arg cases)
+  return (Match () arg cases)
 
 comatchP :: Parser (ATerm () FreeVarName)
 comatchP = do
   _ <- symbol "comatch"
   cocases <- acasesP
-  return (Comatch cocases)
+  return (Comatch () cocases)
 
 numLitP :: Parser (ATerm () bs)
 numLitP = numToTerm <$> numP

@@ -20,12 +20,12 @@ compile (Dtor _ xt t args') = shiftAllOnce $
                                        XtorCall CnsRep xt $ compileArgs args' [BoundVar CnsRep (0,0)]
 -- we want to compile match t { C (args) => e1 }
 -- Mu k.[ (compile t) >> match {C (args) => (compile e1) >> k } ]
-compile (Match t cases)   = MuAbs PrdRep () $ 
+compile (Match _ t cases)   = MuAbs PrdRep () $ 
                               Apply (shiftAllOnce (compile t)) $ 
                                      XMatch CnsRep Nominal $ shiftCase PrdRep 0 <$> ((aToSCase PrdRep) <$> cases)
 -- we want to compile comatch { D(args) => e }
 -- comatch { D(args)[k] => (compile e) >> k }
-compile (Comatch cocases) = XMatch PrdRep Nominal $ (aToSCase CnsRep) <$> cocases
+compile (Comatch _ cocases) = XMatch PrdRep Nominal $ (aToSCase CnsRep) <$> cocases
 
 
 compileArgs :: [ATerm () a] -> [STerm Cns ()] -> XtorArgs ()
