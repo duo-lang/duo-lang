@@ -22,14 +22,14 @@ import Utils
 
 data GenerateState = GenerateState
   { varCount :: Int
-  , constraints :: [Constraint]
+  , constraints :: [Constraint ()]
   }
 
 initialState :: GenerateState
 initialState = GenerateState { varCount = 0, constraints = [] }
 
 -- | After constraint generation is finished, we can turn the final state into a ConstraintSet.
-stateToConstraintSet :: GenerateState -> ConstraintSet
+stateToConstraintSet :: GenerateState -> ConstraintSet ()
 stateToConstraintSet GenerateState {..} = ConstraintSet
   { cs_constraints = constraints
   , cs_uvars = (\i -> MkTVar (show i)) <$> [0..varCount]
@@ -56,7 +56,7 @@ initialReader env = GenerateReader { context = []
 
 type GenM bs a = ReaderT (GenerateReader bs) (StateT GenerateState (Except Error)) a
 
-runGenM :: Environment bs -> GenM bs a -> Either Error (a, ConstraintSet)
+runGenM :: Environment bs -> GenM bs a -> Either Error (a, ConstraintSet ())
 runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, stateToConstraintSet state)
@@ -118,7 +118,7 @@ lookupType rep (i,j) = do
           Just ty -> return ty
 
 -- | Add a constraint to the state.
-addConstraint :: Constraint -> GenM bs ()
+addConstraint :: Constraint () -> GenM bs ()
 addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
 lookupCase :: XtorName -> GenM bs (TypArgs Pos, XtorArgs bs)
