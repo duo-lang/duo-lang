@@ -80,19 +80,28 @@ numP = do
 -------------------------------------------------------------------------------------------
 
 freeVarName :: Parser FreeVarName
-freeVarName = lexeme $ ((:) <$> lowerChar <*> many alphaNumChar) 
+freeVarName = do
+  name <- lexeme $ ((:) <$> lowerChar <*> many alphaNumChar)
+  checkReserved name
+  return name
+
 
 xtorName :: NominalStructural -> Parser XtorName
 xtorName Structural = do
   tick
-  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  checkReserved name
   return (MkXtorName Structural name) -- Saved without tick!
 xtorName Nominal = do
-  name <- (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  checkReserved name
   return (MkXtorName Nominal name)
 
 typeNameP :: Parser TypeName
-typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
+typeNameP = do
+  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  checkReserved name
+  return (MkTypeName name)
 
 -------------------------------------------------------------------------------------------
 -- Keywords
@@ -100,6 +109,10 @@ typeNameP = MkTypeName <$> (lexeme $ (:) <$> upperChar <*> many alphaNumChar)
 
 keywords :: [String]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
+
+checkReserved :: String -> Parser ()
+checkReserved str | str `elem` keywords = fail $ "Keyword " <> str <> " cannot be used as an identifier."
+                  | otherwise = return ()
 
 matchKwP :: Parser ()
 matchKwP = keywordP "match"
