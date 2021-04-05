@@ -45,7 +45,7 @@ runEval e evalorder env = runExcept (runReaderT (unEvalM e) (evalorder, env))
 throwEvalError :: String -> EvalM bs a
 throwEvalError msg = throwError $ EvalError msg
 
-lookupDef :: FreeVarName -> EvalM bs (ATerm bs, TypeScheme Pos)
+lookupDef :: FreeVarName -> EvalM bs (ATerm () bs, TypeScheme Pos)
 lookupDef fv = do
   env <- asks snd
   case M.lookup fv (defEnv env) of

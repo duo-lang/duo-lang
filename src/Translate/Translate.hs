@@ -8,7 +8,7 @@ import Syntax.ATerms
 import Utils
 
 
-compile :: ATerm a -> STerm Prd ()
+compile :: ATerm () a -> STerm Prd ()
 compile (BVar i) = BoundVar PrdRep i 
 compile (FVar n) = FreeVar PrdRep n
 compile (Ctor xt args')   = XtorCall PrdRep xt $ compileArgs args' []
@@ -28,10 +28,10 @@ compile (Match t cases)   = MuAbs PrdRep () $
 compile (Comatch cocases) = XMatch PrdRep Nominal $ (aToSCase CnsRep) <$> cocases
 
 
-compileArgs :: [ATerm a] -> [STerm Cns ()] -> XtorArgs ()
+compileArgs :: [ATerm () a] -> [STerm Cns ()] -> XtorArgs ()
 compileArgs args' cnsLst = MkXtorArgs (compile <$> args') cnsLst
 
-aToSCase :: PrdCnsRep pc -> ACase a -> SCase ()
+aToSCase :: PrdCnsRep pc -> ACase () a -> SCase ()
 -- we want to compile: C (args) => t
 -- C (args) => (compile t) >> k 
 aToSCase PrdRep (MkACase xt args t) = MkSCase xt (Twice (const () <$> args) [])   $ Apply (compile t) (BoundVar CnsRep (1,0))
