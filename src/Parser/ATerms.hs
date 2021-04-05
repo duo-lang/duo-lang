@@ -10,7 +10,7 @@ import Syntax.ATerms
 fvarP :: Parser (ATerm () FreeVarName)
 fvarP = do
   fv <- freeVarName
-  return (FVar fv)
+  return (FVar () fv)
 
 ctorP :: NominalStructural -> Parser (ATerm () FreeVarName)
 ctorP ns = do

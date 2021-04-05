@@ -15,16 +15,16 @@ import Syntax.ATerms
 ---------------------------------------------------------------------------------
 
 isValue :: ATerm () bs -> Bool
-isValue (BVar _) = True
-isValue (FVar _) = False
+isValue (BVar _ _) = True
+isValue (FVar _ _) = False
 isValue (Ctor _ args) = and (isValue <$> args)
 isValue (Dtor _ _ _) = False
 isValue (Match _ _ ) = False
 isValue (Comatch _) = True
 
 isWHNF :: ATerm () bs -> Bool
-isWHNF (BVar _) = True
-isWHNF (FVar _) = False
+isWHNF (BVar _ _) = True
+isWHNF (FVar _ _) = False
 isWHNF (Ctor _ _) = True
 isWHNF (Dtor _ _ _) = False
 isWHNF (Match _ _ ) = False
@@ -36,8 +36,8 @@ evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
 evalATermSingleStep' :: ATerm () bs -> EvalOrder -> EvalM bs (Maybe (ATerm () bs))
-evalATermSingleStep' (BVar _) _ = return Nothing
-evalATermSingleStep' (FVar fv) _ = do
+evalATermSingleStep' (BVar _ _) _ = return Nothing
+evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupDef fv
   return (Just tm)
 evalATermSingleStep' (Ctor xt args) _ | and (isValue <$> args) = return Nothing

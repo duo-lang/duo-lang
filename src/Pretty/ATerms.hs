@@ -26,8 +26,8 @@ instance PrettyAnn a => PrettyAnn (ACase () a) where
 
 instance PrettyAnn a => PrettyAnn (ATerm () a) where
   prettyAnn (isNumATerm -> Just n) = pretty n
-  prettyAnn (BVar (i,j)) = parens (pretty i <> "," <> pretty j)
-  prettyAnn (FVar v) = pretty v
+  prettyAnn (BVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
+  prettyAnn (FVar _ v) = pretty v
   prettyAnn (Ctor xt args) = prettyAnn xt <> parens (intercalateComma (map prettyAnn args))
   prettyAnn (Dtor xt t args) =
     parens ( prettyAnn t <> "." <> prettyAnn xt <> parens (intercalateComma (map prettyAnn args)))

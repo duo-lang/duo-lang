@@ -9,8 +9,8 @@ import Utils
 
 
 compile :: ATerm () a -> STerm Prd ()
-compile (BVar i) = BoundVar PrdRep i 
-compile (FVar n) = FreeVar PrdRep n
+compile (BVar _ i) = BoundVar PrdRep i 
+compile (FVar _ n) = FreeVar PrdRep n
 compile (Ctor xt args')   = XtorCall PrdRep xt $ compileArgs args' []
 -- we want to compile e.D(args')
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]

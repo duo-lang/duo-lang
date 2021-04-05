@@ -18,15 +18,15 @@ import TypeInference.GenerateConstraints.Definition
 
 -- | Every asymmetric terms gets assigned a positive type.
 genConstraintsATerm :: ATerm () bs -> GenM bs (ATerm () bs, Typ Pos)
-genConstraintsATerm (BVar idx) = do
+genConstraintsATerm (BVar _ idx) = do
   ty <- lookupType PrdRep idx
-  return (BVar idx, ty)
-genConstraintsATerm (FVar fv) = do
+  return (BVar () idx, ty)
+genConstraintsATerm (FVar _ fv) = do
   defEnv <- asks (defEnv . env)
   case M.lookup fv defEnv of
     Just (_,tys) -> do
       ty <- instantiateTypeScheme tys
-      return (FVar fv, ty)
+      return (FVar () fv, ty)
     Nothing -> throwGenError $ "Unbound free producer variable in ATerm: " ++ ppPrint fv
 genConstraintsATerm (Ctor xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
@@ -71,7 +71,7 @@ genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
 genConstraintsATermRecursive :: FreeVarName -> ATerm () bs -> GenM bs (ATerm () bs, Typ Pos)
 genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar
-  let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar fv, TypeScheme [] x) defEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar () fv, TypeScheme [] x) defEnv }
   (tm, ty) <- local modifyEnv (genConstraintsATerm tm)
   addConstraint (SubType ty y)
   return (tm, ty)
