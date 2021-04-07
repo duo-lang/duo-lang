@@ -387,8 +387,9 @@ simplify_option = Option
 
 load_cmd :: String -> Repl ()
 load_cmd s = do
-  modifyLoadedFiles ((:) s)
-  load_file s
+  let s' = trim s
+  modifyLoadedFiles ((:) s')
+  load_file s'
 
 load_file :: FilePath -> Repl ()
 load_file fp = do
