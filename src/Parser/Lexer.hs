@@ -235,16 +235,24 @@ subtypeSym = symbol "<:"
 -- Parens
 -------------------------------------------------------------------------------------------
 
-parens, braces, brackets, angles :: Parser a -> Parser a
-parens    = between (symbol "(") (symbol ")")
-braces    = between (symbol "{") (symbol "}")
-brackets  = between (symbol "[") (symbol "]")
-angles    = between (symbol "<") (symbol ">")
+betweenP :: Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
+betweenP open close middle = do
+  _ <- open
+  res <- middle
+  endPos <- close
+  pure (res, endPos)
+
+parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
+parens    = betweenP (symbol "(") (symbol ")")
+braces    = betweenP (symbol "{") (symbol "}")
+brackets  = betweenP (symbol "[") (symbol "]")
+angles    = betweenP (symbol "<") (symbol ">")
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
-argListP ::  Parser a -> Parser a ->  Parser (Twice [a])
+argListP ::  Parser a -> Parser a ->  Parser (Twice [a], SourcePos)
 argListP p q = do
-  xs <- option [] (parens   $ p `sepBy` comma)
-  ys <- option [] (brackets $ q `sepBy` comma)
-  return $ Twice xs ys
+  endPos <- getSourcePos
+  (xs, endPos) <- option ([], endPos) (parens   $ p `sepBy` comma)
+  (ys, endPos) <- option ([], endPos) (brackets $ q `sepBy` comma)
+  return (Twice xs ys, endPos)
 

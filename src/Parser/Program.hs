@@ -65,7 +65,7 @@ dataDeclP = do
   startPos <- getSourcePos
   dataCodata <- dataCodataDeclP
   (tn, _pos) <- typeNameP
-  xtors <- braces $ xtorDeclP `sepBy` comma
+  (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
   endPos <- semi
   let decl = NominalDecl
         { data_name = tn

@@ -31,7 +31,7 @@ lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
   _ <- backslash
-  args <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  (args, _) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   cmd <- commandP
   return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
@@ -39,8 +39,8 @@ lambdaSugar PrdRep= do
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs FreeVarName)
 xtorArgsP = do
-  xs <- option [] (parens   $ (stermP PrdRep) `sepBy` comma)
-  ys <- option [] (brackets $ (stermP CnsRep) `sepBy` comma)
+  xs <- option [] (fst <$> (parens   $ (stermP PrdRep) `sepBy` comma))
+  ys <- option [] (fst <$> (brackets $ (stermP CnsRep) `sepBy` comma))
   return $ MkXtorArgs xs ys
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc FreeVarName)
@@ -64,18 +64,18 @@ patternMatch CnsRep = do
 casesP :: Parser ([SCase FreeVarName], NominalStructural)
 casesP = try structuralCases <|> nominalCases
   where
-    structuralCases = braces $ do
+    structuralCases = fst <$> (braces $ do
       cases <- singleCase Structural `sepBy` comma
-      return (cases, Structural)
-    nominalCases = braces $ do
+      return (cases, Structural))
+    nominalCases = fst <$> (braces $ do
       -- There must be at least one case for a nominal type to be inferred
       cases <- singleCase Nominal `sepBy1` comma
-      return (cases, Nominal)
+      return (cases, Nominal))
 
 singleCase :: NominalStructural -> Parser (SCase FreeVarName)
 singleCase ns = do
   (xt, _pos) <- xtorName ns
-  args <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   cmd <- commandP
   return MkSCase { scase_name = xt
@@ -98,7 +98,7 @@ muAbstraction CnsRep = do
   return $ MuAbs CnsRep v (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
-stermP pc = parens (stermP pc)
+stermP pc = fst <$> (parens (stermP pc))
   <|> xtorCall Structural pc
   <|> xtorCall Nominal pc
   <|> patternMatch pc
@@ -126,12 +126,12 @@ doneCmdP = do
 printCmdP :: Parser (Command FreeVarName)
 printCmdP = do
   _ <- printKwP
-  arg <- parens (stermP PrdRep)
+  (arg,_) <- parens (stermP PrdRep)
   return $ Print arg
 
 commandP :: Parser (Command FreeVarName)
 commandP =
-  try (parens commandP) <|>
+  try (fst <$> (parens commandP)) <|>
   doneCmdP <|>
   printCmdP <|>
   applyCmdP

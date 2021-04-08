@@ -17,8 +17,8 @@ fvarP = do
 ctorP :: NominalStructural -> Parser (ATerm Loc FreeVarName)
 ctorP ns = do
   startPos <- getSourcePos
-  (xt, endPos) <- xtorName ns -- TODO get later endPos
-  args <- option [] (parens $ atermP `sepBy` comma)
+  (xt, endPos) <- xtorName ns
+  (args, endPos) <- option ([], endPos) (parens $ atermP `sepBy` comma)
   return (Ctor (Loc startPos endPos) xt args)
 
 
@@ -28,8 +28,8 @@ dtorP ns = do
   -- Must use atermP' here in order to avoid left-recursion in grammar!
   destructee <- atermP'
   _ <- dot
-  (xt, endPos) <- xtorName ns -- TODO get later endPos
-  args <- option [] (parens $ atermP `sepBy` comma)
+  (xt, endPos) <- xtorName ns
+  (args, endPos) <- option ([], endPos) (parens $ atermP `sepBy` comma)
   return (Dtor (Loc startPos endPos) xt destructee args)
 
 
@@ -37,8 +37,8 @@ dtorP ns = do
 acaseP :: NominalStructural -> Parser (ACase Loc FreeVarName)
 acaseP ns = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName ns
-  args <- option [] (parens $ (fst <$> freeVarName) `sepBy` comma)
+  (xt, _) <- xtorName ns
+  args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
   _ <- rightarrow
   res <- atermP
   return (MkACase (Loc startPos undefined) xt args (atermClosing args res))
@@ -46,12 +46,8 @@ acaseP ns = do
 acasesP :: Parser ([ACase Loc FreeVarName], SourcePos)
 acasesP = try structuralCases <|> nominalCases
   where
-    structuralCases = do
-      cases <- braces $ acaseP Structural `sepBy` comma
-      return (cases, undefined)
-    nominalCases = do
-      cases <- braces $ acaseP Nominal `sepBy` comma
-      return (cases, undefined)
+    structuralCases = braces $ acaseP Structural `sepBy` comma
+    nominalCases = braces $ acaseP Nominal `sepBy` comma
 
 matchP :: Parser (ATerm Loc FreeVarName)
 matchP = do
@@ -84,7 +80,7 @@ numLitP = do
 -- uses left-recursion in the grammar.
 atermP' :: Parser (ATerm Loc FreeVarName)
 atermP' =
-  parens atermP <|>
+  (fst <$> (parens atermP)) <|>
   numLitP <|>
   matchP <|>
   comatchP <|>
@@ -94,7 +90,7 @@ atermP' =
 
 atermP :: Parser (ATerm Loc FreeVarName)
 atermP =
-  parens atermP <|>
+  (fst <$> (parens atermP)) <|>
   try (dtorP Structural) <|>
   try (dtorP Nominal) <|>
   numLitP <|>

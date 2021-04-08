@@ -20,8 +20,8 @@ import Syntax.Types
 
 typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
 typArgListP rep = do
-  prdArgs <- option [] (parens   $ (typP rep) `sepBy` comma)
-  cnsArgs <- option [] (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma)
+  prdArgs <- option [] (fst <$> (parens   $ (typP rep) `sepBy` comma))
+  cnsArgs <- option [] (fst <$> (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma))
   return (MkTypArgs prdArgs cnsArgs)
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
@@ -30,12 +30,12 @@ nominalTypeP rep = do
   pure $ TyNominal rep name
 
 dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
-dataTypeP DataRep polrep = angles $ do
+dataTypeP DataRep polrep = fst <$> (angles $ do
   xtorSigs <- xtorSignatureP polrep `sepBy` pipe
-  return (TyData polrep xtorSigs)
-dataTypeP CodataRep polrep = braces $ do
+  return (TyData polrep xtorSigs))
+dataTypeP CodataRep polrep = fst <$> (braces $ do
   xtorSigs <- xtorSignatureP (flipPolarityRep polrep) `sepBy` comma
-  return (TyCodata polrep xtorSigs)
+  return (TyCodata polrep xtorSigs))
 
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP PosRep = do
@@ -75,7 +75,7 @@ recType rep = do
 
 -- Without joins and meets
 typP' :: PolarityRep pol -> Parser (Typ pol)
-typP' rep = try (parens (typP rep)) <|>
+typP' rep = try (fst <$> parens (typP rep)) <|>
   nominalTypeP rep <|>
   dataTypeP DataRep rep <|>
   dataTypeP CodataRep rep <|>
