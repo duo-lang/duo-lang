@@ -13,3 +13,10 @@ prd omega := mu k.fixLazy >> 'Ap(id)[k];
 prd omega2 := mu v. comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] }
                     >>
                     'Ap( comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] })[v];
+
+def omega3 := comatch { Ap(x) => x.Ap(x) }.Ap(comatch { Ap(x) => x.Ap(x)});
+
+
+def foo := comatch { Ap(x) => x.Ap(x) };
+
+def bar := bar.Ap(bar);
