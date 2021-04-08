@@ -106,15 +106,15 @@ genConstraintsSTerm (MuAbs CnsRep bs cmd) = do
   return (MuAbs CnsRep bs cmd', fvneg)
 
 genConstraintsCommand :: Command () bs -> GenM bs (Command () bs)
-genConstraintsCommand Done = return Done
-genConstraintsCommand (Print t) = do
+genConstraintsCommand (Done _) = return (Done ())
+genConstraintsCommand (Print _ t) = do
   (t',_) <- genConstraintsSTerm t
-  return (Print t')
-genConstraintsCommand (Apply t1 t2) = do
+  return (Print () t')
+genConstraintsCommand (Apply _ t1 t2) = do
   (t1',ty1) <- genConstraintsSTerm t1
   (t2',ty2) <- genConstraintsSTerm t2
   addConstraint (SubType () ty1 ty2)
-  return (Apply t1' t2')
+  return (Apply () t1' t2')
 
 
 ---------------------------------------------------------------------------------------------

@@ -116,18 +116,18 @@ applyCmdP = do
   prd <- stermP PrdRep
   _ <- commandSym
   cns <- stermP CnsRep
-  return (Apply prd cns)
+  return (Apply () prd cns)
 
 doneCmdP :: Parser (Command () FreeVarName)
 doneCmdP = do
   _ <- doneKwP
-  return Done
+  return (Done ())
 
 printCmdP :: Parser (Command () FreeVarName)
 printCmdP = do
   _ <- printKwP
   (arg,_) <- parens (stermP PrdRep)
-  return $ Print arg
+  return $ Print () arg
 
 commandP :: Parser (Command () FreeVarName)
 commandP =

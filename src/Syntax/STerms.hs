@@ -88,7 +88,7 @@ data STerm (pc :: PrdCns) ext bs where
   -- ~mu x.c    =   MuAbs CnsRep c
   MuAbs    :: PrdCnsRep pc -> bs -> Command ext bs -> STerm pc ext bs
   deriving (Eq)
-deriving instance Show bs => Show (STerm pc ext bs)
+deriving instance (Show bs, Show ext) => Show (STerm pc ext bs)
 deriving instance Functor (STerm pc ext)
 ---------------------------------------------------------------------------------
 -- Commands
@@ -99,9 +99,9 @@ data Command ext bs
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  = Apply (STerm Prd ext bs) (STerm Cns ext bs)
-  | Print (STerm Prd ext bs)
-  | Done
+  = Apply ext (STerm Prd ext bs) (STerm Cns ext bs)
+  | Print ext (STerm Prd ext bs)
+  | Done ext
   deriving (Show, Eq, Functor)
 
 ---------------------------------------------------------------------------------
@@ -123,9 +123,9 @@ termOpeningRec k args (MuAbs pc a cmd) =
   MuAbs pc a (commandOpeningRec (k+1) args cmd)
 
 commandOpeningRec :: Int -> XtorArgs () bs -> Command () bs -> Command () bs
-commandOpeningRec _ _ Done = Done
-commandOpeningRec k args (Print t) = Print (termOpeningRec k args t)
-commandOpeningRec k args (Apply t1 t2) = Apply (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec _ _ (Done _) = Done ()
+commandOpeningRec k args (Print _ t) = Print () (termOpeningRec k args t)
+commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 
 -- replaces bound variables pointing "outside" of a command with given arguments
@@ -154,9 +154,9 @@ termClosingRec k vars (MuAbs pc a cmd) =
   MuAbs pc a (commandClosingRec (k+1) vars cmd)
 
 commandClosingRec :: Int -> Twice [FreeVarName] -> Command () a -> Command () a
-commandClosingRec _ _ Done = Done
-commandClosingRec k args (Print t) = Print (termClosingRec k args t)
-commandClosingRec k args (Apply t1 t2) = Apply (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec _ _ (Done _) = Done ()
+commandClosingRec k args (Print _ t) = Print () (termClosingRec k args t)
+commandClosingRec k args (Apply _ t1 t2) = Apply () (termClosingRec k args t1) (termClosingRec k args t2)
 
 commandClosing :: Twice [FreeVarName] -> Command () a -> Command () a
 commandClosing = commandClosingRec 0
@@ -190,9 +190,9 @@ termLocallyClosedRec env (MuAbs PrdRep _ cmd) = commandLocallyClosedRec (Twice [
 termLocallyClosedRec env (MuAbs CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
 
 commandLocallyClosedRec :: [Twice [()]] -> Command () a -> Either Error ()
-commandLocallyClosedRec _ Done = Right ()
-commandLocallyClosedRec env (Print t) = termLocallyClosedRec env t
-commandLocallyClosedRec env (Apply t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec _ (Done _) = Right ()
+commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
+commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
 termLocallyClosed :: STerm pc () a -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -232,6 +232,6 @@ openSTermComplete (MuAbs CnsRep fv cmd) =
   MuAbs CnsRep fv (commandOpeningSingle PrdRep (FreeVar PrdRep fv) (openCommandComplete cmd))
 
 openCommandComplete :: Command () FreeVarName -> Command () FreeVarName
-openCommandComplete (Apply t1 t2) = Apply (openSTermComplete t1) (openSTermComplete t2)
-openCommandComplete (Print t) = Print (openSTermComplete t)
-openCommandComplete Done = Done
+openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
+openCommandComplete (Print _ t) = Print () (openSTermComplete t)
+openCommandComplete (Done _) = Done ()

@@ -43,9 +43,9 @@ instance PrettyAnn a => PrettyAnn (STerm pc () a) where
     prettyAnn a <> "." <> parens (prettyAnn cmd)
 
 instance PrettyAnn a => PrettyAnn (Command () a) where
-  prettyAnn Done = annKeyword "Done"
-  prettyAnn (Print t) = annKeyword "Print" <> parens (prettyAnn t)
-  prettyAnn (Apply t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
+  prettyAnn (Done _)= annKeyword "Done"
+  prettyAnn (Print _ t) = annKeyword "Print" <> parens (prettyAnn t)
+  prettyAnn (Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
 
 instance PrettyAnn (NamedRep (STerm pc () FreeVarName)) where
   prettyAnn (NamedRep tm) = prettyAnn (openSTermComplete tm)

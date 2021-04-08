@@ -35,26 +35,26 @@ checkArgs cmd argTypes args =
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalSTermOnce :: PrettyAnn bs => Command () bs -> EvalM bs (Maybe (Command () bs))
-evalSTermOnce Done = return Nothing
-evalSTermOnce (Print _) = return Nothing
-evalSTermOnce (Apply prd cns) = evalApplyOnce prd cns
+evalSTermOnce (Done _) = return Nothing
+evalSTermOnce (Print _ _) = return Nothing
+evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 
 evalApplyOnce :: PrettyAnn bs => STerm Prd () bs -> STerm Cns () bs -> EvalM bs (Maybe (Command () bs))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar PrdRep fv) cns = do
   (prd,_) <- lookupPrd fv
-  return (Just (Apply prd cns))
+  return (Just (Apply () prd cns))
 evalApplyOnce prd (FreeVar CnsRep fv) = do
   (cns,_) <- lookupCns fv
-  return (Just (Apply prd cns))
+  return (Just (Apply () prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall PrdRep xt args) cns@(XMatch CnsRep _ cases) = do
   (MkSCase _ argTypes cmd') <- lookupCase xt cases
-  checkArgs (Apply prd cns) argTypes args
+  checkArgs (Apply () prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce prd@(XMatch PrdRep _ cases) cns@(XtorCall CnsRep xt args) = do
   (MkSCase _ argTypes cmd') <- lookupCase xt cases
-  checkArgs (Apply prd cns) argTypes args
+  checkArgs (Apply () prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce prd@(MuAbs PrdRep _ cmd) cns@(MuAbs CnsRep _ cmd') = do
