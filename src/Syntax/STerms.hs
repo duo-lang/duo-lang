@@ -161,28 +161,28 @@ commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
 -- Variable Closing
 ---------------------------------------------------------------------------------
 
-termClosingRec :: Int -> Twice [FreeVarName] -> STerm pc () a -> STerm pc () a
+termClosingRec :: Int -> Twice [FreeVarName] -> STerm pc ext bs -> STerm pc ext bs
 termClosingRec _ _ bv@(BoundVar _ _ _) = bv
-termClosingRec k (Twice prdvars _) (FreeVar _ PrdRep v) | isJust (v `elemIndex` prdvars) = BoundVar () PrdRep (k, fromJust (v `elemIndex` prdvars))
-                                                        | otherwise = FreeVar () PrdRep v
-termClosingRec k (Twice _ cnsvars) (FreeVar _ CnsRep v) | isJust (v `elemIndex` cnsvars) = BoundVar () CnsRep (k, fromJust (v `elemIndex` cnsvars))
-                                                        | otherwise = FreeVar () CnsRep v
-termClosingRec k vars (XtorCall _ s xt (MkXtorArgs prdArgs cnsArgs)) =
-  XtorCall () s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
-termClosingRec k vars (XMatch _ pc sn cases) =
-  XMatch () pc sn $ map (\pmcase@MkSCase { scase_cmd } -> pmcase { scase_cmd = commandClosingRec (k+1) vars scase_cmd }) cases
-termClosingRec k vars (MuAbs _ pc a cmd) =
-  MuAbs () pc a (commandClosingRec (k+1) vars cmd)
+termClosingRec k (Twice prdvars _) (FreeVar ext PrdRep v) | isJust (v `elemIndex` prdvars) = BoundVar ext PrdRep (k, fromJust (v `elemIndex` prdvars))
+                                                          | otherwise = FreeVar ext PrdRep v
+termClosingRec k (Twice _ cnsvars) (FreeVar ext CnsRep v) | isJust (v `elemIndex` cnsvars) = BoundVar ext CnsRep (k, fromJust (v `elemIndex` cnsvars))
+                                                          | otherwise = FreeVar ext CnsRep v
+termClosingRec k vars (XtorCall ext s xt (MkXtorArgs prdArgs cnsArgs)) =
+  XtorCall ext s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
+termClosingRec k vars (XMatch ext pc sn cases) =
+  XMatch ext pc sn $ map (\pmcase@MkSCase { scase_cmd } -> pmcase { scase_cmd = commandClosingRec (k+1) vars scase_cmd }) cases
+termClosingRec k vars (MuAbs ext pc a cmd) =
+  MuAbs ext pc a (commandClosingRec (k+1) vars cmd)
 
-commandClosingRec :: Int -> Twice [FreeVarName] -> Command () a -> Command () a
-commandClosingRec _ _ (Done _) = Done ()
-commandClosingRec k args (Print _ t) = Print () (termClosingRec k args t)
-commandClosingRec k args (Apply _ t1 t2) = Apply () (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec :: Int -> Twice [FreeVarName] -> Command ext bs -> Command ext bs
+commandClosingRec _ _ (Done ext) = Done ext
+commandClosingRec k args (Print ext t) = Print ext (termClosingRec k args t)
+commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
 
-commandClosing :: Twice [FreeVarName] -> Command () a -> Command () a
+commandClosing :: Twice [FreeVarName] -> Command ext bs -> Command ext bs
 commandClosing = commandClosingRec 0
 
-commandClosingSingle :: PrdCnsRep pc -> FreeVarName -> Command () a -> Command () a
+commandClosingSingle :: PrdCnsRep pc -> FreeVarName -> Command ext bs -> Command ext bs
 commandClosingSingle PrdRep v = commandClosing (Twice [v] [])
 commandClosingSingle CnsRep v = commandClosing (Twice [] [v])
 
@@ -228,19 +228,19 @@ commandLocallyClosed = commandLocallyClosedRec []
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openXtorArgsComplete :: XtorArgs () FreeVarName -> XtorArgs () FreeVarName
+openXtorArgsComplete :: XtorArgs ext FreeVarName -> XtorArgs () FreeVarName
 openXtorArgsComplete (MkXtorArgs prdArgs cnsArgs) =
   MkXtorArgs (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
 
 freeVarNamesToXtorArgs :: Twice [FreeVarName] -> XtorArgs () FreeVarName
 freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\n -> FreeVar () PrdRep n) <$> prds) ((\n -> FreeVar () CnsRep n) <$> cnss)
 
-openSTermComplete :: STerm pc () FreeVarName -> STerm pc () FreeVarName
+openSTermComplete :: STerm pc ext FreeVarName -> STerm pc () FreeVarName
 openSTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openSTermComplete (FreeVar _ pc v) = FreeVar () pc v
 openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openXtorArgsComplete args)
 openSTermComplete (XMatch _ pc ns cases) = let
-  openSCase :: SCase () FreeVarName -> SCase () FreeVarName
+  openSCase :: SCase ext FreeVarName -> SCase () FreeVarName
   openSCase MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase { scase_name = scase_name
             , scase_args = scase_args
@@ -252,7 +252,7 @@ openSTermComplete (MuAbs _ PrdRep fv cmd) =
 openSTermComplete (MuAbs _ CnsRep fv cmd) =
   MuAbs () CnsRep fv (commandOpeningSingle PrdRep (FreeVar () PrdRep fv) (openCommandComplete cmd))
 
-openCommandComplete :: Command () FreeVarName -> Command () FreeVarName
+openCommandComplete :: Command ext FreeVarName -> Command () FreeVarName
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()

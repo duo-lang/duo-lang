@@ -10,21 +10,21 @@ import Syntax.ATerms
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------
 
-isNumATerm :: ATerm ext a -> Maybe Int
+isNumATerm :: ATerm ext bs -> Maybe Int
 isNumATerm (Ctor _ (MkXtorName Nominal "Z") []) = Just 0
 isNumATerm (Ctor _ (MkXtorName Nominal "S") [n]) = case isNumATerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumATerm _ = Nothing
 
-instance PrettyAnn a => PrettyAnn (ACase ext a) where
+instance PrettyAnn bs => PrettyAnn (ACase ext bs) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =
     prettyAnn acase_name <>
     parens (intercalateComma (prettyAnn <$> acase_args)) <+>
     annSymbol "=>" <+>
     prettyAnn acase_term
 
-instance PrettyAnn a => PrettyAnn (ATerm ext a) where
+instance PrettyAnn bs => PrettyAnn (ATerm ext bs) where
   prettyAnn (isNumATerm -> Just n) = pretty n
   prettyAnn (BVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
   prettyAnn (FVar _ v) = pretty v
@@ -40,5 +40,5 @@ instance PrettyAnn a => PrettyAnn (ATerm ext a) where
     annKeyword "comatch" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
 
-instance PrettyAnn (NamedRep (ATerm () FreeVarName)) where
+instance PrettyAnn (NamedRep (ATerm ext FreeVarName)) where
   prettyAnn (NamedRep tm) = prettyAnn (openATermComplete tm)

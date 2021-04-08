@@ -9,54 +9,59 @@ import Text.Megaparsec hiding (State)
 import Parser.Definition
 import Parser.Lexer
 import Syntax.STerms
+import Utils
 
 --------------------------------------------------------------------------------------------
 -- Free Variables, Literals and Xtors
 --------------------------------------------------------------------------------------------
 
-freeVar :: PrdCnsRep pc -> Parser (STerm pc () bs, SourcePos)
+freeVar :: PrdCnsRep pc -> Parser (STerm pc Loc bs, SourcePos)
 freeVar pc = do
+  startPos <- getSourcePos
   (v, endPos) <- freeVarName
-  return (FreeVar () pc v, endPos)
+  return (FreeVar (Loc startPos endPos) pc v, endPos)
 
-numLitP :: PrdCnsRep pc -> Parser (STerm pc () bs, SourcePos)
+numLitP :: PrdCnsRep pc -> Parser (STerm pc Loc bs, SourcePos)
 numLitP CnsRep = empty
 numLitP PrdRep = do
+  startPos <- getSourcePos
   (num, endPos) <- numP
-  return (numToTerm num, endPos)
+  return (numToTerm (Loc startPos endPos) num, endPos)
   where
-    numToTerm :: Int -> STerm Prd () bs
-    numToTerm 0 = XtorCall () PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
-    numToTerm n = XtorCall () PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
+    numToTerm :: Loc -> Int -> STerm Prd Loc bs
+    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
+    numToTerm loc n = XtorCall loc PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm loc (n-1)] [])
 
-lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName, SourcePos)
+lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
+  startPos <- getSourcePos
   _ <- backslash
   (args, _) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (cmd, endPos) <- commandP
-  return (XMatch () PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)], endPos)
+  return (XMatch (Loc startPos endPos) PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)], endPos)
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
-xtorArgsP :: Parser (XtorArgs () FreeVarName, SourcePos)
+xtorArgsP :: Parser (XtorArgs Loc FreeVarName, SourcePos)
 xtorArgsP = do
   endPos <- getSourcePos
   (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (stermP PrdRep)) `sepBy` comma)
   (ys, endPos) <- option ([],endPos) (brackets $ (fst <$> (stermP CnsRep)) `sepBy` comma)
   return (MkXtorArgs xs ys, endPos)
 
-xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc () FreeVarName, SourcePos)
+xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 xtorCall ns pc = do
+  startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (args, endPos) <- xtorArgsP
-  return (XtorCall () pc xt args, endPos)
+  return (XtorCall (Loc startPos endPos) pc xt args, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Pattern and copattern matches
 --------------------------------------------------------------------------------------------
 
-singleCase :: NominalStructural -> Parser (SCase () FreeVarName, SourcePos)
+singleCase :: NominalStructural -> Parser (SCase Loc FreeVarName, SourcePos)
 singleCase ns = do
   (xt, _pos) <- xtorName ns
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
@@ -71,7 +76,7 @@ singleCase ns = do
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
 -- infer a structural type, not a nominal one.
-casesP :: Parser ([SCase () FreeVarName], NominalStructural,SourcePos)
+casesP :: Parser ([SCase Loc FreeVarName], NominalStructural,SourcePos)
 casesP = try structuralCases <|> nominalCases
   where
     structuralCases = do
@@ -82,39 +87,43 @@ casesP = try structuralCases <|> nominalCases
       -- There must be at least one case for a nominal type to be inferred
       return (cases, Nominal, endPos)
 
-patternMatch :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName, SourcePos)
+patternMatch :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 patternMatch PrdRep = do
+  startPos <- getSourcePos
   _ <- comatchKwP
   (cases,ns, endPos) <- casesP
-  return (XMatch () PrdRep ns cases, endPos)
+  return (XMatch (Loc startPos endPos) PrdRep ns cases, endPos)
 patternMatch CnsRep = do
+  startPos <- getSourcePos
   _ <- matchKwP
   (cases,ns,endPos) <- casesP
-  return (XMatch () CnsRep ns cases, endPos)
+  return (XMatch (Loc startPos endPos) CnsRep ns cases, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
 --------------------------------------------------------------------------------------------
 
-muAbstraction :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName, SourcePos)
+muAbstraction :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 muAbstraction PrdRep = do
+  startPos <- getSourcePos
   _ <- muKwP
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP
-  return (MuAbs () PrdRep v (commandClosingSingle CnsRep v cmd), endPos)
+  return (MuAbs (Loc startPos endPos) PrdRep v (commandClosingSingle CnsRep v cmd), endPos)
 muAbstraction CnsRep = do
+  startPos <- getSourcePos
   _ <- muStarKwP
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP
-  return (MuAbs () CnsRep v (commandClosingSingle PrdRep v cmd), endPos)
+  return (MuAbs (Loc startPos endPos) CnsRep v (commandClosingSingle PrdRep v cmd), endPos)
 
 --------------------------------------------------------------------------------------------
 -- Combined STerms parser
 --------------------------------------------------------------------------------------------
 
-stermP :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName, SourcePos)
+stermP :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 stermP pc = fst <$> (parens (stermP pc))
   <|> xtorCall Structural pc
   <|> xtorCall Nominal pc
@@ -128,25 +137,28 @@ stermP pc = fst <$> (parens (stermP pc))
 -- Commands
 --------------------------------------------------------------------------------------------
 
-applyCmdP :: Parser (Command () FreeVarName, SourcePos)
+applyCmdP :: Parser (Command Loc FreeVarName, SourcePos)
 applyCmdP = do
+  startPos <- getSourcePos
   (prd, _pos) <- stermP PrdRep
   _ <- commandSym
   (cns, endPos) <- stermP CnsRep
-  return (Apply () prd cns, endPos)
+  return (Apply (Loc startPos endPos) prd cns, endPos)
 
-doneCmdP :: Parser (Command () FreeVarName, SourcePos)
+doneCmdP :: Parser (Command Loc FreeVarName, SourcePos)
 doneCmdP = do
+  startPos <- getSourcePos
   endPos <- doneKwP
-  return (Done (), endPos)
+  return (Done (Loc startPos endPos), endPos)
 
-printCmdP :: Parser (Command () FreeVarName, SourcePos)
+printCmdP :: Parser (Command Loc FreeVarName, SourcePos)
 printCmdP = do
+  startPos <- getSourcePos
   _ <- printKwP
   (arg,endPos) <- parens (fst <$> stermP PrdRep)
-  return (Print () arg, endPos)
+  return (Print (Loc startPos endPos) arg, endPos)
 
-commandP :: Parser (Command () FreeVarName, SourcePos)
+commandP :: Parser (Command Loc FreeVarName, SourcePos)
 commandP =
   try (fst <$> (parens commandP)) <|>
   doneCmdP <|>
