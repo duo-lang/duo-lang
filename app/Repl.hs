@@ -111,7 +111,7 @@ cmd s = do
 
 cmdSymmetric :: String -> Repl ()
 cmdSymmetric s = do
-  com <- parseInteractive commandP s
+  (com,_) <- parseInteractive commandP s
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
@@ -217,7 +217,7 @@ type_cmd :: String -> Repl ()
 type_cmd s = do
   env <- gets replEnv
   case runInteractiveParser (stermP PrdRep) s of
-    Right t -> do
+    Right (t,_) -> do
       res <- fromRight $ inferSTerm PrdRep t env
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
@@ -315,7 +315,7 @@ save_cmd s = do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
-      Right t -> do
+      Right (t,_) -> do
         trace <- fromRight $ inferSTermTraced PrdRep t env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)

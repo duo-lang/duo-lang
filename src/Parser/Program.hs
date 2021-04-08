@@ -22,7 +22,7 @@ prdDeclarationP = do
   try (void prdKwP)
   (v, _pos) <- freeVarName
   _ <- coloneq
-  t <- stermP PrdRep
+  (t,_) <- stermP PrdRep
   endPos <- semi
   return (PrdDecl (Loc startPos endPos) v t)
 
@@ -32,7 +32,7 @@ cnsDeclarationP = do
   try (void cnsKwP)
   (v, _pos) <- freeVarName
   _ <- coloneq
-  t <- stermP CnsRep
+  (t,_) <- stermP CnsRep
   endPos <- semi
   return (CnsDecl (Loc startPos endPos) v t)
 
@@ -42,7 +42,7 @@ cmdDeclarationP = do
   try (void cmdKwP)
   (v, _pos) <- freeVarName
   _ <- coloneq
-  t <- commandP
+  (t,_) <- commandP
   endPos <- semi
   return (CmdDecl (Loc startPos endPos) v t)
 
