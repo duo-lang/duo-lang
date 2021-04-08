@@ -20,37 +20,46 @@ import Syntax.Types
 
 typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
 typArgListP rep = do
-  prdArgs <- option [] (parens   $ (typP rep) `sepBy` comma)
-  cnsArgs <- option [] (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma)
+  prdArgs <- option [] (fst <$> (parens   $ (typP rep) `sepBy` comma))
+  cnsArgs <- option [] (fst <$> (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma))
   return (MkTypArgs prdArgs cnsArgs)
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
-nominalTypeP rep = TyNominal rep <$> typeNameP
+nominalTypeP rep = do
+  (name, _pos) <- typeNameP
+  pure $ TyNominal rep name
 
 dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
-dataTypeP DataRep polrep = angles $ do
+dataTypeP DataRep polrep = fst <$> (angles $ do
   xtorSigs <- xtorSignatureP polrep `sepBy` pipe
-  return (TyData polrep xtorSigs)
-dataTypeP CodataRep polrep = braces $ do
+  return (TyData polrep xtorSigs))
+dataTypeP CodataRep polrep = fst <$> (braces $ do
   xtorSigs <- xtorSignatureP (flipPolarityRep polrep) `sepBy` comma
-  return (TyCodata polrep xtorSigs)
+  return (TyCodata polrep xtorSigs))
 
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP PosRep = do
-  xt <- xtorName Structural
+  (xt, _pos) <- xtorName Structural
   args <- typArgListP PosRep
   return (MkXtorSig xt args)
 xtorSignatureP NegRep = do
-  xt <- xtorName Structural
+  (xt, _pos) <- xtorName Structural
   args <- typArgListP NegRep
   return (MkXtorSig xt args)
 
 typeVariable :: PolarityRep pol -> Parser (Typ pol)
 typeVariable rep = do
   tvs <- asks tvars
-  tv <- MkTVar <$> freeVarName
+  tv <- MkTVar . fst <$> freeVarName
   guard (tv `S.member` tvs)
   return $ TyVar rep tv
+
+sepBy2 :: Parser a -> Parser sep -> Parser [a]
+sepBy2 p sep = do
+  fst <- p
+  _ <- sep
+  rest <- sepBy1 p sep
+  return (fst : rest)
 
 setType :: PolarityRep pol -> Parser (Typ pol)
 setType PosRep = TySet PosRep <$> (typP' PosRep) `sepBy2` unionSym
@@ -58,15 +67,15 @@ setType NegRep = TySet NegRep <$> (typP' NegRep) `sepBy2` intersectionSym
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
-  recKwP
-  rv <- MkTVar <$> freeVarName
-  dot
+  _ <- recKwP
+  rv <- MkTVar . fst <$> freeVarName
+  _ <- dot
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) (typP rep)
   return $ TyRec rep rv ty
 
 -- Without joins and meets
 typP' :: PolarityRep pol -> Parser (Typ pol)
-typP' rep = try (parens (typP rep)) <|>
+typP' rep = try (fst <$> parens (typP rep)) <|>
   nominalTypeP rep <|>
   dataTypeP DataRep rep <|>
   dataTypeP CodataRep rep <|>
@@ -82,7 +91,7 @@ typP rep = try (setType rep) <|> typP' rep
 
 typeSchemeP :: Parser (TypeScheme 'Pos)
 typeSchemeP = do
-  tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar <$> freeVarName) <* dot)
+  tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
   monotype <- local (\s -> s { tvars = tvars' }) (typP PosRep)
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)

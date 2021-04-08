@@ -12,13 +12,13 @@ compileExample :: String -> String -> Spec
 compileExample termA termS = do
   it (termA ++  " compiles to: " ++ termS) $ do
       let Right termS' = runInteractiveParser (stermP PrdRep) termS
-      let Right termA' = runInteractiveParser atermP termA
+      let Right (termA',_pos) = runInteractiveParser atermP termA
       compile termA' `shouldBe` (const () <$> termS')
 
 isClosed :: String -> Spec
 isClosed termA = do
   it ("Compilation of " ++ termA ++  " is a closed STerm.") $ do
-      let Right termA' = runInteractiveParser atermP termA
+      let Right (termA', _pos) = runInteractiveParser atermP termA
       termLocallyClosed (compile termA') `shouldSatisfy` isRight
 
 -- | Compiles ATerms to STerms.

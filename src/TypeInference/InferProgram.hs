@@ -44,16 +44,16 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATerm :: FreeVarName -> ATerm () bs -> Environment bs -> Either Error (TypeScheme Pos)
+inferATerm :: FreeVarName -> ATerm ext bs -> Environment bs -> Either Error (ATerm () bs, TypeScheme Pos)
 inferATerm v tm env = do
-  ((_, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
+  ((tm, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
   solverState <- solveConstraints constraintSet
   typeAut <- solverStateToTypeAut solverState PosRep ty
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
   let resType = autToType minTypeAut
-  return resType
+  return (tm, resType)
 
 insertDecl :: Declaration bs -> Environment bs -> Either LocatedError (Environment bs)
 insertDecl (PrdDecl loc v t)  env@Environment { prdEnv }  = do
@@ -66,8 +66,8 @@ insertDecl (CmdDecl loc v t)  env@Environment { cmdEnv }  = do
   first (Located loc) $ checkCmd t env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
 insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
-  ty <- first (Located loc) $ inferATerm v t env
-  return $ env { defEnv  = M.insert v (t,ty) defEnv }
+  (tm,ty) <- first (Located loc) $ inferATerm v t env
+  return $ env { defEnv  = M.insert v (tm,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 

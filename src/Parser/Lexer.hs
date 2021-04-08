@@ -1,6 +1,5 @@
 module Parser.Lexer
   ( sc
-  , sepBy2
   , numP
     -- Names
   , freeVarName
@@ -52,167 +51,208 @@ import Syntax.Types
 import Utils
 
 -------------------------------------------------------------------------------------------
--- Various
+-- General lexing conventions around space consumption and source code locations:
+--
+-- Every lexer and parser is responsible for consuming it's trailing whitespace using the
+-- space consumer `sc`.
+-- In addition, every parser returns the source position of the end of the last parsed
+-- non-whitespace token.
+--
+-- Example:
+-- A parser for number literals:
+--
+-- (This source position is returned)
+--            ||
+--            \/
+--    123456789          foo
+--    ^^^^^^^^^^^^^^^^^^^
+--      (this is parsed)
+--
 -------------------------------------------------------------------------------------------
-
-symbol :: String -> Parser ()
-symbol str = L.symbol sc str >> return ()
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
-
-keywordP :: String -> Parser ()
-keywordP str = lexeme (string str <* notFollowedBy alphaNumChar) >> return ()
-
-sepBy2 :: Parser a -> Parser sep -> Parser [a]
-sepBy2 p sep = (:) <$> (p <* sep) <*> (sepBy1 p sep)
 
 sc :: Parser ()
 sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
 
-numP :: Parser Int
+-------------------------------------------------------------------------------------------
+-- Helper functions
+-------------------------------------------------------------------------------------------
+
+symbol :: String -> Parser SourcePos
+symbol str = do
+  _ <- string str
+  endPos <- getSourcePos
+  sc
+  return endPos
+
+lexeme :: Parser a -> Parser (a, SourcePos)
+lexeme p = do
+  res <- p
+  endPos <- getSourcePos
+  sc
+  return (res, endPos)
+
+
+keywordP :: String -> Parser SourcePos
+keywordP str = do
+  _ <- string str <* notFollowedBy alphaNumChar
+  endPos <- getSourcePos
+  sc
+  return endPos
+
+numP :: Parser (Int, SourcePos)
 numP = do
-  numStr <- lexeme (some numberChar)
-  return (read numStr)
+  (numStr, pos) <- lexeme (some numberChar)
+  return (read numStr, pos)
 
 -------------------------------------------------------------------------------------------
 -- Names
 -------------------------------------------------------------------------------------------
 
-freeVarName :: Parser FreeVarName
+freeVarName :: Parser (FreeVarName, SourcePos)
 freeVarName = do
-  name <- lexeme $ ((:) <$> lowerChar <*> many alphaNumChar)
+  (name, pos) <- lexeme $ ((:) <$> lowerChar <*> many alphaNumChar)
   checkReserved name
-  return name
+  return (name, pos)
 
 
-xtorName :: NominalStructural -> Parser XtorName
+xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
 xtorName Structural = do
-  tick
-  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  _ <- tick
+  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
   checkReserved name
-  return (MkXtorName Structural name) -- Saved without tick!
+  return (MkXtorName Structural name, pos) -- Saved without tick!
 xtorName Nominal = do
-  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
   checkReserved name
-  return (MkXtorName Nominal name)
+  return (MkXtorName Nominal name, pos)
 
-typeNameP :: Parser TypeName
+typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = do
-  name <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
   checkReserved name
-  return (MkTypeName name)
+  return (MkTypeName name, pos)
 
 -------------------------------------------------------------------------------------------
 -- Keywords
 -------------------------------------------------------------------------------------------
 
 keywords :: [String]
-keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
+keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with"
+           , "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
 
+-- Check if the string is in the list of reserved keywords.
+-- Reserved keywords cannot be used as identifiers.
 checkReserved :: String -> Parser ()
 checkReserved str | str `elem` keywords = fail $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
 
-matchKwP :: Parser ()
+matchKwP :: Parser SourcePos
 matchKwP = keywordP "match"
 
-comatchKwP :: Parser ()
+comatchKwP :: Parser SourcePos
 comatchKwP = keywordP "comatch"
 
-prdKwP :: Parser ()
+prdKwP :: Parser SourcePos
 prdKwP = keywordP "prd"
 
-cnsKwP :: Parser ()
+cnsKwP :: Parser SourcePos
 cnsKwP = keywordP "cns"
 
-cmdKwP :: Parser ()
+cmdKwP :: Parser SourcePos
 cmdKwP = keywordP "cmd"
 
-defKwP :: Parser ()
+defKwP :: Parser SourcePos
 defKwP = keywordP "def"
 
-withKwP :: Parser ()
+withKwP :: Parser SourcePos
 withKwP = keywordP "with"
 
-doneKwP :: Parser ()
+doneKwP :: Parser SourcePos
 doneKwP = keywordP "Done"
 
-printKwP :: Parser ()
+printKwP :: Parser SourcePos
 printKwP = keywordP "Print"
 
-forallKwP :: Parser ()
+forallKwP :: Parser SourcePos
 forallKwP = keywordP "forall"
 
-dataKwP :: Parser ()
+dataKwP :: Parser SourcePos
 dataKwP = keywordP "data"
 
-codataKwP :: Parser ()
+codataKwP :: Parser SourcePos
 codataKwP = keywordP "codata"
 
-recKwP :: Parser ()
+recKwP :: Parser SourcePos
 recKwP = keywordP "rec"
 
-muKwP :: Parser ()
+muKwP :: Parser SourcePos
 muKwP = keywordP "mu"
 
-muStarKwP :: Parser ()
+muStarKwP :: Parser SourcePos
 muStarKwP = keywordP "mu*"
 
 -------------------------------------------------------------------------------------------
 -- Symbols
 -------------------------------------------------------------------------------------------
 
-comma :: Parser ()
+comma :: Parser SourcePos
 comma = symbol ","
 
-dot :: Parser ()
+dot :: Parser SourcePos
 dot = symbol "."
 
-semi :: Parser ()
+semi :: Parser SourcePos
 semi = symbol ";"
 
-pipe :: Parser ()
+pipe :: Parser SourcePos
 pipe = symbol "|"
 
-tick :: Parser ()
+tick :: Parser SourcePos
 tick = symbol "'"
 
-backslash :: Parser ()
+backslash :: Parser SourcePos
 backslash = symbol "\\"
 
-coloneq :: Parser ()
+coloneq :: Parser SourcePos
 coloneq = symbol ":="
 
-rightarrow :: Parser ()
+rightarrow :: Parser SourcePos
 rightarrow = symbol "=>"
 
-commandSym :: Parser ()
+commandSym :: Parser SourcePos
 commandSym = symbol ">>"
 
-unionSym :: Parser ()
+unionSym :: Parser SourcePos
 unionSym = symbol "\\/"
 
-intersectionSym :: Parser ()
+intersectionSym :: Parser SourcePos
 intersectionSym = symbol "/\\"
 
-subtypeSym :: Parser ()
+subtypeSym :: Parser SourcePos
 subtypeSym = symbol "<:"
 
 -------------------------------------------------------------------------------------------
 -- Parens
 -------------------------------------------------------------------------------------------
 
-parens, braces, brackets, angles :: Parser a -> Parser a
-parens    = between (symbol "(") (symbol ")")
-braces    = between (symbol "{") (symbol "}")
-brackets  = between (symbol "[") (symbol "]")
-angles    = between (symbol "<") (symbol ">")
+betweenP :: Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
+betweenP open close middle = do
+  _ <- open
+  res <- middle
+  endPos <- close
+  pure (res, endPos)
+
+parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
+parens    = betweenP (symbol "(") (symbol ")")
+braces    = betweenP (symbol "{") (symbol "}")
+brackets  = betweenP (symbol "[") (symbol "]")
+angles    = betweenP (symbol "<") (symbol ">")
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
-argListP ::  Parser a -> Parser a ->  Parser (Twice [a])
+argListP ::  Parser a -> Parser a ->  Parser (Twice [a], SourcePos)
 argListP p q = do
-  xs <- option [] (parens   $ p `sepBy` comma)
-  ys <- option [] (brackets $ q `sepBy` comma)
-  return $ Twice xs ys
+  endPos <- getSourcePos
+  (xs, endPos) <- option ([], endPos) (parens   $ p `sepBy` comma)
+  (ys, endPos) <- option ([], endPos) (brackets $ q `sepBy` comma)
+  return (Twice xs ys, endPos)
 

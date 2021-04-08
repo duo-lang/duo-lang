@@ -7,6 +7,7 @@ import System.FilePath ((</>), (<.>))
 import System.IO.Error(tryIOError)
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Bifunctor (first)
 import Data.GraphViz
 import Data.List (isPrefixOf, find, intersperse)
 import qualified Data.Map as M
@@ -124,7 +125,8 @@ cmdSymmetric s = do
 
 cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
-  tm <- parseInteractive atermP s
+  (tmLoc,_) <- parseInteractive atermP s
+  let tm = first (const ()) tmLoc
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
@@ -220,8 +222,8 @@ type_cmd s = do
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
       case runInteractiveParser atermP s of
-        Right t -> do
-          res <- fromRight $ inferATerm t env
+        Right (t,_pos) -> do
+          res <- fromRight $ inferATerm (first (const ()) t) env
           prettyRepl (" A :: " ++ ppPrint res)
         Left err2 -> do
           prettyRepl "Cannot parse as sterm:"
@@ -450,7 +452,7 @@ help_option = Option
 compile_cmd :: String -> Repl ()
 compile_cmd s = do
   case runInteractiveParser atermP s of
-    Right t ->
+    Right (t, _pos) ->
       prettyRepl (" compile " ++ ppPrint t ++ "\n = " ++ ppPrint (compile t))
     Left err2 -> do
       prettyRepl "Cannot parse as aterm:"
