@@ -19,6 +19,7 @@ module Syntax.STerms
   , openCommandComplete
   ) where
 
+import Data.Bifunctor
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 
@@ -55,6 +56,10 @@ data XtorArgs ext bs = MkXtorArgs { prdArgs :: [STerm Prd ext bs]
                                   }
   deriving (Show, Eq, Functor)
 
+instance Bifunctor XtorArgs where
+  bimap f g MkXtorArgs { prdArgs, cnsArgs } =
+    MkXtorArgs (bimap f g <$> prdArgs) (bimap f g <$> cnsArgs)
+
 -- | Represents one case in a pattern match or copattern match.
 --
 --        X(x_1,...,x_n)[k_1,...,k_m] => c
@@ -68,6 +73,9 @@ data SCase ext bs = MkSCase
   , scase_cmd  :: Command ext bs
   } deriving (Show, Eq, Functor)
 
+instance Bifunctor SCase where
+  bimap f g MkSCase { scase_name, scase_args, scase_cmd } =
+    MkSCase scase_name (fmap g <$> scase_args)  (bimap f g scase_cmd)
 
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
@@ -90,6 +98,14 @@ data STerm (pc :: PrdCns) ext bs where
   deriving (Eq)
 deriving instance (Show bs, Show ext) => Show (STerm pc ext bs)
 deriving instance Functor (STerm pc ext)
+
+instance Bifunctor (STerm pc) where
+  bimap f _ (BoundVar ext rep idx) = BoundVar (f ext) rep idx
+  bimap f _ (FreeVar ext rep v) = FreeVar (f ext) rep v
+  bimap f g (XtorCall ext pc xt args) = XtorCall (f ext) pc xt (bimap f g args)
+  bimap f g (XMatch ext pc ns cases) = XMatch (f ext) pc ns (bimap f g <$> cases)
+  bimap f g (MuAbs ext pc bs cmd) = MuAbs (f ext) pc (g bs) (bimap f g cmd)
+
 ---------------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------------
@@ -103,6 +119,11 @@ data Command ext bs
   | Print ext (STerm Prd ext bs)
   | Done ext
   deriving (Show, Eq, Functor)
+
+instance Bifunctor Command where
+  bimap f g (Apply ext prd cns) = Apply (f ext) (bimap f g prd) (bimap f g cns)
+  bimap f g (Print ext prd) = Print (f ext) (bimap f g prd)
+  bimap f _ (Done ext) = Done (f ext)
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
