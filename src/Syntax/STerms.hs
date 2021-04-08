@@ -228,19 +228,19 @@ commandLocallyClosed = commandLocallyClosedRec []
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openXtorArgsComplete :: XtorArgs () FreeVarName -> XtorArgs () FreeVarName
+openXtorArgsComplete :: XtorArgs ext FreeVarName -> XtorArgs () FreeVarName
 openXtorArgsComplete (MkXtorArgs prdArgs cnsArgs) =
   MkXtorArgs (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
 
 freeVarNamesToXtorArgs :: Twice [FreeVarName] -> XtorArgs () FreeVarName
 freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\n -> FreeVar () PrdRep n) <$> prds) ((\n -> FreeVar () CnsRep n) <$> cnss)
 
-openSTermComplete :: STerm pc () FreeVarName -> STerm pc () FreeVarName
+openSTermComplete :: STerm pc ext FreeVarName -> STerm pc () FreeVarName
 openSTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openSTermComplete (FreeVar _ pc v) = FreeVar () pc v
 openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openXtorArgsComplete args)
 openSTermComplete (XMatch _ pc ns cases) = let
-  openSCase :: SCase () FreeVarName -> SCase () FreeVarName
+  openSCase :: SCase ext FreeVarName -> SCase () FreeVarName
   openSCase MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase { scase_name = scase_name
             , scase_args = scase_args
@@ -252,7 +252,7 @@ openSTermComplete (MuAbs _ PrdRep fv cmd) =
 openSTermComplete (MuAbs _ CnsRep fv cmd) =
   MuAbs () CnsRep fv (commandOpeningSingle PrdRep (FreeVar () PrdRep fv) (openCommandComplete cmd))
 
-openCommandComplete :: Command () FreeVarName -> Command () FreeVarName
+openCommandComplete :: Command ext FreeVarName -> Command () FreeVarName
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()

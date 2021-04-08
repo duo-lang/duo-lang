@@ -56,13 +56,16 @@ inferATerm v tm env = do
   return (tm, resType)
 
 insertDecl :: Declaration bs -> Environment bs -> Either LocatedError (Environment bs)
-insertDecl (PrdDecl loc v t)  env@Environment { prdEnv }  = do
+insertDecl (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
+  let t = first (const ()) loct
   ty <- first (Located loc) $ inferSTerm v PrdRep t env
   return $ env { prdEnv  = M.insert v (t,ty) prdEnv }
-insertDecl (CnsDecl loc v t)  env@Environment { cnsEnv }  = do
+insertDecl (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
+  let t = first (const ()) loct
   ty <- first (Located loc) $ inferSTerm v CnsRep t env
   return $ env { cnsEnv  = M.insert v (t,ty) cnsEnv }
-insertDecl (CmdDecl loc v t)  env@Environment { cmdEnv }  = do
+insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
+  let t = first (const ()) loct
   first (Located loc) $ checkCmd t env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
 insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do

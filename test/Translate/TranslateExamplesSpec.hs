@@ -1,6 +1,7 @@
 module Translate.TranslateExamplesSpec ( spec ) where
 
 import Test.Hspec
+import Data.Bifunctor
 import Data.Either (isRight)
 
 import Parser.Parser
@@ -13,7 +14,7 @@ compileExample termA termS = do
   it (termA ++  " compiles to: " ++ termS) $ do
       let Right (termS',_pos) = runInteractiveParser (stermP PrdRep) termS
       let Right (termA',_pos) = runInteractiveParser atermP termA
-      compile termA' `shouldBe` (const () <$> termS')
+      compile termA' `shouldBe` (bimap (const ()) (const ()) termS')
 
 isClosed :: String -> Spec
 isClosed termA = do
