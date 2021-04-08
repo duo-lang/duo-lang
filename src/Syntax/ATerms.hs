@@ -10,6 +10,7 @@ module Syntax.ATerms
   , module Syntax.CommonTerm
   ) where
 
+import Data.Bifunctor
 import Data.List (elemIndex)
 import Data.Maybe (isJust, fromJust)
 
@@ -48,6 +49,14 @@ data ACase ext bs = MkACase
   , acase_term :: ATerm ext bs
   } deriving (Eq, Show, Ord)
 
+instance Bifunctor ACase where
+  bimap f g MkACase { acase_ext, acase_name, acase_args, acase_term } =
+    MkACase { acase_ext = f acase_ext
+            , acase_name = acase_name
+            , acase_args = g <$> acase_args
+            , acase_term = bimap f g acase_term
+            }
+
 -- | An asymmetric term.
 -- The `ext` field is used to save additional information, such as source code locations.
 -- The `bs` parameter indicates the type of additional information stored at binding sites.
@@ -78,6 +87,14 @@ data ATerm ext bs where
   --
   Comatch :: ext -> [ACase ext bs] -> ATerm ext bs
   deriving (Eq, Show, Ord)
+
+instance Bifunctor ATerm where
+  bimap f _ (BVar ext idx) = BVar (f ext) idx
+  bimap f _ (FVar ext v) = FVar (f ext) v
+  bimap f g (Ctor ext xt args) = Ctor (f ext) xt (bimap f g <$> args)
+  bimap f g (Dtor ext xt t args) = Dtor (f ext) xt (bimap f g t) (bimap f g <$> args)
+  bimap f g (Match ext t cases) = Match (f ext) (bimap f g t) (bimap f g <$> cases)
+  bimap f g (Comatch ext cocases) = Comatch (f ext) (bimap f g <$> cocases)
 
 ---------------------------------------------------------------------------------
 -- Variable Opening and Closing
@@ -141,6 +158,4 @@ openATermComplete (Ctor _ name args) = Ctor () name (openATermComplete <$> args)
 openATermComplete (Dtor _ name t args) = Dtor () name (openATermComplete t) (openATermComplete <$> args)
 openATermComplete (Match _ t cases) = Match () (openATermComplete t) (openACase <$> cases)
 openATermComplete (Comatch _ cocases) = Comatch () (openACase <$> cocases)
-
-
 
