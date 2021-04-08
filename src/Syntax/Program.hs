@@ -16,7 +16,7 @@ data Declaration a
   = PrdDecl Loc FreeVarName (STerm Prd a)
   | CnsDecl Loc FreeVarName (STerm Cns a)
   | CmdDecl Loc FreeVarName (Command a)
-  | DefDecl Loc FreeVarName (ATerm () a)
+  | DefDecl Loc FreeVarName (ATerm Loc a)
   | DataDecl Loc DataDecl
 
 instance Show (Declaration a) where

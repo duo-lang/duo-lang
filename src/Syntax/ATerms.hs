@@ -86,20 +86,20 @@ data ATerm ext bs where
 -- locally nameless representation cited above.
 ---------------------------------------------------------------------------------
 
-atermClosingRec :: Int -> [FreeVarName] -> ATerm () a -> ATerm () a
+atermClosingRec :: Int -> [FreeVarName] -> ATerm ext a -> ATerm ext a
 atermClosingRec _ _ bv@(BVar _ _) = bv
-atermClosingRec k args fv@(FVar _ v) | isJust (v `elemIndex` args) = BVar () (k, fromJust (v `elemIndex` args))
-                                     | otherwise                   = fv
-atermClosingRec k args (Ctor _ xt args') =
-  Ctor () xt (atermClosingRec k args <$> args')
-atermClosingRec k args (Dtor _ xt t args') =
-  Dtor () xt (atermClosingRec k args t) (atermClosingRec k args <$> args')
-atermClosingRec k args (Match _ t cases) =
-  Match () (atermClosingRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cases)
-atermClosingRec k args (Comatch _ cocases) =
-  Comatch () ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cocases)
+atermClosingRec k args fv@(FVar ext v) | isJust (v `elemIndex` args) = BVar ext (k, fromJust (v `elemIndex` args))
+                                       | otherwise                   = fv
+atermClosingRec k args (Ctor ext xt args') =
+  Ctor ext xt (atermClosingRec k args <$> args')
+atermClosingRec k args (Dtor ext xt t args') =
+  Dtor ext xt (atermClosingRec k args t) (atermClosingRec k args <$> args')
+atermClosingRec k args (Match ext t cases) =
+  Match ext (atermClosingRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cases)
+atermClosingRec k args (Comatch ext cocases) =
+  Comatch ext ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cocases)
 
-atermClosing :: [FreeVarName] -> ATerm () a -> ATerm () a
+atermClosing :: [FreeVarName] -> ATerm ext a -> ATerm ext a
 atermClosing = atermClosingRec 0
 
 atermOpening :: [ATerm () a] -> ATerm () a -> ATerm () a
@@ -126,15 +126,15 @@ atermOpeningRec k args (Comatch _ cocases) =
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openACase :: ACase () FreeVarName -> ACase () FreeVarName
-openACase MkACase { acase_ext, acase_name, acase_args, acase_term } =
-    MkACase { acase_ext = acase_ext
+openACase :: ACase ext FreeVarName -> ACase () FreeVarName
+openACase MkACase { acase_name, acase_args, acase_term } =
+    MkACase { acase_ext = ()
             , acase_name = acase_name
             , acase_args = acase_args
             , acase_term = atermOpening ((\fv -> FVar () fv) <$> acase_args) (openATermComplete acase_term)
             }
 
-openATermComplete :: ATerm () FreeVarName -> ATerm () FreeVarName
+openATermComplete :: ATerm ext FreeVarName -> ATerm () FreeVarName
 openATermComplete (BVar _ idx) = BVar () idx
 openATermComplete (FVar _ v) = FVar () v
 openATermComplete (Ctor _ name args) = Ctor () name (openATermComplete <$> args)

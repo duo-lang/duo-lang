@@ -6,69 +6,83 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.ATerms
+import Utils (Loc(..))
 
-fvarP :: Parser (ATerm () FreeVarName)
+fvarP :: Parser (ATerm Loc FreeVarName)
 fvarP = do
-  (fv, _pos) <- freeVarName
-  return (FVar () fv)
+  startPos <- getSourcePos
+  (fv, endPos) <- freeVarName
+  return (FVar (Loc startPos endPos) fv)
 
-ctorP :: NominalStructural -> Parser (ATerm () FreeVarName)
+ctorP :: NominalStructural -> Parser (ATerm Loc FreeVarName)
 ctorP ns = do
-  (xt, _pos) <- xtorName ns
+  startPos <- getSourcePos
+  (xt, endPos) <- xtorName ns -- TODO get later endPos
   args <- option [] (parens $ atermP `sepBy` comma)
-  return (Ctor () xt args)
+  return (Ctor (Loc startPos endPos) xt args)
 
 
-dtorP :: NominalStructural -> Parser (ATerm () FreeVarName)
+dtorP :: NominalStructural -> Parser (ATerm Loc FreeVarName)
 dtorP ns = do
+  startPos <- getSourcePos
   -- Must use atermP' here in order to avoid left-recursion in grammar!
   destructee <- atermP'
   _ <- dot
-  (xt, _pos) <- xtorName ns
+  (xt, endPos) <- xtorName ns -- TODO get later endPos
   args <- option [] (parens $ atermP `sepBy` comma)
-  return (Dtor () xt destructee args)
+  return (Dtor (Loc startPos endPos) xt destructee args)
 
 
 
-acaseP :: NominalStructural -> Parser (ACase () FreeVarName)
+acaseP :: NominalStructural -> Parser (ACase Loc FreeVarName)
 acaseP ns = do
+  startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   args <- option [] (parens $ (fst <$> freeVarName) `sepBy` comma)
   _ <- rightarrow
   res <- atermP
-  return (MkACase () xt args (atermClosing args res))
+  return (MkACase (Loc startPos undefined) xt args (atermClosing args res))
 
-acasesP :: Parser [ACase () FreeVarName]
+acasesP :: Parser ([ACase Loc FreeVarName], SourcePos)
 acasesP = try structuralCases <|> nominalCases
   where
-    structuralCases = braces $ acaseP Structural `sepBy` comma
-    nominalCases = braces $ acaseP Nominal `sepBy` comma
+    structuralCases = do
+      cases <- braces $ acaseP Structural `sepBy` comma
+      return (cases, undefined)
+    nominalCases = do
+      cases <- braces $ acaseP Nominal `sepBy` comma
+      return (cases, undefined)
 
-matchP :: Parser (ATerm () FreeVarName)
+matchP :: Parser (ATerm Loc FreeVarName)
 matchP = do
+  startPos <- getSourcePos
   _ <- matchKwP
   arg <- atermP
   _ <- withKwP
-  cases <- acasesP
-  return (Match () arg cases)
+  (cases, endPos) <- acasesP
+  return (Match (Loc startPos endPos) arg cases)
 
-comatchP :: Parser (ATerm () FreeVarName)
+comatchP :: Parser (ATerm Loc FreeVarName)
 comatchP = do
+  startPos <- getSourcePos
   _ <- comatchKwP
-  cocases <- acasesP
-  return (Comatch () cocases)
+  (cocases, endPos) <- acasesP
+  return (Comatch (Loc startPos endPos) cocases)
 
-numLitP :: Parser (ATerm () bs)
-numLitP = numToTerm . fst <$> numP
+numLitP :: Parser (ATerm Loc bs)
+numLitP = do
+  startPos <- getSourcePos
+  (num, endPos) <- numP
+  return (numToTerm  (Loc startPos endPos) num)
   where
-    numToTerm :: Int -> ATerm () bs
-    numToTerm 0 = Ctor () (MkXtorName Nominal "Z") []
-    numToTerm n = Ctor () (MkXtorName Nominal "S") [numToTerm (n-1)]
+    numToTerm :: Loc -> Int -> ATerm Loc bs
+    numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
+    numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
 
 
 -- | Like atermP but without dtorP, since dtorP
 -- uses left-recursion in the grammar.
-atermP' :: Parser (ATerm () FreeVarName)
+atermP' :: Parser (ATerm Loc FreeVarName)
 atermP' =
   parens atermP <|>
   numLitP <|>
@@ -78,7 +92,7 @@ atermP' =
   ctorP Nominal <|>
   fvarP
 
-atermP :: Parser (ATerm () FreeVarName)
+atermP :: Parser (ATerm Loc FreeVarName)
 atermP =
   parens atermP <|>
   try (dtorP Structural) <|>

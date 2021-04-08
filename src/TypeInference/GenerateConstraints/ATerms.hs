@@ -17,7 +17,7 @@ import TypeInference.GenerateConstraints.Definition
 ---------------------------------------------------------------------------------------------
 
 -- | Every asymmetric terms gets assigned a positive type.
-genConstraintsATerm :: ATerm () bs -> GenM bs (ATerm () bs, Typ Pos)
+genConstraintsATerm :: ATerm ext bs -> GenM bs (ATerm () bs, Typ Pos)
 genConstraintsATerm (BVar _ idx) = do
   ty <- lookupType PrdRep idx
   return (BVar () idx, ty)
@@ -50,14 +50,14 @@ genConstraintsATerm (Comatch _ cocases) = do
   let ty = TyCodata PosRep (snd <$> cocases')
   return (Comatch () (fst <$> cocases'), ty)
 
-genConstraintsATermCase :: Typ Neg -> ACase () bs -> GenM bs (ACase () bs, XtorSig Neg)
+genConstraintsATermCase :: Typ Neg -> ACase ext bs -> GenM bs (ACase () bs, XtorSig Neg)
 genConstraintsATermCase retType (MkACase { acase_name, acase_args, acase_term }) = do
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
   (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   addConstraint (SubType () retTypeInf retType)
   return (MkACase () acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
-genConstraintsATermCocase :: ACase () bs -> GenM bs (ACase () bs, XtorSig Neg)
+genConstraintsATermCocase :: ACase ext bs -> GenM bs (ACase () bs, XtorSig Neg)
 genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
   (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
@@ -68,7 +68,7 @@ genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
 -- Asymmetric Terms with recursive binding
 ---------------------------------------------------------------------------------------------
 
-genConstraintsATermRecursive :: FreeVarName -> ATerm () bs -> GenM bs (ATerm () bs, Typ Pos)
+genConstraintsATermRecursive :: FreeVarName -> ATerm ext bs -> GenM bs (ATerm () bs, Typ Pos)
 genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar
   let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar () fv, TypeScheme [] x) defEnv }
