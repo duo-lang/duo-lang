@@ -52,7 +52,7 @@ defDeclarationP = do
   try (void defKwP)
   (v, _pos) <- freeVarName
   _ <- coloneq
-  t <- atermP
+  (t, _pos) <- atermP
   endPos <- semi
   return (DefDecl (Loc startPos endPos) v t)
 

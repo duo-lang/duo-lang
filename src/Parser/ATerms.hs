@@ -8,31 +8,51 @@ import Syntax.CommonTerm
 import Syntax.ATerms
 import Utils (Loc(..))
 
-fvarP :: Parser (ATerm Loc FreeVarName)
+-------------------------------------------------------------------------------------------
+-- Free Variables
+-------------------------------------------------------------------------------------------
+
+fvarP :: Parser (ATerm Loc FreeVarName, SourcePos)
 fvarP = do
   startPos <- getSourcePos
   (fv, endPos) <- freeVarName
-  return (FVar (Loc startPos endPos) fv)
+  return (FVar (Loc startPos endPos) fv, endPos)
 
-ctorP :: NominalStructural -> Parser (ATerm Loc FreeVarName)
+-------------------------------------------------------------------------------------------
+-- Constructors, Destructors and Literals
+-------------------------------------------------------------------------------------------
+
+ctorP :: NominalStructural -> Parser (ATerm Loc FreeVarName, SourcePos)
 ctorP ns = do
   startPos <- getSourcePos
   (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ atermP `sepBy` comma)
-  return (Ctor (Loc startPos endPos) xt args)
+  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermP) `sepBy` comma)
+  return (Ctor (Loc startPos endPos) xt args, endPos)
 
 
-dtorP :: NominalStructural -> Parser (ATerm Loc FreeVarName)
+dtorP :: NominalStructural -> Parser (ATerm Loc FreeVarName, SourcePos)
 dtorP ns = do
   startPos <- getSourcePos
   -- Must use atermP' here in order to avoid left-recursion in grammar!
-  destructee <- atermP'
+  (destructee, _pos) <- atermP'
   _ <- dot
   (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ atermP `sepBy` comma)
-  return (Dtor (Loc startPos endPos) xt destructee args)
+  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermP) `sepBy` comma)
+  return (Dtor (Loc startPos endPos) xt destructee args, endPos)
 
+numLitP :: Parser (ATerm Loc bs, SourcePos)
+numLitP = do
+  startPos <- getSourcePos
+  (num, endPos) <- numP
+  return (numToTerm  (Loc startPos endPos) num, endPos)
+  where
+    numToTerm :: Loc -> Int -> ATerm Loc bs
+    numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
+    numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
 
+-------------------------------------------------------------------------------------------
+-- Pattern and Copattern Matches
+-------------------------------------------------------------------------------------------
 
 acaseP :: NominalStructural -> Parser (ACase Loc FreeVarName)
 acaseP ns = do
@@ -40,8 +60,8 @@ acaseP ns = do
   (xt, _) <- xtorName ns
   args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
   _ <- rightarrow
-  res <- atermP
-  return (MkACase (Loc startPos undefined) xt args (atermClosing args res))
+  (res, endPos) <- atermP
+  return (MkACase (Loc startPos endPos) xt args (atermClosing args res))
 
 acasesP :: Parser ([ACase Loc FreeVarName], SourcePos)
 acasesP = try structuralCases <|> nominalCases
@@ -49,38 +69,31 @@ acasesP = try structuralCases <|> nominalCases
     structuralCases = braces $ acaseP Structural `sepBy` comma
     nominalCases = braces $ acaseP Nominal `sepBy` comma
 
-matchP :: Parser (ATerm Loc FreeVarName)
+matchP :: Parser (ATerm Loc FreeVarName, SourcePos)
 matchP = do
   startPos <- getSourcePos
   _ <- matchKwP
-  arg <- atermP
+  (arg, _pos) <- atermP
   _ <- withKwP
   (cases, endPos) <- acasesP
-  return (Match (Loc startPos endPos) arg cases)
+  return (Match (Loc startPos endPos) arg cases, endPos)
 
-comatchP :: Parser (ATerm Loc FreeVarName)
+comatchP :: Parser (ATerm Loc FreeVarName, SourcePos)
 comatchP = do
   startPos <- getSourcePos
   _ <- comatchKwP
   (cocases, endPos) <- acasesP
-  return (Comatch (Loc startPos endPos) cocases)
+  return (Comatch (Loc startPos endPos) cocases, endPos)
 
-numLitP :: Parser (ATerm Loc bs)
-numLitP = do
-  startPos <- getSourcePos
-  (num, endPos) <- numP
-  return (numToTerm  (Loc startPos endPos) num)
-  where
-    numToTerm :: Loc -> Int -> ATerm Loc bs
-    numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
-    numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
-
+-------------------------------------------------------------------------------------------
+-- ATerm Parsers
+-------------------------------------------------------------------------------------------
 
 -- | Like atermP but without dtorP, since dtorP
 -- uses left-recursion in the grammar.
-atermP' :: Parser (ATerm Loc FreeVarName)
+atermP' :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermP' =
-  (fst <$> (parens atermP)) <|>
+  parens (fst <$> atermP) <|>
   numLitP <|>
   matchP <|>
   comatchP <|>
@@ -88,9 +101,9 @@ atermP' =
   ctorP Nominal <|>
   fvarP
 
-atermP :: Parser (ATerm Loc FreeVarName)
+atermP :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermP =
-  (fst <$> (parens atermP)) <|>
+  parens (fst <$> atermP) <|>
   try (dtorP Structural) <|>
   try (dtorP Nominal) <|>
   numLitP <|>
