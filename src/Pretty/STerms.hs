@@ -21,24 +21,24 @@ instance PrettyAnn a => PrettyAnn (XtorArgs () a) where
   prettyAnn (MkXtorArgs prds cns) = prettyTwice' prds cns
 
 isNumSTerm :: STerm pc () a -> Maybe Int
-isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "Z") (MkXtorArgs [] [])) = Just 0
-isNumSTerm (XtorCall PrdRep (MkXtorName Nominal "S") (MkXtorArgs [n] [])) = case isNumSTerm n of
+isNumSTerm (XtorCall () PrdRep (MkXtorName Nominal "Z") (MkXtorArgs [] [])) = Just 0
+isNumSTerm (XtorCall () PrdRep (MkXtorName Nominal "S") (MkXtorArgs [n] [])) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
 
 instance PrettyAnn a => PrettyAnn (STerm pc () a) where
   prettyAnn (isNumSTerm -> Just n) = pretty n
-  prettyAnn (BoundVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
-  prettyAnn (FreeVar _ v) = pretty v
-  prettyAnn (XtorCall _ xt args) = prettyAnn xt <> prettyAnn args
-  prettyAnn (XMatch PrdRep _ cases) =
+  prettyAnn (BoundVar _ _ (i,j)) = parens (pretty i <> "," <> pretty j)
+  prettyAnn (FreeVar _ _ v) = pretty v
+  prettyAnn (XtorCall _ _ xt args) = prettyAnn xt <> prettyAnn args
+  prettyAnn (XMatch _ PrdRep _ cases) =
     annKeyword "comatch" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (XMatch CnsRep _ cases) =
+  prettyAnn (XMatch _ CnsRep _ cases) =
     annKeyword "match"   <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (MuAbs pc a cmd) =
+  prettyAnn (MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu*"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
 

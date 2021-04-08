@@ -127,8 +127,8 @@ lookupCase xt = do
   case M.lookup xt (P.envToXtorMap env) of
     Nothing -> throwGenError $ "GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up."
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
-      let prds = (\_ -> FreeVar PrdRep "y") <$> prdTypes
-      let cnss = (\_ -> FreeVar CnsRep "y") <$> cnsTypes
+      let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
+      let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
       return (types, MkXtorArgs prds cnss)
 
 lookupXtor :: XtorName -> GenM bs DataDecl

@@ -17,15 +17,15 @@ import Syntax.STerms
 freeVar :: PrdCnsRep pc -> Parser (STerm pc () bs)
 freeVar pc = do
   (v, _pos) <- freeVarName
-  return (FreeVar pc v)
+  return (FreeVar () pc v)
 
 numLitP :: PrdCnsRep pc -> Parser (STerm pc () bs)
 numLitP CnsRep = empty
 numLitP PrdRep = numToTerm . fst <$> numP
   where
     numToTerm :: Int -> STerm Prd () bs
-    numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
-    numToTerm n = XtorCall PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
+    numToTerm 0 = XtorCall () PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
+    numToTerm n = XtorCall () PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm (n-1)] [])
 
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName)
 lambdaSugar CnsRep = empty
@@ -34,7 +34,7 @@ lambdaSugar PrdRep= do
   (args, _) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   cmd <- commandP
-  return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
+  return $ XMatch () PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs () FreeVarName)
@@ -47,17 +47,17 @@ xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc () FreeVarName
 xtorCall ns pc = do
   (xt, _pos) <- xtorName ns
   args <- xtorArgsP
-  return $ XtorCall pc xt args
+  return $ XtorCall () pc xt args
 
 patternMatch :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName)
 patternMatch PrdRep = do
   _ <- comatchKwP
   (cases,ns) <- casesP
-  return $ XMatch PrdRep ns cases
+  return $ XMatch () PrdRep ns cases
 patternMatch CnsRep = do
   _ <- matchKwP
   (cases,ns) <- casesP
-  return $ XMatch CnsRep ns cases
+  return $ XMatch () CnsRep ns cases
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
 -- infer a structural type, not a nominal one.
@@ -89,13 +89,13 @@ muAbstraction PrdRep = do
   (v, _pos) <- freeVarName
   _ <- dot
   cmd <- commandP
-  return $ MuAbs PrdRep v (commandClosingSingle CnsRep v cmd)
+  return $ MuAbs () PrdRep v (commandClosingSingle CnsRep v cmd)
 muAbstraction CnsRep = do
   _ <- muStarKwP
   (v, _pos) <- freeVarName
   _ <- dot
   cmd <- commandP
-  return $ MuAbs CnsRep v (commandClosingSingle PrdRep v cmd)
+  return $ MuAbs () CnsRep v (commandClosingSingle PrdRep v cmd)
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc () FreeVarName)
 stermP pc = fst <$> (parens (stermP pc))
