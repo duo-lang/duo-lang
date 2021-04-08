@@ -121,7 +121,7 @@ lookupType rep (i,j) = do
 addConstraint :: Constraint () -> GenM bs ()
 addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
-lookupCase :: XtorName -> GenM bs (TypArgs Pos, XtorArgs bs)
+lookupCase :: XtorName -> GenM bs (TypArgs Pos, XtorArgs () bs)
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (P.envToXtorMap env) of

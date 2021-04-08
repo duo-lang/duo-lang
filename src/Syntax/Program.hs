@@ -13,9 +13,9 @@ import Utils
 ---------------------------------------------------------------------------------
 
 data Declaration a
-  = PrdDecl Loc FreeVarName (STerm Prd a)
-  | CnsDecl Loc FreeVarName (STerm Cns a)
-  | CmdDecl Loc FreeVarName (Command a)
+  = PrdDecl Loc FreeVarName (STerm Prd () a)
+  | CnsDecl Loc FreeVarName (STerm Cns () a)
+  | CmdDecl Loc FreeVarName (Command () a)
   | DefDecl Loc FreeVarName (ATerm Loc a)
   | DataDecl Loc DataDecl
 
@@ -27,9 +27,9 @@ instance Show (Declaration a) where
 ---------------------------------------------------------------------------------
 
 data Environment bs = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd bs, TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (STerm Cns bs, TypeScheme Neg)
-  , cmdEnv :: Map FreeVarName (Command bs)
+  { prdEnv :: Map FreeVarName (STerm Prd () bs, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns () bs, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command () bs)
   , defEnv :: Map FreeVarName (ATerm () bs, TypeScheme Pos)
   , declEnv :: [DataDecl]
   }

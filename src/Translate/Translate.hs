@@ -8,7 +8,7 @@ import Syntax.ATerms
 import Utils
 
 
-compile :: ATerm ext a -> STerm Prd ()
+compile :: ATerm ext a -> STerm Prd () ()
 compile (BVar _ i) = BoundVar PrdRep i 
 compile (FVar _ n) = FreeVar PrdRep n
 compile (Ctor _ xt args')   = XtorCall PrdRep xt $ compileArgs args' []
@@ -28,10 +28,10 @@ compile (Match _ t cases)   = MuAbs PrdRep () $
 compile (Comatch _ cocases) = XMatch PrdRep Nominal $ (aToSCase CnsRep) <$> cocases
 
 
-compileArgs :: [ATerm ext a] -> [STerm Cns ()] -> XtorArgs ()
+compileArgs :: [ATerm ext a] -> [STerm Cns () ()] -> XtorArgs () ()
 compileArgs args' cnsLst = MkXtorArgs (compile <$> args') cnsLst
 
-aToSCase :: PrdCnsRep pc -> ACase ext a -> SCase ()
+aToSCase :: PrdCnsRep pc -> ACase ext a -> SCase () ()
 -- we want to compile: C (args) => t
 -- C (args) => (compile t) >> k 
 aToSCase PrdRep (MkACase _ xt args t) = MkSCase xt (Twice (const () <$> args) [])   $ Apply (compile t) (BoundVar CnsRep (1,0))
@@ -41,11 +41,11 @@ aToSCase _      (MkACase _ xt args t) = MkSCase xt (Twice (const () <$> args) [(
 
 
 -- Shift indexes
-shiftAllOnce :: STerm Prd () -> STerm Prd ()
+shiftAllOnce :: STerm Prd () () -> STerm Prd () ()
 shiftAllOnce = shift 0
 
 
-shift :: Int -> STerm Prd () -> STerm Prd ()
+shift :: Int -> STerm Prd () () -> STerm Prd () ()
 shift k bv@(BoundVar pc (i,j)) | k <= i    = BoundVar pc (i+1,j)
                                 | otherwise = bv
 shift _ fv@(FreeVar _ _)   = fv
@@ -62,7 +62,7 @@ shift k (XMatch PrdRep Nominal cocases) = XMatch PrdRep Nominal $ shiftCase CnsR
 shift _ _ = error "Input can't be an STerm produced through translation of ATerms."
 
 
-shiftCase :: PrdCnsRep pc -> Int -> SCase () -> SCase ()
+shiftCase :: PrdCnsRep pc -> Int -> SCase () () -> SCase () ()
 -- shift SCase produced through Match
 shiftCase PrdRep k (MkSCase xt (Twice args []) (Apply t (BoundVar CnsRep (j,0)))) =
   MkSCase xt (Twice args []) (Apply (shift (k+1) t) (BoundVar CnsRep (j,0)))
