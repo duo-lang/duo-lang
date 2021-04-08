@@ -121,14 +121,14 @@ lookupType rep (i,j) = do
 addConstraint :: Constraint () -> GenM bs ()
 addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
 
-lookupCase :: XtorName -> GenM bs (TypArgs Pos, XtorArgs bs)
+lookupCase :: XtorName -> GenM bs (TypArgs Pos, XtorArgs () bs)
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (P.envToXtorMap env) of
     Nothing -> throwGenError $ "GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up."
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
-      let prds = (\_ -> FreeVar PrdRep "y") <$> prdTypes
-      let cnss = (\_ -> FreeVar CnsRep "y") <$> cnsTypes
+      let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
+      let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
       return (types, MkXtorArgs prds cnss)
 
 lookupXtor :: XtorName -> GenM bs DataDecl

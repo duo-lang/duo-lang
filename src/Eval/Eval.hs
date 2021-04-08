@@ -52,14 +52,14 @@ lookupDef fv = do
     Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
     Just res -> return res
 
-lookupPrd :: FreeVarName -> EvalM bs (STerm Prd bs, TypeScheme Pos)
+lookupPrd :: FreeVarName -> EvalM bs (STerm Prd () bs, TypeScheme Pos)
 lookupPrd fv = do
   env <- asks snd
   case M.lookup fv (prdEnv env) of
     Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
     Just res -> return res
 
-lookupCns :: FreeVarName -> EvalM bs (STerm Cns bs, TypeScheme Neg)
+lookupCns :: FreeVarName -> EvalM bs (STerm Cns () bs, TypeScheme Neg)
 lookupCns fv = do
   env <- asks snd
   case M.lookup fv (cnsEnv env) of

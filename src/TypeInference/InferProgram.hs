@@ -23,7 +23,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferSTerm :: FreeVarName -> PrdCnsRep pc -> STerm pc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm :: FreeVarName -> PrdCnsRep pc -> STerm pc () bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTerm fv rep tm env = do
   ((_,ty), constraintSet) <- runGenM env (genConstraintsSTermRecursive fv rep tm)
   solverState <- solveConstraints constraintSet
@@ -34,7 +34,7 @@ inferSTerm fv rep tm env = do
   let resType = autToType minTypeAut
   return resType
 
-checkCmd :: Command bs -> Environment bs -> Either Error ()
+checkCmd :: Command () bs -> Environment bs -> Either Error ()
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   _ <- solveConstraints constraints

@@ -17,11 +17,11 @@ import TypeInference.InferTypes
 instance Show (TypeScheme pol) where
   show = ppPrint
 
-checkTerm :: PrdCnsRep pc -> Environment FreeVarName -> (FreeVarName, STerm pc FreeVarName) -> SpecWith ()
+checkTerm :: PrdCnsRep pc -> Environment FreeVarName -> (FreeVarName, STerm pc () FreeVarName) -> SpecWith ()
 checkTerm rep env (name,term) = it (name ++ " can be typechecked correctly") $
   inferSTerm rep term env `shouldSatisfy` isRight
 
-checkCommand :: Environment FreeVarName -> (FreeVarName, Command FreeVarName) -> SpecWith ()
+checkCommand :: Environment FreeVarName -> (FreeVarName, Command () FreeVarName) -> SpecWith ()
 checkCommand env (name,cmd) = it (name ++ " can be typechecked") $
   checkCmd cmd env `shouldSatisfy` isRight
 
