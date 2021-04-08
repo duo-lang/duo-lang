@@ -3,6 +3,7 @@ module Parser.Program
   , programP
   ) where
 
+import Control.Monad (void)
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
@@ -18,45 +19,41 @@ import Utils (Loc(..))
 prdDeclarationP :: Parser (Declaration FreeVarName)
 prdDeclarationP = do
   startPos <- getSourcePos
-  try prdKwP
-  v <- freeVarName
-  coloneq
+  try (void prdKwP)
+  (v, _pos) <- freeVarName
+  _ <- coloneq
   t <- stermP PrdRep
-  endPos <- getSourcePos
-  semi
+  endPos <- semi
   return (PrdDecl (Loc startPos endPos) v t)
 
 cnsDeclarationP :: Parser (Declaration FreeVarName)
 cnsDeclarationP = do
   startPos <- getSourcePos
-  try cnsKwP
-  v <- freeVarName
-  coloneq
+  try (void cnsKwP)
+  (v, _pos) <- freeVarName
+  _ <- coloneq
   t <- stermP CnsRep
-  endPos <- getSourcePos
-  semi
+  endPos <- semi
   return (CnsDecl (Loc startPos endPos) v t)
 
 cmdDeclarationP :: Parser (Declaration FreeVarName)
 cmdDeclarationP = do
   startPos <- getSourcePos
-  try cmdKwP
-  v <- freeVarName
-  coloneq
+  try (void cmdKwP)
+  (v, _pos) <- freeVarName
+  _ <- coloneq
   t <- commandP
-  endPos <- getSourcePos
-  semi
+  endPos <- semi
   return (CmdDecl (Loc startPos endPos) v t)
 
 defDeclarationP :: Parser (Declaration FreeVarName)
 defDeclarationP = do
   startPos <- getSourcePos
-  try defKwP
-  v <- freeVarName
-  coloneq
+  try (void defKwP)
+  (v, _pos) <- freeVarName
+  _ <- coloneq
   t <- atermP
-  endPos <- getSourcePos
-  semi
+  endPos <- semi
   return (DefDecl (Loc startPos endPos) v t)
 
 ---------------------------------------------------------------------------------
@@ -67,10 +64,9 @@ dataDeclP :: Parser (Declaration FreeVarName)
 dataDeclP = do
   startPos <- getSourcePos
   dataCodata <- dataCodataDeclP
-  tn <- typeNameP
+  (tn, _pos) <- typeNameP
   xtors <- braces $ xtorDeclP `sepBy` comma
-  endPos <- getSourcePos
-  semi
+  endPos <- semi
   let decl = NominalDecl
         { data_name = tn
         , data_polarity = dataCodata
@@ -83,7 +79,7 @@ dataDeclP = do
 
     xtorDeclP :: Parser (XtorSig 'Pos)
     xtorDeclP = do
-      xt <- xtorName Nominal
+      (xt, _pos) <- xtorName Nominal
       args <- typArgListP PosRep
       return (MkXtorSig xt args)
 

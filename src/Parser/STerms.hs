@@ -16,12 +16,12 @@ import Syntax.STerms
 
 freeVar :: PrdCnsRep pc -> Parser (STerm pc bs)
 freeVar pc = do
-  v <- freeVarName
+  (v, _pos) <- freeVarName
   return (FreeVar pc v)
 
 numLitP :: PrdCnsRep pc -> Parser (STerm pc bs)
 numLitP CnsRep = empty
-numLitP PrdRep = numToTerm <$> numP
+numLitP PrdRep = numToTerm . fst <$> numP
   where
     numToTerm :: Int -> STerm Prd bs
     numToTerm 0 = XtorCall PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
@@ -30,9 +30,9 @@ numLitP PrdRep = numToTerm <$> numP
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 lambdaSugar CnsRep = empty
 lambdaSugar PrdRep= do
-  backslash
-  args <- argListP freeVarName freeVarName
-  rightarrow
+  _ <- backslash
+  args <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  _ <- rightarrow
   cmd <- commandP
   return $ XMatch PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)]
 
@@ -45,17 +45,17 @@ xtorArgsP = do
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 xtorCall ns pc = do
-  xt <- xtorName ns
+  (xt, _pos) <- xtorName ns
   args <- xtorArgsP
   return $ XtorCall pc xt args
 
 patternMatch :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 patternMatch PrdRep = do
-  comatchKwP
+  _ <- comatchKwP
   (cases,ns) <- casesP
   return $ XMatch PrdRep ns cases
 patternMatch CnsRep = do
-  matchKwP
+  _ <- matchKwP
   (cases,ns) <- casesP
   return $ XMatch CnsRep ns cases
 
@@ -74,9 +74,9 @@ casesP = try structuralCases <|> nominalCases
 
 singleCase :: NominalStructural -> Parser (SCase FreeVarName)
 singleCase ns = do
-  xt <- xtorName ns
-  args <- argListP freeVarName freeVarName
-  rightarrow
+  (xt, _pos) <- xtorName ns
+  args <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  _ <- rightarrow
   cmd <- commandP
   return MkSCase { scase_name = xt
                  , scase_args = args
@@ -85,15 +85,15 @@ singleCase ns = do
 
 muAbstraction :: PrdCnsRep pc -> Parser (STerm pc FreeVarName)
 muAbstraction PrdRep = do
-  muKwP
-  v <- freeVarName
-  dot
+  _ <- muKwP
+  (v, _pos) <- freeVarName
+  _ <- dot
   cmd <- commandP
   return $ MuAbs PrdRep v (commandClosingSingle CnsRep v cmd)
 muAbstraction CnsRep = do
-  muStarKwP
-  v <- freeVarName
-  dot
+  _ <- muStarKwP
+  (v, _pos) <- freeVarName
+  _ <- dot
   cmd <- commandP
   return $ MuAbs CnsRep v (commandClosingSingle PrdRep v cmd)
 
@@ -114,18 +114,18 @@ stermP pc = parens (stermP pc)
 applyCmdP :: Parser (Command FreeVarName)
 applyCmdP = do
   prd <- stermP PrdRep
-  commandSym
+  _ <- commandSym
   cns <- stermP CnsRep
   return (Apply prd cns)
 
 doneCmdP :: Parser (Command FreeVarName)
 doneCmdP = do
-  doneKwP
+  _ <- doneKwP
   return Done
 
 printCmdP :: Parser (Command FreeVarName)
 printCmdP = do
-  printKwP
+  _ <- printKwP
   arg <- parens (stermP PrdRep)
   return $ Print arg
 
