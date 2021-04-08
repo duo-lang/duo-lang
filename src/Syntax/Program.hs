@@ -13,9 +13,9 @@ import Utils
 ---------------------------------------------------------------------------------
 
 data Declaration a
-  = PrdDecl Loc FreeVarName (STerm Prd () a)
-  | CnsDecl Loc FreeVarName (STerm Cns () a)
-  | CmdDecl Loc FreeVarName (Command () a)
+  = PrdDecl Loc FreeVarName (STerm Prd Loc a)
+  | CnsDecl Loc FreeVarName (STerm Cns Loc a)
+  | CmdDecl Loc FreeVarName (Command Loc a)
   | DefDecl Loc FreeVarName (ATerm Loc a)
   | DataDecl Loc DataDecl
 
