@@ -23,7 +23,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferSTerm :: FreeVarName -> PrdCnsRep pc -> STerm pc () bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm :: FreeVarName -> PrdCnsRep pc -> STerm pc Loc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTerm fv rep tm env = do
   ((_,ty), constraintSet) <- runGenM env (genConstraintsSTermRecursive fv rep tm)
   solverState <- solveConstraints constraintSet
@@ -34,7 +34,7 @@ inferSTerm fv rep tm env = do
   let resType = autToType minTypeAut
   return resType
 
-checkCmd :: Command () bs -> Environment bs -> Either Error ()
+checkCmd :: Command Loc bs -> Environment bs -> Either Error ()
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   _ <- solveConstraints constraints
@@ -58,15 +58,15 @@ inferATerm v tm env = do
 insertDecl :: Declaration bs -> Environment bs -> Either LocatedError (Environment bs)
 insertDecl (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
   let t = first (const ()) loct
-  ty <- first (Located loc) $ inferSTerm v PrdRep t env
+  ty <- first (Located loc) $ inferSTerm v PrdRep loct env
   return $ env { prdEnv  = M.insert v (t,ty) prdEnv }
 insertDecl (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
   let t = first (const ()) loct
-  ty <- first (Located loc) $ inferSTerm v CnsRep t env
+  ty <- first (Located loc) $ inferSTerm v CnsRep loct env
   return $ env { cnsEnv  = M.insert v (t,ty) cnsEnv }
 insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   let t = first (const ()) loct
-  first (Located loc) $ checkCmd t env
+  first (Located loc) $ checkCmd loct env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
 insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
   (tm,ty) <- first (Located loc) $ inferATerm v t env

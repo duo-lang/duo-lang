@@ -219,8 +219,7 @@ type_cmd s = do
   env <- gets replEnv
   case runInteractiveParser (stermP PrdRep) s of
     Right (tloc,_) -> do
-      let t = first (const ()) tloc
-      res <- fromRight $ inferSTerm PrdRep t env
+      res <- fromRight $ inferSTerm PrdRep tloc env
       prettyRepl (" S :: " ++ ppPrint res)
     Left err1 -> do
       case runInteractiveParser atermP s of
@@ -318,8 +317,7 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,_) -> do
-        let t = first (const ()) tloc
-        trace <- fromRight $ inferSTermTraced PrdRep t env
+        trace <- fromRight $ inferSTermTraced PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
