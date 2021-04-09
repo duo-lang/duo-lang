@@ -44,7 +44,7 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATerm :: FreeVarName -> ATerm ext bs -> Environment bs -> Either Error (ATerm () bs, TypeScheme Pos)
+inferATerm :: FreeVarName -> ATerm Loc bs -> Environment bs -> Either Error (ATerm () bs, TypeScheme Pos)
 inferATerm v tm env = do
   ((tm, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
   solverState <- solveConstraints constraintSet

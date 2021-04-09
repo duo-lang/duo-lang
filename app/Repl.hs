@@ -225,7 +225,7 @@ type_cmd s = do
     Left err1 -> do
       case runInteractiveParser atermP s of
         Right (t,_pos) -> do
-          res <- fromRight $ inferATerm (first (const ()) t) env
+          res <- fromRight $ inferATerm t env
           prettyRepl (" A :: " ++ ppPrint res)
         Left err2 -> do
           prettyRepl "Cannot parse as sterm:"

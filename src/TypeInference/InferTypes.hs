@@ -73,7 +73,7 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATermTraced :: ATerm () bs -> Environment bs -> Either Error (TypeInferenceTrace Pos)
+inferATermTraced :: ATerm Loc bs -> Environment bs -> Either Error (TypeInferenceTrace Pos)
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
   solverState <- solveConstraints constraintSet
@@ -91,7 +91,7 @@ inferATermTraced tm env = do
     , trace_resType = resType
     }
 
-inferATerm :: ATerm () bs -> Environment bs -> Either Error (TypeScheme Pos)
+inferATerm :: ATerm Loc bs -> Environment bs -> Either Error (TypeScheme Pos)
 inferATerm tm env = do
   trace <- inferATermTraced tm env
   return $ trace_resType trace
