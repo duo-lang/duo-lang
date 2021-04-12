@@ -21,28 +21,32 @@ instance PrettyAnn (ConstraintSet a) where
     , "                    ConstraintSet"
     , "---------------------------------------------------------"
     , "Generated unification variables:"
-    , nest 3 (line' <> hsep (prettyAnn <$> cs_uvars))
+    , nest 3 (line' <> vsep (prettyAnn <$> cs_uvars))
+    , ""
     , "Generated constraints:"
-    , nest 3 (line' <> hsep (prettyAnn <$> cs_constraints))
+    , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
+    , ""
     , "---------------------------------------------------------"
     ]
 
 instance PrettyAnn VariableState where
   prettyAnn VariableState { vst_lowerbounds, vst_upperbounds } = vsep
     [ "Lower bounds:"
-    , nest 3 (line' <> hsep (prettyAnn <$> vst_lowerbounds))
+    , nest 3 (line' <> vsep (prettyAnn <$> vst_lowerbounds))
     , "Upper bounds:"
-    , nest 3 (line' <> hsep (prettyAnn <$> vst_upperbounds))
+    , nest 3 (line' <> vsep (prettyAnn <$> vst_upperbounds))
     ]
 
 instance PrettyAnn SolverResult where
-  prettyAnn solverResult = hsep
+  prettyAnn solverResult = vsep
     [ "---------------------------------------------------------"
     , "                   Solved Constraints"
     , "---------------------------------------------------------"
     , vsep (solvedConstraintsToDoc <$> M.toList solverResult)
+    , "---------------------------------------------------------"
     ]
     where
       solvedConstraintsToDoc :: (TVar,VariableState) -> Doc Annotation
-      solvedConstraintsToDoc (v, vs) = hsep [prettyAnn v, prettyAnn vs]
+      solvedConstraintsToDoc (v, vs) = vsep ["Type variable:" <+> prettyAnn v
+                                            , nest 3 (line' <> prettyAnn vs)]
 
