@@ -10,7 +10,7 @@ import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
-import TypeInference.InferTypes
+import TypeInference.InferProgram
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 import Control.Monad (forM_)
@@ -22,7 +22,7 @@ typecheckExample :: Environment FreeVarName -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = inferSTermAut PrdRep term env
+      let Right inferredTypeAut = trace_minTypeAut <$> (inferSTermTraced PrdRep term env)
       let Right specTypeScheme = runInteractiveParser typeSchemeP typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True

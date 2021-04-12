@@ -266,8 +266,8 @@ show_type_option = Option
 
 -- Define
 
-def_cmd :: String -> Repl ()
-def_cmd s = case runInteractiveParser declarationP s of
+let_cmd :: String -> Repl ()
+let_cmd s = case runInteractiveParser declarationP s of
               Right decl -> do
                 oldEnv <- gets replEnv
                 case insertDecl decl oldEnv of
@@ -275,12 +275,12 @@ def_cmd s = case runInteractiveParser declarationP s of
                   Right newEnv -> modifyEnvironment (const newEnv)
               Left err -> prettyRepl err
 
-def_option :: Option
-def_option = Option
-  { option_name = "def"
-  , option_cmd = def_cmd
+let_option :: Option
+let_option = Option
+  { option_name = "let"
+  , option_cmd = let_cmd
   , option_help = [ "Add a declaration to the current environment. E.g."
-                  , "\":def prd myTrue := {- Ap(x)[y] => x >> y -};\""]
+                  , "\":let prd myTrue := {- Ap(x)[y] => x >> y -};\""]
   , option_completer = Nothing
   }
 
@@ -448,7 +448,7 @@ compile_option = Option
 -- All Options
 
 all_options :: [Option]
-all_options = [ show_option, help_option, def_option, save_option, set_option, unset_option
+all_options = [ show_option, help_option, let_option, save_option, set_option, unset_option
               , sub_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
