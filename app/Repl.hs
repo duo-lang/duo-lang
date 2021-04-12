@@ -41,12 +41,15 @@ data EvalSteps = Steps | NoSteps
 
 data Mode = Symmetric | Asymmetric
 
+data Verbosity = Verbose | Silent
+
 data ReplState = ReplState
   { replEnv :: Environment FreeVarName
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
   , mode :: Mode
+  , typeInfVerbosity :: Verbosity
   }
 
 
@@ -56,6 +59,7 @@ initialReplState = ReplState { replEnv = mempty
                              , steps = NoSteps
                              , evalOrder = CBV
                              , mode = Symmetric
+                             , typeInfVerbosity = Silent
                              }
 
 ------------------------------------------------------------------------------
@@ -158,6 +162,8 @@ set_cmd_variants :: [(String, Repl ())]
 set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
+                   , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
+                   , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
                    , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
 set_cmd :: String -> Repl ()
