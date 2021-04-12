@@ -29,7 +29,7 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import Translate.Translate (compile)
-import TypeInference.InferProgram
+import TypeInference.InferProgram (inferProgram, insertDecl, inferSTermTraced, TypeInferenceTrace(..))
 import Utils (trim)
 
 ------------------------------------------------------------------------------
@@ -217,33 +217,6 @@ unset_option = Option
   , option_completer = Just unsetCompleter
   }
 
--- Type
-
-type_cmd :: String -> Repl ()
-type_cmd s = do
-  env <- gets replEnv
-  case runInteractiveParser (stermP PrdRep) s of
-    Right (tloc,_) -> do
-      res <- fromRight $ inferSTerm PrdRep tloc env
-      prettyRepl (" S :: " ++ ppPrint res)
-    Left err1 -> do
-      case runInteractiveParser atermP s of
-        Right (t,_pos) -> do
-          res <- fromRight $ inferATerm t env
-          prettyRepl (" A :: " ++ ppPrint res)
-        Left err2 -> do
-          prettyRepl "Cannot parse as sterm:"
-          prettyRepl err1
-          prettyRepl "Cannot parse as aterm:"
-          prettyRepl err2
-
-type_option :: Option
-type_option = Option
-  { option_name = "type"
-  , option_cmd = type_cmd
-  , option_help = ["Enter a producer term and show the inferred type."]
-  , option_completer = Nothing
-  }
 
 -- Show
 
@@ -471,11 +444,11 @@ compile_option = Option
   , option_help = ["Enter a ATerm and show the translated STerm."]
   , option_completer = Nothing
   }
-  
+
 -- All Options
 
 all_options :: [Option]
-all_options = [ type_option, show_option, help_option, def_option, save_option, set_option, unset_option
+all_options = [ show_option, help_option, def_option, save_option, set_option, unset_option
               , sub_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------
