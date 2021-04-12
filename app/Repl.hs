@@ -28,9 +28,8 @@ import Eval.STerms
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
-import TypeInference.InferTypes
 import Translate.Translate (compile)
-import TypeInference.InferProgram
+import TypeInference.InferProgram (inferProgram, insertDecl, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
 import Utils (trim)
 
 ------------------------------------------------------------------------------
@@ -41,12 +40,15 @@ data EvalSteps = Steps | NoSteps
 
 data Mode = Symmetric | Asymmetric
 
+data Verbosity = Verbose | Silent
+
 data ReplState = ReplState
   { replEnv :: Environment FreeVarName
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
   , mode :: Mode
+  , typeInfVerbosity :: Verbosity
   }
 
 
@@ -56,6 +58,7 @@ initialReplState = ReplState { replEnv = mempty
                              , steps = NoSteps
                              , evalOrder = CBV
                              , mode = Symmetric
+                             , typeInfVerbosity = Silent
                              }
 
 ------------------------------------------------------------------------------
@@ -158,6 +161,8 @@ set_cmd_variants :: [(String, Repl ())]
 set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
+                   , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
+                   , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
                    , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
 set_cmd :: String -> Repl ()
@@ -212,33 +217,6 @@ unset_option = Option
   , option_completer = Just unsetCompleter
   }
 
--- Type
-
-type_cmd :: String -> Repl ()
-type_cmd s = do
-  env <- gets replEnv
-  case runInteractiveParser (stermP PrdRep) s of
-    Right (tloc,_) -> do
-      res <- fromRight $ inferSTerm PrdRep tloc env
-      prettyRepl (" S :: " ++ ppPrint res)
-    Left err1 -> do
-      case runInteractiveParser atermP s of
-        Right (t,_pos) -> do
-          res <- fromRight $ inferATerm t env
-          prettyRepl (" A :: " ++ ppPrint res)
-        Left err2 -> do
-          prettyRepl "Cannot parse as sterm:"
-          prettyRepl err1
-          prettyRepl "Cannot parse as aterm:"
-          prettyRepl err2
-
-type_option :: Option
-type_option = Option
-  { option_name = "type"
-  , option_cmd = type_cmd
-  , option_help = ["Enter a producer term and show the inferred type."]
-  , option_completer = Nothing
-  }
 
 -- Show
 
@@ -288,21 +266,28 @@ show_type_option = Option
 
 -- Define
 
-def_cmd :: String -> Repl ()
-def_cmd s = case runInteractiveParser declarationP s of
-              Right decl -> do
-                oldEnv <- gets replEnv
-                case insertDecl decl oldEnv of
-                  Left err -> liftIO $ printLocatedError err
-                  Right newEnv -> modifyEnvironment (const newEnv)
-              Left err -> prettyRepl err
+let_cmd :: String -> Repl ()
+let_cmd s = do
+  decl <- fromRight (runInteractiveParser declarationP s)
+  oldEnv <- gets replEnv
+  verbosity <- gets typeInfVerbosity
+  case verbosity of
+    Silent -> do
+      case insertDecl decl oldEnv of
+        Left err -> liftIO $ printLocatedError err
+        Right newEnv -> modifyEnvironment (const newEnv)
+    Verbose -> do
+      newEnv <- liftIO $ insertDeclIO decl oldEnv
+      case newEnv of
+        Nothing -> return ()
+        Just newEnv -> modifyEnvironment (const newEnv)
 
-def_option :: Option
-def_option = Option
-  { option_name = "def"
-  , option_cmd = def_cmd
+let_option :: Option
+let_option = Option
+  { option_name = "let"
+  , option_cmd = let_cmd
   , option_help = [ "Add a declaration to the current environment. E.g."
-                  , "\":def prd myTrue := {- Ap(x)[y] => x >> y -};\""]
+                  , "\":let prd myTrue := {- Ap(x)[y] => x >> y -};\""]
   , option_completer = Nothing
   }
 
@@ -466,11 +451,11 @@ compile_option = Option
   , option_help = ["Enter a ATerm and show the translated STerm."]
   , option_completer = Nothing
   }
-  
+
 -- All Options
 
 all_options :: [Option]
-all_options = [ type_option, show_option, help_option, def_option, save_option, set_option, unset_option
+all_options = [ show_option, help_option, let_option, save_option, set_option, unset_option
               , sub_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
 
 ------------------------------------------------------------------------------

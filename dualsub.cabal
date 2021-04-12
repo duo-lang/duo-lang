@@ -65,6 +65,7 @@ library
       Parser.STerms
       Parser.Types
       Pretty.Pretty
+      Pretty.Constraints
       Pretty.STerms
       Pretty.ATerms
       Pretty.Types
@@ -87,7 +88,6 @@ library
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.STerms
       TypeInference.InferProgram
-      TypeInference.InferTypes
       TypeInference.SolveConstraints
       Utils
       Translate.Translate

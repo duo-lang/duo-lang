@@ -187,6 +187,19 @@ data ConstraintSet a = ConstraintSet { cs_constraints :: [Constraint a]
                                      } deriving (Eq)
 
 ------------------------------------------------------------------------------
+-- VariableState and SolverResult
+------------------------------------------------------------------------------
+
+data VariableState = VariableState
+  { vst_upperbounds :: [Typ Neg]
+  , vst_lowerbounds :: [Typ Pos] }
+
+emptyVarState :: VariableState
+emptyVarState = VariableState [] []
+
+type SolverResult = Map TVar VariableState
+
+------------------------------------------------------------------------------
 -- Data Type declarations
 ------------------------------------------------------------------------------
 
