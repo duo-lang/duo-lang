@@ -22,9 +22,9 @@ import Pretty.Constraints ()
 
 data SolverState = SolverState
   { sst_bounds :: SolverResult
-  , sst_cache :: Set (Constraint ())}
+  , sst_cache :: Set (Constraint ())} -- The constraints in the cache need to have their annotations removed!
 
-createInitState :: ConstraintSet () -> SolverState
+createInitState :: ConstraintSet ConstraintInfo -> SolverState
 createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs]
                                                     , sst_cache = S.empty }
 
@@ -40,35 +40,35 @@ runSolverM m initSt = runExcept (runStateT m initSt)
 throwSolverError :: [String] -> SolverM a
 throwSolverError = throwError . SolveConstraintsError . unlines
 
-addToCache :: Constraint () -> SolverM ()
-addToCache cs = modifyCache (S.insert cs)
+addToCache :: Constraint ConstraintInfo -> SolverM ()
+addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
     modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 
-inCache :: Constraint () -> SolverM Bool
-inCache cs = gets sst_cache >>= \cache -> pure (cs `elem` cache)
+inCache :: Constraint ConstraintInfo -> SolverM Bool
+inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ()]
+addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
   lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
-  return [SubType () lb ty | lb <- lbs]
+  return [SubType Derived lb ty | lb <- lbs]
 
-addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ()]
+addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
-  return [SubType () ty ub | ub <- ubs]
+  return [SubType Derived ty ub | ub <- ubs]
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
 ------------------------------------------------------------------------------
 
-solve :: [Constraint ()] -> SolverM ()
+solve :: [Constraint ConstraintInfo] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
@@ -95,10 +95,10 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
                               , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ()]
+checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
 checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
   MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
-  pure $ zipWith (SubType ()) prd1 prd2 ++ zipWith (SubType ()) cns2 cns1
+  pure $ zipWith (SubType Derived) prd1 prd2 ++ zipWith (SubType Derived) cns2 cns1
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
@@ -106,7 +106,7 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
 --
 -- The `subConstraints` function is the function which will produce the error if the
 -- constraint set generated from a program is not solvable.
-subConstraints :: Constraint () -> SolverM [Constraint ()]
+subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInfo]
 -- Intersection and union constraints:
 --
 -- If the left hand side of the constraint is a intersection type, or the
@@ -117,9 +117,9 @@ subConstraints :: Constraint () -> SolverM [Constraint ()]
 --     ty1 <: ty2 \/ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
 subConstraints (SubType _ (TySet PosRep tys) ty) =
-  return [SubType () ty' ty | ty' <- tys]
+  return [SubType Derived ty' ty | ty' <- tys]
 subConstraints (SubType _ ty (TySet NegRep tys)) =
-  return [SubType () ty ty' | ty' <- tys]
+  return [SubType Derived ty ty' | ty' <- tys]
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
@@ -130,9 +130,9 @@ subConstraints (SubType _ ty (TySet NegRep tys)) =
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
 subConstraints (SubType _ ty@(TyRec _ _ _) ty') =
-  return [SubType () (unfoldRecType ty) ty']
+  return [SubType Derived (unfoldRecType ty) ty']
 subConstraints (SubType _ ty' ty@(TyRec _ _ _)) =
-  return [SubType () ty' (unfoldRecType ty)]
+  return [SubType Derived ty' (unfoldRecType ty)]
 -- Constraints between structural data or codata types.
 --
 -- Constraints between structural data and codata types generates constraints based
@@ -217,7 +217,7 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet () -> Either Error SolverResult
+solveConstraints :: ConstraintSet ConstraintInfo -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) = do
   (_, solverState) <- runSolverM (solve css) (createInitState constraintSet)
   return (sst_bounds solverState)

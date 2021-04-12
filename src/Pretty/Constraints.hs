@@ -3,19 +3,34 @@ module Pretty.Constraints () where
 
 import Prettyprinter
 import qualified Data.Map as M
+import Text.Megaparsec.Pos
 
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Types
+import Utils
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting of constraints, constraint sets and solved constraints.
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (Constraint a) where
-  prettyAnn (SubType _ t1 t2) =
-    prettyAnn t1 <+> "<:" <+> prettyAnn t2
+instance PrettyAnn Pos where
+  prettyAnn p = pretty (unPos p)
 
-instance PrettyAnn (ConstraintSet a) where
+instance PrettyAnn Loc where
+  prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
+    pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
+
+instance PrettyAnn ConstraintInfo where
+  prettyAnn (Primary loc) = parens ("at" <+> prettyAnn loc)
+  prettyAnn Recursive = parens "Recursive"
+  prettyAnn Derived = parens "Derived"
+
+instance PrettyAnn (Constraint ConstraintInfo) where
+  prettyAnn (SubType ann t1 t2) =
+    prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
+
+instance PrettyAnn (ConstraintSet ConstraintInfo) where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
     [ "---------------------------------------------------------"
     , "                    ConstraintSet"

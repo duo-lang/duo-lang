@@ -111,10 +111,10 @@ genConstraintsCommand (Done _) = return (Done ())
 genConstraintsCommand (Print _ t) = do
   (t',_) <- genConstraintsSTerm t
   return (Print () t')
-genConstraintsCommand (Apply _ t1 t2) = do
+genConstraintsCommand (Apply loc t1 t2) = do
   (t1',ty1) <- genConstraintsSTerm t1
   (t2',ty2) <- genConstraintsSTerm t2
-  addConstraint (SubType () ty1 ty2)
+  addConstraint (SubType (Primary loc) ty1 ty2)
   return (Apply () t1' t2')
 
 
@@ -127,12 +127,12 @@ genConstraintsSTermRecursive fv PrdRep tm = do
   (x,y) <- freshTVar
   let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar () PrdRep fv, TypeScheme [] x) prdEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
-  addConstraint (SubType () ty y)
+  addConstraint (SubType Recursive ty y)
   return (tm, ty)
 genConstraintsSTermRecursive fv CnsRep tm = do
   (x,y) <- freshTVar
   let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar () CnsRep fv, TypeScheme [] y) cnsEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
-  addConstraint (SubType () x ty)
+  addConstraint (SubType Recursive x ty)
   return (tm, ty)
 

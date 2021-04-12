@@ -5,8 +5,8 @@ import Control.Monad (forM_)
 import Prettyprinter
 import Text.Megaparsec.Pos
 
-
 import Pretty.Pretty
+import Pretty.Constraints ()
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -20,13 +20,6 @@ instance PrettyAnn Error where
   prettyAnn (SolveConstraintsError err) = "Constraint solving error:" <+> pretty err
   prettyAnn (TypeAutomatonError err) = "Type simplification error:" <+> pretty err
   prettyAnn (OtherError err) = "Other Error:" <+> pretty err
-
-instance PrettyAnn Pos where
-  prettyAnn p = pretty (unPos p)
-
-instance PrettyAnn Loc where
-  prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
-    pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
