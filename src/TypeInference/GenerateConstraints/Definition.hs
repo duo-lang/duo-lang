@@ -32,7 +32,7 @@ initialState = GenerateState { varCount = 0, constraints = [] }
 stateToConstraintSet :: GenerateState -> ConstraintSet ConstraintInfo
 stateToConstraintSet GenerateState {..} = ConstraintSet
   { cs_constraints = constraints
-  , cs_uvars = (\i -> MkTVar (show i)) <$> [0..varCount]
+  , cs_uvars = (\i -> MkTVar ("u" <> (show i))) <$> [0..varCount]
   }
 
 ---------------------------------------------------------------------------------------------
@@ -73,8 +73,8 @@ freshTVar :: GenM bs (Typ Pos, Typ Neg)
 freshTVar = do
   var <- gets varCount
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
-  return (TyVar PosRep (MkTVar (show var))
-         ,TyVar NegRep (MkTVar (show var)))
+  return (TyVar PosRep (MkTVar ("u" <> (show var)))
+         ,TyVar NegRep (MkTVar ("u" <> (show var))))
 
 freshTVars :: Twice [bs] -> GenM bs (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
