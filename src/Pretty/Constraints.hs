@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Pretty.Constraints where
+module Pretty.Constraints () where
 
 import Prettyprinter
 import qualified Data.Map as M
@@ -29,13 +29,24 @@ instance PrettyAnn (ConstraintSet a) where
     , "---------------------------------------------------------"
     ]
 
+
+printLowerBounds :: [Typ 'Pos] -> Doc Annotation
+printLowerBounds [] = mempty
+printLowerBounds lowerbounds =
+  vsep [ "Lower bounds:"
+       , nest 3 (line' <> vsep (prettyAnn <$> lowerbounds) <> line') ]
+
+printUpperBounds :: [Typ 'Neg] -> Doc Annotation
+printUpperBounds [] = mempty
+printUpperBounds upperbounds =
+  vsep [ "Upper bounds:"
+       , nest 3 (line' <> vsep (prettyAnn <$> upperbounds) <> line') ]
+
 instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds, vst_upperbounds } = vsep
-    [ "Lower bounds:"
-    , nest 3 (line' <> vsep (prettyAnn <$> vst_lowerbounds))
-    , "Upper bounds:"
-    , nest 3 (line' <> vsep (prettyAnn <$> vst_upperbounds))
-    ]
+  prettyAnn VariableState { vst_lowerbounds , vst_upperbounds } =
+    vsep [ printLowerBounds vst_lowerbounds
+         , printUpperBounds vst_upperbounds
+         ]
 
 instance PrettyAnn SolverResult where
   prettyAnn solverResult = vsep
