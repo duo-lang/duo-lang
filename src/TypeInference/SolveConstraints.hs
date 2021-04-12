@@ -25,7 +25,7 @@ data SolverState = SolverState
   , sst_cache :: Set (Constraint ())} -- The constraints in the cache need to have their annotations removed!
 
 createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs]
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
                                                     , sst_cache = S.empty }
 
 type SolverM a = (StateT SolverState (Except Error)) a

@@ -188,11 +188,16 @@ data ConstraintInfo
 data Constraint a = SubType a (Typ Pos) (Typ Neg)
   deriving (Eq, Ord, Functor)
 
+-- | Information about the provenance of a unification variable.
+data UVarProvenance
+  = RecursiveUVar FreeVarName -- ^ UVar generated for recursive binding.
+  | ProgramVariable FreeVarName
+  | Other
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
-                                   , cs_uvars :: [TVar]
+                                   , cs_uvars :: [(TVar, UVarProvenance)]
                                    }
 
 ------------------------------------------------------------------------------

@@ -70,27 +70,27 @@ throwGenError :: String -> GenM bs a
 throwGenError msg = throwError $ GenConstraintsError msg
 
 -- | Generate a fresh type variable.
-freshTVar :: GenM bs (Typ Pos, Typ Neg)
-freshTVar = do
+freshTVar :: UVarProvenance -> GenM bs (Typ Pos, Typ Neg)
+freshTVar uvp = do
   var <- gets varCount
   let tvar = MkTVar ("u" <> (show var))
   -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [tvar] } })
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
   return (TyVar PosRep tvar, TyVar NegRep tvar)
 
 freshTVars :: Twice [bs] -> GenM bs (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
-  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\_ -> freshTVar)
-  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\_ -> freshTVar)
+  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\_ -> freshTVar Other) -- TODO: Change to program variable.
+  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\_ -> freshTVar Other) -- TODO: Change to program variable.
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
 
 instantiateTypeScheme :: TypeScheme pol -> GenM bs (Typ pol)
 instantiateTypeScheme TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\tv -> freshTVar Other >>= \ty -> return (tv, ty))
   return $ substituteType (M.fromList freshVars) ts_monotype
 
 -- | We map producer terms to positive types, and consumer terms to negative types.
