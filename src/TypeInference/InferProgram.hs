@@ -39,6 +39,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 
 data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet ()
+  , trace_solvedConstraints :: SolverResult
   , trace_typeAut :: TypeAut pol
   , trace_typeAutDet :: TypeAutDet pol
   , trace_typeAutDetAdms :: TypeAutDet pol
@@ -59,6 +60,7 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
   let resType = autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
+    , trace_solvedConstraints = solverState
     , trace_typeAut = typeAut
     , trace_typeAutDet = typeAutDet
     , trace_typeAutDetAdms = typeAutDetAdms
@@ -178,6 +180,7 @@ insertDeclIO (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
       return Nothing
     Right trace -> do
       ppPrintIO (trace_constraintSet trace)
+      ppPrintIO (trace_solvedConstraints trace)
       let newEnv = env { prdEnv  = M.insert v (t,trace_resType trace) prdEnv }
       return (Just newEnv)
 insertDeclIO (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
@@ -188,6 +191,7 @@ insertDeclIO (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
       return Nothing
     Right trace -> do
       ppPrintIO (trace_constraintSet trace)
+      ppPrintIO (trace_solvedConstraints trace)
       let newEnv = env { cnsEnv  = M.insert v (t,trace_resType trace) cnsEnv }
       return (Just newEnv)
 insertDeclIO (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
@@ -207,6 +211,7 @@ insertDeclIO (DefDecl loc v t)  env@Environment { defEnv }  = do
       return Nothing
     Right trace -> do
       ppPrintIO (trace_constraintSet trace)
+      ppPrintIO (trace_solvedConstraints trace)
       let newEnv = env { defEnv  = M.insert v (first (const ()) t,trace_resType trace) defEnv }
       return (Just newEnv)
 insertDeclIO (DataDecl _loc dcl) env@Environment { declEnv } = do
