@@ -26,17 +26,24 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn Recursive = parens "Recursive"
   prettyAnn Derived = parens "Derived"
 
+instance PrettyAnn UVarProvenance where
+  prettyAnn (RecursiveUVar fv) = parens ("Recursive binding:" <+> prettyAnn fv)
+  prettyAnn (ProgramVariable fv) = parens ("Program variable:" <+> prettyAnn fv)
+  prettyAnn (Other msg) = parens (pretty msg)
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
 
-instance PrettyAnn (ConstraintSet ConstraintInfo) where
+printUVar :: (TVar, UVarProvenance) -> Doc Annotation
+printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
+
+instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
     [ "---------------------------------------------------------"
     , "                    ConstraintSet"
     , "---------------------------------------------------------"
     , "Generated unification variables:"
-    , nest 3 (line' <> vsep (prettyAnn <$> cs_uvars))
+    , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
     , ""
     , "Generated constraints:"
     , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))

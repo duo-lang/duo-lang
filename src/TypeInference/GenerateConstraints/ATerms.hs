@@ -18,7 +18,7 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 -- | Every asymmetric terms gets assigned a positive type.
-genConstraintsATerm :: ATerm Loc bs -> GenM bs (ATerm () bs, Typ Pos)
+genConstraintsATerm :: ATerm Loc FreeVarName -> GenM (ATerm () FreeVarName, Typ Pos)
 genConstraintsATerm (BVar _ idx) = do
   ty <- lookupType PrdRep idx
   return (BVar () idx, ty)
@@ -35,14 +35,14 @@ genConstraintsATerm (Ctor _ xt args) = do
   return (Ctor () xt (fst <$> args'), ty)
 genConstraintsATerm (Dtor loc xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  (retTypePos, retTypeNeg) <- freshTVar
+  (retTypePos, retTypeNeg) <- freshTVar (Other "Return type of destructor application")
   let codataType = TyCodata NegRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType (Primary loc) ty' codataType)
   return (Dtor () xt t' (fst <$> args'), retTypePos)
 genConstraintsATerm (Match loc t cases) = do
   (t', matchType) <- genConstraintsATerm t
-  (retTypePos, retTypeNeg) <- freshTVar
+  (retTypePos, retTypeNeg) <- freshTVar (Other "Return type of pattern match")
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
   addConstraint (SubType (Primary loc) matchType (TyData NegRep (snd <$> cases')))
   return (Match () t' (fst <$> cases'), retTypePos)
@@ -51,16 +51,16 @@ genConstraintsATerm (Comatch _ cocases) = do
   let ty = TyCodata PosRep (snd <$> cocases')
   return (Comatch () (fst <$> cocases'), ty)
 
-genConstraintsATermCase :: Typ Neg -> ACase Loc bs -> GenM bs (ACase () bs, XtorSig Neg)
+genConstraintsATermCase :: Typ Neg -> ACase Loc FreeVarName -> GenM (ACase () FreeVarName, XtorSig Neg)
 genConstraintsATermCase retType (MkACase { acase_ext, acase_name, acase_args, acase_term }) = do
-  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\fv -> freshTVar (ProgramVariable fv))
   (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   addConstraint (SubType (Primary acase_ext) retTypeInf retType)
   return (MkACase () acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
-genConstraintsATermCocase :: ACase Loc bs -> GenM bs (ACase () bs, XtorSig Neg)
+genConstraintsATermCocase :: ACase Loc FreeVarName -> GenM (ACase () FreeVarName, XtorSig Neg)
 genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
-  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\fv -> freshTVar (ProgramVariable fv))
   (acase_term', retType) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
   return (MkACase () acase_name acase_args acase_term', sig)
@@ -69,9 +69,9 @@ genConstraintsATermCocase (MkACase { acase_name, acase_args, acase_term }) = do
 -- Asymmetric Terms with recursive binding
 ---------------------------------------------------------------------------------------------
 
-genConstraintsATermRecursive :: FreeVarName -> ATerm Loc bs -> GenM bs (ATerm () bs, Typ Pos)
+genConstraintsATermRecursive :: FreeVarName -> ATerm Loc FreeVarName -> GenM (ATerm () FreeVarName, Typ Pos)
 genConstraintsATermRecursive fv tm = do
-  (x,y) <- freshTVar
+  (x,y) <- freshTVar (RecursiveUVar fv)
   let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar () fv, TypeScheme [] x) defEnv }
   (tm, ty) <- local modifyEnv (genConstraintsATerm tm)
   addConstraint (SubType Recursive ty y)

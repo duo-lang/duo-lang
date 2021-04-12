@@ -38,7 +38,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 ------------------------------------------------------------------------------
 
 data TypeInferenceTrace pol = TypeInferenceTrace
-  { trace_constraintSet :: ConstraintSet ConstraintInfo
+  { trace_constraintSet :: ConstraintSet
   , trace_solvedConstraints :: SolverResult
   , trace_typeAut :: TypeAut pol
   , trace_typeAutDet :: TypeAutDet pol
@@ -48,7 +48,7 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   }
 
 generateTypeInferenceTrace :: PolarityRep pol
-                           -> ConstraintSet ConstraintInfo
+                           -> ConstraintSet
                            -> SolverResult
                            -> Typ pol
                            -> Either Error (TypeInferenceTrace pol)
@@ -72,8 +72,8 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferSTermTraced :: PrdCnsRep pc -> STerm pc Loc bs
-                 -> Environment bs
+inferSTermTraced :: PrdCnsRep pc -> STerm pc Loc FreeVarName
+                 -> Environment FreeVarName
                  -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
 inferSTermTraced rep tm env = do
   ((_,ty), constraintSet) <- runGenM env (genConstraintsSTerm tm)
@@ -81,8 +81,8 @@ inferSTermTraced rep tm env = do
   generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
 
 inferSTermRecTraced :: FreeVarName
-                    -> PrdCnsRep pc -> STerm pc Loc bs
-                    -> Environment bs
+                    -> PrdCnsRep pc -> STerm pc Loc FreeVarName
+                    -> Environment FreeVarName
                     -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
 inferSTermRecTraced fv rep tm env = do
   ((_,ty), constraintSet) <- runGenM env (genConstraintsSTermRecursive fv rep tm)
@@ -90,20 +90,20 @@ inferSTermRecTraced fv rep tm env = do
   generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
 
 
-inferSTerm :: PrdCnsRep pc -> STerm pc Loc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTerm :: PrdCnsRep pc -> STerm pc Loc FreeVarName -> Environment FreeVarName -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTerm rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_resType trace
 
 inferSTermRec :: FreeVarName
-              -> PrdCnsRep pc -> STerm pc Loc bs
-              -> Environment bs
+              -> PrdCnsRep pc -> STerm pc Loc FreeVarName
+              -> Environment FreeVarName
               -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTermRec fv rep tm env = do
   trace <- inferSTermRecTraced fv rep tm env
   return $ trace_resType trace
 
-checkCmd :: Command Loc bs -> Environment bs -> Either Error (ConstraintSet ConstraintInfo, SolverResult)
+checkCmd :: Command Loc FreeVarName -> Environment FreeVarName -> Either Error (ConstraintSet, SolverResult)
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   solverResult <- solveConstraints constraints
@@ -113,24 +113,24 @@ checkCmd cmd env = do
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
 
-inferATermTraced :: ATerm Loc bs -> Environment bs -> Either Error (TypeInferenceTrace Pos)
+inferATermTraced :: ATerm Loc FreeVarName -> Environment FreeVarName -> Either Error (TypeInferenceTrace Pos)
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
   solverState <- solveConstraints constraintSet
   generateTypeInferenceTrace PosRep constraintSet solverState ty
 
-inferATermRecTraced :: FreeVarName -> ATerm Loc bs -> Environment bs -> Either Error (TypeInferenceTrace Pos)
+inferATermRecTraced :: FreeVarName -> ATerm Loc FreeVarName -> Environment FreeVarName -> Either Error (TypeInferenceTrace Pos)
 inferATermRecTraced v tm env = do
   ((_, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
   solverState <- solveConstraints constraintSet
   generateTypeInferenceTrace PosRep constraintSet solverState ty
 
-inferATerm :: ATerm Loc bs -> Environment bs -> Either Error (TypeScheme Pos)
+inferATerm :: ATerm Loc FreeVarName -> Environment FreeVarName -> Either Error (TypeScheme Pos)
 inferATerm tm env = do
   trace <- inferATermTraced tm env
   return $ trace_resType trace
 
-inferATermRec :: FreeVarName -> ATerm Loc bs -> Environment bs -> Either Error (TypeScheme Pos)
+inferATermRec :: FreeVarName -> ATerm Loc FreeVarName -> Environment FreeVarName -> Either Error (TypeScheme Pos)
 inferATermRec v tm env = do
   trace <- inferATermRecTraced v tm env
   return $ trace_resType trace
@@ -139,7 +139,7 @@ inferATermRec v tm env = do
 -- Programs
 ------------------------------------------------------------------------------
 
-insertDecl :: Declaration bs -> Environment bs -> Either LocatedError (Environment bs)
+insertDecl :: Declaration FreeVarName -> Environment FreeVarName -> Either LocatedError (Environment FreeVarName)
 insertDecl (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
   let t = first (const ()) loct
   ty <- first (Located loc) $ inferSTermRec v PrdRep loct env
@@ -158,10 +158,10 @@ insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 
-inferProgram :: [Declaration bs] -> Either LocatedError (Environment bs)
+inferProgram :: [Declaration FreeVarName] -> Either LocatedError (Environment FreeVarName)
 inferProgram = inferProgram' mempty
   where
-    inferProgram' :: Environment bs -> [Declaration bs] -> Either LocatedError (Environment bs)
+    inferProgram' :: Environment FreeVarName -> [Declaration FreeVarName] -> Either LocatedError (Environment FreeVarName)
     inferProgram' env [] = return env
     inferProgram' env (decl:decls) = do
       env' <- insertDecl decl env
@@ -171,7 +171,7 @@ inferProgram = inferProgram' mempty
 -- Verbose type inference of programs
 ------------------------------------------------------------------------------
 
-insertDeclIO :: Declaration bs -> Environment bs -> IO (Maybe (Environment bs))
+insertDeclIO :: Declaration FreeVarName -> Environment FreeVarName -> IO (Maybe (Environment FreeVarName))
 insertDeclIO (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
   let t = first (const ()) loct
   case inferSTermRecTraced v PrdRep loct env of

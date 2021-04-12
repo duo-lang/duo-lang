@@ -24,8 +24,8 @@ data SolverState = SolverState
   { sst_bounds :: SolverResult
   , sst_cache :: Set (Constraint ())} -- The constraints in the cache need to have their annotations removed!
 
-createInitState :: ConstraintSet ConstraintInfo -> SolverState
-createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(uv,emptyVarState) | uv <- uvs]
+createInitState :: ConstraintSet -> SolverState
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
                                                     , sst_cache = S.empty }
 
 type SolverM a = (StateT SolverState (Except Error)) a
@@ -217,7 +217,7 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet ConstraintInfo -> Either Error SolverResult
+solveConstraints :: ConstraintSet -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) = do
   (_, solverState) <- runSolverM (solve css) (createInitState constraintSet)
   return (sst_bounds solverState)
