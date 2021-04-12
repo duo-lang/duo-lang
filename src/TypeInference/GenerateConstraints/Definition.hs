@@ -22,18 +22,19 @@ import Utils
 
 data GenerateState = GenerateState
   { varCount :: Int
-  , constraints :: [Constraint ConstraintInfo]
+  , constraintSet :: ConstraintSet
   }
 
 initialState :: GenerateState
-initialState = GenerateState { varCount = 0, constraints = [] }
+initialState = GenerateState { varCount = 0
+                             , constraintSet = ConstraintSet { cs_constraints = []
+                                                             , cs_uvars = []
+                                                             }
+                             }
 
 -- | After constraint generation is finished, we can turn the final state into a ConstraintSet.
-stateToConstraintSet :: GenerateState -> ConstraintSet ConstraintInfo
-stateToConstraintSet GenerateState {..} = ConstraintSet
-  { cs_constraints = constraints
-  , cs_uvars = (\i -> MkTVar ("u" <> (show i))) <$> [0..varCount]
-  }
+stateToConstraintSet :: GenerateState -> ConstraintSet
+stateToConstraintSet GenerateState { constraintSet } = constraintSet
 
 ---------------------------------------------------------------------------------------------
 -- Reader of GenM
@@ -56,7 +57,7 @@ initialReader env = GenerateReader { context = []
 
 type GenM bs a = ReaderT (GenerateReader bs) (StateT GenerateState (Except Error)) a
 
-runGenM :: Environment bs -> GenM bs a -> Either Error (a, ConstraintSet ConstraintInfo)
+runGenM :: Environment bs -> GenM bs a -> Either Error (a, ConstraintSet)
 runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, stateToConstraintSet state)
@@ -72,9 +73,13 @@ throwGenError msg = throwError $ GenConstraintsError msg
 freshTVar :: GenM bs (Typ Pos, Typ Neg)
 freshTVar = do
   var <- gets varCount
+  let tvar = MkTVar ("u" <> (show var))
+  -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
-  return (TyVar PosRep (MkTVar ("u" <> (show var)))
-         ,TyVar NegRep (MkTVar ("u" <> (show var))))
+  -- We also need to add the uvar to the constraintset.
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [tvar] } })
+  return (TyVar PosRep tvar, TyVar NegRep tvar)
 
 freshTVars :: Twice [bs] -> GenM bs (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
@@ -119,7 +124,10 @@ lookupType rep (i,j) = do
 
 -- | Add a constraint to the state.
 addConstraint :: Constraint ConstraintInfo -> GenM bs ()
-addConstraint c = modify (\gs@GenerateState { constraints } -> gs { constraints = c:constraints })
+addConstraint c = modify foo
+  where
+    foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
+    bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
 
 lookupCase :: XtorName -> GenM bs (TypArgs Pos, XtorArgs () bs)
 lookupCase xt = do

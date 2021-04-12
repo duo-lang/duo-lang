@@ -182,6 +182,7 @@ data ConstraintInfo
   = Primary Loc -- ^ Constraint was generated during constraint generation.
   | Recursive -- ^ Constraint corresponds to typechecking of recursive function.
   | Derived -- ^ Constraint was generated during constraint solving.
+  deriving (Show)
 
 
 data Constraint a = SubType a (Typ Pos) (Typ Neg)
@@ -190,9 +191,9 @@ data Constraint a = SubType a (Typ Pos) (Typ Neg)
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
-data ConstraintSet a = ConstraintSet { cs_constraints :: [Constraint a]
-                                     , cs_uvars :: [TVar]
-                                     } deriving (Eq, Functor)
+data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
+                                   , cs_uvars :: [TVar]
+                                   }
 
 ------------------------------------------------------------------------------
 -- VariableState and SolverResult

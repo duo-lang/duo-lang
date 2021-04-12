@@ -30,7 +30,7 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
 
-instance PrettyAnn (ConstraintSet ConstraintInfo) where
+instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
     [ "---------------------------------------------------------"
     , "                    ConstraintSet"

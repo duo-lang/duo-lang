@@ -38,7 +38,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 ------------------------------------------------------------------------------
 
 data TypeInferenceTrace pol = TypeInferenceTrace
-  { trace_constraintSet :: ConstraintSet ConstraintInfo
+  { trace_constraintSet :: ConstraintSet
   , trace_solvedConstraints :: SolverResult
   , trace_typeAut :: TypeAut pol
   , trace_typeAutDet :: TypeAutDet pol
@@ -48,7 +48,7 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   }
 
 generateTypeInferenceTrace :: PolarityRep pol
-                           -> ConstraintSet ConstraintInfo
+                           -> ConstraintSet
                            -> SolverResult
                            -> Typ pol
                            -> Either Error (TypeInferenceTrace pol)
@@ -103,7 +103,7 @@ inferSTermRec fv rep tm env = do
   trace <- inferSTermRecTraced fv rep tm env
   return $ trace_resType trace
 
-checkCmd :: Command Loc bs -> Environment bs -> Either Error (ConstraintSet ConstraintInfo, SolverResult)
+checkCmd :: Command Loc bs -> Environment bs -> Either Error (ConstraintSet, SolverResult)
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
   solverResult <- solveConstraints constraints
