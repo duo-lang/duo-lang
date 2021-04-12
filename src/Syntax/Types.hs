@@ -4,6 +4,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.List (nub)
 
+import Utils
 import Syntax.CommonTerm
 
 ------------------------------------------------------------------------------
@@ -176,15 +177,17 @@ substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
 -- Constraints
 ------------------------------------------------------------------------------
 
+data ConstraintInfo = Primary Loc | Derived | Recursive
+
 data Constraint a = SubType a (Typ Pos) (Typ Neg)
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Functor)
 
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet a = ConstraintSet { cs_constraints :: [Constraint a]
                                      , cs_uvars :: [TVar]
-                                     } deriving (Eq)
+                                     } deriving (Eq, Functor)
 
 ------------------------------------------------------------------------------
 -- VariableState and SolverResult

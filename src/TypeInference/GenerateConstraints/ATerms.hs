@@ -33,18 +33,18 @@ genConstraintsATerm (Ctor _ xt args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   let ty = TyData PosRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
   return (Ctor () xt (fst <$> args'), ty)
-genConstraintsATerm (Dtor _ xt t args) = do
+genConstraintsATerm (Dtor loc xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar
   let codataType = TyCodata NegRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
   (t', ty') <- genConstraintsATerm t
-  addConstraint (SubType () ty' codataType)
+  addConstraint (SubType (Primary loc) ty' codataType)
   return (Dtor () xt t' (fst <$> args'), retTypePos)
-genConstraintsATerm (Match _ t cases) = do
+genConstraintsATerm (Match loc t cases) = do
   (t', matchType) <- genConstraintsATerm t
   (retTypePos, retTypeNeg) <- freshTVar
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
-  addConstraint (SubType () matchType (TyData NegRep (snd <$> cases')))
+  addConstraint (SubType (Primary loc) matchType (TyData NegRep (snd <$> cases')))
   return (Match () t' (fst <$> cases'), retTypePos)
 genConstraintsATerm (Comatch _ cocases) = do
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
@@ -52,10 +52,10 @@ genConstraintsATerm (Comatch _ cocases) = do
   return (Comatch () (fst <$> cocases'), ty)
 
 genConstraintsATermCase :: Typ Neg -> ACase Loc bs -> GenM bs (ACase () bs, XtorSig Neg)
-genConstraintsATermCase retType (MkACase { acase_name, acase_args, acase_term }) = do
+genConstraintsATermCase retType (MkACase { acase_ext, acase_name, acase_args, acase_term }) = do
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (\_ -> freshTVar)
   (acase_term', retTypeInf) <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs argtsPos []):context }) (genConstraintsATerm acase_term)
-  addConstraint (SubType () retTypeInf retType)
+  addConstraint (SubType (Primary acase_ext) retTypeInf retType)
   return (MkACase () acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
 genConstraintsATermCocase :: ACase Loc bs -> GenM bs (ACase () bs, XtorSig Neg)
@@ -74,5 +74,5 @@ genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar
   let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar () fv, TypeScheme [] x) defEnv }
   (tm, ty) <- local modifyEnv (genConstraintsATerm tm)
-  addConstraint (SubType () ty y)
+  addConstraint (SubType Recursive ty y)
   return (tm, ty)
