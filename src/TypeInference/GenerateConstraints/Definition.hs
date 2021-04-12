@@ -83,14 +83,14 @@ freshTVar uvp = do
 
 freshTVars :: Twice [FreeVarName] -> GenM (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
-  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\_ -> freshTVar Other) -- TODO: Change to program variable.
-  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\_ -> freshTVar Other) -- TODO: Change to program variable.
+  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\fv -> freshTVar (ProgramVariable fv))
+  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
 
 instantiateTypeScheme :: TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar Other >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\tv -> freshTVar (Other "TypeScheme instantiation") >>= \ty -> return (tv, ty))
   return $ substituteType (M.fromList freshVars) ts_monotype
 
 -- | We map producer terms to positive types, and consumer terms to negative types.

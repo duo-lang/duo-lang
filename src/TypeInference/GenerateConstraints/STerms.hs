@@ -98,11 +98,11 @@ genConstraintsSTerm (XMatch _ CnsRep Nominal cases@(pmcase:_)) = do
                            return (MkSCase scase_name undefined cmd'))
   return (XMatch () CnsRep Nominal cases', TyNominal NegRep (data_name tn))
 genConstraintsSTerm (MuAbs _ PrdRep bs cmd) = do
-  (fvpos, fvneg) <- freshTVar Other
+  (fvpos, fvneg) <- freshTVar (ProgramVariable bs)
   cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [] [fvneg]):context }) (genConstraintsCommand cmd)
   return (MuAbs () PrdRep bs cmd', fvpos)
 genConstraintsSTerm (MuAbs _ CnsRep bs cmd) = do
-  (fvpos, fvneg) <- freshTVar Other
+  (fvpos, fvneg) <- freshTVar (ProgramVariable bs)
   cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [fvpos] []):context }) (genConstraintsCommand cmd)
   return (MuAbs () CnsRep bs cmd', fvneg)
 

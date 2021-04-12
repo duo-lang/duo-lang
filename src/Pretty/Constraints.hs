@@ -29,7 +29,7 @@ instance PrettyAnn ConstraintInfo where
 instance PrettyAnn UVarProvenance where
   prettyAnn (RecursiveUVar fv) = parens ("Recursive binding:" <+> prettyAnn fv)
   prettyAnn (ProgramVariable fv) = parens ("Program variable:" <+> prettyAnn fv)
-  prettyAnn Other = parens "Other"
+  prettyAnn (Other msg) = parens (pretty msg)
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann

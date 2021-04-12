@@ -192,7 +192,7 @@ data Constraint a = SubType a (Typ Pos) (Typ Neg)
 data UVarProvenance
   = RecursiveUVar FreeVarName -- ^ UVar generated for recursive binding.
   | ProgramVariable FreeVarName
-  | Other
+  | Other String
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
