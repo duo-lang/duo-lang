@@ -43,15 +43,13 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   , trace_resType :: TypeScheme pol
   }
 
-------------------------------------------------------------------------------
--- Symmetric Terms and Commands
-------------------------------------------------------------------------------
-
-inferSTermTraced :: PrdCnsRep pc -> STerm pc Loc bs -> Environment bs -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
-inferSTermTraced rep tm env = do
-  ((_,ty), constraintSet) <- runGenM env (genConstraintsSTerm tm)
-  solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState (prdCnsToPol rep) ty
+generateTypeInferenceTrace :: PolarityRep pol
+                           -> ConstraintSet ()
+                           -> SolverResult
+                           -> Typ pol
+                           -> Either Error (TypeInferenceTrace pol)
+generateTypeInferenceTrace rep constraintSet solverState typ = do
+  typeAut <- solverStateToTypeAut solverState rep typ
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
@@ -65,21 +63,40 @@ inferSTermTraced rep tm env = do
     , trace_resType = resType
     }
 
+------------------------------------------------------------------------------
+-- Symmetric Terms and Commands
+------------------------------------------------------------------------------
+
+inferSTermTraced :: PrdCnsRep pc -> STerm pc Loc bs
+                 -> Environment bs
+                 -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
+inferSTermTraced rep tm env = do
+  ((_,ty), constraintSet) <- runGenM env (genConstraintsSTerm tm)
+  solverState <- solveConstraints constraintSet
+  generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
+
+inferSTermRecTraced :: FreeVarName
+                    -> PrdCnsRep pc -> STerm pc Loc bs
+                    -> Environment bs
+                    -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
+inferSTermRecTraced fv rep tm env = do
+  ((_,ty), constraintSet) <- runGenM env (genConstraintsSTermRecursive fv rep tm)
+  solverState <- solveConstraints constraintSet
+  generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
+
+
 inferSTerm :: PrdCnsRep pc -> STerm pc Loc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTerm rep tm env = do
   trace <- inferSTermTraced rep tm env
   return $ trace_resType trace
 
-inferSTermRec :: FreeVarName -> PrdCnsRep pc -> STerm pc Loc bs -> Environment bs -> Either Error (TypeScheme (PrdCnsToPol pc))
+inferSTermRec :: FreeVarName
+              -> PrdCnsRep pc -> STerm pc Loc bs
+              -> Environment bs
+              -> Either Error (TypeScheme (PrdCnsToPol pc))
 inferSTermRec fv rep tm env = do
-  ((_,ty), constraintSet) <- runGenM env (genConstraintsSTermRecursive fv rep tm)
-  solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState (prdCnsToPol rep) ty
-  let typeAutDet = determinize typeAut
-  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-  let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
-  return resType
+  trace <- inferSTermRecTraced fv rep tm env
+  return $ trace_resType trace
 
 checkCmd :: Command Loc bs -> Environment bs -> Either Error ()
 checkCmd cmd env = do
@@ -95,35 +112,23 @@ inferATermTraced :: ATerm Loc bs -> Environment bs -> Either Error (TypeInferenc
 inferATermTraced tm env = do
   ((_, ty), constraintSet) <- runGenM env (genConstraintsATerm tm)
   solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState PosRep ty
-  let typeAutDet = determinize typeAut
-  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-  let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
-  return TypeInferenceTrace
-    { trace_constraintSet = constraintSet
-    , trace_typeAut = typeAut
-    , trace_typeAutDet = typeAutDet
-    , trace_typeAutDetAdms = typeAutDetAdms
-    , trace_minTypeAut = minTypeAut
-    , trace_resType = resType
-    }
+  generateTypeInferenceTrace PosRep constraintSet solverState ty
+
+inferATermRecTraced :: FreeVarName -> ATerm Loc bs -> Environment bs -> Either Error (TypeInferenceTrace Pos)
+inferATermRecTraced v tm env = do
+  ((_, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
+  solverState <- solveConstraints constraintSet
+  generateTypeInferenceTrace PosRep constraintSet solverState ty
 
 inferATerm :: ATerm Loc bs -> Environment bs -> Either Error (TypeScheme Pos)
 inferATerm tm env = do
   trace <- inferATermTraced tm env
   return $ trace_resType trace
 
-inferATermRec :: FreeVarName -> ATerm Loc bs -> Environment bs -> Either Error (ATerm () bs, TypeScheme Pos)
+inferATermRec :: FreeVarName -> ATerm Loc bs -> Environment bs -> Either Error (TypeScheme Pos)
 inferATermRec v tm env = do
-  ((tm, ty), constraintSet) <- runGenM env (genConstraintsATermRecursive v tm)
-  solverState <- solveConstraints constraintSet
-  typeAut <- solverStateToTypeAut solverState PosRep ty
-  let typeAutDet = determinize typeAut
-  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-  let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
-  return (tm, resType)
+  trace <- inferATermRecTraced v tm env
+  return $ trace_resType trace
 
 ------------------------------------------------------------------------------
 -- Programs
@@ -143,8 +148,8 @@ insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   first (Located loc) $ checkCmd loct env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
 insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
-  (tm,ty) <- first (Located loc) $ inferATermRec v t env
-  return $ env { defEnv  = M.insert v (tm,ty) defEnv }
+  ty <- first (Located loc) $ inferATermRec v t env
+  return $ env { defEnv  = M.insert v (first (const ()) t,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 
