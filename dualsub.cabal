@@ -65,6 +65,7 @@ library
       Parser.STerms
       Parser.Types
       Pretty.Pretty
+      Pretty.Constraints
       Pretty.STerms
       Pretty.ATerms
       Pretty.Types

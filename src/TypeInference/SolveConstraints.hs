@@ -1,13 +1,10 @@
 module TypeInference.SolveConstraints
-  ( VariableState(..)
-  , SolverResult
-  , solveConstraints
+  ( solveConstraints
   ) where
 
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List (find)
-import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -17,19 +14,7 @@ import Syntax.CommonTerm (XtorName)
 import Utils
 import Pretty.Pretty
 import Pretty.Types ()
-
-------------------------------------------------------------------------------
--- VariableState and SolverResult
-------------------------------------------------------------------------------
-
-data VariableState = VariableState
-  { vst_upperbounds :: [Typ Neg]
-  , vst_lowerbounds :: [Typ Pos] }
-
-emptyVarState :: VariableState
-emptyVarState = VariableState [] []
-
-type SolverResult = Map TVar VariableState
+import Pretty.Constraints ()
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

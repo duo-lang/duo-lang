@@ -1,6 +1,5 @@
 module TypeInference.StaticExamplesSpec ( spec )  where
 
-import Data.Bifunctor
 import Test.Hspec
 import System.FilePath
 
