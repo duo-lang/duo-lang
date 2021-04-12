@@ -16,7 +16,7 @@ instance PrettyAnn (Constraint a) where
     prettyAnn t1 <+> "<:" <+> prettyAnn t2
 
 instance PrettyAnn (ConstraintSet a) where
-  prettyAnn ConstraintSet { cs_constraints, cs_uvars } = hsep
+  prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
     [ "---------------------------------------------------------"
     , "                    ConstraintSet"
     , "---------------------------------------------------------"
@@ -28,7 +28,7 @@ instance PrettyAnn (ConstraintSet a) where
     ]
 
 instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds, vst_upperbounds } = hsep
+  prettyAnn VariableState { vst_lowerbounds, vst_upperbounds } = vsep
     [ "Lower bounds:"
     , nest 3 (line' <> hsep (prettyAnn <$> vst_lowerbounds))
     , "Upper bounds:"
@@ -40,7 +40,7 @@ instance PrettyAnn SolverResult where
     [ "---------------------------------------------------------"
     , "                   Solved Constraints"
     , "---------------------------------------------------------"
-    , hsep (solvedConstraintsToDoc <$> M.toList solverResult)
+    , vsep (solvedConstraintsToDoc <$> M.toList solverResult)
     ]
     where
       solvedConstraintsToDoc :: (TVar,VariableState) -> Doc Annotation

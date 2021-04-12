@@ -7,12 +7,15 @@ module TypeInference.InferProgram
   , inferATerm
     -- Declarations and Programs
   , insertDecl
+  , insertDeclIO
   , inferProgram
   ) where
 
 import Data.Bifunctor (first)
 import qualified Data.Map as M
 
+import Pretty.Pretty
+import Pretty.Errors
 import Syntax.ATerms
 import Syntax.STerms
 import Syntax.Types
@@ -98,11 +101,11 @@ inferSTermRec fv rep tm env = do
   trace <- inferSTermRecTraced fv rep tm env
   return $ trace_resType trace
 
-checkCmd :: Command Loc bs -> Environment bs -> Either Error ()
+checkCmd :: Command Loc bs -> Environment bs -> Either Error (ConstraintSet (), SolverResult)
 checkCmd cmd env = do
   constraints <- snd <$> runGenM env (genConstraintsCommand cmd)
-  _ <- solveConstraints constraints
-  return ()
+  solverResult <- solveConstraints constraints
+  return (constraints, solverResult)
 
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
@@ -145,7 +148,7 @@ insertDecl (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
   return $ env { cnsEnv  = M.insert v (t,ty) cnsEnv }
 insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   let t = first (const ()) loct
-  first (Located loc) $ checkCmd loct env
+  _ <- first (Located loc) $ checkCmd loct env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
 insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
   ty <- first (Located loc) $ inferATermRec v t env
@@ -161,3 +164,50 @@ inferProgram = inferProgram' mempty
     inferProgram' env (decl:decls) = do
       env' <- insertDecl decl env
       inferProgram' env' decls
+
+------------------------------------------------------------------------------
+-- Verbose type inference of programs
+------------------------------------------------------------------------------
+
+insertDeclIO :: Declaration bs -> Environment bs -> IO (Maybe (Environment bs))
+insertDeclIO (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
+  let t = first (const ()) loct
+  case inferSTermRecTraced v PrdRep loct env of
+    Left err -> do
+      printLocatedError (Located loc err)
+      return Nothing
+    Right trace -> do
+      ppPrintIO (trace_constraintSet trace)
+      let newEnv = env { prdEnv  = M.insert v (t,trace_resType trace) prdEnv }
+      return (Just newEnv)
+insertDeclIO (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
+  let t = first (const ()) loct
+  case inferSTermRecTraced v CnsRep loct env of
+    Left err -> do
+      printLocatedError (Located loc err)
+      return Nothing
+    Right trace -> do
+      ppPrintIO (trace_constraintSet trace)
+      let newEnv = env { cnsEnv  = M.insert v (t,trace_resType trace) cnsEnv }
+      return (Just newEnv)
+insertDeclIO (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
+  let t = first (const ()) loct
+  case checkCmd loct env of
+    Left err -> do
+      printLocatedError (Located loc err)
+      return Nothing
+    Right (constraints, solverResult) -> do
+      ppPrintIO constraints
+      ppPrintIO solverResult
+      return (Just (env { cmdEnv  = M.insert v t cmdEnv }))
+insertDeclIO (DefDecl loc v t)  env@Environment { defEnv }  = do
+  case inferATermRecTraced v t env of
+    Left err -> do
+      printLocatedError (Located loc err)
+      return Nothing
+    Right trace -> do
+      ppPrintIO (trace_constraintSet trace)
+      let newEnv = env { defEnv  = M.insert v (first (const ()) t,trace_resType trace) defEnv }
+      return (Just newEnv)
+insertDeclIO (DataDecl _loc dcl) env@Environment { declEnv } = do
+  return (Just (env { declEnv = dcl : declEnv }))

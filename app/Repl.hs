@@ -29,7 +29,7 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import Translate.Translate (compile)
-import TypeInference.InferProgram (inferProgram, insertDecl, inferSTermTraced, TypeInferenceTrace(..))
+import TypeInference.InferProgram (inferProgram, insertDecl, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
 import Utils (trim)
 
 ------------------------------------------------------------------------------
@@ -267,13 +267,20 @@ show_type_option = Option
 -- Define
 
 let_cmd :: String -> Repl ()
-let_cmd s = case runInteractiveParser declarationP s of
-              Right decl -> do
-                oldEnv <- gets replEnv
-                case insertDecl decl oldEnv of
-                  Left err -> liftIO $ printLocatedError err
-                  Right newEnv -> modifyEnvironment (const newEnv)
-              Left err -> prettyRepl err
+let_cmd s = do
+  decl <- fromRight (runInteractiveParser declarationP s)
+  oldEnv <- gets replEnv
+  verbosity <- gets typeInfVerbosity
+  case verbosity of
+    Silent -> do
+      case insertDecl decl oldEnv of
+        Left err -> liftIO $ printLocatedError err
+        Right newEnv -> modifyEnvironment (const newEnv)
+    Verbose -> do
+      newEnv <- liftIO $ insertDeclIO decl oldEnv
+      case newEnv of
+        Nothing -> return ()
+        Just newEnv -> modifyEnvironment (const newEnv)
 
 let_option :: Option
 let_option = Option
