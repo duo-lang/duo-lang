@@ -23,7 +23,7 @@ typecheckExample :: Environment FreeVarName -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = inferSTermAut PrdRep (first (const ()) term) env
+      let Right inferredTypeAut = inferSTermAut PrdRep term env
       let Right specTypeScheme = runInteractiveParser typeSchemeP typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
