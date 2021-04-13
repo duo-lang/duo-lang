@@ -179,12 +179,18 @@ substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
 
 -- | Information about the provenance of a constraint.
 data ConstraintInfo
+  -- Primitive constraints from constraint generation:
   = CaseConstraint Loc         -- ^ Constraint for checking that a pattern-match case has correct return type.
   | PatternMatchConstraint Loc -- ^ Constraint for checking that destructee of pattern match has correct type.
   | DtorApConstraint Loc       -- ^ Constraint for checking that destructee of destructor application has correct type.
   | CommandConstraint Loc      -- ^ Constraint was generated from a command `prd >> cns`. (STerms)
   | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
-  | Derived                    -- ^ Constraint was generated during constraint solving.
+  -- Derived constraints generated during constraing solving
+  | UpperBoundConstraint
+  | LowerBoundConstraint
+  | XtorSubConstraint
+  | IntersectionUnionSubConstraint
+  | RecTypeSubConstraint
   deriving (Show)
 
 
