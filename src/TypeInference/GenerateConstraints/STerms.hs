@@ -114,7 +114,7 @@ genConstraintsCommand (Print _ t) = do
 genConstraintsCommand (Apply loc t1 t2) = do
   (t1',ty1) <- genConstraintsSTerm t1
   (t2',ty2) <- genConstraintsSTerm t2
-  addConstraint (SubType (Primary loc) ty1 ty2)
+  addConstraint (SubType (CommandConstraint loc) ty1 ty2)
   return (Apply () t1' t2')
 
 

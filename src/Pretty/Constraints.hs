@@ -22,7 +22,10 @@ instance PrettyAnn Loc where
     pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
 
 instance PrettyAnn ConstraintInfo where
-  prettyAnn (Primary loc) = parens ("at" <+> prettyAnn loc)
+  prettyAnn (CaseConstraint loc) = parens ("Case constraint at" <+> prettyAnn loc)
+  prettyAnn (PatternMatchConstraint loc) = parens ("Pattern match constraint at" <+> prettyAnn loc)
+  prettyAnn (DtorApConstraint loc) = parens ("DtorAp constraint at" <+> prettyAnn loc)
+  prettyAnn (CommandConstraint loc) = parens ("Constraint from logical command at" <+> prettyAnn loc)
   prettyAnn RecursionConstraint = parens "Recursive"
   prettyAnn Derived = parens "Derived"
 
