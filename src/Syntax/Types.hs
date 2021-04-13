@@ -190,9 +190,11 @@ data Constraint a = SubType a (Typ Pos) (Typ Neg)
 
 -- | Information about the provenance of a unification variable.
 data UVarProvenance
-  = RecursiveUVar FreeVarName -- ^ UVar generated for recursive binding.
-  | ProgramVariable FreeVarName
-  | Other String
+  = RecursiveUVar   FreeVarName        -- ^ UVar generated for recursive binding.
+  | ProgramVariable FreeVarName        -- ^ UVar generated for program variable.
+  | PatternMatch Loc                   -- ^ UVar generated for return type of pattern match.
+  | DtorAp Loc                         -- ^ UVar generated for result of Dtor application.
+  | TypeSchemeInstance FreeVarName Loc -- ^ UVar generated for the instantiation of a type scheme.
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
