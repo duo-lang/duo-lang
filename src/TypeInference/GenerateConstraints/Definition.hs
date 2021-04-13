@@ -1,23 +1,51 @@
-module TypeInference.GenerateConstraints.Definition where
+module TypeInference.GenerateConstraints.Definition
+  ( -- Constraint Generation Monad
+    GenM
+  , runGenM
+    -- Generating fresh unification variables
+  , freshTVar
+  , freshTVars
+    -- Throwing errors
+  , throwGenError
+    -- Looking up in context or environment
+  , lookupContext
+  , lookupPrdEnv
+  , lookupCnsEnv
+  , lookupDefEnv
+    -- Running computations in extended context or environment.
+  , withContext
+  , withPrdEnv
+  , withCnsEnv
+  , withDefEnv
+    -- Instantiating type schemes
+  , instantiateTypeScheme
+    -- Adding a constraint
+  , addConstraint
+    -- Other
+  , PrdCnsToPol
+  , lookupDataDecl
+  , lookupCase
+  , foo
+  , prdCnsToPol
+  ) where
 
-import qualified Data.Map as M
-import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.Reader
 import Control.Monad.State
-
+import qualified Data.Map as M
 
 import Pretty.Pretty
 import Syntax.ATerms
+import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
-import Syntax.Program (Environment)
-import qualified Syntax.Program as P
 import Utils
 
 ---------------------------------------------------------------------------------------------
--- State of GenM
+-- GenerateState:
 --
--- We use varCount for generating fresh type variables, and collect the constraints.
+-- We use varCount for generating fresh type variables.
+-- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState
@@ -25,21 +53,17 @@ data GenerateState = GenerateState
   , constraintSet :: ConstraintSet
   }
 
-initialState :: GenerateState
-initialState = GenerateState { varCount = 0
-                             , constraintSet = ConstraintSet { cs_constraints = []
-                                                             , cs_uvars = []
-                                                             }
-                             }
+initialConstraintSet :: ConstraintSet
+initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [] }
 
--- | After constraint generation is finished, we can turn the final state into a ConstraintSet.
-stateToConstraintSet :: GenerateState -> ConstraintSet
-stateToConstraintSet GenerateState { constraintSet } = constraintSet
+initialState :: GenerateState
+initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
 
 ---------------------------------------------------------------------------------------------
--- Reader of GenM
+-- GenerateReader:
 --
 -- We have access to a program environment and a local variable context.
+-- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
 data GenerateReader = GenerateReader { context :: [TypArgs Pos]
@@ -47,9 +71,7 @@ data GenerateReader = GenerateReader { context :: [TypArgs Pos]
                                      }
 
 initialReader :: Environment FreeVarName -> GenerateReader
-initialReader env = GenerateReader { context = []
-                                   , env = env
-                                   }
+initialReader env = GenerateReader { context = [], env = env }
 
 ---------------------------------------------------------------------------------------------
 -- GenM
@@ -61,16 +83,19 @@ newtype GenM a = GenM { getGenM :: ReaderT GenerateReader (StateT GenerateState 
 runGenM :: Environment FreeVarName -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
   Left err -> Left err
-  Right (x, state) -> Right (x, stateToConstraintSet state)
+  Right (x, state) -> Right (x, constraintSet state)
 
 ---------------------------------------------------------------------------------------------
--- Helper functions
+-- Throwing errors
 ---------------------------------------------------------------------------------------------
 
 throwGenError :: String -> GenM a
 throwGenError msg = throwError $ GenConstraintsError msg
 
--- | Generate a fresh type variable.
+---------------------------------------------------------------------------------------------
+-- Generating fresh unification variables
+---------------------------------------------------------------------------------------------
+
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
   var <- gets varCount
@@ -88,14 +113,99 @@ freshTVars (Twice prdArgs cnsArgs) = do
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
+---------------------------------------------------------------------------------------------
+-- Running computations in an extended context or environment
+---------------------------------------------------------------------------------------------
 
 withContext :: TypArgs 'Pos -> GenM a -> GenM a
-withContext ctx m = local (\gr@GenerateReader{..} -> gr { context = ctx:context }) m
+withContext ctx m =
+  local (\gr@GenerateReader{..} -> gr { context = ctx:context }) m
+
+withPrdEnv :: FreeVarName -> STerm Prd () FreeVarName -> TypeScheme Pos -> GenM a -> GenM a
+withPrdEnv fv tm tys m = do
+  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) =
+        GenerateReader ctx env { prdEnv = M.insert fv (tm,tys) prdEnv }
+  local modifyEnv m
+
+withCnsEnv :: FreeVarName -> STerm Cns () FreeVarName -> TypeScheme Neg -> GenM a -> GenM a
+withCnsEnv fv tm tys m = do
+  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) =
+        GenerateReader ctx env { cnsEnv = M.insert fv (tm,tys) cnsEnv }
+  local modifyEnv m
+
+withDefEnv :: FreeVarName -> ATerm () FreeVarName -> TypeScheme Pos -> GenM a -> GenM a
+withDefEnv fv tm tys m = do
+  let modifyEnv (GenerateReader ctx env@Environment { defEnv }) =
+        GenerateReader ctx env { defEnv = M.insert fv (tm,tys) defEnv }
+  local modifyEnv m
+
+---------------------------------------------------------------------------------------------
+-- Looking up types in the context and environment
+---------------------------------------------------------------------------------------------
+
+-- | Lookup a type of a bound variable in the context.
+lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
+lookupContext rep (i,j) = do
+  ctx <- asks context
+  case indexMaybe ctx i of
+    Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+    Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
+      PrdRep -> do
+        case indexMaybe prdTypes j of
+          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+          Just ty -> return ty
+      CnsRep -> do
+        case indexMaybe cnsTypes j of
+          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+          Just ty -> return ty
+
+lookupPrdEnv :: FreeVarName -> GenM (TypeScheme Pos)
+lookupPrdEnv fv = do
+  prdEnv <- asks (prdEnv . env)
+  case M.lookup fv prdEnv of
+    Just (_,tys) -> return tys
+    Nothing ->
+      throwGenError $ "Unbound free producer variable:" ++ ppPrint fv
+
+lookupCnsEnv :: FreeVarName -> GenM (TypeScheme Neg)
+lookupCnsEnv fv = do
+  cnsEnv <- asks (cnsEnv . env)
+  case M.lookup fv cnsEnv of
+    Just (_,tys) -> return tys
+    Nothing ->
+      throwGenError $ "Unbound free consumer variable:" ++ ppPrint fv
+
+lookupDefEnv :: FreeVarName -> GenM (TypeScheme Pos)
+lookupDefEnv fv = do
+  defEnv <- asks (defEnv . env)
+  case M.lookup fv defEnv of
+    Just (_,tys) -> return tys
+    Nothing ->
+      throwGenError $ "Unbound free def variable:" ++ ppPrint fv
+
+---------------------------------------------------------------------------------------------
+-- Instantiating type schemes with fresh unification variables.
+---------------------------------------------------------------------------------------------
 
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
   return $ substituteType (M.fromList freshVars) ts_monotype
+
+---------------------------------------------------------------------------------------------
+-- Adding a constraint
+---------------------------------------------------------------------------------------------
+
+-- | Add a constraint to the state.
+addConstraint :: Constraint ConstraintInfo -> GenM ()
+addConstraint c = modify foo
+  where
+    foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
+    bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
+
+---------------------------------------------------------------------------------------------
+-- Other
+---------------------------------------------------------------------------------------------
 
 -- | We map producer terms to positive types, and consumer terms to negative types.
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
@@ -110,42 +220,19 @@ foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
 
--- | Lookup a type of a bound variable in the context.
-lookupType :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
-lookupType rep (i,j) = do
-  ctx <- asks context
-  case indexMaybe ctx i of
-    Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
-    Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
-      PrdRep -> do
-        case indexMaybe prdTypes j of
-          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
-          Just ty -> return ty
-      CnsRep -> do
-        case indexMaybe cnsTypes j of
-          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
-          Just ty -> return ty
-
--- | Add a constraint to the state.
-addConstraint :: Constraint ConstraintInfo -> GenM ()
-addConstraint c = modify foo
-  where
-    foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
-    bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
-
 lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs () FreeVarName)
 lookupCase xt = do
   env <- asks env
-  case M.lookup xt (P.envToXtorMap env) of
+  case M.lookup xt (envToXtorMap env) of
     Nothing -> throwGenError $ "GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up."
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
       let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
       let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
       return (types, MkXtorArgs prds cnss)
 
-lookupXtor :: XtorName -> GenM DataDecl
-lookupXtor xt = do
+lookupDataDecl :: XtorName -> GenM DataDecl
+lookupDataDecl xt = do
   env <- asks env
-  case P.lookupXtor xt env of
+  case lookupXtor xt env of
     Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
     Just decl -> return decl
