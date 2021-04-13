@@ -179,9 +179,9 @@ substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
 
 -- | Information about the provenance of a constraint.
 data ConstraintInfo
-  = Primary Loc -- ^ Constraint was generated during constraint generation.
-  | Recursive -- ^ Constraint corresponds to typechecking of recursive function.
-  | Derived -- ^ Constraint was generated during constraint solving.
+  = Primary Loc         -- ^ Constraint was generated during constraint generation.
+  | RecursionConstraint -- ^ Constraint corresponds to typechecking of recursive function.
+  | Derived             -- ^ Constraint was generated during constraint solving.
   deriving (Show)
 
 

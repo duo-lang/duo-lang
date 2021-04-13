@@ -23,7 +23,7 @@ instance PrettyAnn Loc where
 
 instance PrettyAnn ConstraintInfo where
   prettyAnn (Primary loc) = parens ("at" <+> prettyAnn loc)
-  prettyAnn Recursive = parens "Recursive"
+  prettyAnn RecursionConstraint = parens "Recursive"
   prettyAnn Derived = parens "Derived"
 
 instance PrettyAnn UVarProvenance where

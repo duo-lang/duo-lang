@@ -127,12 +127,12 @@ genConstraintsSTermRecursive fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) = GenerateReader ctx env { prdEnv = M.insert fv (FreeVar () PrdRep fv, TypeScheme [] x) prdEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
-  addConstraint (SubType Recursive ty y)
+  addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
 genConstraintsSTermRecursive fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) = GenerateReader ctx env { cnsEnv = M.insert fv (FreeVar () CnsRep fv, TypeScheme [] y) cnsEnv }
   (tm, ty) <- local modifyEnv (genConstraintsSTerm tm)
-  addConstraint (SubType Recursive x ty)
+  addConstraint (SubType RecursionConstraint x ty)
   return (tm, ty)
 

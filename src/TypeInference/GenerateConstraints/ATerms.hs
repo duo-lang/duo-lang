@@ -74,5 +74,5 @@ genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar () fv, TypeScheme [] x) defEnv }
   (tm, ty) <- local modifyEnv (genConstraintsATerm tm)
-  addConstraint (SubType Recursive ty y)
+  addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
