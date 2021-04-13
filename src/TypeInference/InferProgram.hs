@@ -140,20 +140,29 @@ inferATermRec v tm env = do
 ------------------------------------------------------------------------------
 
 insertDecl :: Declaration FreeVarName -> Environment FreeVarName -> Either LocatedError (Environment FreeVarName)
-insertDecl (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
+insertDecl (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do
   let t = first (const ()) loct
-  ty <- first (Located loc) $ inferSTermRec v PrdRep loct env
+  let res = case isRec of
+        Recursive -> inferSTermRec v PrdRep loct env
+        NonRecursive -> inferSTerm PrdRep loct env
+  ty <- first (Located loc) res
   return $ env { prdEnv  = M.insert v (t,ty) prdEnv }
-insertDecl (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
+insertDecl (CnsDecl isRec loc v loct)  env@Environment { cnsEnv }  = do
   let t = first (const ()) loct
-  ty <- first (Located loc) $ inferSTermRec v CnsRep loct env
+  let res = case isRec of
+        Recursive -> inferSTermRec v CnsRep loct env
+        NonRecursive -> inferSTerm CnsRep loct env
+  ty <- first (Located loc) res
   return $ env { cnsEnv  = M.insert v (t,ty) cnsEnv }
 insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   let t = first (const ()) loct
   _ <- first (Located loc) $ checkCmd loct env
   return $ env { cmdEnv  = M.insert v t cmdEnv }
-insertDecl (DefDecl loc v t)  env@Environment { defEnv }  = do
-  ty <- first (Located loc) $ inferATermRec v t env
+insertDecl (DefDecl isRec loc v t)  env@Environment { defEnv }  = do
+  let res = case isRec of
+        Recursive -> inferATermRec v t env
+        NonRecursive -> inferATerm t env
+  ty <- first (Located loc) res
   return $ env { defEnv  = M.insert v (first (const ()) t,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
@@ -172,9 +181,12 @@ inferProgram = inferProgram' mempty
 ------------------------------------------------------------------------------
 
 insertDeclIO :: Declaration FreeVarName -> Environment FreeVarName -> IO (Maybe (Environment FreeVarName))
-insertDeclIO (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
+insertDeclIO (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do
   let t = first (const ()) loct
-  case inferSTermRecTraced v PrdRep loct env of
+  let res = case isRec of
+        Recursive -> inferSTermRecTraced v PrdRep loct env
+        NonRecursive -> inferSTermTraced PrdRep loct env
+  case res of
     Left err -> do
       printLocatedError (Located loc err)
       return Nothing
@@ -183,9 +195,12 @@ insertDeclIO (PrdDecl loc v loct)  env@Environment { prdEnv }  = do
       ppPrintIO (trace_solvedConstraints trace)
       let newEnv = env { prdEnv  = M.insert v (t,trace_resType trace) prdEnv }
       return (Just newEnv)
-insertDeclIO (CnsDecl loc v loct)  env@Environment { cnsEnv }  = do
+insertDeclIO (CnsDecl isRec loc v loct)  env@Environment { cnsEnv }  = do
   let t = first (const ()) loct
-  case inferSTermRecTraced v CnsRep loct env of
+  let res = case isRec of
+        Recursive -> inferSTermRecTraced v CnsRep loct env
+        NonRecursive -> inferSTermTraced CnsRep loct env
+  case res of
     Left err -> do
       printLocatedError (Located loc err)
       return Nothing
@@ -204,8 +219,11 @@ insertDeclIO (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
       ppPrintIO constraints
       ppPrintIO solverResult
       return (Just (env { cmdEnv  = M.insert v t cmdEnv }))
-insertDeclIO (DefDecl loc v t)  env@Environment { defEnv }  = do
-  case inferATermRecTraced v t env of
+insertDeclIO (DefDecl isRec loc v t)  env@Environment { defEnv }  = do
+  let res = case isRec of
+        Recursive -> inferATermRecTraced v t env
+        NonRecursive -> inferATermTraced t env
+  case res of
     Left err -> do
       printLocatedError (Located loc err)
       return Nothing

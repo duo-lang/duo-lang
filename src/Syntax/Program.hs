@@ -12,11 +12,13 @@ import Utils
 -- Declarations
 ---------------------------------------------------------------------------------
 
+data IsRec = Recursive | NonRecursive
+
 data Declaration a
-  = PrdDecl Loc FreeVarName (STerm Prd Loc a)
-  | CnsDecl Loc FreeVarName (STerm Cns Loc a)
+  = PrdDecl IsRec Loc FreeVarName (STerm Prd Loc a)
+  | CnsDecl IsRec Loc FreeVarName (STerm Cns Loc a)
   | CmdDecl Loc FreeVarName (Command Loc a)
-  | DefDecl Loc FreeVarName (ATerm Loc a)
+  | DefDecl IsRec Loc FreeVarName (ATerm Loc a)
   | DataDecl Loc DataDecl
 
 instance Show (Declaration a) where

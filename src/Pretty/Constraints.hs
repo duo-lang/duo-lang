@@ -23,13 +23,17 @@ instance PrettyAnn Loc where
 
 instance PrettyAnn ConstraintInfo where
   prettyAnn (Primary loc) = parens ("at" <+> prettyAnn loc)
-  prettyAnn Recursive = parens "Recursive"
+  prettyAnn RecursionConstraint = parens "Recursive"
   prettyAnn Derived = parens "Derived"
 
 instance PrettyAnn UVarProvenance where
   prettyAnn (RecursiveUVar fv) = parens ("Recursive binding:" <+> prettyAnn fv)
   prettyAnn (ProgramVariable fv) = parens ("Program variable:" <+> prettyAnn fv)
-  prettyAnn (Other msg) = parens (pretty msg)
+  prettyAnn (PatternMatch loc) = parens ("Return type of pattern match at" <+> prettyAnn loc)
+  prettyAnn (DtorAp loc) = parens ("Result type of Dtor application at" <+> prettyAnn loc)
+  prettyAnn (TypeSchemeInstance fv loc) = parens ("Instantiation of type scheme" <+> prettyAnn fv <+> "at" <+> prettyAnn loc)
+
+
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann

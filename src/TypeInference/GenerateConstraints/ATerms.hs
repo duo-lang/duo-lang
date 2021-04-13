@@ -22,11 +22,11 @@ genConstraintsATerm :: ATerm Loc FreeVarName -> GenM (ATerm () FreeVarName, Typ 
 genConstraintsATerm (BVar _ idx) = do
   ty <- lookupType PrdRep idx
   return (BVar () idx, ty)
-genConstraintsATerm (FVar _ fv) = do
+genConstraintsATerm (FVar loc fv) = do
   defEnv <- asks (defEnv . env)
   case M.lookup fv defEnv of
     Just (_,tys) -> do
-      ty <- instantiateTypeScheme tys
+      ty <- instantiateTypeScheme fv loc tys
       return (FVar () fv, ty)
     Nothing -> throwGenError $ "Unbound free producer variable in ATerm: " ++ ppPrint fv
 genConstraintsATerm (Ctor _ xt args) = do
@@ -35,14 +35,14 @@ genConstraintsATerm (Ctor _ xt args) = do
   return (Ctor () xt (fst <$> args'), ty)
 genConstraintsATerm (Dtor loc xt t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  (retTypePos, retTypeNeg) <- freshTVar (Other "Return type of destructor application")
+  (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
   let codataType = TyCodata NegRep [MkXtorSig xt (MkTypArgs (snd <$> args') [retTypeNeg])]
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType (Primary loc) ty' codataType)
   return (Dtor () xt t' (fst <$> args'), retTypePos)
 genConstraintsATerm (Match loc t cases) = do
   (t', matchType) <- genConstraintsATerm t
-  (retTypePos, retTypeNeg) <- freshTVar (Other "Return type of pattern match")
+  (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
   addConstraint (SubType (Primary loc) matchType (TyData NegRep (snd <$> cases')))
   return (Match () t' (fst <$> cases'), retTypePos)
@@ -74,5 +74,5 @@ genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   let modifyEnv (GenerateReader ctx env@Environment { defEnv }) = GenerateReader ctx env { defEnv = M.insert fv (FVar () fv, TypeScheme [] x) defEnv }
   (tm, ty) <- local modifyEnv (genConstraintsATerm tm)
-  addConstraint (SubType Recursive ty y)
+  addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)

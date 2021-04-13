@@ -88,9 +88,9 @@ freshTVars (Twice prdArgs cnsArgs) = do
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
 
-instantiateTypeScheme :: TypeScheme pol -> GenM (Typ pol)
-instantiateTypeScheme TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar (Other "TypeScheme instantiation") >>= \ty -> return (tv, ty))
+instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
+instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
+  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
   return $ substituteType (M.fromList freshVars) ts_monotype
 
 -- | We map producer terms to positive types, and consumer terms to negative types.

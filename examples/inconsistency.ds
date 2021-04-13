@@ -19,4 +19,4 @@ def omega3 := comatch { Ap(x) => x.Ap(x) }.Ap(comatch { Ap(x) => x.Ap(x)});
 
 def foo := comatch { Ap(x) => x.Ap(x) };
 
-def bar := bar.Ap(bar);
+def rec bar := bar.Ap(bar);
