@@ -55,10 +55,11 @@ initialReader env = GenerateReader { context = []
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-type GenM a = ReaderT GenerateReader (StateT GenerateState (Except Error)) a
+newtype GenM a = GenM { getGenM :: ReaderT GenerateReader (StateT GenerateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader GenerateReader, MonadError Error)
 
 runGenM :: Environment FreeVarName -> GenM a -> Either Error (a, ConstraintSet)
-runGenM env m = case runExcept (runStateT (runReaderT  m (initialReader env)) initialState) of
+runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, stateToConstraintSet state)
 
@@ -87,6 +88,9 @@ freshTVars (Twice prdArgs cnsArgs) = do
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
+
+withContext :: TypArgs 'Pos -> GenM a -> GenM a
+withContext ctx m = local (\gr@GenerateReader{..} -> gr { context = ctx:context }) m
 
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do

@@ -70,23 +70,24 @@ genConstraintsSTerm (XtorCall _ rep xt@(MkXtorName { xtorNominalStructural = Nom
 genConstraintsSTerm (XMatch _ PrdRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       (fvarsPos, fvarsNeg) <- freshTVars scase_args
-                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvarsPos:context }) (genConstraintsCommand scase_cmd)
+                      cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   return (XMatch () PrdRep Structural (fst <$> cases'), TyCodata PosRep (snd <$> cases'))
 genConstraintsSTerm (XMatch _ CnsRep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       (fvarsPos, fvarsNeg) <- freshTVars scase_args
-                      cmd' <- local (\gr@GenerateReader{..} -> gr { context = fvarsPos:context }) (genConstraintsCommand scase_cmd)
+                      cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   return (XMatch () CnsRep Structural (fst <$> cases'), TyData NegRep (snd <$> cases'))
 -- We know that empty matches cannot be parsed as nominal, so it is save to take the head of the xtors.
-genConstraintsSTerm (XMatch _ _ Nominal []) = throwGenError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
+genConstraintsSTerm (XMatch _ _ Nominal []) =
+  throwGenError "Unreachable: A Match on a nominal type with 0 cases cannot be parsed."
 genConstraintsSTerm (XMatch _ PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupXtor (scase_name pmcase)
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            (x,_) <- lookupCase scase_name
-                           cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
+                           cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd'))
   return (XMatch () PrdRep Nominal cases', TyNominal PosRep (data_name tn))
 genConstraintsSTerm (XMatch _ CnsRep Nominal cases@(pmcase:_)) = do
@@ -94,16 +95,16 @@ genConstraintsSTerm (XMatch _ CnsRep Nominal cases@(pmcase:_)) = do
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            (x,_) <- lookupCase scase_name
-                           cmd' <- local (\gr@GenerateReader{..} -> gr { context = x:context }) (genConstraintsCommand scase_cmd)
+                           cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name undefined cmd'))
   return (XMatch () CnsRep Nominal cases', TyNominal NegRep (data_name tn))
 genConstraintsSTerm (MuAbs _ PrdRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable bs)
-  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [] [fvneg]):context }) (genConstraintsCommand cmd)
+  cmd' <- withContext (MkTypArgs [] [fvneg]) (genConstraintsCommand cmd)
   return (MuAbs () PrdRep bs cmd', fvpos)
 genConstraintsSTerm (MuAbs _ CnsRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable bs)
-  cmd' <- local (\gr@GenerateReader{..} -> gr { context = (MkTypArgs [fvpos] []):context }) (genConstraintsCommand cmd)
+  cmd' <- withContext (MkTypArgs [fvpos] []) (genConstraintsCommand cmd)
   return (MuAbs () CnsRep bs cmd', fvneg)
 
 genConstraintsCommand :: Command Loc FreeVarName -> GenM (Command () FreeVarName)
