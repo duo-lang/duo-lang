@@ -49,13 +49,32 @@ evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   return (Just (Apply () prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
-  (MkSCase _ argTypes cmd') <- lookupCase xt cases
-  checkArgs (Apply () prd cns) argTypes args
-  return (Just  (commandOpening args cmd')) --reduction is just opening
+  order <- lookupEvalOrder
+  evalMatchOnce prd cns order
+  where
+    evalMatchOnce :: PrettyAnn bs => STerm Prd () bs -> STerm Cns () bs -> EvalOrder -> EvalM bs (Maybe (Command () bs))
+    evalMatchOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) CBN = do
+      (MkSCase _ argTypes cmd') <- lookupCase xt cases
+      checkArgs (Apply () prd cns) argTypes args
+      return (Just (commandOpening args cmd')) --reduction is just opening
+
+    evalMatchOnce prd@(XtorCall ext PrdRep xt args) cns CBV | noMu args = evalMatchOnce prd cns CBN
+                                                            | otherwise = -- focusing step                                 ???
+                                                                 return (Just (Apply ext (getMuAbs args) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu args)) cns))))
+
 evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
-  (MkSCase _ argTypes cmd') <- lookupCase xt cases
-  checkArgs (Apply () prd cns) argTypes args
-  return (Just (commandOpening args cmd')) --reduction is just opening
+  order <- lookupEvalOrder
+  evalComatchOnce prd cns order
+  where
+    evalComatchOnce :: PrettyAnn bs => STerm Prd () bs -> STerm Cns () bs -> EvalOrder -> EvalM bs (Maybe (Command () bs))
+    evalComatchOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) CBN = do
+      (MkSCase _ argTypes cmd') <- lookupCase xt cases
+      checkArgs (Apply () prd cns) argTypes args
+      return (Just (commandOpening args cmd')) --reduction is just opening
+
+    evalComatchOnce prd cns@(XtorCall ext CnsRep xt args) CBV | noMu args = evalComatchOnce prd cns CBN
+                                                              | otherwise = -- focusing step                                   ???
+                                                                  return $ Just $ Apply ext (getMuAbs args) $ MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu args))
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
   order <- lookupEvalOrder
@@ -89,3 +108,26 @@ evalSteps cmd = evalSteps' [cmd] cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
+
+
+-- | helper functions for CBV evaluation of match and comatch
+
+-- | replace currently evaluated argument in Xtor
+replaceMu :: XtorArgs ext bs -> XtorArgs ext bs
+replaceMu MkXtorArgs { prdArgs, cnsArgs } = MkXtorArgs (replaceMuPrd prdArgs) cnsArgs
+--  where
+replaceMuPrd :: [STerm pc ext bs] -> [STerm pc ext bs] 
+replaceMuPrd (MuAbs ext PrdRep _ _ : prdArgs) = BoundVar ext PrdRep (0,0) : prdArgs
+replaceMuPrd ( prd : prdArgs)                 = prd : replaceMuPrd prdArgs
+
+-- | gets MuAbs-argrument from Xtor
+getMuAbs :: XtorArgs ext bs -> STerm Prd ext bs
+getMuAbs MkXtorArgs { prdArgs } = head $ filter isMu prdArgs
+
+-- | checks if no arguments is a MuAbs
+noMu :: XtorArgs ext bs -> Bool
+noMu MkXtorArgs { prdArgs } = all (not . isMu) prdArgs
+
+isMu :: STerm pc ext bs -> Bool
+isMu (MuAbs _ PrdRep _ _) = True
+isMu _                    = False
