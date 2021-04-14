@@ -1,0 +1,6 @@
+data Bool { True, False };
+data Bool2 { TT, FF };
+
+def fail := comatch { 'Ap(x) => match x with { TT => 'None
+                                             , False => 'None
+                                             }};
