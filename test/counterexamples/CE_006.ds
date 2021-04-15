@@ -1,2 +1,2 @@
-# Should not typecheck becaus True is nominal and not predeclared.
+# Should not typecheck because True is nominal and not predeclared.
 def fail := True;
