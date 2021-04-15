@@ -28,13 +28,14 @@ instance PrettyAnn Error where
 printLocatedError :: LocatedError -> IO ()
 printLocatedError (Located loc err) = do
   putStrLn ("Error at: " ++ ppPrint loc)
-  putStrLn ""
   printRegion loc
   putStrLn ""
   putStrLn (ppPrint err)
 
 printRegion :: Loc -> IO ()
+printRegion (Loc (SourcePos "<interactive>" _ _) (SourcePos _ _ _)) = return ()
 printRegion (Loc (SourcePos fp line1 _) (SourcePos _ line2 _)) = do
+  putStrLn ""
   file <- readFile fp
   let region = getRegion file (unPos line1) (unPos line2)
   let annotatedRegion = generatePrefixes region
