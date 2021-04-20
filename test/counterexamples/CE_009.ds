@@ -1,3 +1,5 @@
+# Should not typecheck since types of match cases do not coincide
+
 data Bool { True, False };
 data Bool2 { TT, FF };
 

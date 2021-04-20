@@ -1,3 +1,5 @@
+# Should not typecheck since Bool is incompatible with Bool2
+
 data Bool { True, False };
 data Bool2 { TT, FF };
 

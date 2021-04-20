@@ -14,6 +14,8 @@ prd omega2 := mu v. comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] }
                     >>
                     'Ap( comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] })[v];
 
+data Fun { Ap(Fun)[Fun] };
+
 def omega3 := comatch { Ap(x) => x.Ap(x) }.Ap(comatch { Ap(x) => x.Ap(x)});
 
 
