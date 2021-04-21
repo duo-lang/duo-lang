@@ -3,9 +3,8 @@ module TypeInference.GenerateConstraints.ATerms
   , genConstraintsATermRecursive
   ) where
 
-import Control.Monad (forM, forM_, unless)
+import Control.Monad (forM, forM_)
 
-import Pretty.Pretty (ppPrint)
 import Pretty.ATerms ()
 import Pretty.Types ()
 import Syntax.ATerms
@@ -18,19 +17,6 @@ import Data.Maybe
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------------------
-
--- | Checks for a given list of XtorNames and a type declaration whether:
--- (1) All the xtornames occur in the type declaration. (Correctness)
--- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
-checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
-                    -> DataDecl   -- ^ The type declaration to check against.
-                    -> GenM ()
-checkExhaustiveness matched decl = do
-  let declared = sig_name <$> data_xtors decl
-  forM_ matched $ \xn -> unless (xn `elem` declared) 
-    (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
-  forM_ declared $ \xn -> unless (xn `elem` matched) 
-    (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
 -- | Every asymmetric terms gets assigned a positive type.
 genConstraintsATerm :: ATerm Loc FreeVarName
