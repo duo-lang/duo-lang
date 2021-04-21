@@ -11,8 +11,6 @@ import Syntax.ATerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
 import Utils
-import Data.List
-import Data.Maybe
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -51,7 +49,7 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   tn <- lookupDataDecl xt -- TODO: Check dtor arguments
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType (DtorApConstraint loc) ty' (TyNominal NegRep (data_name tn)) )
-  let xtorSig = fromJust $ find ( \MkXtorSig{..} -> sig_name == xt ) (data_xtors tn)
+  xtorSig <- lookupXtorSig tn xt
   name <- case head $ cnsTypes $ sig_args xtorSig of { TyNominal _ tn -> return tn; _ -> throwGenError "Dtor consumer type not nominal" }
   return (Dtor () xt t' (fst <$> args'), TyNominal PosRep name)
 

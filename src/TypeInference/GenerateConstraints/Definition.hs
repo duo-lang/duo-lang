@@ -24,6 +24,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , PrdCnsToPol
   , lookupDataDecl
+  , lookupXtorSig
   , lookupCase
   , foo
   , prdCnsToPol
@@ -44,6 +45,8 @@ import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
 import Utils
+import Data.List
+import Data.Maybe
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -240,6 +243,12 @@ lookupDataDecl xt = do
   case lookupXtor xt env of
     Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
     Just decl -> return decl
+
+lookupXtorSig :: DataDecl -> XtorName -> GenM (XtorSig Pos)
+lookupXtorSig decl xtn = do
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl) of
+    Just xts -> return xts
+    Nothing -> throwGenError $ "XtorName " ++ unXtorName xtn ++ " not found in declaration of type " ++ unTypeName (data_name decl)
 
 -- | Checks for a given list of XtorNames and a type declaration whether:
 -- (1) All the xtornames occur in the type declaration. (Correctness)
