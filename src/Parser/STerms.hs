@@ -113,7 +113,7 @@ muAbstraction PrdRep = do
   return (MuAbs (Loc startPos endPos) PrdRep v (commandClosingSingle CnsRep v cmd), endPos)
 muAbstraction CnsRep = do
   startPos <- getSourcePos
-  _ <- muStarKwP
+  _ <- muKwP
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP

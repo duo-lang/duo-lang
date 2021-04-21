@@ -1,8 +1,8 @@
 prd fixLazy := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => x >> 
-                   'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] } >> 
+                   'Ap(x)[mu xx. f >> 'Ap(xx)[k]] } >> 
                       'Ap(comatch { 'Ap(x)[k] => x >> 
-                        'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] })[k]};
+                        'Ap(x)[mu xx. f >> 'Ap(xx)[k]] })[k]};
 
 prd id := comatch { 'Ap(x)[k] => x >> k };
 

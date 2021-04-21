@@ -37,7 +37,7 @@ prgExamples =
         , "forall a. { 'Ap(< 'True | 'False >, a, a)[a] }" )
     , ( "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
         , "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }" )
-    , ( "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu* y. f >> 'Ap(y)[k]]) >> k"
+    , ( "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu y. f >> 'Ap(y)[k]]) >> k"
         , "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }" )
 
     -- Nominal Examples
@@ -49,15 +49,15 @@ prgExamples =
         , "{ 'Ap(Bool)[(Nat \\/ Bool)] }" )
 
     -- addNominal
-    , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu* w. S(w) >> k] }} >> k })['Ap(m)[k]] }"
+    , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu w. S(w) >> k] }} >> k })['Ap(m)[k]] }"
         , "forall t0. { 'Ap(t0,Nat)[(t0 \\/ Nat)] }" )
 
     -- mltNominal
-    , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu* w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]}"
+    , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]}"
         , "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }" )
 
     -- expNominal
-    , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] }"
+    , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] }"
         , "forall t0. { 'Ap((t0 /\\ Nat),Nat)[(t0 \\/ Nat)] }" )
 
     -- subSafeNominal
