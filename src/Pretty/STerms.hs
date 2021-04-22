@@ -39,7 +39,7 @@ instance PrettyAnn bs => PrettyAnn (STerm pc ext bs) where
     annKeyword "match"   <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (MuAbs _ pc a cmd) =
-    annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu*"}) <+>
+    annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
 
 instance PrettyAnn bs => PrettyAnn (Command ext bs) where
