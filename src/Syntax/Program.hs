@@ -62,13 +62,13 @@ envToXtorMap Environment { declEnv } = M.unions xtorMaps
   where
     xtorMaps = xtorSigsToAssocList <$> declEnv
     xtorSigsToAssocList NominalDecl { data_xtors } =
-      M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors)
+      M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors PosRep)
 
 lookupXtor :: XtorName -> Environment bs -> Maybe DataDecl
 lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
   where
     typeContainsXtor :: DataDecl -> Bool
-    typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors) = True
+    typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
                                    | otherwise = False
 
     containsXtor :: XtorSig Pos -> Bool

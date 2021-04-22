@@ -26,7 +26,7 @@ instance PrettyAnn DataDecl where
   prettyAnn (NominalDecl tn dc xtors) =
     prettyAnn dc <+>
     prettyAnn tn <+>
-    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
+    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
     semi
 
 instance PrettyAnn a => PrettyAnn (Declaration a) where

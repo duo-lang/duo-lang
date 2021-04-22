@@ -231,7 +231,6 @@ type SolverResult = Map TVar VariableState
 data DataDecl = NominalDecl
   { data_name :: TypeName
   , data_polarity :: DataCodata
-  , data_xtors :: [XtorSig Pos]
+  , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
   }
-  deriving (Eq)
 
