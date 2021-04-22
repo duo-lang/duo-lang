@@ -74,11 +74,11 @@ xtorDeclP = do
   cnsArgs <- option [] (fst <$> (brackets $ invariantP `sepBy` comma))
   return (xt,prdArgs, cnsArgs)
 
-foo :: [(XtorName, [Invariant], [Invariant])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
-foo [] = \_rep -> []
-foo ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
+combineXtors :: [(XtorName, [Invariant], [Invariant])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
+combineXtors [] = \_rep -> []
+combineXtors ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
   xt (MkTypArgs ((\x -> (unInvariant x) rep) <$> prdArgs)
-       ((\x -> (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : foo rest rep
+       ((\x -> (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : combineXtors rest rep
 
 
 dataDeclP :: Parser (Declaration FreeVarName)
@@ -91,7 +91,7 @@ dataDeclP = do
   let decl = NominalDecl
         { data_name = tn
         , data_polarity = dataCodata
-        , data_xtors = foo xtors
+        , data_xtors = combineXtors xtors
         }
   return (DataDecl (Loc startPos endPos) decl)
   where
