@@ -67,6 +67,20 @@ defDeclarationP = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
+xtorDeclP :: Parser (XtorName, [Invariant], [Invariant])
+xtorDeclP = do
+  (xt, _pos) <- xtorName Nominal
+  prdArgs <- option [] (fst <$> (parens   $ invariantP `sepBy` comma))
+  cnsArgs <- option [] (fst <$> (brackets $ invariantP `sepBy` comma))
+  return (xt,prdArgs, cnsArgs)
+
+foo :: [(XtorName, [Invariant], [Invariant])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
+foo [] = \_rep -> []
+foo ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
+  xt (MkTypArgs ((\x -> (unInvariant x) rep) <$> prdArgs)
+       ((\x -> (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : foo rest rep
+
+
 dataDeclP :: Parser (Declaration FreeVarName)
 dataDeclP = do
   startPos <- getSourcePos
@@ -77,18 +91,14 @@ dataDeclP = do
   let decl = NominalDecl
         { data_name = tn
         , data_polarity = dataCodata
-        , data_xtors = xtors
+        , data_xtors = foo xtors
         }
   return (DataDecl (Loc startPos endPos) decl)
   where
     dataCodataDeclP :: Parser DataCodata
     dataCodataDeclP = (dataKwP >> return Data) <|> (codataKwP >> return Codata)
 
-    xtorDeclP :: Parser (XtorSig 'Pos)
-    xtorDeclP = do
-      (xt, _pos) <- xtorName Nominal
-      args <- typArgListP PosRep
-      return (MkXtorSig xt args)
+
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
