@@ -62,12 +62,17 @@ evalApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
       checkArgs (Apply () prd cns) argTypes args
       return (Just (commandOpening args cmd')) -- reduction is just opening
     substArgs _ _ = error "unrechable cases due to local definition of substArgs"
-    -- Focus on first non-subst. argument and evaluate this from here onwards.
-    -- we want to focus on the first non-subst. argument in: C(prds not-sub prds)[cnss] >> cns
-    -- not-sub >> mu r. C(prds r prds)[cnss] >> cns
+    -- we want to focus on the first non-subst. argument
+    -- at CBV in:  C(prds not-sub prds)[cnss] >> cns
+    -- to:         not-sub >> mu r. C(prds r prds)[cnss] >> cns
+    -- at CBN in:  C(prds)[cnss not-sub cnss] >> cns
+    -- to:         mu r. C(prds)[cnss r cnss] >> not-sub
     focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
-    focusingStep (XtorCall ext PrdRep xt args) cns = 
-      return $ Just $ Apply ext (getMu args) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu args)) cns))
+    focusingStep (XtorCall ext PrdRep xt args) cns =  do
+      order <- lookupEvalOrder
+      case order of
+        CBV -> return $ Just $ Apply ext (getMuPrd args) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu args)) cns))
+        CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu args)) cns)) (getMuCns args)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 
 -- Copattern matches.
@@ -84,11 +89,17 @@ evalApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
       checkArgs (Apply () prd cns) argTypes args
       return (Just (commandOpening args cmd')) -- reduction is just opening
     substArgs _ _ = error "unrechable cases due to local definition of substArgs"
-    -- we want to focus on the first non-subst. argument in: prd >> D(prds not-sub prds)[cnss]
-    -- not-sub >> mu r. prd >> D(prds r prds)[cnss]
+    -- we want to focus on the first non-subst. argument
+    -- at CBV in:  prd >> D(prds not-sub prds)[cnss]
+    -- to:         not-sub >> mu r. prd >> D(prds r prds)[cnss]
+    -- at CBN in:  prd >> D(prds)[cnss not-sub cnss]
+    -- to:         mu r.prd >> D(prds)[cnss r cnss] >> not-sub
     focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
-    focusingStep prd (XtorCall ext CnsRep xt args) =
-      return $ Just $ Apply ext (getMu args) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu args)))
+    focusingStep prd (XtorCall ext CnsRep xt args) = do
+      order <- lookupEvalOrder
+      case order of
+        CBV -> return $ Just $ Apply ext (getMuPrd args) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu args)))
+        CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu args))) (getMuCns args)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
@@ -134,41 +145,49 @@ replaceMu MkXtorArgs { prdArgs, cnsArgs } = MkXtorArgs (replaceMuPrd prdArgs) cn
   where
     replaceMuPrd :: [STerm pc ext FreeVarName] -> [STerm pc ext FreeVarName] 
     replaceMuPrd (MuAbs ext PrdRep _ _ : prdArgs) = BoundVar ext PrdRep (0,0) : prdArgs
-    replaceMuPrd (xtor@(XtorCall ext PrdRep xt (MkXtorArgs { prdArgs, cnsArgs })) : ts) | isSubst CBV xtor = xtor : replaceMuPrd prdArgs
+    replaceMuPrd (xtor@(XtorCall ext PrdRep xt (MkXtorArgs { prdArgs, cnsArgs })) : ts) | isSubstPrd CBV xtor = xtor : replaceMuPrd prdArgs
                                                                                         | otherwise = 
                                                                                             (XtorCall ext PrdRep xt (MkXtorArgs (replaceMuPrd prdArgs) cnsArgs)) : ts
     replaceMuPrd (prd : prdArgs) = prd : replaceMuPrd prdArgs
     replaceMuPrd _ = error "Couldn't find and replace a mu abstraction, but should have!"
 
--- | Gets the first MuAbs-argrument from Xtor
-getMu :: XtorArgs ext FreeVarName -> STerm Prd ext FreeVarName
-getMu MkXtorArgs { prdArgs } = getMu' $ filter (\t -> isMu t || isXTor t) prdArgs
+-- | Gets the first occurence (from left) of MuAbs-argrument from Xtor
+getMuPrd :: XtorArgs ext FreeVarName -> STerm Prd ext FreeVarName
+getMuPrd MkXtorArgs { prdArgs } = getMuPrdArgs prdArgs
   where
-    getMu' (mu@(MuAbs _ _ _ _):_) = mu
-    getMu' (xtor@(XtorCall _ _ _ (MkXtorArgs { prdArgs })) : ts) | isSubst CBV xtor = getMu' ts
-                                                                 | otherwise = getMu' prdArgs
-    getMu' (_:ts) = getMu' ts
-    getMu' [] = error "Couldn't get a mu abstraction, but should have!"
+    getMuPrdArgs (mu@(MuAbs _ _ _ _):_) = mu
+    getMuPrdArgs (xtor@(XtorCall _ _ _ (MkXtorArgs { prdArgs })) : ts) | isSubstPrd CBV xtor = getMuPrdArgs ts
+                                                                       | otherwise = getMuPrdArgs prdArgs
+    getMuPrdArgs (_:ts) = getMuPrdArgs ts
+    getMuPrdArgs [] = error "Couldn't get a mu abstraction, but should have!"
+
+-- | Gets the first occurence (from left) of ~MuAbs-argrument from Xtor
+getMuCns :: XtorArgs ext FreeVarName -> STerm Cns ext FreeVarName
+getMuCns MkXtorArgs { cnsArgs } = getMuCnsArgs cnsArgs
+  where
+    getMuCnsArgs (mu@(MuAbs _ _ _ _):_) = mu
+    getMuCnsArgs (xtor@(XtorCall _ _ _ (MkXtorArgs { cnsArgs })) : ts) | isSubstCns CBN xtor = getMuCnsArgs ts
+                                                                       | otherwise = getMuCnsArgs cnsArgs
+    getMuCnsArgs (_:ts) = getMuCnsArgs ts
+    getMuCnsArgs [] = error "Couldn't get a mu abstraction, but should have!"
 
 -- | Checks wether all producer arguments are substitutable.
 -- | The evaluation order determines which arguments are substitutable.
 areAllSubst :: XtorArgs ext FreeVarName -> EvalM FreeVarName Bool
-areAllSubst MkXtorArgs { prdArgs } = do
+areAllSubst MkXtorArgs { prdArgs, cnsArgs } = do
   order <- lookupEvalOrder
-  return $ all (isSubst order) prdArgs
+  return $ all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
 
--- subst every producer argument, not containing any Mu-abstractions
-isSubst :: EvalOrder -> STerm pc ext FreeVarName -> Bool
-isSubst CBV (MuAbs _ PrdRep _ _)                      = False
-isSubst CBV (XtorCall _ _ _ (MkXtorArgs { prdArgs })) = all (isSubst CBV) prdArgs
-isSubst CBV  _                                        = True
--- subst every producer argument
-isSubst CBN _ = True
+-- subst every producer argument, not containing any mu-abstractions
+isSubstPrd :: EvalOrder -> STerm Prd ext FreeVarName -> Bool
+isSubstPrd CBV (MuAbs _ PrdRep _ _)                      = False
+isSubstPrd CBV (XtorCall _ _ _ (MkXtorArgs { prdArgs })) = all (isSubstPrd CBV) prdArgs
+isSubstPrd CBV _                                         = True
+isSubstPrd CBN _                                         = True
 
-isMu :: STerm pc ext FreeVarName -> Bool
-isMu (MuAbs _ PrdRep _ _) = True
-isMu _                    = False
-
-isXTor :: STerm pc ext FreeVarName -> Bool
-isXTor (XtorCall _ _ _ _) = True
-isXTor _                  = False
+-- subst every producer argument, not containing any ~mu-abstractions
+isSubstCns :: EvalOrder -> STerm Cns ext FreeVarName -> Bool
+isSubstCns CBN (MuAbs _ CnsRep _ _)                      = False
+isSubstCns CBN (XtorCall _ _ _ (MkXtorArgs { cnsArgs })) = all (isSubstCns CBN) cnsArgs
+isSubstCns CBN _                                         = True
+isSubstCns CBV _                                         = True
