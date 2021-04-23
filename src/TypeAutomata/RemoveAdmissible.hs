@@ -49,10 +49,10 @@ admissableM aut@TypeAut{..} e@(i,j) =
         (HeadCons Pos _ (Just codat2) _) <- lab ta_gr j
         _ <- forM (labelName <$> S.toList codat2) $ \xt -> guard (xt `S.member` (labelName `S.map` codat1))
         _ <- forM (labelName <$> S.toList codat2) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Codata xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          _ <- forM [(n,el) | (n, el@(EdgeSymbol Codata xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
           return ()
