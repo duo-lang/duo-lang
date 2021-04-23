@@ -28,7 +28,7 @@ import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
-import TypeAutomata.FlowAnalysis
+import TypeAutomata.RemoveAdmissible
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.ATerms
 import TypeInference.GenerateConstraints.STerms

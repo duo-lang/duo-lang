@@ -4,7 +4,8 @@ import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import Syntax.TypeAutomaton
 import Utils
-import TypeAutomata.FlowAnalysis
+import TypeAutomata.FlowAnalysis ()
+import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
 import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
 import TypeAutomata.Minimize (minimize)
 
