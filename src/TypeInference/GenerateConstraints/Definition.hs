@@ -46,7 +46,6 @@ import Syntax.STerms
 import Syntax.Types
 import Utils
 import Data.List
-import Data.Maybe
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -244,9 +243,9 @@ lookupDataDecl xt = do
     Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
     Just decl -> return decl
 
-lookupXtorSig :: DataDecl -> XtorName -> GenM (XtorSig Pos)
-lookupXtorSig decl xtn = do
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl) of
+lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
+lookupXtorSig decl xtn pol = do
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
     Nothing -> throwGenError $ "XtorName " ++ unXtorName xtn ++ " not found in declaration of type " ++ unTypeName (data_name decl)
 
@@ -257,7 +256,7 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness matched decl = do
-  let declared = sig_name <$> data_xtors decl
+  let declared = sig_name <$> data_xtors decl PosRep
   forM_ matched $ \xn -> unless (xn `elem` declared) 
     (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
   forM_ declared $ \xn -> unless (xn `elem` matched) 

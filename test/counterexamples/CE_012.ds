@@ -1,0 +1,6 @@
+# Should not typecheck since acase argument f is used incorrectly in acase term
+
+data Nat { Z, S(Nat) };
+data Foo { A, B(Foo) };
+
+def fail := match A with { A => Z, B(f) => S(f) };

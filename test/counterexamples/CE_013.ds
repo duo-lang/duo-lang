@@ -1,0 +1,7 @@
+# Destructee of destructor application has incorrect type
+data Nat { Z, S(Nat) };
+codata Fun { Ap(Nat)[Nat] };
+
+def fail := Z.Ap(Z);
+
+

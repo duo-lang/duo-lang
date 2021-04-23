@@ -3,7 +3,7 @@ module TypeInference.GenerateConstraints.ATerms
   , genConstraintsATermRecursive
   ) where
 
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, when)
 
 import Pretty.ATerms ()
 import Pretty.Types ()
@@ -32,9 +32,13 @@ genConstraintsATerm (Ctor _ xt@MkXtorName { xtorNominalStructural = Structural }
   args' <- sequence (genConstraintsATerm <$> args)
   let ty = TyData PosRep [MkXtorSig xt (MkTypArgs (snd <$> args') [])]
   return (Ctor () xt (fst <$> args'), ty)
-genConstraintsATerm (Ctor _ xt@MkXtorName { xtorNominalStructural = Nominal } args) = do
+genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  tn <- lookupDataDecl xt -- TODO: Check ctor arguments
+  tn <- lookupDataDecl xt
+  xtorSig <- lookupXtorSig tn xt NegRep
+  when (length args' /= length (prdTypes $ sig_args xtorSig)) $
+    throwGenError $ "Ctor " ++ unXtorName xt ++ " called with incorrect number of arguments"
+  forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
   return (Ctor () xt (fst <$> args'), TyNominal PosRep (data_name tn) )
 
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
@@ -46,12 +50,14 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural
   return (Dtor () xt t' (fst <$> args'), retTypePos)
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
-  tn <- lookupDataDecl xt -- TODO: Check dtor arguments
+  tn <- lookupDataDecl xt
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType (DtorApConstraint loc) ty' (TyNominal NegRep (data_name tn)) )
-  xtorSig <- lookupXtorSig tn xt
-  name <- case head $ cnsTypes $ sig_args xtorSig of { TyNominal _ tn -> return tn; _ -> throwGenError "Dtor consumer type not nominal" }
-  return (Dtor () xt t' (fst <$> args'), TyNominal PosRep name)
+  xtorSig <- lookupXtorSig tn xt NegRep
+  when (length args' /= length (prdTypes $ sig_args xtorSig)) $
+    throwGenError $ "Dtor " ++ unXtorName xt ++ " called with incorrect number of arguments"
+  forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2
+  return (Dtor () xt t' (fst <$> args'), head $ cnsTypes $ sig_args xtorSig)
 
 {- 
 match t with { X_1(x_1,...,x_n) => e_1, ... }
@@ -69,7 +75,7 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   checkExhaustiveness (acase_name <$> cases) tn
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
-  forM_ (zip (data_xtors tn) cases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
+  forM_ (zip (data_xtors tn PosRep) cases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
   addConstraint (SubType (PatternMatchConstraint loc) matchType (TyNominal NegRep (data_name tn)))
   return (Match () t' (fst <$> cases') , retTypePos)
 
@@ -93,7 +99,7 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   tn <- lookupDataDecl xtn
   checkExhaustiveness (acase_name <$> cocases) tn
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
-  forM_ (zip (data_xtors tn) cocases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
+  forM_ (zip (data_xtors tn PosRep) cocases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
   let ty = TyNominal PosRep (data_name tn)
   return (Comatch () (fst <$> cocases'), ty)
 
