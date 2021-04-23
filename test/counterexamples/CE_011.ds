@@ -1,6 +1,7 @@
-# Should not typecheck since constructor S is called with incorrect type
+# Dtor called with incorrect arg type
 
 data Nat { Z, S(Nat) };
 data Bool { True, False };
+codata Fun { Ap(Nat)[Nat] };
 
-def fail := S(True);
+def fail := Ap(True);

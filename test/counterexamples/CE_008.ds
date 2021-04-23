@@ -1,9 +1,5 @@
-# Should not typecheck since Bool is incompatible with Bool2
+# Ctor called with incorrect number of args
 
-data Bool { True, False };
-data Bool2 { TT, FF };
+data Nat { Z, S(Nat) };
 
-def fail := match True with { TT => 'None
-                            , FF => 'None
-                            };
-
+def fail := S(Z,Z);

@@ -1,8 +1,6 @@
-# Should not typecheck since types of match cases do not coincide
+# Dtor called with incorrect number of args
 
-data Bool { True, False };
-data Bool2 { TT, FF };
+data Nat { Z, S(Nat) };
+codata Fun { Ap(Nat)[Nat] };
 
-def fail := comatch { 'Ap(x) => match x with { TT => 'None
-                                             , False => 'None
-                                             }};
+def fail := comatch { Ap(n) => S(n) }.Ap(Z,Z);

@@ -1,7 +1,5 @@
-# Destructee of destructor application has incorrect type
-data Nat { Z, S(Nat) };
-codata Fun { Ap(Nat)[Nat] };
+# Match is not exhaustive
 
-def fail := Z.Ap(Z);
+data Bool { True, False };
 
-
+def fail := match True with { True => False };

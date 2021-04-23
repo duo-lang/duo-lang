@@ -1,5 +1,6 @@
+# Comatch is not exhaustive
+
 data Nat { Z, S(Nat) };
-codata Fun { Ap(Nat,Nat)[Nat] };
+codata Tuple { Fst[Nat], Snd[Nat] };
 
-def rec add := comatch { Ap(n,m) => match n with { Z => m, S(p) => add.Ap(p,S(m),Z) } };
-
+def fail := comatch { Fst => 1 };
