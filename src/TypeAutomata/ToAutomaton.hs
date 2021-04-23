@@ -133,17 +133,31 @@ insertType (TyNominal rep tn) = do
   insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
   return newNode
 
+
+
+
+
+-- | Every type variable is mapped to a pair of nodes.
+createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes tvars = createNode <$> (createPairs tvars)
+  where
+    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyHeadCons Pos), (negNode, emptyHeadCons Neg), (posNode, negNode))
+
+    createPairs :: [TVar] -> [(TVar,Node,Node)]
+    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
+
+
 createInitialFromTypeScheme :: PolarityRep pol -> [TVar] -> (TypeAutEps pol, LookupEnv)
 createInitialFromTypeScheme rep tvars =
   let
-    nodes = [(2 * i + offset, emptyHeadCons pol) | i <- [0..length tvars - 1], pol <- [Pos, Neg],
-                                                                 let offset = case pol of {Pos -> 0; Neg -> 1}]
+    nodes = createNodes tvars
     initAut = TypeAut { ta_pol = rep
-                      , ta_gr = G.mkGraph nodes []
+                      , ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
                       , ta_starts = []
-                      , ta_flowEdges = [(2 * i + 1, 2 * i) | i <- [0..length tvars - 1]]
+                      , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
                       }
-    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just (2*i),Just(2*i+1))) | i <- [0..length tvars - 1], let tv = tvars !! i]
+    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           }
   in
     (initAut, lookupEnv)
