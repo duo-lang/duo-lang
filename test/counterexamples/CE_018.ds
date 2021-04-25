@@ -1,0 +1,6 @@
+# Match acase arg usage does not fit type
+
+data Nat { Z, S(Nat) };
+data Foo { A, B(Foo) };
+
+def fail := match A with { A => Z, B(f) => S(f) };

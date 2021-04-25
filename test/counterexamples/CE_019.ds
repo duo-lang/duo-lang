@@ -1,0 +1,7 @@
+# Comatch acase arg usage does not fit type
+
+data Nat { Z, S(Nat) };
+data Nat { True, False };
+codata Fun { Ap(Bool)[Nat] };
+
+def fail := comatch { Ap(b) => S(b) };

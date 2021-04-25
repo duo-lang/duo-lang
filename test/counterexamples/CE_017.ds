@@ -1,0 +1,9 @@
+# Pattern match destructee has incorrect type
+
+data Bool { True, False };
+data Bool2 { TT, FF };
+
+def fail := match True with { TT => 'None
+                            , FF => 'None
+                            };
+

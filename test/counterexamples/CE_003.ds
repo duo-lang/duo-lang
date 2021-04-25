@@ -1,3 +1,4 @@
+# Match cases incorrect
 data Bool { True, False };
 prd nominalNot := \(x)[k] => x >> match { True => False >> k
                                         , False => True >> k

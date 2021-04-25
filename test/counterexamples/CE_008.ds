@@ -1,0 +1,5 @@
+# Ctor called with incorrect number of args
+
+data Nat { Z, S(Nat) };
+
+def fail := S(Z,Z);
