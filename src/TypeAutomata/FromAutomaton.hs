@@ -63,6 +63,16 @@ flowAnalysisState flgr =
 getFlowAnalysisMap :: TypeAut' EdgeLabelNormal f pol -> Map Node (Set TVar)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
 
+initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
+initializeFromAutomaton aut@TypeAut{..} =
+  let
+    flowAnalysis = getFlowAnalysisMap aut
+  in
+    AutToTypeState { tvMap = flowAnalysis
+                   , graph = ta_gr
+                   , cache = S.empty
+                   , tvars = S.toList $ S.unions (M.elems flowAnalysis)
+                   }
 
 --------------------------------------------------------------------------
 -- Type automata -> Types
@@ -71,6 +81,7 @@ getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
 data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
+                                     , tvars :: [TVar]
                                      }
 
 type AutToTypeM a = Reader AutToTypeState a
@@ -78,12 +89,10 @@ type AutToTypeM a = Reader AutToTypeState a
 autToType :: TypeAutDet pol -> TypeScheme pol
 autToType aut@TypeAut{..} =
   let
-    mp = getFlowAnalysisMap aut
-    startState = AutToTypeState mp ta_gr S.empty
+    startState = initializeFromAutomaton aut
     monotype = runReader (nodeToType ta_pol (runIdentity ta_starts)) startState
-    tvars = S.toList $ S.unions (M.elems mp)
   in
-    TypeScheme tvars monotype
+    TypeScheme (tvars startState) monotype
 
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
