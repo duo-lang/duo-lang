@@ -1,3 +1,4 @@
+# Match cases not exhaustive
 data Nat { Z, S(Nat) };
 prd predNominal := comatch { 'Ap(n)[k] => n >> match { S(m) => m >> k } };
 

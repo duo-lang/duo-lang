@@ -4,9 +4,8 @@ module TypeInference.GenerateConstraints.STerms
   , genConstraintsCommand
   ) where
 
-import Control.Monad (forM, forM_, when)
+import Control.Monad (forM)
 
-import Pretty.Pretty (ppPrint)
 import Pretty.STerms ()
 import Pretty.Types ()
 import Syntax.STerms
@@ -17,17 +16,6 @@ import Utils
 ---------------------------------------------------------------------------------------------
 -- Symmetric Terms
 ---------------------------------------------------------------------------------------------
-
--- | Checks for a given list of XtorNames and a type declaration whether:
--- (1) All the xtornames occur in the type declaration. (Correctness)
--- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
-checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
-                    -> DataDecl   -- ^ The type declaration to check against.
-                    -> GenM ()
-checkExhaustiveness matched decl = do
-  let declared = sig_name <$> (data_xtors decl) PosRep
-  forM_ matched $ \xn -> when (not (xn `elem` declared)) (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
-  forM_ declared $ \xn -> when (not (xn `elem` matched)) (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
 genConstraintsArgs :: XtorArgs Loc FreeVarName
                    -> GenM (XtorArgs () FreeVarName, TypArgs Pos)

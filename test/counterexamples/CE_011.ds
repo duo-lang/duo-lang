@@ -1,0 +1,7 @@
+# Dtor called with incorrect arg type
+
+data Nat { Z, S(Nat) };
+data Bool { True, False };
+codata Fun { Ap(Nat)[Nat] };
+
+def fail := Ap(True);

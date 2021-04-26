@@ -24,9 +24,11 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , PrdCnsToPol
   , lookupDataDecl
+  , lookupXtorSig
   , lookupCase
   , foo
   , prdCnsToPol
+  , checkExhaustiveness
   ) where
 
 import Control.Monad.Except
@@ -35,11 +37,15 @@ import Control.Monad.State
 import qualified Data.Map as M
 
 import Pretty.Pretty
+import Pretty.STerms ()
+import Pretty.ATerms ()
+import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
 import Utils
+import Data.List
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -236,3 +242,23 @@ lookupDataDecl xt = do
   case lookupXtor xt env of
     Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
     Just decl -> return decl
+
+lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
+lookupXtorSig decl xtn pol = do
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
+    Just xts -> return xts
+    Nothing -> throwGenError $ "XtorName " ++ unXtorName xtn ++ " not found in declaration of type " ++ unTypeName (data_name decl)
+
+-- | Checks for a given list of XtorNames and a type declaration whether:
+-- (1) All the xtornames occur in the type declaration. (Correctness)
+-- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
+checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
+                    -> DataDecl   -- ^ The type declaration to check against.
+                    -> GenM ()
+checkExhaustiveness matched decl = do
+  let declared = sig_name <$> data_xtors decl PosRep
+  forM_ matched $ \xn -> unless (xn `elem` declared) 
+    (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
+  forM_ declared $ \xn -> unless (xn `elem` matched) 
+    (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
+
