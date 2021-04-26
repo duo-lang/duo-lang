@@ -71,8 +71,8 @@ evalApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
     focusingStep (XtorCall ext PrdRep xt args) cns =  do
       order <- lookupEvalOrder
       case order of
-        CBV -> return $ Just $ Apply ext (getMuPrd args) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu args)) cns))
-        CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu args)) cns)) (getMuCns args)
+        CBV -> return $ Just $ Apply ext (getMuPrd args) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu order args)) cns))
+        CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt (replaceMu order args)) cns)) (getMuCns args)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 
 -- Copattern matches.
@@ -98,8 +98,8 @@ evalApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
     focusingStep prd (XtorCall ext CnsRep xt args) = do
       order <- lookupEvalOrder
       case order of
-        CBV -> return $ Just $ Apply ext (getMuPrd args) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu args)))
-        CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu args))) (getMuCns args)
+        CBV -> return $ Just $ Apply ext (getMuPrd args) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu order args)))
+        CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt (replaceMu order args))) (getMuCns args)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
@@ -140,16 +140,27 @@ evalSteps cmd = evalSteps' [cmd] cmd
 -- | Helper functions for CBV evaluation of match and comatch
 
 -- | Replace currently evaluated MuAbs-argument in Xtor with bound variable
-replaceMu :: XtorArgs ext FreeVarName -> XtorArgs ext FreeVarName
-replaceMu MkXtorArgs { prdArgs, cnsArgs } = MkXtorArgs (replaceMuPrd prdArgs) cnsArgs
+replaceMu :: EvalOrder -> XtorArgs () FreeVarName -> XtorArgs () FreeVarName
+replaceMu CBV MkXtorArgs { prdArgs, cnsArgs } = MkXtorArgs (replaceMuPrd prdArgs) cnsArgs
   where
-    replaceMuPrd :: [STerm pc ext FreeVarName] -> [STerm pc ext FreeVarName] 
+    replaceMuPrd :: [STerm Prd () FreeVarName] -> [STerm Prd () FreeVarName] 
     replaceMuPrd (MuAbs ext PrdRep _ _ : prdArgs) = BoundVar ext PrdRep (0,0) : prdArgs
-    replaceMuPrd (xtor@(XtorCall ext PrdRep xt (MkXtorArgs { prdArgs, cnsArgs })) : ts) | isSubstPrd CBV xtor = xtor : replaceMuPrd prdArgs
+    replaceMuPrd (xtor@(XtorCall ext PrdRep xt (MkXtorArgs { prdArgs, cnsArgs })) : ts) | isSubstPrd CBV xtor = xtor : replaceMuPrd ts
                                                                                         | otherwise = 
                                                                                             (XtorCall ext PrdRep xt (MkXtorArgs (replaceMuPrd prdArgs) cnsArgs)) : ts
     replaceMuPrd (prd : prdArgs) = prd : replaceMuPrd prdArgs
     replaceMuPrd _ = error "Couldn't find and replace a mu abstraction, but should have!"
+
+replaceMu CBN MkXtorArgs { prdArgs, cnsArgs } = MkXtorArgs prdArgs (replaceMuCns cnsArgs)
+  where
+    replaceMuCns :: [STerm Cns () FreeVarName] -> [STerm Cns () FreeVarName] 
+    replaceMuCns (MuAbs ext CnsRep _ _ : cnsArgs) = BoundVar ext CnsRep (0,0) : cnsArgs
+    replaceMuCns (xtor@(XtorCall ext CnsRep xt (MkXtorArgs { prdArgs, cnsArgs })) : ts) | isSubstCns CBN xtor = xtor : replaceMuCns ts
+                                                                                        | otherwise = 
+                                                                                            (XtorCall ext CnsRep xt (MkXtorArgs prdArgs (replaceMuCns cnsArgs))) : ts
+    replaceMuCns (cns : cnsArgs) = cns : replaceMuCns cnsArgs
+    replaceMuCns _ = error "Couldn't find and replace a tilde mu abstraction, but should have!"
+    
 
 -- | Gets the first occurence (from left) of MuAbs-argrument from Xtor
 getMuPrd :: XtorArgs ext FreeVarName -> STerm Prd ext FreeVarName
