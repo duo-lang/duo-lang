@@ -82,6 +82,7 @@ library
       TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize
+      TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
       TypeInference.GenerateConstraints.ATerms
