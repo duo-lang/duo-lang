@@ -17,7 +17,50 @@ import Data.Maybe (isJust)
 import qualified Data.Set as S
 
 ----------------------------------------------------------------------------------------
--- Flow edge admissability check
+-- Removal of admissible flow edges.
+--
+-- The removal of admissible flow edges is part of the type simplification process.
+-- In our representation of type automata, a type variable is represented by a flow edge
+-- connecting two nodes. For example, "forall a. a -> a" is represented as
+--
+--            ----------------
+--       -----| { Ap(_)[_] } |------
+--       |    ----------------     |
+--       |                         |
+--       |Ap(1)                    |Ap[1]
+--       |                         |
+--   ----------        a       ----------
+--   |        |~~~~~~~~~~~~~~~~|        |
+--   ----------                ----------
+--
+--  But in some cases the flow edge is admissible. Consider the following automaton:
+--
+--            ----------------
+--       -----| { Ap(_)[_] } |------
+--       |    ----------------     |
+--       |                         |
+--       |Ap(1)                    |Ap[1]
+--       |                         |
+--   ----------        a       ----------
+--   | Int    |~~~~~~~~~~~~~~~~|  Int   |
+--   ----------                ----------
+--
+-- This automaton would be turned into the type "forall a. a /\ Int -> a \/ Int".
+-- The admissibility check below recognizes that the flow edge "a" can be removed,
+-- which results in the following automaton.
+--
+--            ----------------
+--       -----| { Ap(_)[_] } |------
+--       |    ----------------     |
+--       |                         |
+--       |Ap(1)                    |Ap[1]
+--       |                         |
+--   ----------                ----------
+--   | Int    |                |  Int   |
+--   ----------                ----------
+--
+-- This automaton is rendered as the (simpler) type "Int -> Int".
+--
 ----------------------------------------------------------------------------------------
 
 sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
