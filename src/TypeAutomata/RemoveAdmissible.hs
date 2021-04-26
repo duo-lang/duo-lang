@@ -9,7 +9,7 @@ import Syntax.TypeAutomaton
 import Data.Graph.Inductive.Graph
 
 import Control.Applicative ((<|>))
-import Control.Monad.State
+import Control.Monad (guard, forM_)
 
 import Data.List (delete)
 import Data.Tuple (swap)
@@ -63,7 +63,7 @@ import qualified Data.Set as S
 --
 ----------------------------------------------------------------------------------------
 
-sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
+sucWith :: TypeGr -> Node -> EdgeLabelNormal -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
@@ -77,29 +77,29 @@ admissableM aut@TypeAut{..} e@(i,j) =
       subtypeData = do -- Maybe monad
         (HeadCons Neg (Just dat1) _ _) <- lab ta_gr i
         (HeadCons Pos (Just dat2) _ _) <- lab ta_gr j
-        _ <- forM (labelName <$> S.toList dat1) $ \xt -> guard (xt `S.member` (labelName `S.map` dat2))
-        _ <- forM (labelName <$> S.toList dat1) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+        -- Check that all Constructors in dat1 are also in dat2.
+        forM_ (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
+        forM_ (labelName <$> S.toList dat1) $ \xt -> do
+          forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
-          return ()
-        return ()
+
       subtypeCodata = do -- Maybe monad
         (HeadCons Neg _ (Just codat1) _) <- lab ta_gr i
         (HeadCons Pos _ (Just codat2) _) <- lab ta_gr j
-        _ <- forM (labelName <$> S.toList codat2) $ \xt -> guard (xt `S.member` (labelName `S.map` codat1))
-        _ <- forM (labelName <$> S.toList codat2) $ \xt -> do
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Codata xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+        -- Check that all destructors of codat2 are also in codat1.
+        forM_ (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
+        forM_ (labelName <$> S.toList codat2) $ \xt -> do
+          forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (m,n)
-          _ <- forM [(n,el) | (n, el@(EdgeSymbol Codata xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
+          forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
             m <- sucWith ta_gr j el
             admissableM aut (n,m)
-          return ()
-        return ()
+
       subTypeNominal = do -- Maybe monad
         (HeadCons Neg _ _ nominal1) <- lab ta_gr i
         (HeadCons Pos _ _ nominal2) <- lab ta_gr j
