@@ -79,7 +79,6 @@ library
       Syntax.Program
       Syntax.STerms
       TypeAutomata.Determinize
-      TypeAutomata.FlowAnalysis
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize
       TypeAutomata.RemoveAdmissible
