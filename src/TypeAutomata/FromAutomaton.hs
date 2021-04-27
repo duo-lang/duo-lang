@@ -64,7 +64,7 @@ getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
 
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
-initializeFromAutomaton aut@TypeAut{..} =
+initializeFromAutomaton TypeAut{..} =
   let
     flowAnalysis = getFlowAnalysisMap ta_core
   in

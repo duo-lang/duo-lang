@@ -31,15 +31,6 @@ myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
-removeRedundantEdges :: TypeGr -> TypeGr
-removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
-
-removeRedundantEdges' :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
-removeRedundantEdges' aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdges ta_gr }
-
-removeRedundantEdges'' :: TypeAutDet pol -> TypeAutDet pol
-removeRedundantEdges'' aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdges' ta_core }
-
 flowNeighbors :: TypeAutCore EdgeLabelNormal -> Node -> Set Node
 flowNeighbors TypeAutCore { ta_flowEdges } i =
   S.fromList $ [n | (j,n) <- ta_flowEdges, i == j] ++ [n | (n,j) <- ta_flowEdges, i == j]
@@ -51,7 +42,7 @@ equalNodes aut@TypeAutCore{ ta_gr } i j =
 
 -- note: nodes with different labels or different flow edge behaviour are never merged
 minimizeCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
-minimizeCore aut@TypeAutCore { ta_gr, ta_flowEdges } =
+minimizeCore aut@TypeAutCore { ta_gr } =
   let
     gr' = removeRedundantEdges ta_gr
     distGroups = myGroupBy (equalNodes aut) (nodes gr')
@@ -62,5 +53,5 @@ minimizeCore aut@TypeAutCore { ta_gr, ta_flowEdges } =
 
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
-minimize aut@TypeAut{ ta_core } = removeRedundantEdges'' (aut { ta_core = minimizeCore ta_core })
+minimize aut@TypeAut{ ta_core } = removeRedundantEdgesAut (aut { ta_core = minimizeCore ta_core })
 

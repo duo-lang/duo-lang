@@ -182,6 +182,10 @@ type TypeAutDet pol    = TypeAut' EdgeLabelNormal  Identity pol
 type TypeAutEps pol    = TypeAut' EdgeLabelEpsilon [] pol
 type TypeAutEpsDet pol = TypeAut' EdgeLabelEpsilon Identity pol
 
+--------------------------------------------------------------------------------
+-- Helper functions
+--------------------------------------------------------------------------------
+
 class Nubable f where
   nub :: Ord a => f a -> f a
 instance Nubable Identity where
@@ -204,3 +208,12 @@ mapTypeAut f TypeAut { ta_pol, ta_starts, ta_core } = TypeAut
   , ta_starts = nub (f <$> ta_starts)
   , ta_core = mapTypeAutCore f ta_core
   }
+
+removeRedundantEdges :: TypeGr -> TypeGr
+removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
+
+removeRedundantEdgesCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
+removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdges ta_gr }
+
+removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
+removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }

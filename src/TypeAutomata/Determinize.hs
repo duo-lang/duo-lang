@@ -47,9 +47,6 @@ fromEpsGr gr = gmap mapfun gr
     mapfun :: Context NodeLabel EdgeLabelEpsilon -> Context NodeLabel EdgeLabelNormal
     mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
-removeRedundantEdges :: TypeGr -> TypeGr
-removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
-
 removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
 removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowEdges, ta_gr } } =
   let
