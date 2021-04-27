@@ -102,6 +102,10 @@ import Syntax.CommonTerm
 --
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Node labels for type automata
+--------------------------------------------------------------------------------
+
 data XtorLabel = MkXtorLabel
   { labelName :: XtorName
   , labelPrdArity :: Int
@@ -109,19 +113,23 @@ data XtorLabel = MkXtorLabel
   }
   deriving (Eq, Show, Ord)
 
-data NodeLabel = HeadCons
-  { hc_pol :: Polarity
-  , hc_data :: Maybe (Set XtorLabel)
-  , hc_codata :: Maybe (Set XtorLabel)
-  , hc_nominal :: Set TypeName
+data NodeLabel = MkNodeLabel
+  { nl_pol :: Polarity
+  , nl_data :: Maybe (Set XtorLabel)
+  , nl_codata :: Maybe (Set XtorLabel)
+  , nl_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
-emptyHeadCons :: Polarity -> NodeLabel
-emptyHeadCons pol = HeadCons pol Nothing Nothing S.empty
+emptyNodeLabel :: Polarity -> NodeLabel
+emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty
 
-singleHeadCons :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
-singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
-singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
+singleNodeLabel :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
+singleNodeLabel pol Data xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty
+singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty
+
+--------------------------------------------------------------------------------
+-- Edge labels for type automata
+--------------------------------------------------------------------------------
 
 data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
@@ -139,7 +147,15 @@ unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
 unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
 unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
 
+--------------------------------------------------------------------------------
+-- Flow edges
+--------------------------------------------------------------------------------
+
 type FlowEdge = (Node, Node)
+
+--------------------------------------------------------------------------------
+-- Type Automata
+--------------------------------------------------------------------------------
 
 type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon

@@ -156,7 +156,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (HeadCons _ datSet codatSet tns)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables

@@ -97,7 +97,7 @@ sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prd
 insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TypeToAutM pol' Node
 insertXtors dc pol xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol dc (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol dc (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType
@@ -111,14 +111,14 @@ insertType :: Typ pol -> TypeToAutM pol' Node
 insertType (TyVar rep tv) = lookupTVar rep tv
 insertType (TySet rep tys) = do
   newNode <- newNodeM
-  insertNode newNode (emptyHeadCons (polarityRepToPol rep))
+  insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyHeadCons pol)
+  insertNode newNode (emptyNodeLabel pol)
   let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
       extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
   n <- local (extendEnv rep) (insertType ty)
@@ -129,7 +129,7 @@ insertType (TyCodata polrep xtors) = insertXtors Codata (polarityRepToPol polrep
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
+  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
 
 
@@ -141,7 +141,7 @@ createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
 createNodes tvars = createNode <$> (createPairs tvars)
   where
     createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyHeadCons Pos), (negNode, emptyHeadCons Neg), (posNode, negNode))
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (posNode, negNode))
 
     createPairs :: [TVar] -> [(TVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
