@@ -13,7 +13,9 @@ import Eval.Eval
 evalFocusing :: EvalOrder -> String -> String -> Spec
 evalFocusing evalOrder cmd cmdRes = do
   let Right (cmd',_) = runInteractiveParser commandP cmd
+  let Left _ = runInteractiveParser commandP cmd
   let Right (cmdRes',_) = runInteractiveParser commandP cmdRes
+  let Left _ = runInteractiveParser commandP cmdRes
   prgEnv <- runIO $ getEnvironment "examples/prg.ds"
   case prgEnv of
     Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrint err)
