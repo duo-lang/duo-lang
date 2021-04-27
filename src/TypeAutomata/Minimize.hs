@@ -9,20 +9,20 @@ import qualified Data.Set as S
 import Syntax.TypeAutomaton
 
 
-getAlphabet :: (DynGraph gr, Ord b) => gr a b -> [b]
+getAlphabet :: TypeGr -> [EdgeLabelNormal]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
 
-predsWith :: (DynGraph gr, Eq b) => gr a b -> [Node] -> b -> [Node]
+predsWith :: TypeGr -> [Node] -> EdgeLabelNormal -> [Node]
 predsWith gr ns x = nub . map fst . filter ((==x).snd) . concat $ map (lpre gr) ns
 
-splitAlong :: (DynGraph gr, Eq b) => gr a b -> [Node] -> b -> [[Node]] -> [[Node]]
+splitAlong :: TypeGr -> [Node] -> EdgeLabelNormal -> [[Node]] -> [[Node]]
 splitAlong gr ds x ps = do
   let re = predsWith gr ds x
   p <- ps
   let (p1,p2) = (p `intersect` re, p \\ re)
   if null p1 || null p2 then [p] else [p1,p2]
 
-minimize' :: (DynGraph gr, Ord b) => gr a b -> [[Node]] -> [[Node]] -> [[Node]]
+minimize' :: TypeGr -> [[Node]] -> [[Node]] -> [[Node]]
 minimize' _ [] ps = ps
 minimize' gr (d:ds) ps = minimize' gr (delete d (foldr (splitAlong gr d) (d:ds) (getAlphabet gr)))
                                       (foldr (splitAlong gr d) ps (getAlphabet gr))
@@ -31,7 +31,7 @@ myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
-removeRedundantEdges :: (DynGraph gr, Eq a, Ord b) => gr a b -> gr a b
+removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeRedundantEdges' :: TypeAutDet pol -> TypeAutDet pol
