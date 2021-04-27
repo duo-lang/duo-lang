@@ -75,9 +75,9 @@ library
       Syntax.ATerms
       Syntax.CommonTerm
       Syntax.Types
-      Syntax.TypeAutomaton
       Syntax.Program
       Syntax.STerms
+      TypeAutomata.Definition
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize

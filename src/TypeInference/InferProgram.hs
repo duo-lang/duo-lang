@@ -20,7 +20,7 @@ import Pretty.Errors
 import Syntax.ATerms
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Syntax.Program
 import Utils
 

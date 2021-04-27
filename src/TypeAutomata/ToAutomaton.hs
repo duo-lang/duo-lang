@@ -2,7 +2,7 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
 import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
@@ -20,39 +20,86 @@ import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
 
 --------------------------------------------------------------------------
--- The Monad
+-- The TypeToAutomaton (TTA) Monad
 --------------------------------------------------------------------------
 
-
+-- | The lookup environment allows to map TVars to Nodes:
+--
+-- Recursive type variables have a polarity. They are therefore mapped to
+-- either `(Just n, Nothing)` or `(Nothing, Just n)`
+--
+-- Unification variables exist both positively and negatively. They are therefore
+-- mapped to a pair `(Just n, Just m)`
 data LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 
-type TypeToAutM pol a = StateT (TypeAutEps pol) (ReaderT LookupEnv (Except Error)) a
+type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
 
-runTypeAut :: TypeAutEps pol -> LookupEnv -> TypeToAutM pol a -> Either Error (a, TypeAutEps pol)
+runTypeAut :: TypeAutCore EdgeLabelEpsilon
+           -- ^ The initial TypeAutomaton to start the computation.
+           -> LookupEnv
+           -- ^ The initial lookup environment.
+           -> TTA a
+           -- ^ The computation to run.
+           -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
+
+
+-- | Every type variable is mapped to a pair of nodes.
+createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes tvars = createNode <$> (createPairs tvars)
+  where
+    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (posNode, negNode))
+
+    createPairs :: [TVar] -> [(TVar,Node,Node)]
+    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
+
+
+initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize tvars =
+  let
+    nodes = createNodes tvars
+    initAut = TypeAutCore
+              { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
+              , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
+              }
+    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
+                          }
+  in
+    (initAut, lookupEnv)
+
+-- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
+runTypeAutTvars :: [TVar]
+                -> TTA a
+                -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+runTypeAutTvars tvars m = do
+  let (aut, env) = initialize tvars
+  runTypeAut aut env m
 
 --------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------
 
-throwAutomatonError :: [String] -> TypeToAutM pol a
+throwAutomatonError :: [String] -> TTA a
 throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
 
-modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM pol ()
-modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
+modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
+modifyGraph f = modify go
+  where
+    go aut@TypeAutCore { ta_gr } = aut { ta_gr = f ta_gr }
 
-insertNode :: Node -> NodeLabel -> TypeToAutM pol ()
+insertNode :: Node -> NodeLabel -> TTA ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
-insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TypeToAutM pol ()
+insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TTA ()
 insertEdges edges = modifyGraph (G.insEdges edges)
 
-newNodeM :: TypeToAutM pol Node
+newNodeM :: TTA Node
 newNodeM = do
   graph <- gets ta_gr
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: PolarityRep pol -> TVar -> TypeToAutM pol' Node
+lookupTVar :: PolarityRep pol -> TVar -> TTA Node
 lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
@@ -94,10 +141,10 @@ lookupTVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prds) (length cnss)
 
-insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TypeToAutM pol' Node
+insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TTA Node
 insertXtors dc pol xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleHeadCons pol dc (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol dc (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType
@@ -107,18 +154,18 @@ insertXtors dc pol xtors = do
       insertEdges [(newNode, cnsNode, EdgeSymbol dc xt Cns j)]
   return newNode
 
-insertType :: Typ pol -> TypeToAutM pol' Node
+insertType :: Typ pol -> TTA Node
 insertType (TyVar rep tv) = lookupTVar rep tv
 insertType (TySet rep tys) = do
   newNode <- newNodeM
-  insertNode newNode (emptyHeadCons (polarityRepToPol rep))
+  insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyHeadCons pol)
+  insertNode newNode (emptyNodeLabel pol)
   let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
       extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
   n <- local (extendEnv rep) (insertType ty)
@@ -129,49 +176,27 @@ insertType (TyCodata polrep xtors) = insertXtors Codata (polarityRepToPol polrep
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyHeadCons pol) { hc_nominal = S.singleton tn })
+  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
 
 
-
-
-
--- | Every type variable is mapped to a pair of nodes.
-createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
-createNodes tvars = createNode <$> (createPairs tvars)
-  where
-    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyHeadCons Pos), (negNode, emptyHeadCons Neg), (posNode, negNode))
-
-    createPairs :: [TVar] -> [(TVar,Node,Node)]
-    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
-
-
-createInitialFromTypeScheme :: PolarityRep pol -> [TVar] -> (TypeAutEps pol, LookupEnv)
-createInitialFromTypeScheme rep tvars =
-  let
-    nodes = createNodes tvars
-    initAut = TypeAut { ta_pol = rep
-                      , ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
-                      , ta_starts = []
-                      , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
-                      }
-    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
-                          }
-  in
-    (initAut, lookupEnv)
+--------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------
 
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutDet pol)
 typeToAut (TypeScheme tvars ty) = do
-  let (initAut, lookupEnv) = createInitialFromTypeScheme (getPolarity ty) tvars
-  (start, aut) <- runTypeAut initAut lookupEnv (insertType ty)
-  let newaut = aut { ta_starts = [start] }
+  (start, aut) <- runTypeAutTvars tvars (insertType ty)
+  let newaut = TypeAut { ta_pol = getPolarity ty
+                       , ta_starts = [start]
+                       , ta_core = aut
+                       }
   pure $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) newaut
 
 -- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
-insertEpsilonEdges :: SolverResult -> TypeToAutM pol ()
+insertEpsilonEdges :: SolverResult -> TTA ()
 insertEpsilonEdges solverResult =
   forM_ (M.toList solverResult) $ \(tv, vstate) -> do
     i <- lookupTVar PosRep tv
@@ -185,7 +210,6 @@ insertEpsilonEdges solverResult =
 
 solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol)
 solverStateToTypeAut solverResult pol ty = do
-  let (initAut, lookupEnv) = createInitialFromTypeScheme pol (M.keys solverResult)
-  ((),aut0) <- runTypeAut initAut lookupEnv (insertEpsilonEdges solverResult)
-  (start, aut1) <- runTypeAut aut0 lookupEnv (insertType ty)
-  return $ (removeIslands . removeEpsilonEdges) (aut1 { ta_starts = [start] })
+  (start,aut) <- runTypeAutTvars (M.keys solverResult) $ insertEpsilonEdges solverResult >> insertType ty
+  let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
+  return $ (removeIslands . removeEpsilonEdges) newAut

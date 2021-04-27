@@ -15,7 +15,7 @@ import Data.Maybe (catMaybes)
 
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
