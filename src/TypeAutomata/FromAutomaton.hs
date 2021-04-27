@@ -2,7 +2,7 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
 
 import Control.Monad.State

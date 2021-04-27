@@ -4,7 +4,7 @@ module TypeAutomata.RemoveAdmissible
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 
 import Data.Graph.Inductive.Graph
 

@@ -6,7 +6,7 @@ import Data.List (intersect, (\\), delete, partition)
 import Data.Set (Set)
 import qualified Data.Set as S
 
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 
 
 getAlphabet :: TypeGr -> [EdgeLabelNormal]

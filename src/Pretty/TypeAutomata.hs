@@ -12,7 +12,7 @@ import Prettyprinter
 import Pretty.Pretty (ppPrint, PrettyAnn(..), intercalateX)
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Syntax.Types
 
 

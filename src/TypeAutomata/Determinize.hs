@@ -20,7 +20,7 @@ import Control.Monad.State
 import Data.Void
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
 
 ---------------------------------------------------------------------------------------

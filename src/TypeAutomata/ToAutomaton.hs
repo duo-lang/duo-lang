@@ -2,7 +2,7 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
 import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)

@@ -16,7 +16,7 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveAdmissible
