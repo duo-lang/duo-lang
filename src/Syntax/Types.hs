@@ -235,10 +235,3 @@ data DataDecl = NominalDecl
   , data_polarity :: DataCodata
   , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
   }
-
-translateToStructural :: DataDecl -> Typ Pos
-translateToStructural (NominalDecl _ Data xtors) = TyData PosRep $ xtorSigMakeStructural <$> xtors PosRep
-translateToStructural (NominalDecl _ Codata xtors) = TyCodata PosRep $ xtorSigMakeStructural <$> xtors NegRep
-
-xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
-xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) args) = MkXtorSig (MkXtorName Structural s) args

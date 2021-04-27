@@ -242,8 +242,17 @@ lookupDataDecl xt = do
   case lookupXtor xt env of
     Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
     -- For testing purposes:
-    Just decl -> throwGenError $ ppPrint $ translateToStructural decl -- return decl
-    
+    Just decl -> do
+      -- ty <- translateToStructural (TyNominal PosRep (data_name decl))
+      -- throwGenError $ "Translated type: " ++ ppPrint ty
+      return decl
+
+lookupNominalType :: TypeName -> GenM DataDecl
+lookupNominalType tn = do
+  env <- asks env
+  case lookupTypeName tn env of
+    Nothing -> throwGenError $ "Nominal type " ++ ppPrint tn ++ " is not contained in program"
+    Just decl -> return decl
 
 lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
 lookupXtorSig decl xtn pol = do
@@ -264,3 +273,27 @@ checkExhaustiveness matched decl = do
   forM_ declared $ \xn -> unless (xn `elem` matched) 
     (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ ppPrint (data_name decl) ++ " is not matched against." ))
 
+{-
+declToStructural :: DataDecl -> Typ Pos
+declToStructural (NominalDecl _ Data xtors) = TyData PosRep $ xtorSigMakeStructural <$> xtors PosRep
+declToStructural (NominalDecl _ Codata xtors) = TyCodata PosRep $ xtorSigMakeStructural <$> xtors NegRep
+-}
+
+translateToStructural :: Typ pol -> GenM (Typ pol)
+translateToStructural (TyNominal pr tn) = do
+  NominalDecl{..} <- lookupNominalType tn
+  case data_polarity of
+    Data -> do
+      xtorSig <- mapM xtorSigMakeStructural (data_xtors pr)
+      return $ TyData pr xtorSig
+    Codata -> do
+      xtorSig <- mapM xtorSigMakeStructural (data_xtors $ flipPolarityRep pr)
+      return $ TyCodata pr xtorSig
+translateToStructural _ = do
+  throwGenError "Type is already structural"
+
+xtorSigMakeStructural :: XtorSig pol -> GenM (XtorSig pol)
+xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) MkTypArgs{..}) = do
+  -- pts <- mapM translateToStructural prdTypes
+  -- cts <- mapM translateToStructural cnsTypes
+  return $ MkXtorSig (MkXtorName Structural s) (MkTypArgs prdTypes cnsTypes)
