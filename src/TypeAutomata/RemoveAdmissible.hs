@@ -66,8 +66,8 @@ import qualified Data.Set as S
 sucWith :: TypeGr -> Node -> EdgeLabelNormal -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
-subtypeData :: TypeAutDet pol -> FlowEdge -> Maybe ()
-subtypeData aut@TypeAut{ ta_gr } (i,j) = do
+subtypeData :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeData aut@TypeAutCore{ ta_gr } (i,j) = do
   (MkNodeLabel Neg (Just dat1) _ _) <- lab ta_gr i
   (MkNodeLabel Pos (Just dat2) _ _) <- lab ta_gr j
   -- Check that all constructors in dat1 are also in dat2.
@@ -81,8 +81,8 @@ subtypeData aut@TypeAut{ ta_gr } (i,j) = do
       m <- sucWith ta_gr j el
       admissableM aut (m,n)
 
-subtypeCodata :: TypeAutDet pol -> FlowEdge -> Maybe ()
-subtypeCodata aut@TypeAut{ ta_gr } (i,j) = do
+subtypeCodata :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeCodata aut@TypeAutCore{ ta_gr } (i,j) = do
   (MkNodeLabel Neg _ (Just codat1) _) <- lab ta_gr i
   (MkNodeLabel Pos _ (Just codat2) _) <- lab ta_gr j
   -- Check that all destructors of codat2 are also in codat1.
@@ -96,14 +96,14 @@ subtypeCodata aut@TypeAut{ ta_gr } (i,j) = do
       m <- sucWith ta_gr j el
       admissableM aut (n,m)
 
-subtypeNominal :: TypeAutDet pol -> FlowEdge -> Maybe ()
-subtypeNominal TypeAut{ ta_gr } (i,j) = do
+subtypeNominal :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
   (MkNodeLabel Neg _ _ nominal1) <- lab ta_gr i
   (MkNodeLabel Pos _ _ nominal2) <- lab ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
-admissableM :: TypeAutDet pol -> FlowEdge -> Maybe ()
-admissableM aut@TypeAut{..} e =
+admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+admissableM aut@TypeAutCore{..} e =
       guard (e `elem` ta_flowEdges) <|>
       subtypeData aut e <|>
       subtypeCodata aut e <|>
@@ -112,8 +112,9 @@ admissableM aut@TypeAut{..} e =
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
-admissable :: TypeAutDet pol -> FlowEdge -> Bool
-admissable aut@TypeAut {..} e = isJust $ admissableM (aut { ta_flowEdges = delete e ta_flowEdges }) e
+admissable :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Bool
+admissable aut@TypeAutCore {..} e = isJust $ admissableM (aut { ta_flowEdges = delete e ta_flowEdges }) e
 
 removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
-removeAdmissableFlowEdges aut@TypeAut{..} = aut { ta_flowEdges = filter (not . admissable aut) ta_flowEdges }
+removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore {..}} =
+  aut { ta_core = tac { ta_flowEdges = filter (not . admissable tac) ta_flowEdges }}

@@ -39,7 +39,7 @@ throwAutomatonError :: [String] -> TypeToAutM pol a
 throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TypeToAutM pol ()
-modifyGraph f = modify (\(aut@TypeAut { ta_gr }) -> aut { ta_gr = f ta_gr })
+modifyGraph f = modify (\(aut@TypeAut { ta_core = tac@TypeAutCore {ta_gr} }) -> aut { ta_core = tac { ta_gr = f ta_gr }})
 
 insertNode :: Node -> NodeLabel -> TypeToAutM pol ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
@@ -49,7 +49,7 @@ insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TypeToAutM pol Node
 newNodeM = do
-  graph <- gets ta_gr
+  graph <- gets (ta_gr . ta_core)
   pure $ (head . G.newNodes 1) graph
 
 lookupTVar :: PolarityRep pol -> TVar -> TypeToAutM pol' Node
@@ -152,9 +152,11 @@ createInitialFromTypeScheme rep tvars =
   let
     nodes = createNodes tvars
     initAut = TypeAut { ta_pol = rep
-                      , ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
                       , ta_starts = []
-                      , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
+                      , ta_core = TypeAutCore
+                        { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
+                        , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
+                        }
                       }
     lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           }
