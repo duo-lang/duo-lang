@@ -39,19 +39,18 @@ equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
 equalNodes aut@TypeAutCore{ ta_gr } i j =
   (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
-
--- note: nodes with different labels or different flow edge behaviour are never merged
-minimizeCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
-minimizeCore aut@TypeAutCore { ta_gr } =
-  let
-    gr' = removeRedundantEdges ta_gr
-    distGroups = myGroupBy (equalNodes aut) (nodes gr')
-    nodeSets = minimize' gr' distGroups distGroups
+genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
+genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
+  where
+    distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
+    nodeSets = minimize' ta_gr distGroups distGroups
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
-  in
-    mapTypeAutCore getNewNode aut
-
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
-minimize aut@TypeAut{ ta_core } = removeRedundantEdgesAut (aut { ta_core = minimizeCore ta_core })
+minimize aut@TypeAut {ta_core} = removeRedundantEdgesAut aut'
+  where
+    ta_core' = removeRedundantEdgesCore ta_core
+    fun = genMinimizeFun ta_core'
+    aut' = mapTypeAut fun aut
+
 
