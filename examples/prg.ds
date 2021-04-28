@@ -1,5 +1,5 @@
 ## Generic print consumer ##
-cns print := mu* x.Print(x);
+cns print := mu x.Print(x);
 
 ## Boolean functions ##
 
@@ -33,13 +33,13 @@ prd or         := comatch {
 ## boolean nand operation
 prd nand       := comatch {
                     'Ap(x,y)[k]   => and >> 
-                      'Ap(x,y)[mu* z. neg >> 'Ap(z)[k]] };
+                      'Ap(x,y)[mu z. neg >> 'Ap(z)[k]] };
 
 ## nor :: { 'Ap(< 'False | 'True >,< 'False | 'True >)[< 'False | 'True >] }
 ## boolean nor operation
 prd nor        := comatch { 
                     'Ap(x,y)[k]   => or  >> 
-                      'Ap(x,y)[mu* z. neg >> 'Ap(z)[k]] };
+                      'Ap(x,y)[mu z. neg >> 'Ap(z)[k]] };
 
 ## impl :: forall t0. { 'Ap(< 'False | 'True >,t0)[(t0 \/ < 'True >)] }
 ## boolean implication operation
@@ -77,7 +77,7 @@ prd uncurry := comatch { 'Ap(f)[k] =>
 ## constructs the compostion f(g(x))
 prd comp    := comatch { 'Ap(f,g)[k] => 
                  comatch { 'Ap(x)[k] => g >> 
-                   'Ap(x)[mu* w. f >> 'Ap(w)[k]] } >> k };
+                   'Ap(x)[mu w. f >> 'Ap(w)[k]] } >> k };
 
 ## twice :: forall t0t1. { 'Ap({ 'Ap(t0)[(t0 /\ t1)] })[{ 'Ap(t0)[t1] }] }
 ## evaluates f(f(x))
@@ -89,7 +89,7 @@ prd twice   := comatch { 'Ap(f)[k] =>
 ## evaluates f(f(f(x)))
 prd thrice  := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => comp >> 
-                   'Ap(f,f)[mu* g. comp >> 
+                   'Ap(f,f)[mu g. comp >> 
                      'Ap(g,f)['Ap(x)[k]]] } >> k };
 
 ## fixed point combinators ##
@@ -106,9 +106,9 @@ prd fix := comatch { 'Ap(f)[k] =>
 ## layz variant of fix
 prd fixLazy := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => x >> 
-                   'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] } >> 
+                   'Ap(x)[mu xx. f >> 'Ap(xx)[k]] } >> 
                       'Ap(comatch { 'Ap(x)[k] => x >> 
-                        'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] })[k]};
+                        'Ap(x)[mu xx. f >> 'Ap(xx)[k]] })[k]};
 
 ## basic recursive functions ##
 
@@ -158,7 +158,7 @@ prd rec add := comatch {
 prd rec mlt := comatch {
             'Ap(n,m)[k] => m >>
               match { 'Z    => 'Z >> k, 
-                      'S(p) => mlt >> 'Ap(n,p)[mu* w. add >> 'Ap(n,w)[k]] } };
+                      'S(p) => mlt >> 'Ap(n,p)[mu w. add >> 'Ap(n,w)[k]] } };
 
 ## exp :: forall t0. { 'Ap((t0 /\ < 'S(rec r1.< 'S(r1) | 'Z >) | 'Z >) , rec r1.< 'S(r1) | 'Z >)
 ##                        [(t0 \/ < 'S((t0 \/ < 'S(rec r6.(t0 \/ < 'S(r6) >)) | 'Z >)) | 'Z >)] }
@@ -166,14 +166,14 @@ prd rec mlt := comatch {
 prd rec exp := comatch {
             'Ap(n,m)[k] => m >>
               match { 'Z    => 'S('Z) >> k,
-                      'S(p) => exp >> 'Ap(n,p)[mu* w. mlt >> 'Ap(n,w)[k]] } };
+                      'S(p) => exp >> 'Ap(n,p)[mu w. mlt >> 'Ap(n,w)[k]] } };
 
 ## sub :: forall t0. { 'Ap(rec r0.(t0 /\ < 'S(r0) >),rec r1.< 'S(r1) | 'Z >)[t0] }
 ## subtraction m from n
 prd rec sub := comatch {
             'Ap(n,m)[k] => m >>
               match { 'Z    => n >> k,
-                      'S(p) => sub >> 'Ap(n,p)[mu* w. pred >> 'Ap(w)[k]] } };
+                      'S(p) => sub >> 'Ap(n,p)[mu w. pred >> 'Ap(w)[k]] } };
 
 ## subSafe :: forall t0. { 'Ap(rec r0.(t0 /\ < 'S(r0) | 'Z >),rec r1.< 'S(r1) | 'Z >)[t0] }
 ## total subtraction m from n 
@@ -189,7 +189,7 @@ prd rec subSafe := comatch {
 prd rec foldNat := comatch {
                 'Ap(n,x,f)[k] => n >>
                   match { 'Z    => x >> k,
-                          'S(p) => foldNat >> 'Ap(p,x,f)[mu* w. f >> 'Ap(w)[k]] } };
+                          'S(p) => foldNat >> 'Ap(p,x,f)[mu w. f >> 'Ap(w)[k]] } };
 
 ## foldNat1 :: forall t0t1. { 'Ap(rec r0.< 'S(r0) >,t1,{ 'Ap((t0 \/ t1))[t0] })[t0] }
 ## folding over nats
@@ -197,7 +197,7 @@ prd rec foldNat1 := comatch {
                   'Ap(n,x,f)[k] => n >>
                     match { 'S(m) => m >>
                       match { 'Z    => f >> 'Ap(x)[k],
-                              'S(p) => foldNat1 >> 'Ap(m,x,f)[mu* w. f >> 'Ap(w)[k]] } } };
+                              'S(p) => foldNat1 >> 'Ap(m,x,f)[mu w. f >> 'Ap(w)[k]] } } };
 
 
 ## ltUnsafe :: { 'Ap(rec r0.< 'S(r0) | 'Z >,rec r1.< 'S(r1) >)[< 'True >] }
@@ -240,7 +240,7 @@ prd rec eqSafe := comatch {
 prd rec times2 := comatch {
                 'Ap(n)[k] => n >>
                   match { 'Z    => 'Z >> k,
-                          'S(m) => times2 >> 'Ap(m)[mu* w. 'S('S(w)) >> k] } };
+                          'S(m) => times2 >> 'Ap(m)[mu w. 'S('S(w)) >> k] } };
 
 ## times3 :: { 'Ap(rec r0.< 'S(r0) | 'Z >)
 ##                [rec r1.< 'S(< 'S(< 'S(r1) >) >) | 'Z >] }
@@ -248,7 +248,7 @@ prd rec times2 := comatch {
 prd rec times3 := comatch {
                 'Ap(n)[k] => n >>
                   match { 'Z    => 'Z >> k,
-                          'S(m) => times3 >> 'Ap(m)[mu* w. 'S('S('S(w))) >> k] } };
+                          'S(m) => times3 >> 'Ap(m)[mu w. 'S('S('S(w))) >> k] } };
 
 ## times2or3 :: { 'Ap(< 'False | 'True >
 ##                   , rec r1.< 'S(r1) | 'Z >)
@@ -271,7 +271,7 @@ prd rec div2 := comatch {
               'Ap(n)[k] => n >>
                 match { 'Z    => 'Z >> k,
                         'S(m) => m >>
-                          match { 'S(p) => div2 >> 'Ap(p)[mu* w. 'S(w) >> k] } } };
+                          match { 'S(p) => div2 >> 'Ap(p)[mu w. 'S(w) >> k] } } };
 
 ## div3 :: { 'Ap(rec r0.< 'S(< 'S(< 'S(r0) >) >) | 'Z >)[rec r1.< 'S(r1) | 'Z >] }
 ## divides n by three
@@ -280,7 +280,7 @@ prd rec div3 := comatch {
                 match { 'Z => 'Z >> k,
                         'S(m) => m >>
                           match { 'S(p) => p >>
-                            match { 'S(r) => div3 >> 'Ap(r)[mu* w. 'S(w) >> k] } } } };
+                            match { 'S(r) => div3 >> 'Ap(r)[mu w. 'S(w) >> k] } } } };
 
 ## div2or3 :: { 'Ap(< 'False | 'True >
 ##                 , rec r1.< 'S(< 'S(< 'S(< 'S(< 'S(< 'S(r1) >) >) >) >) >) | 'Z >)
@@ -306,8 +306,8 @@ prd snd := comatch { 'Ap(p)[k] => p >> match { 'Pair(x,y) => y >> k }};
 ## given two functions f and g, maps f to the first and g to the second component
 prd bimapDat := comatch { 'Ap(f,g,p)[k] => p >> 
                             match { 'Pair(x,y) => f >> 
-                                      'Ap(x)[mu* fx. g >> 
-                                              'Ap(y)[mu* gy. 'Pair(fx,gy) >> k]] }};
+                                      'Ap(x)[mu fx. g >> 
+                                              'Ap(y)[mu gy. 'Pair(fx,gy) >> k]] }};
 
 ## pairs (codata type)
 
@@ -323,9 +323,9 @@ prd pair := comatch { 'Ap(x,y)[k] =>
 prd bimapCodat := comatch { 'Ap(f,g,p)[k] => 
                     comatch { 
                       'Fst[k1] => p >> 
-                        'Fst[mu* x. f >> 'Ap(x)[k1]]
+                        'Fst[mu x. f >> 'Ap(x)[k1]]
                     , 'Snd[k2] => p >> 
-                        'Snd[mu* y. g >> 'Ap(y)[k2]] }
+                        'Snd[mu y. g >> 'Ap(y)[k2]] }
                      >> k };
 
 ## lists (data type)
@@ -340,8 +340,8 @@ prd map := comatch {
                       comatch { 'Ap(xs)[k] => xs >> 
                         match { 'Nil => 'Nil >> k
                               , 'Cons(p,ys) => alpha >> 
-                                  'Ap(ys)[mu* w1. f >> 
-                                    'Ap(p)[mu* w2. 'Cons(w2,w1) >> k]] } } >> k})
+                                  'Ap(ys)[mu w1. f >> 
+                                    'Ap(p)[mu w2. 'Cons(w2,w1) >> k]] } } >> k})
                   ['Ap(xs)[k]]};
 
 ## head :: forall t0. { 'Ap(< 'Cons(t0,Top) >)[t0] }
@@ -368,7 +368,7 @@ prd append := comatch { 'Ap(xs,ys)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >> 
                          match { 'Nil          => ys >> k
                                , 'Cons(x,rest) => alpha >> 
-                                   'Ap(rest)[mu* w. 'Cons(x,w) >> k] }} >> k })
+                                   'Ap(rest)[mu w. 'Cons(x,w) >> k] }} >> k })
                    ['Ap(xs)[k]]};
 
 ## elemAt :: forall t0. { 'Ap(rec r0.< 'Cons(t0,r0) >,rec r1.< 'S(r1) | 'Z >)[t0] }
@@ -379,7 +379,7 @@ prd elemAt := comatch { 'Ap(xs,n)[k] => fix >>
                         comatch { 'Ap(n)[k] => n >> 
                           match { 'Z    => head >> 'Ap(xs)[k]
                                 , 'S(p) => tail >> 
-                                    'Ap(xs)[mu* w. alpha >> 
+                                    'Ap(xs)[mu w. alpha >> 
                                                     'Ap(w)['Ap(p)[k]]] }} >> k } >> k })
                   ['Ap(xs)['Ap(n)[k]]] };
 
@@ -391,7 +391,7 @@ prd foldl := comatch { 'Ap(f,x,xs)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >> 
                          match { 'Nil => x >> k
                                , 'Cons(y,ys) => f >> 
-                                   'Ap(x,y)[mu* fxy.alpha >> 
+                                   'Ap(x,y)[mu fxy.alpha >> 
                                                     'Ap(fxy)['Ap(ys)[k]]] } } >> k } >> k })
                  ['Ap(x)['Ap(xs)[k]]] };
 
@@ -402,7 +402,7 @@ prd reverse := comatch { 'Ap(xs)[k] => fix >> #
                         comatch { 'Ap(xs)[k] => xs >> 
                           match { 'Nil => 'Nil >> k
                                 , 'Cons(x,rest) => alpha >> 
-                                    'Ap(rest)[mu* w. append >> 
+                                    'Ap(rest)[mu w. append >> 
                                                       'Ap(w,'Cons(x,'Nil))[k]] }} >> k })
                     ['Ap(xs)[k]] };
 
@@ -413,7 +413,7 @@ prd length := comatch { 'Ap(xs)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >> 
                          match { 'Nil => 'Z >> k
                                , 'Cons(x,rest) => alpha >>
-                                   'Ap(rest)[mu* w. 'S(w) >> k]}} >> k })
+                                   'Ap(rest)[mu w. 'S(w) >> k]}} >> k })
                    ['Ap(xs)[k]]};
 
 ## filter :: forall t0. { 'Ap( { 'Ap(t0)[< 'False | 'True >] }
@@ -425,7 +425,7 @@ prd filter := comatch { 'Ap(p,xs)[k] => fix >>
                        comatch { 'Ap(xs)[k] => xs >>
                          match { 'Nil => 'Nil >> k
                                , 'Cons(x,rest) => p >> 
-                                   'Ap(x)[ match { 'True  => alpha >> 'Ap(rest)[mu* w. 'Cons(x,w) >> k]
+                                   'Ap(x)[ match { 'True  => alpha >> 'Ap(rest)[mu w. 'Cons(x,w) >> k]
                                                  , 'False => alpha >> 'Ap(rest)[k] }] } } >> k })
                    ['Ap(xs)[k]]};
 
@@ -445,8 +445,8 @@ prd consNeg := comatch { 'Ap(x,xs)[k] =>
 prd mapNeg := comatch { 'Ap(f,xs)[k] => fix >>
                'Ap( comatch { 'Ap(alpha)[k] => 
                       comatch { 'Ap(xs)[k] => 
-                        comatch { 'Head[k] => xs >> 'Head[mu* w. f >> 'Ap(w)[k]]#
-                                , 'Tail[k] => xs >> 'Tail[mu* w. alpha >> 
+                        comatch { 'Head[k] => xs >> 'Head[mu w. f >> 'Ap(w)[k]]#
+                                , 'Tail[k] => xs >> 'Tail[mu w. alpha >> 
                                                       'Ap(w)[k]]} >> k } >> k })
                   ['Ap(xs)[k]] };
 
@@ -459,7 +459,7 @@ prd elemAtNeg := comatch { 'Ap(xs,n)[k] => fix >>
                           comatch { 'Ap(xs)[k] => 
                             comatch { 'Ap(n)[k] => n >> 
                               match { 'Z => xs >> 'Head[k]
-                                    , 'S(m) => xs >> 'Tail[mu* ys. alpha >> 
+                                    , 'S(m) => xs >> 'Tail[mu ys. alpha >> 
                                                        'Ap(ys)['Ap(m)[k]]] }} >> k } >> k })
                       ['Ap(xs)['Ap(n)[k]]]};
 
@@ -491,12 +491,12 @@ data Nat { Z, S(Nat) };
 codata NatBoolFun { Ap(Nat)[Bool] };
 prd nominalNot := \(x)[k] => x >> match { TT => FF >> k, FF => TT >> k };
 
-prd addNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu* w. S(w) >> k] }} >> k })['Ap(m)[k]] };
-prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu* w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
-prd expNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu* w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
+prd addNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu w. S(w) >> k] }} >> k })['Ap(m)[k]] };
+prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
+prd expNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
 prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
 
 cmd exampleCommand1 := Print(2);
-cmd exampleCommand2 := mu x.Print(2) >> mu* y. Print(4);
+cmd exampleCommand2 := mu x.Print(2) >> mu y. Print(4);
 
 def newStylePredTwo := (comatch { 'Ap(x) => match x with { 'Z() => 'Z(), 'S(x) => x }}.'Ap('S('S('S('Z())))));

@@ -1,0 +1,2 @@
+# Should not typecheck because Ap is nominal and not predeclared.
+def fail := comatch { Ap(x) => 'True };

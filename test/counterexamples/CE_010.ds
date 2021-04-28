@@ -1,0 +1,6 @@
+# Ctor called with incorrect arg type
+
+data Nat { Z, S(Nat) };
+data Bool { True, False };
+
+def fail := S(True);

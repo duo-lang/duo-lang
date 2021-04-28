@@ -1,7 +1,9 @@
 module Parser.Types
   ( typeSchemeP
   , typP
-  , typArgListP
+    -- Invariant Types
+  , Invariant(..)
+  , invariantP
   ) where
 
 import Control.Monad.State
@@ -84,6 +86,30 @@ typP' rep = try (fst <$> parens (typP rep)) <|>
 
 typP :: PolarityRep pol -> Parser (Typ pol)
 typP rep = try (setType rep) <|> typP' rep
+
+---------------------------------------------------------------------------------
+-- Parsing of invariant Types (HACKY!)
+---------------------------------------------------------------------------------
+
+newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> Typ pol }
+
+-- DO NOT EXPORT! Hacky workaround.
+switchPol :: Typ pol -> Typ (FlipPol pol)
+switchPol (TyVar rep tv) = TyVar (flipPolarityRep rep) tv
+switchPol (TyData rep xtors) = TyData (flipPolarityRep rep) (switchSig <$> xtors)
+switchPol (TyCodata rep xtors) = TyCodata (flipPolarityRep rep) (switchSig <$> xtors)
+switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
+switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
+switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
+
+switchSig :: XtorSig pol -> XtorSig (FlipPol pol)
+switchSig (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) = MkXtorSig xt (MkTypArgs (switchPol <$> prdArgs) (switchPol <$> cnsArgs))
+
+invariantP :: Parser Invariant
+invariantP = do
+  typ <- typP' PosRep
+  pure $ MkInvariant $ \rep -> case rep of PosRep -> typ ; NegRep -> switchPol typ
+
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.

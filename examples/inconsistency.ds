@@ -1,8 +1,8 @@
 prd fixLazy := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => x >> 
-                   'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] } >> 
+                   'Ap(x)[mu xx. f >> 'Ap(xx)[k]] } >> 
                       'Ap(comatch { 'Ap(x)[k] => x >> 
-                        'Ap(x)[mu* xx. f >> 'Ap(xx)[k]] })[k]};
+                        'Ap(x)[mu xx. f >> 'Ap(xx)[k]] })[k]};
 
 prd id := comatch { 'Ap(x)[k] => x >> k };
 
@@ -13,6 +13,8 @@ prd omega := mu k.fixLazy >> 'Ap(id)[k];
 prd omega2 := mu v. comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] }
                     >>
                     'Ap( comatch { 'Ap(x)[k] => x >> 'Ap(x)[k] })[v];
+
+data Fun { Ap(Fun)[Fun] };
 
 def omega3 := comatch { Ap(x) => x.Ap(x) }.Ap(comatch { Ap(x) => x.Ap(x)});
 

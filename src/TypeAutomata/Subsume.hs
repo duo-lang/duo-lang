@@ -19,7 +19,7 @@ import Syntax.Types
 import Syntax.TypeAutomaton
 
 import TypeAutomata.Determinize (determinize)
-import TypeAutomata.FlowAnalysis
+import TypeAutomata.RemoveAdmissible
 import TypeAutomata.Minimize (minimize)
 
 
