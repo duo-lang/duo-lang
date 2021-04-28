@@ -209,3 +209,6 @@ removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdge
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
 removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }
+
+delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
+delAllLEdges es gr = foldr delAllLEdge gr es
