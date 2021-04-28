@@ -1,0 +1,6 @@
+# Match is not correct
+
+data Bool { True, False };
+data Bool2 { TT, FF };
+
+def fail := match True with { TT => 'None, False => 'None };

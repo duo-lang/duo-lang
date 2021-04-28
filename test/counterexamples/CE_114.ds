@@ -1,0 +1,5 @@
+data Nat { Z, S(Nat) };
+codata Fun { Ap(Nat,Nat)[Nat] };
+
+def rec add := comatch { Ap(n,m) => match n with { Z => m, S(p) => add.Ap(p,S(m),Z) } };
+

@@ -15,7 +15,7 @@ import Data.Maybe (catMaybes)
 
 import Syntax.STerms
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Syntax.Program
 import Parser.Parser
 import Pretty.Pretty
@@ -29,8 +29,8 @@ import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (isSubtype)
 import Translate.Translate (compile)
-import TypeInference.InferProgram (inferProgram, insertDecl, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
-import Utils (trim)
+import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
+import Utils (trim, Verbosity(..))
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -39,8 +39,6 @@ import Utils (trim)
 data EvalSteps = Steps | NoSteps
 
 data Mode = Symmetric | Asymmetric
-
-data Verbosity = Verbose | Silent
 
 data ReplState = ReplState
   { replEnv :: Environment FreeVarName
@@ -271,16 +269,10 @@ let_cmd s = do
   decl <- fromRight (runInteractiveParser declarationP s)
   oldEnv <- gets replEnv
   verbosity <- gets typeInfVerbosity
-  case verbosity of
-    Silent -> do
-      case insertDecl decl oldEnv of
-        Left err -> liftIO $ printLocatedError err
-        Right newEnv -> modifyEnvironment (const newEnv)
-    Verbose -> do
-      newEnv <- liftIO $ insertDeclIO decl oldEnv
-      case newEnv of
-        Nothing -> return ()
-        Just newEnv -> modifyEnvironment (const newEnv)
+  newEnv <- liftIO $ insertDeclIO verbosity decl oldEnv
+  case newEnv of
+    Nothing -> return ()
+    Just newEnv -> modifyEnvironment (const newEnv)
 
 let_option :: Option
 let_option = Option
@@ -302,7 +294,7 @@ save_cmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,_) -> do
-        trace <- fromRight $ inferSTermTraced PrdRep tloc env
+        trace <- fromRight $ inferSTermTraced NonRecursive "" PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)

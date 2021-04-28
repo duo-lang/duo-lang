@@ -16,10 +16,10 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 
 import TypeAutomata.Determinize (determinize)
-import TypeAutomata.FlowAnalysis
+import TypeAutomata.RemoveAdmissible
 import TypeAutomata.Minimize (minimize)
 
 
@@ -29,18 +29,20 @@ shiftGraph shift = mapTypeAut (+shift)
 
 -- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
 unsafeUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
-unsafeUnion (TypeAut polrep gr1 (Identity starts1) flowEdges1) (TypeAut _ gr2 (Identity starts2) flowEdges2) =
+unsafeUnion (TypeAut polrep (Identity starts1) (TypeAutCore gr1  flowEdges1)) (TypeAut _ (Identity starts2) (TypeAutCore gr2  flowEdges2)) =
   TypeAut { ta_pol = polrep
-          , ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
           , ta_starts = [starts1, starts2]
-          , ta_flowEdges = flowEdges1 ++ flowEdges2
+          , ta_core = TypeAutCore
+            { ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
+            , ta_flowEdges = flowEdges1 ++ flowEdges2
+            }
           }
 
 -- Constructs the union of two TypeAuts
 typeAutUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
 typeAutUnion aut1@TypeAut{..} aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
   where
-    shift = 1 + snd (nodeRange ta_gr)
+    shift = 1 + snd (nodeRange (ta_gr ta_core))
 
 isSubtype :: TypeAutDet pol -> TypeAutDet pol -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
@@ -48,11 +50,11 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   (Neg,Neg) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
-    startPolarity TypeAut{..} = hc_pol (fromJust (lab ta_gr (runIdentity ta_starts)))
+    startPolarity TypeAut{..} = nl_pol (fromJust (lab (ta_gr ta_core) (runIdentity ta_starts)))
     fun = minimize . removeAdmissableFlowEdges . determinize
 
 typeAutEqual :: TypeAutDet pol -> TypeAutDet pol -> Bool
-typeAutEqual (TypeAut _ gr1 (Identity start1) flowEdges1) (TypeAut _ gr2 (Identity start2) flowEdges2)
+typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1)) (TypeAut _ (Identity start2) (TypeAutCore gr2  flowEdges2))
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False
       Just ((),mp) ->

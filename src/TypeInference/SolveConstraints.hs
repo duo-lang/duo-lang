@@ -56,13 +56,13 @@ addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
   lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
-  return [SubType Derived lb ty | lb <- lbs]
+  return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
-  return [SubType Derived ty ub | ub <- ubs]
+  return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -98,7 +98,7 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
 checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
 checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
   MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
-  pure $ zipWith (SubType Derived) prd1 prd2 ++ zipWith (SubType Derived) cns2 cns1
+  pure $ zipWith (SubType XtorSubConstraint) prd1 prd2 ++ zipWith (SubType XtorSubConstraint) cns2 cns1
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
@@ -117,9 +117,9 @@ subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInf
 --     ty1 <: ty2 \/ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
 subConstraints (SubType _ (TySet PosRep tys) ty) =
-  return [SubType Derived ty' ty | ty' <- tys]
+  return [SubType IntersectionUnionSubConstraint ty' ty | ty' <- tys]
 subConstraints (SubType _ ty (TySet NegRep tys)) =
-  return [SubType Derived ty ty' | ty' <- tys]
+  return [SubType IntersectionUnionSubConstraint ty ty' | ty' <- tys]
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
@@ -130,9 +130,9 @@ subConstraints (SubType _ ty (TySet NegRep tys)) =
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
 subConstraints (SubType _ ty@(TyRec _ _ _) ty') =
-  return [SubType Derived (unfoldRecType ty) ty']
+  return [SubType RecTypeSubConstraint (unfoldRecType ty) ty']
 subConstraints (SubType _ ty' ty@(TyRec _ _ _)) =
-  return [SubType Derived ty' (unfoldRecType ty)]
+  return [SubType RecTypeSubConstraint ty' (unfoldRecType ty)]
 -- Constraints between structural data or codata types.
 --
 -- Constraints between structural data and codata types generates constraints based

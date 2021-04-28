@@ -20,7 +20,7 @@ import Control.Monad.State
 import Data.Void
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
 
 ---------------------------------------------------------------------------------------
@@ -47,18 +47,17 @@ fromEpsGr gr = gmap mapfun gr
     mapfun :: Context NodeLabel EdgeLabelEpsilon -> Context NodeLabel EdgeLabelNormal
     mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
-removeRedundantEdges :: TypeGr -> TypeGr
-removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
-
 removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
-removeEpsilonEdges TypeAut { ta_pol, ta_gr, ta_starts, ta_flowEdges } =
+removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowEdges, ta_gr } } =
   let
     (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes ta_gr)) (ta_gr, ta_starts)
   in
    TypeAut { ta_pol = ta_pol
-           , ta_gr = (removeRedundantEdges . fromEpsGr) gr'
            , ta_starts = starts'
-           , ta_flowEdges = ta_flowEdges
+           , ta_core = TypeAutCore
+             { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
+             , ta_flowEdges = ta_flowEdges
+             }
            }
 
 ---------------------------------------------------------------------------------------
@@ -66,15 +65,17 @@ removeEpsilonEdges TypeAut { ta_pol, ta_gr, ta_starts, ta_flowEdges } =
 ---------------------------------------------------------------------------------------
 
 removeIslands :: TypeAut pol -> TypeAut pol
-removeIslands TypeAut{..} =
+removeIslands TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges} } =
   let
     reachableNodes = dfs ta_starts ta_gr
     reachableFlowEdges = [(i,j) | (i,j) <- ta_flowEdges, i `elem` reachableNodes, j `elem` reachableNodes]
   in
     TypeAut { ta_pol = ta_pol
-            , ta_gr = subgraph reachableNodes ta_gr
             , ta_starts = ta_starts
-            , ta_flowEdges = reachableFlowEdges
+            , ta_core = TypeAutCore
+              { ta_gr = subgraph reachableNodes ta_gr
+              , ta_flowEdges = reachableFlowEdges
+              }
             }
 
 ---------------------------------------------------------------------------------------
@@ -122,32 +123,34 @@ determinize' f (gr,starts) =
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
 combineNodeLabels nls
-  = if not . allEq $ (map hc_pol nls)
+  = if not . allEq $ (map nl_pol nls)
       then error "Tried to combine node labels of different polarity!"
-      else HeadCons {
-        hc_pol = pol,
-        hc_data = mrgDat [xtors | HeadCons _ (Just xtors) _ _ <- nls],
-        hc_codata = mrgCodat [xtors | HeadCons _ _ (Just xtors) _ <- nls],
-        hc_nominal = S.unions [ tn | HeadCons _ _ _ tn <- nls]
+      else MkNodeLabel {
+        nl_pol = pol,
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn <- nls]
         }
   where
-    pol = hc_pol (head nls)
+    pol = nl_pol (head nls)
     mrgDat [] = Nothing
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
 determinize :: TypeAut pol -> TypeAutDet pol
-determinize TypeAut{..} =
+determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
     (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in
     TypeAut { ta_pol = ta_pol
-            , ta_gr = removeFaultyEdges newgr
             , ta_starts = Identity newstart
-            , ta_flowEdges = newFlowEdges
+            , ta_core = TypeAutCore
+              { ta_gr = removeFaultyEdges newgr
+              , ta_flowEdges = newFlowEdges
+              }
             }
 
 -------------------------------------------------------------------------
@@ -155,10 +158,10 @@ determinize TypeAut{..} =
 -------------------------------------------------------------------------
 
 containsXtor :: DataCodata -> NodeLabel -> XtorName -> Bool
-containsXtor Data (HeadCons _ Nothing _ _) _ = False
-containsXtor Codata (HeadCons _ _ Nothing _) _ = False
-containsXtor Data (HeadCons _ (Just xtors) _ _) xt = xt `S.member` (labelName `S.map` xtors)
-containsXtor Codata (HeadCons _ _ (Just xtors) _) xt = xt `S.member` (labelName `S.map` xtors)
+containsXtor Data (MkNodeLabel _ Nothing _ _) _ = False
+containsXtor Codata (MkNodeLabel _ _ Nothing _) _ = False
+containsXtor Data (MkNodeLabel _ (Just xtors) _ _) xt = xt `S.member` (labelName `S.map` xtors)
+containsXtor Codata (MkNodeLabel _ _ (Just xtors) _) xt = xt `S.member` (labelName `S.map` xtors)
 
 isFaultyEdge :: TypeGr -> LEdge EdgeLabelNormal -> Bool
 isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt

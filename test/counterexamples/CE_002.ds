@@ -1,2 +1,3 @@
+# Match cases not exhaustive
 data Bool { True, False };
 prd nominalNot := \(x)[k] => x >> match { True => False >> k };

@@ -1,4 +1,4 @@
-module Syntax.TypeAutomaton where
+module TypeAutomata.Definition where
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -102,6 +102,10 @@ import Syntax.CommonTerm
 --
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Node labels for type automata
+--------------------------------------------------------------------------------
+
 data XtorLabel = MkXtorLabel
   { labelName :: XtorName
   , labelPrdArity :: Int
@@ -109,19 +113,23 @@ data XtorLabel = MkXtorLabel
   }
   deriving (Eq, Show, Ord)
 
-data NodeLabel = HeadCons
-  { hc_pol :: Polarity
-  , hc_data :: Maybe (Set XtorLabel)
-  , hc_codata :: Maybe (Set XtorLabel)
-  , hc_nominal :: Set TypeName
+data NodeLabel = MkNodeLabel
+  { nl_pol :: Polarity
+  , nl_data :: Maybe (Set XtorLabel)
+  , nl_codata :: Maybe (Set XtorLabel)
+  , nl_nominal :: Set TypeName
   } deriving (Eq,Show,Ord)
 
-emptyHeadCons :: Polarity -> NodeLabel
-emptyHeadCons pol = HeadCons pol Nothing Nothing S.empty
+emptyNodeLabel :: Polarity -> NodeLabel
+emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty
 
-singleHeadCons :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
-singleHeadCons pol Data xtors   = HeadCons pol (Just xtors) Nothing S.empty
-singleHeadCons pol Codata xtors = HeadCons pol Nothing (Just xtors) S.empty
+singleNodeLabel :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
+singleNodeLabel pol Data xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty
+singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty
+
+--------------------------------------------------------------------------------
+-- Edge labels for type automata
+--------------------------------------------------------------------------------
 
 data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
@@ -139,16 +147,30 @@ unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
 unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
 unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
 
+--------------------------------------------------------------------------------
+-- Flow edges
+--------------------------------------------------------------------------------
+
 type FlowEdge = (Node, Node)
+
+--------------------------------------------------------------------------------
+-- Type Automata
+--------------------------------------------------------------------------------
+
+data TypeAutCore a = TypeAutCore
+  { ta_gr :: Gr NodeLabel a
+  , ta_flowEdges :: [FlowEdge]
+  }
+deriving instance Show (TypeAutCore EdgeLabelNormal)
+deriving instance Show (TypeAutCore EdgeLabelEpsilon)
 
 type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
 data TypeAut' a f (pol :: Polarity) = TypeAut
   { ta_pol :: PolarityRep pol
-  , ta_gr :: Gr NodeLabel a
   , ta_starts :: f Node
-  , ta_flowEdges :: [FlowEdge]
+  , ta_core :: TypeAutCore a
   }
 deriving instance Show (TypeAut pol)
 deriving instance Show (TypeAutDet pol)
@@ -160,6 +182,10 @@ type TypeAutDet pol    = TypeAut' EdgeLabelNormal  Identity pol
 type TypeAutEps pol    = TypeAut' EdgeLabelEpsilon [] pol
 type TypeAutEpsDet pol = TypeAut' EdgeLabelEpsilon Identity pol
 
+--------------------------------------------------------------------------------
+-- Helper functions
+--------------------------------------------------------------------------------
+
 class Nubable f where
   nub :: Ord a => f a -> f a
 instance Nubable Identity where
@@ -167,12 +193,27 @@ instance Nubable Identity where
 instance Nubable [] where
   nub = nubOrd
 
--- Maps a function on nodes over a type automaton
-mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
-mapTypeAut f TypeAut {..} = TypeAut
-  { ta_pol = ta_pol
-  , ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
-                    (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  , ta_starts = nub (f <$> ta_starts)
+
+mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
+mapTypeAutCore f TypeAutCore { ta_gr, ta_flowEdges } = TypeAutCore
+  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
+            (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
   , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
   }
+
+-- Maps a function on nodes over a type automaton
+mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
+mapTypeAut f TypeAut { ta_pol, ta_starts, ta_core } = TypeAut
+  { ta_pol = ta_pol
+  , ta_starts = nub (f <$> ta_starts)
+  , ta_core = mapTypeAutCore f ta_core
+  }
+
+removeRedundantEdges :: TypeGr -> TypeGr
+removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
+
+removeRedundantEdgesCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
+removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdges ta_gr }
+
+removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
+removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }

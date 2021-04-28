@@ -2,13 +2,16 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
-import TypeAutomata.FlowAnalysis
 
+import Control.Monad.State
 import Control.Monad.Reader
 import Data.Maybe (fromJust)
 
+import Data.List (intersect, maximumBy)
+import Data.Ord (comparing)
+import Data.Graph.Inductive.PatriciaTree
 import Data.Functor.Identity
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -18,6 +21,59 @@ import qualified Data.Map as M
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 
+-------------------------------------------------------------------------------------
+-- Flow analysis
+-------------------------------------------------------------------------------------
+
+type FlowGraph = Gr () ()
+
+-- | Generate a graph consisting only of the flow_edges of the type automaton.
+genFlowGraph :: TypeAutCore a -> FlowGraph
+genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
+
+flowComponent :: FlowGraph -> Node -> [Node]
+flowComponent flgr i =
+  let
+    ns = neighbors flgr i
+  in
+    if null ns
+      then [i]
+      else ns ++ (foldr1 intersect) (map (neighbors flgr) ns)
+
+freshTVar :: State Int TVar
+freshTVar = do
+  n <- get
+  modify (+1)
+  return (MkTVar ("t" ++ show n))
+
+flowAnalysisState :: FlowGraph -> State Int (Map Node (Set TVar))
+flowAnalysisState flgr =
+    let
+      nextNode = maximumBy (comparing (length . flowComponent flgr)) (nodes flgr)
+      comp = flowComponent flgr nextNode
+      newGr = delEdges [(x,y) | (x,y) <- edges flgr, x `elem` comp, y `elem` comp] flgr
+    in
+      if length comp < 2
+        then return (M.fromList [(n,S.empty) | n <- nodes flgr])
+        else do
+          tv <- freshTVar
+          rest <- flowAnalysisState newGr
+          return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
+
+getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar)
+getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
+
+initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
+initializeFromAutomaton TypeAut{..} =
+  let
+    flowAnalysis = getFlowAnalysisMap ta_core
+  in
+    AutToTypeState { tvMap = flowAnalysis
+                   , graph = ta_gr ta_core
+                   , cache = S.empty
+                   , tvars = S.toList $ S.unions (M.elems flowAnalysis)
+                   }
+
 --------------------------------------------------------------------------
 -- Type automata -> Types
 --------------------------------------------------------------------------
@@ -25,6 +81,7 @@ import Data.Graph.Inductive.Query.DFS (dfs)
 data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
+                                     , tvars :: [TVar]
                                      }
 
 type AutToTypeM a = Reader AutToTypeState a
@@ -32,12 +89,10 @@ type AutToTypeM a = Reader AutToTypeState a
 autToType :: TypeAutDet pol -> TypeScheme pol
 autToType aut@TypeAut{..} =
   let
-    mp = getFlowAnalysisMap aut
-    startState = AutToTypeState mp ta_gr S.empty
+    startState = initializeFromAutomaton aut
     monotype = runReader (nodeToType ta_pol (runIdentity ta_starts)) startState
-    tvars = S.toList $ S.unions (M.elems mp)
   in
-    TypeScheme tvars monotype
+    TypeScheme (tvars startState) monotype
 
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
@@ -101,7 +156,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (HeadCons _ datSet codatSet tns)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables

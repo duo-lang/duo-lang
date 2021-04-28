@@ -179,9 +179,20 @@ substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
 
 -- | Information about the provenance of a constraint.
 data ConstraintInfo
-  = Primary Loc         -- ^ Constraint was generated during constraint generation.
-  | RecursionConstraint -- ^ Constraint corresponds to typechecking of recursive function.
-  | Derived             -- ^ Constraint was generated during constraint solving.
+  -- Primitive constraints from constraint generation:
+  = CtorArgsConstraint Loc     -- ^ Constraint for checking that args of constructor call have correct type.
+  | DtorArgsConstraint Loc     -- ^ Constraint for checking that args of destructor call have correct type.
+  | CaseConstraint Loc         -- ^ Constraint for checking that a pattern-match case has correct return type.
+  | PatternMatchConstraint Loc -- ^ Constraint for checking that destructee of pattern match has correct type.
+  | DtorApConstraint Loc       -- ^ Constraint for checking that destructee of destructor application has correct type.
+  | CommandConstraint Loc      -- ^ Constraint was generated from a command `prd >> cns`. (STerms)
+  | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
+  -- Derived constraints generated during constraing solving
+  | UpperBoundConstraint
+  | LowerBoundConstraint
+  | XtorSubConstraint
+  | IntersectionUnionSubConstraint
+  | RecTypeSubConstraint
   deriving (Show)
 
 
@@ -222,7 +233,6 @@ type SolverResult = Map TVar VariableState
 data DataDecl = NominalDecl
   { data_name :: TypeName
   , data_polarity :: DataCodata
-  , data_xtors :: [XtorSig Pos]
+  , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
   }
-  deriving (Eq)
 

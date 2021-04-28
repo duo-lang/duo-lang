@@ -1,0 +1,8 @@
+# Should not typecheck due to incorrect return type of comatch case
+
+data Nat { Z, S(Nat) };
+data Bool { True, False };
+codata FunNatBool { Ap(Nat)[Bool] };
+
+# Type of m differs from consumer type Bool
+def isZero := comatch { Ap(n) => match n with { Z => True, S(m) => m } };

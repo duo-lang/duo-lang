@@ -12,7 +12,7 @@ import Prettyprinter
 import Pretty.Pretty (ppPrint, PrettyAnn(..), intercalateX)
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Syntax.Types
 
 
@@ -27,7 +27,7 @@ instance PrettyAnn XtorLabel where
     brackets (pretty labelCnsArity)
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (HeadCons _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
+  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat
                                                                           , printNominal tns])
     where
@@ -41,7 +41,7 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EpsilonEdge _) = "e"
 
 typeAutToDot :: TypeAut' EdgeLabelNormal f pol -> DotGraph Node
-typeAutToDot TypeAut {..} =
+typeAutToDot TypeAut {ta_core = TypeAutCore{..}} =
     let
       grWithFlow = insEdges [(i,j,EpsilonEdge ()) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr) -- Should be modified!
     in
@@ -51,7 +51,7 @@ typeAutParams :: GraphvizParams Node NodeLabel EdgeLabelEpsilon () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,nl) ->
     [ style filled
-    , fillColor $ case hc_pol nl of {Pos -> White; Neg -> Gray}
+    , fillColor $ case nl_pol nl of {Pos -> White; Neg -> Gray}
     , textLabel (pack (ppPrint (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el

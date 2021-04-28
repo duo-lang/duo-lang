@@ -20,7 +20,6 @@ module Parser.Lexer
   , codataKwP
   , recKwP
   , muKwP
-  , muStarKwP
     -- Symbols
   , dot
   , pipe
@@ -138,7 +137,7 @@ typeNameP = do
 
 keywords :: [String]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with"
-           , "Done", "Print", "forall", "data", "codata", "rec", "mu", "mu*"]
+           , "Done", "Print", "forall", "data", "codata", "rec", "mu"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -187,9 +186,6 @@ recKwP = keywordP "rec"
 
 muKwP :: Parser SourcePos
 muKwP = keywordP "mu"
-
-muStarKwP :: Parser SourcePos
-muStarKwP = keywordP "mu*"
 
 -------------------------------------------------------------------------------------------
 -- Symbols
