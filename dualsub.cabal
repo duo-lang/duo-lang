@@ -81,6 +81,7 @@ library
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize
+      TypeAutomata.RemoveEpsilon
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton

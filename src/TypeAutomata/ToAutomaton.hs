@@ -4,9 +4,11 @@ import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
 import Utils
-import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
-import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
+import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
+import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
+import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
+
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -212,4 +214,4 @@ solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Err
 solverStateToTypeAut solverResult pol ty = do
   (start,aut) <- runTypeAutTvars (M.keys solverResult) $ insertEpsilonEdges solverResult >> insertType ty
   let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
-  return $ (removeIslands . removeEpsilonEdges) newAut
+  return $ removeEpsilonEdges newAut

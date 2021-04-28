@@ -40,14 +40,14 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Cns i) = prettyAnn xt <> brackets (pretty i)
   prettyAnn (EpsilonEdge _) = "e"
 
-typeAutToDot :: TypeAut' EdgeLabelNormal f pol -> DotGraph Node
+typeAutToDot :: TypeAut' (EdgeLabel a) f pol -> DotGraph Node
 typeAutToDot TypeAut {ta_core = TypeAutCore{..}} =
     let
-      grWithFlow = insEdges [(i,j,EpsilonEdge ()) | (i,j) <- ta_flowEdges] (emap embedEdgeLabel ta_gr) -- Should be modified!
+      grWithFlow = insEdges [(i,j,EpsilonEdge (error "Never forced")) | (i,j) <- ta_flowEdges] ta_gr
     in
       graphToDot typeAutParams grWithFlow
 
-typeAutParams :: GraphvizParams Node NodeLabel EdgeLabelEpsilon () NodeLabel
+typeAutParams :: GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabel
 typeAutParams = defaultParams
   { fmtNode = \(_,nl) ->
     [ style filled
