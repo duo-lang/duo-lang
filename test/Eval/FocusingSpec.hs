@@ -58,17 +58,17 @@ spec = do
                      "mu m.(S(S(mu k.comatch{Ap(x)[n] =>  x >> match {S(y) => y >> n, Z => Z >> n}} >> Ap(S(mu k.comatch{Ap(x)[n] => x >> n} >> Ap(Z)[k]))[k] )) >> match {Z => True >> m, S(y) => False >> m }) >> print"
                      "Print(False)"
         evalFocusing CBV
-                     "comatch {Ap(x)[k] => x >> k} >> Ap(S(S(Z)))[mu* x.x >> match{Z => True >> print, S(y) => False >> print}]"
+                     "comatch {Ap(x)[k] => x >> k} >> Ap(S(S(Z)))[mu x.x >> match{Z => True >> print, S(y) => False >> print}]"
                      "Print(False)"
 
         --describe "Check if commands evaluate as expected with CBV:" $ do
         -- top-level CBN focusing at match
 {-        evalFocusing CBN
-                     "Ap(2)[mu* x. add >> 'Ap(x, x)[print]]  >> match{Ap(x)[k] => x >> k}"
+                     "Ap(2)[mu x. add >> 'Ap(x, x)[print]]  >> match{Ap(x)[k] => x >> k}"
                      "..."
 
 
-comatch {Ap(x)[k] => Print(42)} >> Ap(2)[mu* x. add >> 'Ap(x)[print]]
+comatch {Ap(x)[k] => Print(42)} >> Ap(2)[mu x. add >> 'Ap(x)[print]]
 --> error
 
 -}
