@@ -4,9 +4,11 @@ import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
 import Utils
-import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
-import TypeAutomata.Determinize (determinize, removeEpsilonEdges)
+import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
+import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
+import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
+
 
 import Control.Monad.Reader
 import Control.Monad.State
