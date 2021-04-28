@@ -163,6 +163,17 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
                               , "    " ++ ppPrint tn1
                               , "and"
                               , "    " ++ ppPrint tn2 ]
+-- Constrants between refined types:
+subConstraints (SubType _ (TyRefined _ tn1 _) (TyRefined _ tn2 _)) =
+  if tn1 == tn2 then pure [] else 
+    throwSolverError ["The following refined types are incompatible:"
+                     , "    " ++ ppPrint tn1
+                     , "and"
+                     , "    " ++ ppPrint tn2 ]
+subConstraints (SubType _ TyRefined{} (TyNominal _ _)) =
+  undefined
+subConstraints (SubType _ (TyNominal _ _) TyRefined{}) =
+  undefined
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
@@ -192,6 +203,14 @@ subConstraints (SubType _ (TyCodata _ _) (TyNominal _ _)) =
 subConstraints (SubType _ (TyNominal _ _) (TyData _ _)) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType _ (TyNominal _ _) (TyCodata _ _)) =
+  throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType _ (TyData _ _) TyRefined{}) =
+  throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType _ (TyCodata _ _) TyRefined{}) =
+  throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType _ TyRefined{} (TyData _ _)) =
+  throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType _ TyRefined{} (TyCodata _ _)) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 -- Atomic constraints:
 --

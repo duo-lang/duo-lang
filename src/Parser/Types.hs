@@ -99,6 +99,7 @@ switchPol (TyVar rep tv) = TyVar (flipPolarityRep rep) tv
 switchPol (TyData rep xtors) = TyData (flipPolarityRep rep) (switchSig <$> xtors)
 switchPol (TyCodata rep xtors) = TyCodata (flipPolarityRep rep) (switchSig <$> xtors)
 switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
+switchPol (TyRefined rep tn typ) = TyRefined (flipPolarityRep rep) tn (switchPol typ)
 switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 
