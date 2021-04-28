@@ -18,6 +18,23 @@ import Utils
 -- Generic determinization algorithm
 ---------------------------------------------------------------------------------------
 
+combineNodeLabels :: [NodeLabel] -> NodeLabel
+combineNodeLabels nls
+  = if not . allEq $ (map nl_pol nls)
+      then error "Tried to combine node labels of different polarity!"
+      else MkNodeLabel {
+        nl_pol = pol,
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn <- nls]
+        }
+  where
+    pol = nl_pol (head nls)
+    mrgDat [] = Nothing
+    mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
+    mrgCodat [] = Nothing
+    mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
+
 getAlphabetForNodes :: TypeGr -> Set Node -> [EdgeLabelNormal]
 getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concat (map (out gr) (S.toList ns)))
 
@@ -38,46 +55,28 @@ determinizeState (ns:rest) gr = do
 runDeterminize :: TypeGr -> [Node] -> Map (Set Node) [((Set Node),EdgeLabelNormal)]
 runDeterminize gr starts = snd $ runState (determinizeState [S.fromList starts] gr) M.empty
 
-getNewNodeLabel :: ([NodeLabel] -> NodeLabel) -> TypeGr -> Set Node -> NodeLabel
-getNewNodeLabel f gr ns = f $ catMaybes (map (lab gr) (S.toList ns))
+getNewNodeLabel :: TypeGr -> Set Node -> NodeLabel
+getNewNodeLabel gr ns = combineNodeLabels $ catMaybes (map (lab gr) (S.toList ns))
 
--- first argument is the node label "combiner"
 -- second result argument is a mapping from sets of node ids to new node ids
 -- this is necessary to correctly handle flow edges, which is done later
-determinize' :: ([NodeLabel] -> NodeLabel) -> (TypeGr, [Node]) -> (TypeGr, Node, [(Node, (Set Node))])
-determinize' f (gr,starts) =
-  let
+determinize' :: (TypeGr, [Node]) -> (TypeGr, Node, [(Node, (Set Node))])
+determinize' (gr,starts) = (gr', starts', fun)
+  where
     mp = runDeterminize gr starts
-  in ( mkGraph [(i, getNewNodeLabel f gr ns) | (ns,_) <- M.toList mp, let i = M.findIndex ns mp]
-               [(i, M.findIndex ns' mp,el) | (ns,es) <- M.toList mp, let i = M.findIndex ns mp, (ns',el) <- es]
-     , M.findIndex (S.fromList starts) mp
-     , [(M.findIndex nodeSet mp, nodeSet) | (nodeSet,_) <- M.toList mp])
+    gr' = mkGraph [(i, getNewNodeLabel gr ns) | (ns,_) <- M.toList mp, let i = M.findIndex ns mp]
+          [(i, M.findIndex ns' mp,el) | (ns,es) <- M.toList mp, let i = M.findIndex ns mp, (ns',el) <- es]
+    starts' = M.findIndex (S.fromList starts) mp
+    fun = [(M.findIndex nodeSet mp, nodeSet) | (nodeSet,_) <- M.toList mp]
 
 ------------------------------------------------------------------------------
 -- Applied to type graphs
 ------------------------------------------------------------------------------
 
-combineNodeLabels :: [NodeLabel] -> NodeLabel
-combineNodeLabels nls
-  = if not . allEq $ (map nl_pol nls)
-      then error "Tried to combine node labels of different polarity!"
-      else MkNodeLabel {
-        nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn <- nls]
-        }
-  where
-    pol = nl_pol (head nls)
-    mrgDat [] = Nothing
-    mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
-    mrgCodat [] = Nothing
-    mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
-
 determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
-    (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
+    (newgr, newstart, mp) = determinize' (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
   in
