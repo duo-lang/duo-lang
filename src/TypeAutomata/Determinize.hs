@@ -3,7 +3,6 @@ module TypeAutomata.Determinize ( determinize ) where
 import Control.Monad.State
 import Data.Functor.Identity
 import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.PatriciaTree
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -19,13 +18,13 @@ import Utils
 -- Generic determinization algorithm
 ---------------------------------------------------------------------------------------
 
-getAlphabetForNodes :: Ord b => Gr NodeLabel b -> Set Node -> [b]
+getAlphabetForNodes :: TypeGr -> Set Node -> [EdgeLabelNormal]
 getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concat (map (out gr) (S.toList ns)))
 
-succsWith :: Eq b => Gr NodeLabel b -> Set Node -> b -> Set Node
+succsWith :: TypeGr -> Set Node -> EdgeLabelNormal -> Set Node
 succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) . concat $ map (lsuc gr) (S.toList ns)
 
-determinizeState :: Ord b => [Set Node] -> Gr NodeLabel b -> State (Map (Set Node) [((Set Node),b)]) ()
+determinizeState :: [Set Node] -> TypeGr -> State (Map (Set Node) [((Set Node),EdgeLabelNormal)]) ()
 determinizeState [] _ = return ()
 determinizeState (ns:rest) gr = do
   mp <- get
@@ -36,16 +35,16 @@ determinizeState (ns:rest) gr = do
       modify (M.insert ns newEdges)
       determinizeState (newNodeSets ++ rest) gr
 
-runDeterminize :: Ord b => Gr NodeLabel b -> [Node] -> Map (Set Node) [((Set Node),b)]
+runDeterminize :: TypeGr -> [Node] -> Map (Set Node) [((Set Node),EdgeLabelNormal)]
 runDeterminize gr starts = snd $ runState (determinizeState [S.fromList starts] gr) M.empty
 
-getNewNodeLabel :: ([NodeLabel] -> NodeLabel) -> Gr NodeLabel b -> Set Node -> NodeLabel
+getNewNodeLabel :: ([NodeLabel] -> NodeLabel) -> TypeGr -> Set Node -> NodeLabel
 getNewNodeLabel f gr ns = f $ catMaybes (map (lab gr) (S.toList ns))
 
 -- first argument is the node label "combiner"
 -- second result argument is a mapping from sets of node ids to new node ids
 -- this is necessary to correctly handle flow edges, which is done later
-determinize' :: Ord b => ([NodeLabel] -> NodeLabel) -> (Gr NodeLabel b, [Node]) -> (Gr NodeLabel b, Node, [(Node, (Set Node))])
+determinize' :: ([NodeLabel] -> NodeLabel) -> (TypeGr, [Node]) -> (TypeGr, Node, [(Node, (Set Node))])
 determinize' f (gr,starts) =
   let
     mp = runDeterminize gr starts
