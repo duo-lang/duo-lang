@@ -150,30 +150,40 @@ subConstraints (SubType _ (TyCodata PosRep dtors1) (TyCodata NegRep dtors2)) = d
   pure $ concat constraints
 -- Constraints between nominal types:
 --
--- We currently do not have any subtyping relationshipts between nominal types.
+-- We currently do not have any subtyping relationships between nominal types.
 -- We therefore only have to check if the two nominal types are identical. E.g.:
 --
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
 subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
-  case tn1 == tn2 of
-    True  -> pure []
-    False -> throwSolverError ["The following nominal types are incompatible:"
-                              , "    " ++ ppPrint tn1
-                              , "and"
-                              , "    " ++ ppPrint tn2 ]
+  if tn1 == tn2 then pure [] else
+    throwSolverError ["The following nominal types are incompatible:"
+                     , "    " ++ ppPrint tn1
+                     , "and"
+                     , "    " ++ ppPrint tn2 ]
 -- Constrants between refined types:
-subConstraints (SubType _ (TyRefined _ tn1 _) (TyRefined _ tn2 _)) =
+subConstraints (SubType ci (TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
+  if tn1 == tn2 then return [SubType ci ty1 ty2] else
+    throwSolverError ["The following refined types are incompatible:"
+                     , "    " ++ ppPrint tn1
+                     , "and"
+                     , "    " ++ ppPrint tn2 ]
+-- Refined type is always subtype of the nominal type it refines
+subConstraints (SubType _ (TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
     throwSolverError ["The following refined types are incompatible:"
                      , "    " ++ ppPrint tn1
                      , "and"
                      , "    " ++ ppPrint tn2 ]
-subConstraints (SubType _ TyRefined{} (TyNominal _ _)) =
-  undefined
-subConstraints (SubType _ (TyNominal _ _) TyRefined{}) =
-  undefined
+-- Nominal type is subtype of a refinement of itself if the refinement is trivial,
+-- i.e. does not impose any limitations
+subConstraints (SubType _ (TyNominal _ tn1) (TyRefined _ tn2 _)) =
+  -- TODO: Check if translate(tn2) <: ty2
+    throwSolverError ["The following refined types are incompatible:"
+                     , "    " ++ ppPrint tn1
+                     , "and"
+                     , "    " ++ ppPrint tn2 ]
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
