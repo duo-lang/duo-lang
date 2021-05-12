@@ -120,6 +120,7 @@ test-suite dualsub-test
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
     , Eval.SubstitutionSpec
+    , Parser.ParserSpec
     , ParserPrettyprinter.ParserPrettyprinterSpec
     , Paths_dualsub
     , Spec
