@@ -4,13 +4,15 @@ module TypeInference.SolveConstraints
 
 import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Reader
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
 
 import Syntax.Types
-import Syntax.CommonTerm (XtorName)
+import Syntax.CommonTerm
+import Syntax.Program (Environment, lookupTypeName)
 import Utils
 import Pretty.Pretty
 import Pretty.Types ()
@@ -22,16 +24,23 @@ import Pretty.Constraints ()
 
 data SolverState = SolverState
   { sst_bounds :: SolverResult
-  , sst_cache :: Set (Constraint ())} -- The constraints in the cache need to have their annotations removed!
+  , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
+  , sst_env :: Environment FreeVarName } -- Environment to look up nominal type declarations in
 
-createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
-                                                    , sst_cache = S.empty }
+createInitState :: ConstraintSet -> Environment FreeVarName -> SolverState
+createInitState (ConstraintSet _ uvs) env = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+                                                    , sst_cache = S.empty
+                                                    , sst_env = env }
 
-type SolverM a = (StateT SolverState (Except Error)) a
+newtype SolverReader = SolverReader { sre_translate :: Bool }
 
-runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
-runSolverM m initSt = runExcept (runStateT m initSt)
+initReader :: SolverReader
+initReader = SolverReader { sre_translate = False }
+
+type SolverM a = ReaderT SolverReader (StateT SolverState (Except Error)) a
+
+runSolverM :: SolverM a -> SolverReader -> SolverState -> Either Error (a, SolverState)
+runSolverM m initRe initSt = runExcept (runStateT (runReaderT m initRe) initSt)
 
 ------------------------------------------------------------------------------
 -- Monadic helper functions
@@ -44,13 +53,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+    modifyCache f = modify (\(SolverState gr cache env) -> SolverState gr (f cache) env)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
+modifyBounds f uv = modify (\(SolverState varMap cache env) -> SolverState (M.adjust f uv varMap) cache env)
 
 addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
@@ -63,6 +72,34 @@ addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
+
+------------------------------------------------------------------------------
+-- Nominal to structural type translation
+------------------------------------------------------------------------------
+
+lookupNominalType :: TypeName -> SolverM DataDecl
+lookupNominalType tn = do
+  env <- gets sst_env
+  case lookupTypeName tn env of
+    Nothing -> throwSolverError ["Can't translate nominal type " ++ ppPrint tn ++ ": Not in environment"]
+    Just decl -> return decl
+
+translateToStructural :: Typ pol -> SolverM (Typ pol)
+translateToStructural (TyNominal pr tn) = do
+  NominalDecl{..} <- lookupNominalType tn
+  case data_polarity of
+    Data -> do
+      xtorSig <- mapM xtorSigMakeStructural (data_xtors pr)
+      return $ TyData pr xtorSig
+    Codata -> do
+      xtorSig <- mapM xtorSigMakeStructural (data_xtors $ flipPolarityRep pr)
+      return $ TyCodata pr xtorSig
+translateToStructural _ = do
+  throwSolverError ["Can't translate structural types to nominal"]
+
+xtorSigMakeStructural :: XtorSig pol -> SolverM (XtorSig pol)
+xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) MkTypArgs{..}) =
+  return $ MkXtorSig (MkXtorName Structural s) (MkTypArgs prdTypes cnsTypes)
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -181,17 +218,30 @@ subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Constraints between nominal and a structural types:
 --
--- These constraints are not solvable. E.g.:
+-- These constraints are generally not solvable. E.g.:
 --
 --     < ctors > <: Nat          ~>     FAIL
 --
-subConstraints (SubType _ (TyData _ _) (TyNominal _ _)) =
+-- However, if the sre_translate flag is set to True, nominal types on the right
+-- are translated. E.g.:
+--
+--    < ctors > <: Nat           ~>  < ctors > <: < 'Z | 'S(Nat) >
+--
+subConstraints (SubType ci td@TyData{} tn@TyNominal{}) = do
+  flag <- asks sre_translate
+  if flag then do
+    trT <- translateToStructural tn
+    return [SubType ci td trT]
+  else throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType ci tc@TyCodata{} tn@TyNominal{}) = do
+  flag <- asks sre_translate
+  if flag then do
+    trT <- translateToStructural tn
+    return [SubType ci tc trT]
+  else throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType _ TyNominal{} TyData{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType _ (TyCodata _ _) (TyNominal _ _)) =
-  throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType _ (TyNominal _ _) (TyData _ _)) =
-  throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType _ (TyNominal _ _) (TyCodata _ _)) =
+subConstraints (SubType _ TyNominal{} TyCodata{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 -- Atomic constraints:
 --
@@ -217,8 +267,8 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) = do
-  (_, solverState) <- runSolverM (solve css) (createInitState constraintSet)
+solveConstraints :: ConstraintSet -> Environment FreeVarName -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _) env = do
+  (_, solverState) <- runSolverM (solve css) initReader (createInitState constraintSet env)
   return (sst_bounds solverState)
 
