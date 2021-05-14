@@ -2,7 +2,7 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
-import Syntax.TypeAutomaton
+import TypeAutomata.Definition
 import Utils
 
 import Control.Monad.State
@@ -28,8 +28,8 @@ import Data.Graph.Inductive.Query.DFS (dfs)
 type FlowGraph = Gr () ()
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
-genFlowGraph :: TypeAut' EdgeLabelNormal f pol -> FlowGraph
-genFlowGraph TypeAut{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
+genFlowGraph :: TypeAutCore a -> FlowGraph
+genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
 
 flowComponent :: FlowGraph -> Node -> [Node]
 flowComponent flgr i =
@@ -60,16 +60,16 @@ flowAnalysisState flgr =
           rest <- flowAnalysisState newGr
           return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
 
-getFlowAnalysisMap :: TypeAut' EdgeLabelNormal f pol -> Map Node (Set TVar)
+getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
 
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
-initializeFromAutomaton aut@TypeAut{..} =
+initializeFromAutomaton TypeAut{..} =
   let
-    flowAnalysis = getFlowAnalysisMap aut
+    flowAnalysis = getFlowAnalysisMap ta_core
   in
     AutToTypeState { tvMap = flowAnalysis
-                   , graph = ta_gr
+                   , graph = ta_gr ta_core
                    , cache = S.empty
                    , tvars = S.toList $ S.unions (M.elems flowAnalysis)
                    }
@@ -156,7 +156,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (HeadCons _ datSet codatSet tns)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables

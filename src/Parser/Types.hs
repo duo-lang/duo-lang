@@ -75,10 +75,18 @@ recType rep = do
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) (typP rep)
   return $ TyRec rep rv ty
 
+refTypeP :: PolarityRep pol -> Parser (Typ pol)
+refTypeP rep = fst <$> dbraces (do
+  ty <- typP rep
+  _ <- refineSym
+  (tn,_) <- typeNameP
+  return $ TyRefined rep tn ty)
+
 -- Without joins and meets
 typP' :: PolarityRep pol -> Parser (Typ pol)
 typP' rep = try (fst <$> parens (typP rep)) <|>
   nominalTypeP rep <|>
+  refTypeP rep <|>
   dataTypeP DataRep rep <|>
   dataTypeP CodataRep rep <|>
   recType rep <|>
@@ -99,6 +107,7 @@ switchPol (TyVar rep tv) = TyVar (flipPolarityRep rep) tv
 switchPol (TyData rep xtors) = TyData (flipPolarityRep rep) (switchSig <$> xtors)
 switchPol (TyCodata rep xtors) = TyCodata (flipPolarityRep rep) (switchSig <$> xtors)
 switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
+switchPol (TyRefined rep tn typ) = TyRefined (flipPolarityRep rep) tn (switchPol typ)
 switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 
