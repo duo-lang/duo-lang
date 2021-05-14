@@ -4,7 +4,6 @@ module TypeInference.SolveConstraints
 
 import Control.Monad.State
 import Control.Monad.Except
-import Control.Monad.Reader
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Set (Set)
@@ -32,15 +31,10 @@ createInitState (ConstraintSet _ uvs) env = SolverState { sst_bounds = M.fromLis
                                                     , sst_cache = S.empty
                                                     , sst_env = env }
 
-newtype SolverReader = SolverReader { sre_translate :: Bool }
+type SolverM a = (StateT SolverState (Except Error)) a
 
-initReader :: SolverReader
-initReader = SolverReader { sre_translate = False }
-
-type SolverM a = ReaderT SolverReader (StateT SolverState (Except Error)) a
-
-runSolverM :: SolverM a -> SolverReader -> SolverState -> Either Error (a, SolverState)
-runSolverM m initRe initSt = runExcept (runStateT (runReaderT m initRe) initSt)
+runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
+runSolverM m initSt = runExcept (runStateT m initSt)
 
 ------------------------------------------------------------------------------
 -- Monadic helper functions
@@ -199,14 +193,18 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
                      , "    " ++ ppPrint tn1
                      , "and"
                      , "    " ++ ppPrint tn2 ]
--- Constrants between refined types:
+-- Constraints between refined types:
+--
+-- If left and right side refine the same nominal type, check if left side refinement is
+-- subtype of right side refinement.
 subConstraints (SubType ci (TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then return [SubType ci ty1 ty2] else
     throwSolverError ["The following refined types are incompatible:"
                      , "    " ++ ppPrint tn1
                      , "and"
                      , "    " ++ ppPrint tn2 ]
--- Refined type is always subtype of the nominal type it refines
+-- Refined type is always subtype of the nominal type it refines and never subtype of
+-- another nominal type.
 subConstraints (SubType _ (TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
     throwSolverError ["The following refined types are incompatible:"
@@ -214,9 +212,13 @@ subConstraints (SubType _ (TyRefined _ tn1 _) (TyNominal _ tn2)) =
                      , "and"
                      , "    " ++ ppPrint tn2 ]
 -- Nominal type is subtype of a refinement of itself if the refinement is trivial,
--- i.e. does not impose any limitations
-subConstraints (SubType _ (TyNominal _ tn1) (TyRefined _ tn2 _)) =
-  -- TODO: Check if translate(tn2) <: ty2
+-- i.e. does not impose any limitations on the nominal type.
+-- This can be checked with new constraint `translate(tn) <: ty2`
+subConstraints (SubType ci tn@(TyNominal _ tn1) (TyRefined _ tn2 ty2)) =
+  if tn1 == tn2 then do
+    tty <- translateToStructural tn
+    return [SubType ci tty ty2]
+  else
     throwSolverError ["The following refined types are incompatible:"
                      , "    " ++ ppPrint tn1
                      , "and"
@@ -239,27 +241,20 @@ subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Constraints between nominal and a structural types:
 --
--- These constraints are generally not solvable. E.g.:
+-- If the nominal type occurs on the right, it is translated. E.g.:
 --
---     < ctors > <: Nat          ~>     FAIL
+--     < ctors > <: Nat     ~>     < ctors > <: < 'Z | 'S(Nat) >
 --
--- However, if the sre_translate flag is set to True, nominal types on the right
--- are translated. E.g.:
+-- Otherwise, the constraint cannot be solved. E.g.:
 --
---    < ctors > <: Nat           ~>  < ctors > <: < 'Z | 'S(Nat) >
+--     Nat <: < ctors >     ~>     FAIL
 --
 subConstraints (SubType ci td@TyData{} tn@TyNominal{}) = do
-  flag <- asks sre_translate
-  if flag then do
-    trT <- translateToStructural tn
-    return [SubType ci td trT]
-  else throwSolverError ["Cannot constrain nominal by structural type"]
+  trT <- translateToStructural tn
+  return [SubType ci td trT]
 subConstraints (SubType ci tc@TyCodata{} tn@TyNominal{}) = do
-  flag <- asks sre_translate
-  if flag then do
-    trT <- translateToStructural tn
-    return [SubType ci tc trT]
-  else throwSolverError ["Cannot constrain nominal by structural type"]
+  trT <- translateToStructural tn
+  return [SubType ci tc trT]
 subConstraints (SubType _ TyNominal{} TyData{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType _ TyNominal{} TyCodata{}) =
@@ -298,6 +293,15 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Environment FreeVarName -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) env = do
-  (_, solverState) <- runSolverM (solve css) initReader (createInitState constraintSet env)
-  return (sst_bounds solverState)
-
+  -- Immediately throw error if constraint of form `Structural <: Nominal` occurs in constraint set
+  -- to avoid unwanted nominal type translation
+  case find structuralSubNominal (cs_constraints constraintSet) of
+    Just _ -> throwError $ SolveConstraintsError "Cannot constraint nominal by structural type"
+    Nothing -> do
+      (_, solverState) <- runSolverM (solve css) (createInitState constraintSet env)
+      return (sst_bounds solverState)
+  where
+    structuralSubNominal :: Constraint ConstraintInfo -> Bool
+    structuralSubNominal (SubType _ TyData{} TyNominal{}) = True
+    structuralSubNominal (SubType _ TyCodata{} TyNominal{}) = True 
+    structuralSubNominal _ = False
