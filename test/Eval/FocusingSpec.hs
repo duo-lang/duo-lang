@@ -15,15 +15,13 @@ evalFocusing evalOrder cmd cmdRes = do
   case runInteractiveParser commandP cmd of
     Left err -> it "Could not parse" $ expectationFailure (ppPrint err)
     Right (cmd',_) -> do
-      let Left _ = runInteractiveParser commandP cmd
       let Right (cmdRes',_) = runInteractiveParser commandP cmdRes
-      let Left _ = runInteractiveParser commandP cmdRes
       prgEnv <- runIO $ getEnvironment "examples/prg.ds"
       case prgEnv of
         Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrint err)
         Right prgEnv -> do
           case runEval (eval $ bimap (const ()) id cmd') evalOrder prgEnv of
-            Left err -> it "Could not load evaluate" $ expectationFailure (ppPrint err)
+            Left err -> it "Could not evaluate" $ expectationFailure (ppPrint err)
             Right b -> 
               it (cmd ++  " evaluates to: " ++ cmdRes) $ do
               b `shouldBe` (bimap (const ()) id cmdRes')

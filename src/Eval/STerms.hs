@@ -1,6 +1,7 @@
 module Eval.STerms
   ( eval
   , evalSteps
+  , areAllSubst
   ) where
 
 import Data.List (find)
@@ -50,8 +51,8 @@ evalApplyOnce prd (FreeVar _ CnsRep fv) = do
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 -- Pattern match depend on wether all arguments can be subst. into the Pattern.
 evalApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
-  areSubst <- areAllSubst args
-  case areSubst of
+  order <- lookupEvalOrder
+  case areAllSubst order args of
     True  -> substArgs prd cns
     False -> focusingStep prd cns
   where
@@ -77,8 +78,8 @@ evalApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
 
 -- Copattern matches.
 evalApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
-  areSubst <- areAllSubst args
-  case areSubst of
+  order <- lookupEvalOrder
+  case areAllSubst order args of
     True  -> substArgs prd cns
     False -> focusingStep prd cns
   where
@@ -184,21 +185,33 @@ getMuCns MkXtorArgs { cnsArgs } = getMuCnsArgs cnsArgs
 
 -- | Checks wether all producer arguments are substitutable.
 -- | The evaluation order determines which arguments are substitutable.
-areAllSubst :: XtorArgs ext FreeVarName -> EvalM FreeVarName Bool
-areAllSubst MkXtorArgs { prdArgs, cnsArgs } = do
-  order <- lookupEvalOrder
-  return $ all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
+areAllSubst :: EvalOrder -> XtorArgs ext FreeVarName -> Bool
+areAllSubst order (MkXtorArgs { prdArgs, cnsArgs }) = all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
 
 -- subst every producer argument, not containing any mu-abstractions
 isSubstPrd :: EvalOrder -> STerm Prd ext FreeVarName -> Bool
-isSubstPrd CBV (MuAbs _ PrdRep _ _)                      = False
-isSubstPrd CBV (XtorCall _ _ _ (MkXtorArgs { prdArgs })) = all (isSubstPrd CBV) prdArgs
-isSubstPrd CBV _                                         = True
-isSubstPrd CBN _                                         = True
+isSubstPrd CBV (BoundVar _ _ _) = True
+isSubstPrd CBV (FreeVar _ _ _)  = True
+isSubstPrd CBV (XtorCall _ _ _ args) = areAllSubst CBV args
+isSubstPrd CBV (XMatch _ _ _ _) = True
+isSubstPrd CBV (MuAbs _ _ _ _)  = False
+
+isSubstPrd CBN (BoundVar _ _ _) = True
+isSubstPrd CBN (FreeVar _ _ _)  = True
+isSubstPrd CBN (XtorCall _ _ _ args) = areAllSubst CBN args
+isSubstPrd CBN (XMatch _ _ _ _) = True
+isSubstPrd CBN (MuAbs _ _ _ _)  = True
 
 -- subst every producer argument, not containing any ~mu-abstractions
 isSubstCns :: EvalOrder -> STerm Cns ext FreeVarName -> Bool
-isSubstCns CBN (MuAbs _ CnsRep _ _)                      = False
-isSubstCns CBN (XtorCall _ _ _ (MkXtorArgs { cnsArgs })) = all (isSubstCns CBN) cnsArgs
-isSubstCns CBN _                                         = True
-isSubstCns CBV _                                         = True
+isSubstCns CBV (BoundVar _ _ _) = True
+isSubstCns CBV (FreeVar _ _ _)  = True
+isSubstCns CBV (XtorCall _ _ _ args) = areAllSubst CBV args
+isSubstCns CBV (XMatch _ _ _ _) = True
+isSubstCns CBV (MuAbs _ _ _ _)  = True
+
+isSubstCns CBN (BoundVar _ _ _) = True
+isSubstCns CBN (FreeVar _ _ _)  = True
+isSubstCns CBN (XtorCall _ _ _ args) = areAllSubst CBN args
+isSubstCns CBN (XMatch _ _ _ _) = True
+isSubstCns CBN (MuAbs _ _ _ _)  = False
