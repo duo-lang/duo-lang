@@ -100,28 +100,18 @@ areAllSubst order (MkXtorArgs { prdArgs, cnsArgs }) = all (isSubstPrd order) prd
 
 -- subst every producer argument, not containing any mu-abstractions
 isSubstPrd :: EvalOrder -> STerm Prd ext FreeVarName -> Bool
-isSubstPrd CBV (BoundVar _ _ _) = True
-isSubstPrd CBV (FreeVar _ _ _)  = True
-isSubstPrd CBV (XtorCall _ _ _ args) = areAllSubst CBV args
-isSubstPrd CBV (XMatch _ _ _ _) = True
+isSubstPrd _   (BoundVar _ _ _) = True
+isSubstPrd _   (FreeVar _ _ _)  = True
+isSubstPrd ord (XtorCall _ _ _ args) = areAllSubst ord args
+isSubstPrd _   (XMatch _ _ _ _) = True
 isSubstPrd CBV (MuAbs _ _ _ _)  = False
-
-isSubstPrd CBN (BoundVar _ _ _) = True
-isSubstPrd CBN (FreeVar _ _ _)  = True
-isSubstPrd CBN (XtorCall _ _ _ args) = areAllSubst CBN args
-isSubstPrd CBN (XMatch _ _ _ _) = True
 isSubstPrd CBN (MuAbs _ _ _ _)  = True
 
 -- subst every producer argument, not containing any ~mu-abstractions
 isSubstCns :: EvalOrder -> STerm Cns ext FreeVarName -> Bool
-isSubstCns CBV (BoundVar _ _ _) = True
-isSubstCns CBV (FreeVar _ _ _)  = True
-isSubstCns CBV (XtorCall _ _ _ args) = areAllSubst CBV args
-isSubstCns CBV (XMatch _ _ _ _) = True
+isSubstCns _   (BoundVar _ _ _) = True
+isSubstCns _   (FreeVar _ _ _)  = True
+isSubstCns ord (XtorCall _ _ _ args) = areAllSubst ord args
+isSubstCns _   (XMatch _ _ _ _) = True
 isSubstCns CBV (MuAbs _ _ _ _)  = True
-
-isSubstCns CBN (BoundVar _ _ _) = True
-isSubstCns CBN (FreeVar _ _ _)  = True
-isSubstCns CBN (XtorCall _ _ _ args) = areAllSubst CBN args
-isSubstCns CBN (XMatch _ _ _ _) = True
 isSubstCns CBN (MuAbs _ _ _ _)  = False

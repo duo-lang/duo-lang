@@ -16,7 +16,7 @@ substCtorExample order termS = do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
       case term of
         XtorCall _ PrdRep _ args -> (areAllSubst order args) `shouldBe` False
-        _ -> error $ termS ++ "is not a Ctor."
+        _ -> expectationFailure $ termS ++ "is not a Ctor."
 
 cbvExamples :: [(EvalOrder,String)]
 cbvExamples = 
