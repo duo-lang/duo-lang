@@ -1,6 +1,7 @@
 module Eval.STerms
   ( eval
   , evalSteps
+  , areAllSubst
   ) where
 
 import Data.List (find)
@@ -15,7 +16,7 @@ import Utils
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
-lookupCase :: XtorName -> [SCase () bs] -> EvalM bs (SCase () bs)
+lookupCase :: XtorName -> [SCase () FreeVarName] -> EvalM FreeVarName (SCase () FreeVarName)
 lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError $ unlines ["Error during evaluation. The xtor: "
@@ -23,10 +24,10 @@ lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) ca
                                       , "doesn't occur in match."
                                       ]
 
-lengthXtorArgs :: XtorArgs () bs -> Twice Int
+lengthXtorArgs :: XtorArgs () FreeVarName -> Twice Int
 lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: PrettyAnn bs => Command () bs -> Twice [bs] -> XtorArgs () bs -> EvalM bs ()
+checkArgs :: Command () FreeVarName -> Twice [FreeVarName] -> XtorArgs () FreeVarName -> EvalM FreeVarName ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
@@ -34,12 +35,12 @@ checkArgs cmd argTypes args =
                         "\"\nArgument lengths don't coincide.")
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalSTermOnce :: PrettyAnn bs => Command () bs -> EvalM bs (Maybe (Command () bs))
+evalSTermOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 evalSTermOnce (Done _) = return Nothing
 evalSTermOnce (Print _ _) = return Nothing
 evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 
-evalApplyOnce :: PrettyAnn bs => STerm Prd () bs -> STerm Cns () bs -> EvalM bs (Maybe (Command () bs))
+evalApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupPrd fv
@@ -72,7 +73,7 @@ evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError "Cannot evaluat
 evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError "Cannot evaluate constructor applied to destructor"
 
 -- | Return just thef final evaluation result
-eval :: PrettyAnn bs => Command () bs -> EvalM bs (Command () bs)
+eval :: Command () FreeVarName -> EvalM FreeVarName (Command () FreeVarName)
 eval cmd = do
   cmd' <- evalSTermOnce cmd
   case cmd' of
@@ -80,12 +81,37 @@ eval cmd = do
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
-evalSteps :: PrettyAnn bs => Command () bs -> EvalM bs [Command () bs]
+evalSteps :: Command () FreeVarName -> EvalM FreeVarName [Command () FreeVarName]
 evalSteps cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: PrettyAnn bs => [Command () bs] -> Command () bs -> EvalM bs [Command () bs]
+    evalSteps' :: [Command () FreeVarName] -> Command () FreeVarName -> EvalM FreeVarName [Command () FreeVarName]
     evalSteps' cmds cmd = do
       cmd' <- evalSTermOnce cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
+
+
+
+-- | Checks wether all producer arguments are substitutable.
+-- | The evaluation order determines which arguments are substitutable.
+areAllSubst :: EvalOrder -> XtorArgs ext FreeVarName -> Bool
+areAllSubst order (MkXtorArgs { prdArgs, cnsArgs }) = all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
+
+-- subst every producer argument, not containing any mu-abstractions
+isSubstPrd :: EvalOrder -> STerm Prd ext FreeVarName -> Bool
+isSubstPrd _   (BoundVar _ _ _) = True
+isSubstPrd _   (FreeVar _ _ _)  = True
+isSubstPrd ord (XtorCall _ _ _ args) = areAllSubst ord args
+isSubstPrd _   (XMatch _ _ _ _) = True
+isSubstPrd CBV (MuAbs _ _ _ _)  = False
+isSubstPrd CBN (MuAbs _ _ _ _)  = True
+
+-- subst every producer argument, not containing any ~mu-abstractions
+isSubstCns :: EvalOrder -> STerm Cns ext FreeVarName -> Bool
+isSubstCns _   (BoundVar _ _ _) = True
+isSubstCns _   (FreeVar _ _ _)  = True
+isSubstCns ord (XtorCall _ _ _ args) = areAllSubst ord args
+isSubstCns _   (XMatch _ _ _ _) = True
+isSubstCns CBV (MuAbs _ _ _ _)  = True
+isSubstCns CBN (MuAbs _ _ _ _)  = False
