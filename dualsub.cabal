@@ -81,6 +81,7 @@ library
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize
+      TypeAutomata.RemoveEpsilon
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
@@ -119,6 +120,7 @@ test-suite dualsub-test
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
     , Eval.SubstitutionSpec
+    , Parser.ParserSpec
     , ParserPrettyprinter.ParserPrettyprinterSpec
     , Paths_dualsub
     , Spec

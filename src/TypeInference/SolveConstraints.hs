@@ -2,8 +2,9 @@ module TypeInference.SolveConstraints
   ( solveConstraints
   ) where
 
-import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.State
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Set (Set)
@@ -24,17 +25,17 @@ import Pretty.Constraints ()
 data SolverState = SolverState
   { sst_bounds :: SolverResult
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
-  , sst_env :: Environment FreeVarName } -- Environment to look up nominal type declarations in
+  }
 
-createInitState :: ConstraintSet -> Environment FreeVarName -> SolverState
-createInitState (ConstraintSet _ uvs) env = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+createInitState :: ConstraintSet -> SolverState
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
                                                     , sst_cache = S.empty
-                                                    , sst_env = env }
+                                                    }
 
-type SolverM a = (StateT SolverState (Except Error)) a
+type SolverM a = (ReaderT (Environment FreeVarName) (StateT SolverState (Except Error))) a
 
-runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
-runSolverM m initSt = runExcept (runStateT m initSt)
+runSolverM :: SolverM a -> Environment FreeVarName -> SolverState -> Either Error (a, SolverState)
+runSolverM m env initSt = runExcept (runStateT (runReaderT m env) initSt)
 
 ------------------------------------------------------------------------------
 -- Monadic helper functions
@@ -47,13 +48,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache env) -> SolverState gr (f cache) env)
+    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache env) -> SolverState (M.adjust f uv varMap) cache env)
+modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
 addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
@@ -73,7 +74,7 @@ addLowerBound uv ty = do
 
 lookupNominalType :: TypeName -> SolverM DataDecl
 lookupNominalType tn = do
-  env <- gets sst_env
+  env <- ask
   case lookupTypeName tn env of
     Nothing -> throwSolverError ["Can't translate nominal type " ++ ppPrint tn ++ ": Not in environment"]
     Just decl -> return decl
@@ -298,10 +299,11 @@ solveConstraints constraintSet@(ConstraintSet css _) env = do
   case find structuralSubNominal (cs_constraints constraintSet) of
     Just _ -> throwError $ SolveConstraintsError "Cannot constraint nominal by structural type"
     Nothing -> do
-      (_, solverState) <- runSolverM (solve css) (createInitState constraintSet env)
+      (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
       return (sst_bounds solverState)
   where
     structuralSubNominal :: Constraint ConstraintInfo -> Bool
     structuralSubNominal (SubType _ TyData{} TyNominal{}) = True
     structuralSubNominal (SubType _ TyCodata{} TyNominal{}) = True 
     structuralSubNominal _ = False
+

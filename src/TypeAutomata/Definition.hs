@@ -139,14 +139,6 @@ data EdgeLabel a
 type EdgeLabelNormal  = EdgeLabel Void
 type EdgeLabelEpsilon = EdgeLabel ()
 
-embedEdgeLabel :: EdgeLabelNormal -> EdgeLabelEpsilon
-embedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
-embedEdgeLabel (EpsilonEdge v) = absurd v
-
-unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
-unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
-unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
-
 --------------------------------------------------------------------------------
 -- Flow edges
 --------------------------------------------------------------------------------
@@ -217,3 +209,6 @@ removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdge
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
 removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }
+
+delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
+delAllLEdges es gr = foldr delAllLEdge gr es
