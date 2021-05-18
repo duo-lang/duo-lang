@@ -180,6 +180,8 @@ insertType (TyNominal rep tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
+insertType TyRefined{} = do
+  throwAutomatonError ["Refined types cannot be inserted"]
 
 
 --------------------------------------------------------------------------
