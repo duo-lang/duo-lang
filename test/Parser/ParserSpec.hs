@@ -13,15 +13,15 @@ import Pretty.Types ()
 instance Show (Typ pol) where
   show typ = ppPrint typ
 
-parseExample :: String -> Typ pol -> Spec
-parseExample input ty = do
+typeParseExample :: String -> Typ pol -> Spec
+typeParseExample input ty = do
   it ("Parsing of " ++ input ++ " yields " ++ ppPrint ty) $ do
     let polRep = getPolarity ty
     let Right ty2 = runInteractiveParser (typP polRep) input
     ppPrint ty `shouldBe` ppPrint ty2
 
-parseCounterEx :: String -> Typ pol -> Spec
-parseCounterEx input ty = do
+typeParseCounterEx :: String -> Typ pol -> Spec
+typeParseCounterEx input ty = do
   it ("Input " ++ input ++ " cannot be parsed") $ do
     let polRep = getPolarity ty
     let res = runInteractiveParser (typP polRep) input
@@ -30,7 +30,11 @@ parseCounterEx input ty = do
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
-    parseExample "{{ < > <<: Nat }}" $ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep [])
-    parseExample "{ 'Ap() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "Ap")  $ MkTypArgs [] []]
-    parseExample "{{ {}<<: Fun}}" $ TyRefined PosRep (MkTypeName "Fun") (TyCodata PosRep [])
-    parseCounterEx "{{ 'Ap() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "Ap")  $ MkTypArgs [] []]
+    typeParseExample "{{ < > <<: Nat }}" $ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep [])
+    typeParseExample "{ 'A() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []]
+    typeParseExample "{ 'A[{ 'B }] }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
+      [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]]
+    typeParseExample "{{ {} <<: Fun}}" $ TyRefined PosRep (MkTypeName "Fun") (TyCodata PosRep [])
+    typeParseExample "< 'X({{ < > <<: Nat }}) >" $ TyData PosRep [MkXtorSig (MkXtorName Structural "X") $ MkTypArgs
+      [ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep []) ] []]
+    typeParseCounterEx "{{ 'Ap() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "Ap") $ MkTypArgs [] []]
