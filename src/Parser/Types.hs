@@ -119,7 +119,7 @@ typeSchemeP :: PolarityRep pol -> Parser (TypeScheme pol)
 typeSchemeP polrep = do
   tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
   monotype <- local (\s -> s { tvars = tvars' }) (typP polrep)
-  if tvars' == S.fromList (freeTypeVars monotype)
-    then return (generalize monotype)
+  if S.fromList (freeTypeVars monotype) `S.isSubsetOf` tvars'
+    then return (TypeScheme (S.toList tvars') monotype)
     else fail "Forall annotation in type scheme is incorrect"
 
