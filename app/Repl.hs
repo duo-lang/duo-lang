@@ -27,7 +27,7 @@ import Eval.ATerms
 import Eval.STerms
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
-import TypeAutomata.Subsume (isSubtype)
+import TypeAutomata.Subsume (subsume)
 import Translate.Translate (compile)
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
 import Utils (trim, Verbosity(..))
@@ -333,9 +333,8 @@ save_option = Option
 sub_cmd :: String -> Repl ()
 sub_cmd s = do
   (t1,t2) <- parseInteractive subtypingProblemP s
-  aut1 <- fromRight (typeToAut t1)
-  aut2 <- fromRight (typeToAut t2)
-  prettyRepl $ isSubtype aut1 aut2
+  res <- fromRight (subsume t1 t2)
+  prettyRepl res
 
 
 sub_option :: Option
