@@ -29,6 +29,7 @@ import TypeAutomata.Determinize
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
 import TypeAutomata.RemoveAdmissible
+import TypeAutomata.Subsume (subsume)
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.ATerms
 import TypeInference.GenerateConstraints.STerms
@@ -131,20 +132,33 @@ inferATerm isRec fv tm env = do
 -- Programs
 ------------------------------------------------------------------------------
 
+checkAnnot :: TypeScheme pol -> (Maybe (TypeScheme pol)) -> Either Error (TypeScheme pol)
+checkAnnot ty Nothing = return ty
+checkAnnot ty (Just tyAnnot) = do
+  isSubsumed <- subsume ty tyAnnot
+  case isSubsumed of
+    True -> return tyAnnot
+    False -> Left (OtherError (unlines [ "Annotated type is not subsumed by inferred type"
+                                       , " Annotated type: " <> ppPrint tyAnnot
+                                       , " Inferred type:  " <> ppPrint ty]))
+
 insertDecl :: Declaration FreeVarName
            -> Environment FreeVarName
            -> Either LocatedError (Environment FreeVarName)
-insertDecl (PrdDecl isRec loc v _annot loct)  env@Environment { prdEnv }  = do
+insertDecl (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
   ty <- first (Located loc) (inferSTerm isRec v PrdRep loct env)
+  ty <- first (Located loc) (checkAnnot ty annot)
   return $ env { prdEnv  = M.insert v (first (const ()) loct, ty) prdEnv }
-insertDecl (CnsDecl isRec loc v _annot loct)  env@Environment { cnsEnv }  = do
+insertDecl (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
   ty <- first (Located loc) (inferSTerm isRec v CnsRep loct env)
+  ty <- first (Located loc) (checkAnnot ty annot)
   return $ env { cnsEnv  = M.insert v (first (const ()) loct, ty) cnsEnv }
 insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   _ <- first (Located loc) $ checkCmd loct env
   return $ env { cmdEnv  = M.insert v (first (const ()) loct) cmdEnv }
-insertDecl (DefDecl isRec loc v _annot t)  env@Environment { defEnv }  = do
+insertDecl (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
   ty <- first (Located loc) (inferATerm isRec v t env)
+  ty <- first (Located loc) (checkAnnot ty annot)
   return $ env { defEnv  = M.insert v (first (const ()) t,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
@@ -177,10 +191,15 @@ insertDeclIO verb (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  
       when (verb == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
         ppPrintIO (trace_solvedConstraints trace)
-      let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,trace_resType trace) prdEnv }
-      putStr "Inferred type: "
-      ppPrintIO (trace_resType trace)
-      return (Just newEnv)
+      -- Check annotation
+      let ty = trace_resType trace
+      case checkAnnot ty annot of
+        Left err -> ppPrintIO err >> return Nothing
+        Right ty -> do
+          let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,ty) prdEnv }
+          putStr "Inferred type: "
+          ppPrintIO (trace_resType trace)
+          return (Just newEnv)
 insertDeclIO verb (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
   case inferSTermTraced isRec v CnsRep loct env of
     Left err -> do
@@ -190,10 +209,15 @@ insertDeclIO verb (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  
       when (verb == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
         ppPrintIO (trace_solvedConstraints trace)
-      let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct,trace_resType trace) cnsEnv }
-      putStr "Inferred type: "
-      ppPrintIO (trace_resType trace)
-      return (Just newEnv)
+      -- Check annotation:
+      let ty = trace_resType trace
+      case checkAnnot ty annot of
+        Left err -> ppPrintIO err >> return Nothing
+        Right ty -> do
+          let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct,ty) cnsEnv }
+          putStr "Inferred type: "
+          ppPrintIO (trace_resType trace)
+          return (Just newEnv)
 insertDeclIO verb (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   case checkCmd loct env of
     Left err -> do
@@ -213,9 +237,14 @@ insertDeclIO verb (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = d
       when (verb == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
         ppPrintIO (trace_solvedConstraints trace)
-      let newEnv = env { defEnv  = M.insert v (first (const ()) t,trace_resType trace) defEnv }
-      putStr "Inferred type: "
-      ppPrintIO (trace_resType trace)
-      return (Just newEnv)
+      -- Check annotation
+      let ty = trace_resType trace
+      case checkAnnot ty annot of
+        Left err -> ppPrintIO err >> return Nothing
+        Right ty -> do
+          let newEnv = env { defEnv  = M.insert v (first (const ()) t, ty) defEnv }
+          putStr "Inferred type: "
+          ppPrintIO (trace_resType trace)
+          return (Just newEnv)
 insertDeclIO _ (DataDecl _loc dcl) env@Environment { declEnv } = do
   return (Just (env { declEnv = dcl : declEnv }))
