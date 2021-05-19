@@ -134,16 +134,16 @@ inferATerm isRec fv tm env = do
 insertDecl :: Declaration FreeVarName
            -> Environment FreeVarName
            -> Either LocatedError (Environment FreeVarName)
-insertDecl (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do
+insertDecl (PrdDecl isRec loc v _annot loct)  env@Environment { prdEnv }  = do
   ty <- first (Located loc) (inferSTerm isRec v PrdRep loct env)
   return $ env { prdEnv  = M.insert v (first (const ()) loct, ty) prdEnv }
-insertDecl (CnsDecl isRec loc v loct)  env@Environment { cnsEnv }  = do
+insertDecl (CnsDecl isRec loc v _annot loct)  env@Environment { cnsEnv }  = do
   ty <- first (Located loc) (inferSTerm isRec v CnsRep loct env)
   return $ env { cnsEnv  = M.insert v (first (const ()) loct, ty) cnsEnv }
 insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   _ <- first (Located loc) $ checkCmd loct env
   return $ env { cmdEnv  = M.insert v (first (const ()) loct) cmdEnv }
-insertDecl (DefDecl isRec loc v t)  env@Environment { defEnv }  = do
+insertDecl (DefDecl isRec loc v _annot t)  env@Environment { defEnv }  = do
   ty <- first (Located loc) (inferATerm isRec v t env)
   return $ env { defEnv  = M.insert v (first (const ()) t,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
@@ -168,7 +168,7 @@ insertDeclIO :: Verbosity
              -> Declaration FreeVarName
              -> Environment FreeVarName
              -> IO (Maybe (Environment FreeVarName))
-insertDeclIO verb (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do
+insertDeclIO verb (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
   case inferSTermTraced isRec v PrdRep loct env of
     Left err -> do
       printLocatedError (Located loc err)
@@ -181,7 +181,7 @@ insertDeclIO verb (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do
       putStr "Inferred type: "
       ppPrintIO (trace_resType trace)
       return (Just newEnv)
-insertDeclIO verb (CnsDecl isRec loc v loct)  env@Environment { cnsEnv }  = do
+insertDeclIO verb (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
   case inferSTermTraced isRec v CnsRep loct env of
     Left err -> do
       printLocatedError (Located loc err)
@@ -204,7 +204,7 @@ insertDeclIO verb (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
         ppPrintIO constraints
         ppPrintIO solverResult
       return (Just (env { cmdEnv  = M.insert v (first (const ()) loct) cmdEnv }))
-insertDeclIO verb (DefDecl isRec loc v t)  env@Environment { defEnv }  = do
+insertDeclIO verb (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
   case inferATermTraced isRec v t env of
     Left err -> do
       printLocatedError (Located loc err)

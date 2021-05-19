@@ -115,10 +115,10 @@ invariantP = do
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
-typeSchemeP :: Parser (TypeScheme 'Pos)
-typeSchemeP = do
+typeSchemeP :: PolarityRep pol -> Parser (TypeScheme pol)
+typeSchemeP polrep = do
   tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) (typP PosRep)
+  monotype <- local (\s -> s { tvars = tvars' }) (typP polrep)
   if tvars' == S.fromList (freeTypeVars monotype)
     then return (generalize monotype)
     else fail "Forall annotation in type scheme is incorrect"

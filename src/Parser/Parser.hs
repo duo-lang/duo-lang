@@ -25,8 +25,8 @@ import Syntax.Types
 
 subtypingProblemP :: Parser (TypeScheme Pos, TypeScheme Pos)
 subtypingProblemP = do
-  t1 <- typeSchemeP
+  t1 <- typeSchemeP PosRep
   _ <- subtypeSym
-  t2 <- typeSchemeP
+  t2 <- typeSchemeP PosRep
   return (t1, t2)
 

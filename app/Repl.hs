@@ -288,7 +288,7 @@ let_option = Option
 save_cmd :: String -> Repl ()
 save_cmd s = do
   env <- gets replEnv
-  case runInteractiveParser typeSchemeP s of
+  case runInteractiveParser (typeSchemeP PosRep) s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
@@ -351,7 +351,7 @@ sub_option = Option
 
 simplify_cmd :: String -> Repl ()
 simplify_cmd s = do
-  ty <- parseInteractive typeSchemeP s
+  ty <- parseInteractive (typeSchemeP PosRep) s
   aut <- fromRight (typeToAut ty)
   prettyRepl (autToType aut)
 

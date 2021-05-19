@@ -23,7 +23,7 @@ typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
       let Right inferredTypeAut = trace_minTypeAut <$> (inferSTermTraced NonRecursive "" PrdRep term env)
-      let Right specTypeScheme = runInteractiveParser typeSchemeP typS
+      let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
