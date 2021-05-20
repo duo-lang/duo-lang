@@ -1,0 +1,5 @@
+# The annotated type is more general than the inferred one.
+prd foo : forall a. { 'Ap(a)[a] } := comatch { 'Ap(x)[k] =>
+                       x >> match { 'True => 'True >> k,
+                                    'False => 'False >> k
+                                    }};
