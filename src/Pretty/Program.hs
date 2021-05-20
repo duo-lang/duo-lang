@@ -52,19 +52,19 @@ instance PrettyAnn a => PrettyAnn (Declaration a) where
 
 instance PrettyAnn (NamedRep (Declaration FreeVarName)) where
   prettyAnn (NamedRep (PrdDecl Recursive _ fv annot tm)) =
-    annKeyword "prd" <+> "rec" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
+    annKeyword "prd" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
   prettyAnn (NamedRep (PrdDecl NonRecursive _ fv annot tm)) =
-    annKeyword "prd" <+>           pretty fv <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
+    annKeyword "prd" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
   prettyAnn (NamedRep (CnsDecl Recursive _ fv annot tm)) =
-    annKeyword "cns" <+> "rec" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
+    annKeyword "cns" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
   prettyAnn (NamedRep (CnsDecl NonRecursive _ fv annot tm)) =
-    annKeyword "cns" <+>           pretty fv <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
+    annKeyword "cns" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
     annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn (openCommandComplete cm) <> semi
   prettyAnn (NamedRep (DefDecl Recursive _ fv annot tm)) =
-    annKeyword "def" <+> "rec" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
+    annKeyword "def" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
   prettyAnn (NamedRep (DefDecl NonRecursive _ fv annot tm)) =
-    annKeyword "def" <+>           pretty fv <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
+    annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
   prettyAnn (NamedRep (DataDecl _ decl)) = prettyAnn decl
 
 
