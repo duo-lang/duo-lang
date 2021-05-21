@@ -37,4 +37,10 @@ spec = do
     typeParseExample "{{ {} <<: Fun}}" $ TyRefined PosRep (MkTypeName "Fun") (TyCodata PosRep [])
     typeParseExample "< 'X({{ < > <<: Nat }}) >" $ TyData PosRep [MkXtorSig (MkXtorName Structural "X") $ MkTypArgs
       [ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep []) ] []]
+    typeParseExample "{{ < 'A > <<: Nat }}"$ TyRefined PosRep (MkTypeName "Nat")
+      (TyData PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []])
+    typeParseExample "{{ { 'A[{ 'B }] } <<: Foo }}" $ TyRefined PosRep (MkTypeName "Foo")
+      (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
+      [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]])
+    --
     typeParseCounterEx "{{ 'Ap() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "Ap") $ MkTypArgs [] []]
