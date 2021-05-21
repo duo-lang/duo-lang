@@ -20,10 +20,9 @@ typeParseExample input ty = do
     let Right ty2 = runInteractiveParser (typP polRep) input
     ppPrint ty `shouldBe` ppPrint ty2
 
-typeParseCounterEx :: String -> Typ pol -> Spec
-typeParseCounterEx input ty = do
+typeParseCounterEx :: String -> PolarityRep pol -> Spec
+typeParseCounterEx input polRep = do
   it ("Input " ++ input ++ " cannot be parsed") $ do
-    let polRep = getPolarity ty
     let res = runInteractiveParser (typP polRep) input
     res `shouldSatisfy` isLeft
 
@@ -43,4 +42,4 @@ spec = do
       (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
       [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]])
     --
-    typeParseCounterEx "{{ 'Ap() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "Ap") $ MkTypArgs [] []]
+    typeParseCounterEx "{{ 'Ap() }" PosRep
