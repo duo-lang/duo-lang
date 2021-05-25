@@ -2,15 +2,17 @@ module TypeInference.SolveConstraints
   ( solveConstraints
   ) where
 
-import Control.Monad.State
 import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.State
 import Data.List (find)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
 
 import Syntax.Types
-import Syntax.CommonTerm (XtorName)
+import Syntax.CommonTerm (XtorName, FreeVarName)
+import Syntax.Program (Environment)
 import Utils
 import Pretty.Pretty
 import Pretty.Types ()
@@ -28,10 +30,10 @@ createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
                                                     , sst_cache = S.empty }
 
-type SolverM a = (StateT SolverState (Except Error)) a
+type SolverM a = (ReaderT (Environment FreeVarName) (StateT SolverState (Except Error))) a
 
-runSolverM :: SolverM a -> SolverState -> Either Error (a, SolverState)
-runSolverM m initSt = runExcept (runStateT m initSt)
+runSolverM :: SolverM a -> Environment FreeVarName -> SolverState -> Either Error (a, SolverState)
+runSolverM m env initSt = runExcept (runStateT (runReaderT m env) initSt)
 
 ------------------------------------------------------------------------------
 -- Monadic helper functions
@@ -246,8 +248,8 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) = do
-  (_, solverState) <- runSolverM (solve css) (createInitState constraintSet)
+solveConstraints :: ConstraintSet -> Environment FreeVarName -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _) env = do
+  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
   return (sst_bounds solverState)
 

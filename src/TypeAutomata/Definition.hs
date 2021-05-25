@@ -36,12 +36,12 @@ import Syntax.CommonTerm
 --
 -- ## Nominal Types:
 --
--- A nominal type is represented as a node with the `hc_nominal` field set to the
+-- A nominal type is represented as a node with the `nl_nominal` field set to the
 -- name of the nominal type:
 --
 --    ------------------------
 --    |                      |
---    | hc_nominal = { Nat } |    =   Nat
+--    | nl_nominal = { Nat } |    =   Nat
 --    |                      |
 --    ------------------------
 --
@@ -68,16 +68,16 @@ import Syntax.CommonTerm
 --
 --
 --    |----------------------------------------|                |---------|
---    |                                        |    Cons(1)     |         |
---    | hc_data =  { 'Nil(0)[0], 'Cons(2)[0] } |--------------->|   ty    |
+--    |                                        |    'Cons(1)    |         |
+--    | nl_data =  { 'Nil(0)[0], 'Cons(2)[0] } |--------------->|   ty    |
 --    |                                        |                |         |
 --    |----------------------------------------|                |---------|
 --           |                      /\
 --           |                       |
 --           -------------------------
---                   Cons(2)
+--                   'Cons(2)
 --
---                    = mu r. < Nil | Cons(ty,r) >
+--                    = mu r. < 'Nil | 'Cons(ty,r) >
 --
 --
 -- ## Union and Intersection Types:
@@ -88,17 +88,35 @@ import Syntax.CommonTerm
 --
 --    ------------------------------
 --    |                            |
---    | hc_polarity = Pos          |
---    | hc_nominal = { Nat, Bool } |    =   Nat \/ Bool
+--    | nl_polarity = Pos          |
+--    | nl_nominal = { Nat, Bool } |    =   Nat \/ Bool
 --    |                            |
 --    ------------------------------
 --
 --    ------------------------------
 --    |                            |
---    | hc_polarity = Neg          |
---    | hc_nominal = { Nat, Bool } |    =   Nat /\ Bool
+--    | nl_polarity = Neg          |
+--    | nl_nominal = { Nat, Bool } |    =   Nat /\ Bool
 --    |                            |
 --    ------------------------------
+--
+-- ## Type variables
+--
+-- Type variables are represented by flow-edges, which always connect a
+-- positive and a negative node. Flow edges are drawn as squiggly lines.
+--
+--                 ---------------------------------
+--                 |                               |
+--            -----|    nl_codata = { 'Ap(1)[1] }  |-----
+--            |    |                               |    |
+--            |    ---------------------------------    |
+--     'Ap(1) |                                         | 'Ap[1]
+--            |                                         |
+--     ---------------------        a         ---------------------
+--     | nl_Polarity = Neg |~~~~~~~~~~~~~~~~~~| nl_polarity = Pos |
+--     ---------------------                  ---------------------
+--
+--                       = forall a. { 'Ap(a)[a] }
 --
 --------------------------------------------------------------------------------
 
@@ -138,14 +156,6 @@ data EdgeLabel a
 
 type EdgeLabelNormal  = EdgeLabel Void
 type EdgeLabelEpsilon = EdgeLabel ()
-
-embedEdgeLabel :: EdgeLabelNormal -> EdgeLabelEpsilon
-embedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
-embedEdgeLabel (EpsilonEdge v) = absurd v
-
-unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
-unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
-unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
 
 --------------------------------------------------------------------------------
 -- Flow edges
@@ -217,3 +227,6 @@ removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdge
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
 removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }
+
+delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
+delAllLEdges es gr = foldr delAllLEdge gr es

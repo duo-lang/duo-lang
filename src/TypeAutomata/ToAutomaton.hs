@@ -4,9 +4,11 @@ import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
 import Utils
-import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
-import TypeAutomata.Determinize (determinize, removeEpsilonEdges, removeIslands)
+import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
+import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
+import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
+
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -49,7 +51,7 @@ createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
 createNodes tvars = createNode <$> (createPairs tvars)
   where
     createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (posNode, negNode))
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
 
     createPairs :: [TVar] -> [(TVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -214,4 +216,4 @@ solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Err
 solverStateToTypeAut solverResult pol ty = do
   (start,aut) <- runTypeAutTvars (M.keys solverResult) $ insertEpsilonEdges solverResult >> insertType ty
   let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
-  return $ (removeIslands . removeEpsilonEdges) newAut
+  return $ removeEpsilonEdges newAut

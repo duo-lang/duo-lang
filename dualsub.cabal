@@ -81,6 +81,7 @@ library
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
       TypeAutomata.Minimize
+      TypeAutomata.RemoveEpsilon
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
@@ -114,11 +115,14 @@ test-suite dualsub-test
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
-      Translate.TranslateExamplesSpec
+      Eval.SubstSpec
+    , Translate.TranslateExamplesSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
+    , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec
+    , Parser.ParserSpec
     , ParserPrettyprinter.ParserPrettyprinterSpec
     , Paths_dualsub
     , Spec

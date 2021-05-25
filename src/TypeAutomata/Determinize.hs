@@ -1,82 +1,19 @@
-module TypeAutomata.Determinize
-  ( determinize
-  , removeEpsilonEdges
-  , removeIslands
-  ) where
+module TypeAutomata.Determinize ( determinize ) where
 
-import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.Query.DFS
-import Data.Graph.Inductive.PatriciaTree
-
+import Control.Monad.State
 import Data.Functor.Identity
-import Data.Maybe (catMaybes)
-import Data.Maybe (fromJust)
-import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.PatriciaTree
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.List.NonEmpty (NonEmpty(..))
-import Control.Monad.State
-import Data.Void
-import Syntax.CommonTerm
+import Data.Maybe (catMaybes)
+import Data.Set (Set)
+import qualified Data.Set as S
+
 import Syntax.Types
 import TypeAutomata.Definition
 import Utils
-
----------------------------------------------------------------------------------------
--- Generic epsilon edge removal algorithm
----------------------------------------------------------------------------------------
-
-delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
-delAllLEdges es gr = foldr delAllLEdge gr es
-
-removeEpsilonEdges' :: Node -> (TypeGrEps, [Node]) -> (TypeGrEps, [Node])
-removeEpsilonEdges' n (gr,starts) =
-  ( delAllLEdges [(n,j, EpsilonEdge ()) | (j, EpsilonEdge _) <- lsuc gr n]
-  . insEdges [(i,j,el) | (j, EpsilonEdge _) <- lsuc gr n, (i,el) <- lpre gr n]
-  $ gr
-  , if n `elem` starts
-      then starts ++ [j | (j,EpsilonEdge _) <- lsuc gr n]
-      else starts)
-
-fromEpsGr :: TypeGrEps -> TypeGr
-fromEpsGr gr = gmap mapfun gr
-  where
-    foo :: Adj EdgeLabelEpsilon -> Adj EdgeLabelNormal
-    foo = fmap (\(el, node) -> (unsafeEmbedEdgeLabel el, node))
-    mapfun :: Context NodeLabel EdgeLabelEpsilon -> Context NodeLabel EdgeLabelNormal
-    mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
-
-removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
-removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowEdges, ta_gr } } =
-  let
-    (gr', starts') = foldr (.) id (map removeEpsilonEdges' (nodes ta_gr)) (ta_gr, ta_starts)
-  in
-   TypeAut { ta_pol = ta_pol
-           , ta_starts = starts'
-           , ta_core = TypeAutCore
-             { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
-             , ta_flowEdges = ta_flowEdges
-             }
-           }
-
----------------------------------------------------------------------------------------
--- Remove islands not reachable from starting states.
----------------------------------------------------------------------------------------
-
-removeIslands :: TypeAut pol -> TypeAut pol
-removeIslands TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges} } =
-  let
-    reachableNodes = dfs ta_starts ta_gr
-    reachableFlowEdges = [(i,j) | (i,j) <- ta_flowEdges, i `elem` reachableNodes, j `elem` reachableNodes]
-  in
-    TypeAut { ta_pol = ta_pol
-            , ta_starts = ta_starts
-            , ta_core = TypeAutCore
-              { ta_gr = subgraph reachableNodes ta_gr
-              , ta_flowEdges = reachableFlowEdges
-              }
-            }
 
 ---------------------------------------------------------------------------------------
 -- Generic determinization algorithm
@@ -148,24 +85,8 @@ determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEd
     TypeAut { ta_pol = ta_pol
             , ta_starts = Identity newstart
             , ta_core = TypeAutCore
-              { ta_gr = removeFaultyEdges newgr
+              { ta_gr = newgr
               , ta_flowEdges = newFlowEdges
               }
             }
 
--------------------------------------------------------------------------
--- Removal of faulty edges
--------------------------------------------------------------------------
-
-containsXtor :: DataCodata -> NodeLabel -> XtorName -> Bool
-containsXtor Data (MkNodeLabel _ Nothing _ _) _ = False
-containsXtor Codata (MkNodeLabel _ _ Nothing _) _ = False
-containsXtor Data (MkNodeLabel _ (Just xtors) _ _) xt = xt `S.member` (labelName `S.map` xtors)
-containsXtor Codata (MkNodeLabel _ _ (Just xtors) _) xt = xt `S.member` (labelName `S.map` xtors)
-
-isFaultyEdge :: TypeGr -> LEdge EdgeLabelNormal -> Bool
-isFaultyEdge gr (i,_,EdgeSymbol s xt _ _) = not $ containsXtor s (fromJust (lab gr i)) xt
-isFaultyEdge _ (_,_,EpsilonEdge v) = absurd v
-
-removeFaultyEdges :: TypeGr -> TypeGr
-removeFaultyEdges gr = delAllLEdges (filter (isFaultyEdge gr) (labEdges gr)) gr
