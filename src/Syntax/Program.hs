@@ -24,6 +24,8 @@ data Declaration a
 instance Show (Declaration a) where
   show _ = "<Show for Declaration not implemented>"
 
+type Program a = [Declaration a]
+
 ---------------------------------------------------------------------------------
 -- Environment
 ---------------------------------------------------------------------------------

@@ -92,6 +92,7 @@ library
       TypeInference.SolveConstraints
       Utils
       Translate.Translate
+	  Translate.TranslateProgram
   other-modules:
       Paths_dualsub
   hs-source-dirs:
@@ -117,6 +118,7 @@ test-suite dualsub-test
   other-modules:
       Eval.SubstSpec
     , Translate.TranslateExamplesSpec
+	--, Translate.TranslateProgramSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
     , TypeInference.CounterExampleSpec
