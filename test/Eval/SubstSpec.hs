@@ -21,7 +21,8 @@ substCtorExample order termS = do
 cbvExamples :: [(EvalOrder,String)]
 cbvExamples = 
     -- CBV examples
-    (\s -> (CBV, s)) <$>
+    zip
+    (iterate id CBV)
     [
     "C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)]"
     , "C2(C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)])"
@@ -33,7 +34,8 @@ cbvExamples =
 cbnExamples :: [(EvalOrder,String)]
 cbnExamples = 
     -- CBN examples
-    (\s -> (CBN, s)) <$>
+    zip
+    (iterate id CBN)
     [
     "C('True)[mu x.Print(x)]"
     , "C('True)[D()[mu x. Print(x)]]"
@@ -44,4 +46,4 @@ cbnExamples =
 
 
 spec :: Spec
-spec = forM_ (cbvExamples ++ cbnExamples) $ uncurry $ substCtorExample
+spec = forM_ (cbvExamples ++ cbnExamples) $ uncurry substCtorExample

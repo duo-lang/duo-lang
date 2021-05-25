@@ -116,6 +116,7 @@ test-suite dualsub-test
   main-is: TestRunner.hs
   other-modules:
       Eval.SubstSpec
+    , Eval.FocusingSpec
     , Translate.TranslateExamplesSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
