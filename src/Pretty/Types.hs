@@ -23,6 +23,7 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyVar _ tv) = prettyAnn tv
   prettyAnn (TyRec _ rv t) = annKeyword "rec " <> prettyAnn rv <> "." <> prettyAnn t
   prettyAnn (TyNominal _ tn) = prettyAnn tn
+  prettyAnn (TyRefined _ tn t) = dbraces $ prettyAnn t <+> "<<:" <+> prettyAnn tn
   prettyAnn (TyData _ xtors) =
     angles (mempty <+> cat (punctuate " | " (prettyAnn <$> xtors)) <+> mempty)
   prettyAnn (TyCodata _ xtors) =

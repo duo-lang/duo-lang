@@ -33,11 +33,13 @@ module Parser.Lexer
   , unionSym
   , intersectionSym
   , subtypeSym
+  , refineSym
     -- Parens
   , angles
   , parens
   , brackets
   , braces
+  , dbraces
   , argListP
   ) where
 
@@ -231,6 +233,9 @@ intersectionSym = symbol "/\\"
 subtypeSym :: Parser SourcePos
 subtypeSym = symbol "<:"
 
+refineSym :: Parser SourcePos
+refineSym = symbol "<<:"
+
 -------------------------------------------------------------------------------------------
 -- Parens
 -------------------------------------------------------------------------------------------
@@ -242,11 +247,12 @@ betweenP open close middle = do
   endPos <- close
   pure (res, endPos)
 
-parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
-parens    = betweenP (symbol "(") (symbol ")")
-braces    = betweenP (symbol "{") (symbol "}")
-brackets  = betweenP (symbol "[") (symbol "]")
-angles    = betweenP (symbol "<") (symbol ">")
+parens, braces, brackets, angles, dbraces :: Parser a -> Parser (a, SourcePos)
+parens    = betweenP (symbol "(")  (symbol ")")
+braces    = betweenP (symbol "{")  (symbol "}")
+brackets  = betweenP (symbol "[")  (symbol "]")
+angles    = betweenP (symbol "<")  (symbol ">")
+dbraces   = betweenP (symbol "{{") (symbol "}}")
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 argListP ::  Parser a -> Parser a ->  Parser (Twice [a], SourcePos)

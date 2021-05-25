@@ -111,6 +111,9 @@ intercalateX  x xs = cat (punctuate x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
+dbraces :: Doc ann -> Doc ann
+dbraces x = cat  ["{{",x,"}}"]
+
 prettyTwice' :: (PrettyAnn a, PrettyAnn b) => [a] -> [b] -> Doc Annotation
 prettyTwice' xs ys = xs' <> ys'
   where
