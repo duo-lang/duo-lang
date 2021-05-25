@@ -1,6 +1,7 @@
 module TypeAutomata.Subsume
   ( isSubtype
   , typeAutEqual
+  , subsume
   ) where
 
 import Data.Graph.Inductive.Graph
@@ -17,10 +18,11 @@ import Control.Monad.State
 
 import Syntax.Types
 import TypeAutomata.Definition
-
+import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveAdmissible
 import TypeAutomata.Minimize (minimize)
+import Utils
 
 
 -- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.
@@ -76,3 +78,9 @@ typeAutEqualM (gr1, n) (gr2, m) = do
         typeAutEqualM (gr1, i) (gr2, j)
     Just m' -> do
       guard (m == m')
+
+subsume :: TypeScheme pol -> TypeScheme pol -> Either Error Bool
+subsume ty1 ty2 = do
+  aut1 <- typeToAut ty1
+  aut2 <- typeToAut ty2
+  return (isSubtype aut1 aut2)
