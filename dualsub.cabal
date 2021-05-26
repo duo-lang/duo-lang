@@ -57,6 +57,7 @@ library
       Eval.Eval
       Eval.ATerms
       Eval.STerms
+      Eval.STermsFocusInv
       Parser.ATerms
       Parser.Definition
       Parser.Lexer
@@ -117,6 +118,7 @@ test-suite dualsub-test
   other-modules:
       Eval.SubstSpec
     , Eval.FocusingSpec
+    , Eval.FocusingInvSpec
     , Translate.TranslateExamplesSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
