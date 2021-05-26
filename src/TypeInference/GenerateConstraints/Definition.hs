@@ -173,7 +173,7 @@ lookupPrdEnv fv = do
   case M.lookup fv prdEnv of
     Just (_,tys) -> return tys
     Nothing ->
-      throwGenError $ "Unbound free producer variable:" <> T.pack (ppPrint fv)
+      throwGenError $ "Unbound free producer variable:" <> ppPrint fv
 
 lookupCnsEnv :: FreeVarName -> GenM (TypeScheme Neg)
 lookupCnsEnv fv = do
@@ -181,7 +181,7 @@ lookupCnsEnv fv = do
   case M.lookup fv cnsEnv of
     Just (_,tys) -> return tys
     Nothing ->
-      throwGenError $ "Unbound free consumer variable:" <> T.pack (ppPrint fv)
+      throwGenError $ "Unbound free consumer variable:" <> ppPrint fv
 
 lookupDefEnv :: FreeVarName -> GenM (TypeScheme Pos)
 lookupDefEnv fv = do
@@ -189,7 +189,7 @@ lookupDefEnv fv = do
   case M.lookup fv defEnv of
     Just (_,tys) -> return tys
     Nothing ->
-      throwGenError $ "Unbound free def variable:" <> T.pack (ppPrint fv)
+      throwGenError $ "Unbound free def variable:" <> ppPrint fv
 
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.
@@ -232,7 +232,7 @@ lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs () FreeVarName)
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwGenError $ "GenerateConstraints: The xtor " <> T.pack (ppPrint xt) <> " could not be looked up."
+    Nothing -> throwGenError $ "GenerateConstraints: The xtor " <> ppPrint xt <> " could not be looked up."
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
       let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
       let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
@@ -242,7 +242,7 @@ lookupDataDecl :: XtorName -> GenM DataDecl
 lookupDataDecl xt = do
   env <- asks env
   case lookupXtor xt env of
-    Nothing -> throwGenError $ "Constructor/Destructor " <> T.pack (ppPrint xt) <> " is not contained in program."
+    Nothing -> throwGenError $ "Constructor/Destructor " <> ppPrint xt <> " is not contained in program."
     Just decl -> return decl
 
 lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
@@ -260,7 +260,7 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
 checkExhaustiveness matched decl = do
   let declared = sig_name <$> data_xtors decl PosRep
   forM_ matched $ \xn -> unless (xn `elem` declared) 
-    (throwGenError ("Pattern Match Error. The xtor " <> T.pack (ppPrint xn) <> " does not occur in the declaration of type " <> T.pack (ppPrint (data_name decl))))
+    (throwGenError ("Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)))
   forM_ declared $ \xn -> unless (xn `elem` matched) 
-    (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " <> T.pack (ppPrint xn) <> " of type " <> T.pack (ppPrint (data_name decl)) <> " is not matched against." ))
+    (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <> ppPrint (data_name decl) <> " is not matched against." ))
 

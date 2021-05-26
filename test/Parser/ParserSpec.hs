@@ -9,15 +9,15 @@ import Parser.Parser
 import Parser.Types
 import Syntax.Types
 import Syntax.CommonTerm
-import Pretty.Pretty (ppPrint)
+import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
 
 instance Show (Typ pol) where
-  show typ = ppPrint typ
+  show typ = ppPrintString typ
 
 typeParseExample :: Text -> Typ pol -> Spec
 typeParseExample input ty = do
-  it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrint ty) $ do
+  it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrintString ty) $ do
     let polRep = getPolarity ty
     let Right ty2 = runInteractiveParser (typP polRep) input
     ppPrint ty `shouldBe` ppPrint ty2

@@ -94,9 +94,9 @@ solve (cs:css) = do
 lookupXtor :: XtorName -> [XtorSig pol] -> SolverM (XtorSig pol)
 lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
   Nothing -> throwSolverError ["The xtor"
-                              , T.pack (ppPrint xtName)
+                              , ppPrint xtName
                               , "is not contained in the list of xtors"
-                              , T.pack (ppPrint xtors) ]
+                              , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
 checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
@@ -163,31 +163,31 @@ subConstraints (SubType _ (TyCodata PosRep dtors1) (TyCodata NegRep dtors2)) = d
 subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else
     throwSolverError ["The following nominal types are incompatible:"
-                     , "    " <> T.pack (ppPrint tn1)
+                     , "    " <> ppPrint tn1
                      , "and"
-                     , "    " <> T.pack (ppPrint tn2) ]
+                     , "    " <> ppPrint tn2 ]
 -- Constrants between refined types:
 subConstraints (SubType ci (TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then return [SubType ci ty1 ty2] else
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> T.pack (ppPrint tn1)
+                     , "    " <> ppPrint tn1
                      , "and"
-                     , "    " <> T.pack (ppPrint tn2) ]
+                     , "    " <> ppPrint tn2 ]
 -- Refined type is always subtype of the nominal type it refines
 subConstraints (SubType _ (TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> T.pack (ppPrint tn1)
+                     , "    " <> ppPrint tn1
                      , "and"
-                     , "    " <> T.pack (ppPrint tn2) ]
+                     , "    " <> ppPrint tn2 ]
 -- Nominal type is subtype of a refinement of itself if the refinement is trivial,
 -- i.e. does not impose any limitations
 subConstraints (SubType _ (TyNominal _ tn1) (TyRefined _ tn2 _)) =
   -- TODO: Check if translate(tn2) <: ty2
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> T.pack (ppPrint tn1)
+                     , "    " <> ppPrint tn1
                      , "and"
-                     , "    " <> T.pack (ppPrint tn2) ]
+                     , "    " <> ppPrint tn2 ]
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
@@ -198,11 +198,11 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyRefined _ tn2 _)) =
 --
 subConstraints cs@(SubType _ (TyData _ _) (TyCodata _ _)) =
   throwSolverError [ "Constraint:"
-                   , "     " <> T.pack (ppPrint cs)
+                   , "     " <> ppPrint cs
                    , "is unsolvable. A data type can't be a subtype of a codata type!" ]
 subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
   throwSolverError [ "Constraint:"
-                   , "     " <> T.pack (ppPrint cs)
+                   , "     " <> ppPrint cs
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Constraints between nominal and a structural types:
 --
@@ -234,15 +234,15 @@ subConstraints (SubType _ TyRefined{} (TyCodata _ _)) =
 --
 subConstraints (SubType _ ty1@(TyVar _ _) ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
-                   , T.pack (ppPrint ty1)
+                   , ppPrint ty1
                    , "<:"
-                   , T.pack (ppPrint ty2)
+                   , ppPrint ty2
                    ]
 subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
-                   , T.pack (ppPrint ty1)
+                   , ppPrint ty1
                    , "<:"
-                   , T.pack (ppPrint ty2)
+                   , ppPrint ty2
                    ]
 
 ------------------------------------------------------------------------------

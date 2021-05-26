@@ -140,8 +140,8 @@ checkAnnot ty (Just tyAnnot) = do
   case isSubsumed of
     True -> return tyAnnot
     False -> Left (OtherError (T.unlines [ "Annotated type is not subsumed by inferred type"
-                                         , " Annotated type: " <> T.pack (ppPrint tyAnnot)
-                                         , " Inferred type:  " <> T.pack (ppPrint ty)]))
+                                         , " Annotated type: " <> ppPrint tyAnnot
+                                         , " Inferred type:  " <> ppPrint ty]))
 
 insertDecl :: Declaration FreeVarName
            -> Environment FreeVarName

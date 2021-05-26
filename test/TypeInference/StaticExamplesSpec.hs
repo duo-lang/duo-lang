@@ -18,7 +18,7 @@ import TypeAutomata.Subsume (typeAutEqual)
 import Control.Monad (forM_)
 
 instance Show (TypeScheme pol) where
-  show = ppPrint
+  show = ppPrintString
 
 typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
 typecheckExample env termS typS = do
@@ -77,7 +77,7 @@ typecheckInFile fp =
     describe ("Context is " <> fp) $ do
         env <- runIO $ getEnvironment ("examples" </> fp)
         case env of
-            Left err -> it "Could not load environment" $ expectationFailure (ppPrint err)
+            Left err -> it "Could not load environment" $ expectationFailure (ppPrintString err)
             Right env' -> do
                 forM_ prgExamples $ uncurry $ typecheckExample env'
 

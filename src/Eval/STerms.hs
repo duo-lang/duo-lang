@@ -33,7 +33,7 @@ checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
   else throwEvalError [ "Error during evaluation of:"
-                      , T.pack (ppPrint cmd)
+                      , ppPrint cmd
                       , "Argument lengths don't coincide."
                       ]
 

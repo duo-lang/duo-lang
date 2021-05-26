@@ -306,9 +306,11 @@ save_cmd s = do
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
         saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-        prettyRepl (" :: " ++ ppPrint (trace_resType trace))
-      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
-                               "Term parsing error:\n"++ ppPrint err2)
+        prettyText (" :: " <> ppPrint (trace_resType trace))
+      Left err2 -> prettyText (T.unlines [ "Type parsing error:"
+                                         , ppPrint err1
+                                         , "Term parsing error:"
+                                         , ppPrint err2 ])
 
 saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
 saveGraphFiles fileName aut = do
@@ -437,7 +439,7 @@ compile_cmd :: Text -> Repl ()
 compile_cmd s = do
   case runInteractiveParser atermP s of
     Right (t, _pos) ->
-      prettyRepl (" compile " ++ ppPrint t ++ "\n = " ++ ppPrint (compile t))
+      prettyText (" compile " <> ppPrint t <> "\n = " <> ppPrint (compile t))
     Left err2 -> do
       prettyText "Cannot parse as aterm:"
       prettyRepl err2

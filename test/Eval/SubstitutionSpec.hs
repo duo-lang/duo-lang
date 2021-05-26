@@ -23,7 +23,7 @@ spec = do
       describe ("Examples in " ++ example ++ " are locally closed") $ do
         env <- runIO $ getEnvironment example
         case env of
-          Left err -> it "Could not load examples." $ expectationFailure (ppPrint err)
+          Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
           Right env -> do
             forM_ (M.toList (prdEnv env)) $ \(name,(term,_)) -> do
               it (T.unpack name ++ " does not contain dangling deBruijn indizes") $

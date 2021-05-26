@@ -4,6 +4,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
+import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
 
 import Syntax.CommonTerm
@@ -57,12 +58,20 @@ instance PrettyAnn () where
 -- Render to String Backend
 ---------------------------------------------------------------------------------
 
-ppPrint :: PrettyAnn a => a -> String
+ppPrint :: PrettyAnn a => a -> Text
 ppPrint doc =
   let
     layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
   in
+    renderStrict (layoutPretty layout (prettyAnn doc))
+
+ppPrintString :: PrettyAnn a => a -> String
+ppPrintString doc =
+  let
+    layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
+  in
     renderString (layoutPretty layout (prettyAnn doc))
+
 
 ---------------------------------------------------------------------------------
 -- Console Backend with ANSI Colors

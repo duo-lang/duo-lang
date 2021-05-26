@@ -5,13 +5,13 @@ import Test.Hspec
 
 import TypeAutomata.Subsume (subsume)
 import Parser.Parser
-import Pretty.Pretty (ppPrint)
+import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
 import Syntax.Types
 
 subsumptionCheck :: TypeScheme pol -> TypeScheme pol -> Bool -> Spec
 subsumptionCheck ts1 ts2 bspec = do
-  it (ppPrint ts1 <> " should " <> (if bspec then "" else "not ") <> "subsume " <> ppPrint ts2) $ do
+  it (ppPrintString ts1 <> " should " <> (if bspec then "" else "not ") <> "subsume " <> ppPrintString ts2) $ do
     let Right b = subsume ts1 ts2
     b `shouldBe` bspec
 
