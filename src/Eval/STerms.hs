@@ -49,64 +49,14 @@ evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupCns fv
   return (Just (Apply () prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
--- Pattern match depend on wether all arguments can be subst. into the Pattern.
-evalApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
-  order <- lookupEvalOrder
-  case areAllSubst order args of
-    True  -> substArgs prd cns
-    False -> focusingStep prd cns
-  where
-    -- Subst all arguments of Ctor into corresponding pattern.
-    substArgs :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
-    substArgs prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
-      (MkSCase _ argTypes cmd') <- lookupCase xt cases
-      checkArgs (Apply () prd cns) argTypes args
-      return (Just (commandOpening args cmd')) -- reduction is just opening
-    substArgs _ _ = error "unrechable cases due to local definition of substArgs"
-    -- we want to focus on the first non-subst. argument
-    -- at CBV in:  C(prds not-sub prds)[cnss] >> cns
-    -- to:         not-sub >> mu r. C(prds r prds)[cnss] >> cns
-    -- at CBN in:  C(prds)[cnss not-sub cnss] >> cns
-    -- to:         mu r. C(prds)[cnss r cnss] >> not-sub
-    focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
-    focusingStep (XtorCall ext PrdRep xt args) cns =  do
-      order <- lookupEvalOrder
-      case replaceMu order args of
-        (args', (muP, muC)) ->
-          case order of
-            CBV -> return $ Just $ Apply ext (head muP) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns))
-            CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns)) (head muC)
-    focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
-
--- Copattern matches.
-evalApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
-  order <- lookupEvalOrder
-  case areAllSubst order args of
-    True  -> substArgs prd cns
-    False -> focusingStep prd cns
-  where
-    -- Subst all arguments of Dtor into corresponding pattern.
-    substArgs :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
-    substArgs prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
-      (MkSCase _ argTypes cmd') <- lookupCase xt cases
-      checkArgs (Apply () prd cns) argTypes args
-      return (Just (commandOpening args cmd')) -- reduction is just opening
-    substArgs _ _ = error "unrechable cases due to local definition of substArgs"
-    -- we want to focus on the first non-subst. argument
-    -- at CBV in:  prd >> D(prds not-sub prds)[cnss]
-    -- to:         not-sub >> mu r. prd >> D(prds r prds)[cnss]
-    -- at CBN in:  prd >> D(prds)[cnss not-sub cnss]
-    -- to:         mu r.prd >> D(prds)[cnss r cnss] >> not-sub
-    focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
-    focusingStep prd (XtorCall ext CnsRep xt args) = do
-      order <- lookupEvalOrder
-      case replaceMu order args of
-        (args', (muP, muC)) ->
-          case order of
-            CBV -> return $ Just $ Apply ext (head muP) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args'))
-            CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args')) (head muC)
-    focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
-
+evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
+  (MkSCase _ argTypes cmd') <- lookupCase xt cases
+  checkArgs (Apply () prd cns) argTypes args
+  return (Just  (commandOpening args cmd')) --reduction is just opening
+evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
+  (MkSCase _ argTypes cmd') <- lookupCase xt cases
+  checkArgs (Apply () prd cns) argTypes args
+  return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
   order <- lookupEvalOrder
@@ -122,12 +72,71 @@ evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError $ "Found bound variable d
 evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError "Cannot evaluate match applied to match"
 evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError "Cannot evaluate constructor applied to destructor"
 
+
+-- | Returns Notihng if command doesn't need a focusing step, just cmd' if cmd changes to cmd' in one focusing step
+focusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+focusOnce (Done _) = return Nothing
+focusOnce (Print _ _) = return Nothing
+focusOnce (Apply _ prd cns) = evalFocusOnce prd cns
+
+evalFocusOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+-- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
+-- Pattern match depend on wether all arguments can be subst. into the Pattern.
+evalFocusOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
+  order <- lookupEvalOrder
+  case areAllSubst order args of
+    True  -> return Nothing
+    False -> focusingStep prd cns
+  where
+    -- we want to focus on the first non-subst. argument
+    -- at CBV in:  C(prds not-sub prds)[cnss] >> cns
+    -- to:         not-sub >> mu r. C(prds r prds)[cnss] >> cns
+    -- at CBN in:  C(prds)[cnss not-sub cnss] >> cns
+    -- to:         mu r. C(prds)[cnss r cnss] >> not-sub
+    focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+    focusingStep (XtorCall ext PrdRep xt args) cns =  do
+      order <- lookupEvalOrder
+      case replaceMu order args of
+        (args', (muP, muC)) ->
+          case order of
+            CBV -> return $ Just $ Apply ext (head muP) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns))
+            CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns)) (head muC)
+    focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
+-- Copattern matches.
+evalFocusOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
+  order <- lookupEvalOrder
+  case areAllSubst order args of
+    True  -> return Nothing
+    False -> focusingStep prd cns
+  where
+    -- we want to focus on the first non-subst. argument
+    -- at CBV in:  prd >> D(prds not-sub prds)[cnss]
+    -- to:         not-sub >> mu r. prd >> D(prds r prds)[cnss]
+    -- at CBN in:  prd >> D(prds)[cnss not-sub cnss]
+    -- to:         mu r.prd >> D(prds)[cnss r cnss] >> not-sub
+    focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+    focusingStep prd (XtorCall ext CnsRep xt args) = do
+      order <- lookupEvalOrder
+      case replaceMu order args of
+        (args', (muP, muC)) ->
+          case order of
+            CBV -> return $ Just $ Apply ext (head muP) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args'))
+            CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args')) (head muC)
+    focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
+-- all other cases don't need focusing steps
+evalFocusOnce _ _ = return Nothing
+
+
 -- | Return just thef final evaluation result
 eval :: Command () FreeVarName -> EvalM FreeVarName (Command () FreeVarName)
 eval cmd = do
-  cmd' <- evalSTermOnce cmd
-  case cmd' of
-    Nothing -> return cmd
+  focusedCmd <- focusOnce cmd
+  case focusedCmd of
+    Nothing -> do
+      cmd' <- evalSTermOnce cmd
+      case cmd' of
+        Nothing -> return cmd
+        Just cmd' -> eval cmd'
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
