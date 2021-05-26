@@ -77,12 +77,12 @@ evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError "Cannot eva
 focusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 focusOnce (Done _) = return Nothing
 focusOnce (Print _ _) = return Nothing
-focusOnce (Apply _ prd cns) = evalFocusOnce prd cns
+focusOnce (Apply _ prd cns) = focusApplyOnce prd cns
 
-evalFocusOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+focusApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 -- Pattern match depend on wether all arguments can be subst. into the Pattern.
-evalFocusOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
+focusApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
   order <- lookupEvalOrder
   case areAllSubst order args of
     True  -> return Nothing
@@ -103,7 +103,7 @@ evalFocusOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
             CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns)) (head muC)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- Copattern matches.
-evalFocusOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
+focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
   order <- lookupEvalOrder
   case areAllSubst order args of
     True  -> return Nothing
@@ -124,7 +124,7 @@ evalFocusOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
             CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args')) (head muC)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- all other cases don't need focusing steps
-evalFocusOnce _ _ = return Nothing
+focusApplyOnce _ _ = return Nothing
 
 
 -- | Return just thef final evaluation result

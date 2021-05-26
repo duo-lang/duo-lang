@@ -22,7 +22,7 @@ cbvExamples :: [(EvalOrder,String)]
 cbvExamples = 
     -- CBV examples
     zip
-    (iterate id CBV)
+    (repeat CBV)
     [
     "C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)]"
     , "C2(C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)])"
@@ -35,7 +35,7 @@ cbnExamples :: [(EvalOrder,String)]
 cbnExamples = 
     -- CBN examples
     zip
-    (iterate id CBN)
+    (repeat CBN)
     [
     "C('True)[mu x.Print(x)]"
     , "C('True)[D()[mu x. Print(x)]]"
