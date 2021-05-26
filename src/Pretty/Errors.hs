@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Pretty.Errors where
 
 import Control.Monad (forM_)

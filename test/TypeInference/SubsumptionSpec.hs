@@ -1,4 +1,3 @@
-{-#LANGUAGE OverloadedStrings #-}
 module TypeInference.SubsumptionSpec ( spec ) where
 
 import Data.Text (Text)

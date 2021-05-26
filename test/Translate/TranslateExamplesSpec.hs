@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Translate.TranslateExamplesSpec ( spec ) where
 
 import Test.Hspec

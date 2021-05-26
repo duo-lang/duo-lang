@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module TypeInference.GenerateConstraints.Definition
   ( -- Constraint Generation Monad
     GenM

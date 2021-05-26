@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module TypeInference.GenerateConstraints.STerms
   ( genConstraintsSTerm
   , genConstraintsSTermRecursive

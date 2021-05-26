@@ -1,4 +1,3 @@
-{-#LANGUAGE OverloadedStrings #-}
 module TypeInference.StaticExamplesSpec ( spec )  where
 
 import Data.Text (Text)

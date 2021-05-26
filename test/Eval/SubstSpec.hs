@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Eval.SubstSpec ( spec )  where
 
 import Data.Text (Text)

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module TypeInference.SolveConstraints
   ( solveConstraints
   ) where

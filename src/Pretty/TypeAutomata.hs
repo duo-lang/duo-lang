@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Pretty.TypeAutomata ( typeAutToDot ) where
 
 import Data.Graph.Inductive.Graph

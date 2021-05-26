@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm

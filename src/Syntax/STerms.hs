@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Syntax.STerms
   ( module Syntax.CommonTerm
   , XtorArgs(..)

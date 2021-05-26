@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Eval.STerms
   ( eval
   , evalSteps

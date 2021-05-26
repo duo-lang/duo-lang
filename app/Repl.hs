@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Repl (runRepl) where
 
 import System.Console.Repline hiding (Command)

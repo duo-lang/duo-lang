@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module TypeInference.InferProgram
   ( TypeInferenceTrace (..)
     -- Symmetric Terms and Commands
