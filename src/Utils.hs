@@ -35,12 +35,12 @@ data Located a = Located Loc a
 ----------------------------------------------------------------------------------
 
 data Error
-  = ParseError String
-  | GenConstraintsError String
-  | EvalError String
-  | SolveConstraintsError String
-  | TypeAutomatonError String
-  | OtherError String
+  = ParseError Text
+  | GenConstraintsError Text
+  | EvalError Text
+  | SolveConstraintsError Text
+  | TypeAutomatonError Text
+  | OtherError Text
   deriving (Show, Eq)
 
 type LocatedError = Located Error

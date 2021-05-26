@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module TypeInference.InferProgram
   ( TypeInferenceTrace (..)
     -- Symmetric Terms and Commands
@@ -14,6 +15,7 @@ module TypeInference.InferProgram
 import Control.Monad (when)
 import Data.Bifunctor (first)
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 import Pretty.Pretty
 import Pretty.Errors
@@ -138,9 +140,9 @@ checkAnnot ty (Just tyAnnot) = do
   isSubsumed <- subsume ty tyAnnot
   case isSubsumed of
     True -> return tyAnnot
-    False -> Left (OtherError (unlines [ "Annotated type is not subsumed by inferred type"
-                                       , " Annotated type: " <> ppPrint tyAnnot
-                                       , " Inferred type:  " <> ppPrint ty]))
+    False -> Left (OtherError (T.unlines [ "Annotated type is not subsumed by inferred type"
+                                         , " Annotated type: " <> T.pack (ppPrint tyAnnot)
+                                         , " Inferred type:  " <> T.pack (ppPrint ty)]))
 
 insertDecl :: Declaration FreeVarName
            -> Environment FreeVarName

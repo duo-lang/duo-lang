@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 
 import Syntax.CommonTerm (PrdCns(..))
@@ -17,6 +18,7 @@ import qualified Data.Set as S
 
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Text (Text)
 import qualified Data.Text as T
 
 import Data.Graph.Inductive.Graph (Node)
@@ -83,8 +85,8 @@ runTypeAutTvars tvars m = do
 -- Helper functions
 --------------------------------------------------------------------------
 
-throwAutomatonError :: [String] -> TTA a
-throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
+throwAutomatonError :: [Text] -> TTA a
+throwAutomatonError msg = throwError $ TypeAutomatonError (T.unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
@@ -108,12 +110,12 @@ lookupTVar PosRep tv = do
   case M.lookup tv tvarEnv of
     Nothing -> throwAutomatonError [ "Could not insert type into automaton."
                                    , "The type variable:"
-                                   , "    " <> T.unpack (tvar_name tv)
+                                   , "    " <> tvar_name tv
                                    , "is not available in the automaton."
                                    ]
     Just (Nothing,_) -> throwAutomatonError $ [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> T.unpack (tvar_name tv)
+                                              , "    " <> tvar_name tv
                                               , "exists, but not with the correct polarity."
                                               ]
     Just (Just pos,_) -> return pos
@@ -124,12 +126,12 @@ lookupTVar NegRep tv = do
   case M.lookup tv tvarEnv of
     Nothing -> throwAutomatonError [ "Could not insert type into automaton."
                                    , "The type variable:"
-                                   , "    " <> T.unpack (tvar_name tv)
+                                   , "    " <> tvar_name tv
                                    , "is not available in the automaton."
                                    ]
     Just (_,Nothing) -> throwAutomatonError $ [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> T.unpack (tvar_name tv)
+                                              , "    " <> tvar_name tv
                                               , "exists, but not with the correct polarity."
                                               ]
     Just (_,Just neg) -> return neg

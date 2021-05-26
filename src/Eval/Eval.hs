@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Eval.Eval
   ( -- Eval Monad
     EvalOrder(..)
@@ -14,6 +15,8 @@ module Eval.Eval
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.Map as M
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Pretty.Pretty
 import Syntax.ATerms
@@ -42,28 +45,28 @@ runEval e evalorder env = runExcept (runReaderT (unEvalM e) (evalorder, env))
 -- Helper functions
 ---------------------------------------------------------------------------------
 
-throwEvalError :: String -> EvalM bs a
-throwEvalError msg = throwError $ EvalError msg
+throwEvalError :: [Text] -> EvalM bs a
+throwEvalError = throwError . EvalError . T.unlines
 
 lookupDef :: FreeVarName -> EvalM bs (ATerm () bs, TypeScheme Pos)
 lookupDef fv = do
   env <- asks snd
   case M.lookup fv (defEnv env) of
-    Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
+    Nothing -> throwEvalError ["Unbound free variable " <> T.pack (ppPrint fv) <> " not contained in environment."]
     Just res -> return res
 
 lookupPrd :: FreeVarName -> EvalM bs (STerm Prd () bs, TypeScheme Pos)
 lookupPrd fv = do
   env <- asks snd
   case M.lookup fv (prdEnv env) of
-    Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
+    Nothing -> throwEvalError ["Unbound free variable " <> T.pack (ppPrint fv) <> " not contained in environment."]
     Just res -> return res
 
 lookupCns :: FreeVarName -> EvalM bs (STerm Cns () bs, TypeScheme Neg)
 lookupCns fv = do
   env <- asks snd
   case M.lookup fv (cnsEnv env) of
-    Nothing -> throwEvalError $ "Unbound free variable " ++ ppPrint fv ++ " not contained in environment."
+    Nothing -> throwEvalError ["Unbound free variable " <> T.pack (ppPrint fv) <> " not contained in environment."]
     Just res -> return res
 
 lookupEvalOrder :: EvalM bs EvalOrder

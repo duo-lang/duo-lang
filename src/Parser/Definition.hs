@@ -11,6 +11,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Void (Void)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Text.Megaparsec
 
 import Syntax.Types
@@ -35,7 +36,7 @@ newtype Parser a = Parser { unParser :: ReaderT ParseReader (Parsec Void Text) a
 
 runFileParser :: FilePath -> Parser a -> Text -> Either Error a
 runFileParser fp p input = case runParser (runReaderT (unParser p) defaultParseReader) fp input of
-  Left err -> Left $ ParseError (errorBundlePretty err)
+  Left err -> Left $ ParseError (T.pack (errorBundlePretty err))
   Right x -> Right x
 
 runInteractiveParser :: Parser a -> Text -> Either Error a

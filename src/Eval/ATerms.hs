@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Eval.ATerms
   ( isValue
   , evalATermComplete
@@ -51,9 +52,9 @@ evalATermSingleStep' (Match _ t cases) CBN | not (isWHNF t) = do
   return (Just (Match () (fromJust t') cases))
 evalATermSingleStep' (Match _ (Ctor _ xt args) cases) _ =
   case find (\MkACase { acase_name } -> acase_name == xt) cases of
-    Nothing -> throwEvalError "Pattern match error"
+    Nothing -> throwEvalError ["Pattern match error"]
     Just acase -> return (Just $ atermOpening args (acase_term acase))
-evalATermSingleStep' (Match _ _ _) _ = throwEvalError "unreachable if properly typechecked"
+evalATermSingleStep' (Match _ _ _) _ = throwEvalError ["unreachable if properly typechecked"]
 evalATermSingleStep' (Dtor _ xt t args) order | not (isValue t) = do
   t' <- evalATermSingleStep' t order
   return (Just (Dtor () xt (fromJust t') args))
@@ -62,9 +63,9 @@ evalATermSingleStep' (Dtor _ xt t args) CBV | (not . and) (isValue <$> args) =
     (\args' -> return $ Just (Dtor () xt t (fromJust args')))
 evalATermSingleStep' (Dtor _ xt (Comatch _ cocases) args) _ =
   case find (\MkACase { acase_name } -> acase_name == xt) cocases of
-    Nothing -> throwEvalError "Copattern match error"
+    Nothing -> throwEvalError ["Copattern match error"]
     Just cocase -> return (Just $ atermOpening args (acase_term cocase))
-evalATermSingleStep' (Dtor _ _ _ _) _ = throwEvalError "unreachable if properly typechecked"
+evalATermSingleStep' (Dtor _ _ _ _) _ = throwEvalError ["unreachable if properly typechecked"]
 evalATermSingleStep' (Comatch _ _) _ = return Nothing
 
 -- | Choose the correct evaluation strategy
