@@ -17,6 +17,7 @@ import qualified Data.Set as S
 
 import Data.Map (Map)
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
@@ -107,12 +108,12 @@ lookupTVar PosRep tv = do
   case M.lookup tv tvarEnv of
     Nothing -> throwAutomatonError [ "Could not insert type into automaton."
                                    , "The type variable:"
-                                   , "    " <> tvar_name tv
+                                   , "    " <> T.unpack (tvar_name tv)
                                    , "is not available in the automaton."
                                    ]
     Just (Nothing,_) -> throwAutomatonError $ [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> tvar_name tv
+                                              , "    " <> T.unpack (tvar_name tv)
                                               , "exists, but not with the correct polarity."
                                               ]
     Just (Just pos,_) -> return pos
@@ -123,12 +124,12 @@ lookupTVar NegRep tv = do
   case M.lookup tv tvarEnv of
     Nothing -> throwAutomatonError [ "Could not insert type into automaton."
                                    , "The type variable:"
-                                   , "    " <> tvar_name tv
+                                   , "    " <> T.unpack (tvar_name tv)
                                    , "is not available in the automaton."
                                    ]
     Just (_,Nothing) -> throwAutomatonError $ [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> tvar_name tv
+                                              , "    " <> T.unpack (tvar_name tv)
                                               , "exists, but not with the correct polarity."
                                               ]
     Just (_,Just neg) -> return neg

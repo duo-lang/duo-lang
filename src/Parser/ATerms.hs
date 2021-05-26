@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Parser.ATerms ( atermP ) where
 
 import Text.Megaparsec hiding (State)

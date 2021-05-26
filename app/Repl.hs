@@ -234,13 +234,13 @@ show_cmd "" = do
 show_cmd str = do
   let s = trim str
   env <- gets replEnv
-  case M.lookup (T.unpack s) (prdEnv env) of
+  case M.lookup s (prdEnv env) of
     Just (prd,_) -> prettyRepl (NamedRep prd)
-    Nothing -> case M.lookup (T.unpack s) (cnsEnv env) of
+    Nothing -> case M.lookup s (cnsEnv env) of
       Just (cns,_) -> prettyRepl (NamedRep cns)
-      Nothing -> case M.lookup (T.unpack s) (cmdEnv env) of
+      Nothing -> case M.lookup s (cmdEnv env) of
         Just cmd -> prettyRepl (NamedRep cmd)
-        Nothing -> case M.lookup (T.unpack s) (defEnv env) of
+        Nothing -> case M.lookup s (defEnv env) of
           Just (def,_) -> prettyRepl (NamedRep def)
           Nothing -> prettyText "Not in environment."
 
@@ -257,7 +257,7 @@ show_option = Option
 show_type_cmd :: Text -> Repl ()
 show_type_cmd s = do
   env <- gets (declEnv . replEnv)
-  let maybeDecl = find (\x -> data_name x == MkTypeName (T.unpack s)) env
+  let maybeDecl = find (\x -> data_name x == MkTypeName s) env
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
     Just decl -> prettyRepl decl
@@ -482,7 +482,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
                         , M.keys (defEnv env)
                         , (unTypeName . data_name) <$> (declEnv env)
                         ]
-      return $ filter (isPrefixOf n) (completionList ++ keys)
+      return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion
 
 ini :: Repl ()

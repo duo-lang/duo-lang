@@ -5,6 +5,7 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
+import qualified Data.Text as T
 
 import Eval.Eval
 import Pretty.Pretty
@@ -20,7 +21,7 @@ lookupCase :: XtorName -> [SCase () FreeVarName] -> EvalM FreeVarName (SCase () 
 lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError $ unlines ["Error during evaluation. The xtor: "
-                                      , unXtorName xt
+                                      , T.unpack (unXtorName xt)
                                       , "doesn't occur in match."
                                       ]
 

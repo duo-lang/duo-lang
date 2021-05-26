@@ -1,5 +1,6 @@
 module Syntax.CommonTerm where
 
+import Data.Text (Text)
 ---------------------------------------------------------------------------------
 -- Tags
 ---------------------------------------------------------------------------------
@@ -23,10 +24,10 @@ deriving instance Eq (PrdCnsRep pc)
 data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
-data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: String } deriving (Eq, Ord, Show)
+data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: Text } deriving (Eq, Ord, Show)
 
 -- | Name of a free variable. Starts with a lowercase letter.
-type FreeVarName = String
+type FreeVarName = Text
 
 -- | Two-level de Bruijn indices.
 type Index = (Int, Int)

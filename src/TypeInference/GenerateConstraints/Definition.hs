@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module TypeInference.GenerateConstraints.Definition
   ( -- Constraint Generation Monad
     GenM
@@ -35,6 +36,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 import Pretty.Pretty
 import Pretty.STerms ()
@@ -105,7 +107,7 @@ throwGenError msg = throwError $ GenConstraintsError msg
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
   var <- gets varCount
-  let tvar = MkTVar ("u" <> (show var))
+  let tvar = MkTVar ("u" <> T.pack (show var))
   -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
@@ -247,7 +249,7 @@ lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
 lookupXtorSig decl xtn pol = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
-    Nothing -> throwGenError $ "XtorName " ++ unXtorName xtn ++ " not found in declaration of type " ++ unTypeName (data_name decl)
+    Nothing -> throwGenError $ "XtorName " <> T.unpack (unXtorName xtn) <> " not found in declaration of type " <> T.unpack (unTypeName (data_name decl))
 
 -- | Checks for a given list of XtorNames and a type declaration whether:
 -- (1) All the xtornames occur in the type declaration. (Correctness)

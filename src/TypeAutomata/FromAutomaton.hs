@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
@@ -17,6 +18,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Map (Map)
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
@@ -44,7 +46,7 @@ freshTVar :: State Int TVar
 freshTVar = do
   n <- get
   modify (+1)
-  return (MkTVar ("t" ++ show n))
+  return (MkTVar ("t" <> T.pack (show n)))
 
 flowAnalysisState :: FlowGraph -> State Int (Map Node (Set TVar))
 flowAnalysisState flgr =
@@ -148,7 +150,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TyVar rep (MkTVar ("r" ++ show i))
+    True -> return $ TyVar rep (MkTVar ("r" <> T.pack (show i)))
     False -> nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
@@ -186,5 +188,5 @@ nodeToTypeNoCache rep i = do
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
-    then return $ TyRec rep (MkTVar ("r" ++ show i)) resType
+    then return $ TyRec rep (MkTVar ("r" <> T.pack (show i))) resType
     else return resType

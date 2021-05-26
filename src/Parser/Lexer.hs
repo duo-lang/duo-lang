@@ -45,6 +45,7 @@ module Parser.Lexer
   ) where
 
 import Data.Text (Text)
+import qualified Data.Text as T
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -114,7 +115,7 @@ numP = do
 
 freeVarName :: Parser (FreeVarName, SourcePos)
 freeVarName = do
-  (name, pos) <- lexeme $ ((:) <$> lowerChar <*> many alphaNumChar)
+  (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
   checkReserved name
   return (name, pos)
 
@@ -122,17 +123,17 @@ freeVarName = do
 xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
 xtorName Structural = do
   _ <- tick
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkXtorName Structural name, pos) -- Saved without tick!
 xtorName Nominal = do
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkXtorName Nominal name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = do
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkTypeName name, pos)
 
@@ -140,14 +141,14 @@ typeNameP = do
 -- Keywords
 -------------------------------------------------------------------------------------------
 
-keywords :: [String]
+keywords :: [Text]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with"
            , "Done", "Print", "forall", "data", "codata", "rec", "mu"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
-checkReserved :: String -> Parser ()
-checkReserved str | str `elem` keywords = fail $ "Keyword " <> str <> " cannot be used as an identifier."
+checkReserved :: Text -> Parser ()
+checkReserved str | str `elem` keywords = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
 
 matchKwP :: Parser SourcePos
