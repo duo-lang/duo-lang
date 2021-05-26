@@ -15,10 +15,10 @@ import Utils
 data IsRec = Recursive | NonRecursive
 
 data Declaration a
-  = PrdDecl IsRec Loc FreeVarName (STerm Prd Loc a)
-  | CnsDecl IsRec Loc FreeVarName (STerm Cns Loc a)
+  = PrdDecl IsRec Loc FreeVarName (Maybe (TypeScheme Pos)) (STerm Prd Loc a)
+  | CnsDecl IsRec Loc FreeVarName (Maybe (TypeScheme Neg)) (STerm Cns Loc a)
   | CmdDecl Loc FreeVarName (Command Loc a)
-  | DefDecl IsRec Loc FreeVarName (ATerm Loc a)
+  | DefDecl IsRec Loc FreeVarName (Maybe (TypeScheme Pos)) (ATerm Loc a)
   | DataDecl Loc DataDecl
 
 instance Show (Declaration a) where

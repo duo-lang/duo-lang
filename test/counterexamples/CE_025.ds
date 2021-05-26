@@ -1,0 +1,5 @@
+# We can only use a definition with the annotated type, not the inferred type.
+
+prd id : { 'Ap(<'True | 'False >)[<'True | 'False>] } := comatch { 'Ap(x)[k] => x >> k };
+
+prd useId : < 'Bar > := mu k.(id >> 'Ap('Bar)[k]);

@@ -25,6 +25,7 @@ module Parser.Lexer
   , pipe
   , comma
   , semi
+  , colon
   , backslash
   , coloneq
   , rightarrow
@@ -201,6 +202,9 @@ dot = symbol "."
 
 semi :: Parser SourcePos
 semi = symbol ";"
+
+colon :: Parser SourcePos
+colon = symbol ":"
 
 pipe :: Parser SourcePos
 pipe = symbol "|"

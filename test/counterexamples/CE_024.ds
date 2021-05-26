@@ -1,0 +1,2 @@
+# The annotated type is more general than the inferred one.
+cns foo : forall a. { 'Ap(a)[a] } := 'Ap('True)[match { 'True => Done, 'False => Done }];
