@@ -1,7 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Parser.ParserSpec ( spec ) where
 
 import Test.Hspec
 import Data.Either (isLeft)
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Parser.Parser
 import Parser.Types
@@ -13,16 +16,16 @@ import Pretty.Types ()
 instance Show (Typ pol) where
   show typ = ppPrint typ
 
-typeParseExample :: String -> Typ pol -> Spec
+typeParseExample :: Text -> Typ pol -> Spec
 typeParseExample input ty = do
-  it ("Parsing of " ++ input ++ " yields " ++ ppPrint ty) $ do
+  it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrint ty) $ do
     let polRep = getPolarity ty
     let Right ty2 = runInteractiveParser (typP polRep) input
     ppPrint ty `shouldBe` ppPrint ty2
 
-typeParseCounterEx :: String -> PolarityRep pol -> Spec
+typeParseCounterEx :: Text -> PolarityRep pol -> Spec
 typeParseCounterEx input polRep = do
-  it ("Input " ++ input ++ " cannot be parsed") $ do
+  it ("Input " ++ T.unpack input ++ " cannot be parsed") $ do
     let res = runInteractiveParser (typP polRep) input
     res `shouldSatisfy` isLeft
 

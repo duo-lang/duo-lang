@@ -1,6 +1,7 @@
+{-#LANGUAGE OverloadedStrings #-}
 module TypeInference.SubsumptionSpec ( spec ) where
 
-
+import Data.Text (Text)
 import Test.Hspec
 
 import TypeAutomata.Subsume (subsume)
@@ -15,7 +16,7 @@ subsumptionCheck ts1 ts2 bspec = do
     let Right b = subsume ts1 ts2
     b `shouldBe` bspec
 
-subsumptionCheckPos :: Bool -> String -> String -> Spec
+subsumptionCheckPos :: Bool -> Text -> Text -> Spec
 subsumptionCheckPos b s1 s2 = do
   let Right ty1 = runInteractiveParser (typeSchemeP PosRep) s1
   let Right ty2 = runInteractiveParser (typeSchemeP PosRep) s2

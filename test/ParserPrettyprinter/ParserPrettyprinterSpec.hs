@@ -2,6 +2,7 @@ module ParserPrettyprinter.ParserPrettyprinterSpec (spec) where
 
 import Control.Monad (forM_)
 import Data.Either (isRight)
+import qualified Data.Text as T
 import Test.Hspec
 
 import Parser.Parser
@@ -24,6 +25,6 @@ spec = do
         it "Can be parsed again." $
           case decls of
             Left err -> expectationFailure (ppPrint err)
-            Right decls -> (runFileParser example programP (ppPrint decls)) `shouldSatisfy` isRight
+            Right decls -> (runFileParser example programP (T.pack (ppPrint decls))) `shouldSatisfy` isRight
 
 

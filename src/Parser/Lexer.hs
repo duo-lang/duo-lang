@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Parser.Lexer
   ( sc
   , numP
@@ -43,6 +44,7 @@ module Parser.Lexer
   , argListP
   ) where
 
+import Data.Text (Text)
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -79,7 +81,7 @@ sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
 -- Helper functions
 -------------------------------------------------------------------------------------------
 
-symbol :: String -> Parser SourcePos
+symbol :: Text -> Parser SourcePos
 symbol str = do
   _ <- string str
   endPos <- getSourcePos
@@ -94,7 +96,7 @@ lexeme p = do
   return (res, endPos)
 
 
-keywordP :: String -> Parser SourcePos
+keywordP :: Text -> Parser SourcePos
 keywordP str = do
   _ <- string str <* notFollowedBy alphaNumChar
   endPos <- getSourcePos

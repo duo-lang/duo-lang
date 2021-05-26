@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty.Pretty where
 
+import Data.Text (Text)
 import qualified Data.Text as T
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
@@ -43,6 +44,9 @@ instance {-# OVERLAPPING #-} PrettyAnn String where
 
 instance PrettyAnn a => PrettyAnn [a] where
   prettyAnn xs = list (prettyAnn <$> xs)
+
+instance PrettyAnn Text where
+  prettyAnn = pretty
 
 instance PrettyAnn Bool where
   prettyAnn = pretty
