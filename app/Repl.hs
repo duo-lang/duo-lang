@@ -35,6 +35,7 @@ import Translate.Translate (compile)
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
 import Utils (Error, trim, trimStr, Verbosity(..))
 import Text.Megaparsec (eof)
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -51,6 +52,7 @@ data ReplState = ReplState
   , evalOrder :: EvalOrder
   , mode :: Mode
   , typeInfVerbosity :: Verbosity
+  , inferenceMode :: InferenceMode
   }
 
 
@@ -61,6 +63,7 @@ initialReplState = ReplState { replEnv = mempty
                              , evalOrder = CBV
                              , mode = Symmetric
                              , typeInfVerbosity = Silent
+                             , inferenceMode = InferNominal
                              }
 
 ------------------------------------------------------------------------------
@@ -169,7 +172,9 @@ set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
                    , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
-                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
+                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric }))
+                   , ("refinements", modify (\rs -> rs { inferenceMode = InferRefined})) ]
+
 set_cmd :: Text -> Repl ()
 set_cmd s = do
   let s' = trim s
@@ -203,7 +208,8 @@ set_option = Option
   }
 
 unset_cmd_variants :: [(Text, Repl ())]
-unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) ]
+unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) 
+                     , ("refinements", modify (\rs -> rs { inferenceMode = InferNominal }))]
 
 unset_cmd :: Text -> Repl ()
 unset_cmd s = do
@@ -400,7 +406,8 @@ load_cmd s = do
 load_file :: FilePath -> Repl ()
 load_file fp = do
   decls <- parseFile fp programP
-  case inferProgram decls of
+  inferMode <- gets inferenceMode
+  case inferProgram decls inferMode of
     Left err -> liftIO $ printLocatedError err
     Right newEnv -> do
       modifyEnvironment ((<>) newEnv)
