@@ -163,16 +163,17 @@ insertDecl (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 
-inferProgram :: [Declaration FreeVarName] -> Either LocatedError (Environment FreeVarName)
-inferProgram = inferProgram' mempty
+inferProgram :: [Declaration FreeVarName] -> InferenceMode -> Either LocatedError (Environment FreeVarName)
+inferProgram  = inferProgram' mempty
   where
     inferProgram' :: Environment FreeVarName
                   -> [Declaration FreeVarName]
+                  -> InferenceMode
                   -> Either LocatedError (Environment FreeVarName)
-    inferProgram' env [] = return env
-    inferProgram' env (decl:decls) = do
+    inferProgram' env [] _ = return env
+    inferProgram' env (decl:decls) im = do
       env' <- insertDecl decl env
-      inferProgram' env' decls
+      inferProgram' env' decls im
 
 ------------------------------------------------------------------------------
 -- Verbose type inference of programs

@@ -22,6 +22,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Adding a constraint
   , addConstraint
     -- Other
+  , InferenceMode(..)
   , PrdCnsToPol
   , lookupDataDecl
   , lookupXtorSig
@@ -212,6 +213,10 @@ addConstraint c = modify foo
 ---------------------------------------------------------------------------------------------
 -- Other
 ---------------------------------------------------------------------------------------------
+
+-- | Specifies whether to infer nominal or refined types
+data InferenceMode = InferNominal | InferRefined
+  deriving (Eq, Show)
 
 -- | We map producer terms to positive types, and consumer terms to negative types.
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
