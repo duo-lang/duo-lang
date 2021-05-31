@@ -6,6 +6,7 @@ import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
 import TypeInference.InferProgram (inferProgram)
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils
 
 
@@ -28,7 +29,7 @@ getEnvironment :: FilePath -> IO (Either Error (Environment FreeVarName))
 getEnvironment fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> case inferProgram decls of
+    Right decls -> case inferProgram decls InferNominal of
       Right env -> return (Right env)
       Left (Located _ err) -> return (Left err)
     Left err -> return (Left err)
