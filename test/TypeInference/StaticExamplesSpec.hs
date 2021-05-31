@@ -13,6 +13,7 @@ import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import TypeInference.InferProgram
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 import Control.Monad (forM_)
@@ -24,7 +25,7 @@ typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = trace_minTypeAut <$> (inferSTermTraced NonRecursive "" PrdRep term env)
+      let Right inferredTypeAut = trace_minTypeAut <$> (inferSTermTraced NonRecursive "" InferNominal PrdRep term env)
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
