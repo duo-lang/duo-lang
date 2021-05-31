@@ -275,7 +275,8 @@ let_cmd s = do
   decl <- fromRight (runInteractiveParser declarationP s)
   oldEnv <- gets replEnv
   verbosity <- gets typeInfVerbosity
-  newEnv <- liftIO $ insertDeclIO verbosity decl oldEnv
+  im <- gets inferenceMode
+  newEnv <- liftIO $ insertDeclIO verbosity im decl oldEnv
   case newEnv of
     Nothing -> return ()
     Just newEnv -> modifyEnvironment (const newEnv)
@@ -294,13 +295,14 @@ let_option = Option
 save_cmd :: String -> Repl ()
 save_cmd s = do
   env <- gets replEnv
+  im <- gets inferenceMode
   case runInteractiveParser (typeSchemeP PosRep) s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,_) -> do
-        trace <- fromRight $ inferSTermTraced NonRecursive "" PrdRep tloc env
+        trace <- fromRight $ inferSTermTraced NonRecursive "" im PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
