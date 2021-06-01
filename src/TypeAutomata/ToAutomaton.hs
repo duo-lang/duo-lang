@@ -182,8 +182,9 @@ insertType (TyNominal rep tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
-insertType ty@TyRefined{} = do
-  throwAutomatonError ["Cannot insert refined types: " ++ ppPrint ty]
+insertType ty@(TyRefined pr _ _) = do
+  throwAutomatonError ["Cannot insert refined type " ++ ppPrint ty ++ 
+    " with polarity " ++ show (polarityRepToPol pr)]
 
 
 --------------------------------------------------------------------------
