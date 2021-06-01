@@ -21,16 +21,17 @@ freeVar pc = do
   (v, endPos) <- freeVarName
   return (FreeVar (Loc startPos endPos) pc v, endPos)
 
-numLitP :: PrdCnsRep pc -> Parser (STerm pc Loc bs, SourcePos)
-numLitP CnsRep = empty
-numLitP PrdRep = do
+numLitP :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc Loc bs, SourcePos)
+numLitP _ CnsRep = empty
+numLitP ns PrdRep = do
   startPos <- getSourcePos
+  () <- checkTick ns
   (num, endPos) <- numP
   return (numToTerm (Loc startPos endPos) num, endPos)
   where
     numToTerm :: Loc -> Int -> STerm Prd Loc bs
-    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName Structural "Z") (MkXtorArgs [] [])
-    numToTerm loc n = XtorCall loc PrdRep (MkXtorName Structural "S") (MkXtorArgs [numToTerm loc (n-1)] [])
+    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") (MkXtorArgs [] [])
+    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") (MkXtorArgs [numToTerm loc (n-1)] [])
 
 lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 lambdaSugar CnsRep = empty
@@ -125,12 +126,13 @@ muAbstraction CnsRep = do
 
 stermP :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
 stermP pc = fst <$> (parens (stermP pc))
+  <|> try (numLitP Structural pc)
+  <|> try (numLitP Nominal pc)
   <|> xtorCall Structural pc
   <|> xtorCall Nominal pc
   <|> patternMatch pc
   <|> muAbstraction pc
   <|> freeVar pc
-  <|> numLitP pc
   <|> lambdaSugar pc
 
 --------------------------------------------------------------------------------------------
