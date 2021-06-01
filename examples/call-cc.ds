@@ -1,0 +1,201 @@
+data Bool { TT , FF};
+data Nat { Z, S(Nat) };
+data ListN { N , C(Nat,ListN) };
+data ListB { NB , CB(Bool,ListB) };
+
+codata StreamN {
+  HN[Nat],
+  TN[StreamN] };
+
+codata StreamB {
+  HB[Bool],
+  TB[StreamB] };
+
+prd rec normaliseNat : { 'Ap(Nat)[Nat] } :=
+    \(n)[k] =>
+        n >>
+        match {
+            Z => Z >> k,
+            S(m) => normaliseNat >> 'Ap(m)[mu n. S(n) >> k]
+        };
+
+prd rec normaliseListN : { 'Ap(ListN)[ListN] } :=
+    \(l)[k] =>
+        l >>
+        match {
+            N => N >> k,
+            C(n,r) =>
+                normaliseListN >>
+                    'Ap(r)[mu l. normaliseNat >> 'Ap(n)
+                                                    [mu n. C(n,l) >> k]]
+        };
+
+prd rec normaliseBool : { 'Ap(Bool)[Bool] } :=
+    \(n)[k] =>
+        n >>
+        match {
+            TT => TT >> k,
+            FF => FF >> k
+        };
+
+prd rec normaliseListB : { 'Ap(ListB)[ListB] } :=
+    \(l)[k] =>
+        l >>
+        match {
+            NB => NB >> k,
+            CB(b,r) =>
+                normaliseListB >>
+                    'Ap(r)[mu l. normaliseBool >> 'Ap(b)
+                                                     [mu b. CB(b,l) >> k]]
+        };
+
+prd rec printNat : { 'Ap(Nat) } :=
+    \(n) => normaliseNat >> 'Ap(n)[mu n. Print(n)];
+prd rec printListN : { 'Ap(ListN) } :=
+    \(l) => normaliseListN >> 'Ap(l)[mu l. Print(l)];
+prd rec printBool : { 'Ap(Bool) } :=
+    \(n) => normaliseBool >> 'Ap(n)[mu n. Print(n)];
+prd rec printListB : { 'Ap(ListB) } :=
+    \(l) => normaliseListB >> 'Ap(l)[mu l. Print(l)];
+
+
+prd rec always : { 'Ap(Nat)[StreamN] } :=
+    \(n)[ks] => comatch {
+        HN[ki]  => n >> ki,
+        TN[ks0] => always >> 'Ap(n)[ks0]
+    } >> ks;
+
+prd rec asc : { 'Ap(Nat)[StreamN] } :=
+    \(n)[ks] => comatch {
+        HN[ki]  => n >> ki,
+        TN[ks0] => asc >> 'Ap(S(n))[ks0]
+    } >> ks;
+
+prd rec streamTakeN : { 'Ap(Nat,StreamN)[ListN] } :=
+    \(n,s)[k] =>
+        n >>
+        match {
+            Z    => N >> k,
+            S(m) =>
+                streamTakeN >> 'Ap(m, mu d. s >> TN[d])
+                                  [mu l. C(mu ki. s >> HN[ki],l) >> k]
+        };
+
+prd rec streamDropN : { 'Ap(Nat,StreamN)[StreamN] } :=
+    \(n,s)[k] =>
+        n >>
+        match {
+            Z    => s >> k,
+            S(m) =>
+                streamDropN >> 'Ap(m,s)[TN[k]]
+        };
+
+prd indexAtN : { 'Ap(Nat,StreamN)[Nat] } :=
+    \(n,s)[k] =>
+        streamDropN >>
+        'Ap(n,s)[HN[k]];
+
+
+prd rec streamTakeB : { 'Ap(Nat,StreamB)[ListB] } :=
+    \(n,s)[k] =>
+        n >>
+        match {
+            Z    => NB >> k,
+            S(m) =>
+                streamTakeB >> 'Ap(m, mu d. s >> TB[d])
+                                  [mu l. CB(mu ki. s >> HB[ki],l) >> k]
+        };
+
+prd rec streamDropB : { 'Ap(Nat,StreamB)[StreamB] } :=
+    \(n,s)[k] =>
+        n >>
+        match {
+            Z    => s >> k,
+            S(m) =>
+                streamDropB >> 'Ap(m,s)[TB[k]]
+        };
+
+prd indexAtB : { 'Ap(Nat,StreamB)[Bool] } :=
+    \(n,s)[k] =>
+        streamDropB >>
+        'Ap(n,s)[HB[k]];
+
+prd rec coiter : { 'Ap({'Ap(Nat)[Bool]}, {'Ap(Nat)[Nat]}, Nat) [StreamB] } :=
+    \(make,update,state)[k] =>
+        comatch {
+            HB[kb] => make >> 'Ap(state)[kb],
+            TB[kt] => coiter >> 'Ap(make, update, mu kb. update >> 'Ap(state)[kb])
+                                   [kt]
+        } >> k;
+
+prd rec isEven : {'Ap(Nat)[Bool]} :=
+    \(n)[kb] =>
+        n >>
+        match {
+            Z => TT >> kb,
+            S(m) => isEven >> 'Ap(m)
+                        [ match {
+                            TT => FF >> kb,
+                            FF => TT >> kb
+                        } ]
+        };
+
+# print list of n + 5 entries [TT,FF,TT,FF,...]
+prd testCoiter : { 'Ap(Nat) } := \(n) => coiter >>
+    'Ap(    isEven,
+            \(n)[k] => S(n) >> k,
+            Z)
+        [ mu s. streamTakeB >> 'Ap(S(S(S(S(S(n))))),s)[ mu l. printListB >> 'Ap(l)]];
+
+prd rec coiterS : { 'Ap({'Ap(StreamN)[Bool]}, {'Ap(StreamN)[StreamN]}, StreamN) [StreamB] } :=
+    \(make,update,state)[k] =>
+        comatch {
+            HB[kb] => make >> 'Ap(state)[kb],
+            TB[kt] => coiterS >> 'Ap(make, update, mu kb. update >> 'Ap(state)[kb])
+                                   [kt]
+        } >> k;
+
+prd mapS : { 'Ap( { 'Ap(Nat)[Bool] }, StreamN ) [StreamB] } :=
+#prd mapS :=
+    \(f,s)[ks] =>
+        coiterS >> 'Ap(
+            \(s0)[kb] => s0 >> HN[mu m. f >> 'Ap(m)[kb]],
+            \(s0)[ks] => s0 >> TN[ks],
+            s) [ks];
+
+prd testMapS : { 'Ap(Nat) } := \(n) => mapS >>
+    'Ap(    isEven,
+            mu ks. asc >> 'Ap(n)[ks])
+        [ mu s. streamTakeB >> 'Ap(5,s)[ mu l. printListB >> 'Ap(l)]];
+
+prd rec corec : { 'Ap( {'Ap(Nat)[Bool]}, {'Ap(Nat)[StreamB, Nat]}, Nat) [StreamB] } :=
+    \(make, update, state) [k] =>
+        comatch {
+            HB[kb] => make >> 'Ap(state)[kb],
+            TB[kt] => corec >> 'Ap(make, update, mu kb. update >> 'Ap(state)[kt,kb])
+                                   [kt]
+        } >> k;
+
+prd rec corecSN : { 'Ap( {'Ap(ListN)[Nat]}, {'Ap(ListN)[StreamN, ListN]}, ListN) [StreamN] } :=
+    \(make, update, state) [k] =>
+        comatch {
+            HN[kb] => make >> 'Ap(state)[kb],
+            TN[kt] => corecSN >> 'Ap(make, update, mu kb. update >> 'Ap(state)[kt,kb])
+                                   [kt]
+        } >> k;
+
+prd rec appendN : { 'Ap(ListN,StreamN)[StreamN] } := \(l,s)[k] =>
+    corecSN >> 'Ap(
+        \(l)[kn] => l >> match { 
+                N => s >> HN[kn],
+                C(n,r) => n >> kn
+            },
+        \(l)[ret, kl] => l >> match {
+            N => s >> TN[ret],
+            C(n,r) => r >> kl
+        },
+        l
+    )[k];
+
+prd testAppendN : { 'Ap(ListN) } := \(l) => appendN >> 'Ap(l, mu ks. asc >> 'Ap(Z)[ks])
+    [ mu s. streamTakeN >> 'Ap(5,s)[ mu l. printListN >> 'Ap(l)]];
