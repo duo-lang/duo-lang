@@ -4,7 +4,7 @@ module TypeInference.GenerateConstraints.STerms
   , genConstraintsCommand
   ) where
 
-import Control.Monad (forM, when)
+import Control.Monad (forM, forM_, when)
 
 import Pretty.STerms ()
 import Pretty.Types ()
@@ -67,17 +67,21 @@ genConstraintsSTerm im (XtorCall _ CnsRep xt@MkXtorName{ xtorNominalStructural =
   let resType = TyCodata NegRep [MkXtorSig xt argTypes]
   return (resTerm, resType)
 
-genConstraintsSTerm im (XtorCall _ PrdRep xt@MkXtorName{ xtorNominalStructural = Nominal } args) = do
+genConstraintsSTerm im (XtorCall loc PrdRep xt@MkXtorName{ xtorNominalStructural = Nominal } args) = do
   (args', argTypes) <- genConstraintsArgs im args
   tn <- lookupDataDecl xt
-  -- TODO: Check if args of xtor are correct?
+  -- Check if args of xtor are correct
+  xtorSig <- lookupXtorSig tn xt NegRep
+  forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
   let ty = if im == InferNominal then TyNominal PosRep (data_name tn)
       else TyRefined PosRep (data_name tn) $ TyData PosRep [MkXtorSig xt argTypes]
   return (XtorCall () PrdRep xt args', ty)
-genConstraintsSTerm im (XtorCall _ CnsRep xt@MkXtorName{ xtorNominalStructural = Nominal } args) = do
+genConstraintsSTerm im (XtorCall loc CnsRep xt@MkXtorName{ xtorNominalStructural = Nominal } args) = do
   (args', argTypes) <- genConstraintsArgs im args
   tn <- lookupDataDecl xt
-  -- TODO: Check if args of xtor are correct?
+  -- Check if args of xtor are correct
+  xtorSig <- lookupXtorSig tn xt NegRep
+  forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2
   let ty = if im == InferNominal then TyNominal NegRep (data_name tn)
       else TyRefined NegRep (data_name tn) $ TyCodata NegRep [MkXtorSig xt argTypes]
   return (XtorCall () CnsRep xt args', ty)

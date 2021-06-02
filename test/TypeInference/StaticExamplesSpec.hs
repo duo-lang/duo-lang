@@ -23,7 +23,7 @@ typecheckExample :: Environment FreeVarName -> String -> String -> Spec
 typecheckExample env termS typS = do
   it (termS ++  " typechecks as: " ++ typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = trace_minTypeAut <$> (inferSTermTraced NonRecursive "" InferNominal PrdRep term env)
+      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive "" InferNominal PrdRep term env
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
@@ -51,7 +51,7 @@ prgExamples =
 
     -- addNominal
     , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu w. S(w) >> k] }} >> k })['Ap(m)[k]] }"
-        , "forall t0. { 'Ap(t0,Nat)[(t0 \\/ Nat)] }" )
+        , "{ 'Ap(Nat,Nat)[Nat] }" )
 
     -- mltNominal
     , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]}"
