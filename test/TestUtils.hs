@@ -1,6 +1,7 @@
 module TestUtils where
 
 import System.Directory (listDirectory)
+import System.FilePath
 
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
@@ -14,10 +15,21 @@ getAvailableCounterExamples = do
   examples <- listDirectory "test/counterexamples/"
   return (("test/counterexamples/" ++) <$> examples)
 
+-- filter stuff like hidden files (e.g. artifacts from editors etc)
+-- dump all your exceptions here
+filterExamples :: FilePath -> Bool
+filterExamples fp = not (isHidden fp || wrongFt fp)
+  where
+    isHidden fp = case fp of 
+                    [] -> False
+                    (h:_) -> h == '.'
+    wrongFt fp  = takeExtension fp `elem` (("." <>) <$> ["scm", "ub"])
+
+
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
   examples <- listDirectory "examples/"
-  return (("examples/" ++) <$> examples)
+  return (("examples" </>) <$> filter filterExamples examples)
 
 getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName])
 getParsedDeclarations fp = do
