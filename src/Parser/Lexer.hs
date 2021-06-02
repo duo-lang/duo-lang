@@ -41,6 +41,8 @@ module Parser.Lexer
   , braces
   , dbraces
   , argListP
+
+  , checkTick
   ) where
 
 import Text.Megaparsec hiding (State)
@@ -116,17 +118,16 @@ freeVarName = do
   checkReserved name
   return (name, pos)
 
+checkTick :: NominalStructural -> Parser ()
+checkTick Nominal = return ()
+checkTick Structural = () <$ tick
 
 xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
-xtorName Structural = do
-  _ <- tick
+xtorName ns = do
+  () <- checkTick ns
   (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
   checkReserved name
-  return (MkXtorName Structural name, pos) -- Saved without tick!
-xtorName Nominal = do
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
-  checkReserved name
-  return (MkXtorName Nominal name, pos)
+  return (MkXtorName ns name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = do
