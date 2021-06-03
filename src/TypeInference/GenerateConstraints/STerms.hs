@@ -18,7 +18,7 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 genConstraintsArgs :: XtorArgs Loc FreeVarName
-                   -> GenM (XtorArgs () FreeVarName, TypArgs (PrdCnsToPol Prd))
+                   -> GenM (XtorArgs () FreeVarName, TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm

@@ -271,7 +271,7 @@ checkExhaustiveness matched decl = do
   case im of
     InferRefined -> return ()
     InferNominal ->
-      forM_ declared $ \xn -> unless (xn `elem` matched || im == InferRefined)
+      forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ 
           ppPrint (data_name decl) ++ " is not matched against." ))
 

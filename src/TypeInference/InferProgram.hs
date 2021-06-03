@@ -172,7 +172,7 @@ insertDecl (DataDecl _loc dcl) env@Environment { declEnv } _ = do
   return $ env { declEnv = dcl : declEnv }
 
 inferProgram :: [Declaration FreeVarName] -> InferenceMode -> Either LocatedError (Environment FreeVarName)
-inferProgram  = inferProgram' mempty
+inferProgram = inferProgram' mempty
   where
     inferProgram' :: Environment FreeVarName
                   -> [Declaration FreeVarName]
