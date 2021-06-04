@@ -98,9 +98,10 @@ focusApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
       order <- lookupEvalOrder
       case replaceMu order args of
         (args', (muP, muC)) ->
-          case order of
-            CBV -> return $ Just $ Apply ext (head muP) (MuAbs ext CnsRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns))
-            CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" (Apply ext (XtorCall ext PrdRep xt args') cns)) (head muC)
+          let xc = XtorCall ext PrdRep xt args'
+          in return $ Just $ case order of
+                CBV -> Apply ext (head muP) (MuAbs ext CnsRep "r" (Apply ext xc cns))
+                CBN -> Apply ext (MuAbs ext PrdRep "r" (Apply ext xc cns)) (head muC)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- Copattern matches.
 focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
@@ -119,9 +120,10 @@ focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
       order <- lookupEvalOrder
       case replaceMu order args of
         (args', (muP, muC)) ->
-          case order of
-            CBV -> return $ Just $ Apply ext (head muP) (MuAbs ext CnsRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args'))
-            CBN -> return $ Just $ Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd (XtorCall ext CnsRep xt args')) (head muC)
+          let xc = XtorCall ext CnsRep xt args'
+          in return $ Just $ case order of
+            CBV -> Apply ext (head muP) (MuAbs ext CnsRep "r" $ Apply ext prd xc)
+            CBN -> Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd xc) (head muC)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- all other cases don't need focusing steps
 focusApplyOnce _ _ = return Nothing
