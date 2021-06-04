@@ -12,7 +12,7 @@ import Control.Monad (forM_)
 
 
 evalFocusing :: EvalOrder -> String -> String -> Spec
-evalFocusing evalOrder cmd cmdRes = do
+evalFocusing evalOrder cmd cmdRes =
   case runInteractiveParser commandP cmd of
     Left err -> it "Could not parse" $ expectationFailure (ppPrint err)
     Right (cmd',_) -> do
@@ -21,19 +21,19 @@ evalFocusing evalOrder cmd cmdRes = do
       case prgEnv of
         Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrint err)
         Right prgEnv -> do
-          case runEval (eval $ bimap (const ()) id cmd') evalOrder prgEnv of
+          case runEval (eval $ first (const ()) cmd') evalOrder prgEnv of
             Left err -> it "Could not evaluate" $ expectationFailure (ppPrint err)
-            Right b -> 
+            Right b ->
               it (cmd ++  " evaluates to: " ++ cmdRes) $ do
-              b `shouldBe` (bimap (const ()) id cmdRes')
+              b `shouldBe` first (const ()) cmdRes'
 
 
 cbvExamples :: [((EvalOrder,String), String)]
-cbvExamples = 
+cbvExamples =
     -- CBV examples
     zip
     (zip
-    (iterate id CBV)
+    (repeat CBV)
     [
     "succ >> 'Ap('S(mu k. 1 >> k))[print]"
     , "'S(mu k. 1 >> k) >> match {'S(y) => 'S('S(y)) >> print }"
@@ -55,8 +55,8 @@ cbvExamples =
     , "Print(6)"
     , "Print(False)"
     , "Print(False)"
-    , "Print(False)" 
-    , "Print(False)" 
+    , "Print(False)"
+    , "Print(False)"
     , "Print(6)"
     , "Print(6)"
     , "Print(8)"
@@ -68,7 +68,7 @@ cbnExamples =
     -- CBN examples
     zip
     (zip
-    (iterate id CBN)
+    (repeat CBN)
     [
     "id >> 'Ap(1)[mu v. v >> print]"
     , "id >> 'Ap(mu k. 1 >> k)[mu v. v >> match {'S(x) => x >> print }]"
