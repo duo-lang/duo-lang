@@ -17,8 +17,8 @@ subsumptionCheck ts1 ts2 bspec = do
 
 subsumptionCheckPos :: Bool -> String -> String -> Spec
 subsumptionCheckPos b s1 s2 = do
-  let Right ty1 = runInteractiveParser typeSchemeP s1
-  let Right ty2 = runInteractiveParser typeSchemeP s2
+  let Right ty1 = runInteractiveParser (typeSchemeP PosRep) s1
+  let Right ty2 = runInteractiveParser (typeSchemeP PosRep) s2
   subsumptionCheck ty1 ty2 b
 
 

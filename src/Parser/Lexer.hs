@@ -25,6 +25,7 @@ module Parser.Lexer
   , pipe
   , comma
   , semi
+  , colon
   , backslash
   , coloneq
   , rightarrow
@@ -32,12 +33,16 @@ module Parser.Lexer
   , unionSym
   , intersectionSym
   , subtypeSym
+  , refineSym
     -- Parens
   , angles
   , parens
   , brackets
   , braces
+  , dbraces
   , argListP
+
+  , checkTick
   ) where
 
 import Text.Megaparsec hiding (State)
@@ -113,17 +118,16 @@ freeVarName = do
   checkReserved name
   return (name, pos)
 
+checkTick :: NominalStructural -> Parser ()
+checkTick Nominal = return ()
+checkTick Structural = () <$ tick
 
 xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
-xtorName Structural = do
-  _ <- tick
+xtorName ns = do
+  () <- checkTick ns
   (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
   checkReserved name
-  return (MkXtorName Structural name, pos) -- Saved without tick!
-xtorName Nominal = do
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
-  checkReserved name
-  return (MkXtorName Nominal name, pos)
+  return (MkXtorName ns name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = do
@@ -200,6 +204,9 @@ dot = symbol "."
 semi :: Parser SourcePos
 semi = symbol ";"
 
+colon :: Parser SourcePos
+colon = symbol ":"
+
 pipe :: Parser SourcePos
 pipe = symbol "|"
 
@@ -227,6 +234,9 @@ intersectionSym = symbol "/\\"
 subtypeSym :: Parser SourcePos
 subtypeSym = symbol "<:"
 
+refineSym :: Parser SourcePos
+refineSym = symbol "<<:"
+
 -------------------------------------------------------------------------------------------
 -- Parens
 -------------------------------------------------------------------------------------------
@@ -238,11 +248,12 @@ betweenP open close middle = do
   endPos <- close
   pure (res, endPos)
 
-parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
-parens    = betweenP (symbol "(") (symbol ")")
-braces    = betweenP (symbol "{") (symbol "}")
-brackets  = betweenP (symbol "[") (symbol "]")
-angles    = betweenP (symbol "<") (symbol ">")
+parens, braces, brackets, angles, dbraces :: Parser a -> Parser (a, SourcePos)
+parens    = betweenP (symbol "(")  (symbol ")")
+braces    = betweenP (symbol "{")  (symbol "}")
+brackets  = betweenP (symbol "[")  (symbol "]")
+angles    = betweenP (symbol "<")  (symbol ">")
+dbraces   = betweenP (symbol "{{") (symbol "}}")
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 argListP ::  Parser a -> Parser a ->  Parser (Twice [a], SourcePos)

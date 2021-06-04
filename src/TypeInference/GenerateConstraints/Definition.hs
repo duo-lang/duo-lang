@@ -240,7 +240,7 @@ lookupDataDecl :: XtorName -> GenM DataDecl
 lookupDataDecl xt = do
   env <- asks env
   case lookupXtor xt env of
-    Nothing -> throwGenError $ "Constructor " ++ ppPrint xt ++ " is not contained in program"
+    Nothing -> throwGenError $ "Constructor/Destructor " ++ ppPrint xt ++ " is not contained in program."
     Just decl -> return decl
 
 lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)

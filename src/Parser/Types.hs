@@ -75,10 +75,18 @@ recType rep = do
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) (typP rep)
   return $ TyRec rep rv ty
 
+refTypeP :: PolarityRep pol -> Parser (Typ pol)
+refTypeP rep = fst <$> dbraces (do
+  ty <- typP rep
+  _ <- refineSym
+  (tn,_) <- typeNameP
+  return $ TyRefined rep tn ty)
+
 -- Without joins and meets
 typP' :: PolarityRep pol -> Parser (Typ pol)
 typP' rep = try (fst <$> parens (typP rep)) <|>
   nominalTypeP rep <|>
+  refTypeP rep <|>
   dataTypeP DataRep rep <|>
   dataTypeP CodataRep rep <|>
   recType rep <|>
@@ -99,6 +107,7 @@ switchPol (TyVar rep tv) = TyVar (flipPolarityRep rep) tv
 switchPol (TyData rep xtors) = TyData (flipPolarityRep rep) (switchSig <$> xtors)
 switchPol (TyCodata rep xtors) = TyCodata (flipPolarityRep rep) (switchSig <$> xtors)
 switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
+switchPol (TyRefined rep tn typ) = TyRefined (flipPolarityRep rep) tn (switchPol typ)
 switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 
@@ -115,10 +124,10 @@ invariantP = do
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
-typeSchemeP :: Parser (TypeScheme 'Pos)
-typeSchemeP = do
+typeSchemeP :: PolarityRep pol -> Parser (TypeScheme pol)
+typeSchemeP polrep = do
   tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) (typP PosRep)
+  monotype <- local (\s -> s { tvars = tvars' }) (typP polrep)
   if S.fromList (freeTypeVars monotype) `S.isSubsetOf` tvars'
     then return (TypeScheme (S.toList tvars') monotype)
     else fail "Forall annotation in type scheme is incorrect"
