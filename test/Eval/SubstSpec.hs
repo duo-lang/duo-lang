@@ -1,5 +1,7 @@
 module Eval.SubstSpec ( spec )  where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Test.Hspec
 
 import Parser.Parser
@@ -9,16 +11,16 @@ import Eval.STerms (areAllSubst)
 import Eval.Eval
 
 
-substCtorExample :: EvalOrder -> String -> Spec
+substCtorExample :: EvalOrder -> Text -> Spec
 substCtorExample order termS = do
-  it (termS ++  " can't be substituted.") $ do
+  it (T.unpack termS ++  " can't be substituted.") $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
       case term of
         XtorCall _ PrdRep _ args -> (areAllSubst order args) `shouldBe` False
-        _ -> expectationFailure $ termS ++ "is not a Ctor."
+        _ -> expectationFailure $ T.unpack termS ++ "is not a Ctor."
 
 cbvExamples :: [Spec]
-cbvExamples = 
+cbvExamples =
     -- CBV examples
     substCtorExample CBV <$>
     [
@@ -30,7 +32,7 @@ cbvExamples =
     ]
 
 cbnExamples :: [Spec]
-cbnExamples = 
+cbnExamples =
     -- CBN examples
     substCtorExample CBN <$>
     [

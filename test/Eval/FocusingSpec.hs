@@ -3,6 +3,8 @@ module Eval.FocusingSpec ( spec ) where
 import Test.Hspec
 import TestUtils
 import Data.Bifunctor
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Pretty.Pretty
 import Parser.Parser
@@ -10,20 +12,20 @@ import Eval.STerms (eval)
 import Eval.Eval
 
 
-evalFocusing :: EvalOrder -> String -> String -> Spec
+evalFocusing :: EvalOrder -> Text -> Text -> Spec
 evalFocusing evalOrder cmd cmdRes =
   case runInteractiveParser commandP cmd of
-    Left err -> it "Could not parse" $ expectationFailure (ppPrint err)
+    Left err -> it "Could not parse" $ expectationFailure (ppPrintString err)
     Right (cmd',_) -> do
       let Right (cmdRes',_) = runInteractiveParser commandP cmdRes
       prgEnv <- runIO $ getEnvironment "examples/prg.ds"
       case prgEnv of
-        Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrint err)
+        Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrintString err)
         Right prgEnv -> do
           case runEval (eval $ first (const ()) cmd') evalOrder prgEnv of
-            Left err -> it "Could not evaluate" $ expectationFailure (ppPrint err)
+            Left err -> it "Could not evaluate" $ expectationFailure (ppPrintString err)
             Right b ->
-              it (cmd ++  " evaluates to: " ++ cmdRes) $ do
+              it (T.unpack (cmd <>  " evaluates to: " <> cmdRes)) $ do
               b `shouldBe` first (const ()) cmdRes'
 
 

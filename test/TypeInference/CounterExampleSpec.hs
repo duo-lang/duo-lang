@@ -9,7 +9,7 @@ import Pretty.Pretty
 import Syntax.Types
 
 instance Show (TypeScheme pol) where
-  show = ppPrint
+  show = ppPrintString
 
 -- | Check that the programs in "test/counterexamples/" subfolder dont typecheck.
 spec :: Spec

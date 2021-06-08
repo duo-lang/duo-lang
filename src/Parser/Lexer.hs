@@ -45,6 +45,8 @@ module Parser.Lexer
   , checkTick
   ) where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -81,7 +83,7 @@ sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
 -- Helper functions
 -------------------------------------------------------------------------------------------
 
-symbol :: String -> Parser SourcePos
+symbol :: Text -> Parser SourcePos
 symbol str = do
   _ <- string str
   endPos <- getSourcePos
@@ -96,7 +98,7 @@ lexeme p = do
   return (res, endPos)
 
 
-keywordP :: String -> Parser SourcePos
+keywordP :: Text -> Parser SourcePos
 keywordP str = do
   _ <- string str <* notFollowedBy alphaNumChar
   endPos <- getSourcePos
@@ -114,7 +116,7 @@ numP = do
 
 freeVarName :: Parser (FreeVarName, SourcePos)
 freeVarName = do
-  (name, pos) <- lexeme $ ((:) <$> lowerChar <*> many alphaNumChar)
+  (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
   checkReserved name
   return (name, pos)
 
@@ -125,13 +127,13 @@ checkTick Structural = () <$ tick
 xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
 xtorName ns = do
   () <- checkTick ns
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkXtorName ns name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = do
-  (name, pos) <- lexeme $ (:) <$> upperChar <*> many alphaNumChar
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkTypeName name, pos)
 
@@ -139,14 +141,14 @@ typeNameP = do
 -- Keywords
 -------------------------------------------------------------------------------------------
 
-keywords :: [String]
+keywords :: [Text]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with"
            , "Done", "Print", "forall", "data", "codata", "rec", "mu"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
-checkReserved :: String -> Parser ()
-checkReserved str | str `elem` keywords = fail $ "Keyword " <> str <> " cannot be used as an identifier."
+checkReserved :: Text -> Parser ()
+checkReserved str | str `elem` keywords = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
 
 matchKwP :: Parser SourcePos

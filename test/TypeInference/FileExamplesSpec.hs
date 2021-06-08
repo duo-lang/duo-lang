@@ -16,5 +16,5 @@ spec = do
       describe ("The file " ++ example ++ " typechecks.") $ do
         env <- runIO $ getEnvironment example
         case env of
-          Left err -> it "Could not load examples" $ expectationFailure (ppPrint err)
+          Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
           Right _env -> return ()
