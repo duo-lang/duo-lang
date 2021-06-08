@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Pretty.STerms where
 
 import Prettyprinter

@@ -1,7 +1,9 @@
 module TypeInference.StaticExamplesSpec ( spec )  where
 
-import Test.Hspec
+import Data.Text (Text)
+import qualified Data.Text as T
 import System.FilePath
+import Test.Hspec
 
 import TestUtils
 import Parser.Parser
@@ -17,18 +19,18 @@ import TypeAutomata.Subsume (typeAutEqual)
 import Control.Monad (forM_)
 
 instance Show (TypeScheme pol) where
-  show = ppPrint
+  show = ppPrintString
 
-typecheckExample :: Environment FreeVarName -> String -> String -> Spec
+typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
 typecheckExample env termS typS = do
-  it (termS ++  " typechecks as: " ++ typS) $ do
+  it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
       let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive "" InferNominal PrdRep term env
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
-prgExamples :: [(String,String)]
+prgExamples :: [(Text,Text)]
 prgExamples = 
     [ ( "\\(x)[k] => x >> k"
         , "forall a. { 'Ap(a)[a] }" )
@@ -76,7 +78,7 @@ typecheckInFile fp =
     describe ("Context is " <> fp) $ do
         env <- runIO $ getEnvironment ("examples" </> fp) InferNominal
         case env of
-            Left err -> it "Could not load environment" $ expectationFailure (ppPrint err)
+            Left err -> it "Could not load environment" $ expectationFailure (ppPrintString err)
             Right env' -> do
                 forM_ prgExamples $ uncurry $ typecheckExample env'
 

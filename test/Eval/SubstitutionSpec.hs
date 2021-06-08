@@ -1,9 +1,12 @@
 module Eval.SubstitutionSpec where
 
-import Test.Hspec
-import qualified Data.Map as M
-import Data.Either (isLeft, isRight)
 import Control.Monad (forM_)
+import Data.Either (isLeft, isRight)
+import qualified Data.Map as M
+import qualified Data.Text as T
+import Test.Hspec
+
+
 
 import Pretty.Pretty
 import Pretty.Errors ()
@@ -21,10 +24,10 @@ spec = do
       describe ("Examples in " ++ example ++ " are locally closed") $ do
         env <- runIO $ getEnvironment example InferNominal
         case env of
-          Left err -> it "Could not load examples." $ expectationFailure (ppPrint err)
+          Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
           Right env -> do
             forM_ (M.toList (prdEnv env)) $ \(name,(term,_)) -> do
-              it (name ++ " does not contain dangling deBruijn indizes") $
+              it (T.unpack name ++ " does not contain dangling deBruijn indizes") $
                 termLocallyClosed term `shouldBe` Right ()
 
   describe "checkIfBound works" $ do

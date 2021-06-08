@@ -23,7 +23,7 @@ spec = do
         decls <- runIO $ getParsedDeclarations example
         it "Can be parsed again." $
           case decls of
-            Left err -> expectationFailure (ppPrint err)
+            Left err -> expectationFailure (ppPrintString err)
             Right decls -> (runFileParser example programP (ppPrint decls)) `shouldSatisfy` isRight
 
 

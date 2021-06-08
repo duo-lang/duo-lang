@@ -5,6 +5,7 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
+import qualified Data.Text as T
 
 import Eval.Eval
 import Pretty.Pretty
@@ -19,10 +20,10 @@ import Utils
 lookupCase :: XtorName -> [SCase () FreeVarName] -> EvalM FreeVarName (SCase () FreeVarName)
 lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
-  Nothing -> throwEvalError $ unlines ["Error during evaluation. The xtor: "
-                                      , unXtorName xt
-                                      , "doesn't occur in match."
-                                      ]
+  Nothing -> throwEvalError ["Error during evaluation. The xtor: "
+                            , unXtorName xt
+                            , "doesn't occur in match."
+                            ]
 
 lengthXtorArgs :: XtorArgs () FreeVarName -> Twice Int
 lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
@@ -31,8 +32,10 @@ checkArgs :: Command () FreeVarName -> Twice [FreeVarName] -> XtorArgs () FreeVa
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
-  else throwEvalError ("Error during evaluation of \"" ++ ppPrint cmd ++
-                        "\"\nArgument lengths don't coincide.")
+  else throwEvalError [ "Error during evaluation of:"
+                      , ppPrint cmd
+                      , "Argument lengths don't coincide."
+                      ]
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalSTermOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
@@ -66,11 +69,11 @@ evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
 evalApplyOnce (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpeningSingle CnsRep cns cmd))
 evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
-evalApplyOnce (BoundVar _ PrdRep i) _ = throwEvalError $ "Found bound variable during evaluation. Index: " ++ show i
-evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError $ "Found bound variable during evaluation. Index: " ++ show i
+evalApplyOnce (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
+evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
 -- Match applied to Match, or Xtor to Xtor can't evaluate
-evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError "Cannot evaluate match applied to match"
-evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError "Cannot evaluate constructor applied to destructor"
+evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError ["Cannot evaluate match applied to match"]
+evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot evaluate constructor applied to destructor"]
 
 -- | Return just thef final evaluation result
 eval :: Command () FreeVarName -> EvalM FreeVarName (Command () FreeVarName)

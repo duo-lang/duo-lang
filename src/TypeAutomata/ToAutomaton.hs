@@ -19,6 +19,8 @@ import qualified Data.Set as S
 
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
@@ -84,8 +86,8 @@ runTypeAutTvars tvars m = do
 -- Helper functions
 --------------------------------------------------------------------------
 
-throwAutomatonError :: [String] -> TTA a
-throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
+throwAutomatonError :: [Text] -> TTA a
+throwAutomatonError msg = throwError $ TypeAutomatonError (T.unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
@@ -183,8 +185,8 @@ insertType (TyNominal rep tn) = do
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
 insertType ty@(TyRefined pr _ _) = do
-  throwAutomatonError ["Cannot insert refined type " ++ ppPrint ty ++ 
-    " with polarity " ++ show (polarityRepToPol pr)]
+  throwAutomatonError ["Cannot insert refined type " <> ppPrint ty <>
+    " with polarity " <> ppPrint (polarityRepToPol pr)]
 
 
 --------------------------------------------------------------------------

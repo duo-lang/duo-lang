@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Pretty.Types where
 
 import Prettyprinter
@@ -9,6 +8,10 @@ import Syntax.Types
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Types
 ---------------------------------------------------------------------------------
+
+instance PrettyAnn Polarity where
+  prettyAnn Pos = "Pos"
+  prettyAnn Neg = "Neg"
 
 instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv

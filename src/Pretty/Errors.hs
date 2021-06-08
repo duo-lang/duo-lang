@@ -1,7 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Pretty.Errors where
 
 import Control.Monad (forM_)
+import qualified Data.Text.IO as T
 import Prettyprinter
 import Text.Megaparsec.Pos
 
@@ -27,15 +27,15 @@ instance PrettyAnn Error where
 
 printLocatedError :: LocatedError -> IO ()
 printLocatedError (Located loc err) = do
-  putStrLn ("Error at: " ++ ppPrint loc)
+  T.putStrLn ("Error at: " <> ppPrint loc)
   printRegion loc
-  putStrLn ""
-  putStrLn (ppPrint err)
+  T.putStrLn ""
+  T.putStrLn (ppPrint err)
 
 printRegion :: Loc -> IO ()
 printRegion (Loc (SourcePos "<interactive>" _ _) (SourcePos _ _ _)) = return ()
 printRegion (Loc (SourcePos fp line1 _) (SourcePos _ line2 _)) = do
-  putStrLn ""
+  T.putStrLn ""
   file <- readFile fp
   let region = getRegion file (unPos line1) (unPos line2)
   let annotatedRegion = generatePrefixes region

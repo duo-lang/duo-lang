@@ -37,6 +37,8 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.Map as M
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Pretty.Pretty
 import Pretty.STerms ()
@@ -98,7 +100,7 @@ runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialRe
 -- Throwing errors
 ---------------------------------------------------------------------------------------------
 
-throwGenError :: String -> GenM a
+throwGenError :: Text -> GenM a
 throwGenError msg = throwError $ GenConstraintsError msg
 
 ---------------------------------------------------------------------------------------------
@@ -108,7 +110,7 @@ throwGenError msg = throwError $ GenConstraintsError msg
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
   var <- gets varCount
-  let tvar = MkTVar ("u" <> (show var))
+  let tvar = MkTVar ("u" <> T.pack (show var))
   -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
@@ -157,15 +159,15 @@ lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
 lookupContext rep (i,j) = do
   ctx <- asks context
   case indexMaybe ctx i of
-    Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+    Nothing -> throwGenError $ "Bound Variable out of bounds: " <> T.pack (show (i,j))
     Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
       PrdRep -> do
         case indexMaybe prdTypes j of
-          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+          Nothing -> throwGenError $ "Bound Variable out of bounds: " <> T.pack (show (i,j))
           Just ty -> return ty
       CnsRep -> do
         case indexMaybe cnsTypes j of
-          Nothing -> throwGenError $ "Bound Variable out of bounds: " ++ show (i,j)
+          Nothing -> throwGenError $ "Bound Variable out of bounds: " <> T.pack (show (i,j))
           Just ty -> return ty
 
 lookupPrdEnv :: FreeVarName -> GenM (TypeScheme Pos)
@@ -174,7 +176,7 @@ lookupPrdEnv fv = do
   case M.lookup fv prdEnv of
     Just (_,tys) -> return tys
     Nothing ->
-      throwGenError $ "Unbound free producer variable:" ++ ppPrint fv
+      throwGenError $ "Unbound free producer variable:" <> ppPrint fv
 
 lookupCnsEnv :: FreeVarName -> GenM (TypeScheme Neg)
 lookupCnsEnv fv = do
@@ -182,7 +184,7 @@ lookupCnsEnv fv = do
   case M.lookup fv cnsEnv of
     Just (_,tys) -> return tys
     Nothing ->
-      throwGenError $ "Unbound free consumer variable:" ++ ppPrint fv
+      throwGenError $ "Unbound free consumer variable:" <> ppPrint fv
 
 lookupDefEnv :: FreeVarName -> GenM (TypeScheme Pos)
 lookupDefEnv fv = do
@@ -190,7 +192,7 @@ lookupDefEnv fv = do
   case M.lookup fv defEnv of
     Just (_,tys) -> return tys
     Nothing ->
-      throwGenError $ "Unbound free def variable:" ++ ppPrint fv
+      throwGenError $ "Unbound free def variable:" <> ppPrint fv
 
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.
@@ -237,7 +239,7 @@ lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs () FreeVarName)
 lookupCase xt = do
   env <- asks env
   case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwGenError $ "GenerateConstraints: The xtor " ++ ppPrint xt ++ " could not be looked up."
+    Nothing -> throwGenError $ "GenerateConstraints: The xtor " <> ppPrint xt <> " could not be looked up."
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
       let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
       let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
@@ -247,14 +249,14 @@ lookupDataDecl :: XtorName -> GenM DataDecl
 lookupDataDecl xt = do
   env <- asks env
   case lookupXtor xt env of
-    Nothing -> throwGenError $ "Constructor/Destructor " ++ ppPrint xt ++ " is not contained in program."
+    Nothing -> throwGenError $ "Constructor/Destructor " <> ppPrint xt <> " is not contained in program."
     Just decl -> return decl
 
 lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
 lookupXtorSig decl xtn pol = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
-    Nothing -> throwGenError $ "XtorName " ++ unXtorName xtn ++ " not found in declaration of type " ++ unTypeName (data_name decl)
+    Nothing -> throwGenError $ "XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)
 
 -- | Checks for a given list of XtorNames and a type declaration whether:
 -- (1) All the xtornames occur in the type declaration. (Correctness)
@@ -265,13 +267,13 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
 checkExhaustiveness matched decl = do
   let declared = sig_name <$> data_xtors decl PosRep
   forM_ matched $ \xn -> unless (xn `elem` declared) 
-    (throwGenError ("Pattern Match Error. The xtor " ++ ppPrint xn ++ " does not occur in the declaration of type " ++ ppPrint (data_name decl)))
+    (throwGenError ("Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)))
   im <- asks inferMode
   -- Only check exhaustiveness when not using refinements
   case im of
     InferRefined -> return ()
     InferNominal ->
       forM_ declared $ \xn -> unless (xn `elem` matched)
-        (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " ++ ppPrint xn ++ " of type " ++ 
-          ppPrint (data_name decl) ++ " is not matched against." ))
+        (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
+          ppPrint (data_name decl) <> " is not matched against." ))
 
