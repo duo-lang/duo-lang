@@ -8,7 +8,6 @@ import Pretty.Pretty
 import Parser.Parser
 import Eval.STerms (eval)
 import Eval.Eval
-import Control.Monad (forM_)
 
 
 evalFocusing :: EvalOrder -> String -> String -> Spec
@@ -28,12 +27,11 @@ evalFocusing evalOrder cmd cmdRes =
               b `shouldBe` first (const ()) cmdRes'
 
 
-cbvExamples :: [((EvalOrder,String), String)]
+cbvExamples :: [Spec]
 cbvExamples =
     -- CBV examples
-    zip
-    (zip
-    (repeat CBV)
+    zipWith
+    (evalFocusing CBV)
     [
     "succ >> 'Ap('S(mu k. '1 >> k))[print]"
     , "'S(mu k. '1 >> k) >> match {'S(y) => 'S('S(y)) >> print }"
@@ -48,7 +46,7 @@ cbvExamples =
     ,"twice >> 'Ap(times2)['Ap( 'S(mu x.div2 >> 'Ap('2)[x]))[print]]"
     -- fold + '0 (map times2 (reverse ['1,'2]))
     , "foldl >> 'Ap(add, '0, mu k.map >> 'Ap(times2, mu k2. reverse >> 'Ap('Cons('1,'Cons('2,'Nil)))[k2])[k])[print]"
-    ])
+    ]
     [
     "Print('3)"
     , "Print('3)"
@@ -63,19 +61,18 @@ cbvExamples =
     , "Print('6)"
     ]
 
-cbnExamples :: [((EvalOrder,String), String)]
+cbnExamples :: [Spec]
 cbnExamples =
     -- CBN examples
-    zip
-    (zip
-    (repeat CBN)
+    zipWith
+    (evalFocusing CBN)
     [
     "id >> 'Ap('1)[mu v. v >> print]"
     , "id >> 'Ap(mu k. '1 >> k)[mu v. v >> match {'S(x) => x >> print }]"
     , "id >> 'Ap(comp)['Ap(div2, times2)['Ap('1)[mu x.Print(x)]]]])"
     , "id >> 'Ap(mu k. times3 >> 'Ap('1)[k])[mu s. add >> 'Ap(s,s)[print] ]"
     , "C('2)[C('3)['Ap[mu x.Print(x)]]] >> match{C(x)[k] => x >> k}"
-    ])
+    ]
     [
     "Print(mu r.(comatch {'Ap(x)[k] => x >> k} >> 'Ap('S('Z))[r]))"
     , "Print('Z)"
@@ -87,4 +84,4 @@ cbnExamples =
 
 -- evaluate using focusing steps
 spec :: Spec
-spec = forM_ (cbvExamples ++ cbnExamples) $ (uncurry . uncurry) evalFocusing
+spec = sequence_  $ cbvExamples ++ cbnExamples

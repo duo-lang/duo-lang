@@ -7,7 +7,6 @@ import Pretty.Errors ()
 import Syntax.STerms
 import Eval.STerms (areAllSubst)
 import Eval.Eval
-import Control.Monad (forM_)
 
 
 substCtorExample :: EvalOrder -> String -> Spec
@@ -18,11 +17,10 @@ substCtorExample order termS = do
         XtorCall _ PrdRep _ args -> (areAllSubst order args) `shouldBe` False
         _ -> expectationFailure $ termS ++ "is not a Ctor."
 
-cbvExamples :: [(EvalOrder,String)]
+cbvExamples :: [Spec]
 cbvExamples = 
     -- CBV examples
-    zip
-    (repeat CBV)
+    substCtorExample CBV <$>
     [
     "C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)]"
     , "C2(C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)])"
@@ -31,11 +29,10 @@ cbvExamples =
     , "C(42)[D()[D()[C(mu x. Print(x))[]]]]"
     ]
 
-cbnExamples :: [(EvalOrder,String)]
+cbnExamples :: [Spec]
 cbnExamples = 
     -- CBN examples
-    zip
-    (repeat CBN)
+    substCtorExample CBN <$>
     [
     "C('True)[mu x.Print(x)]"
     , "C('True)[D()[mu x. Print(x)]]"
@@ -46,4 +43,4 @@ cbnExamples =
 
 
 spec :: Spec
-spec = forM_ (cbvExamples ++ cbnExamples) $ uncurry substCtorExample
+spec = sequence_ $ cbvExamples ++ cbnExamples
