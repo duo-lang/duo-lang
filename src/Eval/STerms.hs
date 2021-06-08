@@ -165,7 +165,7 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
         (newCns, mu) -> (MkXtorArgs prdArgs newCns, mu)
   where
     replaceMuPrd :: EvalOrder -> [STerm Prd () FreeVarName] -> ([STerm Prd () FreeVarName], Either (STerm Prd () FreeVarName) (STerm Cns () FreeVarName))
-	replaceMuPrd CBV   (mu@(MuAbs ext _ _ _) : prdArgs) = 
+    replaceMuPrd CBV   (mu@(MuAbs ext _ _ _) : prdArgs) = 
       ((BoundVar ext PrdRep (0,0) : prdArgs), Left mu)
     replaceMuPrd order (xtor@(XtorCall ext PrdRep xt args@(MkXtorArgs { prdArgs, cnsArgs })) : ts) 
       | areAllSubst order args =
