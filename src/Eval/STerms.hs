@@ -132,16 +132,26 @@ focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
 focusApplyOnce _ _ = return Nothing
 
 
--- | Return just thef final evaluation result
-eval :: Command () FreeVarName -> EvalM FreeVarName (Command () FreeVarName)
-eval cmd = do
+-- | Returns Notihng if command doesn't need a focusing or eval step, 
+-- | just cmd' if cmd changes to cmd' in one focusing step 
+-- | or cmd'' if cmd cahnges throough an eval step
+evalOrFocusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+evalOrFocusOnce cmd = do
   focusedCmd <- focusOnce cmd
   case focusedCmd of
     Nothing -> do
       cmd' <- evalSTermOnce cmd
       case cmd' of
-        Nothing -> return cmd
-        Just cmd' -> eval cmd'
+        Nothing -> return Nothing
+        Just cmd'' -> return $ Just cmd''
+    Just cmd' -> return $ Just cmd'
+
+-- | Return just thef final evaluation result
+eval :: Command () FreeVarName -> EvalM FreeVarName (Command () FreeVarName)
+eval cmd = do
+  cmd' <- evalOrFocusOnce cmd
+  case cmd' of
+    Nothing -> return cmd
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
@@ -150,7 +160,7 @@ evalSteps cmd = evalSteps' [cmd] cmd
   where
     evalSteps' :: [Command () FreeVarName] -> Command () FreeVarName -> EvalM FreeVarName [Command () FreeVarName]
     evalSteps' cmds cmd = do
-      cmd' <- evalSTermOnce cmd
+      cmd' <- evalOrFocusOnce cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
