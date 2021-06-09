@@ -79,6 +79,18 @@ import Syntax.CommonTerm
 --
 --                    = mu r. < 'Nil | 'Cons(ty,r) >
 --
+-- ## Refinement Types:
+--
+-- A refinement type is represented by a refinement edge (represented as double line)
+-- connecting a refinement type node with a refining structural type node:
+--
+--    |-----------------------|          |---------------------|
+--    |                       |          |                     |
+--    | nl_refined = { Bool } |=========>| nl_data = { 'True } |
+--    |                       |          |                     |
+--    |-----------------------|          |---------------------|
+--
+--                  = {{ < 'True > <<: Bool }}
 --
 -- ## Union and Intersection Types:
 --
