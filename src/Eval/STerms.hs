@@ -139,11 +139,7 @@ evalOrFocusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command (
 evalOrFocusOnce cmd = do
   focusedCmd <- focusOnce cmd
   case focusedCmd of
-    Nothing -> do
-      cmd' <- evalSTermOnce cmd
-      case cmd' of
-        Nothing -> return Nothing
-        Just cmd'' -> return $ Just cmd''
+    Nothing -> evalSTermOnce cmd
     Just cmd' -> return $ Just cmd'
 
 -- | Return just thef final evaluation result
