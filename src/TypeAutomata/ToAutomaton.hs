@@ -66,6 +66,7 @@ initialize tvars =
     initAut = TypeAutCore
               { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
+              , ta_refEdges = []
               }
     lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           }
@@ -182,7 +183,12 @@ insertType (TyNominal rep tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
-insertType TyRefined{} = do
+insertType (TyRefined rep tn ty) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
+  nodeStructural <- insertType ty
+  insertEdges [(newNode, nodeStructural, EpsilonEdge ())]
   throwAutomatonError ["Refined types cannot be inserted"]
 
 

@@ -31,12 +31,14 @@ shiftGraph shift = mapTypeAut (+shift)
 
 -- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
 unsafeUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
-unsafeUnion (TypeAut polrep (Identity starts1) (TypeAutCore gr1  flowEdges1)) (TypeAut _ (Identity starts2) (TypeAutCore gr2  flowEdges2)) =
+unsafeUnion (TypeAut polrep (Identity starts1) (TypeAutCore gr1 flowEdges1 refEdges1)) 
+            (TypeAut _      (Identity starts2) (TypeAutCore gr2 flowEdges2 refEdges2)) =
   TypeAut { ta_pol = polrep
           , ta_starts = [starts1, starts2]
           , ta_core = TypeAutCore
             { ta_gr = mkGraph (labNodes gr1 ++ labNodes gr2) (labEdges gr1 ++ labEdges gr2)
             , ta_flowEdges = flowEdges1 ++ flowEdges2
+            , ta_refEdges = refEdges1 ++ refEdges2
             }
           }
 
@@ -56,7 +58,8 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
     fun = minimize . removeAdmissableFlowEdges . determinize
 
 typeAutEqual :: TypeAutDet pol -> TypeAutDet pol -> Bool
-typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1)) (TypeAut _ (Identity start2) (TypeAutCore gr2  flowEdges2))
+typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1 refEdges1)) 
+             (TypeAut _ (Identity start2) (TypeAutCore gr2 flowEdges2 refEdges2))
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False
       Just ((),mp) ->
