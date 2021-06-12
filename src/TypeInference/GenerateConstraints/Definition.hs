@@ -1,6 +1,7 @@
 module TypeInference.GenerateConstraints.Definition
   ( -- Constraint Generation Monad
     GenM
+  , GenerateReader(..)
   , runGenM
     -- Generating fresh unification variables
   , freshTVar
@@ -22,6 +23,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Adding a constraint
   , addConstraint
     -- Other
+  , InferenceMode(..)
   , PrdCnsToPol
   , lookupDataDecl
   , lookupXtorSig
@@ -76,10 +78,11 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 
 data GenerateReader = GenerateReader { context :: [TypArgs Pos]
                                      , env :: Environment FreeVarName
+                                     , inferMode :: InferenceMode
                                      }
 
-initialReader :: Environment FreeVarName -> GenerateReader
-initialReader env = GenerateReader { context = [], env = env }
+initialReader :: Environment FreeVarName -> InferenceMode -> GenerateReader
+initialReader env im = GenerateReader { context = [], env = env, inferMode = im }
 
 ---------------------------------------------------------------------------------------------
 -- GenM
@@ -88,8 +91,8 @@ initialReader env = GenerateReader { context = [], env = env }
 newtype GenM a = GenM { getGenM :: ReaderT GenerateReader (StateT GenerateState (Except Error)) a }
   deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader GenerateReader, MonadError Error)
 
-runGenM :: Environment FreeVarName -> GenM a -> Either Error (a, ConstraintSet)
-runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
+runGenM :: Environment FreeVarName -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
+runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
 
@@ -131,20 +134,20 @@ withContext ctx m =
 
 withPrdEnv :: FreeVarName -> STerm Prd () FreeVarName -> TypeScheme Pos -> GenM a -> GenM a
 withPrdEnv fv tm tys m = do
-  let modifyEnv (GenerateReader ctx env@Environment { prdEnv }) =
-        GenerateReader ctx env { prdEnv = M.insert fv (tm,tys) prdEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { prdEnv } im) =
+        GenerateReader ctx env { prdEnv = M.insert fv (tm,tys) prdEnv } im
   local modifyEnv m
 
 withCnsEnv :: FreeVarName -> STerm Cns () FreeVarName -> TypeScheme Neg -> GenM a -> GenM a
 withCnsEnv fv tm tys m = do
-  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv }) =
-        GenerateReader ctx env { cnsEnv = M.insert fv (tm,tys) cnsEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv } im) =
+        GenerateReader ctx env { cnsEnv = M.insert fv (tm,tys) cnsEnv } im
   local modifyEnv m
 
 withDefEnv :: FreeVarName -> ATerm () FreeVarName -> TypeScheme Pos -> GenM a -> GenM a
 withDefEnv fv tm tys m = do
-  let modifyEnv (GenerateReader ctx env@Environment { defEnv }) =
-        GenerateReader ctx env { defEnv = M.insert fv (tm,tys) defEnv }
+  let modifyEnv (GenerateReader ctx env@Environment { defEnv } im) =
+        GenerateReader ctx env { defEnv = M.insert fv (tm,tys) defEnv } im
   local modifyEnv m
 
 ---------------------------------------------------------------------------------------------
@@ -215,6 +218,10 @@ addConstraint c = modify foo
 -- Other
 ---------------------------------------------------------------------------------------------
 
+-- | Specifies whether to infer nominal or refined types
+data InferenceMode = InferNominal | InferRefined
+  deriving (Eq, Show)
+
 -- | We map producer terms to positive types, and consumer terms to negative types.
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
   PrdCnsToPol Prd = Pos
@@ -261,6 +268,12 @@ checkExhaustiveness matched decl = do
   let declared = sig_name <$> data_xtors decl PosRep
   forM_ matched $ \xn -> unless (xn `elem` declared) 
     (throwGenError ("Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)))
-  forM_ declared $ \xn -> unless (xn `elem` matched) 
-    (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <> ppPrint (data_name decl) <> " is not matched against." ))
+  im <- asks inferMode
+  -- Only check exhaustiveness when not using refinements
+  case im of
+    InferRefined -> return ()
+    InferNominal ->
+      forM_ declared $ \xn -> unless (xn `elem` matched)
+        (throwGenError ("Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
+          ppPrint (data_name decl) <> " is not matched against." ))
 

@@ -3,6 +3,8 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
+import Pretty.Pretty (ppPrint)
+import Pretty.Types()
 import Utils
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
