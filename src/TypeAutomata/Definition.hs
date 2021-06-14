@@ -164,6 +164,7 @@ singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty
 data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
+  | RefineEdge
   deriving (Eq,Show, Ord)
 
 type EdgeLabelNormal  = EdgeLabel Void
@@ -176,19 +177,12 @@ type EdgeLabelEpsilon = EdgeLabel ()
 type FlowEdge = (Node, Node)
 
 --------------------------------------------------------------------------------
--- Refinement edges
---------------------------------------------------------------------------------
-
-type RefEdge = (Node, Node)
-
---------------------------------------------------------------------------------
 -- Type Automata
 --------------------------------------------------------------------------------
 
 data TypeAutCore a = TypeAutCore
   { ta_gr :: Gr NodeLabel a
   , ta_flowEdges :: [FlowEdge]
-  , ta_refEdges :: [RefEdge]
   }
 deriving instance Show (TypeAutCore EdgeLabelNormal)
 deriving instance Show (TypeAutCore EdgeLabelEpsilon)
@@ -224,11 +218,10 @@ instance Nubable [] where
 
 
 mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
-mapTypeAutCore f TypeAutCore { ta_gr, ta_flowEdges, ta_refEdges } = TypeAutCore
+mapTypeAutCore f TypeAutCore { ta_gr, ta_flowEdges } = TypeAutCore
   { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
             (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
   , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
-  , ta_refEdges = nub (bimap f f <$> ta_refEdges)
   }
 
 -- Maps a function on nodes over a type automaton

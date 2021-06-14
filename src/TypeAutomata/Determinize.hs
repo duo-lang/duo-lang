@@ -76,20 +76,17 @@ combineNodeLabels nls
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
 determinize :: TypeAut pol -> TypeAutDet pol
-determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges, ta_refEdges }} =
+determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
     (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
-    newRefEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
-                            not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_refEdges]]
   in
     TypeAut { ta_pol = ta_pol
             , ta_starts = Identity newstart
             , ta_core = TypeAutCore
               { ta_gr = newgr
               , ta_flowEdges = newFlowEdges
-              , ta_refEdges = newRefEdges
               }
             }
 

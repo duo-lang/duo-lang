@@ -3,7 +3,6 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
-import Pretty.Pretty (ppPrint)
 import Pretty.Types()
 import Utils
 import TypeAutomata.Determinize (determinize)
@@ -68,7 +67,6 @@ initialize tvars =
     initAut = TypeAutCore
               { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
-              , ta_refEdges = []
               }
     lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           }
@@ -190,8 +188,8 @@ insertType (TyRefined rep tn ty) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   nodeStructural <- insertType ty
-  insertEdges [(newNode, nodeStructural, EpsilonEdge ())]
-  throwAutomatonError ["Refined types cannot be inserted"]
+  insertEdges [(newNode, nodeStructural, RefineEdge)]
+  return newNode
 
 
 --------------------------------------------------------------------------
