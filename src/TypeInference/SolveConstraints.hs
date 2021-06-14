@@ -167,27 +167,27 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
                      , "and"
                      , "    " <> ppPrint tn2 ]
 -- Constrants between refined types:
-subConstraints (SubType ci (TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
+subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) t2@(TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then return [SubType ci ty1 ty2] else
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint tn1
+                     , "    " <> ppPrint t1
                      , "and"
-                     , "    " <> ppPrint tn2 ]
+                     , "    " <> ppPrint t2 ]
 -- Refined type is always subtype of the nominal type it refines
-subConstraints (SubType _ (TyRefined _ tn1 _) (TyNominal _ tn2)) =
+subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint tn1
+                     , "    " <> ppPrint t1
                      , "and"
                      , "    " <> ppPrint tn2 ]
 -- Nominal type is subtype of a refinement of itself if the refinement is trivial,
 -- i.e. does not impose any limitations
-subConstraints (SubType _ (TyNominal _ tn1) (TyRefined _ tn2 _)) =
+subConstraints (SubType _ (TyNominal _ tn1) t2@TyRefined{}) =
   -- TODO: Check if translate(tn2) <: ty2
     throwSolverError ["The following refined types are incompatible:"
                      , "    " <> ppPrint tn1
                      , "and"
-                     , "    " <> ppPrint tn2 ]
+                     , "    " <> ppPrint t2 ]
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
