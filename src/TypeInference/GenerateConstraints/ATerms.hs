@@ -5,8 +5,6 @@ module TypeInference.GenerateConstraints.ATerms
 
 import Control.Monad.Reader
 
-import Pretty.ATerms ()
-import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition

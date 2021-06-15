@@ -240,4 +240,3 @@ data DataDecl = NominalDecl
   , data_polarity :: DataCodata
   , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
   }
-

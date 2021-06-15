@@ -74,3 +74,5 @@ lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
     containsXtor :: XtorSig Pos -> Bool
     containsXtor sig = sig_name sig == xt
 
+lookupTypeName :: TypeName -> Environment bs -> Maybe DataDecl
+lookupTypeName tn Environment{ declEnv } = find (\NominalDecl{..} -> data_name == tn) declEnv

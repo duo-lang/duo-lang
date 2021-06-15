@@ -13,8 +13,8 @@ import Data.Text (Text)
 import qualified Data.Text as T
 
 import Syntax.Types
-import Syntax.CommonTerm (XtorName, FreeVarName)
-import Syntax.Program (Environment)
+import Syntax.CommonTerm
+import Syntax.Program (Environment, lookupTypeName)
 import Utils
 import Pretty.Pretty
 import Pretty.Types ()
@@ -67,6 +67,34 @@ addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
   ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
+
+------------------------------------------------------------------------------
+-- Nominal to structural type translation
+------------------------------------------------------------------------------
+
+lookupNominalType :: TypeName -> SolverM DataDecl
+lookupNominalType tn = do
+  env <- ask
+  case lookupTypeName tn env of
+    Nothing -> throwSolverError ["Can't translate nominal type " <> ppPrint tn <> ": Not in environment"]
+    Just decl -> return decl
+
+translateToStructural :: Typ pol -> SolverM (Typ pol)
+translateToStructural (TyNominal pr tn) = do
+  NominalDecl{..} <- lookupNominalType tn
+  case data_polarity of
+    Data -> do
+      xtorSig <- mapM xtorSigMakeStructural (data_xtors pr)
+      return $ TyData pr xtorSig
+    Codata -> do
+      xtorSig <- mapM xtorSigMakeStructural (data_xtors $ flipPolarityRep pr)
+      return $ TyCodata pr xtorSig
+translateToStructural _ = do
+  throwSolverError ["Can't translate structural types to nominal"]
+
+xtorSigMakeStructural :: XtorSig pol -> SolverM (XtorSig pol)
+xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) MkTypArgs{..}) =
+  return $ MkXtorSig (MkXtorName Structural s) (MkTypArgs prdTypes cnsTypes)
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -166,24 +194,32 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
                      , "    " <> ppPrint tn1
                      , "and"
                      , "    " <> ppPrint tn2 ]
--- Constrants between refined types:
-subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) t2@(TyRefined _ tn2 ty2)) =
+-- Constraints between refined types:
+--
+-- If left and right side refine the same nominal type, check if left side refinement is
+-- subtype of right side refinement.
+subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then return [SubType ci ty1 ty2] else
     throwSolverError ["The following refined types are incompatible:"
                      , "    " <> ppPrint t1
                      , "and"
-                     , "    " <> ppPrint t2 ]
--- Refined type is always subtype of the nominal type it refines
-subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
+                     , "    " <> ppPrint tn2 ]
+-- Refined type is always subtype of the nominal type it refines and never subtype of
+-- another nominal type.
+subConstraints (SubType _ tyRef@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint t1
+                     , "    " <> ppPrint tyRef
                      , "and"
                      , "    " <> ppPrint tn2 ]
 -- Nominal type is subtype of a refinement of itself if the refinement is trivial,
--- i.e. does not impose any limitations
-subConstraints (SubType _ (TyNominal _ tn1) t2@TyRefined{}) =
-  -- TODO: Check if translate(tn2) <: ty2
+-- i.e. does not impose any limitations on the nominal type.
+-- This can be checked with new constraint `translate(tn) <: ty2`
+subConstraints (SubType ci t1@(TyNominal _ tn1) t2@(TyRefined _ tn2 ty2)) =
+  if tn1 == tn2 then do
+    tty <- translateToStructural t1
+    return [SubType ci tty ty2]
+  else
     throwSolverError ["The following refined types are incompatible:"
                      , "    " <> ppPrint tn1
                      , "and"
@@ -206,17 +242,23 @@ subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Constraints between nominal and a structural types:
 --
--- These constraints are not solvable. E.g.:
+-- If the nominal type occurs on the right, it is translated. E.g.:
 --
---     < ctors > <: Nat          ~>     FAIL
+--     < ctors > <: Nat     ~>     < ctors > <: < 'Z | 'S(Nat) >
 --
-subConstraints (SubType _ (TyData _ _) (TyNominal _ _)) =
+-- Otherwise, the constraint cannot be solved. E.g.:
+--
+--     Nat <: < ctors >     ~>     FAIL
+--
+subConstraints (SubType ci td@TyData{} tn@TyNominal{}) = do
+  trT <- translateToStructural tn
+  return [SubType ci td trT]
+subConstraints (SubType ci tc@TyCodata{} tn@TyNominal{}) = do
+  trT <- translateToStructural tn
+  return [SubType ci tc trT]
+subConstraints (SubType _ TyNominal{} TyData{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType _ (TyCodata _ _) (TyNominal _ _)) =
-  throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType _ (TyNominal _ _) (TyData _ _)) =
-  throwSolverError ["Cannot constrain nominal by structural type"]
-subConstraints (SubType _ (TyNominal _ _) (TyCodata _ _)) =
+subConstraints (SubType _ TyNominal{} TyCodata{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType _ (TyData _ _) TyRefined{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
