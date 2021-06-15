@@ -33,7 +33,8 @@ import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (subsume)
 import Translate.Translate (compile)
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
-import Utils (trim, trimStr, Verbosity(..))
+import Utils (Error, trim, trimStr, Verbosity(..))
+import Text.Megaparsec (eof)
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -358,10 +359,27 @@ sub_option = Option
 -- Simplify
 
 simplify_cmd :: Text -> Repl ()
-simplify_cmd s = do
-  ty <- parseInteractive (typeSchemeP PosRep) s
-  aut <- fromRight (typeToAut ty)
-  prettyRepl (autToType aut)
+simplify_cmd s = case go PosRep of 
+                    Right pp -> pp
+                    Left err -> case go NegRep of
+                      Right pp -> pp
+                      Left err' -> do
+                        prettyRepl ("Parsing type failed" :: String)
+                        prettyRepl ("Positive parsing error:" :: String)
+                        prettyRepl err
+                        prettyRepl ("Negative parsing error:" :: String)
+                        prettyRepl err'
+                        --  @prettyRepl String "Parsing type failed" 
+                        --  @prettyRepl String "Positive parsing error:"
+                        --  prettyRepl err
+                        --  @prettyRepl String "Negative parsing error:"
+                        --  prettyRepl err'
+  where
+    go :: forall p. PolarityRep p -> Either Error (Repl ())
+    go rep = do
+      ty <- runInteractiveParser (typeSchemeP rep <* eof) s
+      aut <- typeToAut ty
+      return $ prettyRepl (autToType aut)
 
 simplify_option :: Option
 simplify_option = Option
