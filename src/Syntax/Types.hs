@@ -3,6 +3,7 @@ module Syntax.Types where
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.List (nub)
+import Data.Text (Text)
 
 import Utils
 import Syntax.CommonTerm
@@ -12,10 +13,10 @@ import Syntax.CommonTerm
 ------------------------------------------------------------------------------
 
 -- | Type variables
-newtype TVar = MkTVar { tvar_name :: String } deriving (Eq, Show, Ord)
+newtype TVar = MkTVar { tvar_name :: Text } deriving (Eq, Show, Ord)
 
 -- | Name of nominal type
-newtype TypeName = MkTypeName { unTypeName :: String } deriving (Eq, Show, Ord)
+newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
 
 ------------------------------------------------------------------------------
 -- Polarity
@@ -72,6 +73,12 @@ deriving instance Eq (TypArgs Pos)
 deriving instance Eq (TypArgs Neg)
 deriving instance Ord (TypArgs Pos)
 deriving instance Ord (TypArgs Neg)
+
+instance Semigroup (TypArgs pol) where
+    (MkTypArgs ps cs) <> (MkTypArgs ps' cs') = MkTypArgs (ps <> ps') (cs <> cs')
+
+instance Monoid (TypArgs pol) where
+    mempty = MkTypArgs mempty mempty
 
 data XtorSig (pol :: Polarity) = MkXtorSig
   { sig_name :: XtorName

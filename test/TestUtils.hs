@@ -1,5 +1,6 @@
 module TestUtils where
 
+import qualified Data.Text.IO as T
 import System.Directory (listDirectory)
 import System.FilePath
 
@@ -33,7 +34,7 @@ getAvailableExamples = do
 
 getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName])
 getParsedDeclarations fp = do
-  s <- readFile fp
+  s <- T.readFile fp
   return (runFileParser fp programP s)
 
 getEnvironment :: FilePath -> IO (Either Error (Environment FreeVarName))

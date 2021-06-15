@@ -17,6 +17,8 @@ import qualified Data.Set as S
 
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
@@ -82,8 +84,8 @@ runTypeAutTvars tvars m = do
 -- Helper functions
 --------------------------------------------------------------------------
 
-throwAutomatonError :: [String] -> TTA a
-throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
+throwAutomatonError :: [Text] -> TTA a
+throwAutomatonError msg = throwError $ TypeAutomatonError (T.unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
