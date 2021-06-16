@@ -33,6 +33,7 @@ import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (subsume)
 import Translate.Translate (compile)
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (Error, trim, trimStr, Verbosity(..))
 import Text.Megaparsec (eof)
 
@@ -51,6 +52,7 @@ data ReplState = ReplState
   , evalOrder :: EvalOrder
   , mode :: Mode
   , typeInfVerbosity :: Verbosity
+  , inferenceMode :: InferenceMode
   }
 
 
@@ -61,6 +63,7 @@ initialReplState = ReplState { replEnv = mempty
                              , evalOrder = CBV
                              , mode = Symmetric
                              , typeInfVerbosity = Silent
+                             , inferenceMode = InferNominal
                              }
 
 ------------------------------------------------------------------------------
@@ -169,7 +172,9 @@ set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
                    , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
-                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
+                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric }))
+                   , ("refinements", modify (\rs -> rs { inferenceMode = InferRefined})) ]
+
 set_cmd :: Text -> Repl ()
 set_cmd s = do
   let s' = trim s
@@ -203,7 +208,8 @@ set_option = Option
   }
 
 unset_cmd_variants :: [(Text, Repl ())]
-unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) ]
+unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) 
+                     , ("refinements", modify (\rs -> rs { inferenceMode = InferNominal }))]
 
 unset_cmd :: Text -> Repl ()
 unset_cmd s = do
@@ -277,7 +283,8 @@ let_cmd s = do
   decl <- fromRight (runInteractiveParser declarationP s)
   oldEnv <- gets replEnv
   verbosity <- gets typeInfVerbosity
-  newEnv <- liftIO $ insertDeclIO verbosity decl oldEnv
+  im <- gets inferenceMode
+  newEnv <- liftIO $ insertDeclIO verbosity im decl oldEnv
   case newEnv of
     Nothing -> return ()
     Just newEnv -> modifyEnvironment (const newEnv)
@@ -296,13 +303,14 @@ let_option = Option
 save_cmd :: Text -> Repl ()
 save_cmd s = do
   env <- gets replEnv
+  im <- gets inferenceMode
   case runInteractiveParser (typeSchemeP PosRep) s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,_) -> do
-        trace <- fromRight $ inferSTermTraced NonRecursive "" PrdRep tloc env
+        trace <- fromRight $ inferSTermTraced NonRecursive "" im PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
@@ -400,7 +408,8 @@ load_cmd s = do
 load_file :: FilePath -> Repl ()
 load_file fp = do
   decls <- parseFile fp programP
-  case inferProgram decls of
+  inferMode <- gets inferenceMode
+  case inferProgram decls inferMode of
     Left err -> liftIO $ printLocatedError err
     Right newEnv -> do
       modifyEnvironment ((<>) newEnv)

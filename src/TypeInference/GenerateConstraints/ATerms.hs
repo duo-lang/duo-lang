@@ -3,7 +3,7 @@ module TypeInference.GenerateConstraints.ATerms
   , genConstraintsATermRecursive
   ) where
 
-import Control.Monad (forM, forM_, when)
+import Control.Monad.Reader
 
 import Pretty.ATerms ()
 import Pretty.Types ()
@@ -39,8 +39,12 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError $ "Ctor " <> unXtorName xt <> " called with incorrect number of arguments"
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
-  return (Ctor () xt (fst <$> args'), TyNominal PosRep (data_name tn) )
-
+  im <- asks inferMode
+  let ty = case im of
+        InferNominal -> TyNominal PosRep (data_name tn)
+        InferRefined -> TyRefined PosRep (data_name tn) $ TyData PosRep [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
+  return (Ctor () xt (fst <$> args'), ty)
+  
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
@@ -59,7 +63,7 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2
   return (Dtor () xt t' (fst <$> args'), head $ cnsTypes $ sig_args xtorSig)
 
-{- 
+{-
 match t with { X_1(x_1,...,x_n) => e_1, ... }
 
 If X_1 has nominal type N, then:
@@ -76,7 +80,11 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
   forM_ (zip (data_xtors tn PosRep) cases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
-  addConstraint (SubType (PatternMatchConstraint loc) matchType (TyNominal NegRep (data_name tn)))
+  im <- asks inferMode
+  let ty = case im of
+        InferNominal -> TyNominal NegRep (data_name tn)
+        InferRefined -> TyRefined NegRep (data_name tn) (TyData NegRep (snd <$> cases'))
+  addConstraint (SubType (PatternMatchConstraint loc) matchType ty)
   return (Match () t' (fst <$> cases') , retTypePos)
 
 genConstraintsATerm (Match loc t cases) = do
@@ -100,7 +108,10 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   checkExhaustiveness (acase_name <$> cocases) tn
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
   forM_ (zip (data_xtors tn PosRep) cocases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
-  let ty = TyNominal PosRep (data_name tn)
+  im <- asks inferMode
+  let ty = case im of
+        InferNominal -> TyNominal PosRep (data_name tn)
+        InferRefined -> TyRefined PosRep (data_name tn) (TyCodata PosRep (snd <$> cocases'))
   return (Comatch () (fst <$> cocases'), ty)
 
 genConstraintsATerm (Comatch _ cocases) = do

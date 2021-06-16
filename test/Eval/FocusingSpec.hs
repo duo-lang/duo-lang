@@ -8,6 +8,7 @@ import qualified Data.Text as T
 
 import Pretty.Pretty
 import Parser.Parser
+import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import Eval.STerms (eval)
 import Eval.Eval
 
@@ -18,7 +19,7 @@ evalFocusing evalOrder cmd cmdRes =
     Left err -> it "Could not parse" $ expectationFailure (ppPrintString err)
     Right (cmd',_) -> do
       let Right (cmdRes',_) = runInteractiveParser commandP cmdRes
-      prgEnv <- runIO $ getEnvironment "examples/prg.ds"
+      prgEnv <- runIO $ getEnvironment "examples/prg.ds" InferNominal
       case prgEnv of
         Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrintString err)
         Right prgEnv -> do
