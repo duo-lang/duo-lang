@@ -411,7 +411,7 @@ load_file fp = do
   decls <- parseFile fp programP
   inferMode <- gets inferenceMode
   case inferProgram decls inferMode of
-    Left err -> liftIO $ printLocatedError err
+    Left err -> printLocatedError err
     Right newEnv -> do
       modifyEnvironment ((<>) newEnv)
       prettyRepl newEnv
