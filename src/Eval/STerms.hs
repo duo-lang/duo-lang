@@ -47,10 +47,10 @@ evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 evalApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
-  (prd,_) <- lookupPrd fv
+  (prd,_) <- lookupSTerm PrdRep fv
   return (Just (Apply () prd cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
-  (cns,_) <- lookupCns fv
+  (cns,_) <- lookupSTerm CnsRep fv
   return (Just (Apply () prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do

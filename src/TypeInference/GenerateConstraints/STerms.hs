@@ -44,14 +44,11 @@ genConstraintsSTerm (BoundVar _ rep idx) = do
 -- where they correspond to typing schemes. This typing
 -- scheme has to be instantiated with fresh unification variables.
 --
-genConstraintsSTerm (FreeVar loc PrdRep v) = do
-  tys <- snd <$> lookupPrd v
+genConstraintsSTerm (FreeVar loc rep v) = do
+  tys <- snd <$> lookupSTerm rep v
   ty <- instantiateTypeScheme v loc tys
-  return (FreeVar () PrdRep v, ty)
-genConstraintsSTerm (FreeVar loc CnsRep v) = do
-  tys <- snd <$> lookupCns v
-  ty <- instantiateTypeScheme v loc tys
-  return (FreeVar () CnsRep v, ty)
+  return (FreeVar () rep v, ty)
+
 --
 -- Constructors and destructors:
 --

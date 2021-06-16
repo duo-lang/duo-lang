@@ -31,6 +31,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 
 import Errors
+import Lookup
 import Pretty.Pretty
 import Pretty.STerms ()
 import Pretty.ATerms ()
@@ -160,15 +161,6 @@ addConstraint c = modify foo
 -- | Specifies whether to infer nominal or refined types
 data InferenceMode = InferNominal | InferRefined
   deriving (Eq, Show)
-
--- | We map producer terms to positive types, and consumer terms to negative types.
-type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
-  PrdCnsToPol Prd = Pos
-  PrdCnsToPol Cns = Neg
-
-prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
-prdCnsToPol PrdRep = PosRep
-prdCnsToPol CnsRep = NegRep
 
 foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep

@@ -25,7 +25,7 @@ genConstraintsATerm (BVar _ idx) = do
   ty <- lookupContext PrdRep idx
   return (BVar () idx, ty)
 genConstraintsATerm (FVar loc fv) = do
-  tys <- snd <$> lookupDef fv
+  tys <- snd <$> lookupATerm fv
   ty <- instantiateTypeScheme fv loc tys
   return (FVar () fv, ty)
 
