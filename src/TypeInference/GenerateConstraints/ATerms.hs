@@ -36,7 +36,7 @@ genConstraintsATerm (Ctor _ xt@MkXtorName { xtorNominalStructural = Structural }
 genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   tn <- lookupDataDecl xt
-  xtorSig <- lookupXtorSig tn xt NegRep
+  xtorSig <- lookupXtorSig xt NegRep
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Ctor " <> unXtorName xt <> " called with incorrect number of arguments"]
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
@@ -58,7 +58,7 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   tn <- lookupDataDecl xt
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType (DtorApConstraint loc) ty' (TyNominal NegRep (data_name tn)) )
-  xtorSig <- lookupXtorSig tn xt NegRep
+  xtorSig <- lookupXtorSig xt NegRep
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Dtor " <> unXtorName xt <> " called with incorrect number of arguments"]
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2

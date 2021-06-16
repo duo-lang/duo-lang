@@ -3,7 +3,6 @@ module Lookup
   , prdCnsToPol
   , lookupSTerm
   , lookupATerm
-  , lookupCase
   , lookupDataDecl
   , lookupXtorSig
   , withSTerm
@@ -13,7 +12,6 @@ module Lookup
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List
-import Data.Map (Map)
 import qualified Data.Map as M
 
 
@@ -33,18 +31,6 @@ import Syntax.Program
 
 type EnvReader bs a m = (MonadError Error m, MonadReader (Environment bs, a) m)
 
----------------------------------------------------------------------------------
--- Lookup Terms
----------------------------------------------------------------------------------
-
-lookupATerm :: EnvReader bs a m
-            => FreeVarName -> m (ATerm () bs, TypeScheme Pos)
-lookupATerm fv = do
-  env <- asks fst
-  case M.lookup fv (defEnv env) of
-    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " not contained in the environment."]
-    Just res -> return res
-
 
 -- | We map producer terms to positive types, and consumer terms to negative types.
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
@@ -55,6 +41,20 @@ prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 prdCnsToPol PrdRep = PosRep
 prdCnsToPol CnsRep = NegRep
 
+---------------------------------------------------------------------------------
+-- Lookup Terms
+---------------------------------------------------------------------------------
+
+-- | Lookup the term and the type of a asymmetric term bound in the environment.
+lookupATerm :: EnvReader bs a m
+            => FreeVarName -> m (ATerm () bs, TypeScheme Pos)
+lookupATerm fv = do
+  env <- asks fst
+  case M.lookup fv (defEnv env) of
+    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " not contained in the environment."]
+    Just res -> return res
+
+-- | Lookup the term and the type of a symmetric term bound in the environment.
 lookupSTerm :: EnvReader bs a m
             => PrdCnsRep pc -> FreeVarName -> m (STerm pc () bs, TypeScheme (PrdCnsToPol pc))
 lookupSTerm PrdRep fv = do
@@ -69,55 +69,36 @@ lookupSTerm CnsRep fv = do
     Just res -> return res
 
 ---------------------------------------------------------------------------------
--- Lookup Types
+-- Lookup information about type declarations
 ---------------------------------------------------------------------------------
 
-envToXtorMap :: Environment bs -> Map XtorName (TypArgs Pos)
-envToXtorMap Environment { declEnv } = M.unions xtorMaps
-  where
-    xtorMaps = xtorSigsToAssocList <$> declEnv
-    xtorSigsToAssocList NominalDecl { data_xtors } =
-      M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors PosRep)
-
-lookupXtor :: XtorName -> Environment bs -> Maybe DataDecl
-lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
-  where
-    typeContainsXtor :: DataDecl -> Bool
-    typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
-                                   | otherwise = False
-
-    containsXtor :: XtorSig Pos -> Bool
-    containsXtor sig = sig_name sig == xt
-
-lookupCase :: EnvReader bs a m
-           => XtorName -> m (TypArgs Pos, XtorArgs () FreeVarName)
-lookupCase xt = do
-  env <- asks fst
-  case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwOtherError ["The xtor " <> ppPrint xt <> " could not be looked up."]
-    Just types@(MkTypArgs prdTypes cnsTypes) -> do
-      let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
-      let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
-      return (types, MkXtorArgs prds cnss)
-
+-- | Find the type declaration belonging to a given Xtor Name.
 lookupDataDecl :: EnvReader bs a m
                => XtorName -> m DataDecl
 lookupDataDecl xt = do
-  env <- asks fst
-  case lookupXtor xt env of
+  let containsXtor :: XtorSig Pos -> Bool
+      containsXtor sig = sig_name sig == xt
+  let typeContainsXtor :: DataDecl -> Bool
+      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
+                                                  | otherwise = False
+  env <- declEnv <$> asks fst
+  case find typeContainsXtor env of
     Nothing -> throwOtherError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
     Just decl -> return decl
 
+-- | Find the XtorSig belonging to a given XtorName.
 lookupXtorSig :: EnvReader bs a m
-              => DataDecl -> XtorName -> PolarityRep pol -> m (XtorSig pol)
-lookupXtorSig decl xtn pol = do
+              => XtorName -> PolarityRep pol -> m (XtorSig pol)
+lookupXtorSig xtn pol = do
+  decl <- lookupDataDecl xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
     Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
 
 ---------------------------------------------------------------------------------
--- ChangeEnvironment
+-- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
+
 withSTerm :: EnvReader bs a m
           => PrdCnsRep pc -> FreeVarName -> STerm pc () bs -> TypeScheme (PrdCnsToPol pc)
           -> (m b -> m b)

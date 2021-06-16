@@ -67,7 +67,7 @@ genConstraintsSTerm (XtorCall loc PrdRep xt@MkXtorName{ xtorNominalStructural = 
   (args', argTypes) <- genConstraintsArgs args
   tn <- lookupDataDecl xt
   -- Check if args of xtor are correct
-  xtorSig <- lookupXtorSig tn xt NegRep
+  xtorSig <- lookupXtorSig xt NegRep
   forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
   im <- asks (inferMode . snd)
   let ty = case im of
@@ -78,7 +78,7 @@ genConstraintsSTerm (XtorCall loc CnsRep xt@MkXtorName{ xtorNominalStructural = 
   (args', argTypes) <- genConstraintsArgs args
   tn <- lookupDataDecl xt
   -- Check if args of xtor are correct
-  xtorSig <- lookupXtorSig tn xt NegRep
+  xtorSig <- lookupXtorSig xt NegRep
   forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2
   im <- asks (inferMode . snd)
   let ty = case im of
@@ -115,7 +115,7 @@ genConstraintsSTerm (XMatch _ PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupDataDecl (scase_name pmcase)
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
-                           (x,_) <- lookupCase scase_name
+                           x <- sig_args <$> lookupXtorSig scase_name PosRep
                            (_,fvarsNeg) <- freshTVars scase_args
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
@@ -128,7 +128,7 @@ genConstraintsSTerm (XMatch _ CnsRep Nominal cases@(pmcase:_)) = do
   tn <- lookupDataDecl (scase_name pmcase)
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
-                           (x,_) <- lookupCase scase_name
+                           x <- sig_args <$> lookupXtorSig scase_name PosRep
                            (_,fvarsNeg) <- freshTVars scase_args
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
