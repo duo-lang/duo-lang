@@ -153,6 +153,6 @@ genConstraintsATermRecursive :: FreeVarName
                              -> GenM (ATerm () FreeVarName, Typ Pos)
 genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withDef fv (FVar () fv) (TypeScheme [] x) (genConstraintsATerm tm)
+  (tm, ty) <- withATerm fv (FVar () fv) (TypeScheme [] x) (genConstraintsATerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)

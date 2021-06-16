@@ -6,9 +6,8 @@ module Lookup
   , lookupCase
   , lookupDataDecl
   , lookupXtorSig
-  , withPrd
-  , withCns
-  , withDef
+  , withSTerm
+  , withATerm
   ) where
 
 import Control.Monad.Except
@@ -119,27 +118,22 @@ lookupXtorSig decl xtn pol = do
 ---------------------------------------------------------------------------------
 -- ChangeEnvironment
 ---------------------------------------------------------------------------------
-
-withPrd :: EnvReader bs a m
-        => FreeVarName -> STerm Prd () bs -> TypeScheme Pos
-        -> (m b-> m b)
-withPrd fv tm tys m = do
+withSTerm :: EnvReader bs a m
+          => PrdCnsRep pc -> FreeVarName -> STerm pc () bs -> TypeScheme (PrdCnsToPol pc)
+          -> (m b -> m b)
+withSTerm PrdRep fv tm tys m = do
   let modifyEnv (env@Environment { prdEnv }, rest) =
         (env { prdEnv = M.insert fv (tm,tys) prdEnv }, rest)
   local modifyEnv m
-
-withCns :: EnvReader bs a m
-        => FreeVarName -> STerm Cns () bs -> TypeScheme Neg
-        -> (m b -> m b)
-withCns fv tm tys m = do
+withSTerm CnsRep fv tm tys m = do
   let modifyEnv (env@Environment { cnsEnv }, rest) =
         (env { cnsEnv = M.insert fv (tm,tys) cnsEnv }, rest)
   local modifyEnv m
 
-withDef :: EnvReader bs a m
+withATerm :: EnvReader bs a m
         => FreeVarName -> ATerm () bs -> TypeScheme Pos
         -> (m b -> m b)
-withDef fv tm tys m = do
+withATerm fv tm tys m = do
   let modifyEnv (env@Environment { defEnv }, rest) =
         (env { defEnv = M.insert fv (tm,tys) defEnv }, rest)
   local modifyEnv m

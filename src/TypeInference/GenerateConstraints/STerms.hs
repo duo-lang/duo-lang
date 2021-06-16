@@ -170,12 +170,12 @@ genConstraintsSTermRecursive :: FreeVarName
                              -> GenM (STerm pc () FreeVarName, Typ (PrdCnsToPol pc))
 genConstraintsSTermRecursive fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withPrd fv (FreeVar () PrdRep fv) (TypeScheme [] x) (genConstraintsSTerm tm)
+  (tm, ty) <- withSTerm PrdRep fv (FreeVar () PrdRep fv) (TypeScheme [] x) (genConstraintsSTerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
 genConstraintsSTermRecursive fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withCns fv (FreeVar () CnsRep fv) (TypeScheme [] y) (genConstraintsSTerm tm)
+  (tm, ty) <- withSTerm CnsRep fv (FreeVar () CnsRep fv) (TypeScheme [] y) (genConstraintsSTerm tm)
   addConstraint (SubType RecursionConstraint x ty)
   return (tm, ty)
 
