@@ -19,9 +19,6 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , InferenceMode(..)
   , PrdCnsToPol
-  , lookupDataDecl
-  , lookupXtorSig
-  , lookupCase
   , foo
   , prdCnsToPol
   , checkExhaustiveness
@@ -30,7 +27,6 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List
 import qualified Data.Map as M
 import qualified Data.Text as T
 
@@ -41,7 +37,6 @@ import Pretty.ATerms ()
 import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
-import Syntax.STerms
 import Syntax.Types
 import Utils
 
@@ -178,29 +173,6 @@ prdCnsToPol CnsRep = NegRep
 foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
-
-lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs () FreeVarName)
-lookupCase xt = do
-  env <- asks fst
-  case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwGenError ["GenerateConstraints: The xtor " <> ppPrint xt <> " could not be looked up."]
-    Just types@(MkTypArgs prdTypes cnsTypes) -> do
-      let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
-      let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
-      return (types, MkXtorArgs prds cnss)
-
-lookupDataDecl :: XtorName -> GenM DataDecl
-lookupDataDecl xt = do
-  env <- asks fst
-  case lookupXtor xt env of
-    Nothing -> throwGenError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
-    Just decl -> return decl
-
-lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
-lookupXtorSig decl xtn pol = do
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
-    Just xts -> return xts
-    Nothing -> throwGenError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
 
 -- | Checks for a given list of XtorNames and a type declaration whether:
 -- (1) All the xtornames occur in the type declaration. (Correctness)
