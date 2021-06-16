@@ -55,6 +55,7 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
+      Errors
       Eval.Eval
       Eval.ATerms
       Eval.STerms

@@ -6,6 +6,7 @@ import TypeAutomata.Definition
 import Pretty.Pretty (ppPrint)
 import Pretty.Types()
 import Utils
+import Errors
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
@@ -19,8 +20,6 @@ import qualified Data.Set as S
 
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Text (Text)
-import qualified Data.Text as T
 
 import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
@@ -85,9 +84,6 @@ runTypeAutTvars tvars m = do
 --------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------
-
-throwAutomatonError :: [Text] -> TTA a
-throwAutomatonError msg = throwError $ TypeAutomatonError (T.unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
