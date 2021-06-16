@@ -35,7 +35,7 @@ lookupDef :: EnvReader bs a m
 lookupDef fv = do
   env <- asks fst
   case M.lookup fv (defEnv env) of
-    Nothing -> throwEvalError ["Unbound free variable " <> ppPrint fv <> " not contained in environment."]
+    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " not contained in the environment."]
     Just res -> return res
 
 lookupPrd :: EnvReader bs a m
@@ -43,7 +43,7 @@ lookupPrd :: EnvReader bs a m
 lookupPrd fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
-    Nothing -> throwEvalError ["Unbound free variable " <> ppPrint fv <> " not contained in environment."]
+    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in environment."]
     Just res -> return res
 
 lookupCns :: EnvReader bs a m
@@ -51,7 +51,7 @@ lookupCns :: EnvReader bs a m
 lookupCns fv = do
   env <- asks fst
   case M.lookup fv (cnsEnv env) of
-    Nothing -> throwEvalError ["Unbound free variable " <> ppPrint fv <> " not contained in environment."]
+    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in the environment."]
     Just res -> return res
 
 ---------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ lookupCase :: EnvReader bs a m
 lookupCase xt = do
   env <- asks fst
   case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwGenError ["GenerateConstraints: The xtor " <> ppPrint xt <> " could not be looked up."]
+    Nothing -> throwOtherError ["The xtor " <> ppPrint xt <> " could not be looked up."]
     Just types@(MkTypArgs prdTypes cnsTypes) -> do
       let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
       let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
@@ -91,7 +91,7 @@ lookupDataDecl :: EnvReader bs a m
 lookupDataDecl xt = do
   env <- asks fst
   case lookupXtor xt env of
-    Nothing -> throwGenError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
+    Nothing -> throwOtherError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
     Just decl -> return decl
 
 lookupXtorSig :: EnvReader bs a m
@@ -99,7 +99,7 @@ lookupXtorSig :: EnvReader bs a m
 lookupXtorSig decl xtn pol = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
-    Nothing -> throwGenError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
+    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
 
 ---------------------------------------------------------------------------------
 -- ChangeEnvironment
