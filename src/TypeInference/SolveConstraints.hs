@@ -19,7 +19,7 @@ import Utils
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
-import TypeInference.GenerateConstraints.Definition ( xtorSigMakeStructural )
+import TypeInference.GenerateConstraints.Definition ( xtorSigMakeStructural, InferenceMode(..) )
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -27,11 +27,13 @@ import TypeInference.GenerateConstraints.Definition ( xtorSigMakeStructural )
 
 data SolverState = SolverState
   { sst_bounds :: SolverResult
-  , sst_cache :: Set (Constraint ())} -- The constraints in the cache need to have their annotations removed!
+  , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
+  , sst_inferMode :: InferenceMode }
 
-createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
-                                                    , sst_cache = S.empty }
+createInitState :: ConstraintSet -> InferenceMode -> SolverState
+createInitState (ConstraintSet _ uvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+                                                       , sst_cache = S.empty 
+                                                       , sst_inferMode = im }
 
 type SolverM a = (ReaderT (Environment FreeVarName) (StateT SolverState (Except Error))) a
 
@@ -49,13 +51,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+    modifyCache f = modify (\(SolverState gr cache im) -> SolverState gr (f cache) im)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
+modifyBounds f uv = modify (\(SolverState varMap cache im) -> SolverState (M.adjust f uv varMap) cache im)
 
 addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
@@ -201,23 +203,25 @@ subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
                      , "    " <> ppPrint t1
                      , "and"
                      , "    " <> ppPrint tn2 ]
+-- Constraint between nominal and refined types:
+--
 -- Refined type is always subtype of the nominal type it refines and never subtype of
 -- another nominal type.
-subConstraints (SubType _ tyRef@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
+subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
-    throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint tyRef
+    throwSolverError ["The following types are incompatible:"
+                     , "    " <> ppPrint t1
                      , "and"
                      , "    " <> ppPrint tn2 ]
 -- Nominal type is subtype of a refinement of itself if the refinement is trivial,
 -- i.e. does not impose any limitations on the nominal type.
--- This can be checked with new constraint `translate(tn) <: ty2`
+-- This can be checked with new constraint `translate(tyNom) <: tyStruct`
 subConstraints (SubType ci t1@(TyNominal _ tn1) t2@(TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then do
     tty <- translateToStructural t1
     return [SubType ci tty ty2]
   else
-    throwSolverError ["The following refined types are incompatible:"
+    throwSolverError ["The following types are incompatible:"
                      , "    " <> ppPrint tn1
                      , "and"
                      , "    " <> ppPrint t2 ]
@@ -237,22 +241,31 @@ subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
   throwSolverError [ "Constraint:"
                    , "     " <> ppPrint cs
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
--- Constraints between nominal and a structural types:
+-- Constraints between nominal and structural types:
 --
--- If the nominal type occurs on the right, it is translated. E.g.:
+-- When using refinement types, if the nominal type occurs on the right, it is translated. E.g.:
 --
 --     < ctors > <: Nat     ~>     < ctors > <: < 'Z | 'S(Nat) >
 --
--- Otherwise, the constraint cannot be solved. E.g.:
+-- In all other cases the constraint cannot be solved. E.g.:
 --
+--     < ctors > <: Nat     ~>     FAIL
 --     Nat <: < ctors >     ~>     FAIL
 --
 subConstraints (SubType ci td@TyData{} tn@TyNominal{}) = do
-  trT <- translateToStructural tn
-  return [SubType ci td trT]
+  im <- gets sst_inferMode
+  case im of
+    InferNominal -> throwSolverError ["Cannot constrain nominal by structural type"]
+    InferRefined -> do
+      trT <- translateToStructural tn
+      return [SubType ci td trT]
 subConstraints (SubType ci tc@TyCodata{} tn@TyNominal{}) = do
-  trT <- translateToStructural tn
-  return [SubType ci tc trT]
+  im <- gets sst_inferMode
+  case im of
+    InferNominal -> throwSolverError ["Cannot constrain nominal by structural type"]
+    InferRefined -> do
+      trT <- translateToStructural tn
+      return [SubType ci tc trT]
 subConstraints (SubType _ TyNominal{} TyData{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType _ TyNominal{} TyCodata{}) =
@@ -289,8 +302,8 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment FreeVarName -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) env = do
-  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
+solveConstraints :: ConstraintSet -> Environment FreeVarName -> InferenceMode -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _) env im = do
+  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   return (sst_bounds solverState)
 

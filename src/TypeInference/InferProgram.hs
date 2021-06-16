@@ -86,7 +86,7 @@ inferSTermTraced isRec fv im rep tm env = do
         Recursive -> genConstraintsSTermRecursive fv rep tm
         NonRecursive -> genConstraintsSTerm tm
   ((_,ty), constraintSet) <- runGenM env im genFun
-  solverState <- solveConstraints constraintSet env
+  solverState <- solveConstraints constraintSet env im
   generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
 
 inferSTerm :: IsRec
@@ -105,7 +105,7 @@ checkCmd :: Command Loc FreeVarName
          -> Either Error (ConstraintSet, SolverResult)
 checkCmd cmd env im = do
   constraints <- snd <$> runGenM env im (genConstraintsCommand cmd)
-  solverResult <- solveConstraints constraints env
+  solverResult <- solveConstraints constraints env im
   return (constraints, solverResult)
 
 ------------------------------------------------------------------------------
@@ -123,7 +123,7 @@ inferATermTraced isRec fv im tm env = do
         Recursive -> genConstraintsATermRecursive fv tm
         NonRecursive -> genConstraintsATerm tm
   ((_, ty), constraintSet) <- runGenM env im genFun
-  solverState <- solveConstraints constraintSet env
+  solverState <- solveConstraints constraintSet env im
   generateTypeInferenceTrace PosRep constraintSet solverState ty
 
 inferATerm :: IsRec
