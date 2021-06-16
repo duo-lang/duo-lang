@@ -19,6 +19,7 @@ import Utils
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
+import TypeInference.GenerateConstraints.Definition ( xtorSigMakeStructural )
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -84,17 +85,13 @@ translateToStructural (TyNominal pr tn) = do
   NominalDecl{..} <- lookupNominalType tn
   case data_polarity of
     Data -> do
-      xtorSig <- mapM xtorSigMakeStructural (data_xtors pr)
+      let xtorSig = xtorSigMakeStructural <$> data_xtors pr
       return $ TyData pr xtorSig
     Codata -> do
-      xtorSig <- mapM xtorSigMakeStructural (data_xtors $ flipPolarityRep pr)
+      let xtorSig = xtorSigMakeStructural <$> data_xtors (flipPolarityRep pr)
       return $ TyCodata pr xtorSig
 translateToStructural _ = do
   throwSolverError ["Can't translate structural types to nominal"]
-
-xtorSigMakeStructural :: XtorSig pol -> SolverM (XtorSig pol)
-xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) MkTypArgs{..}) =
-  return $ MkXtorSig (MkXtorName Structural s) (MkTypArgs prdTypes cnsTypes)
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm

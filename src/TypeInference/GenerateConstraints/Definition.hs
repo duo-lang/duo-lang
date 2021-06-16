@@ -27,6 +27,7 @@ module TypeInference.GenerateConstraints.Definition
   , PrdCnsToPol
   , lookupDataDecl
   , lookupXtorSig
+  , xtorSigMakeStructural
   , lookupCase
   , foo
   , prdCnsToPol
@@ -257,6 +258,10 @@ lookupXtorSig decl xtn pol = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
     Nothing -> throwGenError $ "XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)
+
+xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
+xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) MkTypArgs{..}) =
+  MkXtorSig (MkXtorName Structural s) (MkTypArgs prdTypes cnsTypes)
 
 -- | Checks for a given list of XtorNames and a type declaration whether:
 -- (1) All the xtornames occur in the type declaration. (Correctness)
