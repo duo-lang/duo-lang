@@ -40,6 +40,7 @@ common shared-build-depends
                      FlexibleContexts,
                      FlexibleInstances,
                      ScopedTypeVariables,
+                     ConstraintKinds,
                      RankNTypes,
                      DataKinds,
                      GADTs,
@@ -59,6 +60,7 @@ library
       Eval.Eval
       Eval.ATerms
       Eval.STerms
+      Lookup
       Parser.ATerms
       Parser.Definition
       Parser.Lexer

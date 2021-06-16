@@ -7,6 +7,7 @@ module Eval.ATerms
 import Data.List (find)
 import Data.Maybe (fromJust)
 
+import Lookup
 import Eval.Eval
 import Syntax.ATerms
 

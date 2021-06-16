@@ -8,6 +8,7 @@ import Data.List (find)
 import qualified Data.Text as T
 
 import Eval.Eval
+import Lookup
 import Pretty.Pretty
 import Pretty.STerms ()
 import Syntax.STerms

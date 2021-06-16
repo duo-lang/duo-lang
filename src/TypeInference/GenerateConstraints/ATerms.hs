@@ -11,6 +11,7 @@ import Syntax.ATerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
 import Utils
+import Lookup
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -24,7 +25,7 @@ genConstraintsATerm (BVar _ idx) = do
   ty <- lookupContext PrdRep idx
   return (BVar () idx, ty)
 genConstraintsATerm (FVar loc fv) = do
-  tys <- lookupDefEnv fv
+  tys <- snd <$> lookupDef fv
   ty <- instantiateTypeScheme fv loc tys
   return (FVar () fv, ty)
 
@@ -39,7 +40,7 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Ctor " <> unXtorName xt <> " called with incorrect number of arguments"]
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
-  im <- asks inferMode
+  im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal PosRep (data_name tn)
         InferRefined -> TyRefined PosRep (data_name tn) $ TyData PosRep [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
@@ -80,7 +81,7 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
   forM_ (zip (data_xtors tn PosRep) cases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
-  im <- asks inferMode
+  im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal NegRep (data_name tn)
         InferRefined -> TyRefined NegRep (data_name tn) (TyData NegRep (snd <$> cases'))
@@ -108,7 +109,7 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   checkExhaustiveness (acase_name <$> cocases) tn
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
   forM_ (zip (data_xtors tn PosRep) cocases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
-  im <- asks inferMode
+  im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal PosRep (data_name tn)
         InferRefined -> TyRefined PosRep (data_name tn) (TyCodata PosRep (snd <$> cocases'))
@@ -152,6 +153,6 @@ genConstraintsATermRecursive :: FreeVarName
                              -> GenM (ATerm () FreeVarName, Typ Pos)
 genConstraintsATermRecursive fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withDefEnv fv (FVar () fv) (TypeScheme [] x) (genConstraintsATerm tm)
+  (tm, ty) <- withDef fv (FVar () fv) (TypeScheme [] x) (genConstraintsATerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
