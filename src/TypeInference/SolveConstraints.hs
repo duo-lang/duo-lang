@@ -12,10 +12,10 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
 
+import Errors
 import Syntax.Types
 import Syntax.CommonTerm (XtorName, FreeVarName)
 import Syntax.Program (Environment)
-import Utils
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()

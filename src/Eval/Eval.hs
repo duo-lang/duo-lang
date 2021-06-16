@@ -17,6 +17,7 @@ import qualified Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
 
+import Errors
 import Pretty.Pretty
 import Syntax.ATerms
 import Syntax.Program (Environment(..))

@@ -36,10 +36,12 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.List
 import qualified Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
 
+import Errors
 import Pretty.Pretty
 import Pretty.STerms ()
 import Pretty.ATerms ()
@@ -49,7 +51,6 @@ import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
 import Utils
-import Data.List
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -95,13 +96,6 @@ runGenM :: Environment FreeVarName -> InferenceMode -> GenM a -> Either Error (a
 runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
-
----------------------------------------------------------------------------------------------
--- Throwing errors
----------------------------------------------------------------------------------------------
-
-throwGenError :: Text -> GenM a
-throwGenError msg = throwError $ GenConstraintsError msg
 
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables

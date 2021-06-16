@@ -8,6 +8,7 @@ import Text.Megaparsec.Pos
 import Pretty.Pretty
 import Pretty.Constraints ()
 import Utils
+import Errors
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors

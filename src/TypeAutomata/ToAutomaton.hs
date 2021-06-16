@@ -6,6 +6,7 @@ import TypeAutomata.Definition
 import Pretty.Pretty (ppPrint)
 import Pretty.Types()
 import Utils
+import Errors
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
