@@ -15,7 +15,6 @@ import qualified Data.Text as T
 import Text.Megaparsec
 
 import Syntax.Types
-import Utils
 import Errors
 
 -------------------------------------------------------------------------------------------

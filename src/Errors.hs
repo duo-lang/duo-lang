@@ -1,9 +1,11 @@
 module Errors where
 
 import Control.Monad.Except
-import Data.Text
+import Data.Text (Text)
+import qualified Data.Text as T
 
 import Utils
+
 ----------------------------------------------------------------------------------
 -- Errors
 ----------------------------------------------------------------------------------
@@ -20,8 +22,17 @@ data Error
 type LocatedError = Located Error
 
 ---------------------------------------------------------------------------------------------
--- Throwing errors
+-- Throwing errors in a monadic context
 ---------------------------------------------------------------------------------------------
 
-throwGenError :: MonadError Error m => Text -> m a
-throwGenError msg = throwError $ GenConstraintsError msg
+throwGenError :: MonadError Error m => [Text] -> m a
+throwGenError = throwError . GenConstraintsError . T.unlines
+
+throwEvalError :: MonadError Error m => [Text] -> m a
+throwEvalError = throwError . EvalError . T.unlines
+
+throwSolverError :: MonadError Error m => [Text] -> m a
+throwSolverError = throwError . SolveConstraintsError . T.unlines
+
+throwAutomatonError :: MonadError Error m => [Text] -> m a
+throwAutomatonError = throwError . TypeAutomatonError . T.unlines

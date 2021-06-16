@@ -9,8 +9,6 @@ import Data.List (find)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
-import Data.Text (Text)
-import qualified Data.Text as T
 
 import Errors
 import Syntax.Types
@@ -40,9 +38,6 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m env) initSt)
 ------------------------------------------------------------------------------
 -- Monadic helper functions
 ------------------------------------------------------------------------------
-
-throwSolverError :: [Text] -> SolverM a
-throwSolverError = throwError . SolveConstraintsError . T.unlines
 
 addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 

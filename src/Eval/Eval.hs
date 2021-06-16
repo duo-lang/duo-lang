@@ -14,8 +14,6 @@ module Eval.Eval
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.Map as M
-import Data.Text (Text)
-import qualified Data.Text as T
 
 import Errors
 import Pretty.Pretty
@@ -23,7 +21,6 @@ import Syntax.ATerms
 import Syntax.Program (Environment(..))
 import Syntax.STerms
 import Syntax.Types
-import Utils
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
@@ -44,9 +41,6 @@ runEval e evalorder env = runExcept (runReaderT (unEvalM e) (evalorder, env))
 ---------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------
-
-throwEvalError :: [Text] -> EvalM bs a
-throwEvalError = throwError . EvalError . T.unlines
 
 lookupDef :: FreeVarName -> EvalM bs (ATerm () bs, TypeScheme Pos)
 lookupDef fv = do

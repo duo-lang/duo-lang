@@ -112,7 +112,7 @@ genConstraintsSTerm (XMatch _ CnsRep Structural cases) = do
 genConstraintsSTerm (XMatch _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore save to take the head of the xtors in the other cases.
-  throwGenError "Unreachable"
+  throwGenError ["Unreachable"]
 genConstraintsSTerm (XMatch _ PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupDataDecl (scase_name pmcase)
   checkExhaustiveness (scase_name <$> cases) tn
