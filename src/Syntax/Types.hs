@@ -74,6 +74,12 @@ deriving instance Eq (TypArgs Neg)
 deriving instance Ord (TypArgs Pos)
 deriving instance Ord (TypArgs Neg)
 
+instance Semigroup (TypArgs pol) where
+    (MkTypArgs ps cs) <> (MkTypArgs ps' cs') = MkTypArgs (ps <> ps') (cs <> cs')
+
+instance Monoid (TypArgs pol) where
+    mempty = MkTypArgs mempty mempty
+
 data XtorSig (pol :: Polarity) = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: TypArgs pol
