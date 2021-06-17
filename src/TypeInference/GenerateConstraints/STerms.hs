@@ -115,6 +115,7 @@ genConstraintsSTerm (XMatch _ _ Nominal []) =
   throwGenError "Unreachable"
 genConstraintsSTerm (XMatch _ PrdRep Nominal cases@(pmcase:_)) = do
   tn <- lookupDataDecl (scase_name pmcase)
+  checkCorrectness (scase_name <$> cases) tn
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            (x,_) <- lookupCase scase_name
@@ -128,6 +129,7 @@ genConstraintsSTerm (XMatch _ PrdRep Nominal cases@(pmcase:_)) = do
   return (XMatch () PrdRep Nominal (fst <$> cases'), ty)
 genConstraintsSTerm (XMatch _ CnsRep Nominal cases@(pmcase:_)) = do
   tn <- lookupDataDecl (scase_name pmcase)
+  checkCorrectness (scase_name <$> cases) tn
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            (x,_) <- lookupCase scase_name
