@@ -77,6 +77,7 @@ If X_1 has nominal type N, then:
 genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _:_)) = do
   (t', matchType) <- genConstraintsATerm t
   tn <- lookupDataDecl xtn
+  checkCorrectness (acase_name <$> cases) tn
   checkExhaustiveness (acase_name <$> cases) tn
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
@@ -106,6 +107,7 @@ If X_1 has nominal type N, then:
 -}
 genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _ _:_)) = do
   tn <- lookupDataDecl xtn
+  checkCorrectness (acase_name <$> cocases) tn
   checkExhaustiveness (acase_name <$> cocases) tn
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
   forM_ (zip (data_xtors tn PosRep) cocases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
