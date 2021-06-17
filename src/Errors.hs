@@ -36,3 +36,6 @@ throwSolverError = throwError . SolveConstraintsError . T.unlines
 
 throwAutomatonError :: MonadError Error m => [Text] -> m a
 throwAutomatonError = throwError . TypeAutomatonError . T.unlines
+
+throwOtherError :: MonadError Error m => [Text] -> m a
+throwOtherError = throwError . OtherError . T.unlines

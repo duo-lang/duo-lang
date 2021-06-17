@@ -10,14 +10,8 @@ module TypeInference.GenerateConstraints.Definition
   , throwGenError
     -- Looking up in context or environment
   , lookupContext
-  , lookupPrdEnv
-  , lookupCnsEnv
-  , lookupDefEnv
     -- Running computations in extended context or environment.
   , withContext
-  , withPrdEnv
-  , withCnsEnv
-  , withDefEnv
     -- Instantiating type schemes
   , instantiateTypeScheme
     -- Adding a constraint
@@ -25,9 +19,6 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , InferenceMode(..)
   , PrdCnsToPol
-  , lookupDataDecl
-  , lookupXtorSig
-  , lookupCase
   , foo
   , prdCnsToPol
   , checkExhaustiveness
@@ -36,18 +27,17 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List
 import qualified Data.Map as M
 import qualified Data.Text as T
 
 import Errors
+import Lookup
 import Pretty.Pretty
 import Pretty.STerms ()
 import Pretty.ATerms ()
 import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
-import Syntax.STerms
 import Syntax.Types
 import Utils
 
@@ -77,19 +67,18 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 ---------------------------------------------------------------------------------------------
 
 data GenerateReader = GenerateReader { context :: [TypArgs Pos]
-                                     , env :: Environment FreeVarName
                                      , inferMode :: InferenceMode
                                      }
 
-initialReader :: Environment FreeVarName -> InferenceMode -> GenerateReader
-initialReader env im = GenerateReader { context = [], env = env, inferMode = im }
+initialReader :: Environment FreeVarName -> InferenceMode -> (Environment FreeVarName, GenerateReader)
+initialReader env im = (env, GenerateReader { context = [], inferMode = im })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT GenerateReader (StateT GenerateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader GenerateReader, MonadError Error)
+newtype GenM a = GenM { getGenM :: ReaderT (Environment FreeVarName, GenerateReader) (StateT GenerateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment FreeVarName, GenerateReader), MonadError Error)
 
 runGenM :: Environment FreeVarName -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
@@ -123,25 +112,7 @@ freshTVars (Twice prdArgs cnsArgs) = do
 
 withContext :: TypArgs 'Pos -> GenM a -> GenM a
 withContext ctx m =
-  local (\gr@GenerateReader{..} -> gr { context = ctx:context }) m
-
-withPrdEnv :: FreeVarName -> STerm Prd () FreeVarName -> TypeScheme Pos -> GenM a -> GenM a
-withPrdEnv fv tm tys m = do
-  let modifyEnv (GenerateReader ctx env@Environment { prdEnv } im) =
-        GenerateReader ctx env { prdEnv = M.insert fv (tm,tys) prdEnv } im
-  local modifyEnv m
-
-withCnsEnv :: FreeVarName -> STerm Cns () FreeVarName -> TypeScheme Neg -> GenM a -> GenM a
-withCnsEnv fv tm tys m = do
-  let modifyEnv (GenerateReader ctx env@Environment { cnsEnv } im) =
-        GenerateReader ctx env { cnsEnv = M.insert fv (tm,tys) cnsEnv } im
-  local modifyEnv m
-
-withDefEnv :: FreeVarName -> ATerm () FreeVarName -> TypeScheme Pos -> GenM a -> GenM a
-withDefEnv fv tm tys m = do
-  let modifyEnv (GenerateReader ctx env@Environment { defEnv } im) =
-        GenerateReader ctx env { defEnv = M.insert fv (tm,tys) defEnv } im
-  local modifyEnv m
+  local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ctx:context })) m
 
 ---------------------------------------------------------------------------------------------
 -- Looking up types in the context and environment
@@ -150,7 +121,7 @@ withDefEnv fv tm tys m = do
 -- | Lookup a type of a bound variable in the context.
 lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
 lookupContext rep (i,j) = do
-  ctx <- asks context
+  ctx <- asks (context . snd)
   case indexMaybe ctx i of
     Nothing -> throwGenError ["Bound Variable out of bounds: " <> T.pack (show (i,j))]
     Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
@@ -162,30 +133,6 @@ lookupContext rep (i,j) = do
         case indexMaybe cnsTypes j of
           Nothing -> throwGenError ["Bound Variable out of bounds: " <> T.pack (show (i,j))]
           Just ty -> return ty
-
-lookupPrdEnv :: FreeVarName -> GenM (TypeScheme Pos)
-lookupPrdEnv fv = do
-  prdEnv <- asks (prdEnv . env)
-  case M.lookup fv prdEnv of
-    Just (_,tys) -> return tys
-    Nothing ->
-      throwGenError ["Unbound free producer variable:" <> ppPrint fv]
-
-lookupCnsEnv :: FreeVarName -> GenM (TypeScheme Neg)
-lookupCnsEnv fv = do
-  cnsEnv <- asks (cnsEnv . env)
-  case M.lookup fv cnsEnv of
-    Just (_,tys) -> return tys
-    Nothing ->
-      throwGenError ["Unbound free consumer variable:" <> ppPrint fv]
-
-lookupDefEnv :: FreeVarName -> GenM (TypeScheme Pos)
-lookupDefEnv fv = do
-  defEnv <- asks (defEnv . env)
-  case M.lookup fv defEnv of
-    Just (_,tys) -> return tys
-    Nothing ->
-      throwGenError ["Unbound free def variable:" <> ppPrint fv]
 
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.
@@ -215,41 +162,9 @@ addConstraint c = modify foo
 data InferenceMode = InferNominal | InferRefined
   deriving (Eq, Show)
 
--- | We map producer terms to positive types, and consumer terms to negative types.
-type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
-  PrdCnsToPol Prd = Pos
-  PrdCnsToPol Cns = Neg
-
-prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
-prdCnsToPol PrdRep = PosRep
-prdCnsToPol CnsRep = NegRep
-
 foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
-
-lookupCase :: XtorName -> GenM (TypArgs Pos, XtorArgs () FreeVarName)
-lookupCase xt = do
-  env <- asks env
-  case M.lookup xt (envToXtorMap env) of
-    Nothing -> throwGenError ["GenerateConstraints: The xtor " <> ppPrint xt <> " could not be looked up."]
-    Just types@(MkTypArgs prdTypes cnsTypes) -> do
-      let prds = (\_ -> FreeVar () PrdRep "y") <$> prdTypes
-      let cnss = (\_ -> FreeVar () CnsRep "y") <$> cnsTypes
-      return (types, MkXtorArgs prds cnss)
-
-lookupDataDecl :: XtorName -> GenM DataDecl
-lookupDataDecl xt = do
-  env <- asks env
-  case lookupXtor xt env of
-    Nothing -> throwGenError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
-    Just decl -> return decl
-
-lookupXtorSig :: DataDecl -> XtorName -> PolarityRep pol -> GenM (XtorSig pol)
-lookupXtorSig decl xtn pol = do
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
-    Just xts -> return xts
-    Nothing -> throwGenError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
 
 -- | Checks for a given list of XtorNames and a type declaration whether:
 -- (1) All the xtornames occur in the type declaration. (Correctness)
@@ -261,7 +176,7 @@ checkExhaustiveness matched decl = do
   let declared = sig_name <$> data_xtors decl PosRep
   forM_ matched $ \xn -> unless (xn `elem` declared) 
     (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
-  im <- asks inferMode
+  im <- asks (inferMode . snd)
   -- Only check exhaustiveness when not using refinements
   case im of
     InferRefined -> return ()
