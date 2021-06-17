@@ -21,6 +21,7 @@ module TypeInference.GenerateConstraints.Definition
   , PrdCnsToPol
   , foo
   , prdCnsToPol
+  , checkCorrectness
   , checkExhaustiveness
   ) where
 
@@ -166,21 +167,28 @@ foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
 
--- | Checks for a given list of XtorNames and a type declaration whether:
--- (1) All the xtornames occur in the type declaration. (Correctness)
--- (2) All xtors of the type declaration are matched against. (Exhaustiveness)
+-- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
+-- the type declaration (Correctness).
+checkCorrectness :: [XtorName]
+                 -> DataDecl
+                 -> GenM ()
+checkCorrectness matched decl = do
+  let declared = sig_name <$> data_xtors decl PosRep
+  forM_ matched $ \xn -> unless (xn `elem` declared) 
+    (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
+
+-- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration 
+-- are matched against (Exhaustiveness).
 checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness matched decl = do
-  let declared = sig_name <$> data_xtors decl PosRep
-  forM_ matched $ \xn -> unless (xn `elem` declared) 
-    (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
   im <- asks (inferMode . snd)
   -- Only check exhaustiveness when not using refinements
   case im of
     InferRefined -> return ()
-    InferNominal ->
+    InferNominal -> do
+      let declared = sig_name <$> data_xtors decl PosRep
       forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
