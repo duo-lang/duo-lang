@@ -8,6 +8,7 @@ import Data.List (find)
 import qualified Data.Text as T
 
 import Eval.Eval
+import Lookup
 import Pretty.Pretty
 import Pretty.STerms ()
 import Syntax.STerms
@@ -17,8 +18,8 @@ import Utils
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
-lookupCase :: XtorName -> [SCase () FreeVarName] -> EvalM FreeVarName (SCase () FreeVarName)
-lookupCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
+lookupMatchCase :: XtorName -> [SCase () FreeVarName] -> EvalM FreeVarName (SCase () FreeVarName)
+lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError ["Error during evaluation. The xtor: "
                             , unXtorName xt
@@ -46,18 +47,18 @@ evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 evalApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
-  (prd,_) <- lookupPrd fv
+  (prd,_) <- lookupSTerm PrdRep fv
   return (Just (Apply () prd cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
-  (cns,_) <- lookupCns fv
+  (cns,_) <- lookupSTerm CnsRep fv
   return (Just (Apply () prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
-  (MkSCase _ argTypes cmd') <- lookupCase xt cases
+  (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
-  (MkSCase _ argTypes cmd') <- lookupCase xt cases
+  (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.

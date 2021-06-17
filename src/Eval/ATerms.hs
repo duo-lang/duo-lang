@@ -7,6 +7,7 @@ module Eval.ATerms
 import Data.List (find)
 import Data.Maybe (fromJust)
 
+import Lookup
 import Eval.Eval
 import Syntax.ATerms
 
@@ -38,7 +39,7 @@ evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args
 evalATermSingleStep' :: ATerm () bs -> EvalOrder -> EvalM bs (Maybe (ATerm () bs))
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
-  (tm,_) <- lookupDef fv
+  (tm,_) <- lookupATerm fv
   return (Just tm)
 evalATermSingleStep' (Ctor _ xt args) _ | and (isValue <$> args) = return Nothing
                                         | otherwise = evalArgsSingleStep args >>= 

@@ -16,6 +16,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
+import Errors
 import Syntax.STerms
 import Syntax.Types
 import TypeAutomata.Definition
@@ -34,7 +35,7 @@ import TypeAutomata.Subsume (subsume)
 import Translate.Translate (compile)
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
-import Utils (Error, trim, trimStr, Verbosity(..))
+import Utils (trim, trimStr, Verbosity(..))
 import Text.Megaparsec (eof)
 
 ------------------------------------------------------------------------------
@@ -410,7 +411,7 @@ load_file fp = do
   decls <- parseFile fp programP
   inferMode <- gets inferenceMode
   case inferProgram decls inferMode of
-    Left err -> liftIO $ printLocatedError err
+    Left err -> printLocatedError err
     Right newEnv -> do
       modifyEnvironment ((<>) newEnv)
       prettyRepl newEnv

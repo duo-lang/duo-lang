@@ -1,6 +1,7 @@
-module Pretty.Errors where
+module Pretty.Errors (printLocatedError) where
 
 import Control.Monad (forM_)
+import Control.Monad.IO.Class
 import qualified Data.Text.IO as T
 import Prettyprinter
 import Text.Megaparsec.Pos
@@ -8,6 +9,7 @@ import Text.Megaparsec.Pos
 import Pretty.Pretty
 import Pretty.Constraints ()
 import Utils
+import Errors
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -25,8 +27,8 @@ instance PrettyAnn Error where
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------
 
-printLocatedError :: LocatedError -> IO ()
-printLocatedError (Located loc err) = do
+printLocatedError :: MonadIO m => LocatedError -> m ()
+printLocatedError (Located loc err) = liftIO $ do
   T.putStrLn ("Error at: " <> ppPrint loc)
   printRegion loc
   T.putStrLn ""

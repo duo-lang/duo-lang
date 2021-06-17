@@ -16,6 +16,7 @@ import Data.Bifunctor (first)
 import qualified Data.Map as M
 import qualified Data.Text as T
 
+import Errors
 import Pretty.Pretty
 import Pretty.Errors
 import Syntax.ATerms
