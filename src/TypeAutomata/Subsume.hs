@@ -16,13 +16,14 @@ import Data.Tuple (swap)
 import Data.Functor.Identity
 import Control.Monad.State
 
+import Errors
 import Syntax.Types
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveAdmissible
 import TypeAutomata.Minimize (minimize)
-import Utils
+
 
 
 -- Shift up all the nodes of the graph by the given number. Generates an isomorphic graph.

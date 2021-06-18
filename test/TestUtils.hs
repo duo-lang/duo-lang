@@ -4,10 +4,12 @@ import qualified Data.Text.IO as T
 import System.Directory (listDirectory)
 import System.FilePath
 
+import Errors
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
 import TypeInference.InferProgram (inferProgram)
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils
 
 
@@ -26,22 +28,21 @@ filterExamples fp = not (isHidden fp || wrongFt fp)
                     (h:_) -> h == '.'
     wrongFt fp  = takeExtension fp `elem` (("." <>) <$> ["scm", "ub"])
 
-
-getAvailableExamples :: IO [FilePath]
-getAvailableExamples = do
-  examples <- listDirectory "examples/"
-  return (("examples" </>) <$> filter filterExamples examples)
+getAvailableExamples :: FilePath -> IO [FilePath]
+getAvailableExamples fp = do
+  examples <- listDirectory fp
+  return ((fp </>) <$> filter filterExamples examples)
 
 getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName])
 getParsedDeclarations fp = do
   s <- T.readFile fp
   return (runFileParser fp programP s)
 
-getEnvironment :: FilePath -> IO (Either Error (Environment FreeVarName))
-getEnvironment fp = do
+getEnvironment :: FilePath -> InferenceMode -> IO (Either Error (Environment FreeVarName))
+getEnvironment fp im = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> case inferProgram decls of
+    Right decls -> case inferProgram decls im of
       Right env -> return (Right env)
       Left (Located _ err) -> return (Left err)
     Left err -> return (Left err)

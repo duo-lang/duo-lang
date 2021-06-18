@@ -31,21 +31,6 @@ data Loc = Loc SourcePos SourcePos
 data Located a = Located Loc a
 
 ----------------------------------------------------------------------------------
--- Errors
-----------------------------------------------------------------------------------
-
-data Error
-  = ParseError Text
-  | GenConstraintsError Text
-  | EvalError Text
-  | SolveConstraintsError Text
-  | TypeAutomatonError Text
-  | OtherError Text
-  deriving (Show, Eq)
-
-type LocatedError = Located Error
-
-----------------------------------------------------------------------------------
 -- Helper Functions
 ----------------------------------------------------------------------------------
 

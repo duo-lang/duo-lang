@@ -43,9 +43,17 @@ spec = do
     typeParseExample "{{ { 'A[{ 'B }] } <<: Foo }}" $ TyRefined PosRep (MkTypeName "Foo")
       (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
       [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]])
-    typeParseExample "< 'A > /\\ < 'B >"
-        $ TySet NegRep [TyData NegRep [MkXtorSig (MkXtorName Structural "A") mempty], TyData NegRep [MkXtorSig (MkXtorName Structural "B") mempty]]
-    typeParseExample "< 'A > \\/ < 'B >"
-        $ TySet PosRep [TyData PosRep [MkXtorSig (MkXtorName Structural "A") mempty], TyData PosRep [MkXtorSig (MkXtorName Structural "B") mempty]]
+    typeParseExample "< 'A | 'B > /\\ < 'B >"
+        $ TySet NegRep [ TyData   NegRep [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                       , TyData   NegRep [MkXtorSig (MkXtorName Structural "B") mempty]]
+    typeParseExample "< 'A | 'B > \\/ < 'B >"
+        $ TySet PosRep [ TyData   PosRep [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                       , TyData   PosRep [MkXtorSig (MkXtorName Structural "B") mempty]]
+    typeParseExample "{ 'A , 'B } /\\ { 'B }"
+        $ TySet NegRep [ TyCodata NegRep [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                       , TyCodata NegRep [MkXtorSig (MkXtorName Structural "B") mempty]]
+    typeParseExample "{ 'A , 'B} \\/ { 'B }"
+        $ TySet PosRep [ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                       , TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") mempty]]
     --
     typeParseCounterEx "{{ 'Ap() }" PosRep

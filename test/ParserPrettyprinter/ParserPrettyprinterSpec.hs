@@ -17,7 +17,7 @@ import TestUtils
 spec :: Spec
 spec = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
-    examples <- runIO getAvailableExamples
+    examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
         decls <- runIO $ getParsedDeclarations example
