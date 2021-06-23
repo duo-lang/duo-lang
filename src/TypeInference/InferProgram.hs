@@ -131,7 +131,7 @@ inferATerm isRec fv tm env = do
 -- Programs
 ------------------------------------------------------------------------------
 
-insertDecl :: Declaration FreeVarName
+insertDecl :: Declaration FreeVarName Loc
            -> Environment FreeVarName
            -> Either LocatedError (Environment FreeVarName)
 insertDecl (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do
@@ -149,11 +149,11 @@ insertDecl (DefDecl isRec loc v t)  env@Environment { defEnv }  = do
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } = do
   return $ env { declEnv = dcl : declEnv }
 
-inferProgram :: [Declaration FreeVarName] -> Either LocatedError (Environment FreeVarName)
+inferProgram :: [Declaration FreeVarName Loc] -> Either LocatedError (Environment FreeVarName)
 inferProgram = inferProgram' mempty
   where
     inferProgram' :: Environment FreeVarName
-                  -> [Declaration FreeVarName]
+                  -> [Declaration FreeVarName Loc]
                   -> Either LocatedError (Environment FreeVarName)
     inferProgram' env [] = return env
     inferProgram' env (decl:decls) = do
@@ -165,7 +165,7 @@ inferProgram = inferProgram' mempty
 ------------------------------------------------------------------------------
 
 insertDeclIO :: Verbosity
-             -> Declaration FreeVarName
+             -> Declaration FreeVarName Loc
              -> Environment FreeVarName
              -> IO (Maybe (Environment FreeVarName))
 insertDeclIO verb (PrdDecl isRec loc v loct)  env@Environment { prdEnv }  = do

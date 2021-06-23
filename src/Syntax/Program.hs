@@ -14,17 +14,24 @@ import Utils
 
 data IsRec = Recursive | NonRecursive
 
-data Declaration a
-  = PrdDecl IsRec Loc FreeVarName (STerm Prd Loc a)
-  | CnsDecl IsRec Loc FreeVarName (STerm Cns Loc a)
-  | CmdDecl Loc FreeVarName (Command Loc a)
-  | DefDecl IsRec Loc FreeVarName (ATerm Loc a)
-  | DataDecl Loc DataDecl
+data Declaration a b
+  = PrdDecl IsRec b FreeVarName (STerm Prd b a)
+  | CnsDecl IsRec b FreeVarName (STerm Cns b a)
+  | CmdDecl b FreeVarName (Command b a)
+  | DefDecl IsRec b FreeVarName (ATerm b a)
+  | DataDecl b DataDecl
 
-instance Show (Declaration a) where
+instance Show (Declaration a b) where
   show _ = "<Show for Declaration not implemented>"
 
-type Program a = [Declaration a]
+-- instance Bifunctor Declaration a b where
+  -- bimap f g (PrdDecl isRec b v t) = ...
+  -- bimap f g (CnsDecl isRec b v t) = ...
+  -- bimap f g (CmdDecl b v cmd) = ...
+  -- bimap f g (DefDecl isRec b v t) = ...
+  -- bimap f g (DataDecl b dataDecl) = ...
+
+type Program a b = [Declaration a b]
 
 ---------------------------------------------------------------------------------
 -- Environment

@@ -13,6 +13,7 @@ import Syntax.Types
 import Syntax.CommonTerm
 import Syntax.STerms
 import Syntax.ATerms
+import Utils (Loc)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -29,7 +30,7 @@ instance PrettyAnn DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
     semi
 
-instance PrettyAnn a => PrettyAnn (Declaration a) where
+instance PrettyAnn a => PrettyAnn (Declaration a b) where
   prettyAnn (PrdDecl Recursive _ fv tm) =
     annKeyword "prd" <+> "rec" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn tm <> semi
   prettyAnn (PrdDecl NonRecursive _ fv tm) =
@@ -46,7 +47,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a) where
     annKeyword "def" <+>           pretty fv <+> annSymbol ":=" <+> prettyAnn tm <> semi
   prettyAnn (DataDecl _ decl) = prettyAnn decl
 
-instance PrettyAnn (NamedRep (Declaration FreeVarName)) where
+instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
   prettyAnn (NamedRep (PrdDecl Recursive _ fv tm)) =
     annKeyword "prd" <+> "rec" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
   prettyAnn (NamedRep (PrdDecl NonRecursive _ fv tm)) =
@@ -63,7 +64,7 @@ instance PrettyAnn (NamedRep (Declaration FreeVarName)) where
     annKeyword "def" <+>           pretty fv <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
   prettyAnn (NamedRep (DataDecl _ decl)) = prettyAnn decl
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration FreeVarName] where
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration FreeVarName Loc] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------
