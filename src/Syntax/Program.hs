@@ -1,12 +1,12 @@
 module Syntax.Program where
 
+import Data.Bifunctor
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Foldable (find)
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
-import Utils
 
 ---------------------------------------------------------------------------------
 -- Declarations
@@ -24,12 +24,12 @@ data Declaration a b
 instance Show (Declaration a b) where
   show _ = "<Show for Declaration not implemented>"
 
--- instance Bifunctor Declaration a b where
-  -- bimap f g (PrdDecl isRec b v t) = ...
-  -- bimap f g (CnsDecl isRec b v t) = ...
-  -- bimap f g (CmdDecl b v cmd) = ...
-  -- bimap f g (DefDecl isRec b v t) = ...
-  -- bimap f g (DataDecl b dataDecl) = ...
+instance Bifunctor Declaration where
+  bimap f g (PrdDecl isRec b v t) = PrdDecl isRec (g b) v $ bimap g f t
+  bimap f g (CnsDecl isRec b v t) = CnsDecl isRec (g b) v $ bimap g f t
+  bimap f g (CmdDecl b v cmd) = CmdDecl (g b) v $ bimap g f cmd
+  bimap f g (DefDecl isRec b v t) = DefDecl isRec (g b) v $ bimap g f t
+  bimap _ g (DataDecl b dataDecl) = DataDecl (g b) dataDecl
 
 type Program a b = [Declaration a b]
 
