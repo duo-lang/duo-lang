@@ -1,8 +1,4 @@
-resolver: lts-16.16
+resolver: lts-18.0
 packages:
 - .
-extra-deps:
-  - repline-0.4.0.0
-  - haskeline-0.8.0.0@sha256:0630452b759a5b40e0e3e7ca2ef4b0d55d5161d95e8d7b0dd3cf55888971437f,5440
-  - prettyprinter-1.7.0@sha256:6a9569e21fa61163a7f066d23d701e23e917893e8f39733d6e617ec72787ae5f,6007
 
