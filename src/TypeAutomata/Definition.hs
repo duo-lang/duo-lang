@@ -79,19 +79,6 @@ import Syntax.CommonTerm
 --
 --                    = mu r. < 'Nil | 'Cons(ty,r) >
 --
--- ## Refinement Types:
---
--- A refinement type is represented by a refinement edge (represented as double line)
--- connecting a refinement type node with a refining structural type node:
---
---    |-----------------------|          |---------------------|
---    |                       |          |                     |
---    | nl_refined = { Bool } |=========>| nl_data = { 'True } |
---    |                       |          |                     |
---    |-----------------------|          |---------------------|
---
---                  = {{ < 'True > <<: Bool }}
---
 -- ## Union and Intersection Types:
 --
 -- Unions and intersections are recorded within a same node label. Whether a node
@@ -111,6 +98,27 @@ import Syntax.CommonTerm
 --    | nl_nominal = { Nat, Bool } |    =   Nat /\ Bool
 --    |                            |
 --    ------------------------------
+--
+-- ## Refinement Types:
+--
+-- A refinement type is represented by a refinement edge (represented as dotted line),
+-- labeled with a type name and connecting a refinement type node with a refining 
+-- structural type node.
+--
+--                 |----------------------------|
+--                 |                            |
+--                 | nl_refined = { Nat, Bool } |
+--                 |     nl_polarity = Pos      |
+--                 |                            |
+--                 |----------------------------|
+--                      :                 :
+--                  Nat :                 : Bool
+--                      V                 V
+--     |---------------------|       |---------------------|
+--     |  nl_data = { 'Z }   |       | nl_data = { 'True } |
+--     |---------------------|       |---------------------|
+--
+--             = {{ < 'True | 'Z > <<: Nat \/ Bool }}
 --
 -- ## Type variables
 --

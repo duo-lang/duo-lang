@@ -1,7 +1,7 @@
 module Pretty.TypeAutomata ( typeAutToDot ) where
 
 import Data.Graph.Inductive.Graph
-import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), StyleName(Dotted), StyleItem(SItem))
+import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed,Dotted), StyleItem(SItem))
 import Data.GraphViz
 import Data.Maybe (catMaybes)
 import qualified Data.Set as S
@@ -61,4 +61,4 @@ typeAutParams = defaultParams
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
     regularEdgeStyle el = [textLabel $ pack (ppPrintString el)]
-    refEdgeStyle = [arrowTo dotArrow, Style [SItem Dotted []]]
+    refEdgeStyle = [arrowTo vee, Style [SItem Dotted []]]
