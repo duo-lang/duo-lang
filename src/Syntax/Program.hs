@@ -1,8 +1,8 @@
 module Syntax.Program where
 
 import Data.Map (Map)
+import Data.List ( find )
 import qualified Data.Map as M
-import Data.Foldable (find)
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
@@ -56,23 +56,6 @@ instance Monoid (Environment bs) where
     , defEnv = M.empty
     , declEnv = []
     }
-
-envToXtorMap :: Environment bs -> Map XtorName (TypArgs Pos)
-envToXtorMap Environment { declEnv } = M.unions xtorMaps
-  where
-    xtorMaps = xtorSigsToAssocList <$> declEnv
-    xtorSigsToAssocList NominalDecl { data_xtors } =
-      M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors PosRep)
-
-lookupXtor :: XtorName -> Environment bs -> Maybe DataDecl
-lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
-  where
-    typeContainsXtor :: DataDecl -> Bool
-    typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
-                                   | otherwise = False
-
-    containsXtor :: XtorSig Pos -> Bool
-    containsXtor sig = sig_name sig == xt
 
 lookupTypeName :: TypeName -> Environment bs -> Maybe DataDecl
 lookupTypeName tn Environment{ declEnv } = find (\NominalDecl{..} -> data_name == tn) declEnv

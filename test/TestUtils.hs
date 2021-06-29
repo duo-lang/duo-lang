@@ -3,6 +3,7 @@ module TestUtils where
 import qualified Data.Text.IO as T
 import System.Directory (listDirectory)
 
+import Errors
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
