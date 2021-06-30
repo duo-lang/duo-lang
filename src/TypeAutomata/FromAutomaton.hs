@@ -157,7 +157,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns trs)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables
@@ -181,13 +181,18 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return [TyCodata rep sig]
     -- Creating Nominal types
-    nomRefs <- case outs of
-          (RefineEdge,ref):_ -> do
-            ty <- nodeToType rep ref
-            return [TyRefined rep tn ty | tn <- S.toList tns]
-          _ -> return $ TyNominal rep <$> S.toList tns
-    -- let nominals = TyNominal rep <$> (S.toList tns)
-    let typs = varL ++ datL ++ codatL ++ nomRefs
+    let nominals = TyNominal rep <$> S.toList tns
+    -- Creating refinement types
+    -- TODO: Combine refinements of same type name
+    refs <- concat . concat <$> forM (S.toList trs) (\tn -> do
+        forM outs (\out -> do
+          case out of
+              (RefineEdge tn1, ref) | tn1 == tn -> do
+                    typ <- nodeToType rep ref
+                    return [TyRefined rep tn typ]
+              _ -> return []))
+        
+    let typs = varL ++ datL ++ codatL ++ nominals ++ refs
     return $ case typs of [t] -> t; _ -> TySet rep typs
 
   -- If the graph is cyclic, make a recursive type

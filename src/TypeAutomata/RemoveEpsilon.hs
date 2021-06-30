@@ -11,7 +11,7 @@ import TypeAutomata.Definition
 unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
 unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
 unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
-unsafeEmbedEdgeLabel RefineEdge = RefineEdge
+unsafeEmbedEdgeLabel (RefineEdge tn) = RefineEdge tn
 
 -- | Remove all epsilon edges starting from the node n.
 -- I.e. replace this configuration:

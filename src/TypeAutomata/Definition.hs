@@ -105,20 +105,20 @@ import Syntax.CommonTerm
 -- labeled with a type name and connecting a refinement type node with a refining 
 -- structural type node.
 --
---                 |----------------------------|
+--                 ------------------------------
 --                 |                            |
 --                 | nl_refined = { Nat, Bool } |
 --                 |     nl_polarity = Pos      |
 --                 |                            |
---                 |----------------------------|
+--                 ------------------------------
 --                      :                 :
 --                  Nat :                 : Bool
 --                      V                 V
---     |---------------------|       |---------------------|
+--     -----------------------       -----------------------
 --     |  nl_data = { 'Z }   |       | nl_data = { 'True } |
---     |---------------------|       |---------------------|
+--     -----------------------       -----------------------
 --
---             = {{ < 'True | 'Z > <<: Nat \/ Bool }}
+--       = {{ < 'Z > <<: Nat }} \/ {{ < 'True > <<: Bool }}
 --
 -- ## Type variables
 --
@@ -156,14 +156,15 @@ data NodeLabel = MkNodeLabel
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
   , nl_nominal :: Set TypeName
+  , nl_refined :: Set TypeName
   } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> NodeLabel
-emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty
+emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty S.empty
 
 singleNodeLabel :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
-singleNodeLabel pol Data xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty
-singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty
+singleNodeLabel pol Data xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty S.empty
+singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty S.empty
 
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
@@ -172,7 +173,7 @@ singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty
 data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
-  | RefineEdge
+  | RefineEdge TypeName
   deriving (Eq,Show, Ord)
 
 type EdgeLabelNormal  = EdgeLabel Void

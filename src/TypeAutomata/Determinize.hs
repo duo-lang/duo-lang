@@ -64,9 +64,10 @@ combineNodeLabels nls
       then error "Tried to combine node labels of different polarity!"
       else MkNodeLabel {
         nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn <- nls]
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ <- nls],
+        nl_refined = S.unions [ tr | MkNodeLabel _ _ _ _ tr <- nls]
         }
   where
     pol = nl_pol (head nls)

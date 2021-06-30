@@ -26,9 +26,10 @@ instance PrettyAnn XtorLabel where
     brackets (pretty labelCnsArity)
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns) = intercalateX ";" (catMaybes [printDat <$> maybeDat
+  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns rts) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat
-                                                                          , printNominal tns])
+                                                                          , printNominal tns
+                                                                          , printNominal rts])
     where
       printDat   dat   = angles (mempty <+> cat (punctuate " | " (prettyAnn <$> (S.toList dat))) <+> mempty)
       printCodat codat = braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (S.toList codat))) <+> mempty)
@@ -38,7 +39,7 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)
   prettyAnn (EdgeSymbol _ xt Cns i) = prettyAnn xt <> brackets (pretty i)
   prettyAnn (EpsilonEdge _) = "e"
-  prettyAnn RefineEdge = "ref"
+  prettyAnn (RefineEdge tn) = prettyAnn tn
 
 typeAutToDot :: TypeAut' (EdgeLabel a) f pol -> DotGraph Node
 typeAutToDot TypeAut {ta_core = TypeAutCore{..}} =
@@ -56,7 +57,7 @@ typeAutParams = defaultParams
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
-                              RefineEdge -> refEdgeStyle
+                              RefineEdge _ -> refEdgeStyle -- TODO: Add labels
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
