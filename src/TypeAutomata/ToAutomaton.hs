@@ -3,7 +3,10 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
+import Pretty.Pretty (ppPrint)
+import Pretty.Types()
 import Utils
+import Errors
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
@@ -81,9 +84,6 @@ runTypeAutTvars tvars m = do
 --------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------
-
-throwAutomatonError :: [String] -> TTA a
-throwAutomatonError msg = throwError $ TypeAutomatonError (unlines msg)
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
@@ -180,8 +180,9 @@ insertType (TyNominal rep tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
-insertType TyRefined{} = do
-  throwAutomatonError ["Refined types cannot be inserted"]
+insertType ty@(TyRefined pr _ _) = do
+  throwAutomatonError ["Cannot insert refined type " <> ppPrint ty <>
+    " with polarity " <> ppPrint (polarityRepToPol pr)]
 
 
 --------------------------------------------------------------------------

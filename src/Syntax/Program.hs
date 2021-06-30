@@ -3,7 +3,6 @@ module Syntax.Program where
 import Data.Bifunctor
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Foldable (find)
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
@@ -15,11 +14,12 @@ import Syntax.Types
 data IsRec = Recursive | NonRecursive
 
 data Declaration a b
-  = PrdDecl IsRec b FreeVarName (STerm Prd b a)
-  | CnsDecl IsRec b FreeVarName (STerm Cns b a)
+  = PrdDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (STerm Prd b a)
+  | CnsDecl IsRec b FreeVarName (Maybe (TypeScheme Neg)) (STerm Cns b a)
   | CmdDecl b FreeVarName (Command b a)
-  | DefDecl IsRec b FreeVarName (ATerm b a)
+  | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b a)
   | DataDecl b DataDecl
+
 
 instance Show (Declaration a b) where
   show _ = "<Show for Declaration not implemented>"
@@ -65,21 +65,4 @@ instance Monoid (Environment bs) where
     , defEnv = M.empty
     , declEnv = []
     }
-
-envToXtorMap :: Environment bs -> Map XtorName (TypArgs Pos)
-envToXtorMap Environment { declEnv } = M.unions xtorMaps
-  where
-    xtorMaps = xtorSigsToAssocList <$> declEnv
-    xtorSigsToAssocList NominalDecl { data_xtors } =
-      M.fromList ((\MkXtorSig { sig_name, sig_args } ->(sig_name, sig_args)) <$> data_xtors PosRep)
-
-lookupXtor :: XtorName -> Environment bs -> Maybe DataDecl
-lookupXtor xt Environment { declEnv } = find typeContainsXtor declEnv
-  where
-    typeContainsXtor :: DataDecl -> Bool
-    typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
-                                   | otherwise = False
-
-    containsXtor :: XtorSig Pos -> Bool
-    containsXtor sig = sig_name sig == xt
 
