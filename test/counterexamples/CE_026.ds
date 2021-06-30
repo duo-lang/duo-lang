@@ -1,5 +1,0 @@
-# We can only use a definition with the annotated type, not the inferred type.
-
-def id : { 'Ap(<'True | 'False >)[<'True | 'False>] } := comatch { 'Ap(x) => x };
-
-def useId : < 'Bar > := id.'Ap('Bar);

@@ -3,24 +3,22 @@ module Translate.TranslateExamplesSpec ( spec ) where
 import Test.Hspec
 import Data.Bifunctor
 import Data.Either (isRight)
-import Data.Text (Text)
-import qualified Data.Text as T
 
 import Parser.Parser
 import Syntax.STerms
 import Translate.Translate (compile)
 
 
-compileExample :: Text -> Text -> Spec
+compileExample :: String -> String -> Spec
 compileExample termA termS = do
-  it (T.unpack termA ++  " compiles to: " ++ T.unpack termS) $ do
+  it (termA ++  " compiles to: " ++ termS) $ do
       let Right (termS',_pos) = runInteractiveParser (stermP PrdRep) termS
       let Right (termA',_pos) = runInteractiveParser atermP termA
       compile termA' `shouldBe` (bimap (const ()) (const ()) termS')
 
-isClosed :: Text -> Spec
+isClosed :: String -> Spec
 isClosed termA = do
-  it ("Compilation of " ++ T.unpack termA ++  " is a closed STerm.") $ do
+  it ("Compilation of " ++ termA ++  " is a closed STerm.") $ do
       let Right (termA', _pos) = runInteractiveParser atermP termA
       termLocallyClosed (compile termA') `shouldSatisfy` isRight
 

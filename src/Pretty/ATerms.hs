@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Pretty.ATerms where
 
 import Prettyprinter

@@ -24,7 +24,6 @@ import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 
 import Utils
-import Errors
 import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------

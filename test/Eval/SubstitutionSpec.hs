@@ -1,33 +1,29 @@
 module Eval.SubstitutionSpec where
 
-import Control.Monad (forM_)
-import Data.Either (isLeft, isRight)
-import qualified Data.Map as M
-import qualified Data.Text as T
 import Test.Hspec
-
-
+import qualified Data.Map as M
+import Data.Either (isLeft, isRight)
+import Control.Monad (forM_)
 
 import Pretty.Pretty
 import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Program
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import Utils
 import TestUtils
 
 spec :: Spec
 spec = do
   describe "All examples are locally closed." $ do
-    examples <- runIO $ getAvailableExamples "examples/"
+    examples <- runIO getAvailableExamples
     forM_ examples $ \example -> do
       describe ("Examples in " ++ example ++ " are locally closed") $ do
-        env <- runIO $ getEnvironment example InferNominal
+        env <- runIO $ getEnvironment example
         case env of
-          Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
+          Left err -> it "Could not load examples." $ expectationFailure (ppPrint err)
           Right env -> do
             forM_ (M.toList (prdEnv env)) $ \(name,(term,_)) -> do
-              it (T.unpack name ++ " does not contain dangling deBruijn indizes") $
+              it (name ++ " does not contain dangling deBruijn indizes") $
                 termLocallyClosed term `shouldBe` Right ()
 
   describe "checkIfBound works" $ do

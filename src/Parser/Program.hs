@@ -19,10 +19,6 @@ import Utils (Loc(..))
 isRecP :: Parser IsRec
 isRecP = option NonRecursive (try recKwP >> pure Recursive)
 
-annotP :: PolarityRep pol -> Parser (Maybe (TypeScheme pol))
-annotP rep = optional annotP'
-  where
-    annotP' = try (colon >> typeSchemeP rep)
 
 prdDeclarationP :: Parser (Declaration FreeVarName Loc)
 prdDeclarationP = do
@@ -30,11 +26,10 @@ prdDeclarationP = do
   try (void prdKwP)
   isRec <- isRecP
   (v, _pos) <- freeVarName
-  annot <- annotP PosRep
   _ <- coloneq
   (t,_) <- stermP PrdRep
   endPos <- semi
-  return (PrdDecl isRec (Loc startPos endPos) v annot t)
+  return (PrdDecl isRec (Loc startPos endPos) v t)
 
 cnsDeclarationP :: Parser (Declaration FreeVarName Loc)
 cnsDeclarationP = do
@@ -42,11 +37,10 @@ cnsDeclarationP = do
   try (void cnsKwP)
   isRec <- isRecP
   (v, _pos) <- freeVarName
-  annot <- annotP NegRep
   _ <- coloneq
   (t,_) <- stermP CnsRep
   endPos <- semi
-  return (CnsDecl isRec (Loc startPos endPos) v annot t)
+  return (CnsDecl isRec (Loc startPos endPos) v t)
 
 cmdDeclarationP :: Parser (Declaration FreeVarName Loc)
 cmdDeclarationP = do
@@ -64,11 +58,10 @@ defDeclarationP = do
   try (void defKwP)
   isRec <- isRecP
   (v, _pos) <- freeVarName
-  annot <- annotP PosRep
   _ <- coloneq
   (t, _pos) <- atermP
   endPos <- semi
-  return (DefDecl isRec (Loc startPos endPos) v annot t)
+  return (DefDecl isRec (Loc startPos endPos) v t)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser

@@ -1,9 +1,7 @@
 module TypeInference.StaticExamplesSpec ( spec )  where
 
-import Data.Text (Text)
-import qualified Data.Text as T
-import System.FilePath
 import Test.Hspec
+import System.FilePath
 
 import TestUtils
 import Parser.Parser
@@ -13,24 +11,23 @@ import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import TypeInference.InferProgram
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 import Control.Monad (forM_)
 
 instance Show (TypeScheme pol) where
-  show = ppPrintString
+  show = ppPrint
 
-typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
+typecheckExample :: Environment FreeVarName -> String -> String -> Spec
 typecheckExample env termS typS = do
-  it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
+  it (termS ++  " typechecks as: " ++ typS) $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive "" InferNominal PrdRep term env
-      let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
+      let Right inferredTypeAut = trace_minTypeAut <$> (inferSTermTraced NonRecursive "" PrdRep term env)
+      let Right specTypeScheme = runInteractiveParser typeSchemeP typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
-prgExamples :: [(Text,Text)]
+prgExamples :: [(String,String)]
 prgExamples = 
     [ ( "\\(x)[k] => x >> k"
         , "forall a. { 'Ap(a)[a] }" )
@@ -53,7 +50,7 @@ prgExamples =
 
     -- addNominal
     , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu w. S(w) >> k] }} >> k })['Ap(m)[k]] }"
-        , "{ 'Ap(Nat,Nat)[Nat] }" )
+        , "forall t0. { 'Ap(t0,Nat)[(t0 \\/ Nat)] }" )
 
     -- mltNominal
     , ( "comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]}"
@@ -76,9 +73,9 @@ typecheckInFile :: FilePath -> Spec
 typecheckInFile fp =
   describe "Typecheck specific examples" $ do
     describe ("Context is " <> fp) $ do
-        env <- runIO $ getEnvironment ("examples" </> fp) InferNominal
+        env <- runIO $ getEnvironment ("examples" </> fp)
         case env of
-            Left err -> it "Could not load environment" $ expectationFailure (ppPrintString err)
+            Left err -> it "Could not load environment" $ expectationFailure (ppPrint err)
             Right env' -> do
                 forM_ prgExamples $ uncurry $ typecheckExample env'
 

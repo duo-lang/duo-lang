@@ -17,13 +17,13 @@ import TestUtils
 spec :: Spec
 spec = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
-    examples <- runIO $ getAvailableExamples "examples/"
+    examples <- runIO getAvailableExamples
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
         decls <- runIO $ getParsedDeclarations example
         it "Can be parsed again." $
           case decls of
-            Left err -> expectationFailure (ppPrintString err)
+            Left err -> expectationFailure (ppPrint err)
             Right decls -> (runFileParser example programP (ppPrint decls)) `shouldSatisfy` isRight
 
 

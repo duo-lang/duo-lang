@@ -7,10 +7,9 @@ import Test.Hspec
 import TestUtils
 import Pretty.Pretty
 import Syntax.Types
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 
 instance Show (TypeScheme pol) where
-  show = ppPrintString
+  show = ppPrint
 
 -- | Check that the programs in "test/counterexamples/" subfolder dont typecheck.
 spec :: Spec
@@ -19,7 +18,7 @@ spec = do
     examples <- runIO getAvailableCounterExamples
     forM_ examples $ \example -> do
       describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
-        env <- runIO $ getEnvironment example InferNominal
+        env <- runIO $ getEnvironment example
         it "Doesn't typecheck" $  env `shouldSatisfy` isLeft
 
 

@@ -12,11 +12,7 @@ import Data.GraphViz
 import Data.List (isPrefixOf, find, intersperse)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
 
-import Errors
 import Syntax.STerms
 import Syntax.Types
 import TypeAutomata.Definition
@@ -34,9 +30,7 @@ import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Subsume (subsume)
 import Translate.Translate (compile)
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
-import Utils (trim, trimStr, Verbosity(..))
-import Text.Megaparsec (eof)
+import Utils (trim, Verbosity(..))
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -53,7 +47,6 @@ data ReplState = ReplState
   , evalOrder :: EvalOrder
   , mode :: Mode
   , typeInfVerbosity :: Verbosity
-  , inferenceMode :: InferenceMode
   }
 
 
@@ -64,7 +57,6 @@ initialReplState = ReplState { replEnv = mempty
                              , evalOrder = CBV
                              , mode = Symmetric
                              , typeInfVerbosity = Silent
-                             , inferenceMode = InferNominal
                              }
 
 ------------------------------------------------------------------------------
@@ -83,14 +75,11 @@ modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedF
 prettyRepl :: PrettyAnn a => a -> Repl ()
 prettyRepl s = liftIO $ ppPrintIO s
 
-prettyText :: Text -> Repl ()
-prettyText = prettyRepl
-
 fromRight :: PrettyAnn err => Either err b -> Repl b
 fromRight (Right b) = return b
 fromRight (Left err) = prettyRepl err >> abort
 
-parseInteractive :: Parser a -> Text -> Repl a
+parseInteractive :: Parser a -> String -> Repl a
 parseInteractive p s = do
   fromRight (runInteractiveParser p s)
 
@@ -99,10 +88,10 @@ parseFile fp p = do
   s <- safeRead fp
   fromRight (runFileParser fp p s)
 
-safeRead :: FilePath -> Repl Text
+safeRead :: FilePath -> Repl String
 safeRead file =  do
-  let file' = trimStr file
-  res <- liftIO $ tryIOError (T.readFile file')
+  let file' = trim file
+  res <- liftIO $ tryIOError (readFile file')
   case res of
     (Left _) -> do
       liftIO $ putStrLn $ "File with name " ++ file' ++ " does not exist."
@@ -117,11 +106,11 @@ cmd :: String -> Repl ()
 cmd s = do
   mode <- gets mode
   case mode of
-    Symmetric  -> cmdSymmetric  (T.pack s)
-    Asymmetric -> cmdAsymmetric (T.pack s)
+    Symmetric  -> cmdSymmetric  s
+    Asymmetric -> cmdAsymmetric s
 
 
-cmdSymmetric :: Text -> Repl ()
+cmdSymmetric :: String -> Repl ()
 cmdSymmetric s = do
   (comLoc,_) <- parseInteractive commandP s
   let com = first (const ()) comLoc
@@ -134,9 +123,9 @@ cmdSymmetric s = do
       prettyRepl res
     Steps -> do
       res <- fromRight $ runEval (evalSteps com) evalOrder env
-      forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
+      forM_ res (\cmd -> prettyRepl cmd >> prettyRepl "----")
 
-cmdAsymmetric :: Text -> Repl ()
+cmdAsymmetric :: String -> Repl ()
 cmdAsymmetric s = do
   (tmLoc,_) <- parseInteractive atermP s
   let tm = first (const ()) tmLoc
@@ -151,50 +140,48 @@ cmdAsymmetric s = do
         Right res' -> prettyRepl res'
     Steps -> do
       res <- fromRight $ runEval (evalATermSteps tm) evalOrder env
-      forM_ res (\t -> prettyRepl t >> prettyText "----")
+      forM_ res (\t -> prettyRepl t >> prettyRepl "----")
 
 ------------------------------------------------------------------------------
 -- Options
 ------------------------------------------------------------------------------
 
 data Option = Option
-  { option_name :: Text
-  , option_cmd  :: Text -> Repl ()
-  , option_help :: [Text]
+  { option_name :: String
+  , option_cmd  :: String -> Repl ()
+  , option_help :: [String]
   , option_completer :: Maybe (CompletionFunc ReplInner)
   }
 
 -- Set & Unset
 
-set_cmd_variants :: [(Text, Repl ())]
+set_cmd_variants :: [(String, Repl ())]
 set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
                    , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
                    , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
-                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric }))
-                   , ("refinements", modify (\rs -> rs { inferenceMode = InferRefined})) ]
-
-set_cmd :: Text -> Repl ()
+                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric })) ]
+set_cmd :: String -> Repl ()
 set_cmd s = do
   let s' = trim s
   case lookup s' set_cmd_variants of
     Just action -> action
     Nothing -> do
-      prettyRepl $ T.unlines [ "The option " <> s' <> " is not recognized."
-                             , "Available options: " <> T.concat (intersperse ", " (fst <$> set_cmd_variants))]
+      prettyRepl $ unlines [ "The option " ++ s' ++ " is not recognized."
+                           , "Available options: " ++ concat (intersperse ", " (fst <$> set_cmd_variants))]
 
 setCompleter :: CompletionFunc ReplInner
 setCompleter = mkWordCompleter (x f)
   where
-    f n = return $ filter (isPrefixOf n) (T.unpack . fst <$> set_cmd_variants)
+    f n = return $ filter (isPrefixOf n) (fst <$> set_cmd_variants)
     x f word = f word >>= return . map simpleCompletion
 
 unsetCompleter :: CompletionFunc ReplInner
 unsetCompleter = mkWordCompleter (x f)
   where
-    f n = return $ filter (isPrefixOf n) (T.unpack . fst <$> unset_cmd_variants)
+    f n = return $ filter (isPrefixOf n) (fst <$> unset_cmd_variants)
     x f word = f word >>= return . map simpleCompletion
 
 mkWordCompleter :: Monad m =>  (String -> m [Completion]) -> CompletionFunc m
@@ -208,18 +195,17 @@ set_option = Option
   , option_completer = Just setCompleter
   }
 
-unset_cmd_variants :: [(Text, Repl ())]
-unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) 
-                     , ("refinements", modify (\rs -> rs { inferenceMode = InferNominal }))]
+unset_cmd_variants :: [(String, Repl ())]
+unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) ]
 
-unset_cmd :: Text -> Repl ()
+unset_cmd :: String -> Repl ()
 unset_cmd s = do
   let s' = trim s
   case lookup s' unset_cmd_variants of
     Just action -> action
     Nothing -> do
-      prettyRepl $ T.unlines [ "The option " <> s' <> " is not recognized."
-                             , "Available options: " <> T.concat (intersperse ", " (fst <$> unset_cmd_variants))]
+      prettyRepl $ unlines [ "The option " ++ s' ++ " is not recognized."
+                           , "Available options: " ++ concat (intersperse ", " (fst <$> unset_cmd_variants))]
 
 unset_option :: Option
 unset_option = Option
@@ -232,7 +218,7 @@ unset_option = Option
 
 -- Show
 
-show_cmd :: Text -> Repl ()
+show_cmd :: String -> Repl ()
 show_cmd "" = do
   loadedFiles <- gets loadedFiles
   forM_ loadedFiles $ \fp -> do
@@ -249,7 +235,7 @@ show_cmd str = do
         Just cmd -> prettyRepl (NamedRep cmd)
         Nothing -> case M.lookup s (defEnv env) of
           Just (def,_) -> prettyRepl (NamedRep def)
-          Nothing -> prettyText "Not in environment."
+          Nothing -> prettyRepl "Not in environment."
 
 show_option :: Option
 show_option = Option
@@ -261,14 +247,13 @@ show_option = Option
 
 -- Show TypeDeclaration
 
-show_type_cmd :: Text -> Repl ()
+show_type_cmd :: String -> Repl ()
 show_type_cmd s = do
   env <- gets (declEnv . replEnv)
   let maybeDecl = find (\x -> data_name x == MkTypeName s) env
   case maybeDecl of
-    Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
+    Nothing -> prettyRepl ("Type: " ++ s ++ " not found in environment.")
     Just decl -> prettyRepl decl
-
 show_type_option :: Option
 show_type_option = Option
   { option_name = "showtype"
@@ -279,13 +264,12 @@ show_type_option = Option
 
 -- Define
 
-let_cmd :: Text -> Repl ()
+let_cmd :: String -> Repl ()
 let_cmd s = do
   decl <- fromRight (runInteractiveParser declarationP s)
   oldEnv <- gets replEnv
   verbosity <- gets typeInfVerbosity
-  im <- gets inferenceMode
-  newEnv <- liftIO $ insertDeclIO verbosity im decl oldEnv
+  newEnv <- liftIO $ insertDeclIO verbosity decl oldEnv
   case newEnv of
     Nothing -> return ()
     Just newEnv -> modifyEnvironment (const newEnv)
@@ -301,26 +285,23 @@ let_option = Option
 
 -- Save
 
-save_cmd :: Text -> Repl ()
+save_cmd :: String -> Repl ()
 save_cmd s = do
   env <- gets replEnv
-  im <- gets inferenceMode
-  case runInteractiveParser (typeSchemeP PosRep) s of
+  case runInteractiveParser typeSchemeP s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,_) -> do
-        trace <- fromRight $ inferSTermTraced NonRecursive "" im PrdRep tloc env
+        trace <- fromRight $ inferSTermTraced NonRecursive "" PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
         saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-        prettyText (" :: " <> ppPrint (trace_resType trace))
-      Left err2 -> prettyText (T.unlines [ "Type parsing error:"
-                                         , ppPrint err1
-                                         , "Term parsing error:"
-                                         , ppPrint err2 ])
+        prettyRepl (" :: " ++ ppPrint (trace_resType trace))
+      Left err2 -> prettyRepl ("Type parsing error:\n" ++ ppPrint err1 ++
+                               "Term parsing error:\n"++ ppPrint err2)
 
 saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
 saveGraphFiles fileName aut = do
@@ -336,7 +317,7 @@ saveGraphFiles fileName aut = do
       _ <- liftIO $ runGraphviz (typeAutToDot aut) Jpeg (graphDir </> fileName <.> jpg)
       _ <- liftIO $ runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
       prettyRepl (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
-    False -> prettyText "Cannot execute command: graphviz executable not found in path."
+    False -> prettyRepl "Cannot execute command: graphviz executable not found in path."
 
 
 save_option :: Option
@@ -349,7 +330,7 @@ save_option = Option
 
 -- Subsume
 
-sub_cmd :: Text -> Repl ()
+sub_cmd :: String -> Repl ()
 sub_cmd s = do
   (t1,t2) <- parseInteractive subtypingProblemP s
   res <- fromRight (subsume t1 t2)
@@ -367,28 +348,11 @@ sub_option = Option
 
 -- Simplify
 
-simplify_cmd :: Text -> Repl ()
-simplify_cmd s = case go PosRep of 
-                    Right pp -> pp
-                    Left err -> case go NegRep of
-                      Right pp -> pp
-                      Left err' -> do
-                        prettyRepl ("Parsing type failed" :: String)
-                        prettyRepl ("Positive parsing error:" :: String)
-                        prettyRepl err
-                        prettyRepl ("Negative parsing error:" :: String)
-                        prettyRepl err'
-                        --  @prettyRepl String "Parsing type failed" 
-                        --  @prettyRepl String "Positive parsing error:"
-                        --  prettyRepl err
-                        --  @prettyRepl String "Negative parsing error:"
-                        --  prettyRepl err'
-  where
-    go :: forall p. PolarityRep p -> Either Error (Repl ())
-    go rep = do
-      ty <- runInteractiveParser (typeSchemeP rep <* eof) s
-      aut <- typeToAut ty
-      return $ prettyRepl (autToType aut)
+simplify_cmd :: String -> Repl ()
+simplify_cmd s = do
+  ty <- parseInteractive typeSchemeP s
+  aut <- fromRight (typeToAut ty)
+  prettyRepl (autToType aut)
 
 simplify_option :: Option
 simplify_option = Option
@@ -400,18 +364,17 @@ simplify_option = Option
 
 -- Load
 
-load_cmd :: Text -> Repl ()
+load_cmd :: String -> Repl ()
 load_cmd s = do
-  let s' = T.unpack . trim $  s
+  let s' = trim s
   modifyLoadedFiles ((:) s')
   load_file s'
 
 load_file :: FilePath -> Repl ()
 load_file fp = do
   decls <- parseFile fp programP
-  inferMode <- gets inferenceMode
-  case inferProgram decls inferMode of
-    Left err -> printLocatedError err
+  case inferProgram decls of
+    Left err -> liftIO $ printLocatedError err
     Right newEnv -> do
       modifyEnvironment ((<>) newEnv)
       prettyRepl newEnv
@@ -427,11 +390,11 @@ load_option = Option
 
 -- Reload
 
-reload_cmd :: Text -> Repl ()
+reload_cmd :: String -> Repl ()
 reload_cmd "" = do
   loadedFiles <- gets loadedFiles
   forM_ loadedFiles load_file
-reload_cmd _ = prettyText ":reload does not accept arguments"
+reload_cmd _ = prettyRepl ":reload does not accept arguments"
 
 reload_option :: Option
 reload_option = Option
@@ -443,15 +406,15 @@ reload_option = Option
 
 -- Help
 
-help_cmd :: Text -> Repl ()
+help_cmd :: String -> Repl ()
 help_cmd _ = do
-  prettyText "Available commands:\n"
+  prettyRepl "Available commands:\n"
   forM_ all_options (\opt -> showHelp (option_name opt) (option_help opt))
   where
-    showHelp :: Text -> [Text] -> Repl ()
+    showHelp :: String -> [String] -> Repl ()
     showHelp name help = do
-      prettyRepl $ ":" <> name
-      forM_ help (\help -> prettyRepl $ "    " <> help)
+      prettyRepl $ ":" ++ name
+      forM_ help (\help -> prettyRepl $ "    " ++ help)
 
 help_option :: Option
 help_option = Option
@@ -463,13 +426,13 @@ help_option = Option
 
 -- Compile
 
-compile_cmd :: Text -> Repl ()
+compile_cmd :: String -> Repl ()
 compile_cmd s = do
   case runInteractiveParser atermP s of
     Right (t, _pos) ->
-      prettyText (" compile " <> ppPrint t <> "\n = " <> ppPrint (compile t))
+      prettyRepl (" compile " ++ ppPrint t ++ "\n = " ++ ppPrint (compile t))
     Left err2 -> do
-      prettyText "Cannot parse as aterm:"
+      prettyRepl "Cannot parse as aterm:"
       prettyRepl err2
 
 compile_option :: Option
@@ -494,7 +457,7 @@ prefixCompleters :: [(String, CompletionFunc ReplInner)]
 prefixCompleters = catMaybes (mkCompleter <$> all_options)
   where
     mkCompleter Option { option_completer = Nothing } = Nothing
-    mkCompleter Option { option_name = name, option_completer = Just completer } = Just (':' : T.unpack name, completer)
+    mkCompleter Option { option_name = name, option_completer = Just completer } = Just (':' : name, completer)
 
 newCompleter :: CompleterStyle ReplInner
 newCompleter = Prefix cmdCompleter prefixCompleters
@@ -504,14 +467,14 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
   where
     f n = do
       env <- gets replEnv
-      let completionList = (':' :) . T.unpack . option_name <$> all_options
+      let completionList = (':' :) . option_name <$> all_options
       let keys = concat [ M.keys (prdEnv env)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
                         , M.keys (defEnv env)
                         , (unTypeName . data_name) <$> (declEnv env)
                         ]
-      return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
+      return $ filter (isPrefixOf n) (completionList ++ keys)
     _simpleComplete f word = f word >>= return . map simpleCompletion
 
 ini :: Repl ()
@@ -523,7 +486,7 @@ ini = do
   reload_cmd ""
 
 final :: Repl ExitDecision
-final = prettyText "Goodbye!" >> return Exit
+final = prettyRepl "Goodbye!" >> return Exit
 
 repl_banner :: a -> Repl String
 repl_banner _ = do
@@ -534,7 +497,7 @@ opts :: ReplOpts ReplInner
 opts = ReplOpts
   { banner           = repl_banner
   , command          = cmd
-  , options          = (\opt -> (T.unpack (option_name opt), \s -> dontCrash ((option_cmd opt) (T.pack s)))) <$> all_options
+  , options          = (\opt -> (option_name opt, \s -> dontCrash ((option_cmd opt) s))) <$> all_options
   , prefix           = Just ':'
   , multilineCommand = Nothing
   , tabComplete      = newCompleter

@@ -1,2 +1,0 @@
-# The annotated type is more general than the inferred one.
-def foo : forall a. { 'Ap(a)[a] } := comatch { 'Ap(x) => match x with { 'True => 'True, 'False => 'False }};

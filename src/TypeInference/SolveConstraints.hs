@@ -10,10 +10,10 @@ import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
 
-import Errors
 import Syntax.Types
 import Syntax.CommonTerm (XtorName, FreeVarName)
 import Syntax.Program (Environment)
+import Utils
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
@@ -38,6 +38,9 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m env) initSt)
 ------------------------------------------------------------------------------
 -- Monadic helper functions
 ------------------------------------------------------------------------------
+
+throwSolverError :: [String] -> SolverM a
+throwSolverError = throwError . SolveConstraintsError . unlines
 
 addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
@@ -158,31 +161,31 @@ subConstraints (SubType _ (TyCodata PosRep dtors1) (TyCodata NegRep dtors2)) = d
 subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else
     throwSolverError ["The following nominal types are incompatible:"
-                     , "    " <> ppPrint tn1
+                     , "    " ++ ppPrint tn1
                      , "and"
-                     , "    " <> ppPrint tn2 ]
+                     , "    " ++ ppPrint tn2 ]
 -- Constrants between refined types:
-subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) t2@(TyRefined _ tn2 ty2)) =
+subConstraints (SubType ci (TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then return [SubType ci ty1 ty2] else
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint t1
+                     , "    " ++ ppPrint tn1
                      , "and"
-                     , "    " <> ppPrint t2 ]
+                     , "    " ++ ppPrint tn2 ]
 -- Refined type is always subtype of the nominal type it refines
-subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
+subConstraints (SubType _ (TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then pure [] else 
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint t1
+                     , "    " ++ ppPrint tn1
                      , "and"
-                     , "    " <> ppPrint tn2 ]
+                     , "    " ++ ppPrint tn2 ]
 -- Nominal type is subtype of a refinement of itself if the refinement is trivial,
 -- i.e. does not impose any limitations
-subConstraints (SubType _ (TyNominal _ tn1) t2@TyRefined{}) =
+subConstraints (SubType _ (TyNominal _ tn1) (TyRefined _ tn2 _)) =
   -- TODO: Check if translate(tn2) <: ty2
     throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint tn1
+                     , "    " ++ ppPrint tn1
                      , "and"
-                     , "    " <> ppPrint t2 ]
+                     , "    " ++ ppPrint tn2 ]
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
@@ -193,11 +196,11 @@ subConstraints (SubType _ (TyNominal _ tn1) t2@TyRefined{}) =
 --
 subConstraints cs@(SubType _ (TyData _ _) (TyCodata _ _)) =
   throwSolverError [ "Constraint:"
-                   , "     " <> ppPrint cs
+                   , "     " ++ ppPrint cs
                    , "is unsolvable. A data type can't be a subtype of a codata type!" ]
 subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
   throwSolverError [ "Constraint:"
-                   , "     " <> ppPrint cs
+                   , "     " ++ ppPrint cs
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Constraints between nominal and a structural types:
 --

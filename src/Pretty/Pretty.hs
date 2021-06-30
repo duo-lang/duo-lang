@@ -1,10 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Pretty.Pretty where
 
-import Data.Text (Text)
 import qualified Data.Text as T
 import Prettyprinter
 import Prettyprinter.Render.String (renderString)
-import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
 
 import Syntax.CommonTerm
@@ -45,9 +44,6 @@ instance {-# OVERLAPPING #-} PrettyAnn String where
 instance PrettyAnn a => PrettyAnn [a] where
   prettyAnn xs = list (prettyAnn <$> xs)
 
-instance PrettyAnn Text where
-  prettyAnn = pretty
-
 instance PrettyAnn Bool where
   prettyAnn = pretty
 
@@ -58,20 +54,12 @@ instance PrettyAnn () where
 -- Render to String Backend
 ---------------------------------------------------------------------------------
 
-ppPrint :: PrettyAnn a => a -> Text
+ppPrint :: PrettyAnn a => a -> String
 ppPrint doc =
   let
     layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
   in
-    renderStrict (layoutPretty layout (prettyAnn doc))
-
-ppPrintString :: PrettyAnn a => a -> String
-ppPrintString doc =
-  let
-    layout = defaultLayoutOptions { layoutPageWidth = AvailablePerLine 100 1 }
-  in
     renderString (layoutPretty layout (prettyAnn doc))
-
 
 ---------------------------------------------------------------------------------
 -- Console Backend with ANSI Colors

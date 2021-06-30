@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Pretty.TypeAutomata ( typeAutToDot ) where
 
 import Data.Graph.Inductive.Graph
@@ -8,7 +9,7 @@ import qualified Data.Set as S
 import Data.Text.Lazy (pack)
 import Prettyprinter
 
-import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX)
+import Pretty.Pretty (ppPrint, PrettyAnn(..), intercalateX)
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import TypeAutomata.Definition
@@ -51,11 +52,11 @@ typeAutParams = defaultParams
   { fmtNode = \(_,nl) ->
     [ style filled
     , fillColor $ case nl_pol nl of {Pos -> White; Neg -> Gray}
-    , textLabel (pack (ppPrintString (nl :: NodeLabel)))]
+    , textLabel (pack (ppPrint (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
-    regularEdgeStyle el = [textLabel $ pack (ppPrintString el)]
+    regularEdgeStyle el = [textLabel $ pack (ppPrint el)]

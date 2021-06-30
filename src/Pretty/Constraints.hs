@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Pretty.Constraints () where
 
 import Prettyprinter

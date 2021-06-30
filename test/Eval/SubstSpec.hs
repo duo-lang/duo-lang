@@ -1,7 +1,5 @@
 module Eval.SubstSpec ( spec )  where
 
-import Data.Text (Text)
-import qualified Data.Text as T
 import Test.Hspec
 
 import Parser.Parser
@@ -9,20 +7,21 @@ import Pretty.Errors ()
 import Syntax.STerms
 import Eval.STerms (areAllSubst)
 import Eval.Eval
+import Control.Monad (forM_)
 
 
-substCtorExample :: EvalOrder -> Text -> Spec
+substCtorExample :: EvalOrder -> String -> Spec
 substCtorExample order termS = do
-  it (T.unpack termS ++  " can't be substituted.") $ do
+  it (termS ++  " can't be substituted.") $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
       case term of
         XtorCall _ PrdRep _ args -> (areAllSubst order args) `shouldBe` False
-        _ -> expectationFailure $ T.unpack termS ++ "is not a Ctor."
+        _ -> expectationFailure $ termS ++ "is not a Ctor."
 
-cbvExamples :: [Spec]
-cbvExamples =
+cbvExamples :: [(EvalOrder,String)]
+cbvExamples = 
     -- CBV examples
-    substCtorExample CBV <$>
+    (\s -> (CBV, s)) <$>
     [
     "C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)]"
     , "C2(C(mu x. 42 >> mu y. Print(y))[mu y. Print(y)])"
@@ -31,10 +30,10 @@ cbvExamples =
     , "C(42)[D()[D()[C(mu x. Print(x))[]]]]"
     ]
 
-cbnExamples :: [Spec]
-cbnExamples =
+cbnExamples :: [(EvalOrder,String)]
+cbnExamples = 
     -- CBN examples
-    substCtorExample CBN <$>
+    (\s -> (CBN, s)) <$>
     [
     "C('True)[mu x.Print(x)]"
     , "C('True)[D()[mu x. Print(x)]]"
@@ -45,4 +44,4 @@ cbnExamples =
 
 
 spec :: Spec
-spec = sequence_ $ cbvExamples ++ cbnExamples
+spec = forM_ (cbvExamples ++ cbnExamples) $ uncurry $ substCtorExample

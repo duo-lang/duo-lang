@@ -40,7 +40,6 @@ common shared-build-depends
                      FlexibleContexts,
                      FlexibleInstances,
                      ScopedTypeVariables,
-                     ConstraintKinds,
                      RankNTypes,
                      DataKinds,
                      GADTs,
@@ -50,17 +49,14 @@ common shared-build-depends
                      ViewPatterns,
                      GeneralizedNewtypeDeriving,
                      LambdaCase,
-                     DeriveFunctor,
-                     OverloadedStrings
+                     DeriveFunctor
 
 library
   import: shared-build-depends
   exposed-modules:
-      Errors
       Eval.Eval
       Eval.ATerms
       Eval.STerms
-      Lookup
       Parser.ATerms
       Parser.Definition
       Parser.Lexer
@@ -121,11 +117,9 @@ test-suite dualsub-test
   main-is: TestRunner.hs
   other-modules:
       Eval.SubstSpec
-    , Eval.FocusingSpec
     , Translate.TranslateExamplesSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
-    , TypeInference.FileRefExamplesSpec
     , TypeInference.CounterExampleSpec
     , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec
