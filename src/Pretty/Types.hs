@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Pretty.Types where
 
 import Prettyprinter
@@ -9,6 +8,10 @@ import Syntax.Types
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Types
 ---------------------------------------------------------------------------------
+
+instance PrettyAnn Polarity where
+  prettyAnn Pos = "Pos"
+  prettyAnn Neg = "Neg"
 
 instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv
@@ -23,7 +26,8 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyVar _ tv) = prettyAnn tv
   prettyAnn (TyRec _ rv t) = annKeyword "rec " <> prettyAnn rv <> "." <> prettyAnn t
   prettyAnn (TyNominal _ tn) = prettyAnn tn
-  prettyAnn (TyRefined _ tn t) = dbraces $ prettyAnn t <+> "<<:" <+> prettyAnn tn
+  prettyAnn (TyRefined _ tn t) = 
+    dbraces ( mempty <+> prettyAnn t <+> "<<:" <+> prettyAnn tn <+> mempty )
   prettyAnn (TyData _ xtors) =
     angles (mempty <+> cat (punctuate " | " (prettyAnn <$> xtors)) <+> mempty)
   prettyAnn (TyCodata _ xtors) =

@@ -5,6 +5,8 @@ import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Text (Text)
+import qualified Data.Text as T
 import Text.Megaparsec.Pos
 
 ----------------------------------------------------------------------------------
@@ -29,21 +31,6 @@ data Loc = Loc SourcePos SourcePos
 data Located a = Located Loc a
 
 ----------------------------------------------------------------------------------
--- Errors
-----------------------------------------------------------------------------------
-
-data Error
-  = ParseError String
-  | GenConstraintsError String
-  | EvalError String
-  | SolveConstraintsError String
-  | TypeAutomatonError String
-  | OtherError String
-  deriving (Show, Eq)
-
-type LocatedError = Located Error
-
-----------------------------------------------------------------------------------
 -- Helper Functions
 ----------------------------------------------------------------------------------
 
@@ -57,9 +44,13 @@ intersections (s :| ss) = foldl' S.intersection s ss
 enumerate :: [a] -> [(Int,a)]
 enumerate xs = zip [0..] xs
 
-trim :: String -> String
-trim = f . f
+trimStr :: String -> String
+trimStr = f . f
   where f = reverse . dropWhile isSpace
+
+trim :: Text -> Text
+trim = f . f
+  where f = T.reverse . T.dropWhile isSpace
 
 
 indexMaybe :: [a] -> Int -> Maybe a
