@@ -85,12 +85,14 @@ mergeRefinements oldGr = do
           gr <- get
           let (_,_,_,outs) = context gr node
           forM_ tyNames (\tn -> do
+            -- Gather all refinement nodes for type name tn
             let refs = concatMap (\(label,node) -> case label of { RefineEdge tn' | tn'==tn -> [node]; _ -> [] }) outs
             let newLabel = combineNodeLabels $ mapMaybe (lab gr) refs
+            forM_ refs (\n-> do { modify $ delLEdge (node,n,RefineEdge tn) }) -- delete old refine edges and nodes
             modify $ delNodes refs
             gr <- get
             let [newNode] = newNodes 1 gr
-            modify $ insNode (newNode, newLabel)
+            modify $ insNode (newNode, newLabel) -- insert new merged node and edge
             modify $ insEdge (node,newNode,RefineEdge tn)
             return () )})
 
