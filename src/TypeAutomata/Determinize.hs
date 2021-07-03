@@ -7,7 +7,7 @@ import Data.Graph.Inductive.PatriciaTree
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import qualified Data.Set as S
 
@@ -20,10 +20,10 @@ import Utils
 ---------------------------------------------------------------------------------------
 
 getAlphabetForNodes :: Ord b => Gr NodeLabel b -> Set Node -> [b]
-getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concat (map (out gr) (S.toList ns)))
+getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concatMap (out gr) (S.toList ns))
 
 succsWith :: Eq b => Gr NodeLabel b -> Set Node -> b -> Set Node
-succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) . concat $ map (lsuc gr) (S.toList ns)
+succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) $ concatMap (lsuc gr) (S.toList ns)
 
 determinizeState :: Ord b => [Set Node] -> Gr NodeLabel b -> State (Map (Set Node) [((Set Node),b)]) ()
 determinizeState [] _ = return ()
@@ -37,10 +37,10 @@ determinizeState (ns:rest) gr = do
       determinizeState (newNodeSets ++ rest) gr
 
 runDeterminize :: Ord b => Gr NodeLabel b -> [Node] -> Map (Set Node) [((Set Node),b)]
-runDeterminize gr starts = snd $ runState (determinizeState [S.fromList starts] gr) M.empty
+runDeterminize gr starts = execState (determinizeState [S.fromList starts] gr) M.empty
 
 getNewNodeLabel :: ([NodeLabel] -> NodeLabel) -> Gr NodeLabel b -> Set Node -> NodeLabel
-getNewNodeLabel f gr ns = f $ catMaybes (map (lab gr) (S.toList ns))
+getNewNodeLabel f gr ns = f $ mapMaybe (lab gr) (S.toList ns)
 
 -- first argument is the node label "combiner"
 -- second result argument is a mapping from sets of node ids to new node ids
@@ -76,17 +76,36 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
+-- | Checks for all nodes if there are multiple refinement nodes refining the same type. If so, the multiple
+-- refining nodes are combined into one.
+mergeRefinements :: Gr NodeLabel EdgeLabelNormal -> State (Gr NodeLabel EdgeLabelNormal) ()
+mergeRefinements oldGr = do
+  forM_ (labNodes oldGr) (\(node,MkNodeLabel{ nl_refined }) ->
+      case S.toList nl_refined of { [] -> return (); tyNames -> do
+          gr <- get
+          let (_,_,_,outs) = context gr node
+          forM_ tyNames (\tn -> do
+            let refs = concatMap (\(label,node) -> case label of { RefineEdge tn' | tn'==tn -> [node]; _ -> [] }) outs
+            let newLabel = combineNodeLabels $ mapMaybe (lab gr) refs
+            modify $ delNodes refs
+            gr <- get
+            let [newNode] = newNodes 1 gr
+            modify $ insNode (newNode, newLabel)
+            modify $ insEdge (node,newNode,RefineEdge tn)
+            return () )})
+
 determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
     (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
+    newgr' = execState (mergeRefinements newgr) newgr
   in
     TypeAut { ta_pol = ta_pol
             , ta_starts = Identity newstart
             , ta_core = TypeAutCore
-              { ta_gr = newgr
+              { ta_gr = newgr'
               , ta_flowEdges = newFlowEdges
               }
             }
