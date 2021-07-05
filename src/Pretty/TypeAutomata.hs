@@ -57,9 +57,9 @@ typeAutParams = defaultParams
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
-                              RefineEdge _ -> refEdgeStyle -- TODO: Add labels
+                              RefineEdge tn -> refEdgeStyle tn
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
     regularEdgeStyle el = [textLabel $ pack (ppPrintString el)]
-    refEdgeStyle = [arrowTo vee, Style [SItem Dotted []]]
+    refEdgeStyle tn = [arrowTo vee, Style [SItem Dotted []], textLabel $ pack $ ppPrintString tn]
