@@ -168,10 +168,6 @@ foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
 
-xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
-xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) MkTypArgs{..}) =
-  MkXtorSig (MkXtorName Structural s) (MkTypArgs prdTypes cnsTypes)
-
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
 checkCorrectness :: [XtorName]

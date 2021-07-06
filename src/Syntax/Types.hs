@@ -115,6 +115,11 @@ getPolarity (TyRefined rep _ _) = rep
 getPolarity (TySet rep _)       = rep
 getPolarity (TyRec rep _ _)     = rep
 
+-- | Make the XtorName of an XtorSig structural
+xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
+xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) typArgs) =
+  MkXtorSig (MkXtorName Structural s) typArgs
+
 ------------------------------------------------------------------------------
 -- Type Schemes
 ------------------------------------------------------------------------------

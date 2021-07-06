@@ -1,7 +1,6 @@
 module Syntax.Program where
 
 import Data.Map (Map)
-import Data.List ( find )
 import qualified Data.Map as M
 import Syntax.STerms
 import Syntax.ATerms
@@ -56,6 +55,3 @@ instance Monoid (Environment bs) where
     , defEnv = M.empty
     , declEnv = []
     }
-
-lookupTypeName :: TypeName -> Environment bs -> Maybe DataDecl
-lookupTypeName tn Environment{ declEnv } = find (\NominalDecl{..} -> data_name == tn) declEnv
