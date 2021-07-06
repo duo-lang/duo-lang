@@ -33,7 +33,9 @@ instance PrettyAnn NodeLabel where
     where
       printDat   dat   = angles (mempty <+> cat (punctuate " | " (prettyAnn <$> (S.toList dat))) <+> mempty)
       printCodat codat = braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (S.toList codat))) <+> mempty)
-      printNominal tns = Just (intercalateX ";" (prettyAnn <$> (S.toList tns)))
+      printNominal tnSet = case S.toList tnSet of
+        [] -> Nothing
+        tns -> Just (intercalateX ";" (prettyAnn <$> tns))
 
 instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)
