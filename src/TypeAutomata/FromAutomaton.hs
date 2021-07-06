@@ -9,7 +9,7 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Data.Maybe (fromJust)
 
-import Data.List (intersect, maximumBy)
+import Data.List (intersect, maximumBy, find)
 import Data.Ord (comparing)
 import Data.Graph.Inductive.PatriciaTree
 import Data.Functor.Identity
@@ -183,15 +183,13 @@ nodeToTypeNoCache rep i = do
     -- Creating Nominal types
     let nominals = TyNominal rep <$> S.toList tns
     -- Creating refinement types
-    -- TODO: Combine refinements of same type name
-    refs <- concat . concat <$> forM (S.toList trs) (\tn -> do
-        forM outs (\out -> do
-          case out of
-              (RefineEdge tn1, ref) | tn1 == tn -> do
-                    typ <- nodeToType rep ref
-                    return [TyRefined rep tn typ]
-              _ -> return []))
-        
+    refs <- concat <$> forM (S.toList trs) (\tn -> do
+        case find (\case (RefineEdge tn1, _) -> tn1==tn; _ -> False) outs of
+          Just (RefineEdge _, ref) -> do
+            typ <- nodeToType rep ref
+            return [TyRefined rep tn typ]
+          _ -> return [] )
+
     let typs = varL ++ datL ++ codatL ++ nominals ++ refs
     return $ case typs of [t] -> t; _ -> TySet rep typs
 

@@ -76,7 +76,7 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
--- | Checks for all nodes if there are multiple refinement nodes refining the same type. If so, the multiple
+-- | Checks for all nodes if there are multiple refinement edges for the same type. If so, the corresponding
 -- refining nodes are combined into one.
 mergeRefinements :: Gr NodeLabel EdgeLabelNormal -> State (Gr NodeLabel EdgeLabelNormal) ()
 mergeRefinements oldGr = do
@@ -99,10 +99,10 @@ mergeRefinements oldGr = do
 determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
-    (newgr, newstart, mp) = determinize' combineNodeLabels (ta_gr, ta_starts)
+    newgr = execState (mergeRefinements ta_gr) ta_gr
+    (newgr', newstart, mp) = determinize' combineNodeLabels (newgr, ta_starts)
     newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
                             not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
-    newgr' = execState (mergeRefinements newgr) newgr
   in
     TypeAut { ta_pol = ta_pol
             , ta_starts = Identity newstart
