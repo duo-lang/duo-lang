@@ -2,6 +2,8 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
+import Pretty.Pretty ( ppPrint )
+import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import Utils
 
@@ -159,7 +161,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns trs)) = lab gr i
+  let (Just label@(MkNodeLabel _ datSet codatSet tns trs)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables
@@ -190,7 +192,9 @@ nodeToTypeNoCache rep i = do
           Just (RefineEdge _, ref) -> do
             typ <- nodeToType rep ref
             return [TyRefined rep tn typ]
-          _ -> return [] )
+          _ -> throwAutomatonError 
+            ["No fitting refinement edge for type " <> 
+             unTypeName tn <> " in node " <> ppPrint label] )
 
     let typs = varL ++ datL ++ codatL ++ nominals ++ refs
     return $ case typs of [t] -> t; _ -> TySet rep typs
