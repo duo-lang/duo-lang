@@ -61,7 +61,7 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
   let typeAutDet = determinize typeAut
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
   let minTypeAut = minimize typeAutDetAdms
-  let resType = autToType minTypeAut
+  resType <- autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
     , trace_solvedConstraints = solverState

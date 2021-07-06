@@ -5,10 +5,12 @@ import Syntax.Types
 import TypeAutomata.Definition
 import Utils
 
+import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Reader
-import Data.Maybe (fromJust)
 
+import Errors
+import Data.Maybe (fromJust)
 import Data.List (intersect, maximumBy, find)
 import Data.Ord (comparing)
 import Data.Graph.Inductive.PatriciaTree
@@ -84,16 +86,16 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
                                      , cache :: Set Node
                                      , tvars :: [TVar]
                                      }
+type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
 
-type AutToTypeM a = Reader AutToTypeState a
+runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either Error a
+runAutToTypeM m state = runExcept (runReaderT m state)
 
-autToType :: TypeAutDet pol -> TypeScheme pol
-autToType aut@TypeAut{..} =
-  let
-    startState = initializeFromAutomaton aut
-    monotype = runReader (nodeToType ta_pol (runIdentity ta_starts)) startState
-  in
-    TypeScheme (tvars startState) monotype
+autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
+autToType aut@TypeAut{..} = do
+  let startState = initializeFromAutomaton aut
+  monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
+  return $ TypeScheme (tvars startState) monotype
 
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
