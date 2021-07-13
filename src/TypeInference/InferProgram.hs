@@ -28,6 +28,7 @@ import Utils
 
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
+import TypeAutomata.Lint (lint)
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
 import TypeAutomata.RemoveAdmissible
@@ -58,9 +59,13 @@ generateTypeInferenceTrace :: PolarityRep pol
                            -> Either Error (TypeInferenceTrace pol)
 generateTypeInferenceTrace rep constraintSet solverState typ = do
   typeAut <- solverStateToTypeAut solverState rep typ
+  lint typeAut
   let typeAutDet = determinize typeAut
+  lint typeAutDet
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
+  lint typeAutDetAdms
   let minTypeAut = minimize typeAutDetAdms
+  lint minTypeAut
   let resType = autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
