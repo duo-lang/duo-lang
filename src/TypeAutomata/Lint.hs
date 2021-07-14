@@ -10,6 +10,8 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive (Gr)
 import qualified Data.Text as T
 import Syntax.STerms (PrdCns(..))
+import qualified Data.Set
+import Syntax.CommonTerm (XtorName)
 
 
 -- | Check the invariants of the type automaton.
@@ -18,6 +20,7 @@ lint aut = do
   lintFlowEdges aut
   lintEpsilonEdges aut
   lintSymbolEdges aut
+  lintStructuralNodes aut
 
 
 getNodeLabel :: Gr NodeLabel a -> Node -> Either Error NodeLabel
@@ -65,3 +68,30 @@ lintSymbolEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
       (Data, Cns)   -> if iPolarity /= jPolarity then pure () else Left err
       (Codata, Prd) -> if iPolarity /= jPolarity then pure () else Left err
       (Codata, Cns) -> if iPolarity == jPolarity then pure () else Left err
+
+-- | Check that every structural Xtor has at least one outgoing Symbol Edge for every argument of the Xtor.
+lintStructuralNodes :: TypeAut' (EdgeLabel a) f pol -> Either Error ()
+lintStructuralNodes TypeAut { ta_core = TypeAutCore { ta_gr }} = forM_ (labNodes ta_gr) (lintStructuralNode ta_gr)
+
+-- | Collect all the xtors labels of a node and check them.
+lintStructuralNode :: Gr NodeLabel (EdgeLabel a) -> LNode NodeLabel -> Either Error ()
+lintStructuralNode gr (n, nl) = do
+  let toList = maybe [] Data.Set.toList
+  let xtors = toList (nl_data nl) ++ toList (nl_codata nl)
+  forM_ xtors (lintXtor gr n)
+
+-- | Check whether all fields of the Xtor Label have at least one outgoing edge starting from the node.
+lintXtor :: Gr NodeLabel (EdgeLabel a) -> Node -> XtorLabel -> Either Error ()
+lintXtor gr n (MkXtorLabel xn prdIdx cnsIdx) = do
+  let outs = (\(_,_,x) -> x) <$> out gr n
+  -- Check Prd arguments
+  forM_ [0..(prdIdx - 1)] (lintXtorArgument outs xn Prd)
+  -- Check Cns arguments
+  forM_ [0..(cnsIdx - 1)] (lintXtorArgument outs xn Cns)
+
+lintXtorArgument :: [EdgeLabel a] -> XtorName -> PrdCns -> Int -> Either Error ()
+lintXtorArgument outs xn pc i = do
+  let filtered = [ () | EdgeSymbol _ xn' pc' i' <- outs, xn == xn', pc == pc', i == i']
+  if null filtered
+    then Left (TypeAutomatonError ("TypeAutomata Linter: The Xtor " <> T.pack (show xn) <> " has missing outgoing edge"))
+    else pure ()
