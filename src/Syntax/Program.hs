@@ -1,11 +1,11 @@
 module Syntax.Program where
 
+import Data.Bifunctor
 import Data.Map (Map)
 import qualified Data.Map as M
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
-import Utils
 
 ---------------------------------------------------------------------------------
 -- Declarations
@@ -13,15 +13,24 @@ import Utils
 
 data IsRec = Recursive | NonRecursive
 
-data Declaration a
-  = PrdDecl IsRec Loc FreeVarName (Maybe (TypeScheme Pos)) (STerm Prd Loc a)
-  | CnsDecl IsRec Loc FreeVarName (Maybe (TypeScheme Neg)) (STerm Cns Loc a)
-  | CmdDecl Loc FreeVarName (Command Loc a)
-  | DefDecl IsRec Loc FreeVarName (Maybe (TypeScheme Pos)) (ATerm Loc a)
-  | DataDecl Loc DataDecl
+data Declaration a b
+  = PrdDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (STerm Prd b a)
+  | CnsDecl IsRec b FreeVarName (Maybe (TypeScheme Neg)) (STerm Cns b a)
+  | CmdDecl b FreeVarName (Command b a)
+  | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b a)
+  | DataDecl b DataDecl
 
-instance Show (Declaration a) where
+instance Show (Declaration a b) where
   show _ = "<Show for Declaration not implemented>"
+
+instance Bifunctor Declaration where
+  bimap f g (PrdDecl isRec b v ts t) = PrdDecl isRec (g b) v ts $ bimap g f t
+  bimap f g (CnsDecl isRec b v ts t) = CnsDecl isRec (g b) v ts $ bimap g f t
+  bimap f g (CmdDecl b v cmd) = CmdDecl (g b) v $ bimap g f cmd
+  bimap f g (DefDecl isRec b v ts t) = DefDecl isRec (g b) v ts $ bimap g f t
+  bimap _ g (DataDecl b dataDecl) = DataDecl (g b) dataDecl
+
+type Program a b = [Declaration a b]
 
 ---------------------------------------------------------------------------------
 -- Environment

@@ -22,6 +22,7 @@ import qualified Data.Map as M
 
 import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
+import TypeAutomata.Lint (lint)
 
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
@@ -220,4 +221,5 @@ solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Err
 solverStateToTypeAut solverResult pol ty = do
   (start,aut) <- runTypeAutTvars (M.keys solverResult) $ insertEpsilonEdges solverResult >> insertType ty
   let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
+  lint newAut
   return $ removeEpsilonEdges newAut

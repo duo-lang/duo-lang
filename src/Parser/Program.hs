@@ -24,7 +24,7 @@ annotP rep = optional annotP'
   where
     annotP' = try (colon >> typeSchemeP rep)
 
-prdDeclarationP :: Parser (Declaration FreeVarName)
+prdDeclarationP :: Parser (Declaration FreeVarName Loc)
 prdDeclarationP = do
   startPos <- getSourcePos
   try (void prdKwP)
@@ -36,7 +36,7 @@ prdDeclarationP = do
   endPos <- semi
   return (PrdDecl isRec (Loc startPos endPos) v annot t)
 
-cnsDeclarationP :: Parser (Declaration FreeVarName)
+cnsDeclarationP :: Parser (Declaration FreeVarName Loc)
 cnsDeclarationP = do
   startPos <- getSourcePos
   try (void cnsKwP)
@@ -48,7 +48,7 @@ cnsDeclarationP = do
   endPos <- semi
   return (CnsDecl isRec (Loc startPos endPos) v annot t)
 
-cmdDeclarationP :: Parser (Declaration FreeVarName)
+cmdDeclarationP :: Parser (Declaration FreeVarName Loc)
 cmdDeclarationP = do
   startPos <- getSourcePos
   try (void cmdKwP)
@@ -58,7 +58,7 @@ cmdDeclarationP = do
   endPos <- semi
   return (CmdDecl (Loc startPos endPos) v t)
 
-defDeclarationP :: Parser (Declaration FreeVarName)
+defDeclarationP :: Parser (Declaration FreeVarName Loc)
 defDeclarationP = do
   startPos <- getSourcePos
   try (void defKwP)
@@ -88,7 +88,7 @@ combineXtors ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
        ((\x -> (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : combineXtors rest rep
 
 
-dataDeclP :: Parser (Declaration FreeVarName)
+dataDeclP :: Parser (Declaration FreeVarName Loc)
 dataDeclP = do
   startPos <- getSourcePos
   dataCodata <- dataCodataDeclP
@@ -111,7 +111,7 @@ dataDeclP = do
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
-declarationP :: Parser (Declaration FreeVarName)
+declarationP :: Parser (Declaration FreeVarName Loc)
 declarationP =
   prdDeclarationP <|>
   cnsDeclarationP <|>
@@ -119,7 +119,7 @@ declarationP =
   defDeclarationP <|>
   dataDeclP
 
-programP :: Parser [Declaration FreeVarName]
+programP :: Parser [Declaration FreeVarName Loc]
 programP = do
   sc
   decls <- many declarationP

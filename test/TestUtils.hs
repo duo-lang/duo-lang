@@ -22,7 +22,7 @@ getAvailableExamples fp = do
   examples <- listDirectory fp
   return ((fp ++) <$> examples)
 
-getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName])
+getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName Loc])
 getParsedDeclarations fp = do
   s <- T.readFile fp
   return (runFileParser fp programP s)

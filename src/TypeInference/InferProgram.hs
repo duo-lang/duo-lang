@@ -28,6 +28,7 @@ import Utils
 
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
+import TypeAutomata.Lint (lint)
 import TypeAutomata.Minimize
 import TypeAutomata.FromAutomaton
 import TypeAutomata.RemoveAdmissible
@@ -58,9 +59,13 @@ generateTypeInferenceTrace :: PolarityRep pol
                            -> Either Error (TypeInferenceTrace pol)
 generateTypeInferenceTrace rep constraintSet solverState typ = do
   typeAut <- solverStateToTypeAut solverState rep typ
+  lint typeAut
   let typeAutDet = determinize typeAut
+  lint typeAutDet
   let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
+  lint typeAutDetAdms
   let minTypeAut = minimize typeAutDetAdms
+  lint minTypeAut
   resType <- autToType minTypeAut
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
@@ -151,7 +156,7 @@ checkAnnot ty (Just tyAnnot) = do
                                          , " Annotated type: " <> ppPrint tyAnnot
                                          , " Inferred type:  " <> ppPrint ty]))
 
-insertDecl :: Declaration FreeVarName
+insertDecl :: Declaration FreeVarName Loc
            -> Environment FreeVarName
            -> InferenceMode
            -> Either LocatedError (Environment FreeVarName)
@@ -173,11 +178,11 @@ insertDecl (DefDecl isRec loc v annot t)  env@Environment { defEnv } im = do
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } _ = do
   return $ env { declEnv = dcl : declEnv }
 
-inferProgram :: [Declaration FreeVarName] -> InferenceMode -> Either LocatedError (Environment FreeVarName)
+inferProgram :: [Declaration FreeVarName Loc] -> InferenceMode -> Either LocatedError (Environment FreeVarName)
 inferProgram = inferProgram' mempty
   where
     inferProgram' :: Environment FreeVarName
-                  -> [Declaration FreeVarName]
+                  -> [Declaration FreeVarName Loc]
                   -> InferenceMode
                   -> Either LocatedError (Environment FreeVarName)
     inferProgram' env [] _ = return env
@@ -190,7 +195,7 @@ inferProgram = inferProgram' mempty
 ------------------------------------------------------------------------------
 
 insertDeclIO :: Verbosity -> InferenceMode
-             -> Declaration FreeVarName
+             -> Declaration FreeVarName Loc
              -> Environment FreeVarName
              -> IO (Maybe (Environment FreeVarName))
 insertDeclIO verb im (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
