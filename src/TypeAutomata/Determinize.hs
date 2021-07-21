@@ -1,6 +1,7 @@
 module TypeAutomata.Determinize ( determinize ) where
 
 import Control.Monad.State
+import Control.Arrow (second)
 import Data.Functor.Identity
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -47,10 +48,19 @@ determinizeState (ns:rest) gr = do
       determinizeState (newNodeSets ++ rest) gr
 
 -- | Compute the transition function for the powerset construction.
-computeTransFun :: Gr NodeLabel EdgeLabelNormal
+transFun :: Gr NodeLabel EdgeLabelNormal
                -> Set Node -- ^ Starting states
                -> TransFun
-computeTransFun gr starts = execState (determinizeState [starts] gr) M.empty
+transFun gr starts = execState (determinizeState [starts] gr) M.empty
+
+type TransFunReindexed = [(Node, Set Node, [(Node, EdgeLabelNormal)])]
+
+reIndexTransFun :: TransFun -> TransFunReindexed
+reIndexTransFun transFun =
+  let 
+    mp = [(M.findIndex nodeSet transFun, nodeSet, es) | (nodeSet,es) <- M.toList transFun]
+    mp' = fmap (\(i,ns,es) -> (i,ns, fmap (\(ns',el) -> (M.findIndex ns' transFun, el)) es)) mp
+  in mp'
 
 ---------------------------------------------------------------------------------------
 -- Compute a new type graph from the TransFun and the old type graph.
@@ -77,31 +87,24 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
--- | This function computes the new typegraph and the new starting state.
--- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
-computeNewTypeGraph :: TransFun -- ^ The transition function of the powerset construction.
-             -> (Gr NodeLabel EdgeLabelNormal, Set Node) -- ^ The old typegraph with a set of starting states.
-             -> (Gr NodeLabel EdgeLabelNormal, Node) -- ^ The new typegraph with one starting state.
-computeNewTypeGraph transFun (gr, starts) =
+newTypeGraph :: TransFunReindexed -- ^ The transition function of the powerset construction.
+             -> Gr NodeLabel EdgeLabelNormal -- ^ The old typegraph with a set of starting states.
+             -> Gr NodeLabel EdgeLabelNormal -- ^ The new typegraph with one starting state.
+newTypeGraph transFun gr =
   let
-    nodes = [(i, getNewNodeLabel gr ns) | (ns,_) <- M.toList transFun, let i = M.findIndex ns transFun]
-    edges = [(i, M.findIndex ns' transFun,el) | (ns,es) <- M.toList transFun, let i = M.findIndex ns transFun, (ns',el) <- es]
-  in (mkGraph nodes edges, M.findIndex starts transFun)
+    nodes = fmap (\(i,ns,_) -> (i, getNewNodeLabel gr ns)) transFun
+    edges = [(i,j,el) | (i,_,es) <- transFun, (j,el) <- es]
+  in mkGraph nodes edges
 
 ------------------------------------------------------------------------------
 -- Compute new flowEdges
 ------------------------------------------------------------------------------
 
--- | Compute the flow edges for the new automaton.
--- In the new automaton, a flow edge exists between two nodes if a flow edge existed between any one of the elements of the powersets.
-computeFlowEdges :: TransFun
+flowEdges :: TransFunReindexed
                  -> [(Node,Node)] -- ^ Old flowedges
                  -> [(Node,Node)] -- ^ New flowedges
-computeFlowEdges mp' flowedges =
-  let
-    mp = [(M.findIndex nodeSet mp', nodeSet) | (nodeSet,_) <- M.toList mp']
-  in
-    [(i,j) | (i,ns) <- mp, (j,ms) <- mp, not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` flowedges]]
+flowEdges transFun flowedges =
+  [(i,j) | (i,ns,_) <- transFun, (j,ms,_) <- transFun, not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` flowedges]]
 
 ------------------------------------------------------------------------------
 -- Lift the determinization algorithm to type graphs.
@@ -111,9 +114,11 @@ determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
     starts = S.fromList ta_starts
-    transFun = computeTransFun ta_gr starts
-    newFlowEdges = computeFlowEdges transFun ta_flowEdges
-    (newgr, newstart) = computeNewTypeGraph transFun (ta_gr, starts)
+    newstart = M.findIndex starts newTransFun
+    newTransFun = transFun ta_gr starts
+    newTransFunReind = reIndexTransFun newTransFun
+    newFlowEdges = flowEdges newTransFunReind ta_flowEdges
+    newgr = newTypeGraph newTransFunReind ta_gr
     newCore = TypeAutCore { ta_gr = newgr, ta_flowEdges = newFlowEdges }
   in
     TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_core = newCore }
