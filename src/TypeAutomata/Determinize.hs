@@ -17,7 +17,7 @@ import Data.Maybe (mapMaybe)
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:
--- Compute the new transition function of the determinized graph,
+-- Compute the new transition function for the determinized graph,
 -- using the powerset construction.
 ---------------------------------------------------------------------------------------
 
@@ -46,14 +46,14 @@ determinizeState (ns:rest) gr = do
       let newNodeSets = map fst newEdges
       determinizeState (newNodeSets ++ rest) gr
 
--- | The determinization algorithm starts with the set of starting nodes.
-runDeterminize :: Gr NodeLabel EdgeLabelNormal
-               -> [Node] -- ^ Starting states
+-- | Compute the transition function for the powerset construction.
+computeTransFun :: Gr NodeLabel EdgeLabelNormal
+               -> Set Node -- ^ Starting states
                -> TransFun
-runDeterminize gr starts = execState (determinizeState [S.fromList starts] gr) M.empty
+computeTransFun gr starts = execState (determinizeState [starts] gr) M.empty
 
 ---------------------------------------------------------------------------------------
--- Second step: Compute a new type graph from the TransFun.
+-- Compute a new type graph from the TransFun and the old type graph.
 ---------------------------------------------------------------------------------------
 
 -- | Return the combined node label for the given set of nodes.
@@ -77,18 +77,31 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
-determinize' :: (Gr NodeLabel EdgeLabelNormal, [Node])
-             -> ( Gr NodeLabel EdgeLabelNormal
-                , Node --  New start node
-                , [(Node, Set Node)] --  a mapping from sets of node ids to new node ids (this is necessary to correctly handle flow edges, which is done later)
-                )
-determinize' (gr,starts) =
+-- | This function computes the new typegraph and the new starting state.
+-- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
+computeNewTypeGraph :: TransFun -- ^ The transition function of the powerset construction.
+             -> (Gr NodeLabel EdgeLabelNormal, Set Node) -- ^ The old typegraph with a set of starting states.
+             -> (Gr NodeLabel EdgeLabelNormal, Node) -- ^ The new typegraph with one starting state.
+computeNewTypeGraph transFun (gr, starts) =
   let
-    mp = runDeterminize gr starts
-  in ( mkGraph [(i, getNewNodeLabel gr ns) | (ns,_) <- M.toList mp, let i = M.findIndex ns mp]
-               [(i, M.findIndex ns' mp,el) | (ns,es) <- M.toList mp, let i = M.findIndex ns mp, (ns',el) <- es]
-     , M.findIndex (S.fromList starts) mp
-     , [(M.findIndex nodeSet mp, nodeSet) | (nodeSet,_) <- M.toList mp])
+    nodes = [(i, getNewNodeLabel gr ns) | (ns,_) <- M.toList transFun, let i = M.findIndex ns transFun]
+    edges = [(i, M.findIndex ns' transFun,el) | (ns,es) <- M.toList transFun, let i = M.findIndex ns transFun, (ns',el) <- es]
+  in (mkGraph nodes edges, M.findIndex starts transFun)
+
+------------------------------------------------------------------------------
+-- Compute new flowEdges
+------------------------------------------------------------------------------
+
+-- | Compute the flow edges for the new automaton.
+-- In the new automaton, a flow edge exists between two nodes if a flow edge existed between any one of the elements of the powersets.
+computeFlowEdges :: TransFun
+                 -> [(Node,Node)] -- ^ Old flowedges
+                 -> [(Node,Node)] -- ^ New flowedges
+computeFlowEdges mp' flowedges =
+  let
+    mp = [(M.findIndex nodeSet mp', nodeSet) | (nodeSet,_) <- M.toList mp']
+  in
+    [(i,j) | (i,ns) <- mp, (j,ms) <- mp, not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` flowedges]]
 
 ------------------------------------------------------------------------------
 -- Lift the determinization algorithm to type graphs.
@@ -97,15 +110,11 @@ determinize' (gr,starts) =
 determinize :: TypeAut pol -> TypeAutDet pol
 determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
   let
-    (newgr, newstart, mp) = determinize' (ta_gr, ta_starts)
-    newFlowEdges = [(i,j) | (i,ns) <- mp, (j,ms) <- mp,
-                            not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` ta_flowEdges]]
+    starts = S.fromList ta_starts
+    transFun = computeTransFun ta_gr starts
+    newFlowEdges = computeFlowEdges transFun ta_flowEdges
+    (newgr, newstart) = computeNewTypeGraph transFun (ta_gr, starts)
+    newCore = TypeAutCore { ta_gr = newgr, ta_flowEdges = newFlowEdges }
   in
-    TypeAut { ta_pol = ta_pol
-            , ta_starts = Identity newstart
-            , ta_core = TypeAutCore
-              { ta_gr = newgr
-              , ta_flowEdges = newFlowEdges
-              }
-            }
+    TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_core = newCore }
 
