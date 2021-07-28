@@ -1,7 +1,6 @@
 module TypeAutomata.Determinize ( determinize ) where
 
 import Control.Monad.State
-import Control.Arrow (second)
 import Data.Functor.Identity
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -88,26 +87,6 @@ combineNodeLabels nls
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
-
--- | Checks for all nodes if there are multiple refinement edges for the same type. If so, the corresponding
--- refining nodes are combined into one.
--- mergeRefinements :: Gr NodeLabel EdgeLabelNormal -> State (Gr NodeLabel EdgeLabelNormal) ()
--- mergeRefinements oldGr = do
---   forM_ (labNodes oldGr) (\(node,MkNodeLabel{ nl_refined }) ->
---       case S.toList nl_refined of { [] -> return (); tyNames -> do
---           gr <- get
---           let (_,_,_,outs) = context gr node
---           forM_ tyNames (\tn -> do
---             -- Gather all refinement nodes for type name tn
---             let refs = concatMap (\(label,node) -> case label of { RefineEdge tn' | tn'==tn -> [node]; _ -> [] }) outs
---             let newLabel = combineNodeLabels $ mapMaybe (lab gr) refs
---             forM_ refs (\n-> do { modify $ delLEdge (node,n,RefineEdge tn) }) -- delete old refine edges and nodes
---             modify $ delNodes refs
---             gr <- get
---             let [newNode] = newNodes 1 gr
---             modify $ insNode (newNode, newLabel) -- insert new merged node and edge
---             modify $ insEdge (node,newNode,RefineEdge tn)
---             return () )})
 
 -- | This function computes the new typegraph and the new starting state.
 -- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.

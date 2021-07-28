@@ -102,12 +102,16 @@ subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
   (MkNodeLabel Pos _ _ nominal2 _) <- lab ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
+subtypeRefined :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeRefined TypeAutCore{} _ = Nothing
+
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 admissableM aut@TypeAutCore{..} e =
       guard (e `elem` ta_flowEdges) <|>
       subtypeData aut e <|>
       subtypeCodata aut e <|>
-      subtypeNominal aut e
+      subtypeNominal aut e <|>
+      subtypeRefined aut e
 
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
