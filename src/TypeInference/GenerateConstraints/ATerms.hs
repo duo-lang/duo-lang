@@ -58,6 +58,7 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   (t', ty') <- genConstraintsATerm t
   addConstraint (SubType (DtorApConstraint loc) ty' (TyNominal NegRep (data_name tn)) )
   xtorSig <- lookupXtorSig xt NegRep
+  -- addConstraint (SubType (DtorApConstraint loc) ty' (TyRefined NegRep (data_name tn) $ TyData NegRep [xtorSigMakeStructural xtorSig]))
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Dtor " <> unXtorName xt <> " called with incorrect number of arguments"]
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2
@@ -125,8 +126,8 @@ genConstraintsATermCase :: Typ Neg
                         -> ACase Loc FreeVarName
                         -> GenM (ACase () FreeVarName, XtorSig Neg)
 genConstraintsATermCase retType MkACase { acase_ext, acase_name, acase_args, acase_term } = do
-  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable)
-  (acase_term', retTypeInf) <- withContext (MkTypArgs argtsPos []) (genConstraintsATerm acase_term)
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable) -- Generate type var for each case arg
+  (acase_term', retTypeInf) <- withContext (MkTypArgs argtsPos []) (genConstraintsATerm acase_term) -- Type case term using new type vars
   addConstraint (SubType (CaseConstraint acase_ext) retTypeInf retType) -- Case type
   return (MkACase () acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
