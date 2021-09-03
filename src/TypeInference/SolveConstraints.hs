@@ -55,16 +55,28 @@ inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache im) -> SolverState (M.adjust f uv varMap) cache im)
 
+getBounds :: TVar -> SolverM VariableState
+getBounds uv = do
+  bounds <- gets sst_bounds
+  case M.lookup uv bounds of
+    Nothing -> throwSolverError [ "Tried to retrieve bounds for variable:"
+                                , ppPrint uv
+                                , "which is not a valid unification variable."
+                                ]
+    Just vs -> return vs
+
 addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
-  lbs <- gets (vst_lowerbounds . (M.! uv) . sst_bounds)
+  bounds <- getBounds uv
+  let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
-  ubs <- gets (vst_upperbounds . (M.! uv) . sst_bounds)
+  bounds <- getBounds uv
+  let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
 ------------------------------------------------------------------------------
