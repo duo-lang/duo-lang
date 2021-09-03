@@ -179,21 +179,22 @@ subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
 --
 -- Refinement types and nominal types are incomparable. When constraints between them occur
 -- and the type names match, the nominal type is replaced by the corresponding trivial
--- refinement type. A new constraint between the structural refinements is then added.
-subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) t2@(TyNominal _ tn2)) =
-  if tn1 == tn2 then do
-    tt2 <- translateToStructural t2
-    return [SubType ci ty1 tt2] 
+-- refinement type. 
+-- When the refinement type is on the left-hand side, no further constraint is needed since
+-- all refinements are subtypes of the trivial refinement for a given nominal type.
+subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
+  if tn1 == tn2 then return []
   else throwSolverError ["The following types are incompatible:"
                         , "    " <> ppPrint t1
                         , "and"
                         , "    " <> ppPrint tn2 ]
--- Again, the trivial refinement for the nominal type is generated and a constraint between
--- the structural refinements is added.
+-- Here the corresponding trivial refinement for the nominal type is generated and a constraint 
+-- between the structural refinements is added. It effectively checks whether the refinement on
+-- the right-hand side is trivial.
 subConstraints (SubType ci t1@(TyNominal _ tn1) t2@(TyRefined _ tn2 ty2)) =
   if tn1 == tn2 then do
     tt1 <- translateToStructural t1
-    return [SubType ci tt1 ty2] 
+    return [SubType ci tt1 ty2]
   else throwSolverError ["The following types are incompatible:"
                         , "    " <> ppPrint tn1
                         , "and"
