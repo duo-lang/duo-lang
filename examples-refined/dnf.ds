@@ -28,4 +28,4 @@ def nnf2dnf := comatch { 'Ap(f) => match f with {
 		And(p,q) => SetSet   ## Distrib(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q))
 }};
 
-# def dnf := comatch { 'Ap(f) => nnf2dnf.'Ap(nnf.'Ap(f)) };
+def dnf := comatch { 'Ap(f) => nnf2dnf.'Ap(nnf.'Ap(f)) };
