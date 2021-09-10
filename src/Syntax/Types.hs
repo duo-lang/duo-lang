@@ -178,7 +178,7 @@ substituteType m var@(TyVar NegRep tv) =
 substituteType m (TyData polrep args) = TyData polrep (substituteXtorSig m <$> args)
 substituteType m (TyCodata polrep args) = TyCodata polrep (substituteXtorSig m <$> args)
 substituteType _ ty@(TyNominal _ _) = ty
-substituteType _ ty@TyRefined{} = ty
+substituteType m (TyRefined rep n ty) = TyRefined rep n (substituteType m ty)
 substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 
