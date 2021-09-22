@@ -112,8 +112,8 @@ subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInf
 -- right hand side is a union type, then the constraint can be directly decomposed
 -- into structurally smaller subconstraints. E.g.:
 --
---     ty1 /\ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
---     ty1 <: ty2 \/ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
+--     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
+--     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
 subConstraints (SubType _ (TySet PosRep tys) ty) =
   return [SubType IntersectionUnionSubConstraint ty' ty | ty' <- tys]
