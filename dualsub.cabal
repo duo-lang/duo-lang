@@ -109,6 +109,8 @@ executable dualsub
   main-is: Main.hs
   other-modules:
       Repl.Repl
+      Repl.Options
+      Repl.Run
       Paths_dualsub
   hs-source-dirs:
       app

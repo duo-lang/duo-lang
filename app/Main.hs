@@ -1,6 +1,6 @@
 module Main where
 
-import Repl.Repl (runRepl)
+import Repl.Run (runRepl)
 
 main :: IO ()
 main = runRepl
