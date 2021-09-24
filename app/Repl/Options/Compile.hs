@@ -1,0 +1,27 @@
+module Repl.Options.Compile (compileOption) where
+
+import Data.Text (Text)
+
+import Parser.Parser ( atermP, runInteractiveParser )
+import Pretty.Pretty ( ppPrint )
+import Repl.Repl ( prettyText, prettyRepl, Repl, Option(..) )
+import Translate.Translate (compile)
+
+-- Compile
+
+compileCmd :: Text -> Repl ()
+compileCmd s = do
+  case runInteractiveParser atermP s of
+    Right (t, _pos) ->
+      prettyText (" compile " <> ppPrint t <> "\n = " <> ppPrint (compile t))
+    Left err2 -> do
+      prettyText "Cannot parse as aterm:"
+      prettyRepl err2
+
+compileOption :: Option
+compileOption = Option
+  { option_name = "compile"
+  , option_cmd = compileCmd
+  , option_help = ["Enter a ATerm and show the translated STerm."]
+  , option_completer = Nothing
+  }

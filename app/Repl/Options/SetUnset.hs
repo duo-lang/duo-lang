@@ -11,7 +11,6 @@ import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
 import Eval.Eval ( EvalOrder(CBN, CBV) )
-import Pretty.Program ()
 import Repl.Repl
     ( Option(..),
       Repl,

@@ -8,8 +8,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.Repline ( fileCompleter )
 
-
-import Errors ()
 import Parser.Parser ( programP )
 import Pretty.Errors (printLocatedError)
 import Repl.Repl

@@ -9,7 +9,6 @@ import qualified Data.Map as M
 import Data.Text (Text)
 import System.Console.Repline ()
 
-import Errors ()
 import Parser.Parser ( programP )
 import Pretty.Pretty ( NamedRep(NamedRep) )
 import Pretty.Program ()
@@ -24,6 +23,7 @@ import Syntax.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, defEnv, declEnv) )
 import Syntax.Types ( TypeName(MkTypeName), DataDecl(data_name) )
 import Utils (trim)
+
 -- Show
 
 showCmd :: Text -> Repl ()

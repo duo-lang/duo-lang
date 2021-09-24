@@ -16,15 +16,14 @@ import System.Console.Repline
       ExitDecision(Exit),
       ReplOpts(..) )
 
-import Repl.Options
-    ( let_option,
-      save_option,
-      sub_option,
-      simplify_option,
-      compile_option )
+import Repl.Options.Let (letOption)
+import Repl.Options.Simplify (simplifyOption)
+import Repl.Options.Subsume (subOption)
+import Repl.Options.Compile (compileOption)
 import Repl.Options.LoadReload (loadOption, reloadOption)
 import Repl.Options.Show (showOption, showTypeOption)      
 import Repl.Options.SetUnset (setOption, unsetOption)
+import Repl.Options.SaveGraphs (saveOption)
 import Repl.Repl
     ( Option(..),
       Repl,
@@ -48,13 +47,13 @@ all_options :: [Option]
 all_options =
   [ showOption
   , helpOption
-  , let_option
-  , save_option
+  , letOption
+  , saveOption
   , setOption
   , unsetOption
-  , sub_option
-  , simplify_option
-  , compile_option
+  , subOption
+  , simplifyOption
+  , compileOption
   , loadOption
   , reloadOption
   , showTypeOption
