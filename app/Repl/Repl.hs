@@ -6,6 +6,7 @@ import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import System.Console.Haskeline.Completion
 import System.Console.Repline hiding (Command)
 import System.IO.Error (tryIOError)
 
@@ -147,3 +148,6 @@ data Option = Option
   , option_help :: [Text]
   , option_completer :: Maybe (CompletionFunc ReplInner)
   }
+
+mkWordCompleter :: Monad m =>  (String -> m [Completion]) -> CompletionFunc m
+mkWordCompleter = completeWord (Just '\\') " \t()[]"

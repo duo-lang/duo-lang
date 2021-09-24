@@ -1,19 +1,46 @@
 module Repl.Run (runRepl) where
 
-import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.Reader ( forM_ )
+import Control.Monad.State ( gets, StateT(runStateT) )
 import Data.List (isPrefixOf)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.Console.Haskeline.Completion
-import System.Console.Repline hiding (Command)
+    ( simpleCompletion, CompletionFunc )
+import System.Console.Repline
+    ( dontCrash,
+      evalReplOpts,
+      CompleterStyle(Prefix),
+      ExitDecision(Exit),
+      ReplOpts(..) )
 
 import Repl.Options
+    ( show_option,
+      show_type_option,
+      let_option,
+      save_option,
+      sub_option,
+      simplify_option,
+      load_option,
+      reload_cmd,
+      reload_option,
+      compile_option )
+import Repl.Options.SetUnset (setOption, unsetOption)
 import Repl.Repl
+    ( Option(..),
+      Repl,
+      ReplInner,
+      ReplState(loadedFiles, replEnv),
+      initialReplState,
+      mkWordCompleter,
+      prettyRepl,
+      prettyText,
+      cmd )
 import Syntax.Program
-import Syntax.Types
+    ( Environment(prdEnv, cnsEnv, cmdEnv, defEnv, declEnv) )
+import Syntax.Types ( DataDecl(data_name), TypeName(unTypeName) )
 
 ------------------------------------------------------------------------------
 -- Options
@@ -26,8 +53,8 @@ all_options =
   , help_option
   , let_option
   , save_option
-  , set_option
-  , unset_option
+  , setOption
+  , unsetOption
   , sub_option
   , simplify_option
   , compile_option

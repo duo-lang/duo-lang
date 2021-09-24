@@ -3,17 +3,15 @@ module Repl.Options where
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.GraphViz
-import Data.List (isPrefixOf, find, intersperse)
+import Data.List (find)
 import qualified Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
-import System.Console.Haskeline.Completion
 import System.Console.Repline hiding (Command)
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
 import Errors
-import Eval.Eval
 import Parser.Parser
 import Pretty.Errors (printLocatedError)
 import Pretty.Pretty
@@ -29,74 +27,9 @@ import TypeAutomata.Definition
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.Subsume (subsume)
 import TypeAutomata.ToAutomaton (typeToAut)
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
-import Utils (trim,  Verbosity(..))
+import Utils (trim)
 
-    -- Set & Unset
-
-set_cmd_variants :: [(Text, Repl ())]
-set_cmd_variants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                   , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
-                   , ("steps", modify (\rs -> rs { steps = Steps }))
-                   , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
-                   , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
-                   , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
-                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric }))
-                   , ("refinements", modify (\rs -> rs { inferenceMode = InferRefined})) ]
-
-set_cmd :: Text -> Repl ()
-set_cmd s = do
-  let s' = trim s
-  case lookup s' set_cmd_variants of
-    Just action -> action
-    Nothing -> do
-      prettyRepl $ T.unlines [ "The option " <> s' <> " is not recognized."
-                             , "Available options: " <> T.concat (intersperse ", " (fst <$> set_cmd_variants))]
-
-setCompleter :: CompletionFunc ReplInner
-setCompleter = mkWordCompleter (x f)
-  where
-    f n = return $ filter (isPrefixOf n) (T.unpack . fst <$> set_cmd_variants)
-    x f word = f word >>= return . map simpleCompletion
-
-unsetCompleter :: CompletionFunc ReplInner
-unsetCompleter = mkWordCompleter (x f)
-  where
-    f n = return $ filter (isPrefixOf n) (T.unpack . fst <$> unset_cmd_variants)
-    x f word = f word >>= return . map simpleCompletion
-
-mkWordCompleter :: Monad m =>  (String -> m [Completion]) -> CompletionFunc m
-mkWordCompleter = completeWord (Just '\\') " \t()[]"
-
-set_option :: Option
-set_option = Option
-  { option_name = "set"
-  , option_cmd = set_cmd
-  , option_help = ["Set a Repl option."]
-  , option_completer = Just setCompleter
-  }
-
-unset_cmd_variants :: [(Text, Repl ())]
-unset_cmd_variants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) 
-                     , ("refinements", modify (\rs -> rs { inferenceMode = InferNominal }))]
-
-unset_cmd :: Text -> Repl ()
-unset_cmd s = do
-  let s' = trim s
-  case lookup s' unset_cmd_variants of
-    Just action -> action
-    Nothing -> do
-      prettyRepl $ T.unlines [ "The option " <> s' <> " is not recognized."
-                             , "Available options: " <> T.concat (intersperse ", " (fst <$> unset_cmd_variants))]
-
-unset_option :: Option
-unset_option = Option
-  { option_name = "unset"
-  , option_cmd = unset_cmd
-  , option_help = ["Unset a Repl option."]
-  , option_completer = Just unsetCompleter
-  }
 
 
 -- Show

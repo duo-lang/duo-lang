@@ -110,6 +110,7 @@ executable dualsub
   other-modules:
       Repl.Repl
       Repl.Options
+      Repl.Options.SetUnset
       Repl.Run
       Paths_dualsub
   hs-source-dirs:
