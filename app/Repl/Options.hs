@@ -1,10 +1,5 @@
 module Repl.Options where
 
-import Repl.Repl
-import System.Console.Repline hiding (Command)
-import System.Console.Haskeline.Completion
-import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
-import System.FilePath ((</>), (<.>))
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.GraphViz
@@ -12,26 +7,31 @@ import Data.List (isPrefixOf, find, intersperse)
 import qualified Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
+import System.Console.Haskeline.Completion
+import System.Console.Repline hiding (Command)
+import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
+import System.FilePath ((</>), (<.>))
 
 import Errors
-import Syntax.STerms
-import Syntax.Types
-import TypeAutomata.Definition
-import Syntax.Program
+import Eval.Eval
 import Parser.Parser
-import Pretty.Pretty
 import Pretty.Errors (printLocatedError)
+import Pretty.Pretty
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
-import Eval.Eval
-import TypeAutomata.FromAutomaton (autToType)
-import TypeAutomata.ToAutomaton (typeToAut)
-import TypeAutomata.Subsume (subsume)
-import Translate.Translate (compile)
-import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
-import Utils (trim,  Verbosity(..))
+import Repl.Repl
+import Syntax.Program
+import Syntax.STerms
+import Syntax.Types
 import Text.Megaparsec (eof)
+import Translate.Translate (compile)
+import TypeAutomata.Definition
+import TypeAutomata.FromAutomaton (autToType)
+import TypeAutomata.Subsume (subsume)
+import TypeAutomata.ToAutomaton (typeToAut)
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
+import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
+import Utils (trim,  Verbosity(..))
 
     -- Set & Unset
 

@@ -1,7 +1,5 @@
-module Repl.Run where
+module Repl.Run (runRepl) where
 
-import System.Console.Repline hiding (Command)
-import System.Console.Haskeline.Completion
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (isPrefixOf)
@@ -9,20 +7,36 @@ import qualified Data.Map as M
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as T
+import System.Console.Haskeline.Completion
+import System.Console.Repline hiding (Command)
 
 import Repl.Options
 import Repl.Repl
 import Syntax.Program
 import Syntax.Types
 
+------------------------------------------------------------------------------
+-- Options
+------------------------------------------------------------------------------
 
 -- All Options
 all_options :: [Option]
-all_options = [ show_option, help_option, let_option, save_option, set_option, unset_option
-              , sub_option, simplify_option, compile_option, load_option, reload_option, show_type_option]
+all_options =
+  [ show_option
+  , help_option
+  , let_option
+  , save_option
+  , set_option
+  , unset_option
+  , sub_option
+  , simplify_option
+  , compile_option
+  , load_option
+  , reload_option
+  , show_type_option
+  ]
 
-              -- Help
-
+-- Help
 help_cmd :: Text -> Repl ()
 help_cmd _ = do
   prettyText "Available commands:\n"
@@ -40,6 +54,10 @@ help_option = Option
   , option_help = ["Show all available commands."]
   , option_completer = Nothing
   }
+
+------------------------------------------------------------------------------
+-- Repl Configuration
+------------------------------------------------------------------------------
 
 ini :: Repl ()
 ini = do
@@ -94,6 +112,7 @@ prefixCompleters = catMaybes (mkCompleter <$> all_options)
   where
     mkCompleter Option { option_completer = Nothing } = Nothing
     mkCompleter Option { option_name = name, option_completer = Just completer } = Just (':' : T.unpack name, completer)
+
 ------------------------------------------------------------------------------
 -- Run the Repl
 ------------------------------------------------------------------------------

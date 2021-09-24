@@ -1,24 +1,24 @@
 module Repl.Repl  where
 
-import System.Console.Repline hiding (Command)
-import System.IO.Error(tryIOError)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import System.Console.Repline hiding (Command)
+import System.IO.Error (tryIOError)
 
 import Errors ()
-import Pretty.Errors ()
-import Syntax.STerms
-import Syntax.Program
-import Parser.Parser
-import Pretty.Pretty
-import Pretty.Program ()
 import Eval.Eval
 import Eval.ATerms
 import Eval.STerms
+import Parser.Parser
+import Pretty.Errors ()
+import Pretty.Pretty
+import Pretty.Program ()
+import Syntax.Program
+import Syntax.STerms
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (trimStr, Verbosity(..))
 
@@ -147,9 +147,3 @@ data Option = Option
   , option_help :: [Text]
   , option_completer :: Maybe (CompletionFunc ReplInner)
   }
-
-
-------------------------------------------------------------------------------
--- Repl Configuration
-------------------------------------------------------------------------------
-
