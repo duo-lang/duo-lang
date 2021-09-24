@@ -1,19 +1,27 @@
 module TypeAutomata.Determinize ( determinize ) where
 
 import Control.Monad.State
-import Control.Arrow (second)
-import Data.Functor.Identity
+    ( execState, State, MonadState(get), modify )
+import Data.Functor.Identity ( Identity(Identity) )
 import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.PatriciaTree
+    ( Node, lab, lsuc, out, Graph(mkGraph) )
+import Data.Graph.Inductive.PatriciaTree ( Gr )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
 
-import Syntax.Types
+import Syntax.Types ( Polarity(Neg, Pos) )
 import TypeAutomata.Definition
-import Utils
+    ( EdgeLabelNormal,
+      NodeLabel(..),
+      Nubable(nub),
+      TypeAut,
+      TypeAut'(TypeAut, ta_pol, ta_starts, ta_core),
+      TypeAutCore(TypeAutCore, ta_gr, ta_flowEdges),
+      TypeAutDet )
+import Utils ( allEq, intersections )
 import Data.Maybe (mapMaybe)
 
 ---------------------------------------------------------------------------------------

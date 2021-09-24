@@ -17,16 +17,13 @@ import System.Console.Repline
       ReplOpts(..) )
 
 import Repl.Options
-    ( show_option,
-      show_type_option,
-      let_option,
+    ( let_option,
       save_option,
       sub_option,
       simplify_option,
-      load_option,
-      reload_cmd,
-      reload_option,
       compile_option )
+import Repl.Options.LoadReload (loadOption, reloadOption)
+import Repl.Options.Show (showOption, showTypeOption)      
 import Repl.Options.SetUnset (setOption, unsetOption)
 import Repl.Repl
     ( Option(..),
@@ -49,8 +46,8 @@ import Syntax.Types ( DataDecl(data_name), TypeName(unTypeName) )
 -- All Options
 all_options :: [Option]
 all_options =
-  [ show_option
-  , help_option
+  [ showOption
+  , helpOption
   , let_option
   , save_option
   , setOption
@@ -58,14 +55,14 @@ all_options =
   , sub_option
   , simplify_option
   , compile_option
-  , load_option
-  , reload_option
-  , show_type_option
+  , loadOption
+  , reloadOption
+  , showTypeOption
   ]
 
 -- Help
-help_cmd :: Text -> Repl ()
-help_cmd _ = do
+helpCmd :: Text -> Repl ()
+helpCmd _ = do
   prettyText "Available commands:\n"
   forM_ all_options (\opt -> showHelp (option_name opt) (option_help opt))
   where
@@ -74,10 +71,10 @@ help_cmd _ = do
       prettyRepl $ ":" <> name
       forM_ help (\help -> prettyRepl $ "    " <> help)
 
-help_option :: Option
-help_option = Option
+helpOption :: Option
+helpOption = Option
   { option_name = "help"
-  , option_cmd = help_cmd
+  , option_cmd = helpCmd
   , option_help = ["Show all available commands."]
   , option_completer = Nothing
   }
@@ -92,7 +89,7 @@ ini = do
                        , "Press Ctrl+D to exit."
                        , "Enter :help for a list of available commands."
                        ]
-  reload_cmd ""
+  (option_cmd reloadOption) ""
 
 final :: Repl ExitDecision
 final = prettyText "Goodbye!" >> return Exit

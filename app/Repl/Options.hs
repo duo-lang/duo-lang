@@ -3,17 +3,13 @@ module Repl.Options where
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.GraphViz
-import Data.List (find)
-import qualified Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
-import System.Console.Repline hiding (Command)
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
 import Errors
 import Parser.Parser
-import Pretty.Errors (printLocatedError)
 import Pretty.Pretty
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
@@ -27,57 +23,10 @@ import TypeAutomata.Definition
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.Subsume (subsume)
 import TypeAutomata.ToAutomaton (typeToAut)
-import TypeInference.InferProgram (inferProgram, insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
-import Utils (trim)
+import TypeInference.InferProgram (insertDeclIO, inferSTermTraced, TypeInferenceTrace(..))
 
 
 
--- Show
-
-show_cmd :: Text -> Repl ()
-show_cmd "" = do
-  loadedFiles <- gets loadedFiles
-  forM_ loadedFiles $ \fp -> do
-    decls <- parseFile fp programP
-    prettyRepl decls
-show_cmd str = do
-  let s = trim str
-  env <- gets replEnv
-  case M.lookup s (prdEnv env) of
-    Just (prd,_) -> prettyRepl (NamedRep prd)
-    Nothing -> case M.lookup s (cnsEnv env) of
-      Just (cns,_) -> prettyRepl (NamedRep cns)
-      Nothing -> case M.lookup s (cmdEnv env) of
-        Just cmd -> prettyRepl (NamedRep cmd)
-        Nothing -> case M.lookup s (defEnv env) of
-          Just (def,_) -> prettyRepl (NamedRep def)
-          Nothing -> prettyText "Not in environment."
-
-show_option :: Option
-show_option = Option
-  { option_name = "show"
-  , option_cmd = show_cmd
-  , option_help = ["Display term or type on the command line."]
-  , option_completer = Nothing
-  }
-
--- Show TypeDeclaration
-
-show_type_cmd :: Text -> Repl ()
-show_type_cmd s = do
-  env <- gets (declEnv . replEnv)
-  let maybeDecl = find (\x -> data_name x == MkTypeName s) env
-  case maybeDecl of
-    Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
-    Just decl -> prettyRepl decl
-
-show_type_option :: Option
-show_type_option = Option
-  { option_name = "showtype"
-  , option_cmd = show_type_cmd
-  , option_help = ["Show the definition of a nominal type"]
-  , option_completer = Nothing
-  }
 
 -- Define
 
@@ -199,50 +148,6 @@ simplify_option = Option
   , option_help = ["Simplify the given type."]
   , option_completer = Nothing
   }
-
--- Load
-
-load_cmd :: Text -> Repl ()
-load_cmd s = do
-  let s' = T.unpack . trim $  s
-  modifyLoadedFiles ((:) s')
-  load_file s'
-
-load_file :: FilePath -> Repl ()
-load_file fp = do
-  decls <- parseFile fp programP
-  inferMode <- gets inferenceMode
-  case inferProgram decls inferMode of
-    Left err -> printLocatedError err
-    Right newEnv -> do
-      modifyEnvironment ((<>) newEnv)
-      prettyRepl newEnv
-      prettyRepl $ "Successfully loaded: " ++ fp
-
-load_option :: Option
-load_option = Option
-  { option_name = "load"
-  , option_cmd = load_cmd
-  , option_help = ["Load the given file from disk and add it to the environment."]
-  , option_completer = Just fileCompleter
-  }
-
--- Reload
-
-reload_cmd :: Text -> Repl ()
-reload_cmd "" = do
-  loadedFiles <- gets loadedFiles
-  forM_ loadedFiles load_file
-reload_cmd _ = prettyText ":reload does not accept arguments"
-
-reload_option :: Option
-reload_option = Option
-  { option_name = "reload"
-  , option_cmd = reload_cmd
-  , option_help = ["Reload all loaded files from disk."]
-  , option_completer = Nothing
-  }
-
 
 
 -- Compile
