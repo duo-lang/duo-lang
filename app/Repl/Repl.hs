@@ -1,25 +1,27 @@
 module Repl.Repl  where
 
-import Control.Monad.Reader
 import Control.Monad.State
+    ( gets, forM_, StateT, MonadIO(liftIO), modify )
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Console.Haskeline.Completion
-import System.Console.Repline hiding (Command)
+    ( Completion, CompletionFunc, completeWord )
+import System.Console.Repline ( HaskelineT, abort )
 import System.IO.Error (tryIOError)
 
 import Errors ()
-import Eval.Eval
-import Eval.ATerms
-import Eval.STerms
+import Eval.Eval ( EvalOrder(CBV), runEval )
+import Eval.ATerms ( evalATermComplete, evalATermSteps )
+import Eval.STerms ( eval, evalSteps )
 import Parser.Parser
+    ( Parser, atermP, runFileParser, runInteractiveParser, commandP )
 import Pretty.Errors ()
-import Pretty.Pretty
+import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
-import Syntax.Program
-import Syntax.STerms
+import Syntax.Program ( Environment )
+import Syntax.STerms ( FreeVarName )
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (trimStr, Verbosity(..))
 

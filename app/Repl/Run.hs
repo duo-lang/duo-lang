@@ -43,8 +43,8 @@ import Syntax.Types ( DataDecl(data_name), TypeName(unTypeName) )
 ------------------------------------------------------------------------------
 
 -- All Options
-all_options :: [Option]
-all_options =
+allOptions :: [Option]
+allOptions =
   [ showOption
   , helpOption
   , letOption
@@ -63,7 +63,7 @@ all_options =
 helpCmd :: Text -> Repl ()
 helpCmd _ = do
   prettyText "Available commands:\n"
-  forM_ all_options (\opt -> showHelp (option_name opt) (option_help opt))
+  forM_ allOptions (\opt -> showHelp (option_name opt) (option_help opt))
   where
     showHelp :: Text -> [Text] -> Repl ()
     showHelp name help = do
@@ -93,16 +93,16 @@ ini = do
 final :: Repl ExitDecision
 final = prettyText "Goodbye!" >> return Exit
 
-repl_banner :: a -> Repl String
-repl_banner _ = do
+replBanner :: a -> Repl String
+replBanner _ = do
   loadedFiles <- gets loadedFiles
   pure (unwords loadedFiles ++ ">")
 
 opts :: ReplOpts ReplInner
 opts = ReplOpts
-  { banner           = repl_banner
+  { banner           = replBanner
   , command          = cmd
-  , options          = (\opt -> (T.unpack (option_name opt), \s -> dontCrash ((option_cmd opt) (T.pack s)))) <$> all_options
+  , options          = (\opt -> (T.unpack (option_name opt), \s -> dontCrash ((option_cmd opt) (T.pack s)))) <$> allOptions
   , prefix           = Just ':'
   , multilineCommand = Nothing
   , tabComplete      = newCompleter
@@ -119,7 +119,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
   where
     f n = do
       env <- gets replEnv
-      let completionList = (':' :) . T.unpack . option_name <$> all_options
+      let completionList = (':' :) . T.unpack . option_name <$> allOptions
       let keys = concat [ M.keys (prdEnv env)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
@@ -131,7 +131,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
 
 
 prefixCompleters :: [(String, CompletionFunc ReplInner)]
-prefixCompleters = catMaybes (mkCompleter <$> all_options)
+prefixCompleters = catMaybes (mkCompleter <$> allOptions)
   where
     mkCompleter Option { option_completer = Nothing } = Nothing
     mkCompleter Option { option_name = name, option_completer = Just completer } = Just (':' : T.unpack name, completer)
