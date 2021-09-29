@@ -1,5 +1,6 @@
 module LSP where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Default
 import Language.LSP.Server
 import Language.LSP.Types
@@ -16,10 +17,10 @@ type LspMonad = IO
 definition :: ServerDefinition LspConfig
 definition = ServerDefinition
   { defaultConfig = ()
-  , onConfigurationChange = \_ _ -> Left "onConfigurationChange not implemented"
-  , doInitialize = initialize
+  , onConfigurationChange = const $ pure $ Right ()
+  , doInitialize = \env _req -> pure $ Right env
   , staticHandlers = handlers
-  , interpretHandler = \_ -> Iso id id
+  , interpretHandler = \env -> Iso (runLspT env) liftIO
   , options = def
   }
 
@@ -28,8 +29,9 @@ initialize :: LanguageContextEnv LspConfig
            -> IO (Either ResponseError ())
 initialize _ _ = return $ Right ()
 
-handlers :: Handlers LspMonad
+handlers :: Handlers (LspM ())
 handlers = mconcat [initializedHandler]
 
-initializedHandler :: Handlers LspMonad
-initializedHandler = notificationHandler SInitialized $ \_notif -> pure ()
+initializedHandler :: Handlers (LspM ())
+initializedHandler = notificationHandler SInitialized $ \_notif -> do
+  sendNotification SWindowShowMessage (ShowMessageParams MtInfo "Hello World")
