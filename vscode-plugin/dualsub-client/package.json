@@ -14,17 +14,28 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"commands": [
+		"languages": [
 			{
-				"command": "dualsub-client.helloWorld",
-				"title": "Hello World"
+				"id": "dualsub",
+				"extensions": [
+					".ds"
+				],
+				"aliases": [
+					"DualSub",
+					"dualsub"
+				]
 			}
 		],
-		"languages": [{
-			"id": "dualsub",
-			"extensions": [".ds"],
-			"aliases": ["DualSub", "dualsub"]
-		}]
+		"configuration": {
+			"type": "object",
+			"title": "DualSub",
+			"properties": {
+				"dualsub-client.executable": {
+					"type": "string",
+					"description": "Path to the DualSub LSP executable"
+				}
+			}
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
@@ -33,6 +44,9 @@
 		"pretest": "npm run compile && npm run lint",
 		"lint": "eslint src --ext ts",
 		"test": "node ./out/test/runTest.js"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^5.2.1"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.60.0",
