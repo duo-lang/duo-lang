@@ -10,7 +10,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:dualsub-client.helloWorld"
+		"onLanguage:dualsub"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -19,7 +19,12 @@
 				"command": "dualsub-client.helloWorld",
 				"title": "Hello World"
 			}
-		]
+		],
+		"languages": [{
+			"id": "dualsub",
+			"extensions": [".ds"],
+			"aliases": ["DualSub", "dualsub"]
+		}]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
