@@ -24,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
         },
         debug: {
             command: dualsubCmd,
-            args: args.concat(["--debug"]), // Not implemented in the LSP Server!
+            args: args,
             options: {}
         }
     };
