@@ -23,6 +23,7 @@ common shared-build-depends
       ansi-terminal
     , base >=4.7 && <5
     , containers
+    , data-default
     , directory
     , filepath
     , fgl >=5.7 && <6
@@ -108,13 +109,15 @@ executable dualsub
   import: shared-build-depends
   main-is: Main.hs
   other-modules:
+      LSP
       Repl
       Paths_dualsub
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors
   build-depends:
-      dualsub
+      dualsub,
+      lsp
 
 test-suite dualsub-test
   import: shared-build-depends
