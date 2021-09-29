@@ -29,4 +29,7 @@ initialize :: LanguageContextEnv LspConfig
 initialize _ _ = return $ Right ()
 
 handlers :: Handlers LspMonad
-handlers = mconcat []
+handlers = mconcat [initializedHandler]
+
+initializedHandler :: Handlers LspMonad
+initializedHandler = notificationHandler SInitialized $ \_notif -> pure ()
