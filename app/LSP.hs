@@ -24,6 +24,19 @@ type LspConfig = ()
 
 type LspMonad = IO
 
+serverOptions :: Options 
+serverOptions = Options
+  { textDocumentSync = Just (TextDocumentSyncOptions (Just True) (Just TdSyncIncremental) Nothing Nothing Nothing)
+  , completionTriggerCharacters = Nothing 
+  , completionAllCommitCharacters = Nothing 
+  , signatureHelpTriggerCharacters = Nothing
+  , signatureHelpRetriggerCharacters = Nothing
+  , codeActionKinds = Nothing
+  , documentOnTypeFormattingTriggerCharacters = Nothing
+  , executeCommandCommands = Nothing 
+  , serverInfo = Nothing 
+  }
+
 definition :: ServerDefinition LspConfig
 definition = ServerDefinition
   { defaultConfig = ()
@@ -31,7 +44,7 @@ definition = ServerDefinition
   , doInitialize = \env _req -> pure $ Right env
   , staticHandlers = handlers
   , interpretHandler = \env -> Iso (runLspT env) liftIO
-  , options = def
+  , options = serverOptions
   }
 
 initialize :: LanguageContextEnv LspConfig
