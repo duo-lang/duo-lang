@@ -11,7 +11,7 @@ import Data.Graph.Inductive.Graph
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
 
-import Data.List (delete)
+import Data.List (delete, find)
 import Data.Tuple (swap)
 import Data.Maybe (isJust)
 import qualified Data.Set as S
@@ -102,21 +102,29 @@ subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
   (MkNodeLabel Pos _ _ nominal2 _) <- lab ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
-noRefinements :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Bool
-noRefinements TypeAutCore{ ta_gr } (i,j) = 
-  case (lab ta_gr i, lab ta_gr j) of
-        (Just (MkNodeLabel _ _ _ _ ref1), Just (MkNodeLabel _ _ _ _ ref2)) ->
-            S.null ref1 && S.null ref2
-        _ -> False
+-- Require at least one common type name in ref type set for which the two structural refinements fulfil
+-- subtypeData/subtypeCodata
+subtypeRefined :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeRefined aut@TypeAutCore{ ta_gr } (i,j) = do
+  (MkNodeLabel Neg _ _ _ tyNames1) <- lab ta_gr i
+  (MkNodeLabel Pos _ _ _ tyNames2) <- lab ta_gr j
+  let (_,_,_,iOuts) = context ta_gr i
+  let (_,_,_,jOuts) = context ta_gr j
+  guard (not . S.null $ S.intersection tyNames1 tyNames2) -- Check for common type names
+  forM_ (S.intersection tyNames1 tyNames2) (\tn -> do -- For all common type names:
+    (_, ref1) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) iOuts
+    (_, ref2) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) jOuts
+    subtypeData aut (ref1,ref2) <|> subtypeCodata aut (ref1,ref2) 
+    -- Check subtyping relation between corresponding structural refinements
+    )
 
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 admissableM aut@TypeAutCore{..} e =
-  if noRefinements aut e then do
-    guard (e `elem` ta_flowEdges) <|>
-      subtypeData aut e <|>
-      subtypeCodata aut e <|>
-      subtypeNominal aut e
-  else Nothing
+  guard (e `elem` ta_flowEdges) <|>
+    subtypeData aut e <|>
+    subtypeCodata aut e <|>
+    subtypeNominal aut e <|>
+    subtypeRefined aut e
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
