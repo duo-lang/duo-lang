@@ -114,7 +114,7 @@ subtypeRefined aut@TypeAutCore{ ta_gr } (i,j) = do
   forM_ (S.intersection tyNames1 tyNames2) (\tn -> do -- For all common type names:
     (_, ref1) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) iOuts
     (_, ref2) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) jOuts
-    subtypeData aut (ref1,ref2) <|> subtypeCodata aut (ref1,ref2) 
+    admissableM aut (ref1,ref2)
     -- Check subtyping relation between corresponding structural refinements
     )
 
