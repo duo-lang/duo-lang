@@ -25,7 +25,7 @@ recSym :: Doc Annotation
 recSym = annKeyword "rec"
 
 refinementSym :: Doc Annotation
-refinementSym = annKeyword "<<:"
+refinementSym = annKeyword ":>>"
 
 forallSym :: Doc Annotation
 forallSym = annKeyword "forall"
@@ -62,7 +62,7 @@ instance PrettyAnn (Typ pol) where
   -- Nominal and Refinement Types
   prettyAnn (TyNominal _ tn)   = prettyAnn tn
   prettyAnn (TyRefined _ tn t) =
-    dbraces' mempty [prettyAnn t,  refinementSym <+> prettyAnn tn]
+    dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn t]
   -- Structural data and codata types
   prettyAnn (TyData _ xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ xtors) = braces' commaSym (prettyAnn <$> xtors)
