@@ -115,6 +115,11 @@ getPolarity (TyRefined rep _ _) = rep
 getPolarity (TySet rep _)       = rep
 getPolarity (TyRec rep _ _)     = rep
 
+-- | Make the XtorName of an XtorSig structural
+xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
+xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) typArgs) =
+  MkXtorSig (MkXtorName Structural s) typArgs
+
 ------------------------------------------------------------------------------
 -- Type Schemes
 ------------------------------------------------------------------------------
@@ -173,7 +178,7 @@ substituteType m var@(TyVar NegRep tv) =
 substituteType m (TyData polrep args) = TyData polrep (substituteXtorSig m <$> args)
 substituteType m (TyCodata polrep args) = TyCodata polrep (substituteXtorSig m <$> args)
 substituteType _ ty@(TyNominal _ _) = ty
-substituteType _ ty@TyRefined{} = ty
+substituteType m (TyRefined rep n ty) = TyRefined rep n (substituteType m ty)
 substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 
@@ -246,4 +251,3 @@ data DataDecl = NominalDecl
   , data_polarity :: DataCodata
   , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
   }
-

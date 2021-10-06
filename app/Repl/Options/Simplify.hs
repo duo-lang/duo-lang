@@ -33,7 +33,8 @@ simplifyCmd s = case go PosRep of
     go rep = do
       ty <- runInteractiveParser (typeSchemeP rep <* eof) s
       aut <- typeToAut ty
-      return $ prettyRepl (autToType aut)
+      ty' <- autToType aut
+      return $ prettyRepl ty'
 
 simplifyOption :: Option
 simplifyOption = Option

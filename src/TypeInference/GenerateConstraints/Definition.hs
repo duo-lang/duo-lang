@@ -19,6 +19,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , InferenceMode(..)
   , PrdCnsToPol
+  , xtorSigMakeStructural
   , foo
   , prdCnsToPol
   , checkCorrectness
@@ -192,4 +193,3 @@ checkExhaustiveness matched decl = do
       forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
-
