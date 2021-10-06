@@ -1,7 +1,6 @@
 module TypeAutomata.Determinize ( determinize ) where
 
 import Control.Monad.State
-import Control.Arrow (second)
 import Data.Functor.Identity
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
@@ -47,6 +46,7 @@ determinizeState (ns:rest) gr = do
       let newNodeSets = map fst newEdges
       determinizeState (newNodeSets ++ rest) gr
 
+
 -- | Compute the transition function for the powerset construction.
 transFun :: Gr NodeLabel EdgeLabelNormal
                -> Set Node -- ^ Starting states
@@ -76,9 +76,10 @@ combineNodeLabels nls
       then error "Tried to combine node labels of different polarity!"
       else MkNodeLabel {
         nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn <- nls]
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ <- nls],
+        nl_refined = S.unions [ tr | MkNodeLabel _ _ _ _ tr <- nls]
         }
   where
     pol = nl_pol (head nls)
@@ -87,6 +88,8 @@ combineNodeLabels nls
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
 
+-- | This function computes the new typegraph and the new starting state.
+-- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
 newTypeGraph :: TransFunReindexed -- ^ The transition function of the powerset construction.
              -> Gr NodeLabel EdgeLabelNormal -- ^ The old typegraph with a set of starting states.
              -> Gr NodeLabel EdgeLabelNormal -- ^ The new typegraph with one starting state.
@@ -122,4 +125,5 @@ determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEd
     newCore = TypeAutCore { ta_gr = newgr, ta_flowEdges = newFlowEdges }
   in
     TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_core = newCore }
+
 

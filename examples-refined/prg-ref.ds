@@ -2,4 +2,4 @@ data Bool { True, False };
 data Nat { S(Nat), Z };
 codata FunBoolBool { Ap(Bool)[Bool] };
 
-## cns foo := match { True => Print('T) };
+cns foo := match { True => Print('T) };

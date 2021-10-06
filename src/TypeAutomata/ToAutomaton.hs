@@ -3,7 +3,6 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
-import Pretty.Pretty (ppPrint)
 import Pretty.Types()
 import Utils
 import Errors
@@ -181,9 +180,13 @@ insertType (TyNominal rep tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
-insertType ty@(TyRefined pr _ _) = do
-  throwAutomatonError ["Cannot insert refined type " <> ppPrint ty <>
-    " with polarity " <> ppPrint (polarityRepToPol pr)]
+insertType (TyRefined rep tn ty) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode ((emptyNodeLabel pol) { nl_refined = S.singleton tn })
+  nodeStructural <- insertType ty
+  insertEdges [(newNode, nodeStructural, RefineEdge tn)]
+  return newNode
 
 
 --------------------------------------------------------------------------
