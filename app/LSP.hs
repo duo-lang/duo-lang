@@ -9,12 +9,14 @@ import Language.LSP.VFS
 import System.Exit ( exitSuccess )
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import Data.Version (showVersion)
 
 import TypeInference.GenerateConstraints.Definition
     ( InferenceMode(InferNominal) )
 import TypeInference.InferProgram ( inferProgram )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
+import Paths_dualsub (version)
 
 runLSP :: IO ()
 runLSP = initVFS $ \vfs -> runServer (definition vfs) >> return ()
@@ -29,7 +31,12 @@ newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
 
 serverOptions :: Options
 serverOptions = Options
-  { textDocumentSync = Just (TextDocumentSyncOptions (Just True) (Just TdSyncIncremental) Nothing Nothing Nothing)
+  { textDocumentSync = Just TextDocumentSyncOptions { _openClose = Just True
+                                                    , _change = Just TdSyncIncremental
+                                                    , _willSave = Nothing
+                                                    , _willSaveWaitUntil = Nothing
+                                                    , _save = Nothing
+                                                    }
   , completionTriggerCharacters = Nothing
   , completionAllCommitCharacters = Nothing
   , signatureHelpTriggerCharacters = Nothing
@@ -37,7 +44,7 @@ serverOptions = Options
   , codeActionKinds = Nothing
   , documentOnTypeFormattingTriggerCharacters = Nothing
   , executeCommandCommands = Nothing
-  , serverInfo = Nothing
+  , serverInfo = Just ServerInfo { _name = "dualsub-lsp", _version = Just (T.pack $ showVersion version) }
   }
 
 definition :: VFS -> ServerDefinition LSPConfig
