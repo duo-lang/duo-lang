@@ -123,9 +123,6 @@ intercalateX  x xs = cat (punctuate x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
-dbraces :: Doc ann -> Doc ann
-dbraces x = cat  ["{{",x,"}}"]
-
 prettyTwice' :: (PrettyAnn a, PrettyAnn b) => [a] -> [b] -> Doc Annotation
 prettyTwice' xs ys = xs' <> ys'
   where
@@ -142,3 +139,39 @@ instance PrettyAnn XtorName where
 -- | This identity wrapper is used to indicate that we want to transform the element to
 -- a named representation before prettyprinting it.
 newtype NamedRep a = NamedRep a
+
+-- | Layout of lists. Produces the following layout:
+--
+--   l x1
+--   i x2
+--   i x3
+--   ...
+--   i xn
+--   r
+mkParen :: Bool             -- ^ Whether to print the parens for empty list
+        -> Doc Annotation   -- ^ Left paren symbol
+        -> Doc Annotation   -- ^ Right paren symbol
+        -> Doc Annotation   -- ^ Interspersed character
+        -> [Doc Annotation] -- ^ Elements
+        -> Doc Annotation
+mkParen True  l r _ []     = l <> r
+mkParen False _ _ _ []     = mempty
+mkParen _ l r _ [x]    = l <+> x <+> r
+mkParen _ l r i (x:xs) = align $ sep list
+  where
+    list = ((l <+> x) : [ i <+> x' | x' <- xs]) ++ [r]
+
+parens' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
+parens' = mkParen False (prettyAnn ("(" :: String))(prettyAnn (")" :: String))
+
+brackets' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
+brackets' = mkParen False (prettyAnn ("[" :: String))(prettyAnn ("]" :: String))
+
+angles' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
+angles' = mkParen True (prettyAnn ("<" :: String))(prettyAnn (">" :: String))
+
+braces' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
+braces' = mkParen True (prettyAnn ("{" :: String))(prettyAnn ("}" :: String))
+
+dbraces' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
+dbraces' = mkParen True (prettyAnn ("{{" :: String))(prettyAnn ("}}" :: String))
