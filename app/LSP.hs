@@ -2,7 +2,6 @@ module LSP where
 
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (liftIO)
-import Data.Default
 import Language.LSP.Server
 import Language.LSP.Types
 import System.Exit ( exitSuccess )

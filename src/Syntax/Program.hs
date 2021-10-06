@@ -64,4 +64,3 @@ instance Monoid (Environment bs) where
     , defEnv = M.empty
     , declEnv = []
     }
-

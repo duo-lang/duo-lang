@@ -1,7 +1,7 @@
 module Main where
 
 import System.Environment (getArgs)
-import Repl (runRepl)
+import Repl.Run (runRepl)
 import LSP (runLSP)
 
 main :: IO ()
@@ -11,4 +11,5 @@ main = do
 
 dispatch :: [String] -> IO ()
 dispatch ["lsp"] = runLSP
-dispatch _       = runRepl 
+dispatch _       = runRepl
+
