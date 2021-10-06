@@ -108,11 +108,28 @@ executable dualsub
   import: shared-build-depends
   main-is: Main.hs
   other-modules:
-      Repl
+      Repl.Repl
+      Repl.Options.Compile
+      Repl.Options.Let
+      Repl.Options.LoadReload
+      Repl.Options.SaveGraphs
+      Repl.Options.SetUnset
+      Repl.Options.Show
+      Repl.Options.Simplify
+      Repl.Options.Subsume
+      Repl.Run
       Paths_dualsub
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fwarn-tabs -fno-warn-name-shadowing -fno-warn-orphans -fno-warn-unticked-promoted-constructors
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+    -Wall
+    -fwarn-tabs
+    -fno-warn-name-shadowing
+    -fno-warn-orphans
+    -fno-warn-unticked-promoted-constructors
   build-depends:
       dualsub
 
