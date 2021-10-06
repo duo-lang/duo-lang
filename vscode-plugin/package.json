@@ -2,7 +2,8 @@
 	"name": "dualsub-client",
 	"displayName": "dualsub-client",
 	"description": "LSP Client for the DualSub Language",
-	"version": "0.0.1",
+        "version": "0.0.1",
+        "publisher": "dualsub",
 	"engines": {
 		"vscode": "^1.60.0"
 	},
