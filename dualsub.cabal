@@ -34,6 +34,7 @@ common shared-build-depends
     , prettyprinter >= 1.7 && < 1.8
     , repline >=0.4 && <0.5
     , text >= 1.2 && < 1.3
+    , unliftio-core
   default-language:    Haskell2010
   default-extensions:
                      RecordWildCards,

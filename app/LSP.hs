@@ -1,9 +1,11 @@
 module LSP where
 
 import Control.Monad (forM_)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (liftIO, MonadIO)
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Language.LSP.Server
 import Language.LSP.Types
+import Language.LSP.VFS
 import System.Exit ( exitSuccess )
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -15,45 +17,47 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 
 runLSP :: IO ()
-runLSP = runServer definition >> return ()
+runLSP = initVFS $ \vfs -> runServer (definition vfs) >> return ()
 
 -- Server Configuration
 
-type LspConfig = ()
+data LSPConfig = MkLSPConfig
+  { lspConfigVFS :: VFS }
 
-type LspMonad = IO
+newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
+  deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
 
-serverOptions :: Options 
+serverOptions :: Options
 serverOptions = Options
   { textDocumentSync = Just (TextDocumentSyncOptions (Just True) (Just TdSyncIncremental) Nothing Nothing Nothing)
-  , completionTriggerCharacters = Nothing 
-  , completionAllCommitCharacters = Nothing 
+  , completionTriggerCharacters = Nothing
+  , completionAllCommitCharacters = Nothing
   , signatureHelpTriggerCharacters = Nothing
   , signatureHelpRetriggerCharacters = Nothing
   , codeActionKinds = Nothing
   , documentOnTypeFormattingTriggerCharacters = Nothing
-  , executeCommandCommands = Nothing 
-  , serverInfo = Nothing 
+  , executeCommandCommands = Nothing
+  , serverInfo = Nothing
   }
 
-definition :: ServerDefinition LspConfig
-definition = ServerDefinition
-  { defaultConfig = ()
-  , onConfigurationChange = const $ pure $ Right ()
+definition :: VFS -> ServerDefinition LSPConfig
+definition vfs = ServerDefinition
+  { defaultConfig = MkLSPConfig vfs
+  , onConfigurationChange = \config _ -> pure config
   , doInitialize = \env _req -> pure $ Right env
   , staticHandlers = handlers
-  , interpretHandler = \env -> Iso (runLspT env) liftIO
+  , interpretHandler = \env -> Iso (runLspT env . unLSPMonad) liftIO
   , options = serverOptions
   }
 
-initialize :: LanguageContextEnv LspConfig
+initialize :: LanguageContextEnv LSPConfig
            -> Message Initialize
            -> IO (Either ResponseError ())
 initialize _ _ = return $ Right ()
 
 -- All Handlers
 
-handlers :: Handlers (LspM ())
+handlers :: Handlers LSPMonad
 handlers = mconcat [ initializedHandler
                    , exitHandler
                    , shutdownHandler
@@ -64,18 +68,18 @@ handlers = mconcat [ initializedHandler
 
 -- Initialization Handlers
 
-initializedHandler :: Handlers (LspM ())
+initializedHandler :: Handlers LSPMonad
 initializedHandler = notificationHandler SInitialized $ \_notif -> do
   let msg = "LSP Server for DualSub Initialized!"
   sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
 
 -- Exit + Shutdown Handlers
 
-exitHandler :: Handlers (LspM ())
+exitHandler :: Handlers LSPMonad
 exitHandler = notificationHandler SExit $ \_notif -> do
   liftIO exitSuccess
 
-shutdownHandler :: Handlers (LspM ())
+shutdownHandler :: Handlers LSPMonad
 shutdownHandler = requestHandler SShutdown $ \_re responder -> do
   let rsp = Right Empty
   responder rsp
@@ -83,25 +87,25 @@ shutdownHandler = requestHandler SShutdown $ \_re responder -> do
 
 -- File Open + Change + Close Handlers
 
-didOpenHandler :: Handlers (LspM ())
+didOpenHandler :: Handlers LSPMonad
 didOpenHandler = notificationHandler STextDocumentDidOpen $ \notif -> do
   let (NotificationMessage _ _ (DidOpenTextDocumentParams (TextDocumentItem uri _ _ _))) = notif
   sendInfo $ "Opened file: " <> (T.pack $ show uri)
   forM_ (uriToFilePath uri) publishErrors
 
-didChangeHandler :: Handlers (LspM ())
+didChangeHandler :: Handlers LSPMonad
 didChangeHandler = notificationHandler STextDocumentDidChange $ \notif -> do
   let (NotificationMessage _ _ (DidChangeTextDocumentParams (VersionedTextDocumentIdentifier uri _) _)) = notif
   sendInfo $ "Changed file:" <> (T.pack $ show uri)
   forM_ (uriToFilePath uri) publishErrors
 
-didCloseHandler :: Handlers (LspM ())
+didCloseHandler :: Handlers LSPMonad
 didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
   return ()
 
 -- Publish diagnostics for File
 
-publishErrors :: FilePath -> LspM LspConfig ()
+publishErrors :: FilePath -> LSPMonad ()
 publishErrors fp = do
   file <- liftIO $ T.readFile fp
   let decls = runFileParser fp programP file
@@ -116,11 +120,11 @@ publishErrors fp = do
         Right _ -> do
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 
-sendInfo :: T.Text -> LspM LspConfig ()
+sendInfo :: T.Text -> LSPMonad ()
 sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
 
-sendWarning :: T.Text -> LspM LspConfig ()
+sendWarning :: T.Text -> LSPMonad ()
 sendWarning msg = sendNotification SWindowShowMessage (ShowMessageParams MtWarning  msg)
 
-sendError :: T.Text -> LspM LspConfig ()
+sendError :: T.Text -> LSPMonad ()
 sendError msg = sendNotification SWindowShowMessage (ShowMessageParams MtError msg)
