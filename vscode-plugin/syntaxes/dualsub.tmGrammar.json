@@ -39,15 +39,20 @@
           ]
       },
       "brackets": {
-        "patterns": [{
-          "match": "[\\({]",
-          "name": "punctuation.section.parens.begin"
+      
+        "begin": "[{\\(]",
+        "beginCaptures": {
+          "0": {
+            "name": "punctuation.section.parens.begin.dualsub"
+          }
         },
-        {
-          "match": "[\\)}]",
-          "name": "punctuation.section.parens.end"
-        }
-      ]
+        "end": "[}\\)]",
+        "endCaptures": {
+          "0": {
+            "name": "punctuation.section.parens.end.dualsub"
+          }
+        },
+        "name": "meta.parens.dualsub"
       }
     }
 }
