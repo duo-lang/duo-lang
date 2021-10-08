@@ -24,7 +24,8 @@
 				"aliases": [
 					"DualSub",
 					"dualsub"
-				]
+				],
+				"configuration": "./language-configuration.json"
 			}
 		],
 		"grammars": [
