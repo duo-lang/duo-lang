@@ -17,6 +17,10 @@ import TypeInference.InferProgram ( inferProgram )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Paths_dualsub (version)
+import Errors
+import Utils
+import Text.Megaparsec.Pos
+import Pretty.Pretty ( ppPrint )
 
 runLSP :: IO ()
 runLSP = initVFS $ \vfs -> runServer (definition vfs) >> return ()
@@ -111,6 +115,28 @@ didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
   return ()
 
 -- Publish diagnostics for File
+
+locToRange :: Loc -> Range
+locToRange (Loc (SourcePos _ l1 c1) (SourcePos _ l2 c2)) =
+  Range { _start = Position { _line = unPos l1, _character = unPos c1}
+        , _end   = Position { _line = unPos l2, _character = unPos c2}
+        }
+
+
+errorToDiag :: LocatedError -> Diagnostic
+errorToDiag (Located loc err) =
+  let
+    msg = ppPrint err
+    range = locToRange loc
+  in
+    Diagnostic { _range = range
+               , _severity = Just DsError
+               , _code = Nothing
+               , _source = Nothing
+               , _message = msg
+               , _tags = Nothing
+               , _relatedInformation = Nothing
+               }
 
 publishErrors :: FilePath -> LSPMonad ()
 publishErrors fp = do
