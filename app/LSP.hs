@@ -1,15 +1,57 @@
 module LSP where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, void)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
+import Language.LSP.VFS ( virtualFileText, VirtualFile )
 import Language.LSP.Server
+    ( runServer,
+      notificationHandler,
+      requestHandler,
+      runLspT,
+      sendNotification,
+      type (<~>)(Iso, forward, backward),
+      Handlers,
+      LanguageContextEnv,
+      LspT(LspT),
+      MonadLsp,
+      Options(..),
+      ServerDefinition(..),
+      getVirtualFile, publishDiagnostics, flushDiagnosticsBySource)
 import Language.LSP.Types
-import Language.LSP.VFS
+    ( uriToFilePath,
+      toNormalizedUri,
+      Empty(Empty),
+      Diagnostic(..),
+      DiagnosticSeverity(DsError),
+      ServerInfo(ServerInfo, _name, _version),
+      Position(Position, _line, _character),
+      Range(..),
+      Message,
+      NotificationMessage(NotificationMessage),
+      ResponseError,
+      Method(Initialize),
+      SMethod(SWindowShowMessage, SInitialized, SExit, SShutdown,
+              STextDocumentDidOpen, STextDocumentDidChange,
+              STextDocumentDidClose),
+      DidChangeTextDocumentParams(DidChangeTextDocumentParams),
+      DidOpenTextDocumentParams(DidOpenTextDocumentParams),
+      TextDocumentItem(TextDocumentItem),
+      TextDocumentSyncKind(TdSyncIncremental),
+      TextDocumentSyncOptions(TextDocumentSyncOptions, _openClose,
+                              _change, _willSave, _willSaveWaitUntil, _save),
+      VersionedTextDocumentIdentifier(VersionedTextDocumentIdentifier),
+      MessageType(MtError, MtInfo, MtWarning),
+      ShowMessageParams(ShowMessageParams),
+      Uri,
+      NormalizedUri, toNormalizedFilePath)
 import System.Exit ( exitSuccess )
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Version (showVersion)
+import Data.Map (Map)
+import qualified Data.Map as M
+import qualified Data.SortedList as SL
 
 import TypeInference.GenerateConstraints.Definition
     ( InferenceMode(InferNominal) )
@@ -17,18 +59,17 @@ import TypeInference.InferProgram ( inferProgram )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Paths_dualsub (version)
-import Errors
-import Utils
-import Text.Megaparsec.Pos
+import Errors ( LocatedError )
+import Utils ( Located(Located), Loc(..) )
+import Text.Megaparsec.Pos ( unPos, SourcePos(SourcePos) )
 import Pretty.Pretty ( ppPrint )
 
 runLSP :: IO ()
-runLSP = initVFS $ \vfs -> runServer (definition vfs) >> return ()
+runLSP = void (runServer definition)
 
 -- Server Configuration
 
 data LSPConfig = MkLSPConfig
-  { lspConfigVFS :: VFS }
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
@@ -51,13 +92,13 @@ serverOptions = Options
   , serverInfo = Just ServerInfo { _name = "dualsub-lsp", _version = Just (T.pack $ showVersion version) }
   }
 
-definition :: VFS -> ServerDefinition LSPConfig
-definition vfs = ServerDefinition
-  { defaultConfig = MkLSPConfig vfs
+definition :: ServerDefinition LSPConfig
+definition = ServerDefinition
+  { defaultConfig = MkLSPConfig
   , onConfigurationChange = \config _ -> pure config
   , doInitialize = \env _req -> pure $ Right env
   , staticHandlers = handlers
-  , interpretHandler = \env -> Iso (runLspT env . unLSPMonad) liftIO
+  , interpretHandler = \env -> Iso { forward = runLspT env . unLSPMonad, backward = liftIO }
   , options = serverOptions
   }
 
@@ -102,13 +143,13 @@ didOpenHandler :: Handlers LSPMonad
 didOpenHandler = notificationHandler STextDocumentDidOpen $ \notif -> do
   let (NotificationMessage _ _ (DidOpenTextDocumentParams (TextDocumentItem uri _ _ _))) = notif
   sendInfo $ "Opened file: " <> (T.pack $ show uri)
-  forM_ (uriToFilePath uri) publishErrors
+  publishErrors uri
 
 didChangeHandler :: Handlers LSPMonad
 didChangeHandler = notificationHandler STextDocumentDidChange $ \notif -> do
   let (NotificationMessage _ _ (DidChangeTextDocumentParams (VersionedTextDocumentIdentifier uri _) _)) = notif
   sendInfo $ "Changed file:" <> (T.pack $ show uri)
-  forM_ (uriToFilePath uri) publishErrors
+  publishErrors uri
 
 didCloseHandler :: Handlers LSPMonad
 didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
@@ -118,8 +159,8 @@ didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
 
 locToRange :: Loc -> Range
 locToRange (Loc (SourcePos _ l1 c1) (SourcePos _ l2 c2)) =
-  Range { _start = Position { _line = unPos l1, _character = unPos c1}
-        , _end   = Position { _line = unPos l2, _character = unPos c2}
+  Range { _start = Position { _line = unPos l1 - 1, _character = unPos c1 - 1}
+        , _end   = Position { _line = unPos l2 - 1, _character = unPos c2 - 1}
         }
 
 
@@ -138,9 +179,21 @@ errorToDiag (Located loc err) =
                , _relatedInformation = Nothing
                }
 
-publishErrors :: FilePath -> LSPMonad ()
-publishErrors fp = do
-  file <- liftIO $ T.readFile fp
+sendLocatedError :: NormalizedUri -> LocatedError -> LSPMonad ()
+sendLocatedError uri le = do
+  let diag = errorToDiag le
+  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList [diag])]))
+
+
+publishErrors :: Uri -> LSPMonad ()
+publishErrors uri = do
+  flushDiagnosticsBySource 42 (Just "TypeInference")
+  mfile <- getVirtualFile (toNormalizedUri uri)
+  let vfile :: VirtualFile = maybe undefined id mfile
+  let file = virtualFileText vfile
+  let fp = case uriToFilePath uri of
+                Nothing -> "fail"
+                Just fp' -> fp'
   let decls = runFileParser fp programP file
   case decls of
     Left _err -> do
@@ -148,7 +201,8 @@ publishErrors fp = do
     Right decls -> do
       let res = inferProgram decls InferNominal
       case res of
-        Left _err -> do
+        Left err -> do
+          sendLocatedError (toNormalizedUri uri) err
           sendError "Typeinference error!"
         Right _ -> do
           sendInfo $ "No errors in " <> T.pack fp <> "!"
