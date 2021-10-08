@@ -1,13 +1,15 @@
 module Repl.Options.Simplify (simplifyOption) where
 
 import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Bifunctor (first)
 
-import Errors ( Error )
+import Errors ( Error(ParseError) )
 import Parser.Parser ( runInteractiveParser, typeSchemeP )
 import Pretty.Program ()
 import Repl.Repl ( prettyRepl, Repl, Option(..) )
 import Syntax.Types ( PolarityRep(..) )
-import Text.Megaparsec (eof)
+import Text.Megaparsec (eof, errorBundlePretty)
 import TypeAutomata.FromAutomaton (autToType)
 import TypeAutomata.ToAutomaton (typeToAut)
 
@@ -31,7 +33,7 @@ simplifyCmd s = case go PosRep of
   where
     go :: forall p. PolarityRep p -> Either Error (Repl ())
     go rep = do
-      ty <- runInteractiveParser (typeSchemeP rep <* eof) s
+      ty <- (first (ParseError . T.pack . errorBundlePretty) (runInteractiveParser (typeSchemeP rep <* eof) s))
       aut <- typeToAut ty
       ty' <- autToType aut
       return $ prettyRepl ty'

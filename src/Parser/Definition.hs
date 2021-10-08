@@ -34,11 +34,13 @@ newtype Parser a = Parser { unParser :: ReaderT ParseReader (Parsec Void Text) a
 -- Running a parser
 -------------------------------------------------------------------------------------------
 
-runFileParser :: FilePath -> Parser a -> Text -> Either Error a
+type MyParseError = ParseErrorBundle Text Void
+
+runFileParser :: FilePath -> Parser a -> Text -> Either MyParseError a
 runFileParser fp p input = case runParser (runReaderT (unParser p) defaultParseReader) fp input of
-  Left err -> Left $ ParseError (T.pack (errorBundlePretty err))
+  Left err -> Left err
   Right x -> Right x
 
-runInteractiveParser :: Parser a -> Text -> Either Error a
-runInteractiveParser p input = runFileParser "<interactive>" p input
+runInteractiveParser :: Parser a -> Text -> Either MyParseError a
+runInteractiveParser = runFileParser "<interactive>"
 

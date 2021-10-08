@@ -8,6 +8,7 @@ import qualified Data.Text as T
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
+import Text.Megaparsec ( errorBundlePretty )
 import Parser.Parser ( runInteractiveParser, stermP, typeSchemeP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
@@ -45,9 +46,9 @@ saveCmd s = do
         saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
         prettyText (" :: " <> ppPrint (trace_resType trace))
       Left err2 -> prettyText (T.unlines [ "Type parsing error:"
-                                         , ppPrint err1
+                                         , ppPrint (errorBundlePretty err1)
                                          , "Term parsing error:"
-                                         , ppPrint err2 ])
+                                         , ppPrint (errorBundlePretty err2) ])
 
 saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
 saveGraphFiles fileName aut = do
