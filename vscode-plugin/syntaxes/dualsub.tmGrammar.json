@@ -1,0 +1,53 @@
+{
+    "scopeName": "source.dualsub",
+    "patterns": [
+        { "include": "#keywords" },
+        { "include": "#symbols" },
+        { "include": "#numbers" },
+        { "include": "#comments" },
+        { "include": "#brackets" }
+    ],
+    "repository": {
+      "keywords": {
+        "patterns": [
+            {
+              "match": "\\b(match|comatch|prd|cns|cmd|def|with|Done|Print|forall|data|codata|rec|mu)\\b",
+              "name": "keyword.control"
+            }
+          ]
+
+      },
+      "symbols": {
+        "patterns": [{
+            "match": "(:=|=>|>>|\\/|/\\|<:|<<:|:>>)", 
+            "name": "keyword.syntax"
+        }]
+
+      },
+      "numbers": {
+        "patterns": [{
+            "match": "\\b[0-9]+",
+            "name": "constant.numeric"
+          }]
+      },
+      "comments": {
+        "patterns": [
+            {
+              "match": "#.*$\n?",
+              "name": "comment.line.number-sign.syntax"
+            }
+          ]
+      },
+      "brackets": {
+        "patterns": [{
+          "match": "[\\({]",
+          "name": "punctuation.section.parens.begin"
+        },
+        {
+          "match": "[\\)}]",
+          "name": "punctuation.section.parens.end"
+        }
+      ]
+      }
+    }
+}

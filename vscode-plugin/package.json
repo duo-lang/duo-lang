@@ -27,6 +27,14 @@
 				]
 			}
 		],
+		"grammars": [
+
+			{
+				"language": "dualsub",
+				"scopeName": "source.dualsub",
+				"path": "./syntaxes/dualsub.tmGrammar.json"
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "DualSub",
