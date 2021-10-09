@@ -25,8 +25,6 @@ import Language.LSP.Types
       Diagnostic(..),
       DiagnosticSeverity(DsError),
       ServerInfo(ServerInfo, _name, _version),
-      Position(Position, _line, _character),
-      Range(..),
       Message,
       NotificationMessage(NotificationMessage),
       ResponseError,
@@ -48,7 +46,6 @@ import Language.LSP.Types
 import System.Exit ( exitSuccess )
 import qualified Data.Text as T
 import Data.Version (showVersion)
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import qualified Data.SortedList as SL
 import Data.Void ( Void )
@@ -57,20 +54,15 @@ import TypeInference.GenerateConstraints.Definition
     ( InferenceMode(InferNominal) )
 import TypeInference.InferProgram ( inferProgram )
 import Text.Megaparsec
-    ( PosState(pstateSourcePos),
-      SourcePos(SourcePos),
-      errorBundlePretty,
-      errorOffset,
-      ParseErrorBundle(..),
-      TraversableStream(reachOffset),
-      unPos )
+    ( ParseErrorBundle(..) )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Paths_dualsub (version)
 import Errors ( LocatedError )
-import Utils ( Located(Located), Loc(..) )
+import Utils ( Located(Located) )
 import Pretty.Pretty ( ppPrint )
 
+import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
 
 runLSP :: IO ()
 runLSP = void (runServer definition)
@@ -165,42 +157,6 @@ didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
 
 -- Publish diagnostics for File
 
--- | Transform a Megaparsec "SourcePos" to a LSP "Position".
--- Megaparsec and LSP's numbering conventions don't align!
-posToPosition :: SourcePos -> Position
-posToPosition (SourcePos _ line column) =
-  Position { _line = unPos line - 1, _character = unPos column - 1}
-
--- | Convert the Loc that we use internally to LSP's Range type.
-locToRange :: Loc -> Range
-locToRange (Loc startPos endPos) =
-  Range { _start = posToPosition startPos
-        , _end   = posToPosition endPos
-        }
-
-
-getPosFromOffset :: Int ->  PosState Text -> Position
-getPosFromOffset offset ps =
-  let
-    ps' = snd (reachOffset offset ps)
-  in
-    posToPosition (pstateSourcePos ps')
-
-parseErrorToDiag :: ParseErrorBundle Text Void -> Diagnostic
-parseErrorToDiag err@ParseErrorBundle { bundlePosState, bundleErrors } = do
-  let offset = errorOffset (NE.head bundleErrors)
-  let pos = getPosFromOffset offset bundlePosState
-  let rng = Range pos pos
-  let msg = T.pack $ errorBundlePretty err
-  Diagnostic { _range = rng
-             , _severity = Just DsError
-             , _code = Nothing 
-             , _source = Nothing 
-             , _message = msg
-             , _tags = Nothing
-             , _relatedInformation = Nothing 
-  }
-
 errorToDiag :: LocatedError -> Diagnostic
 errorToDiag (Located loc err) =
   let
@@ -218,8 +174,8 @@ errorToDiag (Located loc err) =
 
 sendParsingError :: NormalizedUri -> ParseErrorBundle Text Void -> LSPMonad ()
 sendParsingError uri err = do
-  let diag = parseErrorToDiag err
-  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList ([diag]))]))
+  let diag = parseErrorBundleToDiag err
+  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList diag)]))
 
 sendLocatedError :: NormalizedUri -> LocatedError -> LSPMonad ()
 sendLocatedError uri le = do
