@@ -1,6 +1,6 @@
 module LSP where
 
-import Control.Monad (forM_, void)
+import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Language.LSP.VFS ( virtualFileText, VirtualFile )
@@ -44,12 +44,10 @@ import Language.LSP.Types
       MessageType(MtError, MtInfo, MtWarning),
       ShowMessageParams(ShowMessageParams),
       Uri,
-      NormalizedUri, toNormalizedFilePath)
+      NormalizedUri)
 import System.Exit ( exitSuccess )
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Data.Version (showVersion)
-import Data.Map (Map)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
 import qualified Data.SortedList as SL
@@ -59,16 +57,20 @@ import TypeInference.GenerateConstraints.Definition
     ( InferenceMode(InferNominal) )
 import TypeInference.InferProgram ( inferProgram )
 import Text.Megaparsec
-import Text.Megaparsec.Error
+    ( PosState(pstateSourcePos),
+      SourcePos(SourcePos),
+      errorBundlePretty,
+      errorOffset,
+      ParseErrorBundle(..),
+      TraversableStream(reachOffset),
+      unPos )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Paths_dualsub (version)
 import Errors ( LocatedError )
 import Utils ( Located(Located), Loc(..) )
-import Text.Megaparsec.Pos ( unPos, SourcePos(SourcePos), pos1, Pos )
 import Pretty.Pretty ( ppPrint )
-import Data.GraphViz.Attributes.Complete (SmoothType(RNG))
-import Text.Megaparsec (PosState(pstateSourcePos))
+
 
 runLSP :: IO ()
 runLSP = void (runServer definition)

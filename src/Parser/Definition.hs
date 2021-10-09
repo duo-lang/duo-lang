@@ -6,16 +6,15 @@ module Parser.Definition
   ) where
 
 import Control.Applicative (Alternative)
-import Control.Monad.Reader
+import Control.Monad.Reader ( MonadPlus, ReaderT(..), MonadReader )
 import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Void (Void)
 import Data.Text (Text)
-import qualified Data.Text as T
 import Text.Megaparsec
+    ( ParseErrorBundle, runParser, Parsec, MonadParsec )
 
-import Syntax.Types
-import Errors
+import Syntax.Types ( TVar )
 
 -------------------------------------------------------------------------------------------
 -- Definition of the Parsing Monad

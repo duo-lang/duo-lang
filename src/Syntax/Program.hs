@@ -19,6 +19,7 @@ data Declaration a b
   | CmdDecl b FreeVarName (Command b a)
   | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b a)
   | DataDecl b DataDecl
+  | ParseErrorDecl
 
 instance Show (Declaration a b) where
   show _ = "<Show for Declaration not implemented>"
@@ -29,6 +30,7 @@ instance Bifunctor Declaration where
   bimap f g (CmdDecl b v cmd) = CmdDecl (g b) v $ bimap g f cmd
   bimap f g (DefDecl isRec b v ts t) = DefDecl isRec (g b) v ts $ bimap g f t
   bimap _ g (DataDecl b dataDecl) = DataDecl (g b) dataDecl
+  bimap _ _ ParseErrorDecl = ParseErrorDecl
 
 type Program a b = [Declaration a b]
 

@@ -43,6 +43,7 @@ module Parser.Lexer
   , argListP
 
   , checkTick
+  , parseUntilKeywP
   ) where
 
 import Data.Text (Text)
@@ -264,4 +265,14 @@ argListP p q = do
   (xs, endPos) <- option ([], endPos) (parens   $ p `sepBy` comma)
   (ys, endPos) <- option ([], endPos) (brackets $ q `sepBy` comma)
   return (Twice xs ys, endPos)
+
+-------------------------------------------------------------------------------------------
+-- Recovery parser
+-------------------------------------------------------------------------------------------
+
+parseUntilKeywP :: Parser ()
+parseUntilKeywP = do
+  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> defKwP <|> dataKwP <|> codataKwP <|> (eof >> getSourcePos)
+  _ <- manyTill anySingle (lookAhead endP)
+  return ()
 
