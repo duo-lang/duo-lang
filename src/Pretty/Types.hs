@@ -1,9 +1,12 @@
 module Pretty.Types where
 
+import Data.Maybe ( isJust )
 import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.Types
+import Syntax.ATerms
+    ( XtorName(MkXtorName), NominalStructural(Structural) )
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -47,6 +50,21 @@ instance PrettyAnn Polarity where
 instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv
 
+
+isFun :: Typ pol -> Maybe ([Typ (FlipPol pol)], Typ pol)
+isFun (TyCodata PosRep [MkXtorSig (MkXtorName _ xt) (MkTypArgs args [res])]) =
+  if xt == "Ap"
+    then Just (args, res)
+    else Nothing
+isFun (TyCodata NegRep [MkXtorSig (MkXtorName _ xt) (MkTypArgs args [res])]) =
+  if xt == "Ap"
+    then Just (args, res)
+    else Nothing
+isFun _ = Nothing
+
+printFun :: ([Typ (FlipPol pol)], Typ pol) -> Doc Annotation
+printFun (args, res) = parens' commaSym (prettyAnn <$> args) <+> "->" <+> prettyAnn res
+
 instance PrettyAnn (Typ pol) where
   -- Lattice types
   prettyAnn (TySet PosRep [])  = botSym
@@ -65,7 +83,8 @@ instance PrettyAnn (Typ pol) where
     dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn t]
   -- Structural data and codata types
   prettyAnn (TyData _ xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
-  prettyAnn (TyCodata _ xtors) = braces' commaSym (prettyAnn <$> xtors)
+  prettyAnn ty@(TyCodata _ xtors) | isJust (isFun ty) = let Just fun = isFun ty in printFun fun
+                                  | otherwise =  braces' commaSym (prettyAnn <$> xtors)
 
 instance PrettyAnn (TypArgs a) where
   prettyAnn (MkTypArgs [] []) = mempty
