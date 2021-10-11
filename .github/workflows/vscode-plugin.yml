@@ -1,0 +1,23 @@
+name: vscode-plugin
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'vscode-plugin/**'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    paths:
+      - 'vscode-plugin/**'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: cd vscode-plugin
+      - run: npm install
+      - uses: lannonbr/vsce-action@master
+        with:
+          args: "package"

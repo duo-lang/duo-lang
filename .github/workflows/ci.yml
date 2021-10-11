@@ -3,10 +3,14 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'vscode-plugin/**'
   pull_request:
     types:
       - opened
       - synchronize
+    paths-ignore:
+      - 'vscode-plugin/**'
 jobs:
   stack:
     name: stack / ghc ${{ matrix.ghc }}
