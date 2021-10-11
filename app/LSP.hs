@@ -3,6 +3,13 @@ module LSP where
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
+import qualified Data.Map as M
+import Data.Maybe ( fromMaybe )
+import qualified Data.SortedList as SL
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Version (showVersion)
+import Data.Void ( Void )
 import Language.LSP.VFS ( virtualFileText, VirtualFile )
 import Language.LSP.Server
     ( runServer,
@@ -44,35 +51,42 @@ import Language.LSP.Types
       Uri,
       NormalizedUri)
 import System.Exit ( exitSuccess )
-import qualified Data.Text as T
-import Data.Version (showVersion)
-import qualified Data.Map as M
-import qualified Data.SortedList as SL
-import Data.Void ( Void )
-import Data.Text (Text)
-import TypeInference.GenerateConstraints.Definition
-    ( InferenceMode(InferNominal) )
-import TypeInference.InferProgram ( inferProgram )
-import Text.Megaparsec
-    ( ParseErrorBundle(..) )
+import Text.Megaparsec ( ParseErrorBundle(..) )
+import Paths_dualsub (version)
+
+import Errors ( LocatedError )
+import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import Paths_dualsub (version)
-import Errors ( LocatedError )
-import Utils ( Located(Located) )
 import Pretty.Pretty ( ppPrint )
+import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
+import TypeInference.InferProgram ( inferProgram )
+import Utils ( Located(..) )
 
-import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
 
-runLSP :: IO ()
-runLSP = void (runServer definition)
 
--- Server Configuration
+
+---------------------------------------------------------------------------------
+-- LSPMonad and Utility Functions
+---------------------------------------------------------------------------------
 
 data LSPConfig = MkLSPConfig
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
+
+sendInfo :: T.Text -> LSPMonad ()
+sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
+
+sendWarning :: T.Text -> LSPMonad ()
+sendWarning msg = sendNotification SWindowShowMessage (ShowMessageParams MtWarning  msg)
+
+sendError :: T.Text -> LSPMonad ()
+sendError msg = sendNotification SWindowShowMessage (ShowMessageParams MtError msg)
+
+---------------------------------------------------------------------------------
+-- Static configuration of the LSP Server
+---------------------------------------------------------------------------------
 
 serverOptions :: Options
 serverOptions = Options
@@ -89,7 +103,9 @@ serverOptions = Options
   , codeActionKinds = Nothing
   , documentOnTypeFormattingTriggerCharacters = Nothing
   , executeCommandCommands = Nothing
-  , serverInfo = Just ServerInfo { _name = "dualsub-lsp", _version = Just (T.pack $ showVersion version) }
+  , serverInfo = Just ServerInfo { _name = "dualsub-lsp"
+                                 , _version = Just (T.pack $ showVersion version)
+                                 }
   }
 
 definition :: ServerDefinition LSPConfig
@@ -106,6 +122,17 @@ initialize :: LanguageContextEnv LSPConfig
            -> Message Initialize
            -> IO (Either ResponseError ())
 initialize _ _ = return $ Right ()
+
+---------------------------------------------------------------------------------
+-- Running the LSP Server
+---------------------------------------------------------------------------------
+
+runLSP :: IO ()
+runLSP = void (runServer definition)
+
+---------------------------------------------------------------------------------
+-- Static Message Handlers
+---------------------------------------------------------------------------------
 
 -- All Handlers
 
@@ -133,8 +160,7 @@ exitHandler = notificationHandler SExit $ \_notif -> do
 
 shutdownHandler :: Handlers LSPMonad
 shutdownHandler = requestHandler SShutdown $ \_re responder -> do
-  let rsp = Right Empty
-  responder rsp
+  responder (Right Empty)
   liftIO exitSuccess
 
 -- File Open + Change + Close Handlers
@@ -142,13 +168,15 @@ shutdownHandler = requestHandler SShutdown $ \_re responder -> do
 didOpenHandler :: Handlers LSPMonad
 didOpenHandler = notificationHandler STextDocumentDidOpen $ \notif -> do
   let (NotificationMessage _ _ (DidOpenTextDocumentParams (TextDocumentItem uri _ _ _))) = notif
-  sendInfo $ "Opened file: " <> (T.pack $ show uri)
+  -- sendInfo $ "Opened file: " <> (T.pack $ show uri)
+  -- TODO: Log this Info
   publishErrors uri
 
 didChangeHandler :: Handlers LSPMonad
 didChangeHandler = notificationHandler STextDocumentDidChange $ \notif -> do
   let (NotificationMessage _ _ (DidChangeTextDocumentParams (VersionedTextDocumentIdentifier uri _) _)) = notif
-  sendInfo $ "Changed file:" <> (T.pack $ show uri)
+  -- sendInfo $ "Changed file:" <> (T.pack $ show uri)
+  -- TODO: Log this info
   publishErrors uri
 
 didCloseHandler :: Handlers LSPMonad
@@ -187,30 +215,21 @@ publishErrors :: Uri -> LSPMonad ()
 publishErrors uri = do
   flushDiagnosticsBySource 42 (Just "TypeInference")
   mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = maybe undefined id mfile
+  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
   let file = virtualFileText vfile
-  let fp = case uriToFilePath uri of
-                Nothing -> "fail"
-                Just fp' -> fp'
+  let fp = fromMaybe "fail" (uriToFilePath uri)
   let decls = runFileParser fp programP file
   case decls of
     Left err -> do
-      sendError "Parsing error!"
+      -- sendError "Parsing error!"
       sendParsingError (toNormalizedUri uri) err
     Right decls -> do
       let res = inferProgram decls InferNominal
       case res of
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
-          sendError "Typeinference error!"
+          -- sendError "Typeinference error!"
         Right _ -> do
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 
-sendInfo :: T.Text -> LSPMonad ()
-sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
 
-sendWarning :: T.Text -> LSPMonad ()
-sendWarning msg = sendNotification SWindowShowMessage (ShowMessageParams MtWarning  msg)
-
-sendError :: T.Text -> LSPMonad ()
-sendError msg = sendNotification SWindowShowMessage (ShowMessageParams MtError msg)
