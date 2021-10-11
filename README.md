@@ -1,5 +1,6 @@
 # DualSub
 ![CI](https://github.com/ps-tuebingen/algebraic-subtyping-implementation/workflows/CI/badge.svg?branch=main)
+[![vscode-plugin](https://github.com/ps-tuebingen/algebraic-subtyping-implementation/actions/workflows/vscode-plugin.yml/badge.svg)](https://github.com/ps-tuebingen/algebraic-subtyping-implementation/actions/workflows/vscode-plugin.yml)
 
 DualSub is research language focused on the combination of subtyping, type inference and type-theoretic dualities.
 
