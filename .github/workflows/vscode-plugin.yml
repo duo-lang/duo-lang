@@ -5,12 +5,15 @@ on:
       - main
     paths:
       - 'vscode-plugin/**'
+      - '.github/workflows/vscode-plugin.yml'
+
   pull_request:
     types:
       - opened
       - synchronize
     paths:
       - 'vscode-plugin/**'
+      - '.github/workflows/vscode-plugin.yml'
 jobs:
   deploy:
     runs-on: ubuntu-latest

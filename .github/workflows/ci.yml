@@ -5,12 +5,14 @@ on:
       - main
     paths-ignore:
       - 'vscode-plugin/**'
+      - '.github/workflows/vscode-plugin.yml'
   pull_request:
     types:
       - opened
       - synchronize
     paths-ignore:
       - 'vscode-plugin/**'
+      - '.github/workflows/vscode-plugin.yml'
 jobs:
   stack:
     name: stack / ghc ${{ matrix.ghc }}
