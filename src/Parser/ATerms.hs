@@ -50,6 +50,20 @@ numLitP = do
     numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
     numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
 
+lambdaP :: Parser (ATerm Loc FreeVarName, SourcePos)
+lambdaP = do
+  startPos <- getSourcePos
+  _ <- backslash
+  bvars <- many freeVarName
+  _ <- rightarrow 
+  (tm, endPos) <- atermP
+  let apcase :: ACase Loc FreeVarName = MkACase (Loc startPos endPos)
+                       (MkXtorName Structural "Ap")
+                       (fst <$> bvars)
+                       (atermClosing (fst <$> bvars) tm)
+  return (Comatch (Loc startPos endPos) [apcase], endPos)
+
+
 -------------------------------------------------------------------------------------------
 -- Pattern and Copattern Matches
 -------------------------------------------------------------------------------------------
@@ -93,6 +107,7 @@ comatchP = do
 -- uses left-recursion in the grammar.
 atermP' :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermP' =
+  lambdaP <|>
   parens (fst <$> atermP) <|>
   numLitP <|>
   matchP <|>
@@ -103,6 +118,7 @@ atermP' =
 
 atermP :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermP =
+  lambdaP <|>
   parens (fst <$> atermP) <|>
   try (dtorP Structural) <|>
   try (dtorP Nominal) <|>
