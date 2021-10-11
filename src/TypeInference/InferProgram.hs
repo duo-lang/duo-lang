@@ -174,7 +174,7 @@ insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv } im = do
 insertDecl (DefDecl isRec loc v annot t)  env@Environment { defEnv } im = do
   ty <- first (Located loc) (inferATerm isRec v im t env)
   ty <- first (Located loc) (checkAnnot ty annot)
-  return $ env { defEnv  = M.insert v (first (const ()) t,ty) defEnv }
+  return $ env { defEnv  = M.insert v (first (const ()) t,loc,ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } _ = do
   return $ env { declEnv = dcl : declEnv }
 insertDecl ParseErrorDecl _ _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
@@ -259,7 +259,7 @@ insertDeclIO verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  
       case checkAnnot ty annot of
         Left err -> ppPrintIO err >> return Nothing
         Right ty -> do
-          let newEnv = env { defEnv  = M.insert v (first (const ()) t, ty) defEnv }
+          let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc, ty) defEnv }
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
           return (Just newEnv)

@@ -54,7 +54,7 @@ lookupATerm fv = do
   env <- asks fst
   case M.lookup fv (defEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " not contained in the environment."]
-    Just res -> return res
+    Just (res1,_,res2) -> return (res1, res2)
 
 -- | Lookup the term and the type of a symmetric term bound in the environment.
 lookupSTerm :: EnvReader bs a m
@@ -146,5 +146,5 @@ withATerm :: EnvReader bs a m
         -> (m b -> m b)
 withATerm fv tm tys m = do
   let modifyEnv (env@Environment { defEnv }, rest) =
-        (env { defEnv = M.insert fv (tm,tys) defEnv }, rest)
+        (env { defEnv = M.insert fv (tm,undefined,tys) defEnv }, rest)
   local modifyEnv m

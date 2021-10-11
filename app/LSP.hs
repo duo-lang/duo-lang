@@ -12,57 +12,23 @@ import Data.Version (showVersion)
 import Data.Void ( Void )
 import Language.LSP.VFS ( virtualFileText, VirtualFile )
 import Language.LSP.Server
-    ( runServer,
-      notificationHandler,
-      requestHandler,
-      runLspT,
-      sendNotification,
-      type (<~>)(Iso, forward, backward),
-      Handlers,
-      LanguageContextEnv,
-      LspT(LspT),
-      MonadLsp,
-      Options(..),
-      ServerDefinition(..),
-      getVirtualFile, publishDiagnostics, flushDiagnosticsBySource)
 import Language.LSP.Types
-    ( uriToFilePath,
-      toNormalizedUri,
-      Empty(Empty),
-      Diagnostic(..),
-      DiagnosticSeverity(DsError),
-      ServerInfo(ServerInfo, _name, _version),
-      Message,
-      NotificationMessage(NotificationMessage),
-      ResponseError,
-      Method(Initialize),
-      SMethod(SWindowShowMessage, SInitialized, SExit, SShutdown,
-              STextDocumentDidOpen, STextDocumentDidChange,
-              STextDocumentDidClose),
-      DidChangeTextDocumentParams(DidChangeTextDocumentParams),
-      DidOpenTextDocumentParams(DidOpenTextDocumentParams),
-      TextDocumentItem(TextDocumentItem),
-      TextDocumentSyncKind(TdSyncIncremental),
-      TextDocumentSyncOptions(TextDocumentSyncOptions, _openClose,
-                              _change, _willSave, _willSaveWaitUntil, _save),
-      VersionedTextDocumentIdentifier(VersionedTextDocumentIdentifier),
-      MessageType(MtError, MtInfo, MtWarning),
-      ShowMessageParams(ShowMessageParams),
-      Uri,
-      NormalizedUri)
 import System.Exit ( exitSuccess )
 import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
 
 import Errors ( LocatedError )
-import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
+import LSP.MegaparsecToLSP
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.InferProgram ( inferProgram )
-import Utils ( Located(..) )
-
+import Utils
+import Syntax.Program
+import Syntax.Types
+import Syntax.CommonTerm
+import Data.List ( find )
 
 
 
@@ -143,6 +109,7 @@ handlers = mconcat [ initializedHandler
                    , didOpenHandler
                    , didChangeHandler
                    , didCloseHandler
+                   , hoverHandler
                    ]
 
 -- Initialization Handlers
@@ -182,6 +149,46 @@ didChangeHandler = notificationHandler STextDocumentDidChange $ \notif -> do
 didCloseHandler :: Handlers LSPMonad
 didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
   return ()
+
+hoverHandler :: Handlers LSPMonad
+hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
+  sendInfo "Hover request"
+  let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
+  flushDiagnosticsBySource 42 (Just "TypeInference")
+  mfile <- getVirtualFile (toNormalizedUri uri)
+  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
+  let file = virtualFileText vfile
+  let fp = fromMaybe "fail" (uriToFilePath uri)
+  let decls = runFileParser fp programP file
+  case decls of
+    Left _err -> do
+      responder (Left (ResponseError ParseError "Failed Parsing" Nothing))
+    Right decls -> do
+      let res = inferProgram decls InferNominal
+      case res of
+        Left _err -> do
+          responder (Left (ResponseError InternalError "Failed typchecking" Nothing))
+        Right env -> do
+          responder (Right (lookupHoverEnv pos env))
+
+lookupHoverEnv :: Position -> Environment FreeVarName -> Maybe Hover
+lookupHoverEnv pos env =
+  let
+    x = defEnv env
+    ls = M.toList x
+    res = find (\(_,(_,loc,_)) -> lookupPos pos loc) ls
+  in
+    case res of
+      Nothing -> Nothing
+      Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
+
+lookupPos :: Position -> Loc -> Bool 
+lookupPos (Position l _) (Loc begin end) =
+  let
+    (Position l1 _) = posToPosition  begin
+    (Position l2 _) = posToPosition end 
+  in
+    l1 <= l && l <= l2
 
 -- Publish diagnostics for File
 

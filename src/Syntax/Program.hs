@@ -6,6 +6,7 @@ import qualified Data.Map as M
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Declarations
@@ -42,7 +43,7 @@ data Environment bs = Environment
   { prdEnv :: Map FreeVarName (STerm Prd () bs, TypeScheme Pos)
   , cnsEnv :: Map FreeVarName (STerm Cns () bs, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command () bs)
-  , defEnv :: Map FreeVarName (ATerm () bs, TypeScheme Pos)
+  , defEnv :: Map FreeVarName (ATerm () bs, Loc, TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 

@@ -42,7 +42,7 @@ showCmd str = do
       Nothing -> case M.lookup s (cmdEnv env) of
         Just cmd -> prettyRepl (NamedRep cmd)
         Nothing -> case M.lookup s (defEnv env) of
-          Just (def,_) -> prettyRepl (NamedRep def)
+          Just (def,_,_) -> prettyRepl (NamedRep def)
           Nothing -> prettyText "Not in environment."
 
 showOption :: Option
