@@ -24,6 +24,6 @@ jobs:
       - run: npm install
         working-directory: ${{env.working-directory}}
       - uses: lannonbr/vsce-action@master
-        working-directory: ${{env.working-directory}}
         with:
           args: "package"
+          working-directory: ${{env.working-directory}}
