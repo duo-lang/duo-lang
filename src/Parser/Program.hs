@@ -16,6 +16,9 @@ import Syntax.STerms
 import Syntax.Types
 import Utils (Loc(..))
 
+recoverDeclaration :: Parser (Declaration FreeVarName Loc) -> Parser (Declaration FreeVarName Loc)
+recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
+
 isRecP :: Parser IsRec
 isRecP = option NonRecursive (try recKwP >> pure Recursive)
 
@@ -28,47 +31,51 @@ prdDeclarationP :: Parser (Declaration FreeVarName Loc)
 prdDeclarationP = do
   startPos <- getSourcePos
   try (void prdKwP)
-  isRec <- isRecP
-  (v, _pos) <- freeVarName
-  annot <- annotP PosRep
-  _ <- coloneq
-  (t,_) <- stermP PrdRep
-  endPos <- semi
-  return (PrdDecl isRec (Loc startPos endPos) v annot t)
+  recoverDeclaration $ do
+    isRec <- isRecP
+    (v, _pos) <- freeVarName
+    annot <- annotP PosRep
+    _ <- coloneq
+    (t,_) <- stermP PrdRep
+    endPos <- semi
+    return (PrdDecl isRec (Loc startPos endPos) v annot t)
 
 cnsDeclarationP :: Parser (Declaration FreeVarName Loc)
 cnsDeclarationP = do
   startPos <- getSourcePos
   try (void cnsKwP)
-  isRec <- isRecP
-  (v, _pos) <- freeVarName
-  annot <- annotP NegRep
-  _ <- coloneq
-  (t,_) <- stermP CnsRep
-  endPos <- semi
-  return (CnsDecl isRec (Loc startPos endPos) v annot t)
+  recoverDeclaration $ do
+    isRec <- isRecP
+    (v, _pos) <- freeVarName
+    annot <- annotP NegRep
+    _ <- coloneq
+    (t,_) <- stermP CnsRep
+    endPos <- semi
+    return (CnsDecl isRec (Loc startPos endPos) v annot t)
 
 cmdDeclarationP :: Parser (Declaration FreeVarName Loc)
 cmdDeclarationP = do
   startPos <- getSourcePos
   try (void cmdKwP)
-  (v, _pos) <- freeVarName
-  _ <- coloneq
-  (t,_) <- commandP
-  endPos <- semi
-  return (CmdDecl (Loc startPos endPos) v t)
+  recoverDeclaration $ do
+    (v, _pos) <- freeVarName
+    _ <- coloneq
+    (t,_) <- commandP
+    endPos <- semi
+    return (CmdDecl (Loc startPos endPos) v t)
 
 defDeclarationP :: Parser (Declaration FreeVarName Loc)
 defDeclarationP = do
   startPos <- getSourcePos
   try (void defKwP)
-  isRec <- isRecP
-  (v, _pos) <- freeVarName
-  annot <- annotP PosRep
-  _ <- coloneq
-  (t, _pos) <- atermP
-  endPos <- semi
-  return (DefDecl isRec (Loc startPos endPos) v annot t)
+  recoverDeclaration $ do
+    isRec <- isRecP
+    (v, _pos) <- freeVarName
+    annot <- annotP PosRep
+    _ <- coloneq
+    (t, _pos) <- atermP
+    endPos <- semi
+    return (DefDecl isRec (Loc startPos endPos) v annot t)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
@@ -92,18 +99,19 @@ dataDeclP :: Parser (Declaration FreeVarName Loc)
 dataDeclP = do
   startPos <- getSourcePos
   dataCodata <- dataCodataDeclP
-  (tn, _pos) <- typeNameP
-  (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
-  endPos <- semi
-  let decl = NominalDecl
-        { data_name = tn
-        , data_polarity = dataCodata
-        , data_xtors = combineXtors xtors
-        }
-  return (DataDecl (Loc startPos endPos) decl)
-  where
-    dataCodataDeclP :: Parser DataCodata
-    dataCodataDeclP = (dataKwP >> return Data) <|> (codataKwP >> return Codata)
+  recoverDeclaration $ do
+    (tn, _pos) <- typeNameP
+    (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
+    endPos <- semi
+    let decl = NominalDecl
+          { data_name = tn
+          , data_polarity = dataCodata
+          , data_xtors = combineXtors xtors
+          }
+    return (DataDecl (Loc startPos endPos) decl)
+    where
+      dataCodataDeclP :: Parser DataCodata
+      dataCodataDeclP = (dataKwP >> return Data) <|> (codataKwP >> return Codata)
 
 
 

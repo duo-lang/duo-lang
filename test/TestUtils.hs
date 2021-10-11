@@ -1,7 +1,10 @@
 module TestUtils where
 
+import Data.Bifunctor (first)
+import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Directory (listDirectory)
+import Text.Megaparsec (errorBundlePretty)
 
 import Errors
 import Parser.Parser
@@ -25,7 +28,7 @@ getAvailableExamples fp = do
 getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName Loc])
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  return (runFileParser fp programP s)
+  return (first (ParseError . T.pack . errorBundlePretty) (runFileParser fp programP s))
 
 getEnvironment :: FilePath -> InferenceMode -> IO (Either Error (Environment FreeVarName))
 getEnvironment fp im = do

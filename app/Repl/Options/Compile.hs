@@ -1,6 +1,7 @@
 module Repl.Options.Compile (compileOption) where
 
 import Data.Text (Text)
+import Text.Megaparsec ( errorBundlePretty )
 
 import Parser.Parser ( atermP, runInteractiveParser )
 import Pretty.Pretty ( ppPrint )
@@ -16,7 +17,7 @@ compileCmd s = do
       prettyText (" compile " <> ppPrint t <> "\n = " <> ppPrint (compile t))
     Left err2 -> do
       prettyText "Cannot parse as aterm:"
-      prettyRepl err2
+      prettyRepl (errorBundlePretty err2)
 
 compileOption :: Option
 compileOption = Option

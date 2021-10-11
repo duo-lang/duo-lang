@@ -51,6 +51,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
   prettyAnn (DefDecl NonRecursive _ fv annot tm) =
     annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
   prettyAnn (DataDecl _ decl) = prettyAnn decl
+  prettyAnn ParseErrorDecl = "<ParseError>"
 
 
 instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
@@ -69,6 +70,7 @@ instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
   prettyAnn (NamedRep (DefDecl NonRecursive _ fv annot tm)) =
     annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
   prettyAnn (NamedRep (DataDecl _ decl)) = prettyAnn decl
+  prettyAnn (NamedRep ParseErrorDecl) = "<ParseError>"
 
 
 instance {-# OVERLAPPING #-} PrettyAnn [Declaration FreeVarName Loc] where

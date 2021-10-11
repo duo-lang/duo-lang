@@ -6,16 +6,15 @@ module Parser.Definition
   ) where
 
 import Control.Applicative (Alternative)
-import Control.Monad.Reader
+import Control.Monad.Reader ( MonadPlus, ReaderT(..), MonadReader )
 import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Void (Void)
 import Data.Text (Text)
-import qualified Data.Text as T
 import Text.Megaparsec
+    ( ParseErrorBundle, runParser, Parsec, MonadParsec )
 
-import Syntax.Types
-import Errors
+import Syntax.Types ( TVar )
 
 -------------------------------------------------------------------------------------------
 -- Definition of the Parsing Monad
@@ -34,11 +33,13 @@ newtype Parser a = Parser { unParser :: ReaderT ParseReader (Parsec Void Text) a
 -- Running a parser
 -------------------------------------------------------------------------------------------
 
-runFileParser :: FilePath -> Parser a -> Text -> Either Error a
+type MyParseError = ParseErrorBundle Text Void
+
+runFileParser :: FilePath -> Parser a -> Text -> Either MyParseError a
 runFileParser fp p input = case runParser (runReaderT (unParser p) defaultParseReader) fp input of
-  Left err -> Left $ ParseError (T.pack (errorBundlePretty err))
+  Left err -> Left err
   Right x -> Right x
 
-runInteractiveParser :: Parser a -> Text -> Either Error a
-runInteractiveParser p input = runFileParser "<interactive>" p input
+runInteractiveParser :: Parser a -> Text -> Either MyParseError a
+runInteractiveParser = runFileParser "<interactive>"
 

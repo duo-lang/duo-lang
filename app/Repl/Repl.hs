@@ -24,6 +24,7 @@ import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (trimStr, Verbosity(..))
+import Text.Megaparsec.Error (errorBundlePretty)
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -79,12 +80,12 @@ fromRight (Left err) = prettyRepl err >> abort
 
 parseInteractive :: Parser a -> Text -> Repl a
 parseInteractive p s = do
-  fromRight (runInteractiveParser p s)
+  fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser p s))
 
 parseFile :: FilePath -> Parser a -> Repl a
 parseFile fp p = do
   s <- safeRead fp
-  fromRight (runFileParser fp p s)
+  fromRight (first (T.pack . errorBundlePretty) (runFileParser fp p s))
 
 safeRead :: FilePath -> Repl Text
 safeRead file =  do

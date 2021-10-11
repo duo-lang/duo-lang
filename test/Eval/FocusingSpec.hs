@@ -5,6 +5,7 @@ import TestUtils
 import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
+import Text.Megaparsec (errorBundlePretty)
 
 import Pretty.Pretty
 import Parser.Parser
@@ -16,7 +17,7 @@ import Eval.Eval
 evalFocusing :: EvalOrder -> Text -> Text -> Spec
 evalFocusing evalOrder cmd cmdRes =
   case runInteractiveParser commandP cmd of
-    Left err -> it "Could not parse" $ expectationFailure (ppPrintString err)
+    Left err -> it "Could not parse" $ expectationFailure (ppPrintString (errorBundlePretty err))
     Right (cmd',_) -> do
       let Right (cmdRes',_) = runInteractiveParser commandP cmdRes
       prgEnv <- runIO $ getEnvironment "examples/prg.ds" InferNominal
