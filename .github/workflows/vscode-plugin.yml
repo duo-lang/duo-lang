@@ -14,10 +14,13 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      working-directory: ./vscode-plugin
     steps:
       - uses: actions/checkout@v2
-      - run: cd vscode-plugin
       - run: npm install
+        working-directory: ${{env.working-directory}}
       - uses: lannonbr/vsce-action@master
+        working-directory: ${{env.working-directory}}
         with:
           args: "package"
