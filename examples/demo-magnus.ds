@@ -17,8 +17,7 @@ def rec times2 := \n => match n with { 'Z    => 'Z,
 def rec times3 := \n => match n with { 'Z    => 'Z,
                                        'S(m) => 'S('S('S( times3.'Ap(m) )))};
 
-def times2or3 := comatch {
-                   'Ap(b,n) => match b with {
-		     'True  => times2.'Ap(n),
-		     'False => times3.'Ap(n)}};
+def times2or3 := \b n => match b with { 'True  => times2.'Ap(n),
+                                        'False => times3.'Ap(n)};
 
+def times2and3 := \n => times3.'Ap(times2.'Ap(n));
