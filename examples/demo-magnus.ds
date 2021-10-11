@@ -1,0 +1,24 @@
+def id := \x => x;
+
+def const := \x y => x;
+
+def not := \b => match b with { 'True => 'False, 'False => 'True };
+
+def constTrue := \b => match b with { 'True => 'True, 'False => 'True };
+
+def twice := \f x => f.'Ap(f.'Ap(x));
+
+def rec add := \n m => match m with { 'Z    => n,
+                                      'S(x) => add.'Ap('S(n), x)};
+
+def rec times2 := \n => match n with { 'Z    => 'Z,
+                                       'S(m) => 'S('S( times2.'Ap(m) ))};
+
+def rec times3 := \n => match n with { 'Z    => 'Z,
+                                       'S(m) => 'S('S('S( times3.'Ap(m) )))};
+
+def times2or3 := comatch {
+                   'Ap(b,n) => match b with {
+		     'True  => times2.'Ap(n),
+		     'False => times3.'Ap(n)}};
+
