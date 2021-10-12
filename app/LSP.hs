@@ -123,6 +123,7 @@ handlers = mconcat [ initializedHandler
                    , didChangeHandler
                    , didCloseHandler
                    , hoverHandler
+                   , cancelRequestHandler
                    ]
 
 -- Initialization Handlers
@@ -143,6 +144,11 @@ shutdownHandler = requestHandler SShutdown $ \_re responder -> do
   responder (Right Empty)
   liftIO exitSuccess
 
+-- CancelRequestHandler
+cancelRequestHandler :: Handlers LSPMonad
+cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
+  return ()
+  
 -- File Open + Change + Close Handlers
 
 didOpenHandler :: Handlers LSPMonad
