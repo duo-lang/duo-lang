@@ -2,3 +2,8 @@
 
 data Bool { True, False };
 data Nat { Z, S(Nat) };
+data NatList { Nil, Cons(Nat, NatList) };
+data Unit { Unit };
+
+# Generic print consumer
+cns print := mu x.Print(x);
