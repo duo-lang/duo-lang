@@ -138,17 +138,18 @@ genConstraintsCommand (Apply loc t1 t2) = do
 -- Symmetric Terms with recursive binding
 ---------------------------------------------------------------------------------------------
 
-genConstraintsSTermRecursive :: FreeVarName
+genConstraintsSTermRecursive :: Loc
+                             -> FreeVarName
                              -> PrdCnsRep pc -> STerm pc Loc FreeVarName
                              -> GenM (STerm pc () FreeVarName, Typ (PrdCnsToPol pc))
-genConstraintsSTermRecursive fv PrdRep tm = do
+genConstraintsSTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withSTerm PrdRep fv (FreeVar () PrdRep fv) (TypeScheme [] x) (genConstraintsSTerm tm)
+  (tm, ty) <- withSTerm PrdRep fv (FreeVar () PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
-genConstraintsSTermRecursive fv CnsRep tm = do
+genConstraintsSTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withSTerm CnsRep fv (FreeVar () CnsRep fv) (TypeScheme [] y) (genConstraintsSTerm tm)
+  (tm, ty) <- withSTerm CnsRep fv (FreeVar () CnsRep fv) loc (TypeScheme [] y) (genConstraintsSTerm tm)
   addConstraint (SubType RecursionConstraint x ty)
   return (tm, ty)
 

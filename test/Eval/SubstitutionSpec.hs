@@ -26,7 +26,7 @@ spec = do
         case env of
           Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
           Right env -> do
-            forM_ (M.toList (prdEnv env)) $ \(name,(term,_)) -> do
+            forM_ (M.toList (prdEnv env)) $ \(name,(term,_,_)) -> do
               it (T.unpack name ++ " does not contain dangling deBruijn indizes") $
                 termLocallyClosed term `shouldBe` Right ()
 
