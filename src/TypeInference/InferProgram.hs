@@ -181,6 +181,7 @@ insertDecl (DefDecl isRec loc v annot t)  env@Environment { defEnv } im = do
   return $ env { defEnv  = M.insert v (first (const ()) t, loc, ty) defEnv }
 insertDecl (DataDecl _loc dcl) env@Environment { declEnv } _ = do
   return $ env { declEnv = dcl : declEnv }
+insertDecl (ImportDecl _loc _mod) env _ = return env -- TODO Read imports
 insertDecl ParseErrorDecl _ _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
 
 inferProgram :: [Declaration FreeVarName Loc] -> InferenceMode -> Either LocatedError (Environment FreeVarName)
@@ -269,4 +270,5 @@ insertDeclIO verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  
           return (Just newEnv)
 insertDeclIO _ _ (DataDecl _loc dcl) env@Environment { declEnv } = do
   return (Just (env { declEnv = dcl : declEnv }))
+insertDeclIO _ _ (ImportDecl _loc _mod) env = return (Just env)
 insertDeclIO _ _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"

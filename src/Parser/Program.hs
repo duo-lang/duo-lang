@@ -81,7 +81,8 @@ importDeclP :: Parser (Declaration bs Loc)
 importDeclP = do
   startPos <- getSourcePos
   try (void importKwP)
-  (mn, endPos) <- moduleNameP
+  (mn, _) <- moduleNameP
+  endPos <- semi
   return (ImportDecl (Loc startPos endPos) mn)
 
 ---------------------------------------------------------------------------------
