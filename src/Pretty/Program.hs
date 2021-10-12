@@ -84,9 +84,9 @@ instance PrettyAnn (Environment bs) where
   prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
     vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
     where
-      ppPrds = vsep $ intersperse "" $ "Producers:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList prdEnv))
-      ppCns  = vsep $ intersperse "" $ "Consumers:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList cnsEnv))
+      ppPrds = vsep $ intersperse "" $ "Producers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList prdEnv))
+      ppCns  = vsep $ intersperse "" $ "Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList cnsEnv))
       ppCmds = vsep $ intersperse "" $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
-      ppDefs = vsep $ intersperse "" $ "Definitions:" : ( (\(v,(_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList defEnv))
+      ppDefs = vsep $ intersperse "" $ "Definitions:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList defEnv))
       ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn <$> declEnv)
 

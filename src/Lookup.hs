@@ -24,6 +24,7 @@ import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
 import Syntax.Program
+import Utils
 
 ---------------------------------------------------------------------------------
 -- We define functions which work for every Monad which implements:
@@ -54,7 +55,7 @@ lookupATerm fv = do
   env <- asks fst
   case M.lookup fv (defEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " not contained in the environment."]
-    Just res -> return res
+    Just (res1,_,res2) -> return (res1, res2)
 
 -- | Lookup the term and the type of a symmetric term bound in the environment.
 lookupSTerm :: EnvReader bs a m
@@ -63,12 +64,12 @@ lookupSTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in environment."]
-    Just res -> return res
+    Just (res1,_,res2) -> return (res1,res2)
 lookupSTerm CnsRep fv = do
   env <- asks fst
   case M.lookup fv (cnsEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in the environment."]
-    Just res -> return res
+    Just (res1,_,res2) -> return (res1,res2)
 
 ---------------------------------------------------------------------------------
 -- Lookup information about type declarations
@@ -130,21 +131,21 @@ translateToStructural _ = do
 ---------------------------------------------------------------------------------
 
 withSTerm :: EnvReader bs a m
-          => PrdCnsRep pc -> FreeVarName -> STerm pc () bs -> TypeScheme (PrdCnsToPol pc)
+          => PrdCnsRep pc -> FreeVarName -> STerm pc () bs -> Loc -> TypeScheme (PrdCnsToPol pc)
           -> (m b -> m b)
-withSTerm PrdRep fv tm tys m = do
+withSTerm PrdRep fv tm loc tys m = do
   let modifyEnv (env@Environment { prdEnv }, rest) =
-        (env { prdEnv = M.insert fv (tm,tys) prdEnv }, rest)
+        (env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }, rest)
   local modifyEnv m
-withSTerm CnsRep fv tm tys m = do
+withSTerm CnsRep fv tm loc tys m = do
   let modifyEnv (env@Environment { cnsEnv }, rest) =
-        (env { cnsEnv = M.insert fv (tm,tys) cnsEnv }, rest)
+        (env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }, rest)
   local modifyEnv m
 
 withATerm :: EnvReader bs a m
-        => FreeVarName -> ATerm () bs -> TypeScheme Pos
+        => FreeVarName -> ATerm () bs -> Loc -> TypeScheme Pos
         -> (m b -> m b)
-withATerm fv tm tys m = do
+withATerm fv tm loc tys m = do
   let modifyEnv (env@Environment { defEnv }, rest) =
-        (env { defEnv = M.insert fv (tm,tys) defEnv }, rest)
+        (env { defEnv = M.insert fv (tm,loc,tys) defEnv }, rest)
   local modifyEnv m

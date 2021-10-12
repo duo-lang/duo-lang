@@ -1,11 +1,12 @@
 module Syntax.Program where
-
-import Data.Bifunctor
+  
+import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Map (Map)
 import qualified Data.Map as M
-import Syntax.STerms
-import Syntax.ATerms
-import Syntax.Types
+import Syntax.STerms( PrdCns(..), Command, STerm, FreeVarName )
+import Syntax.ATerms ( ATerm )
+import Syntax.Types ( TypeScheme, Polarity(..), DataDecl )
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Declarations
@@ -39,10 +40,10 @@ type Program a b = [Declaration a b]
 ---------------------------------------------------------------------------------
 
 data Environment bs = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd () bs, TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (STerm Cns () bs, TypeScheme Neg)
-  , cmdEnv :: Map FreeVarName (Command () bs)
-  , defEnv :: Map FreeVarName (ATerm () bs, TypeScheme Pos)
+  { prdEnv :: Map FreeVarName (STerm Prd () bs, Loc, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns () bs, Loc, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command () bs, Loc)
+  , defEnv :: Map FreeVarName (ATerm () bs, Loc,  TypeScheme Pos)
   , declEnv :: [DataDecl]
   }
 

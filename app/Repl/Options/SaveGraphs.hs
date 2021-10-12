@@ -26,6 +26,7 @@ import Syntax.Types ( PolarityRep(PosRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeInference.InferProgram (inferSTermTraced, TypeInferenceTrace(..))
+import Utils
 
 -- Save
 
@@ -38,8 +39,8 @@ saveCmd s = do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
-      Right (tloc,_) -> do
-        trace <- fromRight $ inferSTermTraced NonRecursive "" im PrdRep tloc env
+      Right (tloc,loc) -> do
+        trace <- fromRight $ inferSTermTraced NonRecursive (Loc loc loc) "" im PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)

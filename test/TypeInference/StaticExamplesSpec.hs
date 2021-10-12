@@ -1,5 +1,6 @@
 module TypeInference.StaticExamplesSpec ( spec )  where
 
+import Control.Monad (forM_)
 import Data.Text (Text)
 import qualified Data.Text as T
 import System.FilePath
@@ -16,7 +17,7 @@ import TypeInference.InferProgram
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
-import Control.Monad (forM_)
+import Utils
 
 instance Show (TypeScheme pol) where
   show = ppPrintString
@@ -24,8 +25,8 @@ instance Show (TypeScheme pol) where
 typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
-      let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive "" InferNominal PrdRep term env
+      let Right (term,loc) = runInteractiveParser (stermP PrdRep) termS
+      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive (Loc loc loc) "" InferNominal PrdRep term env
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True

@@ -3,6 +3,7 @@ module LSP where
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
+import Data.List ( find )
 import qualified Data.Map as M
 import Data.Maybe ( fromMaybe )
 import qualified Data.SortedList as SL
@@ -26,42 +27,20 @@ import Language.LSP.Server
       ServerDefinition(..),
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource)
 import Language.LSP.Types
-    ( uriToFilePath,
-      toNormalizedUri,
-      Empty(Empty),
-      Diagnostic(..),
-      DiagnosticSeverity(DsError),
-      ServerInfo(ServerInfo, _name, _version),
-      Message,
-      NotificationMessage(NotificationMessage),
-      ResponseError,
-      Method(Initialize),
-      SMethod(SWindowShowMessage, SInitialized, SExit, SShutdown,
-              STextDocumentDidOpen, STextDocumentDidChange,
-              STextDocumentDidClose),
-      DidChangeTextDocumentParams(DidChangeTextDocumentParams),
-      DidOpenTextDocumentParams(DidOpenTextDocumentParams),
-      TextDocumentItem(TextDocumentItem),
-      TextDocumentSyncKind(TdSyncIncremental),
-      TextDocumentSyncOptions(TextDocumentSyncOptions, _openClose,
-                              _change, _willSave, _willSaveWaitUntil, _save),
-      VersionedTextDocumentIdentifier(VersionedTextDocumentIdentifier),
-      MessageType(MtError, MtInfo, MtWarning),
-      ShowMessageParams(ShowMessageParams),
-      Uri,
-      NormalizedUri)
 import System.Exit ( exitSuccess )
 import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
 
+import Syntax.CommonTerm
 import Errors ( LocatedError )
-import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
+import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag, posToPosition )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
+import Syntax.Program
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.InferProgram ( inferProgram )
-import Utils ( Located(..) )
+import Utils ( Located(..), Loc(..))
 
 
 
@@ -143,6 +122,8 @@ handlers = mconcat [ initializedHandler
                    , didOpenHandler
                    , didChangeHandler
                    , didCloseHandler
+                   , hoverHandler
+                   , cancelRequestHandler
                    ]
 
 -- Initialization Handlers
@@ -163,6 +144,11 @@ shutdownHandler = requestHandler SShutdown $ \_re responder -> do
   responder (Right Empty)
   liftIO exitSuccess
 
+-- CancelRequestHandler
+cancelRequestHandler :: Handlers LSPMonad
+cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
+  return ()
+  
 -- File Open + Change + Close Handlers
 
 didOpenHandler :: Handlers LSPMonad
@@ -232,4 +218,54 @@ publishErrors uri = do
         Right _ -> do
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 
+---------------------------------------------------------------------------------
+-- Handle Type on Hover
+---------------------------------------------------------------------------------
+
+hoverHandler :: Handlers LSPMonad
+hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
+  let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
+  mfile <- getVirtualFile (toNormalizedUri uri)
+  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
+  let file = virtualFileText vfile
+  let fp = fromMaybe "fail" (uriToFilePath uri)
+  let decls = runFileParser fp programP file
+  case decls of
+    Left _err -> do
+      responder (Left (ResponseError ParseError "Failed Parsing" Nothing))
+    Right decls -> do
+      let res = inferProgram decls InferNominal
+      case res of
+        Left _err -> do
+          responder (Left (ResponseError InternalError "Failed typchecking" Nothing))
+        Right env -> do
+          responder (Right (lookupHoverEnv pos env))
+
+lookupHoverEnv :: Position -> Environment FreeVarName -> Maybe Hover
+lookupHoverEnv pos env =
+  let
+    defs = M.toList (defEnv env)
+    defres = find (\(_,(_,loc,_)) -> lookupPos pos loc) defs
+    prds = M.toList (prdEnv env)
+    prdres = find (\(_,(_,loc,_)) -> lookupPos pos loc) prds
+    cnss = M.toList (cnsEnv env)
+    cnsres = find (\(_,(_,loc,_)) -> lookupPos pos loc) cnss
+  in
+    case defres of
+      Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
+      Nothing -> case prdres of
+        Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
+        Nothing -> case cnsres of
+          Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
+          Nothing -> Nothing
+
+      
+
+lookupPos :: Position -> Loc -> Bool 
+lookupPos (Position l _) (Loc begin end) =
+  let
+    (Position l1 _) = posToPosition  begin
+    (Position l2 _) = posToPosition end 
+  in
+    l1 <= l && l <= l2
 

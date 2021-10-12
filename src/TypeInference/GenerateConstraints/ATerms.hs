@@ -150,11 +150,12 @@ genConstraintsACaseArgs xts1 xts2 loc = do
 -- Asymmetric Terms with recursive binding
 ---------------------------------------------------------------------------------------------
 
-genConstraintsATermRecursive :: FreeVarName
+genConstraintsATermRecursive :: Loc 
+                             -> FreeVarName
                              -> ATerm Loc FreeVarName
                              -> GenM (ATerm () FreeVarName, Typ Pos)
-genConstraintsATermRecursive fv tm = do
+genConstraintsATermRecursive loc fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withATerm fv (FVar () fv) (TypeScheme [] x) (genConstraintsATerm tm)
+  (tm, ty) <- withATerm fv (FVar () fv) loc (TypeScheme [] x) (genConstraintsATerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
