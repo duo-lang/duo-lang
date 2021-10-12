@@ -7,7 +7,6 @@ module TypeInference.InferProgram
   , inferATerm
     -- Declarations and Programs
   , insertDecl
-  , insertDeclIO
   , inferProgram
   ) where
 
@@ -15,6 +14,7 @@ import Control.Monad (when)
 import Data.Bifunctor (first)
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
 import Errors
 import Pretty.Pretty
@@ -37,6 +37,8 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.ATerms
 import TypeInference.GenerateConstraints.STerms
 import TypeInference.SolveConstraints (solveConstraints)
+import Parser.Definition ( runFileParser )
+import Parser.Program ( programP )
 
 ------------------------------------------------------------------------------
 -- TypeInference Trace
@@ -150,65 +152,31 @@ inferATerm isRec loc fv im tm env = do
 -- Programs
 ------------------------------------------------------------------------------
 
-checkAnnot :: TypeScheme pol -> (Maybe (TypeScheme pol)) -> Either Error (TypeScheme pol)
-checkAnnot ty Nothing = return ty
-checkAnnot ty (Just tyAnnot) = do
-  isSubsumed <- subsume ty tyAnnot
-  case isSubsumed of
-    True -> return tyAnnot
-    False -> Left (OtherError (T.unlines [ "Annotated type is not subsumed by inferred type"
-                                         , " Annotated type: " <> ppPrint tyAnnot
-                                         , " Inferred type:  " <> ppPrint ty]))
+checkAnnot :: TypeScheme pol -- ^ Inferred type
+           -> (Maybe (TypeScheme pol)) -- ^ Annotated type
+           -> Either Error (TypeScheme pol)
+checkAnnot tyInferred Nothing = return tyInferred
+checkAnnot tyInferred (Just tyAnnotated) = do
+  isSubsumed <- subsume tyInferred tyAnnotated
+  if isSubsumed
+    then return tyAnnotated
+    else Left (OtherError (T.unlines [ "Annotated type is not subsumed by inferred type"
+                                     , " Annotated type: " <> ppPrint tyAnnotated
+                                     , " Inferred type:  " <> ppPrint tyInferred
+                                     ]))
 
-insertDecl :: Declaration FreeVarName Loc
-           -> Environment FreeVarName
+
+insertDecl :: Verbosity
            -> InferenceMode
-           -> Either LocatedError (Environment FreeVarName)
-insertDecl (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv } im = do
-  ty <- first (Located loc) (inferSTerm isRec loc v im PrdRep loct env)
-  ty <- first (Located loc) (checkAnnot ty annot)
-  return $ env { prdEnv  = M.insert v (first (const ()) loct, loc, ty) prdEnv }
-insertDecl (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv } im = do
-  ty <- first (Located loc) (inferSTerm isRec loc v im CnsRep loct env)
-  ty <- first (Located loc) (checkAnnot ty annot)
-  return $ env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) cnsEnv }
-insertDecl (CmdDecl loc v loct)  env@Environment { cmdEnv } im = do
-  _ <- first (Located loc) $ checkCmd loct env im
-  return $ env { cmdEnv  = M.insert v (first (const ()) loct, loc) cmdEnv }
-insertDecl (DefDecl isRec loc v annot t)  env@Environment { defEnv } im = do
-  ty <- first (Located loc) (inferATerm isRec loc v im t env)
-  ty <- first (Located loc) (checkAnnot ty annot)
-  return $ env { defEnv  = M.insert v (first (const ()) t, loc, ty) defEnv }
-insertDecl (DataDecl _loc dcl) env@Environment { declEnv } _ = do
-  return $ env { declEnv = dcl : declEnv }
-insertDecl (ImportDecl _loc _mod) env _ = return env -- TODO Read imports
-insertDecl ParseErrorDecl _ _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
-
-inferProgram :: [Declaration FreeVarName Loc] -> InferenceMode -> Either LocatedError (Environment FreeVarName)
-inferProgram = inferProgram' mempty
-  where
-    inferProgram' :: Environment FreeVarName
-                  -> [Declaration FreeVarName Loc]
-                  -> InferenceMode
-                  -> Either LocatedError (Environment FreeVarName)
-    inferProgram' env [] _ = return env
-    inferProgram' env (decl:decls) im = do
-      env' <- insertDecl decl env im
-      inferProgram' env' decls im
-
-------------------------------------------------------------------------------
--- Verbose type inference of programs
-------------------------------------------------------------------------------
-
-insertDeclIO :: Verbosity -> InferenceMode
-             -> Declaration FreeVarName Loc
-             -> Environment FreeVarName
-             -> IO (Maybe (Environment FreeVarName))
-insertDeclIO verb im (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
+           -> Declaration FreeVarName Loc
+           -> Environment FreeVarName
+           -> IO (Either LocatedError (Environment FreeVarName))
+insertDecl verb im (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
   case inferSTermTraced isRec loc v im PrdRep loct env of
     Left err -> do
-      printLocatedError (Located loc err)
-      return Nothing
+      let locerr = Located loc err
+      printLocatedError locerr
+      return (Left locerr)
     Right trace -> do
       when (verb == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
@@ -216,17 +184,20 @@ insertDeclIO verb im (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv 
       -- Check annotation
       let ty = trace_resType trace
       case checkAnnot ty annot of
-        Left err -> ppPrintIO err >> return Nothing
+        Left err -> do
+           ppPrintIO err
+           return (Left (Located loc err))
         Right ty -> do
           let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) prdEnv }
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
-          return (Just newEnv)
-insertDeclIO verb im (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
+          return (Right newEnv)
+insertDecl verb im (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
   case inferSTermTraced isRec loc v im CnsRep loct env of
     Left err -> do
-      printLocatedError (Located loc err)
-      return Nothing
+      let locerr = Located loc err
+      printLocatedError locerr
+      return (Left locerr)
     Right trace -> do
       when (verb == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
@@ -234,27 +205,31 @@ insertDeclIO verb im (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv 
       -- Check annotation:
       let ty = trace_resType trace
       case checkAnnot ty annot of
-        Left err -> ppPrintIO err >> return Nothing
+        Left err -> do
+          ppPrintIO err
+          return (Left (Located loc err))
         Right ty -> do
           let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) cnsEnv }
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
-          return (Just newEnv)
-insertDeclIO verb im (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
+          return (Right newEnv)
+insertDecl verb im (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   case checkCmd loct env im of
     Left err -> do
-      printLocatedError (Located loc err)
-      return Nothing
+      let locerr = Located loc err
+      printLocatedError locerr
+      return (Left locerr)
     Right (constraints, solverResult) -> do
       when (verb == Verbose) $ do
         ppPrintIO constraints
         ppPrintIO solverResult
-      return (Just (env { cmdEnv  = M.insert v (first (const ()) loct, loc) cmdEnv }))
-insertDeclIO verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
+      return (Right (env { cmdEnv  = M.insert v (first (const ()) loct, loc) cmdEnv }))
+insertDecl verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
   case inferATermTraced isRec loc v im t env of
     Left err -> do
-      printLocatedError (Located loc err)
-      return Nothing
+      let locerr = Located loc err
+      printLocatedError locerr
+      return (Left locerr)
     Right trace -> do
       when (verb == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
@@ -262,13 +237,51 @@ insertDeclIO verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  
       -- Check annotation
       let ty = trace_resType trace
       case checkAnnot ty annot of
-        Left err -> ppPrintIO err >> return Nothing
+        Left err -> do
+          ppPrintIO err
+          return (Left (Located loc err))
         Right ty -> do
           let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) defEnv }
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
-          return (Just newEnv)
-insertDeclIO _ _ (DataDecl _loc dcl) env@Environment { declEnv } = do
-  return (Just (env { declEnv = dcl : declEnv }))
-insertDeclIO _ _ (ImportDecl _loc _mod) env = return (Just env)
-insertDeclIO _ _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
+          return (Right newEnv)
+insertDecl _ _ (DataDecl _loc dcl) env@Environment { declEnv } = do
+  return (Right (env { declEnv = dcl : declEnv }))
+insertDecl vb im (ImportDecl _loc (ModuleName mod)) env = do
+  let fp = T.unpack mod <> ".ds"
+  env' <- inferProgramFromDisk vb im fp
+  case env' of
+    Left err -> return (Left err)
+    Right env' -> return (Right (env <> env'))
+insertDecl _ _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
+
+
+
+inferProgramFromDisk :: Verbosity
+                     -> InferenceMode
+                     -> FilePath 
+                     -> IO (Either LocatedError (Environment FreeVarName ))
+inferProgramFromDisk vb im fp = do
+  file <- T.readFile fp
+  let parsed = runFileParser fp programP file
+  case parsed of
+    Left _err -> return (Left (Located undefined undefined))
+    Right decls -> inferProgram vb im decls
+
+inferProgram :: Verbosity
+             -> InferenceMode
+             -> [Declaration FreeVarName Loc]
+             -> IO (Either LocatedError (Environment FreeVarName))
+inferProgram vb im decls = inferProgram' mempty decls
+ where
+   inferProgram' :: Environment FreeVarName
+                 -> [Declaration FreeVarName Loc]
+                 -> IO (Either LocatedError (Environment FreeVarName))
+   inferProgram' env [] = return (Right env)
+   inferProgram' env (decl:decls) = do
+     env' <- insertDecl vb im decl env
+     case env' of
+       Left err -> return (Left err)
+       Right env'' -> inferProgram' env'' decls
+
+
