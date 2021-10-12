@@ -66,7 +66,7 @@ import System.Directory.Internal.Prelude (fromMaybe)
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity :: Verbosity
   , infOptsMode :: InferenceMode
-  , infOptsLibPath :: Maybe FilePath 
+  , infOptsLibPath :: Maybe FilePath
   }
 
 defaultInferenceOptions :: InferenceOptions
@@ -197,6 +197,9 @@ checkAnnot tyInferred (Just tyAnnotated) = do
                                      , " Inferred type:  " <> ppPrint tyInferred
                                      ]))
 
+-- | Only execute an action if verbosity is set to Verbose
+guardVerbose :: InferenceOptions -> IO () -> IO ()
+guardVerbose infopts action = when (infOptsVerbosity infopts == Verbose) action
 
 insertDecl :: InferenceOptions
            -> Declaration FreeVarName Loc
@@ -206,75 +209,68 @@ insertDecl infopts (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv } 
   case inferSTermTraced isRec loc v infopts PrdRep loct env of
     Left err -> do
       let locerr = Located loc err
-      printLocatedError locerr
+      guardVerbose infopts $ printLocatedError locerr
       return (Left locerr)
     Right trace -> do
-      when (infOptsVerbosity infopts == Verbose) $ do
-        ppPrintIO (trace_constraintSet trace)
-        ppPrintIO (trace_solvedConstraints trace)
+      guardVerbose infopts $ ppPrintIO (trace_constraintSet trace)
+      guardVerbose infopts $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
       let ty = trace_resType trace
       case checkAnnot ty annot of
         Left err -> do
-           ppPrintIO err
+           guardVerbose infopts $ ppPrintIO err
            return (Left (Located loc err))
         Right ty -> do
           let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) prdEnv }
-          putStr "Inferred type: "
-          ppPrintIO (trace_resType trace)
+          guardVerbose infopts $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
           return (Right newEnv)
 insertDecl infopts (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
   case inferSTermTraced isRec loc v infopts CnsRep loct env of
     Left err -> do
       let locerr = Located loc err
-      printLocatedError locerr
+      guardVerbose infopts $ printLocatedError locerr
       return (Left locerr)
     Right trace -> do
-      when (infOptsVerbosity infopts == Verbose) $ do
-        ppPrintIO (trace_constraintSet trace)
-        ppPrintIO (trace_solvedConstraints trace)
+      guardVerbose infopts $ ppPrintIO (trace_constraintSet trace)
+      guardVerbose infopts $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation:
       let ty = trace_resType trace
       case checkAnnot ty annot of
         Left err -> do
-          ppPrintIO err
+          guardVerbose infopts $ ppPrintIO err
           return (Left (Located loc err))
         Right ty -> do
           let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) cnsEnv }
-          putStr "Inferred type: "
-          ppPrintIO (trace_resType trace)
+          guardVerbose infopts $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
           return (Right newEnv)
 insertDecl infopts (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
   case checkCmd loct env infopts of
     Left err -> do
       let locerr = Located loc err
-      printLocatedError locerr
+      guardVerbose infopts $ printLocatedError locerr
       return (Left locerr)
     Right (constraints, solverResult) -> do
-      when (infOptsVerbosity infopts == Verbose) $ do
-        ppPrintIO constraints
-        ppPrintIO solverResult
+      guardVerbose infopts $ ppPrintIO constraints
+      guardVerbose infopts $ ppPrintIO solverResult
       return (Right (env { cmdEnv  = M.insert v (first (const ()) loct, loc) cmdEnv }))
 insertDecl infopts (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
   case inferATermTraced isRec loc v infopts t env of
     Left err -> do
       let locerr = Located loc err
-      printLocatedError locerr
+      guardVerbose infopts $ printLocatedError locerr
       return (Left locerr)
     Right trace -> do
-      when (infOptsVerbosity infopts == Verbose) $ do
-        ppPrintIO (trace_constraintSet trace)
-        ppPrintIO (trace_solvedConstraints trace)
+      guardVerbose infopts $ ppPrintIO (trace_constraintSet trace)
+      guardVerbose infopts $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
       let ty = trace_resType trace
       case checkAnnot ty annot of
         Left err -> do
-          ppPrintIO err
+          guardVerbose infopts $ ppPrintIO err
           return (Left (Located loc err))
         Right ty -> do
           let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) defEnv }
-          putStr "Inferred type: "
-          ppPrintIO (trace_resType trace)
+          guardVerbose infopts $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
           return (Right newEnv)
 insertDecl _ (DataDecl _loc dcl) env@Environment { declEnv } = do
   return (Right (env { declEnv = dcl : declEnv }))
@@ -290,7 +286,7 @@ insertDecl _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseEr
 
 
 inferProgramFromDisk :: InferenceOptions
-                     -> FilePath 
+                     -> FilePath
                      -> IO (Either LocatedError (Environment FreeVarName ))
 inferProgramFromDisk infopts fp = do
   file <- T.readFile fp
