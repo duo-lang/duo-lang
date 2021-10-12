@@ -17,6 +17,7 @@ import Data.Bifunctor (first)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import System.FilePath ( (</>) )
 
 import Errors ( LocatedError, Error(OtherError) )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
@@ -56,6 +57,7 @@ import TypeInference.GenerateConstraints.STerms
 import TypeInference.SolveConstraints (solveConstraints)
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
+import System.Directory.Internal.Prelude (fromMaybe)
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -277,7 +279,8 @@ insertDecl infopts (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = 
 insertDecl _ (DataDecl _loc dcl) env@Environment { declEnv } = do
   return (Right (env { declEnv = dcl : declEnv }))
 insertDecl infopts (ImportDecl _loc (ModuleName mod)) env = do
-  let fp = T.unpack mod <> ".ds"
+  let libPath = fromMaybe "" (infOptsLibPath infopts)
+  let fp = libPath </> T.unpack mod <> ".ds"
   env' <- inferProgramFromDisk infopts fp
   case env' of
     Left err -> return (Left err)

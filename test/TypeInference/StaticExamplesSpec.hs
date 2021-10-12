@@ -78,7 +78,7 @@ typecheckInFile :: FilePath -> Spec
 typecheckInFile fp =
   describe "Typecheck specific examples" $ do
     describe ("Context is " <> fp) $ do
-        env <- runIO $ getEnvironment ("examples" </> fp) defaultInferenceOptions
+        env <- runIO $ getEnvironment ("examples" </> fp) defaultInferenceOptions { infOptsLibPath = Just "examples" }
         case env of
             Left err -> it "Could not load environment" $ expectationFailure (ppPrintString err)
             Right env' -> do
