@@ -3,15 +3,17 @@ module Syntax.Program where
 import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Text (Text)
 import Syntax.STerms( PrdCns(..), Command, STerm, FreeVarName )
 import Syntax.ATerms ( ATerm )
 import Syntax.Types ( TypeScheme, Polarity(..), DataDecl )
-import Utils
+import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
+newtype ModuleName = ModuleName { unModuleName :: Text }
 data IsRec = Recursive | NonRecursive
 
 data Declaration a b
@@ -20,6 +22,7 @@ data Declaration a b
   | CmdDecl b FreeVarName (Command b a)
   | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b a)
   | DataDecl b DataDecl
+  | ImportDecl b ModuleName
   | ParseErrorDecl
 
 instance Show (Declaration a b) where

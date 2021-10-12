@@ -77,6 +77,13 @@ defDeclarationP = do
     endPos <- semi
     return (DefDecl isRec (Loc startPos endPos) v annot t)
 
+importDeclP :: Parser (Declaration bs Loc)
+importDeclP = do
+  startPos <- getSourcePos
+  try (void importKwP)
+  (mn, endPos) <- moduleNameP
+  return (ImportDecl (Loc startPos endPos) mn)
+
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
@@ -125,6 +132,7 @@ declarationP =
   cnsDeclarationP <|>
   cmdDeclarationP <|>
   defDeclarationP <|>
+  importDeclP <|>
   dataDeclP
 
 programP :: Parser [Declaration FreeVarName Loc]

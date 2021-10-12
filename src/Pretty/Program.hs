@@ -31,6 +31,9 @@ instance PrettyAnn DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
     semi
 
+instance PrettyAnn ModuleName where
+  prettyAnn (ModuleName nm) = prettyAnn nm
+
 prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
@@ -51,6 +54,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
   prettyAnn (DefDecl NonRecursive _ fv annot tm) =
     annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
   prettyAnn (DataDecl _ decl) = prettyAnn decl
+  prettyAnn (ImportDecl _ mod) = prettyAnn mod
   prettyAnn ParseErrorDecl = "<ParseError>"
 
 
@@ -70,6 +74,7 @@ instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
   prettyAnn (NamedRep (DefDecl NonRecursive _ fv annot tm)) =
     annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
   prettyAnn (NamedRep (DataDecl _ decl)) = prettyAnn decl
+  prettyAnn (NamedRep (ImportDecl _ mod)) = prettyAnn mod
   prettyAnn (NamedRep ParseErrorDecl) = "<ParseError>"
 
 
