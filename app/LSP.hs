@@ -40,7 +40,7 @@ import Pretty.Pretty ( ppPrint )
 import Syntax.Program
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.InferProgram ( inferProgram )
-import Utils ( Located(..), Loc(..))
+import Utils ( Located(..), Loc(..), Verbosity(..))
 
 
 
@@ -210,7 +210,7 @@ publishErrors uri = do
       -- sendError "Parsing error!"
       sendParsingError (toNormalizedUri uri) err
     Right decls -> do
-      let res = inferProgram decls InferNominal
+      res <- liftIO $ inferProgram Silent InferNominal decls
       case res of
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
@@ -234,7 +234,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Left _err -> do
       responder (Left (ResponseError ParseError "Failed Parsing" Nothing))
     Right decls -> do
-      let res = inferProgram decls InferNominal
+      res <- liftIO $ inferProgram Silent InferNominal decls
       case res of
         Left _err -> do
           responder (Left (ResponseError InternalError "Failed typchecking" Nothing))

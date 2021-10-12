@@ -3,6 +3,7 @@ module Repl.Options.LoadReload
   , reloadOption
   ) where
 
+import Control.Monad.IO.Class ( MonadIO(liftIO) ) 
 import Control.Monad.State ( forM_, gets )
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -20,7 +21,7 @@ import Repl.Repl
       prettyText,
       parseFile )
 import TypeInference.InferProgram (inferProgram)
-import Utils (trim)
+import Utils (trim, Verbosity(Silent))
 
 -- Load
 
@@ -34,7 +35,8 @@ loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
   inferMode <- gets inferenceMode
-  case inferProgram decls inferMode of
+  res <- liftIO $ inferProgram Silent inferMode decls
+  case res of
     Left err -> printLocatedError err
     Right newEnv -> do
       modifyEnvironment (newEnv <>)

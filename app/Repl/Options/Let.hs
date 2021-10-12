@@ -13,7 +13,7 @@ import Repl.Repl
       Option(..),
       fromRight,
       modifyEnvironment )
-import TypeInference.InferProgram (insertDeclIO)
+import TypeInference.InferProgram (insertDecl)
 
 -- Define
 
@@ -23,10 +23,10 @@ letCmd s = do
   oldEnv <- gets replEnv
   verbosity <- gets typeInfVerbosity
   im <- gets inferenceMode
-  newEnv <- liftIO $ insertDeclIO verbosity im decl oldEnv
+  newEnv <- liftIO $ insertDecl verbosity im decl oldEnv
   case newEnv of
-    Nothing -> return ()
-    Just newEnv -> modifyEnvironment (const newEnv)
+    Left _ -> return ()
+    Right newEnv -> modifyEnvironment (const newEnv)
 
 letOption :: Option
 letOption = Option

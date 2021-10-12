@@ -34,7 +34,9 @@ getEnvironment :: FilePath -> InferenceMode -> IO (Either Error (Environment Fre
 getEnvironment fp im = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> case inferProgram decls im of
-      Right env -> return (Right env)
-      Left (Located _ err) -> return (Left err)
+    Right decls -> do
+      res <- inferProgram Silent im decls
+      case res of
+        Right env -> return (Right env)
+        Left (Located _ err) -> return (Left err)
     Left err -> return (Left err)
