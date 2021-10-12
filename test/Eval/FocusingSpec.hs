@@ -12,6 +12,7 @@ import Parser.Parser
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import Eval.STerms (eval)
 import Eval.Eval
+import TypeInference.InferProgram (defaultInferenceOptions)
 
 
 evalFocusing :: EvalOrder -> Text -> Text -> Spec
@@ -20,7 +21,7 @@ evalFocusing evalOrder cmd cmdRes =
     Left err -> it "Could not parse" $ expectationFailure (ppPrintString (errorBundlePretty err))
     Right (cmd',_) -> do
       let Right (cmdRes',_) = runInteractiveParser commandP cmdRes
-      prgEnv <- runIO $ getEnvironment "examples/prg.ds" InferNominal
+      prgEnv <- runIO $ getEnvironment "examples/prg.ds" defaultInferenceOptions
       case prgEnv of
         Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrintString err)
         Right prgEnv -> do

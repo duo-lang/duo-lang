@@ -1,5 +1,7 @@
 module TypeInference.InferProgram
   ( TypeInferenceTrace (..)
+  , InferenceOptions(..)
+  , defaultInferenceOptions
     -- Symmetric Terms and Commands
   , inferSTermTraced
   , inferSTerm
@@ -16,29 +18,57 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import Errors
-import Pretty.Pretty
-import Pretty.Errors
-import Syntax.ATerms
-import Syntax.STerms
+import Errors ( LocatedError, Error(OtherError) )
+import Pretty.Pretty ( ppPrint, ppPrintIO )
+import Pretty.Errors ( printLocatedError )
+import Syntax.ATerms ( FreeVarName, PrdCnsRep(..), ATerm )
+import Syntax.STerms ( FreeVarName, PrdCnsRep(..), Command, STerm )
 import Syntax.Types
-import TypeAutomata.Definition
+    ( SolverResult,
+      ConstraintSet,
+      TypeScheme,
+      Typ,
+      PolarityRep(PosRep),
+      Polarity(Pos) )
+import TypeAutomata.Definition ( TypeAutDet, TypeAut )
 import Syntax.Program
-import Utils
+    ( Environment(..),
+      Declaration(..),
+      IsRec(..),
+      ModuleName(ModuleName) )
+import Utils ( Verbosity(..), Located(Located), Loc )
 
-import TypeAutomata.ToAutomaton
-import TypeAutomata.Determinize
+import TypeAutomata.ToAutomaton ( solverStateToTypeAut )
+import TypeAutomata.Determinize ( determinize )
 import TypeAutomata.Lint (lint)
-import TypeAutomata.Minimize
-import TypeAutomata.FromAutomaton
-import TypeAutomata.RemoveAdmissible
+import TypeAutomata.Minimize ( minimize )
+import TypeAutomata.FromAutomaton ( autToType )
+import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
 import TypeAutomata.Subsume (subsume)
 import TypeInference.GenerateConstraints.Definition
+    ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.ATerms
+    ( genConstraintsATerm, genConstraintsATermRecursive )
 import TypeInference.GenerateConstraints.STerms
+    ( genConstraintsSTerm,
+      genConstraintsCommand,
+      genConstraintsSTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
+
+------------------------------------------------------------------------------
+-- Typeinference Options
+------------------------------------------------------------------------------
+
+data InferenceOptions = InferenceOptions
+  { infOptsVerbosity :: Verbosity
+  , infOptsMode :: InferenceMode
+  , infOptsLibPath :: Maybe FilePath 
+  }
+
+defaultInferenceOptions :: InferenceOptions
+defaultInferenceOptions = InferenceOptions Silent InferNominal Nothing
 
 ------------------------------------------------------------------------------
 -- TypeInference Trace
@@ -86,36 +116,36 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
 inferSTermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> InferenceMode
+                 -> InferenceOptions
                  -> PrdCnsRep pc -> STerm pc Loc FreeVarName
                  -> Environment FreeVarName
                  -> Either Error (TypeInferenceTrace (PrdCnsToPol pc))
-inferSTermTraced isRec loc fv im rep tm env = do
+inferSTermTraced isRec loc fv infopts rep tm env = do
   let genFun = case isRec of
         Recursive -> genConstraintsSTermRecursive loc fv rep tm
         NonRecursive -> genConstraintsSTerm tm
-  ((_,ty), constraintSet) <- runGenM env im genFun
-  solverState <- solveConstraints constraintSet env im
+  ((_,ty), constraintSet) <- runGenM env (infOptsMode infopts) genFun
+  solverState <- solveConstraints constraintSet env (infOptsMode infopts)
   generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
 
 inferSTerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> InferenceMode
+           -> InferenceOptions
            -> PrdCnsRep pc -> STerm pc Loc FreeVarName
            -> Environment FreeVarName
            -> Either Error (TypeScheme (PrdCnsToPol pc))
-inferSTerm isRec loc fv im rep tm env = do
-  trace <- inferSTermTraced isRec loc fv im rep tm env
+inferSTerm isRec loc fv infopts rep tm env = do
+  trace <- inferSTermTraced isRec loc fv infopts rep tm env
   return $ trace_resType trace
 
 checkCmd :: Command Loc FreeVarName
          -> Environment FreeVarName
-         -> InferenceMode
+         -> InferenceOptions
          -> Either Error (ConstraintSet, SolverResult)
-checkCmd cmd env im = do
-  constraints <- snd <$> runGenM env im (genConstraintsCommand cmd)
-  solverResult <- solveConstraints constraints env im
+checkCmd cmd env infopts = do
+  constraints <- snd <$> runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  solverResult <- solveConstraints constraints env (infOptsMode infopts)
   return (constraints, solverResult)
 
 ------------------------------------------------------------------------------
@@ -125,27 +155,27 @@ checkCmd cmd env im = do
 inferATermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> InferenceMode
+                 -> InferenceOptions
                  -> ATerm Loc FreeVarName
                  -> Environment FreeVarName
                  -> Either Error (TypeInferenceTrace Pos)
-inferATermTraced isRec loc fv im tm env = do
+inferATermTraced isRec loc fv infopts tm env = do
   let genFun = case isRec of
         Recursive -> genConstraintsATermRecursive loc fv tm
         NonRecursive -> genConstraintsATerm tm
-  ((_, ty), constraintSet) <- runGenM env im genFun
-  solverState <- solveConstraints constraintSet env im
+  ((_, ty), constraintSet) <- runGenM env (infOptsMode infopts) genFun
+  solverState <- solveConstraints constraintSet env (infOptsMode infopts)
   generateTypeInferenceTrace PosRep constraintSet solverState ty
 
 inferATerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> InferenceMode
+           -> InferenceOptions
            -> ATerm Loc FreeVarName
            -> Environment FreeVarName
            -> Either Error (TypeScheme Pos)
-inferATerm isRec loc fv im tm env = do
-  trace <- inferATermTraced isRec loc fv im tm env
+inferATerm isRec loc fv infopts tm env = do
+  trace <- inferATermTraced isRec loc fv infopts tm env
   return $ trace_resType trace
 
 ------------------------------------------------------------------------------
@@ -153,7 +183,7 @@ inferATerm isRec loc fv im tm env = do
 ------------------------------------------------------------------------------
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
-           -> (Maybe (TypeScheme pol)) -- ^ Annotated type
+           -> Maybe (TypeScheme pol) -- ^ Annotated type
            -> Either Error (TypeScheme pol)
 checkAnnot tyInferred Nothing = return tyInferred
 checkAnnot tyInferred (Just tyAnnotated) = do
@@ -166,19 +196,18 @@ checkAnnot tyInferred (Just tyAnnotated) = do
                                      ]))
 
 
-insertDecl :: Verbosity
-           -> InferenceMode
+insertDecl :: InferenceOptions
            -> Declaration FreeVarName Loc
            -> Environment FreeVarName
            -> IO (Either LocatedError (Environment FreeVarName))
-insertDecl verb im (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
-  case inferSTermTraced isRec loc v im PrdRep loct env of
+insertDecl infopts (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
+  case inferSTermTraced isRec loc v infopts PrdRep loct env of
     Left err -> do
       let locerr = Located loc err
       printLocatedError locerr
       return (Left locerr)
     Right trace -> do
-      when (verb == Verbose) $ do
+      when (infOptsVerbosity infopts == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
         ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
@@ -192,14 +221,14 @@ insertDecl verb im (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv } 
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
           return (Right newEnv)
-insertDecl verb im (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
-  case inferSTermTraced isRec loc v im CnsRep loct env of
+insertDecl infopts (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
+  case inferSTermTraced isRec loc v infopts CnsRep loct env of
     Left err -> do
       let locerr = Located loc err
       printLocatedError locerr
       return (Left locerr)
     Right trace -> do
-      when (verb == Verbose) $ do
+      when (infOptsVerbosity infopts == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
         ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation:
@@ -213,25 +242,25 @@ insertDecl verb im (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv } 
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
           return (Right newEnv)
-insertDecl verb im (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
-  case checkCmd loct env im of
+insertDecl infopts (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
+  case checkCmd loct env infopts of
     Left err -> do
       let locerr = Located loc err
       printLocatedError locerr
       return (Left locerr)
     Right (constraints, solverResult) -> do
-      when (verb == Verbose) $ do
+      when (infOptsVerbosity infopts == Verbose) $ do
         ppPrintIO constraints
         ppPrintIO solverResult
       return (Right (env { cmdEnv  = M.insert v (first (const ()) loct, loc) cmdEnv }))
-insertDecl verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
-  case inferATermTraced isRec loc v im t env of
+insertDecl infopts (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
+  case inferATermTraced isRec loc v infopts t env of
     Left err -> do
       let locerr = Located loc err
       printLocatedError locerr
       return (Left locerr)
     Right trace -> do
-      when (verb == Verbose) $ do
+      when (infOptsVerbosity infopts == Verbose) $ do
         ppPrintIO (trace_constraintSet trace)
         ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
@@ -245,41 +274,39 @@ insertDecl verb im (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = 
           putStr "Inferred type: "
           ppPrintIO (trace_resType trace)
           return (Right newEnv)
-insertDecl _ _ (DataDecl _loc dcl) env@Environment { declEnv } = do
+insertDecl _ (DataDecl _loc dcl) env@Environment { declEnv } = do
   return (Right (env { declEnv = dcl : declEnv }))
-insertDecl vb im (ImportDecl _loc (ModuleName mod)) env = do
+insertDecl infopts (ImportDecl _loc (ModuleName mod)) env = do
   let fp = T.unpack mod <> ".ds"
-  env' <- inferProgramFromDisk vb im fp
+  env' <- inferProgramFromDisk infopts fp
   case env' of
     Left err -> return (Left err)
     Right env' -> return (Right (env <> env'))
-insertDecl _ _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
+insertDecl _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
 
 
 
-inferProgramFromDisk :: Verbosity
-                     -> InferenceMode
+inferProgramFromDisk :: InferenceOptions
                      -> FilePath 
                      -> IO (Either LocatedError (Environment FreeVarName ))
-inferProgramFromDisk vb im fp = do
+inferProgramFromDisk infopts fp = do
   file <- T.readFile fp
   let parsed = runFileParser fp programP file
   case parsed of
     Left _err -> return (Left (Located undefined undefined))
-    Right decls -> inferProgram vb im decls
+    Right decls -> inferProgram infopts decls
 
-inferProgram :: Verbosity
-             -> InferenceMode
+inferProgram :: InferenceOptions
              -> [Declaration FreeVarName Loc]
              -> IO (Either LocatedError (Environment FreeVarName))
-inferProgram vb im decls = inferProgram' mempty decls
+inferProgram infopts decls = inferProgram' mempty decls
  where
    inferProgram' :: Environment FreeVarName
                  -> [Declaration FreeVarName Loc]
                  -> IO (Either LocatedError (Environment FreeVarName))
    inferProgram' env [] = return (Right env)
    inferProgram' env (decl:decls) = do
-     env' <- insertDecl vb im decl env
+     env' <- insertDecl infopts decl env
      case env' of
        Left err -> return (Left err)
        Right env'' -> inferProgram' env'' decls

@@ -8,7 +8,7 @@ import Text.Megaparsec ( errorBundlePretty )
 
 import Parser.Parser ( runInteractiveParser, declarationP )
 import Repl.Repl
-    ( ReplState(replEnv, typeInfVerbosity, inferenceMode),
+    ( ReplState(replEnv, typeInfOpts),
       Repl,
       Option(..),
       fromRight,
@@ -21,9 +21,8 @@ letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
   oldEnv <- gets replEnv
-  verbosity <- gets typeInfVerbosity
-  im <- gets inferenceMode
-  newEnv <- liftIO $ insertDecl verbosity im decl oldEnv
+  opts <- gets typeInfOpts
+  newEnv <- liftIO $ insertDecl opts decl oldEnv
   case newEnv of
     Left _ -> return ()
     Right newEnv -> modifyEnvironment (const newEnv)

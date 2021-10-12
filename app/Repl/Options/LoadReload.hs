@@ -14,7 +14,7 @@ import Pretty.Errors (printLocatedError)
 import Repl.Repl
     ( Option(..),
       Repl,
-      ReplState(inferenceMode, loadedFiles, typeInfVerbosity),
+      ReplState(loadedFiles, typeInfOpts),
       modifyEnvironment,
       modifyLoadedFiles,
       prettyRepl,
@@ -34,9 +34,8 @@ loadCmd s = do
 loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
-  inferMode <- gets inferenceMode
-  verbosity <- gets typeInfVerbosity
-  res <- liftIO $ inferProgram verbosity inferMode decls
+  opts <- gets typeInfOpts
+  res <- liftIO $ inferProgram opts decls
   case res of
     Left err -> printLocatedError err
     Right newEnv -> do

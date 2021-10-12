@@ -8,6 +8,7 @@ import TestUtils
 import Pretty.Pretty
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
+import TypeInference.InferProgram (defaultInferenceOptions)
 
 instance Show (TypeScheme pol) where
   show = ppPrintString
@@ -19,7 +20,7 @@ spec = do
     examples <- runIO getAvailableCounterExamples
     forM_ examples $ \example -> do
       describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
-        env <- runIO $ getEnvironment example InferNominal
+        env <- runIO $ getEnvironment example defaultInferenceOptions
         it "Doesn't typecheck" $  env `shouldSatisfy` isLeft
 
 

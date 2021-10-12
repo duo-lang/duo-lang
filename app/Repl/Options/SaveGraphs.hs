@@ -16,7 +16,7 @@ import Pretty.TypeAutomata (typeAutToDot)
 import Repl.Repl
     ( Option(..),
       Repl,
-      ReplState(replEnv, inferenceMode),
+      ReplState(replEnv, typeInfOpts),
       prettyRepl,
       prettyText,
       fromRight )
@@ -33,14 +33,14 @@ import Utils
 saveCmd :: Text -> Repl ()
 saveCmd s = do
   env <- gets replEnv
-  im <- gets inferenceMode
+  opts <- gets typeInfOpts
   case runInteractiveParser (typeSchemeP PosRep) s of
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,loc) -> do
-        trace <- fromRight $ inferSTermTraced NonRecursive (Loc loc loc) "" im PrdRep tloc env
+        trace <- fromRight $ inferSTermTraced NonRecursive (Loc loc loc) "" opts PrdRep tloc env
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
