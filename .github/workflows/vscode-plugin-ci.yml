@@ -1,4 +1,4 @@
-name: vscode-plugin
+name: vscode-plugin-ci
 on:
   push:
     branches:
@@ -6,6 +6,17 @@ on:
     paths:
       - 'vscode-plugin/**'
       - '.github/workflows/vscode-plugin.yml'
+
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    paths:
+      - 'vscode-plugin/**'
+      - '.github/workflows/vscode-plugin.yml'
+
+
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,13 +29,4 @@ jobs:
           npm install -g vsce
           vsce package
         working-directory: ${{env.working-directory}}
-      - name: Upload VSIX file
-        uses: marvinpinto/action-automatic-releases@v1.2.1
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          prerelease: false
-          title: "VSCode Extension"
-          files: |
-            vscode-plugin/dualsub-client-0.0.1.vsix
 
