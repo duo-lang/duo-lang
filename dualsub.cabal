@@ -154,7 +154,6 @@ test-suite dualsub-test
     , Translate.TranslateExamplesSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
-    , TypeInference.FileRefExamplesSpec
     , TypeInference.CounterExampleSpec
     , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec
