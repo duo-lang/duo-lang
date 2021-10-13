@@ -12,12 +12,13 @@ module TypeInference.InferProgram
   , inferProgram
   ) where
 
-import Control.Monad (when)
+import Control.Monad (when, forM)
 import Data.Bifunctor (first)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import System.FilePath ( (</>) )
+import System.FilePath ( (</>), (<.>))
+import System.Directory ( doesFileExist )
 
 import Errors ( LocatedError, Error(OtherError) )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
@@ -36,7 +37,7 @@ import Syntax.Program
     ( Environment(..),
       Declaration(..),
       IsRec(..),
-      ModuleName(ModuleName) )
+      ModuleName(..) )
 import Utils ( Verbosity(..), Located(Located), Loc )
 
 import TypeAutomata.ToAutomaton ( solverStateToTypeAut )
@@ -57,7 +58,6 @@ import TypeInference.GenerateConstraints.STerms
 import TypeInference.SolveConstraints (solveConstraints)
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import System.Directory.Internal.Prelude (fromMaybe)
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -66,11 +66,11 @@ import System.Directory.Internal.Prelude (fromMaybe)
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity :: Verbosity
   , infOptsMode :: InferenceMode
-  , infOptsLibPath :: Maybe FilePath
+  , infOptsLibPath :: [FilePath]
   }
 
 defaultInferenceOptions :: InferenceOptions
-defaultInferenceOptions = InferenceOptions Silent InferNominal Nothing
+defaultInferenceOptions = InferenceOptions Silent InferNominal []
 
 ------------------------------------------------------------------------------
 -- TypeInference Trace
@@ -274,15 +274,30 @@ insertDecl infopts (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = 
           return (Right newEnv)
 insertDecl _ (DataDecl _loc dcl) env@Environment { declEnv } = do
   return (Right (env { declEnv = dcl : declEnv }))
-insertDecl infopts (ImportDecl _loc (ModuleName mod)) env = do
-  let libPath = fromMaybe "" (infOptsLibPath infopts)
-  let fp = libPath </> T.unpack mod <> ".ds"
-  env' <- inferProgramFromDisk infopts fp
-  case env' of
-    Left err -> return (Left err)
-    Right env' -> return (Right (env <> env'))
+insertDecl infopts (ImportDecl loc mod) env = do
+  mfp <- findModule infopts mod
+  case mfp of
+    Nothing -> return (Left (Located loc (OtherError ("Could not locate library: " <> unModuleName mod))))
+    Just fp -> do
+      env' <- inferProgramFromDisk infopts fp
+      case env' of
+        Left err -> return (Left err)
+        Right env' -> return (Right (env <> env'))
 insertDecl _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
 
+-- | Given the Library Paths contained in the inference options and a module name,
+-- try to find a filepath which corresponds to the given module name.
+findModule :: InferenceOptions -> ModuleName -> IO (Maybe FilePath)
+findModule infopts (ModuleName mod) = do
+  let libpaths = infOptsLibPath infopts
+  fps <- forM libpaths $ \libpath -> do
+    let fp = libpath </> T.unpack mod <.> "ds"
+    exists <- doesFileExist fp
+    if exists then return [fp] else return []
+  case concat fps of
+    [] -> return Nothing 
+    (fp:_) -> return (Just fp)
+  
 
 
 inferProgramFromDisk :: InferenceOptions

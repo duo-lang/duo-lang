@@ -50,7 +50,7 @@ initialReplState = ReplState { replEnv = mempty
                              , steps = NoSteps
                              , evalOrder = CBV
                              , mode = Symmetric
-                             , typeInfOpts = defaultInferenceOptions { infOptsLibPath = Just "examples/" }
+                             , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples","refinedExamples"] }
                              }
 
 ------------------------------------------------------------------------------

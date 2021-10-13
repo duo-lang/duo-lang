@@ -15,7 +15,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The file " ++ example ++ " typechecks.") $ do
-        env <- runIO $ getEnvironment example defaultInferenceOptions { infOptsLibPath = Just "examples" }
+        env <- runIO $ getEnvironment example defaultInferenceOptions { infOptsLibPath = ["examples"] }
         case env of
           Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
           Right _env -> return ()
