@@ -9,8 +9,6 @@ module TypeInference.InferProgram
     -- Asymmetric terms
   , inferATerm
   , inferATermTraced
-    -- Utils
-  , checkAnnot
   ) where
 
 import Control.Monad (when, forM)
@@ -185,16 +183,5 @@ inferATerm isRec loc fv infopts tm env = do
 -- Programs
 ------------------------------------------------------------------------------
 
-checkAnnot :: TypeScheme pol -- ^ Inferred type
-           -> Maybe (TypeScheme pol) -- ^ Annotated type
-           -> Either Error (TypeScheme pol)
-checkAnnot tyInferred Nothing = return tyInferred
-checkAnnot tyInferred (Just tyAnnotated) = do
-  isSubsumed <- subsume tyInferred tyAnnotated
-  if isSubsumed
-    then return tyAnnotated
-    else Left (OtherError (T.unlines [ "Annotated type is not subsumed by inferred type"
-                                     , " Annotated type: " <> ppPrint tyAnnotated
-                                     , " Inferred type:  " <> ppPrint tyInferred
-                                     ]))
+
 

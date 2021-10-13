@@ -94,6 +94,24 @@ findModule (ModuleName mod) loc = do
     [] -> throwError (Located loc (OtherError ("Could not locate library: " <> mod)))
     (fp:_) -> return fp
 
+checkAnnot :: TypeScheme pol -- ^ Inferred type
+           -> Maybe (TypeScheme pol) -- ^ Annotated type
+           -> Loc -- ^ Location for the error message
+           -> DriverM (TypeScheme pol)
+checkAnnot tyInferred Nothing _ = return tyInferred
+checkAnnot tyInferred (Just tyAnnotated) loc = do
+  let isSubsumed = subsume tyInferred tyAnnotated
+  case isSubsumed of
+      (Left err) -> throwError (Located loc err)
+      (Right True) -> return tyAnnotated
+      (Right False) -> do
+        let err = OtherError $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                         , " Annotated type: " <> ppPrint tyAnnotated
+                                         , " Inferred type:  " <> ppPrint tyInferred
+                                         ]
+        guardVerbose $ ppPrintIO err
+        throwError (Located loc err)
+
 ---------------------------------------------------------------------------------
 -- Insert Declarations
 ---------------------------------------------------------------------------------
@@ -112,15 +130,10 @@ insertDecl (PrdDecl isRec loc v annot loct) = do
       guardVerbose $ ppPrintIO (trace_constraintSet trace)
       guardVerbose $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
-      let ty = trace_resType trace
-      case checkAnnot ty annot of
-        Left err -> do
-           guardVerbose $ ppPrintIO err
-           throwError (Located loc err)
-        Right ty -> do
-          let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) (prdEnv env) }
-          guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-          setEnvironment newEnv
+      ty <- checkAnnot (trace_resType trace) annot loc
+      let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) (prdEnv env) }
+      guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+      setEnvironment newEnv
 insertDecl (CnsDecl isRec loc v annot loct) = do
   infopts <- gets driverOpts
   env <- gets driverEnv
@@ -133,15 +146,10 @@ insertDecl (CnsDecl isRec loc v annot loct) = do
       guardVerbose $ ppPrintIO (trace_constraintSet trace)
       guardVerbose $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation:
-      let ty = trace_resType trace
-      case checkAnnot ty annot of
-        Left err -> do
-          guardVerbose $ ppPrintIO err
-          throwError (Located loc err)
-        Right ty -> do
-          let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) (cnsEnv env) }
-          guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-          setEnvironment newEnv
+      ty <- checkAnnot (trace_resType trace) annot loc
+      let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) (cnsEnv env) }
+      guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+      setEnvironment newEnv
 insertDecl (CmdDecl loc v loct) = do
   infopts <- gets driverOpts
   env <- gets driverEnv
@@ -167,15 +175,10 @@ insertDecl (DefDecl isRec loc v annot t) = do
       guardVerbose $ ppPrintIO (trace_constraintSet trace)
       guardVerbose $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
-      let ty = trace_resType trace
-      case checkAnnot ty annot of
-        Left err -> do
-          guardVerbose $ ppPrintIO err
-          throwError (Located loc err)
-        Right ty -> do
-          let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) (defEnv env)}
-          guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-          setEnvironment newEnv
+      ty <- checkAnnot (trace_resType trace) annot loc
+      let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) (defEnv env)}
+      guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+      setEnvironment newEnv
 insertDecl (DataDecl _loc dcl) = do
   env <- gets driverEnv
   let newEnv = env { declEnv = dcl : declEnv env}
