@@ -19,7 +19,7 @@
       },
       "symbols": {
         "patterns": [{
-            "match": "(:=|=>|>>|\\/|/\\|<:|<<:|:>>)", 
+            "match": "(:=|=>|>>|\\\\/|/\\\\|<:|<<:|:>>)", 
             "name": "keyword.syntax"
         }]
 
@@ -39,20 +39,12 @@
           ]
       },
       "brackets": {
-      
-        "begin": "[{\\(]",
-        "beginCaptures": {
-          "0": {
-            "name": "punctuation.section.parens.begin.dualsub"
+        "patterns": [
+          {
+            "match": "[\\[\\]{\\(}\\)]",
+            "name": "punctuation.section.parens"
           }
-        },
-        "end": "[}\\)]",
-        "endCaptures": {
-          "0": {
-            "name": "punctuation.section.parens.end.dualsub"
-          }
-        },
-        "name": "meta.parens.dualsub"
+        ]
       }
     }
 }
