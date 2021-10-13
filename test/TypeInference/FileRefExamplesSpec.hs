@@ -7,6 +7,7 @@ import TestUtils
 import Pretty.Pretty
 import Pretty.Errors ()
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
+import TypeInference.InferProgram
 
 -- | Typecheck the programs in the toplevel "examples-refined/" subfolder.
 spec :: Spec
@@ -15,7 +16,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples-refined/"
     forM_ examples $ \example -> do
       describe ("The file " ++ example ++ " typechecks.") $ do
-        env <- runIO $ getEnvironment example InferRefined
+        env <- runIO $ getEnvironment example (defaultInferenceOptions { infOptsMode = InferRefined})
         case env of
           Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
           Right _env -> return ()

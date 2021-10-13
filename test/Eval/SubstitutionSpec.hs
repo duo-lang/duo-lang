@@ -12,9 +12,9 @@ import Pretty.Pretty
 import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Program
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import Utils
 import TestUtils
+import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))
 
 spec :: Spec
 spec = do
@@ -22,7 +22,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("Examples in " ++ example ++ " are locally closed") $ do
-        env <- runIO $ getEnvironment example InferNominal
+        env <- runIO $ getEnvironment example defaultInferenceOptions { infOptsLibPath = ["examples"] }
         case env of
           Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
           Right env -> do

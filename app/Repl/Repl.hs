@@ -22,8 +22,8 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
-import Utils (trimStr, Verbosity(..))
+import TypeInference.InferProgram
+import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 ------------------------------------------------------------------------------
@@ -40,8 +40,7 @@ data ReplState = ReplState
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
   , mode :: Mode
-  , typeInfVerbosity :: Verbosity
-  , inferenceMode :: InferenceMode
+  , typeInfOpts :: InferenceOptions
   }
 
 
@@ -51,8 +50,7 @@ initialReplState = ReplState { replEnv = mempty
                              , steps = NoSteps
                              , evalOrder = CBV
                              , mode = Symmetric
-                             , typeInfVerbosity = Silent
-                             , inferenceMode = InferNominal
+                             , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples","refinedExamples"] }
                              }
 
 ------------------------------------------------------------------------------

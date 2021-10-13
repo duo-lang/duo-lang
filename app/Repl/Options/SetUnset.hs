@@ -15,13 +15,14 @@ import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(evalOrder, typeInfVerbosity, mode, steps, inferenceMode),
+      ReplState(evalOrder, typeInfOpts, mode, steps, ReplState),
       Mode(Asymmetric, Symmetric),
       EvalSteps(NoSteps, Steps),
       prettyRepl,
       mkWordCompleter )
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (trim,  Verbosity(..))
+import TypeInference.InferProgram (InferenceOptions(infOptsVerbosity, infOptsMode))
 
 
 -- Set & Unset
@@ -30,11 +31,11 @@ setCmdVariants :: [(Text, Repl ())]
 setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
-                   , ("verbose", modify (\rs -> rs { typeInfVerbosity = Verbose }))
-                   , ("silent", modify (\rs -> rs { typeInfVerbosity = Silent }))
+                   , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
+                   , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
                    , ("asymmetric", modify (\rs -> rs { mode = Asymmetric }))
-                   , ("refinements", modify (\rs -> rs { inferenceMode = InferRefined})) ]
+                   , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferRefined  } })) ]
 
 setCmd :: Text -> Repl ()
 setCmd s = do
@@ -67,7 +68,7 @@ setOption = Option
 
 unsetCmdVariants :: [(Text, Repl ())]
 unsetCmdVariants = [ ("steps", modify (\rs -> rs { steps = NoSteps })) 
-                     , ("refinements", modify (\rs -> rs { inferenceMode = InferNominal }))]
+                     , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferNominal } }))]
 
 unsetCmd :: Text -> Repl ()
 unsetCmd s = do

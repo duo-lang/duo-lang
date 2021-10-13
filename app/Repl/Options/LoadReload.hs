@@ -3,6 +3,7 @@ module Repl.Options.LoadReload
   , reloadOption
   ) where
 
+import Control.Monad.IO.Class ( MonadIO(liftIO) ) 
 import Control.Monad.State ( forM_, gets )
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -13,7 +14,7 @@ import Pretty.Errors (printLocatedError)
 import Repl.Repl
     ( Option(..),
       Repl,
-      ReplState(inferenceMode, loadedFiles),
+      ReplState(loadedFiles, typeInfOpts),
       modifyEnvironment,
       modifyLoadedFiles,
       prettyRepl,
@@ -33,8 +34,9 @@ loadCmd s = do
 loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
-  inferMode <- gets inferenceMode
-  case inferProgram decls inferMode of
+  opts <- gets typeInfOpts
+  res <- liftIO $ inferProgram opts decls
+  case res of
     Left err -> printLocatedError err
     Right newEnv -> do
       modifyEnvironment (newEnv <>)

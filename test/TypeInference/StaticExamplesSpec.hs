@@ -14,7 +14,6 @@ import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import TypeInference.InferProgram
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 import Utils
@@ -26,7 +25,7 @@ typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,loc) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive (Loc loc loc) "" InferNominal PrdRep term env
+      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive (Loc loc loc) "" defaultInferenceOptions PrdRep term env
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
@@ -77,7 +76,7 @@ typecheckInFile :: FilePath -> Spec
 typecheckInFile fp =
   describe "Typecheck specific examples" $ do
     describe ("Context is " <> fp) $ do
-        env <- runIO $ getEnvironment ("examples" </> fp) InferNominal
+        env <- runIO $ getEnvironment ("examples" </> fp) defaultInferenceOptions { infOptsLibPath = ["examples"] }
         case env of
             Left err -> it "Could not load environment" $ expectationFailure (ppPrintString err)
             Right env' -> do

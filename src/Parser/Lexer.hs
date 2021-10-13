@@ -5,6 +5,7 @@ module Parser.Lexer
   , freeVarName
   , xtorName
   , typeNameP
+  , moduleNameP
     -- Keywords
   , matchKwP
   , comatchKwP
@@ -20,6 +21,7 @@ module Parser.Lexer
   , codataKwP
   , recKwP
   , muKwP
+  , importKwP
     -- Symbols
   , dot
   , pipe
@@ -54,6 +56,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Parser.Definition
 import Syntax.CommonTerm
+import Syntax.Program
 import Syntax.Types
 import Utils
 
@@ -138,13 +141,19 @@ typeNameP = do
   checkReserved name
   return (MkTypeName name, pos)
 
+moduleNameP :: Parser (ModuleName, SourcePos)
+moduleNameP = do
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
+  checkReserved name
+  return (ModuleName name, pos)
+
 -------------------------------------------------------------------------------------------
 -- Keywords
 -------------------------------------------------------------------------------------------
 
 keywords :: [Text]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with"
-           , "Done", "Print", "forall", "data", "codata", "rec", "mu"]
+           , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -193,6 +202,9 @@ recKwP = keywordP "rec"
 
 muKwP :: Parser SourcePos
 muKwP = keywordP "mu"
+
+importKwP :: Parser SourcePos 
+importKwP = keywordP "import"
 
 -------------------------------------------------------------------------------------------
 -- Symbols

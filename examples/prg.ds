@@ -1,5 +1,4 @@
-## Generic print consumer ##
-cns print := mu x.Print(x);
+import Prelude;
 
 ## Boolean functions ##
 

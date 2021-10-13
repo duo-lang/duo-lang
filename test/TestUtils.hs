@@ -10,9 +10,8 @@ import Errors
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
-import TypeInference.InferProgram (inferProgram)
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
-import Utils
+import TypeInference.InferProgram (inferProgram, InferenceOptions(..))
+import Utils ( Located(Located), Loc )
 
 
 getAvailableCounterExamples :: IO [FilePath]
@@ -30,11 +29,13 @@ getParsedDeclarations fp = do
   s <- T.readFile fp
   return (first (ParseError . T.pack . errorBundlePretty) (runFileParser fp programP s))
 
-getEnvironment :: FilePath -> InferenceMode -> IO (Either Error (Environment FreeVarName))
-getEnvironment fp im = do
+getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment FreeVarName))
+getEnvironment fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> case inferProgram decls im of
-      Right env -> return (Right env)
-      Left (Located _ err) -> return (Left err)
+    Right decls -> do
+      res <- inferProgram infopts decls
+      case res of
+        Right env -> return (Right env)
+        Left (Located _ err) -> return (Left err)
     Left err -> return (Left err)
