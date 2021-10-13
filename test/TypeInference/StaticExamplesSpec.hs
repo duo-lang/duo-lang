@@ -25,7 +25,9 @@ typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,loc) = runInteractiveParser (stermP PrdRep) termS
-      let Right inferredTypeAut = trace_minTypeAut <$> inferSTermTraced NonRecursive (Loc loc loc) "" defaultInferenceOptions PrdRep term env
+      let foo = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep term
+      bar <- execDriverM (DriverState defaultInferenceOptions env) foo
+      let Right inferredTypeAut = trace_minTypeAut. fst <$> bar
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
       let Right specTypeAut = typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
