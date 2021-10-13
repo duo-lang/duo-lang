@@ -38,7 +38,8 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Syntax.Program
-import TypeInference.InferProgram ( inferProgram, defaultInferenceOptions, InferenceOptions(..) )
+import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions(..) )
+import TypeInference.Driver ( inferProgram )
 import Utils ( Located(..), Loc(..))
 
 

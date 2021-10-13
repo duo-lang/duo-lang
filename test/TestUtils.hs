@@ -10,7 +10,8 @@ import Errors
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
-import TypeInference.InferProgram (inferProgram, InferenceOptions(..))
+import TypeInference.InferProgram ( InferenceOptions(..))
+import TypeInference.Driver (inferProgram)
 import Utils ( Located(Located), Loc )
 
 

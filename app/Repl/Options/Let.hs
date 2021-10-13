@@ -13,7 +13,7 @@ import Repl.Repl
       Option(..),
       fromRight,
       modifyEnvironment )
-import TypeInference.InferProgram (insertDecl)
+import TypeInference.Driver (insertDecl)
 
 -- Define
 
