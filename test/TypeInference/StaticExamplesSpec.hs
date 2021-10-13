@@ -14,11 +14,9 @@ import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
 import TypeInference.InferProgram
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 import Utils
-import TypeInference.InferProgram (defaultInferenceOptions)
 
 instance Show (TypeScheme pol) where
   show = ppPrintString

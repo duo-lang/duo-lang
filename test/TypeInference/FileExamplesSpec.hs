@@ -6,7 +6,6 @@ import           Control.Monad (forM_)
 import TestUtils
 import Pretty.Pretty
 import Pretty.Errors ()
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.

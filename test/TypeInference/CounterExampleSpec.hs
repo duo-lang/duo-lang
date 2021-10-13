@@ -7,7 +7,6 @@ import Test.Hspec
 import TestUtils
 import Pretty.Pretty
 import Syntax.Types
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.InferProgram (defaultInferenceOptions)
 
 instance Show (TypeScheme pol) where

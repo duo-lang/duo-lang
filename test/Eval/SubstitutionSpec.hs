@@ -12,7 +12,6 @@ import Pretty.Pretty
 import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Program
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import Utils
 import TestUtils
 import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))

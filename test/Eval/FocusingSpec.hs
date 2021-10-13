@@ -9,7 +9,6 @@ import Text.Megaparsec (errorBundlePretty)
 
 import Pretty.Pretty
 import Parser.Parser
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import Eval.STerms (eval)
 import Eval.Eval
 import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))

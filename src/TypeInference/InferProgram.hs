@@ -23,7 +23,7 @@ import Errors ( LocatedError, Error(OtherError) )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.ATerms ( FreeVarName, PrdCnsRep(..), ATerm )
-import Syntax.STerms ( FreeVarName, PrdCnsRep(..), Command, STerm )
+import Syntax.STerms ( Command, STerm )
 import Syntax.Types
     ( SolverResult,
       ConstraintSet,

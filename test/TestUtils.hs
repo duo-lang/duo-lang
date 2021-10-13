@@ -10,9 +10,8 @@ import Errors
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
-import TypeInference.InferProgram (inferProgram, InferenceOptions(..), defaultInferenceOptions)
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
-import Utils ( Verbosity(Silent), Located(Located), Loc )
+import TypeInference.InferProgram (inferProgram, InferenceOptions(..))
+import Utils ( Located(Located), Loc )
 
 
 getAvailableCounterExamples :: IO [FilePath]

@@ -22,9 +22,8 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import TypeInference.InferProgram
-import Utils (trimStr, Verbosity(..))
+import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 ------------------------------------------------------------------------------
