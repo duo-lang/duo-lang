@@ -306,6 +306,9 @@ insertDecl (ImportDecl loc mod) = do
   oldEnv <- gets driverEnv
   newEnv <- inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
+insertDecl (SetDecl loc txt) = case T.unpack txt of
+  "refined" -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
+  _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
 insertDecl ParseErrorDecl = do
     throwError (Located defaultLoc (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))
 

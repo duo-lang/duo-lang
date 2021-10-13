@@ -55,6 +55,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
     annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
   prettyAnn (DataDecl _ decl) = prettyAnn decl
   prettyAnn (ImportDecl _ mod) = annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (SetDecl _ txt) = annKeyword "set" <+> prettyAnn txt <> semi
   prettyAnn ParseErrorDecl = "<ParseError>"
 
 
@@ -75,6 +76,7 @@ instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
     annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
   prettyAnn (NamedRep (DataDecl _ decl)) = prettyAnn decl
   prettyAnn (NamedRep (ImportDecl _ mod)) = annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (NamedRep (SetDecl _ txt)) = annKeyword "set" <+> prettyAnn txt <> semi
   prettyAnn (NamedRep ParseErrorDecl) = "<ParseError>"
 
 

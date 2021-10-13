@@ -1,3 +1,4 @@
+set refined;
 data L { Atom, NegAtom };
 data Fm { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
 data R { SetSet, Union(R,R), Distrib(R,R) };

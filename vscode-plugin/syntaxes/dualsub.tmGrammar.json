@@ -11,7 +11,7 @@
       "keywords": {
         "patterns": [
             {
-              "match": "\\b(match|comatch|prd|cns|cmd|def|with|Done|Print|forall|data|codata|rec|mu|import)\\b",
+              "match": "\\b(match|comatch|prd|cns|cmd|def|with|Done|Print|forall|data|codata|rec|mu|import|set)\\b",
               "name": "keyword.control"
             }
           ]
