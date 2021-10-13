@@ -14,8 +14,7 @@ import Syntax.STerms
 import Syntax.Program
 import Utils
 import TestUtils
-import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))
-
+import TypeInference.Driver
 spec :: Spec
 spec = do
   describe "All examples are locally closed." $ do

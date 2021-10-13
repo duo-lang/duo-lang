@@ -13,7 +13,7 @@ import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Types
 import Syntax.Program
-import TypeInference.InferProgram
+import TypeInference.Driver
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Subsume (typeAutEqual)
 import Utils

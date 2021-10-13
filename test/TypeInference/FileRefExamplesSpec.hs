@@ -7,8 +7,7 @@ import TestUtils
 import Pretty.Pretty
 import Pretty.Errors ()
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
-import TypeInference.InferProgram
-
+import TypeInference.Driver
 -- | Typecheck the programs in the toplevel "examples-refined/" subfolder.
 spec :: Spec
 spec = do

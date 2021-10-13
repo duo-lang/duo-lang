@@ -7,7 +7,7 @@ import Test.Hspec
 import TestUtils
 import Pretty.Pretty
 import Syntax.Types
-import TypeInference.InferProgram (defaultInferenceOptions)
+import TypeInference.Driver
 
 instance Show (TypeScheme pol) where
   show = ppPrintString

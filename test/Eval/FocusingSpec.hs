@@ -11,7 +11,7 @@ import Pretty.Pretty
 import Parser.Parser
 import Eval.STerms (eval)
 import Eval.Eval
-import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))
+import TypeInference.Driver
 
 
 evalFocusing :: EvalOrder -> Text -> Text -> Spec
