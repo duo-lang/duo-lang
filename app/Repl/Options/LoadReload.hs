@@ -20,7 +20,7 @@ import Repl.Repl
       prettyRepl,
       prettyText,
       parseFile )
-import TypeInference.Driver (inferProgram)
+import TypeInference.Driver
 import Utils (trim)
 
 -- Load
@@ -35,7 +35,7 @@ loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
   opts <- gets typeInfOpts
-  res <- liftIO $ inferProgram opts decls
+  res <- liftIO $ inferProgramIO (DriverState opts mempty) decls
   case res of
     Left err -> printLocatedError err
     Right newEnv -> do

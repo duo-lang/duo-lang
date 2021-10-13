@@ -22,8 +22,7 @@ import Repl.Repl
       mkWordCompleter )
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (trim,  Verbosity(..))
-import TypeInference.InferProgram (InferenceOptions(infOptsVerbosity, infOptsMode))
-
+import TypeInference.Driver
 
 -- Set & Unset
 

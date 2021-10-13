@@ -25,7 +25,12 @@ import Syntax.STerms ( PrdCnsRep(PrdRep) )
 import Syntax.Types ( PolarityRep(PosRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
 import TypeAutomata.ToAutomaton (typeToAut)
-import TypeInference.InferProgram (inferSTermTraced, TypeInferenceTrace(..))
+import TypeInference.Driver
+    ( execDriverM,
+      DriverState(DriverState),
+      inferSTermTraced,
+      TypeInferenceTrace(trace_typeAut, trace_typeAutDet,
+                         trace_typeAutDetAdms, trace_minTypeAut, trace_resType) )
 import Utils
 
 -- Save
@@ -40,7 +45,9 @@ saveCmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,loc) -> do
-        trace <- fromRight $ inferSTermTraced NonRecursive (Loc loc loc) "" opts PrdRep tloc env
+        let foo = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
+        traceEither <- liftIO $  execDriverM (DriverState opts env) foo
+        trace <- fromRight $ fst <$> traceEither
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)

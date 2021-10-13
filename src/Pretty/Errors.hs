@@ -23,6 +23,9 @@ instance PrettyAnn Error where
   prettyAnn (TypeAutomatonError err) = "Type simplification error:" <+> pretty err
   prettyAnn (OtherError err) = "Other Error:" <+> pretty err
 
+instance PrettyAnn LocatedError where
+  prettyAnn (Located _ err) = prettyAnn err
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------

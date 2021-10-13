@@ -93,12 +93,11 @@ library
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
+      TypeInference.Driver
       TypeInference.GenerateConstraints.ATerms
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.STerms
-      TypeInference.InferProgram
       TypeInference.SolveConstraints
-      TypeInference.Driver
       Utils
       Translate.Translate
       Translate.TranslateProgram

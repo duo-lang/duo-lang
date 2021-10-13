@@ -13,7 +13,7 @@ import Repl.Repl
       Option(..),
       fromRight,
       modifyEnvironment )
-import TypeInference.Driver (insertDecl)
+import TypeInference.Driver
 
 -- Define
 
@@ -22,10 +22,10 @@ letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  newEnv <- liftIO $ insertDecl opts decl oldEnv
+  newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (insertDecl decl)
   case newEnv of
     Left _ -> return ()
-    Right newEnv -> modifyEnvironment (const newEnv)
+    Right (_,state) -> modifyEnvironment (const (driverEnv state))
 
 letOption :: Option
 letOption = Option
