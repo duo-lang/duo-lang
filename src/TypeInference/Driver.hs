@@ -1,4 +1,4 @@
-module TypeInference.Driver where
+module TypeInference.Driver (inferProgram, insertDecl, execDriverM) where
 
 import Control.Monad (when, forM)
 import Data.Bifunctor (first)
@@ -48,132 +48,156 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import TypeInference.InferProgram
 
+import Control.Monad.State
+import Control.Monad.Except
+
+
+---------------------------------------------------------------------------------
+-- Typeinference Driver Monad
+---------------------------------------------------------------------------------
+
+data DriverState = DriverState
+  { driverOpts :: InferenceOptions
+  , driverEnv :: Environment FreeVarName
+  }
+
+newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT LocatedError IO) a }
+  deriving (Functor, Applicative, Monad, MonadError LocatedError, MonadState DriverState, MonadIO)
+
+execDriverM :: DriverState ->  DriverM a -> IO (Either LocatedError (a,DriverState))
+execDriverM state act = runExceptT $ runStateT (unDriverM act) state
+
+---------------------------------------------------------------------------------
+-- Utility functions
+---------------------------------------------------------------------------------
+
+setEnvironment :: Environment FreeVarName -> DriverM ()
+setEnvironment env = modify (\state -> state { driverEnv = env })
 
 -- | Only execute an action if verbosity is set to Verbose
-guardVerbose :: InferenceOptions -> IO () -> IO ()
-guardVerbose infopts action = when (infOptsVerbosity infopts == Verbose) action
+guardVerbose :: IO () -> DriverM ()
+guardVerbose action = do
+    verbosity <- gets (infOptsVerbosity . driverOpts)
+    when (verbosity == Verbose) (liftIO action)
 
-insertDecl :: InferenceOptions
-           -> Declaration FreeVarName Loc
-           -> Environment FreeVarName
-           -> IO (Either LocatedError (Environment FreeVarName))
-insertDecl infopts (PrdDecl isRec loc v annot loct)  env@Environment { prdEnv }  = do
+-- | Given the Library Paths contained in the inference options and a module name,
+-- try to find a filepath which corresponds to the given module name.
+findModule :: ModuleName -> Loc ->  DriverM FilePath
+findModule (ModuleName mod) loc = do
+  infopts <- gets driverOpts
+  let libpaths = infOptsLibPath infopts
+  fps <- forM libpaths $ \libpath -> do
+    let fp = libpath </> T.unpack mod <.> "ds"
+    exists <- liftIO $ doesFileExist fp
+    if exists then return [fp] else return []
+  case concat fps of
+    [] -> throwError (Located loc (OtherError ("Could not locate library: " <> mod)))
+    (fp:_) -> return fp
+
+---------------------------------------------------------------------------------
+-- Insert Declarations
+---------------------------------------------------------------------------------
+
+insertDecl :: Declaration FreeVarName Loc
+           -> DriverM ()
+insertDecl (PrdDecl isRec loc v annot loct) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
   case inferSTermTraced isRec loc v infopts PrdRep loct env of
     Left err -> do
       let locerr = Located loc err
-      guardVerbose infopts $ printLocatedError locerr
-      return (Left locerr)
+      guardVerbose $ printLocatedError locerr
+      throwError locerr
     Right trace -> do
-      guardVerbose infopts $ ppPrintIO (trace_constraintSet trace)
-      guardVerbose infopts $ ppPrintIO (trace_solvedConstraints trace)
+      guardVerbose $ ppPrintIO (trace_constraintSet trace)
+      guardVerbose $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
       let ty = trace_resType trace
       case checkAnnot ty annot of
         Left err -> do
-           guardVerbose infopts $ ppPrintIO err
-           return (Left (Located loc err))
+           guardVerbose $ ppPrintIO err
+           throwError (Located loc err)
         Right ty -> do
-          let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) prdEnv }
-          guardVerbose infopts $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-          return (Right newEnv)
-insertDecl infopts (CnsDecl isRec loc v annot loct)  env@Environment { cnsEnv }  = do
+          let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) (prdEnv env) }
+          guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+          setEnvironment newEnv
+insertDecl (CnsDecl isRec loc v annot loct) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
   case inferSTermTraced isRec loc v infopts CnsRep loct env of
     Left err -> do
       let locerr = Located loc err
-      guardVerbose infopts $ printLocatedError locerr
-      return (Left locerr)
+      guardVerbose $ printLocatedError locerr
+      throwError locerr
     Right trace -> do
-      guardVerbose infopts $ ppPrintIO (trace_constraintSet trace)
-      guardVerbose infopts $ ppPrintIO (trace_solvedConstraints trace)
+      guardVerbose $ ppPrintIO (trace_constraintSet trace)
+      guardVerbose $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation:
       let ty = trace_resType trace
       case checkAnnot ty annot of
         Left err -> do
-          guardVerbose infopts $ ppPrintIO err
-          return (Left (Located loc err))
+          guardVerbose $ ppPrintIO err
+          throwError (Located loc err)
         Right ty -> do
-          let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) cnsEnv }
-          guardVerbose infopts $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-          return (Right newEnv)
-insertDecl infopts (CmdDecl loc v loct)  env@Environment { cmdEnv }  = do
+          let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) (cnsEnv env) }
+          guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+          setEnvironment newEnv
+insertDecl (CmdDecl loc v loct) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
   case checkCmd loct env infopts of
     Left err -> do
       let locerr = Located loc err
-      guardVerbose infopts $ printLocatedError locerr
-      return (Left locerr)
+      guardVerbose $ printLocatedError locerr
+      throwError locerr
     Right (constraints, solverResult) -> do
-      guardVerbose infopts $ ppPrintIO constraints
-      guardVerbose infopts $ ppPrintIO solverResult
-      return (Right (env { cmdEnv  = M.insert v (first (const ()) loct, loc) cmdEnv }))
-insertDecl infopts (DefDecl isRec loc v annot t)  env@Environment { defEnv }  = do
+      guardVerbose $ ppPrintIO constraints
+      guardVerbose $ ppPrintIO solverResult
+      let newEnv = env { cmdEnv  = M.insert v (first (const ()) loct, loc) (cmdEnv env)}
+      setEnvironment newEnv
+insertDecl (DefDecl isRec loc v annot t) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
   case inferATermTraced isRec loc v infopts t env of
     Left err -> do
       let locerr = Located loc err
-      guardVerbose infopts $ printLocatedError locerr
-      return (Left locerr)
+      guardVerbose $ printLocatedError locerr
+      throwError locerr
     Right trace -> do
-      guardVerbose infopts $ ppPrintIO (trace_constraintSet trace)
-      guardVerbose infopts $ ppPrintIO (trace_solvedConstraints trace)
+      guardVerbose $ ppPrintIO (trace_constraintSet trace)
+      guardVerbose $ ppPrintIO (trace_solvedConstraints trace)
       -- Check annotation
       let ty = trace_resType trace
       case checkAnnot ty annot of
         Left err -> do
-          guardVerbose infopts $ ppPrintIO err
-          return (Left (Located loc err))
+          guardVerbose $ ppPrintIO err
+          throwError (Located loc err)
         Right ty -> do
-          let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) defEnv }
-          guardVerbose infopts $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-          return (Right newEnv)
-insertDecl _ (DataDecl _loc dcl) env@Environment { declEnv } = do
-  return (Right (env { declEnv = dcl : declEnv }))
-insertDecl infopts (ImportDecl loc mod) env = do
-  mfp <- findModule infopts mod
-  case mfp of
-    Nothing -> return (Left (Located loc (OtherError ("Could not locate library: " <> unModuleName mod))))
-    Just fp -> do
-      env' <- inferProgramFromDisk infopts fp
-      case env' of
-        Left err -> return (Left err)
-        Right env' -> return (Right (env <> env'))
-insertDecl _ ParseErrorDecl _ = error "Should not occur: Tried to insert ParseErrorDecl into Environment"
-
--- | Given the Library Paths contained in the inference options and a module name,
--- try to find a filepath which corresponds to the given module name.
-findModule :: InferenceOptions -> ModuleName -> IO (Maybe FilePath)
-findModule infopts (ModuleName mod) = do
-  let libpaths = infOptsLibPath infopts
-  fps <- forM libpaths $ \libpath -> do
-    let fp = libpath </> T.unpack mod <.> "ds"
-    exists <- doesFileExist fp
-    if exists then return [fp] else return []
-  case concat fps of
-    [] -> return Nothing 
-    (fp:_) -> return (Just fp)
-  
+          let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) (defEnv env)}
+          guardVerbose $ putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+          setEnvironment newEnv
+insertDecl (DataDecl _loc dcl) = do
+  env <- gets driverEnv
+  let newEnv = env { declEnv = dcl : declEnv env}
+  setEnvironment newEnv
+insertDecl (ImportDecl loc mod) = do
+  fp <- findModule mod loc
+  inferProgramFromDisk fp
+insertDecl ParseErrorDecl = do
+    throwError (Located undefined (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))
 
 
-inferProgramFromDisk :: InferenceOptions
-                     -> FilePath
-                     -> IO (Either LocatedError (Environment FreeVarName ))
-inferProgramFromDisk infopts fp = do
-  file <- T.readFile fp
+inferProgramFromDisk :: FilePath
+                     -> DriverM ()
+inferProgramFromDisk fp = do
+  file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file
   case parsed of
-    Left _err -> return (Left (Located undefined undefined))
-    Right decls -> inferProgram infopts decls
+    Left _err -> throwError (Located undefined undefined)
+    Right decls -> inferProgram decls
 
-inferProgram :: InferenceOptions
-             -> [Declaration FreeVarName Loc]
-             -> IO (Either LocatedError (Environment FreeVarName))
-inferProgram infopts decls = inferProgram' mempty decls
- where
-   inferProgram' :: Environment FreeVarName
-                 -> [Declaration FreeVarName Loc]
-                 -> IO (Either LocatedError (Environment FreeVarName))
-   inferProgram' env [] = return (Right env)
-   inferProgram' env (decl:decls) = do
-     env' <- insertDecl infopts decl env
-     case env' of
-       Left err -> return (Left err)
-       Right env'' -> inferProgram' env'' decls
+inferProgram :: [Declaration FreeVarName Loc]
+             -> DriverM ()
+inferProgram decls = forM_ decls insertDecl
+
 
