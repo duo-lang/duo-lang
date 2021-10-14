@@ -1,13 +1,18 @@
 module TypeInference.Driver where
 
+import Control.Monad.State
+import Control.Monad.Except
 import Data.Bifunctor (first)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
+import Text.Megaparsec hiding (Pos)
 
 import Errors ( LocatedError, Error(OtherError) )
+import Parser.Definition ( runFileParser )
+import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.ATerms ( FreeVarName, PrdCnsRep(..), ATerm )
@@ -19,15 +24,13 @@ import Syntax.Types
       Typ,
       PolarityRep(PosRep),
       Polarity(Pos) )
-import TypeAutomata.Definition ( TypeAutDet, TypeAut )
 import Syntax.Program
     ( Environment(..),
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
-import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
-
 import TypeAutomata.ToAutomaton ( solverStateToTypeAut )
+import TypeAutomata.Definition ( TypeAutDet, TypeAut )
 import TypeAutomata.Determinize ( determinize )
 import TypeAutomata.Lint (lint)
 import TypeAutomata.Minimize ( minimize )
@@ -43,22 +46,16 @@ import TypeInference.GenerateConstraints.STerms
       genConstraintsCommand,
       genConstraintsSTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
-import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
-
-import Control.Monad.State
-import Control.Monad.Except
-
-import Text.Megaparsec hiding (Pos)
+import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
 ------------------------------------------------------------------------------
 
 data InferenceOptions = InferenceOptions
-  { infOptsVerbosity :: Verbosity
-  , infOptsMode :: InferenceMode
-  , infOptsLibPath :: [FilePath]
+  { infOptsVerbosity :: Verbosity -- ^ Whether to print debug information to the terminal.
+  , infOptsMode :: InferenceMode  -- ^ Whether to infer nominal or refinement types
+  , infOptsLibPath :: [FilePath]  -- ^ Where to search for imported modules
   }
 
 defaultInferenceOptions :: InferenceOptions
@@ -87,7 +84,7 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 setEnvironment :: Environment FreeVarName -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
 
--- | Only execute an action if verbosity is set to Verbose
+-- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
     verbosity <- gets (infOptsVerbosity . driverOpts)
@@ -129,7 +126,7 @@ liftErr :: Loc -> Error -> DriverM a
 liftErr loc err = do
     let locerr = Located loc err
     guardVerbose $ printLocatedError locerr
-    throwError locerr 
+    throwError locerr
 
 liftEitherErr :: Loc -> Either Error a -> DriverM a
 liftEitherErr loc x = case x of
@@ -174,7 +171,7 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
     , trace_minTypeAut = minTypeAut
     , trace_resType = resType
     }
-                       
+
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
 ------------------------------------------------------------------------------
@@ -187,11 +184,14 @@ inferATermTraced :: IsRec
 inferATermTraced isRec loc fv tm = do
   infopts <- gets driverOpts
   env <- gets driverEnv
+  -- Generate the constraints
   let genFun = case isRec of
         Recursive -> genConstraintsATermRecursive loc fv tm
         NonRecursive -> genConstraintsATerm tm
   ((_, ty), constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  -- Generate result type
   liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState ty
 
 inferATerm :: IsRec
@@ -214,11 +214,14 @@ inferSTermTraced :: IsRec
 inferSTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
   env <- gets driverEnv
+  -- Generate the constraints
   let genFun = case isRec of
         Recursive -> genConstraintsSTermRecursive loc fv rep tm
         NonRecursive -> genConstraintsSTerm tm
   ((_,ty), constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  -- Generate result type
   liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
 
 
@@ -236,7 +239,9 @@ checkCmd :: Loc
 checkCmd loc cmd = do
   infopts <- gets driverOpts
   env <- gets driverEnv
+  -- Generate the constraints
   (_,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  -- Solve the constraints
   solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
   return (constraints, solverResult)
 
@@ -321,7 +326,8 @@ inferProgramFromDisk fp = do
   case parsed of
     Left err -> throwError (Located defaultLoc (OtherError (T.pack (errorBundlePretty err))))
     Right decls -> do
-        x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions mempty) decls -- Use inference options of parent? Probably not?
+        -- Use inference options of parent? Probably not?
+        x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions mempty) decls
         case x of
             Left err -> throwError err
             Right env -> return env
