@@ -101,6 +101,7 @@ library
       Utils
       Translate.Translate
       Translate.TranslateProgram
+      Translate.Focusing
   other-modules:
       Paths_dualsub
   hs-source-dirs:
@@ -120,6 +121,7 @@ executable dualsub
       LSP.MegaparsecToLSP
       Repl.Repl
       Repl.Options.Compile
+      Repl.Options.Focusing
       Repl.Options.Let
       Repl.Options.LoadReload
       Repl.Options.SaveGraphs
