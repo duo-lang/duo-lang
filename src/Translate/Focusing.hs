@@ -2,11 +2,14 @@ module Translate.Focusing where
 
 import Syntax.STerms
 
+-- Implement static focusing
+
+
 isFocused :: STerm pc ext bs -> Bool
-isFocused = undefined
+isFocused _tm = True
 
 focusSTerm :: STerm pc ext bs -> STerm pc ext bs
-focusSTerm = undefined 
+focusSTerm tm = tm
 
-focusCmd :: Command x y -> Command x y
-focusCmd = undefined
+focusCmd :: Command ext bs -> Command ext bs
+focusCmd  tm = tm
