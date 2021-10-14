@@ -22,7 +22,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
-import TypeInference.InferProgram
+import TypeInference.Driver
 import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -50,7 +50,7 @@ initialReplState = ReplState { replEnv = mempty
                              , steps = NoSteps
                              , evalOrder = CBV
                              , mode = Symmetric
-                             , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples","refinedExamples"] }
+                             , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
                              }
 
 ------------------------------------------------------------------------------

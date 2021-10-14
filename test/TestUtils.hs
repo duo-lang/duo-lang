@@ -10,7 +10,7 @@ import Errors
 import Parser.Parser
 import Syntax.CommonTerm (FreeVarName)
 import Syntax.Program
-import TypeInference.InferProgram (inferProgram, InferenceOptions(..))
+import TypeInference.Driver
 import Utils ( Located(Located), Loc )
 
 
@@ -34,7 +34,7 @@ getEnvironment fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      res <- inferProgram infopts decls
+      res <- inferProgramIO (DriverState infopts mempty) decls
       case res of
         Right env -> return (Right env)
         Left (Located _ err) -> return (Left err)

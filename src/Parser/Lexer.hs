@@ -6,6 +6,7 @@ module Parser.Lexer
   , xtorName
   , typeNameP
   , moduleNameP
+  , optionP
     -- Keywords
   , matchKwP
   , comatchKwP
@@ -22,6 +23,7 @@ module Parser.Lexer
   , recKwP
   , muKwP
   , importKwP
+  , setKwP
     -- Symbols
   , dot
   , pipe
@@ -114,6 +116,10 @@ numP = do
   (numStr, pos) <- lexeme (some numberChar)
   return (read numStr, pos)
 
+-- | Used for parsing options using the "set option;" syntax
+optionP :: Parser (Text, SourcePos)
+optionP = lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
+
 -------------------------------------------------------------------------------------------
 -- Names
 -------------------------------------------------------------------------------------------
@@ -152,7 +158,7 @@ moduleNameP = do
 -------------------------------------------------------------------------------------------
 
 keywords :: [Text]
-keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with"
+keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "set"
            , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import"]
 
 -- Check if the string is in the list of reserved keywords.
@@ -205,6 +211,9 @@ muKwP = keywordP "mu"
 
 importKwP :: Parser SourcePos 
 importKwP = keywordP "import"
+
+setKwP :: Parser SourcePos 
+setKwP = keywordP "set"
 
 -------------------------------------------------------------------------------------------
 -- Symbols
@@ -284,7 +293,7 @@ argListP p q = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> defKwP <|> dataKwP <|> codataKwP <|> (eof >> getSourcePos)
+  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> defKwP <|> dataKwP <|> codataKwP <|> setKwP <|> (eof >> getSourcePos)
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

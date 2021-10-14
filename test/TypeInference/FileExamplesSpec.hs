@@ -6,7 +6,7 @@ import           Control.Monad (forM_)
 import TestUtils
 import Pretty.Pretty
 import Pretty.Errors ()
-import TypeInference.InferProgram (defaultInferenceOptions, InferenceOptions (infOptsLibPath))
+import TypeInference.Driver
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: Spec

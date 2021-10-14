@@ -93,10 +93,10 @@ library
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
+      TypeInference.Driver
       TypeInference.GenerateConstraints.ATerms
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.STerms
-      TypeInference.InferProgram
       TypeInference.SolveConstraints
       Utils
       Translate.Translate
@@ -154,7 +154,6 @@ test-suite dualsub-test
     , Translate.TranslateExamplesSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec
-    , TypeInference.FileRefExamplesSpec
     , TypeInference.CounterExampleSpec
     , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec

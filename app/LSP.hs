@@ -38,7 +38,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Syntax.Program
-import TypeInference.InferProgram ( inferProgram, defaultInferenceOptions, InferenceOptions(..) )
+import TypeInference.Driver
 import Utils ( Located(..), Loc(..))
 
 
@@ -209,7 +209,7 @@ publishErrors uri = do
       -- sendError "Parsing error!"
       sendParsingError (toNormalizedUri uri) err
     Right decls -> do
-      res <- liftIO $ inferProgram (defaultInferenceOptions { infOptsLibPath = ["examples"]}) decls
+      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
       case res of
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
@@ -233,7 +233,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Left _err -> do
       responder (Left (ResponseError ParseError "Failed Parsing" Nothing))
     Right decls -> do
-      res <- liftIO $ inferProgram (defaultInferenceOptions { infOptsLibPath = ["examples"]}) decls
+      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
       case res of
         Left _err -> do
           responder (Left (ResponseError InternalError "Failed typchecking" Nothing))

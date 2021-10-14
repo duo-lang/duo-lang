@@ -23,6 +23,7 @@ data Declaration a b
   | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b a)
   | DataDecl b DataDecl
   | ImportDecl b ModuleName
+  | SetDecl b Text
   | ParseErrorDecl
 
 instance Show (Declaration a b) where
@@ -35,6 +36,7 @@ instance Bifunctor Declaration where
   bimap f g (DefDecl isRec b v ts t) = DefDecl isRec (g b) v ts $ bimap g f t
   bimap _ g (DataDecl b dataDecl) = DataDecl (g b) dataDecl
   bimap _ g (ImportDecl b mod) = ImportDecl (g b) mod
+  bimap _ g (SetDecl b txt) = SetDecl (g b) txt
   bimap _ _ ParseErrorDecl = ParseErrorDecl
 
 type Program a b = [Declaration a b]

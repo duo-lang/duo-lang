@@ -1,3 +1,4 @@
+set refined;
 data Bool { True, False };
 data Nat { S(Nat), Z };
 codata FunBoolBool { Ap(Bool)[Bool] };
