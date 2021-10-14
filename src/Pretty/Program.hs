@@ -38,46 +38,64 @@ prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
+prettyPrdDecl :: Pretty a => IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyPrdDecl Recursive    fv annot ptm =
+  annKeyword "prd" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+prettyPrdDecl NonRecursive fv annot ptm =
+  annKeyword "prd" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+
+prettyCnsDecl :: Pretty a => IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyCnsDecl Recursive    fv annot ptm =
+  annKeyword "cns" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+prettyCnsDecl NonRecursive fv annot ptm =
+  annKeyword "cns" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+
+prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
+prettyCmdDecl fv pcmd =
+   annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> pcmd <> semi
+
+prettyDefDecl :: Pretty a => IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyDefDecl Recursive    fv annot ptm =
+  annKeyword "def" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+prettyDefDecl NonRecursive fv annot ptm =
+  annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+
 instance PrettyAnn a => PrettyAnn (Declaration a b) where
-  prettyAnn (PrdDecl Recursive _ fv annot tm) =
-    annKeyword "prd" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
-  prettyAnn (PrdDecl NonRecursive _ fv annot tm) =
-    annKeyword "prd" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
-  prettyAnn (CnsDecl Recursive _ fv annot tm) =
-    annKeyword "cns" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
-  prettyAnn (CnsDecl NonRecursive _ fv annot tm) =
-    annKeyword "cns" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
+  prettyAnn (PrdDecl isRec _ fv annot tm) =
+    prettyPrdDecl isRec fv annot (prettyAnn tm)
+  prettyAnn (CnsDecl isRec _ fv annot tm) =
+    prettyCnsDecl isRec fv annot (prettyAnn tm)
   prettyAnn (CmdDecl _ fv cm) =
-    annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn cm <> semi
-  prettyAnn (DefDecl Recursive _ fv annot tm) =
-    annKeyword "def" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
-  prettyAnn (DefDecl NonRecursive _ fv annot tm) =
-    annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn tm <> semi
-  prettyAnn (DataDecl _ decl) = prettyAnn decl
-  prettyAnn (ImportDecl _ mod) = annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (SetDecl _ txt) = annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn ParseErrorDecl = "<ParseError>"
+    prettyCmdDecl fv (prettyAnn cm)
+  prettyAnn (DefDecl isRec _ fv annot tm) =
+    prettyDefDecl isRec fv annot (prettyAnn tm)
+  prettyAnn (DataDecl _ decl) =
+    prettyAnn decl
+  prettyAnn (ImportDecl _ mod) =
+    annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (SetDecl _ txt) =
+    annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn ParseErrorDecl =
+    "<ParseError>"
 
 
 instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
-  prettyAnn (NamedRep (PrdDecl Recursive _ fv annot tm)) =
-    annKeyword "prd" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
-  prettyAnn (NamedRep (PrdDecl NonRecursive _ fv annot tm)) =
-    annKeyword "prd" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
-  prettyAnn (NamedRep (CnsDecl Recursive _ fv annot tm)) =
-    annKeyword "cns" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
-  prettyAnn (NamedRep (CnsDecl NonRecursive _ fv annot tm)) =
-    annKeyword "cns" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openSTermComplete tm) <> semi
+  prettyAnn (NamedRep (PrdDecl isRec _ fv annot tm)) =
+    prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
+  prettyAnn (NamedRep (CnsDecl isRec _ fv annot tm)) =
+    prettyCnsDecl isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
-    annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> prettyAnn (openCommandComplete cm) <> semi
-  prettyAnn (NamedRep (DefDecl Recursive _ fv annot tm)) =
-    annKeyword "def" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
-  prettyAnn (NamedRep (DefDecl NonRecursive _ fv annot tm)) =
-    annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> prettyAnn (openATermComplete tm) <> semi
-  prettyAnn (NamedRep (DataDecl _ decl)) = prettyAnn decl
-  prettyAnn (NamedRep (ImportDecl _ mod)) = annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (SetDecl _ txt)) = annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (NamedRep ParseErrorDecl) = "<ParseError>"
+    prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
+  prettyAnn (NamedRep (DefDecl isRec _ fv annot tm)) =
+    prettyDefDecl isRec fv annot (prettyAnn (openATermComplete tm))
+  prettyAnn (NamedRep (DataDecl _ decl)) =
+    prettyAnn decl
+  prettyAnn (NamedRep (ImportDecl _ mod)) =
+    annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (NamedRep (SetDecl _ txt)) =
+    annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (NamedRep ParseErrorDecl) =
+    "<ParseError>"
 
 
 instance {-# OVERLAPPING #-} PrettyAnn [Declaration FreeVarName Loc] where

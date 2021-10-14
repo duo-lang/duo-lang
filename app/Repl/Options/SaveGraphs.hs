@@ -45,8 +45,8 @@ saveCmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,loc) -> do
-        let foo = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
-        traceEither <- liftIO $  execDriverM (DriverState opts env) foo
+        let inferenceAction = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
+        traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
         trace <- fromRight $ fst <$> traceEither
         saveGraphFiles "0_typeAut" (trace_typeAut trace)
         saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
