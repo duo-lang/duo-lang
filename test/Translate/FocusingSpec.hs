@@ -1,5 +1,6 @@
 module Translate.FocusingSpec (spec) where
 
+import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Test.Hspec
@@ -13,7 +14,7 @@ shouldFocusTo input output = do
         let Right (inputCmd,_)  = runInteractiveParser commandP input
         let Right (outputCmd,_) = runInteractiveParser commandP output
         let focusResult = focusCmd inputCmd
-        focusResult `shouldBe` outputCmd
+        focusResult `shouldBe` first (const ()) outputCmd
 
 spec :: Spec
 spec = do
