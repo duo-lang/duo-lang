@@ -14,7 +14,7 @@ shouldFocusTo input output = do
         let Right (inputCmd,_)  = runInteractiveParser commandP input
         let Right (outputCmd,_) = runInteractiveParser commandP output
         let focusResult = focusCmd inputCmd
-        focusResult `shouldBe` first (const ()) outputCmd
+        focusResult `shouldBe` bimap (const ()) (const ()) outputCmd
 
 spec :: Spec
 spec = do
