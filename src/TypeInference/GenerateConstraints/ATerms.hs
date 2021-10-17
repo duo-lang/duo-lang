@@ -4,12 +4,14 @@ module TypeInference.GenerateConstraints.ATerms
   ) where
 
 import Control.Monad.Reader
+import Data.List (find)
 
 import Syntax.ATerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
 import Utils
 import Lookup
+import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -81,7 +83,7 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   checkExhaustiveness (acase_name <$> cases) tn
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
-  forM_ (zip (data_xtors tn PosRep) cases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
+  genConstraintsACaseArgs (snd <$> cases') (data_xtors tn PosRep) loc
   im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal NegRep (data_name tn)
@@ -110,7 +112,7 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   checkCorrectness (acase_name <$> cocases) tn
   checkExhaustiveness (acase_name <$> cocases) tn
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
-  forM_ (zip (data_xtors tn PosRep) cocases') $ \(xts1,(_,xts2)) -> genConstraintsACaseArgs xts1 xts2 loc
+  genConstraintsACaseArgs (snd <$> cocases') (data_xtors tn PosRep) loc
   im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal PosRep (data_name tn)
@@ -139,11 +141,17 @@ genConstraintsATermCocase MkACase { acase_name, acase_args, acase_term } = do
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
   return (MkACase () acase_name acase_args acase_term', sig)
 
-genConstraintsACaseArgs :: XtorSig Pos -> XtorSig Neg -> Loc -> GenM ()
-genConstraintsACaseArgs xts1 xts2 loc = do
-  let sa1 = sig_args xts1; sa2 = sig_args xts2
-  forM_ (zip (prdTypes sa1) (prdTypes sa2)) $ \(pt1,pt2) -> addConstraint $ SubType (PatternMatchConstraint loc) pt1 pt2
-  forM_ (zip (cnsTypes sa1) (cnsTypes sa2)) $ \(ct1,ct2) -> addConstraint $ SubType (PatternMatchConstraint loc) ct2 ct1
+genConstraintsACaseArgs :: [XtorSig Neg] -> [XtorSig Pos] -> Loc -> GenM ()
+genConstraintsACaseArgs xtsigs1 xtsigs2 loc = do
+  forM_ xtsigs1 (\xts1@(MkXtorSig xtn1 _) -> do
+    case find (\case (MkXtorSig xtn2 _) -> xtn1==xtn2) xtsigs2 of
+      Just xts2 -> do
+        let sa1 = sig_args xts1; sa2 = sig_args xts2
+        forM_ (zip (prdTypes sa1) (prdTypes sa2)) $ \(pt1,pt2) -> addConstraint $ SubType (PatternMatchConstraint loc) pt2 pt1
+        forM_ (zip (cnsTypes sa1) (cnsTypes sa2)) $ \(ct1,ct2) -> addConstraint $ SubType (PatternMatchConstraint loc) ct1 ct2
+      Nothing -> return ()
+    )
+
 
 
 ---------------------------------------------------------------------------------------------

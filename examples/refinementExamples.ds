@@ -1,0 +1,22 @@
+import Prelude;
+set refined;
+
+# Incomplete pattern matches, level 1
+
+
+# Incomplete pattern match, level 2
+# Case arg m is inferred as {{ Nat :>> < 'Z | 'S(Nat) > }},
+# therefore case S() is recognized as missing in pattern match
+def isOneA := comatch { 'Ap(n) => match n with {
+                S(m) => match m with {
+                  Z() => True
+                }
+              }};
+
+def isTwo := comatch { 'Ap(n) => match n with {
+               S(p) => match p with {
+                 S(q) => match q with {
+                   Z() => True
+                 }
+               }
+             }};
