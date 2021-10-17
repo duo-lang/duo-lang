@@ -11,7 +11,6 @@ import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
 import Utils
 import Lookup
-import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -147,8 +146,8 @@ genConstraintsACaseArgs xtsigs1 xtsigs2 loc = do
     case find (\case (MkXtorSig xtn2 _) -> xtn1==xtn2) xtsigs2 of
       Just xts2 -> do
         let sa1 = sig_args xts1; sa2 = sig_args xts2
-        forM_ (zip (prdTypes sa1) (prdTypes sa2)) $ \(pt1,pt2) -> addConstraint $ SubType (PatternMatchConstraint loc) pt2 pt1
-        forM_ (zip (cnsTypes sa1) (cnsTypes sa2)) $ \(ct1,ct2) -> addConstraint $ SubType (PatternMatchConstraint loc) ct1 ct2
+        zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt2 pt1) (prdTypes sa1) (prdTypes sa2)
+        zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct1 ct2) (cnsTypes sa1) (cnsTypes sa2)
       Nothing -> return ()
     )
 
