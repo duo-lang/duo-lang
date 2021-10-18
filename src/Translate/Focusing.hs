@@ -4,6 +4,7 @@ import qualified Data.Text as T
 import Control.Monad ( void )
 import Data.Bifunctor
 import Syntax.STerms
+import Syntax.Program
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -59,13 +60,16 @@ alphaVar = "$alpha" -- Use unparseable name to guarantee freshness.
 betaVar :: Int -> FreeVarName
 betaVar i = "$beta" <> T.pack (show i)
 
-focusSTerm :: STerm pc ext bs -> STerm pc () ()
-focusSTerm (BoundVar _ rep var)                                     = BoundVar () rep var
-focusSTerm (FreeVar _ rep var)                                      = FreeVar () rep var
-focusSTerm (XtorCall _ PrdRep name MkXtorArgs { prdArgs, cnsArgs }) = focusCtor name prdArgs cnsArgs
-focusSTerm (XtorCall _ CnsRep name MkXtorArgs { prdArgs, cnsArgs }) = focusDtor name prdArgs cnsArgs
-focusSTerm (XMatch _ rep ns cases)                                  = XMatch () rep ns (focusSCase <$> cases)
-focusSTerm (MuAbs _ rep _ cmd)                                      = MuAbs () rep () (focusCmd cmd)
+focusSTerm :: PrdCnsRep pc -> STerm pc ext bs -> STerm pc () ()
+-- If the term is already focused, we don't want to do anything
+focusSTerm PrdRep tm | isFocusedPrd tm                                = bimap (const ()) (const ()) tm
+focusSTerm CnsRep tm | isFocusedCns tm                                = bimap (const ()) (const ()) tm
+focusSTerm _ (BoundVar _ rep var)                                     = BoundVar () rep var
+focusSTerm _ (FreeVar _ rep var)                                      = FreeVar () rep var
+focusSTerm _ (XtorCall _ PrdRep name MkXtorArgs { prdArgs, cnsArgs }) = focusCtor name prdArgs cnsArgs
+focusSTerm _ (XtorCall _ CnsRep name MkXtorArgs { prdArgs, cnsArgs }) = focusDtor name prdArgs cnsArgs
+focusSTerm _ (XMatch _ rep ns cases)                                  = XMatch () rep ns (focusSCase <$> cases)
+focusSTerm _ (MuAbs _ rep _ cmd)                                      = MuAbs () rep () (focusCmd cmd)
 
 -- | Invariant of `focusCtor`:
 --   The output should have the property `isFocusedPrd`.
@@ -89,13 +93,13 @@ focusXtor pc  name (prd:prds) cns        prd' cns' | isValueTermPrd prd = focusX
                                                            var = betaVar (length (prd:prds) + length cns)
                                                            cmd = commandClosingSingle PrdRep var (focusXtor pc name prds cns (FreeVar () PrdRep var : prd') cns')
                                                        in
-                                                           Apply () (focusSTerm prd) (MuAbs () CnsRep () cmd)
+                                                           Apply () (focusSTerm PrdRep prd) (MuAbs () CnsRep () cmd)
 focusXtor pc  name []         (cns:cnss) prd' cns' | isValueTermCns cns = focusXtor pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
                                                    | otherwise          = 
                                                        let 
                                                            var = betaVar (length (cns:cnss))
                                                            cmd = commandClosingSingle CnsRep var (focusXtor pc name [] cnss prd' (FreeVar () CnsRep var: cns'))
-                                                       in Apply () (MuAbs () PrdRep () cmd) (focusSTerm cns)
+                                                       in Apply () (MuAbs () PrdRep () cmd) (focusSTerm CnsRep cns)
 
 
 
@@ -104,11 +108,24 @@ focusSCase MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase scase_name (void <$> scase_args) (focusCmd scase_cmd)
 
 focusCmd :: Command ext bs -> Command () ()
-focusCmd  (Apply _ prd cns) | isFocusedPrd prd && isFocusedCns cns = Apply () (bimap (const ()) (const ()) prd) (bimap (const ()) (const ()) cns)
-                            | isFocusedPrd prd = Apply () (bimap (const ()) (const ()) prd) (focusSTerm cns)
-                            | isFocusedCns cns = Apply () (focusSTerm prd) (bimap (const ()) (const ()) cns)
-                            | otherwise = Apply () (focusSTerm prd) (focusSTerm cns)
+focusCmd  (Apply _ prd cns) = Apply () (focusSTerm PrdRep prd) (focusSTerm CnsRep cns)
 focusCmd (Done _) = Done ()
 -- TODO: Treatment of Print still a bit unclear. Treat similarly to Ctors?
-focusCmd (Print _ prd) | isFocusedPrd prd = Print () (bimap (const ()) (const ())  prd)
-                       | otherwise = Print () (focusSTerm prd)
+focusCmd (Print _ prd) = Print () (focusSTerm PrdRep prd)
+
+---------------------------------------------------------------------------------
+-- Lift Focusing to programs
+---------------------------------------------------------------------------------
+
+focusDecl :: Declaration () () -> Declaration () ()
+focusDecl (PrdDecl isRec _ name annot prd) = PrdDecl isRec () name annot (focusSTerm PrdRep prd)
+focusDecl (CnsDecl isRec _ name annot cns) = CnsDecl isRec () name annot (focusSTerm CnsRep cns)
+focusDecl (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd cmd)
+focusDecl decl@(DefDecl _ _ _ _ _)         = decl
+focusDecl decl@(DataDecl _ _)              = decl
+focusDecl decl@(ImportDecl _ _)            = decl
+focusDecl decl@(SetDecl _ _)               = decl
+focusDecl decl@ParseErrorDecl              = decl
+
+focusProgram :: Program () () -> Program () ()
+focusProgram = fmap focusDecl

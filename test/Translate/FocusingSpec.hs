@@ -1,10 +1,15 @@
 module Translate.FocusingSpec (spec) where
 
+import Control.Monad
 import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Test.Hspec
+import TestUtils
+import Pretty.Pretty
+import Utils
 
+import TypeInference.Driver
 import Parser.Parser
 import Translate.Focusing
 
@@ -23,12 +28,31 @@ shouldFocusTo input output = do
 focusShouldBeNoOp :: Text -> Spec
 focusShouldBeNoOp input = shouldFocusTo input input
 
+focusExamples :: Spec
+focusExamples = do
+    examples <- runIO $ getAvailableExamples "examples/"
+    forM_ examples $ \example -> do
+      describe ("Focusing the program in  " ++ example ++ " typechecks.") $ do
+        decls <- runIO $ getParsedDeclarations example
+        case decls of
+            Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
+            Right decls -> do
+                let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram (bimap (const ()) (const ()) <$> decls))
+                res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
+                case res of
+                    Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
+                    Right _env -> return ()
+
+
 spec :: Spec
 spec = do
-    describe "Static Focusing works" $ do        
+    describe "Static Focusing works on concrete examples" $ do        
         focusShouldBeNoOp "Done"
         focusShouldBeNoOp "S(Z) >> mu x.Done"
         focusShouldBeNoOp "Ap(5)[mu x.Done] >> mu y.Done"
         focusShouldBeNoOp "mu k.Done >> mu x.Done"
         focusShouldBeNoOp "Print(5)"
         "S(mu k.Z >> k) >> mu x.Done" `shouldFocusTo` "Done"
+    describe "Focusing an entire program still typechecks" $ do
+        focusExamples
+
