@@ -82,13 +82,13 @@ isFocusedCmd eo (Print _ prd)     = isFocusedSTerm eo prd
 -- [[Done]]        := Done
 -- [[Print(prd)]]  := ??? Unsure!
 --
--- The `focusXtor` and `focusXtor` function work together to focus a
+-- The `focusXtor` and `focusXtor'` function work together to focus a
 -- xtor which has arguments which are not substitutable. We generate 1
 -- fresh variable "alpha" for the entire term, and one additional fresh
 -- variable "beta_i" for every term in the argument list which is not a value.
 --
--- focusXtor Prd X prds cnss = mu  alpha. (focusXtor' Prd X prds cnss [] [])
--- focusXtor Cns X prds cnss = mu~ alpha. (focusXtor' Cns X prds cnss [] [])
+-- focusXtor Prd X prds cnss := mu  alpha. (focusXtor' Prd X prds cnss [] [])
+-- focusXtor Cns X prds cnss := mu~ alpha. (focusXtor' Cns X prds cnss [] [])
 --
 -- writing "p" and "P" for unfocused and focused producers, and "c" and "C" for
 -- unfocused consumers, the helper function `focusXtor'`  works like this:
@@ -96,19 +96,19 @@ isFocusedCmd eo (Print _ prd)     = isFocusedSTerm eo prd
 -- If we have transformed all arguments, we reconstruct the constructor application,
 -- and apply it to the generated alpha:
 --
--- focuxXtor' Prd X [] [] Ps Cs = X(Ps)[Cs] >> alpha
--- focusXtor' Cns X [] [] Ps Cs = alpha >> X(Ps)[Cs]
+-- focuxXtor' Prd X [] [] Ps Cs := X(Ps)[Cs] >> alpha
+-- focusXtor' Cns X [] [] Ps Cs := alpha >> X(Ps)[Cs]
 -- 
--- otherwise, we check whether handle on prd/cns from the argument list.
--- If the argument is already a value, we shuffle it to the RHS
+-- otherwise, we handle the next prd/cns from the argument list.
+-- If the argument is already a value, we shuffle it to the RHS:
 --
--- focusXtor' _ _ (P:ps) cs     Ps Cs = focusXtor' _ _ ps cs (P:Ps) Cs
--- focusXtor' _ _ ps     (C:cs) Ps Cs = focusXtor' _ _ ps cs Ps     (C:Cs)
+-- focusXtor' _ _ (P:ps) cs     Ps Cs := focusXtor' _ _ ps cs (P:Ps) Cs
+-- focusXtor' _ _ ps     (C:cs) Ps Cs := focusXtor' _ _ ps cs Ps     (C:Cs)
 --
 -- If the argument is not a value, we have to lift it:
 --
--- focusXtor' _ _ (p:ps) cs     Ps Cs = p >> (mu~ beta_i. focusXtor' _ _ ps cs (beta_i:Ps) Cs)
--- focusXtor' _ _ ps     (c:cs) Ps Cs = (mu beta_i. focusXtor' _ _ ps cs Ps (beta_i:Cs)) >> c
+-- focusXtor' _ _ (p:ps) cs     Ps Cs := [[p]] >> (mu~ beta_i. focusXtor' _ _ ps cs (beta_i:Ps) Cs)
+-- focusXtor' _ _ ps     (c:cs) Ps Cs := (mu beta_i. focusXtor' _ _ ps cs Ps (beta_i:Cs)) >> [[c]]
 ---------------------------------------------------------------------------------
 
 focusSTerm :: EvalOrder -> STerm pc ext bs -> STerm pc () ()
