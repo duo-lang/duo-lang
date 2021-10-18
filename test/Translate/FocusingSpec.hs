@@ -12,6 +12,7 @@ import Utils
 import TypeInference.Driver
 import Parser.Parser
 import Translate.Focusing
+import Eval.Eval
 
 shouldFocusTo :: Text -- ^ The command that should be focused
               -> Text -- ^ The expected result of focusing
@@ -20,7 +21,7 @@ shouldFocusTo input output = do
     it (T.unpack $ input <> " should focus to " <> output) $ do
         let Right (inputCmd,_)  = runInteractiveParser commandP input
         let Right (outputCmd,_) = runInteractiveParser commandP output
-        let focusResult = focusCmd inputCmd
+        let focusResult = focusCmd CBV inputCmd
         focusResult `shouldBe` bimap (const ()) (const ()) outputCmd
 
 -- Examples where Focusing should be a NoOp, since command is already
@@ -37,7 +38,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram (bimap (const ()) (const ()) <$> decls))
+                let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram CBV (bimap (const ()) (const ()) <$> decls))
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
