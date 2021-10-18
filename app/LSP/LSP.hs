@@ -78,7 +78,7 @@ serverOptions = Options
   , completionAllCommitCharacters = Nothing
   , signatureHelpTriggerCharacters = Nothing
   , signatureHelpRetriggerCharacters = Nothing
-  , codeActionKinds = Nothing
+  , codeActionKinds = Just [CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
   , executeCommandCommands = Nothing
   , serverInfo = Just ServerInfo { _name = "dualsub-lsp"
@@ -231,12 +231,12 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   let decls = runFileParser fp programP file
   case decls of
     Left _err -> do
-      responder (Left (ResponseError ParseError "Failed Parsing" Nothing))
+      responder (Right Nothing)
     Right decls -> do
       res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
       case res of
         Left _err -> do
-          responder (Left (ResponseError InternalError "Failed typchecking" Nothing))
+          responder (Right Nothing)
         Right env -> do
           responder (Right (lookupHoverEnv pos env))
 
