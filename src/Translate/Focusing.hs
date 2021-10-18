@@ -21,6 +21,34 @@ import Syntax.STerms
       commandClosingSingle )
 
 ---------------------------------------------------------------------------------
+-- Shifting
+---------------------------------------------------------------------------------
+
+shiftSTerm' :: Int -> STerm pc ext bs -> STerm pc ext bs
+shiftSTerm' _ var@FreeVar {} = var
+shiftSTerm' n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
+                                         | otherwise = BoundVar ext pcrep (i    , j)
+shiftSTerm' n (XtorCall ext pcrep name MkXtorArgs { prdArgs, cnsArgs }) =
+    XtorCall ext pcrep name (MkXtorArgs (shiftSTerm' n <$> prdArgs) (shiftSTerm' n <$> cnsArgs))
+shiftSTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftSCase (n + 1) <$> cases)
+shiftSTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
+
+shiftSCase :: Int -> SCase ext bs -> SCase ext bs
+shiftSCase n (MkSCase name bs cmd) = MkSCase name bs (shiftCmd' n cmd)
+
+shiftCmd' :: Int -> Command ext bs -> Command ext bs
+shiftCmd' n (Apply ext prd cns) = Apply ext (shiftSTerm' n prd) (shiftSTerm' n cns)
+shiftCmd' _ (Done ext) = Done ext
+shiftCmd' n (Print ext prd) = Print ext (shiftSTerm' n prd)
+
+shiftSTerm :: STerm pc ext bs -> STerm pc ext bs
+shiftSTerm = shiftSTerm' 0
+
+shiftCmd :: Command ext bs -> Command ext bs 
+shiftCmd = shiftCmd' 0
+
+
+---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
 ---------------------------------------------------------------------------------
 
@@ -135,7 +163,7 @@ betaVar i = "$beta" <> T.pack (show i)
 focusXtor :: EvalOrder -> PrdCnsRep pc -> XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> STerm pc () ()
 focusXtor eo pcrep name prdArgs cnsArgs = MuAbs () pcrep () cmd
   where
-      cmd = commandClosingSingle (flipPrdCns pcrep) alphaVar (focusXtor' eo pcrep name prdArgs cnsArgs [] [])
+      cmd = commandClosingSingle (flipPrdCns pcrep) alphaVar (shiftCmd (focusXtor' eo pcrep name prdArgs cnsArgs [] []))
 
 
 focusXtor' :: EvalOrder -> PrdCnsRep pc -> XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> [STerm Prd () ()] -> [STerm Cns () ()] -> Command () ()
@@ -145,14 +173,14 @@ focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueSTerm eo PrdR
                                                           | otherwise                   = 
                                                               let
                                                                   var = betaVar (length (prd:prds) + length cns)
-                                                                  cmd = commandClosingSingle PrdRep var (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns')
+                                                                  cmd = commandClosingSingle PrdRep var (shiftCmd (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns'))
                                                               in
                                                                   Apply () (focusSTerm eo prd) (MuAbs () CnsRep () cmd)
 focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
                                                           | otherwise                   = 
                                                               let 
                                                                   var = betaVar (length (cns:cnss))
-                                                                  cmd = commandClosingSingle CnsRep var (focusXtor' eo pc name [] cnss prd' (FreeVar () CnsRep var: cns'))
+                                                                  cmd = commandClosingSingle CnsRep var (shiftCmd (focusXtor' eo pc name [] cnss prd' (FreeVar () CnsRep var: cns')))
                                                               in Apply () (MuAbs () PrdRep () cmd) (focusSTerm eo cns)
 
 

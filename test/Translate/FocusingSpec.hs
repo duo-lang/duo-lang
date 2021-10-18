@@ -11,8 +11,14 @@ import Utils
 
 import TypeInference.Driver
 import Parser.Parser
+import Syntax.STerms
 import Translate.Focusing
 import Eval.Eval
+
+shouldShiftTo :: STerm pc () () -> STerm pc () () -> Spec
+shouldShiftTo tm1 tm2 = do
+    it (ppPrintString tm1 <> " should shift to " <> ppPrintString tm2)  $ do
+        shiftSTerm tm1 `shouldBe` tm2
 
 shouldFocusTo :: Text -- ^ The command that should be focused
               -> Text -- ^ The expected result of focusing
@@ -57,7 +63,13 @@ focusExamples = do
 
 spec :: Spec
 spec = do
-    describe "Static Focusing works on concrete examples" $ do        
+    describe "Shifting works" $ do
+        (BoundVar () PrdRep (0,0)) `shouldShiftTo` (BoundVar () PrdRep (1,0))
+        (BoundVar () PrdRep (10,0)) `shouldShiftTo` (BoundVar () PrdRep (11,0))
+        (MuAbs () PrdRep () (Done ())) `shouldShiftTo` (MuAbs () PrdRep () (Done ()))
+        (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0))))
+        (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (1,0))(BoundVar () CnsRep (1,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (2,0))(BoundVar () CnsRep (2,0))))
+    describe "Static Focusing works on concrete examples" $ do
         focusShouldBeNoOp "Done"
         focusShouldBeNoOp "S(Z) >> mu x.Done"
         focusShouldBeNoOp "Ap(5)[mu x.Done] >> mu y.Done"
