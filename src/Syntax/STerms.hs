@@ -17,6 +17,9 @@ module Syntax.STerms
   -- Transform to named representation for prettyprinting
   , openSTermComplete
   , openCommandComplete
+  -- Shift unbound BoundVars up by one.
+  , shiftSTerm
+  , shiftCmd
   ) where
 
 import Data.Bifunctor
@@ -257,3 +260,35 @@ openCommandComplete :: Command ext FreeVarName -> Command () FreeVarName
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()
+
+
+---------------------------------------------------------------------------------
+-- Shifting
+--
+-- Used in program transformations like focusing.
+---------------------------------------------------------------------------------
+
+shiftSTerm' :: Int -> STerm pc ext bs -> STerm pc ext bs
+shiftSTerm' _ var@FreeVar {} = var
+shiftSTerm' n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
+                                         | otherwise = BoundVar ext pcrep (i    , j)
+shiftSTerm' n (XtorCall ext pcrep name MkXtorArgs { prdArgs, cnsArgs }) =
+    XtorCall ext pcrep name (MkXtorArgs (shiftSTerm' n <$> prdArgs) (shiftSTerm' n <$> cnsArgs))
+shiftSTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftSCase (n + 1) <$> cases)
+shiftSTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
+
+shiftSCase :: Int -> SCase ext bs -> SCase ext bs
+shiftSCase n (MkSCase name bs cmd) = MkSCase name bs (shiftCmd' n cmd)
+
+shiftCmd' :: Int -> Command ext bs -> Command ext bs
+shiftCmd' n (Apply ext prd cns) = Apply ext (shiftSTerm' n prd) (shiftSTerm' n cns)
+shiftCmd' _ (Done ext) = Done ext
+shiftCmd' n (Print ext prd) = Print ext (shiftSTerm' n prd)
+
+-- | Shift all unbound BoundVars up by one.
+shiftSTerm :: STerm pc ext bs -> STerm pc ext bs
+shiftSTerm = shiftSTerm' 0
+
+-- | Shift all unbound BoundVars up by one.
+shiftCmd :: Command ext bs -> Command ext bs 
+shiftCmd = shiftCmd' 0
