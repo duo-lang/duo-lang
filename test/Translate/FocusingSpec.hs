@@ -63,8 +63,10 @@ spec = do
         focusShouldBeNoOp "Ap(5)[mu x.Done] >> mu y.Done"
         focusShouldBeNoOp "mu k.Done >> mu x.Done"
         focusShouldBeNoOp "Print(5)"
-        "S(mu k.Z >> k) >> mu x.Done" `shouldFocusTo` "mu alpha. ((mu k.Z >> k) >> mu x.(S(x) >> alpha)) >> mu x. Done"
+        "S(mu k.Z >> k) >> mu x.Done"                   `shouldFocusTo` "mu alpha. ((mu k.Z >> k) >> mu x.(S(x) >> alpha)) >> mu x. Done"
         "Cons(mu k.Z >> k, mu r.Nil >> r) >> mu x.Done" `shouldFocusTo` "mu alpha.((mu k.Z >> k) >> mu res. (mu r. Nil >> r) >> mu res2. (Cons(res,res2) >> alpha))  >> mu x. Done"
+        "mu a. (S(mu k. Z >> k) >> a) >> mu x. Done"    `shouldFocusTo` "mu a. (mu alpha. ((mu k.Z >> k) >> mu x.(S(x) >> alpha)) >> a) >> mu x.Done"
+        "Z >> mu v.(S(mu k.Z >> k) >> v)"               `shouldFocusTo` "Z >> mu v. (mu alpha. ((mu k.Z >> k) >> mu x.(S(x) >> alpha)) >> v)"
     describe "Focusing an entire program still typechecks" $ do
         focusExamples
 
