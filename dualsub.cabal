@@ -117,7 +117,7 @@ executable dualsub
   import: shared-build-depends
   main-is: Main.hs
   other-modules:
-      LSP
+      LSP.LSP
       LSP.MegaparsecToLSP
       Repl.Repl
       Repl.Options.Compile
