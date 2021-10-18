@@ -149,7 +149,7 @@ focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueSTerm eo PrdR
                                                                   cmd = commandClosingSingle PrdRep var (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns')
                                                               in
                                                                   Apply () (focusSTerm eo PrdRep prd) (MuAbs () CnsRep () cmd)
-focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm CBV CnsRep cns = focusXtor' eo pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
+focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
                                                           | otherwise                   = 
                                                               let 
                                                                   var = betaVar (length (cns:cnss))
