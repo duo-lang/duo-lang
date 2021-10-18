@@ -1,4 +1,6 @@
 module Translate.Focusing where
+
+import qualified Data.Text as T
 import Control.Monad ( void )
 import Data.Bifunctor
 import Syntax.STerms
@@ -51,6 +53,12 @@ isFocusedCase MkSCase { scase_cmd } = isFocusedCmd scase_cmd
 -- The Focusing Algorithm
 ---------------------------------------------------------------------------------
 
+alphaVar :: FreeVarName 
+alphaVar = "$alpha" -- Use unparseable name to guarantee freshness.
+
+betaVar :: Int -> FreeVarName
+betaVar i = "$beta" <> T.pack (show i)
+
 focusSTerm :: STerm pc ext bs -> STerm pc () ()
 focusSTerm (BoundVar _ rep var)                                     = BoundVar () rep var
 focusSTerm (FreeVar _ rep var)                                      = FreeVar () rep var
@@ -62,21 +70,32 @@ focusSTerm (MuAbs _ rep _ cmd)                                      = MuAbs () r
 -- | Invariant of `focusCtor`:
 --   The output should have the property `isFocusedPrd`.
 focusCtor :: XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> STerm Prd () ()
-focusCtor name prdArgs cnsArgs = MuAbs () PrdRep () (focusXtor Prd name prdArgs cnsArgs [] [])
+focusCtor name prdArgs cnsArgs = MuAbs () PrdRep () cmd
+  where
+      cmd = commandClosingSingle CnsRep alphaVar (focusXtor Prd name prdArgs cnsArgs [] [])
 
 focusDtor :: XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> STerm Cns () ()
-focusDtor name prdArgs cnsArgs = MuAbs () CnsRep () (focusXtor Cns name prdArgs cnsArgs [] [])
+focusDtor name prdArgs cnsArgs = MuAbs () CnsRep () cmd 
+  where
+      cmd = commandClosingSingle PrdRep alphaVar (focusXtor Cns name prdArgs cnsArgs [] [])
 
 
 focusXtor :: PrdCns -> XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> [STerm Prd () ()] -> [STerm Cns () ()] -> Command () ()
-focusXtor Cns name []         []         prd' cns' = Apply () (BoundVar () PrdRep (0,0)) (XtorCall () CnsRep name (MkXtorArgs (reverse prd') (reverse cns')))
-focusXtor Prd name []         []         prd' cns' = Apply () (XtorCall () PrdRep name (MkXtorArgs (reverse prd') (reverse cns'))) (BoundVar () CnsRep (0,0))
+focusXtor Cns name []         []         prd' cns' = Apply () (FreeVar () PrdRep alphaVar) (XtorCall () CnsRep name (MkXtorArgs (reverse prd') (reverse cns')))
+focusXtor Prd name []         []         prd' cns' = Apply () (XtorCall () PrdRep name (MkXtorArgs (reverse prd') (reverse cns'))) (FreeVar () CnsRep alphaVar)
 focusXtor pc  name (prd:prds) cns        prd' cns' | isValueTermPrd prd = focusXtor pc name prds cns (bimap (const ()) (const ()) prd : prd') cns'
-                                                   | otherwise          = Apply () (focusSTerm prd)
-                                                                                   (MuAbs () CnsRep () (focusXtor pc name prds cns (BoundVar () PrdRep (0,0) : prd') cns'))
+                                                   | otherwise          = 
+                                                       let
+                                                           var = betaVar (length (prd:prds) + length cns)
+                                                           cmd = commandClosingSingle PrdRep var (focusXtor pc name prds cns (FreeVar () PrdRep var : prd') cns')
+                                                       in
+                                                           Apply () (focusSTerm prd) (MuAbs () CnsRep () cmd)
 focusXtor pc  name []         (cns:cnss) prd' cns' | isValueTermCns cns = focusXtor pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
-                                                   | otherwise          = Apply () (MuAbs () PrdRep () (focusXtor pc name [] cnss prd' (BoundVar () CnsRep (0,0): cns')))
-                                                                                   (focusSTerm cns)
+                                                   | otherwise          = 
+                                                       let 
+                                                           var = betaVar (length (cns:cnss))
+                                                           cmd = commandClosingSingle CnsRep var (focusXtor pc name [] cnss prd' (FreeVar () CnsRep var: cns'))
+                                                       in Apply () (MuAbs () PrdRep () cmd) (focusSTerm cns)
 
 
 
