@@ -5,6 +5,7 @@ import Control.Monad ( void )
 import Data.Bifunctor ( Bifunctor(bimap) )
 import qualified Data.Text as T
 
+import Eval.Eval (EvalOrder(..))
 import Syntax.Program ( Declaration(..), Program )
 import Syntax.CommonTerm
     ( FreeVarName,
@@ -24,34 +25,36 @@ import Syntax.STerms
 ---------------------------------------------------------------------------------
 
 -- | Check whether given sterms is substitutable.
-isValueSTerm :: PrdCnsRep pc -> STerm pc ext bs -> Bool
-isValueSTerm PrdRep MuAbs {}          = False            -- Hard coded CBV, so Mu is not a value.
-isValueSTerm CnsRep (MuAbs _ _ _ cmd) = isFocusedCmd cmd -- Hard coded CBV, so Mu~ is always a Value.
-isValueSTerm _      tm                = isFocusedSTerm tm
+isValueSTerm :: EvalOrder -> PrdCnsRep pc -> STerm pc ext bs -> Bool
+isValueSTerm CBV PrdRep MuAbs {}          = False            -- CBV: so Mu is not a value.
+isValueSTerm CBV CnsRep (MuAbs _ _ _ cmd) = isFocusedCmd CBV cmd -- CBV: so Mu~ is always a Value.
+isValueSTerm CBN PrdRep (MuAbs _ _ _ cmd) = isFocusedCmd CBN cmd -- CBN: so Mu is always a value.
+isValueSTerm CBN CnsRep MuAbs {}          = False            -- CBN: So Mu~ is not a value.
+isValueSTerm eo  _      tm                = isFocusedSTerm eo tm
 
 -- | Check whether all arguments in the given argument list are substitutable.
-isValueArgs :: XtorArgs ext bs -> Bool
-isValueArgs MkXtorArgs { prdArgs, cnsArgs } = and (valuePrds <> valueCnss)
+isValueArgs :: EvalOrder -> XtorArgs ext bs -> Bool
+isValueArgs eo MkXtorArgs { prdArgs, cnsArgs } = and (valuePrds <> valueCnss)
     where
-        valuePrds = isValueSTerm PrdRep <$> prdArgs
-        valueCnss = isValueSTerm CnsRep <$> cnsArgs
+        valuePrds = isValueSTerm eo PrdRep <$> prdArgs
+        valueCnss = isValueSTerm eo CnsRep <$> cnsArgs
 
 -- | Check whether given term follows the focusing discipline.
-isFocusedSTerm :: STerm pc ext bs -> Bool
-isFocusedSTerm BoundVar {}           = True
-isFocusedSTerm FreeVar {}            = True
-isFocusedSTerm (XtorCall _ _ _ args) = isValueArgs args
-isFocusedSTerm (XMatch _ _ _  cases) = and (isFocusedCase <$> cases)
-isFocusedSTerm (MuAbs _ _ _ cmd)     = isFocusedCmd cmd
+isFocusedSTerm :: EvalOrder -> STerm pc ext bs -> Bool
+isFocusedSTerm _  BoundVar {}           = True
+isFocusedSTerm _  FreeVar {}            = True
+isFocusedSTerm eo (XtorCall _ _ _ args) = isValueArgs eo args
+isFocusedSTerm eo (XMatch _ _ _  cases) = and (isFocusedCase eo <$> cases)
+isFocusedSTerm eo (MuAbs _ _ _ cmd)     = isFocusedCmd eo cmd
 
-isFocusedCase :: SCase ext bs -> Bool
-isFocusedCase MkSCase { scase_cmd } = isFocusedCmd scase_cmd
+isFocusedCase :: EvalOrder -> SCase ext bs -> Bool
+isFocusedCase eo MkSCase { scase_cmd } = isFocusedCmd eo scase_cmd
 
 -- | Check whether given command follows the focusing discipline.
-isFocusedCmd :: Command ext bs -> Bool
-isFocusedCmd (Apply _ prd cns) = isFocusedSTerm prd && isFocusedSTerm cns
-isFocusedCmd (Done _)          = True
-isFocusedCmd (Print _ prd)     = isFocusedSTerm prd
+isFocusedCmd :: EvalOrder -> Command ext bs -> Bool
+isFocusedCmd eo (Apply _ prd cns) = isFocusedSTerm eo prd && isFocusedSTerm eo cns
+isFocusedCmd _  (Done _)          = True
+isFocusedCmd eo (Print _ prd)     = isFocusedSTerm eo prd
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -115,8 +118,8 @@ betaVar i = "$beta" <> T.pack (show i)
 
 focusSTerm :: PrdCnsRep pc -> STerm pc ext bs -> STerm pc () ()
 -- If the term is already focused, we don't want to do anything
-focusSTerm PrdRep tm | isFocusedSTerm tm                              = bimap (const ()) (const ()) tm
-focusSTerm CnsRep tm | isFocusedSTerm tm                              = bimap (const ()) (const ()) tm
+focusSTerm PrdRep tm | isFocusedSTerm CBV tm                          = bimap (const ()) (const ()) tm
+focusSTerm CnsRep tm | isFocusedSTerm CBV tm                          = bimap (const ()) (const ()) tm
 focusSTerm _ (BoundVar _ rep var)                                     = BoundVar () rep var
 focusSTerm _ (FreeVar _ rep var)                                      = FreeVar () rep var
 focusSTerm _ (XtorCall _ pcrep name MkXtorArgs { prdArgs, cnsArgs })  = focusXtor pcrep name prdArgs cnsArgs
@@ -134,15 +137,15 @@ focusXtor pcrep name prdArgs cnsArgs = MuAbs () pcrep () cmd
 focusXtor' :: PrdCnsRep pc -> XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> [STerm Prd () ()] -> [STerm Cns () ()] -> Command () ()
 focusXtor' CnsRep name []         []         prd' cns' = Apply () (FreeVar () PrdRep alphaVar) (XtorCall () CnsRep name (MkXtorArgs (reverse prd') (reverse cns')))
 focusXtor' PrdRep name []         []         prd' cns' = Apply () (XtorCall () PrdRep name (MkXtorArgs (reverse prd') (reverse cns'))) (FreeVar () CnsRep alphaVar)
-focusXtor' pc     name (prd:prds) cns        prd' cns' | isValueSTerm PrdRep prd = focusXtor' pc name prds cns (bimap (const ()) (const ()) prd : prd') cns'
-                                                       | otherwise               = 
+focusXtor' pc     name (prd:prds) cns        prd' cns' | isValueSTerm CBV PrdRep prd = focusXtor' pc name prds cns (bimap (const ()) (const ()) prd : prd') cns'
+                                                       | otherwise                   = 
                                                            let
                                                                var = betaVar (length (prd:prds) + length cns)
                                                                cmd = commandClosingSingle PrdRep var (focusXtor' pc name prds cns (FreeVar () PrdRep var : prd') cns')
                                                            in
                                                                Apply () (focusSTerm PrdRep prd) (MuAbs () CnsRep () cmd)
-focusXtor' pc     name []         (cns:cnss) prd' cns' | isValueSTerm CnsRep cns = focusXtor' pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
-                                                       | otherwise               = 
+focusXtor' pc     name []         (cns:cnss) prd' cns' | isValueSTerm CBV CnsRep cns = focusXtor' pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
+                                                       | otherwise                   = 
                                                            let 
                                                                var = betaVar (length (cns:cnss))
                                                                cmd = commandClosingSingle CnsRep var (focusXtor' pc name [] cnss prd' (FreeVar () CnsRep var: cns'))
