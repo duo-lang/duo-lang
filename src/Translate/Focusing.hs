@@ -104,6 +104,11 @@ focusSCase MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase scase_name (void <$> scase_args) (focusCmd scase_cmd)
 
 focusCmd :: Command ext bs -> Command () ()
-focusCmd  (Apply _ prd cns) = Apply () (focusSTerm prd) (focusSTerm cns)
+focusCmd  (Apply _ prd cns) | isFocusedPrd prd && isFocusedCns cns = Apply () (bimap (const ()) (const ()) prd) (bimap (const ()) (const ()) cns)
+                            | isFocusedPrd prd = Apply () (bimap (const ()) (const ()) prd) (focusSTerm cns)
+                            | isFocusedCns cns = Apply () (focusSTerm prd) (bimap (const ()) (const ()) cns)
+                            | otherwise = Apply () (focusSTerm prd) (focusSTerm cns)
 focusCmd (Done _) = Done ()
-focusCmd (Print _ prd) = Print () (focusSTerm prd) -- TODO Treat similarly to Ctors?
+-- TODO: Treatment of Print still a bit unclear. Treat similarly to Ctors?
+focusCmd (Print _ prd) | isFocusedPrd prd = Print () (bimap (const ()) (const ())  prd)
+                       | otherwise = Print () (focusSTerm prd)
