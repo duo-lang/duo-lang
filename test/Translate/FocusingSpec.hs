@@ -33,12 +33,22 @@ focusExamples :: Spec
 focusExamples = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
-      describe ("Focusing the program in  " ++ example ++ " typechecks.") $ do
+      describe ("CBV Focusing the program in  " ++ example ++ " typechecks.") $ do
         decls <- runIO $ getParsedDeclarations example
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
                 let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram CBV (bimap (const ()) (const ()) <$> decls))
+                res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
+                case res of
+                    Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
+                    Right _env -> return ()
+      describe ("CBN Focusing the program in  " ++ example ++ " typechecks.") $ do
+        decls <- runIO $ getParsedDeclarations example
+        case decls of
+            Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
+            Right decls -> do
+                let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram CBN (bimap (const ()) (const ()) <$> decls))
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
