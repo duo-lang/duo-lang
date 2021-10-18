@@ -110,15 +110,14 @@ isFocusedCmd eo (Print _ prd)     = isFocusedSTerm eo prd
 -- focusXtor' _ _ ps     (c:cs) Ps Cs = (mu beta_i. focusXtor' _ _ ps cs Ps (beta_i:Cs)) >> c
 ---------------------------------------------------------------------------------
 
-focusSTerm :: EvalOrder -> PrdCnsRep pc -> STerm pc ext bs -> STerm pc () ()
+focusSTerm :: EvalOrder -> STerm pc ext bs -> STerm pc () ()
 -- If the term is already focused, we don't want to do anything
-focusSTerm eo PrdRep tm | isFocusedSTerm eo tm                           = bimap (const ()) (const ()) tm
-focusSTerm eo CnsRep tm | isFocusedSTerm eo tm                           = bimap (const ()) (const ()) tm
-focusSTerm _  _ (BoundVar _ rep var)                                     = BoundVar () rep var
-focusSTerm _  _ (FreeVar _ rep var)                                      = FreeVar () rep var
-focusSTerm eo _ (XtorCall _ pcrep name MkXtorArgs { prdArgs, cnsArgs })  = focusXtor eo pcrep name prdArgs cnsArgs
-focusSTerm eo _ (XMatch _ rep ns cases)                                  = XMatch () rep ns (focusSCase eo <$> cases)
-focusSTerm eo _ (MuAbs _ rep _ cmd)                                      = MuAbs () rep () (focusCmd eo cmd)
+focusSTerm eo tm | isFocusedSTerm eo tm                                = bimap (const ()) (const ()) tm
+focusSTerm _  (BoundVar _ rep var)                                     = BoundVar () rep var
+focusSTerm _  (FreeVar _ rep var)                                      = FreeVar () rep var
+focusSTerm eo (XtorCall _ pcrep name MkXtorArgs { prdArgs, cnsArgs })  = focusXtor eo pcrep name prdArgs cnsArgs
+focusSTerm eo (XMatch _ rep ns cases)                                  = XMatch () rep ns (focusSCase eo <$> cases)
+focusSTerm eo (MuAbs _ rep _ cmd)                                      = MuAbs () rep () (focusCmd eo cmd)
 
 
 -- | The variable used for focusing the entire Xtor.
@@ -148,13 +147,13 @@ focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueSTerm eo PrdR
                                                                   var = betaVar (length (prd:prds) + length cns)
                                                                   cmd = commandClosingSingle PrdRep var (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns')
                                                               in
-                                                                  Apply () (focusSTerm eo PrdRep prd) (MuAbs () CnsRep () cmd)
+                                                                  Apply () (focusSTerm eo prd) (MuAbs () CnsRep () cmd)
 focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
                                                           | otherwise                   = 
                                                               let 
                                                                   var = betaVar (length (cns:cnss))
                                                                   cmd = commandClosingSingle CnsRep var (focusXtor' eo pc name [] cnss prd' (FreeVar () CnsRep var: cns'))
-                                                              in Apply () (MuAbs () PrdRep () cmd) (focusSTerm eo CnsRep cns)
+                                                              in Apply () (MuAbs () PrdRep () cmd) (focusSTerm eo cns)
 
 
 
@@ -165,18 +164,18 @@ focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: EvalOrder -> Command ext bs -> Command () ()
-focusCmd eo (Apply _ prd cns) = Apply () (focusSTerm eo PrdRep prd) (focusSTerm eo CnsRep cns)
+focusCmd eo (Apply _ prd cns) = Apply () (focusSTerm eo prd) (focusSTerm eo cns)
 focusCmd _  (Done _) = Done ()
 -- TODO: Treatment of Print still a bit unclear. Treat similarly to Ctors?
-focusCmd eo (Print _ prd) = Print () (focusSTerm eo PrdRep prd)
+focusCmd eo (Print _ prd) = Print () (focusSTerm eo prd)
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
 
 focusDecl :: EvalOrder -> Declaration () () -> Declaration () ()
-focusDecl eo (PrdDecl isRec _ name annot prd) = PrdDecl isRec () name annot (focusSTerm eo PrdRep prd)
-focusDecl eo (CnsDecl isRec _ name annot cns) = CnsDecl isRec () name annot (focusSTerm eo CnsRep cns)
+focusDecl eo (PrdDecl isRec _ name annot prd) = PrdDecl isRec () name annot (focusSTerm eo prd)
+focusDecl eo (CnsDecl isRec _ name annot cns) = CnsDecl isRec () name annot (focusSTerm eo cns)
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
 focusDecl _  decl@(DefDecl _ _ _ _ _)         = decl
 focusDecl _  decl@(DataDecl _ _)              = decl
