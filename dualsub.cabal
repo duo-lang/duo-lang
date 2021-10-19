@@ -37,6 +37,7 @@ common shared-build-depends
     , unliftio-core
     , sorted-list
     , hslogger
+    , unordered-containers
   default-language:    Haskell2010
   default-extensions:
                      RecordWildCards,

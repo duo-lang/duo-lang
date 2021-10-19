@@ -79,7 +79,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
     "<ParseError>"
 
 
-instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
+instance PrettyAnn (NamedRep (Declaration FreeVarName b)) where
   prettyAnn (NamedRep (PrdDecl isRec _ fv annot tm)) =
     prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CnsDecl isRec _ fv annot tm)) =

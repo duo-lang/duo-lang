@@ -5,6 +5,7 @@ import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Data.List ( find )
 import qualified Data.Map as M
+import qualified Data.HashMap.Strict as Map
 import Data.Maybe ( fromMaybe )
 import qualified Data.SortedList as SL
 import Data.Text (Text)
@@ -39,11 +40,12 @@ import Errors ( LocatedError )
 import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag, posToPosition )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import Pretty.Pretty ( ppPrint )
+import Pretty.Pretty ( ppPrint, NamedRep (NamedRep) )
+import Pretty.Program ()
 import Syntax.Program
 import TypeInference.Driver
 import Utils ( Located(..), Loc(..))
-import Translate.Focusing (isFocusedSTerm)
+import Translate.Focusing (isFocusedSTerm, focusSTerm)
 import Eval.Eval ( EvalOrder(CBV) )
 
 
@@ -309,7 +311,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
 generateCodeActions :: TextDocumentIdentifier -> Environment FreeVarName -> List (Command  |? CodeAction)
 generateCodeActions ident env = do
   let unfocusedPrds = M.toList  $ M.filter (\(tm,_,_) -> not (isFocusedSTerm CBV tm)) $ prdEnv env
-  List (generateCodeAction ident <$> unfocusedPrds)
+  List (take 1 $ generateCodeAction ident <$> unfocusedPrds)
 
 generateCodeAction :: TextDocumentIdentifier -> (FreeVarName, (STerm Prd () FreeVarName, Loc, TypeScheme Pos)) -> Command |? CodeAction
 generateCodeAction ident arg@(name, _)= InR $ CodeAction { _title = "Focus " <> name
@@ -324,11 +326,13 @@ generateCodeAction ident arg@(name, _)= InR $ CodeAction { _title = "Focus " <> 
                                                          }
 
 generateEdit :: TextDocumentIdentifier ->  (FreeVarName, (STerm Prd () FreeVarName, Loc, TypeScheme Pos)) -> WorkspaceEdit
-generateEdit (TextDocumentIdentifier uri) (name,(_,loc,_)) =
+generateEdit (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    edit = TextEdit {_range= locToRange loc, _newText= "Boom\n" }
+    newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) tm
+    replacement = ppPrint newDecl
+    edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
-    WorkspaceEdit { _changes = Nothing
-                  , _documentChanges = Just (List [InL (TextDocumentEdit {_textDocument= VersionedTextDocumentIdentifier uri Nothing , _edits= List [InL edit]})])
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
