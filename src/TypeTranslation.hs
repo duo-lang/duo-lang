@@ -39,9 +39,7 @@ newtype TranslateM a = TraM { getTraM :: ReaderT (Environment FreeVarName, Trans
   deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment FreeVarName, TranslateReader), MonadError Error)
 
 runTranslateM :: Environment FreeVarName -> TranslateM a -> Either Error (a, TranslateState)
-runTranslateM env m = case runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState) of
-  Left err -> Left err
-  Right (x, state) -> Right (x, state)
+runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState)
 
 ---------------------------------------------------------------------------------------------
 -- Helper functions
@@ -57,10 +55,12 @@ modifyVarSet f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarMap, recVarsUsed = f recVarsUsed, varCount })
 
-incrementVarCount :: TranslateM ()
-incrementVarCount = do
+freshTVar :: TranslateM TVar
+freshTVar = do
+  i <- gets varCount
   modify (\TranslateState{..} ->
     TranslateState{ recVarMap, recVarsUsed, varCount = varCount + 1 })
+  return $ MkTVar ("g" <> T.pack (show i))
 
 -- | Translate all producer and consumer types in an xtor signature
 translateSigArgs :: XtorSig pol -> TranslateM (XtorSig pol)
@@ -83,8 +83,7 @@ translateToStructural (TyNominal pr tn) = do
     return $ TyVar pr tv
   else do
     NominalDecl{..} <- lookupTypeName tn
-    i <- gets varCount -- get fresh rec. tvar
-    let tv = MkTVar ("r" <> T.pack (show i))
+    tv <- freshTVar
     -- Insert current type name into cache with corresponding rec. type variable
     modifyVarMap $ M.insert tn tv
     case data_polarity of
@@ -101,8 +100,8 @@ translateToStructural (TyData pr xtss) = do
 translateToStructural (TyCodata pr xtss) = do
   xtss' <- mapM translateSigArgs xtss
   return $ TyCodata pr xtss'
-translateToStructural (TyRefined _ _ ty) = translateToStructural ty
-translateToStructural TyRec{} = throwOtherError ["Cannot translate refinement type"]
+translateToStructural TyRefined{} = throwOtherError ["Cannot translate refinement type"]
+translateToStructural TyRec{} = throwOtherError ["Cannot translate recursive type"]
 translateToStructural TySet{} = throwOtherError ["Cannot translate type set"]
 
 -- | Remove unused recursion headers
