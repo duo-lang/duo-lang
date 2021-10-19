@@ -1,7 +1,6 @@
 {-# LANGUAGE TypeOperators #-}
 module LSP.LSP where
 
-import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Data.List ( find )
@@ -28,7 +27,7 @@ import Language.LSP.Server
       ServerDefinition(..),
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource)
 import Language.LSP.Types
-import System.Exit ( exitSuccess )
+import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
 import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
 
@@ -43,12 +42,8 @@ import Pretty.Pretty ( ppPrint )
 import Syntax.Program
 import TypeInference.Driver
 import Utils ( Located(..), Loc(..))
-import Language.LSP.Types (WorkspaceSymbolParams(_partialResultToken))
-import Syntax.Program (Environment(Environment))
 import Translate.Focusing (isFocusedSTerm)
 import Eval.Eval ( EvalOrder(CBV) )
-import GHC.Conc (reportError)
-
 
 
 ---------------------------------------------------------------------------------
@@ -113,7 +108,11 @@ initialize _ _ = return $ Right ()
 ---------------------------------------------------------------------------------
 
 runLSP :: IO ()
-runLSP = void (runServer definition)
+runLSP = do
+  errCode <- runServer definition
+  case errCode of
+    0 -> exitSuccess
+    i -> exitWith $ ExitFailure i
 
 
 ---------------------------------------------------------------------------------
@@ -306,7 +305,7 @@ generateCodeActions ident env = do
   List (generateCodeAction ident <$> unfocusedPrds)
 
 generateCodeAction :: TextDocumentIdentifier -> (FreeVarName, (STerm Prd () FreeVarName, Loc, TypeScheme Pos)) -> Command |? CodeAction
-generateCodeAction ident arg@(name, _)= InR $ CodeAction { _title = "focus " <> name
+generateCodeAction ident arg@(name, _)= InR $ CodeAction { _title = "Focus " <> name
                                                          , _kind = Just CodeActionQuickFix 
                                                          , _diagnostics = Nothing
                                                          , _isPreferred = Nothing
