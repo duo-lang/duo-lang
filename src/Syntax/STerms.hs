@@ -17,14 +17,18 @@ module Syntax.STerms
   -- Transform to named representation for prettyprinting
   , openSTermComplete
   , openCommandComplete
+  , createNamesSTerm
+  , createNamesCommand
   -- Shift unbound BoundVars up by one.
   , shiftSTerm
   , shiftCmd
   ) where
 
+import Control.Monad.State
 import Data.Bifunctor
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
+import qualified Data.Text as T
 
 import Utils
 import Errors
@@ -260,6 +264,54 @@ openCommandComplete :: Command ext FreeVarName -> Command () FreeVarName
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()
+
+---------------------------------------------------------------------------------
+-- CreateNames
+---------------------------------------------------------------------------------
+
+names :: [FreeVarName]
+names =  (\y -> "x" <> T.pack (show y)) <$> [(1 :: Int)..]
+
+type CreateNameM a = State [FreeVarName] a
+
+fresh :: CreateNameM FreeVarName 
+fresh = gets head <* modify tail
+
+createNamesSTerm :: STerm pc ext bs -> STerm pc ext FreeVarName 
+createNamesSTerm tm = evalState (createNamesSTerm' tm) names
+
+createNamesCommand :: Command ext bs -> Command ext FreeVarName 
+createNamesCommand cmd = evalState (createNamesCommand' cmd) names
+
+createNamesSTerm' :: STerm pc ext bs -> CreateNameM (STerm pc ext FreeVarName)
+createNamesSTerm' (BoundVar ext pc idx) = return $ BoundVar ext pc idx
+createNamesSTerm' (FreeVar ext pc nm)   = return $ FreeVar ext pc nm
+createNamesSTerm' (XtorCall ext pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
+  prdArgs' <- sequence $ createNamesSTerm' <$> prdArgs
+  cnsArgs' <- sequence $ createNamesSTerm' <$> cnsArgs
+  return $ XtorCall ext pc xt (MkXtorArgs prdArgs' cnsArgs')
+createNamesSTerm' (XMatch ext pc ns cases) = do
+  cases' <- sequence $ createNamesCase <$> cases
+  return $ XMatch ext pc ns cases'
+createNamesSTerm' (MuAbs ext pc _ cmd) = do
+  cmd' <- createNamesCommand' cmd
+  var <- fresh
+  return $ MuAbs ext pc var cmd'
+
+createNamesCommand' :: Command ext bs -> CreateNameM (Command ext FreeVarName)
+createNamesCommand' (Done ext) = return $ Done ext
+createNamesCommand' (Apply ext prd cns) = do
+  prd' <- createNamesSTerm' prd 
+  cns' <- createNamesSTerm' cns 
+  return (Apply ext prd' cns')
+createNamesCommand' (Print ext prd) = createNamesSTerm' prd >>= \prd' -> return (Print ext prd')
+
+createNamesCase :: SCase ext bs -> CreateNameM (SCase ext FreeVarName)
+createNamesCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
+  cmd' <- createNamesCommand' scase_cmd
+  as' <- sequence $ (const fresh) <$> as
+  bs' <- sequence $ (const fresh) <$> bs
+  return $ MkSCase scase_name (Twice as' bs') cmd'
 
 
 ---------------------------------------------------------------------------------

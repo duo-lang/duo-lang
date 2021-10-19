@@ -328,7 +328,7 @@ generateCodeAction ident arg@(name, _)= InR $ CodeAction { _title = "Focus " <> 
 generateEdit :: TextDocumentIdentifier ->  (FreeVarName, (STerm Prd () FreeVarName, Loc, TypeScheme Pos)) -> WorkspaceEdit
 generateEdit (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) tm
+    newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) (createNamesSTerm (focusSTerm CBV tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
