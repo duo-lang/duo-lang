@@ -14,7 +14,6 @@ import Errors
 import Syntax.Types
 import Syntax.CommonTerm (XtorName, FreeVarName)
 import Syntax.Program (Environment)
-import Lookup ( translateToStructural )
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
@@ -189,28 +188,18 @@ subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
                      , "    " <> ppPrint tn2 ]
 -- Constraints between nominal and refined types:
 --
--- Refinement types and nominal types are incomparable. When constraints between them occur
--- and the type names match, the nominal type is replaced by the corresponding trivial
--- refinement type. 
--- When the refinement type is on the left-hand side, no further constraint is needed since
--- all refinements are subtypes of the trivial refinement for a given nominal type.
+-- Refinement types and nominal types are incomparable.
 subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
   if tn1 == tn2 then return []
   else throwSolverError ["The following types are incompatible:"
                         , "    " <> ppPrint t1
                         , "and"
                         , "    " <> ppPrint tn2 ]
--- Here the corresponding trivial refinement for the nominal type is generated and a constraint 
--- between the structural refinements is added. It effectively checks whether the refinement on
--- the right-hand side is trivial.
-subConstraints (SubType ci t1@(TyNominal _ tn1) t2@(TyRefined _ tn2 ty2)) =
-  if tn1 == tn2 then do
-    tt1 <- translateToStructural t1
-    return [SubType ci tt1 ty2]
-  else throwSolverError ["The following types are incompatible:"
-                        , "    " <> ppPrint tn1
-                        , "and"
-                        , "    " <> ppPrint t2 ]
+subConstraints (SubType _ (TyNominal _ tn1) t2@TyRefined{}) =
+  throwSolverError ["The following types are incompatible:"
+                   , "    " <> ppPrint tn1
+                   , "and"
+                   , "    " <> ppPrint t2 ]
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
@@ -229,29 +218,15 @@ subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
 -- Constraints between nominal and structural types:
 --
--- When using refinement types, if the nominal type occurs on the right, it is translated. E.g.:
---
---     < ctors > <: Nat     ~>     < ctors > <: < 'Z | 'S(Nat) >
---
--- In all other cases the constraint cannot be solved. E.g.:
+-- These constraints cannot be solved. E.g.:
 --
 --     < ctors > <: Nat     ~>     FAIL
 --     Nat <: < ctors >     ~>     FAIL
 --
-subConstraints (SubType ci td@TyData{} tn@TyNominal{}) = do
-  im <- gets sst_inferMode
-  case im of
-    InferNominal -> throwSolverError ["Cannot constrain nominal by structural type"]
-    InferRefined -> do
-      trT <- translateToStructural tn
-      return [SubType ci td trT]
-subConstraints (SubType ci tc@TyCodata{} tn@TyNominal{}) = do
-  im <- gets sst_inferMode
-  case im of
-    InferNominal -> throwSolverError ["Cannot constrain nominal by structural type"]
-    InferRefined -> do
-      trT <- translateToStructural tn
-      return [SubType ci tc trT]
+subConstraints (SubType _ TyData{} TyNominal{}) = do
+  throwSolverError ["Cannot constrain nominal by structural type"]
+subConstraints (SubType _ TyCodata{} TyNominal{}) = do
+  throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType _ TyNominal{} TyData{}) =
   throwSolverError ["Cannot constrain nominal by structural type"]
 subConstraints (SubType _ TyNominal{} TyCodata{}) =

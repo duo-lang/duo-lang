@@ -38,12 +38,15 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   xtorSig <- lookupXtorSig xt NegRep
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Ctor " <> unXtorName xt <> " called with incorrect number of arguments"]
+  -- Nominal type constraint!!
+  xtorSig <- translateXtorSig xtorSig
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (CtorArgsConstraint loc) t1 t2
   im <- asks (inferMode . snd)
-  let ty = case im of
-        InferNominal -> TyNominal PosRep (data_name tn)
-        InferRefined -> TyRefined PosRep (data_name tn) $ 
-          TyData PosRep $ xtorSigMakeStructural <$> [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
+  ty <- case im of
+        InferNominal -> return $ TyNominal PosRep (data_name tn)
+        InferRefined -> do
+          trXtss <- mapM translateXtorSig [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
+          return $ TyRefined PosRep (data_name tn) $ TyData PosRep trXtss
   return (Ctor () xt (fst <$> args'), ty)
   
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
@@ -57,11 +60,17 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   args' <- sequence (genConstraintsATerm <$> args)
   tn <- lookupDataDecl xt
   (t', ty') <- genConstraintsATerm t
-  addConstraint (SubType (DtorApConstraint loc) ty' (TyNominal NegRep (data_name tn)) )
   xtorSig <- lookupXtorSig xt NegRep
-  -- addConstraint (SubType (DtorApConstraint loc) ty' (TyRefined NegRep (data_name tn) $ TyData NegRep [xtorSigMakeStructural xtorSig]))
+  im <- asks (inferMode . snd)
+  case im of
+    InferNominal -> addConstraint (SubType (DtorApConstraint loc) ty' (TyNominal NegRep (data_name tn)) )
+    InferRefined -> do
+      trXts <- translateXtorSig xtorSig
+      addConstraint (SubType (DtorApConstraint loc) ty' (TyRefined NegRep (data_name tn) $ TyData NegRep [trXts]))
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Dtor " <> unXtorName xt <> " called with incorrect number of arguments"]
+  -- Nominal type constraint!!
+  xtorSig <- translateXtorSig xtorSig
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \((_,t1),t2) -> addConstraint $ SubType (DtorArgsConstraint loc) t1 t2
   return (Dtor () xt t' (fst <$> args'), head $ cnsTypes $ sig_args xtorSig)
 
@@ -82,11 +91,15 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   checkExhaustiveness (acase_name <$> cases) tn
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
-  genConstraintsACaseArgs (snd <$> cases') (data_xtors tn PosRep) loc
+  -- Nominal type constraint!!
+  trXtss <- mapM translateXtorSig (data_xtors tn PosRep)
+  genConstraintsACaseArgs (snd <$> cases') trXtss loc
   im <- asks (inferMode . snd)
-  let ty = case im of
-        InferNominal -> TyNominal NegRep (data_name tn)
-        InferRefined -> TyRefined NegRep (data_name tn) (TyData NegRep (xtorSigMakeStructural . snd <$> cases'))
+  ty <- case im of
+        InferNominal -> return $ TyNominal NegRep (data_name tn)
+        InferRefined -> do
+          trXtss <- mapM translateXtorSig (snd <$> cases')
+          return $ TyRefined NegRep (data_name tn) (TyData NegRep trXtss)
   addConstraint (SubType (PatternMatchConstraint loc) matchType ty)
   return (Match () t' (fst <$> cases') , retTypePos)
 
@@ -111,11 +124,15 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   checkCorrectness (acase_name <$> cocases) tn
   checkExhaustiveness (acase_name <$> cocases) tn
   cocases' <- sequence (genConstraintsATermCocase <$> cocases)
-  genConstraintsACaseArgs (snd <$> cocases') (data_xtors tn PosRep) loc
+  -- Nominal type constraint!!
+  trXtss <- mapM translateXtorSig (data_xtors tn PosRep)
+  genConstraintsACaseArgs (snd <$> cocases') trXtss loc
   im <- asks (inferMode . snd)
-  let ty = case im of
-        InferNominal -> TyNominal PosRep (data_name tn)
-        InferRefined -> TyRefined PosRep (data_name tn) (TyCodata PosRep (xtorSigMakeStructural . snd <$> cocases'))
+  ty <- case im of
+        InferNominal -> return $ TyNominal PosRep (data_name tn)
+        InferRefined -> do
+          trXtss <- mapM translateXtorSig (snd <$> cocases')
+          return $ TyRefined PosRep (data_name tn) (TyCodata PosRep trXtss)
   return (Comatch () (fst <$> cocases'), ty)
 
 genConstraintsATerm (Comatch _ cocases) = do

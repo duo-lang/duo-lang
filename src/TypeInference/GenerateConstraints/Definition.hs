@@ -19,11 +19,11 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , InferenceMode(..)
   , PrdCnsToPol
-  , xtorSigMakeStructural
   , foo
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
+  , translateXtorSig
   ) where
 
 import Control.Monad.Except
@@ -41,6 +41,7 @@ import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
+import qualified TypeTranslation as TT
 import Utils
 
 ---------------------------------------------------------------------------------------------
@@ -193,3 +194,12 @@ checkExhaustiveness matched decl = do
       forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
+
+-- | Recursively translate a nominal type to a corresponding structural representation
+translateXtorSig :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSig xts = do
+  env <- asks fst
+  case TT.runTranslateM env (TT.translateSigArgs xts) of
+    Left (OtherError text) -> throwGenError [text]
+    Left _ -> throwGenError ["Translation of xtor sig " <> ppPrint xts <> " failed"]
+    Right (ty',_) -> return ty'
