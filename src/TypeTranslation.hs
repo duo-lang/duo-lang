@@ -102,16 +102,7 @@ translateType' (TyNominal pr tn) = do
       Codata -> do
         xtss <- mapM translateXtorSig' $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr xtss
-translateType' tv@TyVar{} = return tv
-translateType' (TyData pr xtss) = do
-  xtss' <- mapM translateXtorSig' xtss
-  return $ TyData pr xtss'
-translateType' (TyCodata pr xtss) = do
-  xtss' <- mapM translateXtorSig' xtss
-  return $ TyCodata pr xtss'
-translateType' t@TyRefined{} = throwOtherError ["Cannot translate refinement type " <> ppPrint t]
-translateType' t@TyRec{} = throwOtherError ["Cannot translate recursive type " <> ppPrint t]
-translateType' ts@TySet{} = throwOtherError ["Cannot translate type set " <> ppPrint ts]
+translateType' t = throwOtherError ["Cannot translate type " <> ppPrint t]
 
 ---------------------------------------------------------------------------------------------
 -- Cleanup functions
@@ -129,9 +120,9 @@ cleanUp ty = case ty of
   -- Remove outermost recursive type if its variable is unused
   TyRec pr tv ty' -> do
     s <- gets recVarsUsed
-    ty'Cleaned <- cleanUp ty'
-    if S.member tv s then return $ TyRec pr tv ty'Cleaned
-    else return ty'Cleaned
+    ty'Clean <- cleanUp ty'
+    if S.member tv s then return $ TyRec pr tv ty'Clean
+    else return ty'Clean
   -- Propagate cleanup in arg types of data type
   TyData pr xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
