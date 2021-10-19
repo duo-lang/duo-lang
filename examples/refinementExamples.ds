@@ -1,6 +1,8 @@
 import Prelude;
 set refined;
 
+def foo := S(Z);
+
 # Incomplete pattern matches, level 1
 cns foo := match { True => Print('T) };
 
