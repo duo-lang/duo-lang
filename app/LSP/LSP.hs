@@ -25,11 +25,12 @@ import Language.LSP.Server
       MonadLsp,
       Options(..),
       ServerDefinition(..),
-      getVirtualFile, publishDiagnostics, flushDiagnosticsBySource)
+      getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
 import Language.LSP.Types
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
 import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
+import System.Log.Logger
 
 import Syntax.CommonTerm
 import Syntax.STerms hiding (Command)
@@ -109,6 +110,8 @@ initialize _ _ = return $ Right ()
 
 runLSP :: IO ()
 runLSP = do
+  setupLogger (Just "lsplog.txt") ["lspserver"] DEBUG
+  debugM "lspserver" $ "Starting LSP Server"
   errCode <- runServer definition
   case errCode of
     0 -> exitSuccess
@@ -137,23 +140,26 @@ handlers = mconcat [ initializedHandler
 
 initializedHandler :: Handlers LSPMonad
 initializedHandler = notificationHandler SInitialized $ \_notif -> do
-  let msg = "LSP Server for DualSub Initialized!"
-  sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
+  liftIO $ debugM "lspserver" "LSP Server Initialized"
+
 
 -- Exit + Shutdown Handlers
 
 exitHandler :: Handlers LSPMonad
 exitHandler = notificationHandler SExit $ \_notif -> do
+  liftIO $ debugM "lspserver.exitHandler" "Received exit notification"
   liftIO exitSuccess
 
 shutdownHandler :: Handlers LSPMonad
 shutdownHandler = requestHandler SShutdown $ \_re responder -> do
+  liftIO $ debugM "lspserver.shutdownHandler" "Received shutdown request"
   responder (Right Empty)
   liftIO exitSuccess
 
 -- CancelRequestHandler
 cancelRequestHandler :: Handlers LSPMonad
 cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
+  liftIO $ debugM "lspserver.cancelRequestHandler" "Received cancel request"
   return ()
   
 -- File Open + Change + Close Handlers
@@ -161,20 +167,19 @@ cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
 didOpenHandler :: Handlers LSPMonad
 didOpenHandler = notificationHandler STextDocumentDidOpen $ \notif -> do
   let (NotificationMessage _ _ (DidOpenTextDocumentParams (TextDocumentItem uri _ _ _))) = notif
-  -- sendInfo $ "Opened file: " <> (T.pack $ show uri)
-  -- TODO: Log this Info
+  liftIO $ debugM "lspserver.didOpenHandler" ("Opened file: " <> show uri)
   publishErrors uri
 
 didChangeHandler :: Handlers LSPMonad
 didChangeHandler = notificationHandler STextDocumentDidChange $ \notif -> do
   let (NotificationMessage _ _ (DidChangeTextDocumentParams (VersionedTextDocumentIdentifier uri _) _)) = notif
-  -- sendInfo $ "Changed file:" <> (T.pack $ show uri)
-  -- TODO: Log this info
+  liftIO $ debugM "lspserver.didChangeHandler" ("Changed file: " <> show uri)
   publishErrors uri
 
 didCloseHandler :: Handlers LSPMonad
-didCloseHandler = notificationHandler STextDocumentDidClose $ \_notif -> do
-  return ()
+didCloseHandler = notificationHandler STextDocumentDidClose $ \notif -> do
+  let (NotificationMessage _ _ (DidCloseTextDocumentParams uri)) = notif
+  liftIO $ debugM "lspserver.didCloseHandler" ("Closed file: " <> show uri)
 
 -- Publish diagnostics for File
 
@@ -232,6 +237,7 @@ publishErrors uri = do
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
+  liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri)
   mfile <- getVirtualFile (toNormalizedUri uri)
   let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
   let file = virtualFileText vfile
@@ -282,7 +288,8 @@ lookupPos (Position l _) (Loc begin end) =
 
 codeActionHandler :: Handlers LSPMonad
 codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> do
-  let (RequestMessage _ _ _ (CodeActionParams _workDoneToken _partialResultToken ident@(TextDocumentIdentifier uri) _range _context)) = req
+  let (RequestMessage _ _ _ (CodeActionParams _workDoneToken _partialResultToken ident@(TextDocumentIdentifier uri) range _context)) = req
+  liftIO $ debugM "lspserver.codeActionHandler" ("Received codeAction request: " <> show uri <> " range: " <> show range)
   mfile <- getVirtualFile (toNormalizedUri uri)
   let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
   let file = virtualFileText vfile
