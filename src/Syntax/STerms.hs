@@ -269,13 +269,21 @@ openCommandComplete (Done _) = Done ()
 -- CreateNames
 ---------------------------------------------------------------------------------
 
-names :: [FreeVarName]
-names =  (\y -> "x" <> T.pack (show y)) <$> [(1 :: Int)..]
+names :: ([FreeVarName], [FreeVarName])
+names =  ((\y -> "x" <> T.pack (show y)) <$> [(1 :: Int)..]
+         ,(\y -> "k" <> T.pack (show y)) <$> [(1 :: Int)..])
 
-type CreateNameM a = State [FreeVarName] a
+type CreateNameM a = State ([FreeVarName],[FreeVarName]) a
 
-fresh :: CreateNameM FreeVarName 
-fresh = gets head <* modify tail
+fresh :: PrdCnsRep pc -> CreateNameM FreeVarName 
+fresh PrdRep = do
+  var <- gets (head . fst)
+  modify (first tail)
+  pure var
+fresh CnsRep = do
+  var  <- gets (head . snd)
+  modify (second tail)
+  pure var
 
 createNamesSTerm :: STerm pc ext bs -> STerm pc ext FreeVarName 
 createNamesSTerm tm = evalState (createNamesSTerm' tm) names
@@ -295,7 +303,7 @@ createNamesSTerm' (XMatch ext pc ns cases) = do
   return $ XMatch ext pc ns cases'
 createNamesSTerm' (MuAbs ext pc _ cmd) = do
   cmd' <- createNamesCommand' cmd
-  var <- fresh
+  var <- fresh (flipPrdCns pc)
   return $ MuAbs ext pc var cmd'
 
 createNamesCommand' :: Command ext bs -> CreateNameM (Command ext FreeVarName)
@@ -309,8 +317,8 @@ createNamesCommand' (Print ext prd) = createNamesSTerm' prd >>= \prd' -> return 
 createNamesCase :: SCase ext bs -> CreateNameM (SCase ext FreeVarName)
 createNamesCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
   cmd' <- createNamesCommand' scase_cmd
-  as' <- sequence $ (const fresh) <$> as
-  bs' <- sequence $ (const fresh) <$> bs
+  as' <- sequence $ (const (fresh PrdRep)) <$> as
+  bs' <- sequence $ (const (fresh CnsRep)) <$> bs
   return $ MkSCase scase_name (Twice as' bs') cmd'
 
 
