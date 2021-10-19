@@ -98,6 +98,7 @@ library
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.STerms
       TypeInference.SolveConstraints
+      TypeTranslation
       Utils
       Translate.Translate
       Translate.TranslateProgram
