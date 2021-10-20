@@ -138,12 +138,11 @@ cleanUp ty = case ty of
 
 translateType :: Environment FreeVarName -> Typ pol -> Either Error (Typ pol)
 translateType env ty = case runTranslateM env $ (cleanUp <=< translateType') ty of
-  Left (OtherError err) -> throwOtherError [err]
-  Left _ -> throwOtherError []
+  Left err -> throwError err
   Right (ty,_) -> return ty
+  
 
 translateXtorSig :: Environment FreeVarName -> XtorSig pol -> Either Error (XtorSig pol)
 translateXtorSig env xts = case runTranslateM env $ (cleanUpXtorSig <=< translateXtorSig') xts of
-  Left (OtherError err) -> throwOtherError [err]
-  Left _ -> throwOtherError []
+  Left err -> throwError err
   Right (xts,_) -> return xts
