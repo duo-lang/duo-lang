@@ -120,6 +120,7 @@ executable dualsub
   main-is: Main.hs
   other-modules:
       LSP.LSP
+      LSP.Definition
       LSP.MegaparsecToLSP
       Repl.Repl
       Repl.Options.Compile

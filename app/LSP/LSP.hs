@@ -1,8 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module LSP.LSP where
 
-import Control.Monad.IO.Class (liftIO, MonadIO)
-import Control.Monad.IO.Unlift (MonadUnliftIO)
+import Control.Monad.IO.Class (liftIO)
 import Data.List ( find )
 import qualified Data.Map as M
 import qualified Data.HashMap.Strict as Map
@@ -18,12 +17,9 @@ import Language.LSP.Server
       notificationHandler,
       requestHandler,
       runLspT,
-      sendNotification,
       type (<~>)(Iso, forward, backward),
       Handlers,
       LanguageContextEnv,
-      LspT(LspT),
-      MonadLsp,
       Options(..),
       ServerDefinition(..),
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
@@ -47,25 +43,7 @@ import TypeInference.Driver
 import Utils ( Located(..), Loc(..))
 import Translate.Focusing (isFocusedSTerm, focusSTerm)
 import Eval.Eval ( EvalOrder(CBV) )
-
-
----------------------------------------------------------------------------------
--- LSPMonad and Utility Functions
----------------------------------------------------------------------------------
-
-data LSPConfig = MkLSPConfig
-
-newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
-
-sendInfo :: T.Text -> LSPMonad ()
-sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
-
-sendWarning :: T.Text -> LSPMonad ()
-sendWarning msg = sendNotification SWindowShowMessage (ShowMessageParams MtWarning  msg)
-
-sendError :: T.Text -> LSPMonad ()
-sendError msg = sendNotification SWindowShowMessage (ShowMessageParams MtError msg)
+import LSP.Definition
 
 ---------------------------------------------------------------------------------
 -- Static configuration of the LSP Server
