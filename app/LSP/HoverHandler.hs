@@ -76,8 +76,6 @@ lookupHoverEnv pos env =
           Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
           Nothing -> Nothing
 
-      
-
 lookupPos :: Position -> Loc -> Bool 
 lookupPos (Position l _) (Loc begin end) =
   let
