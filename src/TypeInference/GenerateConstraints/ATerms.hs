@@ -45,8 +45,7 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   ty <- case im of
         InferNominal -> return $ TyNominal PosRep (data_name tn)
         InferRefined -> do
-          trXtss <- mapM translateXtorSig [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
-          return $ TyRefined PosRep (data_name tn) $ TyData PosRep trXtss
+          return $ TyRefined PosRep (data_name tn) $ TyData PosRep [MkXtorSig xt $ MkTypArgs (snd <$> args') []]
   return (Ctor () xt (fst <$> args'), ty)
   
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do

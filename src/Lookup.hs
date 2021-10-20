@@ -6,7 +6,7 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
-  , translateToStructural'
+  , translateTypeTopLevel
   , withSTerm
   , withATerm
   ) where
@@ -112,9 +112,9 @@ lookupXtorSig xtn pol = do
 ---------------------------------------------------------------------------------
 
 -- | Translate a nominal type into a structural type non-recursively at the top level
-translateToStructural' :: EnvReader bs a m
+translateTypeTopLevel :: EnvReader bs a m
                       => Typ pol -> m (Typ pol)
-translateToStructural' (TyNominal pr tn) = do
+translateTypeTopLevel (TyNominal pr tn) = do
   NominalDecl{..} <- lookupTypeName tn
   case data_polarity of
     Data -> do
@@ -123,7 +123,7 @@ translateToStructural' (TyNominal pr tn) = do
     Codata -> do
       let xtorSig = xtorSigMakeStructural <$> data_xtors (flipPolarityRep pr)
       return $ TyCodata pr xtorSig
-translateToStructural' _ = do
+translateTypeTopLevel _ = do
   throwOtherError ["Can only translate nominal types"]
 
 ---------------------------------------------------------------------------------

@@ -23,6 +23,7 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
+  , translateType
   , translateXtorSig
   ) where
 
@@ -196,10 +197,19 @@ checkExhaustiveness matched decl = do
           ppPrint (data_name decl) <> " is not matched against." ])
 
 -- | Recursively translate a nominal type to a corresponding structural representation
+translateType :: Typ pol -> GenM (Typ pol)
+translateType ty = do
+  env <- asks fst
+  case TT.translateType env ty of
+    Left (OtherError err) -> throwGenError [err]
+    Left _ -> throwGenError ["Translation of type " <> ppPrint ty <> " failed"]
+    Right ty' -> return ty'
+
+-- | Recursively translate an xtor signature
 translateXtorSig :: XtorSig pol -> GenM (XtorSig pol)
 translateXtorSig xts = do
   env <- asks fst
-  case TT.runTranslateM env (TT.translateSigArgs xts) of
-    Left (OtherError text) -> throwGenError [text]
+  case TT.translateXtorSig env xts of
+    Left (OtherError err) -> throwGenError [err]
     Left _ -> throwGenError ["Translation of xtor sig " <> ppPrint xts <> " failed"]
-    Right (ty',_) -> return ty'
+    Right xts' -> return xts'

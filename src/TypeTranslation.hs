@@ -1,4 +1,7 @@
-module TypeTranslation where
+module TypeTranslation
+  ( translateType
+  , translateXtorSig
+  ) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -12,6 +15,8 @@ import qualified Data.Text as T
 
 import Errors
 import Lookup
+import Pretty.Pretty
+import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
 import Syntax.CommonTerm
@@ -62,19 +67,23 @@ freshTVar = do
     TranslateState{ recVarMap, recVarsUsed, varCount = varCount + 1 })
   return $ MkTVar ("g" <> T.pack (show i))
 
+---------------------------------------------------------------------------------------------
+-- Translation functions
+---------------------------------------------------------------------------------------------
+
 -- | Translate all producer and consumer types in an xtor signature
-translateSigArgs :: XtorSig pol -> TranslateM (XtorSig pol)
-translateSigArgs MkXtorSig{..} = do
-  pts' <- mapM translateToStructural $ prdTypes sig_args
-  cts' <- mapM translateToStructural $ cnsTypes sig_args
-  return $ MkXtorSig (xtorNameMakeStructural sig_name) (MkTypArgs pts' cts')
+translateXtorSig' :: XtorSig pol -> TranslateM (XtorSig pol)
+translateXtorSig' MkXtorSig{..} = do
+  pts' <- mapM translateType' $ prdTypes sig_args
+  cts' <- mapM translateType' $ cnsTypes sig_args
+  return $ MkXtorSig sig_name (MkTypArgs pts' cts')
     where
       xtorNameMakeStructural :: XtorName -> XtorName
       xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s
 
 -- | Translate a nominal type into a structural type recursively
-translateToStructural :: Typ pol -> TranslateM (Typ pol)
-translateToStructural (TyNominal pr tn) = do
+translateType' :: Typ pol -> TranslateM (Typ pol)
+translateType' (TyNominal pr tn) = do
   m <- gets recVarMap
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
@@ -88,21 +97,23 @@ translateToStructural (TyNominal pr tn) = do
     modifyVarMap $ M.insert tn tv
     case data_polarity of
       Data -> do
-        xtss <- mapM translateSigArgs $ data_xtors pr
+        xtss <- mapM translateXtorSig' $ data_xtors pr
         return $ TyRec pr tv $ TyData pr xtss
       Codata -> do
-        xtss <- mapM translateSigArgs $ data_xtors $ flipPolarityRep pr
+        xtss <- mapM translateXtorSig' $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr xtss
-translateToStructural tv@TyVar{} = return tv
-translateToStructural (TyData pr xtss) = do
-  xtss' <- mapM translateSigArgs xtss
-  return $ TyData pr xtss'
-translateToStructural (TyCodata pr xtss) = do
-  xtss' <- mapM translateSigArgs xtss
-  return $ TyCodata pr xtss'
-translateToStructural TyRefined{} = throwOtherError ["Cannot translate refinement type"]
-translateToStructural TyRec{} = throwOtherError ["Cannot translate recursive type"]
-translateToStructural TySet{} = throwOtherError ["Cannot translate type set"]
+translateType' tv@TyVar{} = return tv
+translateType' t = throwOtherError ["Cannot translate type " <> ppPrint t]
+
+---------------------------------------------------------------------------------------------
+-- Cleanup functions
+---------------------------------------------------------------------------------------------
+
+cleanUpXtorSig :: XtorSig pol -> TranslateM (XtorSig pol)
+cleanUpXtorSig MkXtorSig{..} = do
+  pts <- mapM cleanUp $ prdTypes sig_args
+  cts <- mapM cleanUp $ cnsTypes sig_args
+  return MkXtorSig{ sig_name, sig_args = MkTypArgs pts cts }
 
 -- | Remove unused recursion headers
 cleanUp :: Typ pol -> TranslateM (Typ pol)
@@ -110,9 +121,9 @@ cleanUp ty = case ty of
   -- Remove outermost recursive type if its variable is unused
   TyRec pr tv ty' -> do
     s <- gets recVarsUsed
-    ty'Cleaned <- cleanUp ty'
-    if S.member tv s then return $ TyRec pr tv ty'Cleaned
-    else return ty'Cleaned
+    ty'Clean <- cleanUp ty'
+    if S.member tv s then return $ TyRec pr tv ty'Clean
+    else return ty'Clean
   -- Propagate cleanup in arg types of data type
   TyData pr xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
@@ -124,10 +135,16 @@ cleanUp ty = case ty of
   -- Type variables remain unchanged
   tyVar@TyVar{} -> return tyVar
   -- Other types imply incorrect translation
-  _ -> throwOtherError ["Nominal type translation: Cleanup error"]
-  where
-    cleanUpXtorSig :: XtorSig pol -> TranslateM (XtorSig pol)
-    cleanUpXtorSig MkXtorSig{..} = do
-      pts <- mapM cleanUp $ prdTypes sig_args
-      cts <- mapM cleanUp $ cnsTypes sig_args
-      return MkXtorSig{ sig_name, sig_args = MkTypArgs pts cts }
+  t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
+
+translateType :: Environment FreeVarName -> Typ pol -> Either Error (Typ pol)
+translateType env ty = case runTranslateM env $ (cleanUp <=< translateType') ty of
+  Left (OtherError err) -> throwOtherError [err]
+  Left _ -> throwOtherError []
+  Right (ty,_) -> return ty
+
+translateXtorSig :: Environment FreeVarName -> XtorSig pol -> Either Error (XtorSig pol)
+translateXtorSig env xts = case runTranslateM env $ (cleanUpXtorSig <=< translateXtorSig') xts of
+  Left (OtherError err) -> throwOtherError [err]
+  Left _ -> throwOtherError []
+  Right (xts,_) -> return xts
