@@ -58,3 +58,11 @@ parseErrorToDiag posState err = do
 parseErrorBundleToDiag :: ParseErrorBundle Text Void -> [Diagnostic]
 parseErrorBundleToDiag ParseErrorBundle { bundlePosState, bundleErrors } =
     NE.toList  $ parseErrorToDiag bundlePosState <$> bundleErrors
+
+lookupPos :: Position -> Loc -> Bool 
+lookupPos (Position l _) (Loc begin end) =
+  let
+    (Position l1 _) = posToPosition  begin
+    (Position l2 _) = posToPosition end 
+  in
+    l1 <= l && l <= l2

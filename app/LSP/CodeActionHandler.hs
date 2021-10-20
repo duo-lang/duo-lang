@@ -11,7 +11,7 @@ import qualified Data.HashMap.Strict as Map
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange )
+import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
     ( Declaration(PrdDecl), Environment(prdEnv, defEnv), IsRec(Recursive) )
 import Syntax.Types ( Polarity(Pos), TypeScheme )
@@ -54,15 +54,15 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
         Left _err -> do
           responder (Right (List []))
         Right env -> do
-          responder (Right (generateCodeActions ident env))
+          responder (Right (generateCodeActions ident range env))
 
-generateCodeActions :: TextDocumentIdentifier -> Environment FreeVarName -> List (Command  |? CodeAction)
-generateCodeActions ident env = do
+generateCodeActions :: TextDocumentIdentifier -> Range -> Environment FreeVarName -> List (Command  |? CodeAction)
+generateCodeActions ident (Range {_start= start}) env = do
   let prds = M.toList $ prdEnv env
-  let cbvFocusActions = [ generateFocusCodeAction ident CBV prd | prd@(_,(tm,_,_)) <- prds, not (isFocusedSTerm CBV tm)]
-  let cbnFocusActions = [ generateFocusCodeAction ident CBN prd | prd@(_,(tm,_,_)) <- prds, not (isFocusedSTerm CBN tm)]
+  let cbvFocusActions = [ generateFocusCodeAction ident CBV prd | prd@(_,(tm,loc,_)) <- prds, not (isFocusedSTerm CBV tm), lookupPos start loc]
+  let cbnFocusActions = [ generateFocusCodeAction ident CBN prd | prd@(_,(tm,loc,_)) <- prds, not (isFocusedSTerm CBN tm), lookupPos start loc]
   let defs = M.toList $ defEnv env
-  let translateActions = generateTranslateCodeAction ident <$> defs
+  let translateActions = [ generateTranslateCodeAction ident def | def@(_,(_,loc,_)) <- defs, lookupPos start loc]
   List (cbvFocusActions <> cbnFocusActions <> translateActions)
 
 ---------------------------------------------------------------------------------

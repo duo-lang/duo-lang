@@ -24,7 +24,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( posToPosition )
+import LSP.MegaparsecToLSP ( posToPosition, lookupPos )
 import Utils ( Loc(..) )
 import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv) )
 import Syntax.CommonTerm ( FreeVarName )
@@ -76,10 +76,3 @@ lookupHoverEnv pos env =
           Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
           Nothing -> Nothing
 
-lookupPos :: Position -> Loc -> Bool 
-lookupPos (Position l _) (Loc begin end) =
-  let
-    (Position l1 _) = posToPosition  begin
-    (Position l2 _) = posToPosition end 
-  in
-    l1 <= l && l <= l2
