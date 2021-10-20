@@ -1,8 +1,20 @@
-module LSP.HoverHandler where
+module LSP.HoverHandler (hoverHandler) where
 
 import Language.LSP.Types
+    ( toNormalizedUri,
+      uriToFilePath,
+      Hover(Hover),
+      HoverContents(HoverContents),
+      HoverParams(HoverParams),
+      Position(Position),
+      MarkupContent(MarkupContent),
+      MarkupKind(MkPlainText),
+      RequestMessage(RequestMessage),
+      SMethod(STextDocumentHover),
+      TextDocumentIdentifier(TextDocumentIdentifier) )
 import Language.LSP.Server
-import Language.LSP.VFS
+    ( getVirtualFile, requestHandler, Handlers )
+import Language.LSP.VFS ( VirtualFile, virtualFileText )
 import qualified Data.Map as M
 import Data.List ( find )
 import Data.Maybe ( fromMaybe )

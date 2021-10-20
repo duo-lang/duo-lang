@@ -3,7 +3,6 @@ module LSP.LSP where
 
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Map as M
-import qualified Data.HashMap.Strict as Map
 import Data.Maybe ( fromMaybe )
 import qualified Data.SortedList as SL
 import Data.Text (Text)
@@ -26,24 +25,19 @@ import Language.LSP.Types
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
 import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
-import System.Log.Logger
+import System.Log.Logger ( Priority(DEBUG), debugM )
 
-import Syntax.CommonTerm
-import Syntax.STerms hiding (Command)
-import Syntax.Types
 import Errors ( LocatedError )
 import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import Pretty.Pretty ( ppPrint, NamedRep (NamedRep) )
+import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import Syntax.Program
 import TypeInference.Driver
-import Utils ( Located(..), Loc(..))
-import Translate.Focusing (isFocusedSTerm, focusSTerm)
-import Eval.Eval ( EvalOrder(CBV) )
+import Utils ( Located(..))
 import LSP.Definition
 import LSP.HoverHandler ( hoverHandler )
+import LSP.CodeActionHandler ( codeActionHandler )
 
 ---------------------------------------------------------------------------------
 -- Static configuration of the LSP Server
@@ -210,57 +204,3 @@ publishErrors uri = do
         Right _ -> do
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 
-
-
----------------------------------------------------------------------------------
--- Provide CodeActions
----------------------------------------------------------------------------------
-
-codeActionHandler :: Handlers LSPMonad
-codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> do
-  let (RequestMessage _ _ _ (CodeActionParams _workDoneToken _partialResultToken ident@(TextDocumentIdentifier uri) range _context)) = req
-  liftIO $ debugM "lspserver.codeActionHandler" ("Received codeAction request: " <> show uri <> " range: " <> show range)
-  mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
-  let file = virtualFileText vfile
-  let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp programP file
-  case decls of
-    Left _err -> do
-      responder (Right (List []))
-    Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
-      case res of
-        Left _err -> do
-          responder (Right (List []))
-        Right env -> do
-          responder (Right (generateCodeActions ident env))
-
-generateCodeActions :: TextDocumentIdentifier -> Environment FreeVarName -> List (Command  |? CodeAction)
-generateCodeActions ident env = do
-  let unfocusedPrds = M.toList  $ M.filter (\(tm,_,_) -> not (isFocusedSTerm CBV tm)) $ prdEnv env
-  List (take 1 $ generateCodeAction ident <$> unfocusedPrds)
-
-generateCodeAction :: TextDocumentIdentifier -> (FreeVarName, (STerm Prd () FreeVarName, Loc, TypeScheme Pos)) -> Command |? CodeAction
-generateCodeAction ident arg@(name, _)= InR $ CodeAction { _title = "Focus " <> name
-                                                         , _kind = Just CodeActionQuickFix 
-                                                         , _diagnostics = Nothing
-                                                         , _isPreferred = Nothing
-                                                         , _disabled = Nothing
-                                                         , _edit = Just (generateEdit ident arg)
-                                                           
-                                                         , _command = Nothing
-                                                         , _xdata = Nothing
-                                                         }
-
-generateEdit :: TextDocumentIdentifier ->  (FreeVarName, (STerm Prd () FreeVarName, Loc, TypeScheme Pos)) -> WorkspaceEdit
-generateEdit (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
-  let
-    newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) (createNamesSTerm (focusSTerm CBV tm))
-    replacement = ppPrint newDecl
-    edit = TextEdit {_range= locToRange loc, _newText= replacement }
-  in 
-    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                  , _documentChanges = Nothing
-                  , _changeAnnotations = Nothing
-                  }

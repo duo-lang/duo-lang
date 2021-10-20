@@ -121,6 +121,7 @@ executable dualsub
   other-modules:
       LSP.LSP
       LSP.Definition
+      LSP.CodeActionHandler
       LSP.HoverHandler
       LSP.MegaparsecToLSP
       Repl.Repl
