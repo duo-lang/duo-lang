@@ -76,3 +76,4 @@ lookupHoverEnv pos env =
           Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
           Nothing -> Nothing
 
+
