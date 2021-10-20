@@ -201,8 +201,7 @@ translateType :: Typ pol -> GenM (Typ pol)
 translateType ty = do
   env <- asks fst
   case TT.translateType env ty of
-    Left (OtherError err) -> throwGenError [err]
-    Left _ -> throwGenError ["Translation of type " <> ppPrint ty <> " failed"]
+    Left err -> throwError err
     Right ty' -> return ty'
 
 -- | Recursively translate an xtor signature
@@ -210,6 +209,5 @@ translateXtorSig :: XtorSig pol -> GenM (XtorSig pol)
 translateXtorSig xts = do
   env <- asks fst
   case TT.translateXtorSig env xts of
-    Left (OtherError err) -> throwGenError [err]
-    Left _ -> throwGenError ["Translation of xtor sig " <> ppPrint xts <> " failed"]
+    Left err -> throwError err
     Right xts' -> return xts'

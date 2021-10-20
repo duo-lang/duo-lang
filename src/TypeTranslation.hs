@@ -74,6 +74,7 @@ freshTVar = do
 -- | Translate all producer and consumer types in an xtor signature
 translateXtorSig' :: XtorSig pol -> TranslateM (XtorSig pol)
 translateXtorSig' MkXtorSig{..} = do
+  -- Translate producer and consumer arg types recursively
   pts' <- mapM translateType' $ prdTypes sig_args
   cts' <- mapM translateType' $ cnsTypes sig_args
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
