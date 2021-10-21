@@ -63,15 +63,16 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
     Nominal -> do
       tn <- lookupDataDecl xt
       -- Check if args of xtor are correct
-      xtorSig <- lookupXtorSig xt NegRep
+      xtorSig <- translateXtorSig =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
-        addConstraint $ SubType (case rep of { PrdRep -> (CtorArgsConstraint loc); CnsRep -> (DtorArgsConstraint loc) }) t1 t2
+        addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
+      trXtss <- translateXtorSig $ MkXtorSig xt argTypes
       im <- asks (inferMode . snd)
       let resType = case (im, rep) of
             (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-            (InferRefined,PrdRep) -> TyRefined PosRep (data_name tn) $ TyData PosRep $ xtorSigMakeStructural <$> [MkXtorSig xt argTypes]
+            (InferRefined,PrdRep) -> TyRefined PosRep (data_name tn) $ TyData PosRep [trXtss]
             (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-            (InferRefined,CnsRep) -> TyRefined NegRep (data_name tn) $ TyCodata NegRep $ xtorSigMakeStructural <$> [MkXtorSig xt argTypes]
+            (InferRefined,CnsRep) -> TyRefined NegRep (data_name tn) $ TyCodata NegRep [trXtss]
       return (resTerm, resType)
 --
 -- Structural pattern and copattern matches:
