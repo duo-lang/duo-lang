@@ -24,6 +24,8 @@ module Parser.Lexer
   , muKwP
   , importKwP
   , setKwP
+  , topKwP
+  , botKwP
     -- Symbols
   , dot
   , pipe
@@ -158,7 +160,7 @@ moduleNameP = do
 -------------------------------------------------------------------------------------------
 
 keywords :: [Text]
-keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "set"
+keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "set", "Top", "Bot"
            , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import"]
 
 -- Check if the string is in the list of reserved keywords.
@@ -214,6 +216,13 @@ importKwP = keywordP "import"
 
 setKwP :: Parser SourcePos 
 setKwP = keywordP "set"
+
+topKwP :: Parser SourcePos 
+topKwP = keywordP "Top"
+
+botKwP :: Parser SourcePos 
+botKwP = keywordP "Bot"
+
 
 -------------------------------------------------------------------------------------------
 -- Symbols

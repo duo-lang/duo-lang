@@ -50,7 +50,7 @@ data Environment bs = Environment
   , cnsEnv :: Map FreeVarName (STerm Cns () bs, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command () bs, Loc)
   , defEnv :: Map FreeVarName (ATerm () bs, Loc,  TypeScheme Pos)
-  , declEnv :: [DataDecl]
+  , declEnv :: [(Loc,DataDecl)]
   }
 
 instance Show (Environment bs) where

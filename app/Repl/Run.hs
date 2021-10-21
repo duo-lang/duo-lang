@@ -20,6 +20,7 @@ import Repl.Options.Let (letOption)
 import Repl.Options.Simplify (simplifyOption)
 import Repl.Options.Subsume (subOption)
 import Repl.Options.Compile (compileOption)
+import Repl.Options.Focusing ( focusOption )
 import Repl.Options.LoadReload (loadOption, reloadOption)
 import Repl.Options.Show (showOption, showTypeOption)      
 import Repl.Options.SetUnset (setOption, unsetOption)
@@ -57,6 +58,7 @@ allOptions =
   , loadOption
   , reloadOption
   , showTypeOption
+  , focusOption
   ]
 
 -- Help
@@ -124,7 +126,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
                         , M.keys (defEnv env)
-                        , (unTypeName . data_name) <$> (declEnv env)
+                        , (unTypeName . data_name . snd) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion

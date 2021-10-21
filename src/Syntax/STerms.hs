@@ -17,11 +17,18 @@ module Syntax.STerms
   -- Transform to named representation for prettyprinting
   , openSTermComplete
   , openCommandComplete
+  , createNamesSTerm
+  , createNamesCommand
+  -- Shift unbound BoundVars up by one.
+  , shiftSTerm
+  , shiftCmd
   ) where
 
+import Control.Monad.State
 import Data.Bifunctor
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
+import qualified Data.Text as T
 
 import Utils
 import Errors
@@ -257,3 +264,91 @@ openCommandComplete :: Command ext FreeVarName -> Command () FreeVarName
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()
+
+---------------------------------------------------------------------------------
+-- CreateNames
+---------------------------------------------------------------------------------
+
+names :: ([FreeVarName], [FreeVarName])
+names =  ((\y -> "x" <> T.pack (show y)) <$> [(1 :: Int)..]
+         ,(\y -> "k" <> T.pack (show y)) <$> [(1 :: Int)..])
+
+type CreateNameM a = State ([FreeVarName],[FreeVarName]) a
+
+fresh :: PrdCnsRep pc -> CreateNameM FreeVarName 
+fresh PrdRep = do
+  var <- gets (head . fst)
+  modify (first tail)
+  pure var
+fresh CnsRep = do
+  var  <- gets (head . snd)
+  modify (second tail)
+  pure var
+
+createNamesSTerm :: STerm pc ext bs -> STerm pc ext FreeVarName 
+createNamesSTerm tm = evalState (createNamesSTerm' tm) names
+
+createNamesCommand :: Command ext bs -> Command ext FreeVarName 
+createNamesCommand cmd = evalState (createNamesCommand' cmd) names
+
+createNamesSTerm' :: STerm pc ext bs -> CreateNameM (STerm pc ext FreeVarName)
+createNamesSTerm' (BoundVar ext pc idx) = return $ BoundVar ext pc idx
+createNamesSTerm' (FreeVar ext pc nm)   = return $ FreeVar ext pc nm
+createNamesSTerm' (XtorCall ext pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
+  prdArgs' <- sequence $ createNamesSTerm' <$> prdArgs
+  cnsArgs' <- sequence $ createNamesSTerm' <$> cnsArgs
+  return $ XtorCall ext pc xt (MkXtorArgs prdArgs' cnsArgs')
+createNamesSTerm' (XMatch ext pc ns cases) = do
+  cases' <- sequence $ createNamesCase <$> cases
+  return $ XMatch ext pc ns cases'
+createNamesSTerm' (MuAbs ext pc _ cmd) = do
+  cmd' <- createNamesCommand' cmd
+  var <- fresh (flipPrdCns pc)
+  return $ MuAbs ext pc var cmd'
+
+createNamesCommand' :: Command ext bs -> CreateNameM (Command ext FreeVarName)
+createNamesCommand' (Done ext) = return $ Done ext
+createNamesCommand' (Apply ext prd cns) = do
+  prd' <- createNamesSTerm' prd 
+  cns' <- createNamesSTerm' cns 
+  return (Apply ext prd' cns')
+createNamesCommand' (Print ext prd) = createNamesSTerm' prd >>= \prd' -> return (Print ext prd')
+
+createNamesCase :: SCase ext bs -> CreateNameM (SCase ext FreeVarName)
+createNamesCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
+  cmd' <- createNamesCommand' scase_cmd
+  as' <- sequence $ (const (fresh PrdRep)) <$> as
+  bs' <- sequence $ (const (fresh CnsRep)) <$> bs
+  return $ MkSCase scase_name (Twice as' bs') cmd'
+
+
+---------------------------------------------------------------------------------
+-- Shifting
+--
+-- Used in program transformations like focusing.
+---------------------------------------------------------------------------------
+
+shiftSTerm' :: Int -> STerm pc ext bs -> STerm pc ext bs
+shiftSTerm' _ var@FreeVar {} = var
+shiftSTerm' n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
+                                         | otherwise = BoundVar ext pcrep (i    , j)
+shiftSTerm' n (XtorCall ext pcrep name MkXtorArgs { prdArgs, cnsArgs }) =
+    XtorCall ext pcrep name (MkXtorArgs (shiftSTerm' n <$> prdArgs) (shiftSTerm' n <$> cnsArgs))
+shiftSTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftSCase (n + 1) <$> cases)
+shiftSTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
+
+shiftSCase :: Int -> SCase ext bs -> SCase ext bs
+shiftSCase n (MkSCase name bs cmd) = MkSCase name bs (shiftCmd' n cmd)
+
+shiftCmd' :: Int -> Command ext bs -> Command ext bs
+shiftCmd' n (Apply ext prd cns) = Apply ext (shiftSTerm' n prd) (shiftSTerm' n cns)
+shiftCmd' _ (Done ext) = Done ext
+shiftCmd' n (Print ext prd) = Print ext (shiftSTerm' n prd)
+
+-- | Shift all unbound BoundVars up by one.
+shiftSTerm :: STerm pc ext bs -> STerm pc ext bs
+shiftSTerm = shiftSTerm' 0
+
+-- | Shift all unbound BoundVars up by one.
+shiftCmd :: Command ext bs -> Command ext bs 
+shiftCmd = shiftCmd' 0

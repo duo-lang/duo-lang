@@ -127,15 +127,15 @@ lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
 lookupContext rep (i,j) = do
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
-    Nothing -> throwGenError ["Bound Variable out of bounds: " <> T.pack (show (i,j))]
+    Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
     Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
       PrdRep -> do
         case indexMaybe prdTypes j of
-          Nothing -> throwGenError ["Bound Variable out of bounds: " <> T.pack (show (i,j))]
+          Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
           Just ty -> return ty
       CnsRep -> do
         case indexMaybe cnsTypes j of
-          Nothing -> throwGenError ["Bound Variable out of bounds: " <> T.pack (show (i,j))]
+          Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
           Just ty -> return ty
 
 ---------------------------------------------------------------------------------------------
