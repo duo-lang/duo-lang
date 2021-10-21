@@ -64,8 +64,8 @@ sepBy2 p sep = do
   return (fst : rest)
 
 setType :: PolarityRep pol -> Parser (Typ pol)
-setType PosRep = TySet PosRep <$> (typP' PosRep) `sepBy2` unionSym
-setType NegRep = TySet NegRep <$> (typP' NegRep) `sepBy2` intersectionSym
+setType PosRep = botKwP *> return (TySet PosRep []) <|> TySet PosRep <$> (typP' PosRep) `sepBy2` unionSym
+setType NegRep = topKwP *> return (TySet NegRep []) <|> TySet NegRep <$> (typP' NegRep) `sepBy2` intersectionSym
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
