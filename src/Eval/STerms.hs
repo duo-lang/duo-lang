@@ -8,7 +8,7 @@ import Data.List (find)
 import qualified Data.Text as T
 
 import Eval.Eval
-    ( throwEvalError, lookupEvalOrder, EvalM, EvalOrder )
+    ( throwEvalError, lookupEvalOrder, EvalM )
 import Lookup ( lookupSTerm )
 import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()

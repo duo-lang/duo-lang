@@ -9,7 +9,6 @@ import Pretty.Errors ()
 import Syntax.STerms
 import Syntax.Types
 import Eval.STerms (areAllSubst)
-import Eval.Eval
 
 
 substCtorExample :: EvalOrder -> Text -> Spec

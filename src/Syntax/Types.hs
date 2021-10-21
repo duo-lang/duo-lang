@@ -30,6 +30,8 @@ data EvalOrder
 
 -- | We use the "Kinds are calling-conventions" approach to track
 -- calling conventions at the type level.
+-- Kind Variables are necessary during type inference, but we don't support
+-- kind polymorphism.
 data Kind = MonoKind EvalOrder
           | KindVar Text
   deriving (Show, Eq)
@@ -265,5 +267,6 @@ type SolverResult = Map TVar VariableState
 data DataDecl = NominalDecl
   { data_name :: TypeName
   , data_polarity :: DataCodata
+  , data_kind :: Kind
   , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
   }

@@ -36,6 +36,19 @@ pipeSym = prettyAnn ("|" :: String)
 commaSym :: Doc Annotation
 commaSym = prettyAnn ("," :: String)
 
+
+---------------------------------------------------------------------------------
+-- Prettyprinting of Kinds
+---------------------------------------------------------------------------------
+
+instance PrettyAnn EvalOrder where
+  prettyAnn CBV = "CBV"
+  prettyAnn CBN = "CBN"
+
+instance PrettyAnn Kind where
+  prettyAnn (MonoKind eo) = "Type" <+> prettyAnn eo
+  prettyAnn (KindVar var) = pretty var
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting of types
 ---------------------------------------------------------------------------------

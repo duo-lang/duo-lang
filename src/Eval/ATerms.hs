@@ -7,9 +7,11 @@ module Eval.ATerms
 import Data.List (find)
 import Data.Maybe (fromJust)
 
-import Lookup
+import Lookup ( lookupATerm )
 import Eval.Eval
+    ( throwEvalError, lookupEvalOrder, EvalM)
 import Syntax.ATerms
+    ( atermOpening, ACase(MkACase, acase_name, acase_term), ATerm(..) )
 import Syntax.Types ( EvalOrder(CBV, CBN) )
 
 ---------------------------------------------------------------------------------

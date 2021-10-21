@@ -117,11 +117,14 @@ dataDeclP = do
   dataCodata <- dataCodataDeclP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
+    _ <- colon
+    knd <- kindP
     (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
     endPos <- semi
     let decl = NominalDecl
           { data_name = tn
           , data_polarity = dataCodata
+          , data_kind = knd
           , data_xtors = combineXtors xtors
           }
     return (DataDecl (Loc startPos endPos) decl)

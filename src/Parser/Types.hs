@@ -1,5 +1,8 @@
 module Parser.Types
-  ( typeSchemeP
+  ( -- Kind Parser
+    kindP
+    -- Type Parsers
+  , typeSchemeP
   , typP
     -- Invariant Types
   , Invariant(..)
@@ -15,6 +18,20 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Types
+
+---------------------------------------------------------------------------------
+-- Parsing of Kinds
+---------------------------------------------------------------------------------
+
+evalOrderP :: Parser EvalOrder 
+evalOrderP = cbvKwP *> return CBV <|> cbnKwP *> return CBN
+
+kindP :: Parser Kind
+kindP = do
+  _ <- typeKwP
+  eo <- evalOrderP
+  return $ MonoKind eo
+
 
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types

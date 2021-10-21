@@ -1,7 +1,6 @@
 module Eval.Eval
   ( -- Eval Monad
-    EvalOrder(..)
-  , EvalM
+    EvalM
   , runEval
     -- Helper functions
   , throwEvalError

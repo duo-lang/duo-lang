@@ -1,9 +1,9 @@
 # Standard Prelude
 
-data Bool { True, False };
-data Nat { Z, S(Nat) };
-data NatList { Nil, Cons(Nat, NatList) };
-data Unit { Unit };
+data Bool : Type CBV { True, False };
+data Nat : Type CBV { Z, S(Nat) };
+data NatList : Type CBV { Nil, Cons(Nat, NatList) };
+data Unit : Type CBV { Unit };
 
 # Generic print consumer
 cns print := mu x.Print(x);

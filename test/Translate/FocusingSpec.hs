@@ -14,7 +14,6 @@ import Parser.Parser
 import Syntax.STerms
 import Syntax.Types
 import Translate.Focusing
-import Eval.Eval
 
 shouldShiftTo :: STerm pc () () -> STerm pc () () -> Spec
 shouldShiftTo tm1 tm2 = do

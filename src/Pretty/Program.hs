@@ -25,9 +25,11 @@ instance PrettyAnn DataCodata where
   prettyAnn Codata = annKeyword "codata"
 
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl tn dc xtors) =
+  prettyAnn (NominalDecl tn dc knd xtors) =
     prettyAnn dc <+>
     prettyAnn tn <+>
+    colon <+>
+    prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
     semi
 

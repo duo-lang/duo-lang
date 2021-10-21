@@ -26,6 +26,9 @@ module Parser.Lexer
   , setKwP
   , topKwP
   , botKwP
+  , cbvKwP
+  , cbnKwP
+  , typeKwP
     -- Symbols
   , dot
   , pipe
@@ -161,7 +164,7 @@ moduleNameP = do
 
 keywords :: [Text]
 keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "set", "Top", "Bot"
-           , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import"]
+           , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -223,6 +226,14 @@ topKwP = keywordP "Top"
 botKwP :: Parser SourcePos 
 botKwP = keywordP "Bot"
 
+cbvKwP :: Parser SourcePos
+cbvKwP = keywordP "CBV"
+
+cbnKwP :: Parser SourcePos
+cbnKwP = keywordP "CBN"
+
+typeKwP :: Parser SourcePos
+typeKwP = keywordP "Type"
 
 -------------------------------------------------------------------------------------------
 -- Symbols

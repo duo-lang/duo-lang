@@ -1,7 +1,7 @@
 set refined;
-data L { Atom, NegAtom };
-data Fm { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
-data R { SetSet, Union(R,R), Distrib(R,R) };
+data L : Type CBV { Atom, NegAtom };
+data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
+data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };
 
 def rec nnf := comatch { 'Ap(f) => match f with {
     Lit(a)   => match a with { 
