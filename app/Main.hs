@@ -2,7 +2,7 @@ module Main where
 
 import System.Environment (getArgs)
 import Repl.Run (runRepl)
-import LSP (runLSP)
+import LSP.LSP (runLSP)
 
 main :: IO ()
 main = do

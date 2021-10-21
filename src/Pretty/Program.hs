@@ -79,7 +79,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
     "<ParseError>"
 
 
-instance PrettyAnn (NamedRep (Declaration FreeVarName Loc)) where
+instance PrettyAnn (NamedRep (Declaration FreeVarName b)) where
   prettyAnn (NamedRep (PrdDecl isRec _ fv annot tm)) =
     prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CnsDecl isRec _ fv annot tm)) =
@@ -113,5 +113,5 @@ instance PrettyAnn (Environment bs) where
       ppCns  = vsep $ intersperse "" $ "Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList cnsEnv))
       ppCmds = vsep $ intersperse "" $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
       ppDefs = vsep $ intersperse "" $ "Definitions:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList defEnv))
-      ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn <$> declEnv)
+      ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn . snd <$> declEnv)
 
