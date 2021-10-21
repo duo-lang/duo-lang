@@ -300,11 +300,11 @@ insertDecl (DefDecl isRec loc v annot t) = do
   env <- gets driverEnv
   let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) (defEnv env)}
   setEnvironment newEnv
-insertDecl (DataDecl _loc dcl) = do
+insertDecl (DataDecl loc dcl) = do
   -- Insert into environment
   -- TODO: Check data decls
   env <- gets driverEnv
-  let newEnv = env { declEnv = dcl : declEnv env}
+  let newEnv = env { declEnv = (loc,dcl) : declEnv env}
   setEnvironment newEnv
 insertDecl (ImportDecl loc mod) = do
   fp <- findModule mod loc

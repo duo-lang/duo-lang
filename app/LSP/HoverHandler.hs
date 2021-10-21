@@ -26,13 +26,17 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( posToPosition, lookupPos )
 import Utils ( Loc(..) )
-import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv) )
+import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv, declEnv) )
 import Syntax.CommonTerm ( FreeVarName )
+import Syntax.Types ( Typ(TyNominal), PolarityRep (PosRep), DataDecl (data_name) )
 import TypeInference.Driver
     ( defaultInferenceOptions,
       inferProgramIO,
       DriverState(DriverState),
       InferenceOptions(infOptsLibPath) )
+import TypeTranslation ( translateType )
+import Syntax.Types (Polarity(Pos))
+import Data.Either (fromRight)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -67,6 +71,7 @@ lookupHoverEnv pos env =
     prdres = find (\(_,(_,loc,_)) -> lookupPos pos loc) prds
     cnss = M.toList (cnsEnv env)
     cnsres = find (\(_,(_,loc,_)) -> lookupPos pos loc) cnss
+    typs = find (\(loc,_) -> lookupPos pos loc) (declEnv env)
   in
     case defres of
       Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
@@ -74,6 +79,11 @@ lookupHoverEnv pos env =
         Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
         Nothing -> case cnsres of
           Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
-          Nothing -> Nothing
+          Nothing -> case typs of
+            Just (_,decl) ->
+              let ty :: Typ Pos = fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl)))
+              in Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
+            Nothing -> Nothing
+
 
 

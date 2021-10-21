@@ -126,7 +126,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
                         , M.keys (defEnv env)
-                        , (unTypeName . data_name) <$> (declEnv env)
+                        , (unTypeName . data_name . snd) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion

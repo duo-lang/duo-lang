@@ -113,5 +113,5 @@ instance PrettyAnn (Environment bs) where
       ppCns  = vsep $ intersperse "" $ "Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList cnsEnv))
       ppCmds = vsep $ intersperse "" $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
       ppDefs = vsep $ intersperse "" $ "Definitions:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList defEnv))
-      ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn <$> declEnv)
+      ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn . snd <$> declEnv)
 
