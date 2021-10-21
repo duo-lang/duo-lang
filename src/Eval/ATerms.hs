@@ -10,6 +10,7 @@ import Data.Maybe (fromJust)
 import Lookup
 import Eval.Eval
 import Syntax.ATerms
+import Syntax.Types ( EvalOrder(CBV, CBN) )
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms

@@ -12,6 +12,7 @@ import Utils
 import TypeInference.Driver
 import Parser.Parser
 import Syntax.STerms
+import Syntax.Types
 import Translate.Focusing
 import Eval.Eval
 

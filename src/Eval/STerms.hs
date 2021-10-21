@@ -8,11 +8,23 @@ import Data.List (find)
 import qualified Data.Text as T
 
 import Eval.Eval
-import Lookup
-import Pretty.Pretty
+    ( throwEvalError, lookupEvalOrder, EvalM, EvalOrder )
+import Lookup ( lookupSTerm )
+import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()
 import Syntax.STerms
-import Utils
+    ( FreeVarName,
+      PrdCns(Cns, Prd),
+      PrdCnsRep(CnsRep, PrdRep),
+      XtorName(unXtorName),
+      commandOpening,
+      commandOpeningSingle,
+      Command(..),
+      SCase(MkSCase, scase_name),
+      STerm(..),
+      XtorArgs(..) )
+import Syntax.Types ( EvalOrder(CBN, CBV) )
+import Utils ( Twice(..) )
 
 ---------------------------------------------------------------------------------
 -- Symmetric Terms

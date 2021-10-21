@@ -5,7 +5,6 @@ import Control.Monad ( void )
 import Data.Bifunctor ( Bifunctor(bimap) )
 import qualified Data.Text as T
 
-import Eval.Eval (EvalOrder(..))
 import Syntax.Program ( Declaration(..), Program )
 import Syntax.CommonTerm
     ( FreeVarName,
@@ -20,6 +19,7 @@ import Syntax.STerms
       XtorArgs(..),
       commandClosingSingle,
       shiftCmd)
+import Syntax.Types ( EvalOrder(..) )
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues

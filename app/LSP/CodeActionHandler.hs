@@ -14,7 +14,7 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
     ( Declaration(PrdDecl, CnsDecl, CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
-import Syntax.Types ( Polarity(..), TypeScheme )
+import Syntax.Types ( Polarity(..), TypeScheme, EvalOrder(..) )
 import Syntax.ATerms
 import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand )
 import qualified Syntax.STerms as Syntax
@@ -28,7 +28,6 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
-import Eval.Eval ( EvalOrder(..) )
 import Translate.Focusing ( focusSTerm, isFocusedSTerm, isFocusedCmd, focusCmd )
 import Translate.Translate ( compile )
 

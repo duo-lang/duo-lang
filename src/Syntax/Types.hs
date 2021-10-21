@@ -19,6 +19,22 @@ newtype TVar = MkTVar { tvar_name :: Text } deriving (Eq, Show, Ord)
 newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
 
 ------------------------------------------------------------------------------
+-- Kinds
+------------------------------------------------------------------------------
+
+-- | An evaluation order is either call-by-value or call-by-name.
+data EvalOrder
+  = CBV -- ^ Call-by-value
+  | CBN -- ^ Call-by-name
+  deriving (Show, Eq)
+
+-- | We use the "Kinds are calling-conventions" approach to track
+-- calling conventions at the type level.
+data Kind = MonoKind EvalOrder
+          | KindVar Text
+  deriving (Show, Eq)
+
+------------------------------------------------------------------------------
 -- Polarity
 ------------------------------------------------------------------------------
 

@@ -12,7 +12,7 @@ import System.Console.Repline ( HaskelineT, abort )
 import System.IO.Error (tryIOError)
 
 import Errors ()
-import Eval.Eval ( EvalOrder(CBV), runEval )
+import Eval.Eval ( runEval )
 import Eval.ATerms ( evalATermComplete, evalATermSteps )
 import Eval.STerms ( eval, evalSteps )
 import Parser.Parser
@@ -22,6 +22,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
+import Syntax.Types ( EvalOrder(CBV) )
 import TypeInference.Driver
 import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)

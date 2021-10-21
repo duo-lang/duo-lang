@@ -10,7 +10,8 @@ import qualified Data.Text as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
-import Eval.Eval ( EvalOrder(CBN, CBV) )
+
+import Syntax.Types ( EvalOrder(CBN, CBV) )
 import Repl.Repl
     ( Option(..),
       Repl,
