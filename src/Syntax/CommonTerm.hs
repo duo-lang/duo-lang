@@ -17,6 +17,14 @@ data PrdCnsRep pc where
 deriving instance Show (PrdCnsRep pc)
 deriving instance Eq (PrdCnsRep pc)
 
+type family FlipPrdCns (pc :: PrdCns) :: PrdCns where
+  FlipPrdCns Prd = Cns
+  FlipPrdCns Cns = Prd
+
+flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
+flipPrdCns PrdRep = CnsRep
+flipPrdCns CnsRep = PrdRep
+
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------

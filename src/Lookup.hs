@@ -84,16 +84,16 @@ lookupDataDecl xt = do
   let typeContainsXtor :: DataDecl -> Bool
       typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
                                                   | otherwise = False
-  env <- declEnv <$> asks fst
+  env <- asks (((fmap snd) . declEnv) . fst)
   case find typeContainsXtor env of
     Nothing -> throwOtherError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
     Just decl -> return decl
 
 -- | Find the type declaration belonging to a given TypeName.
-lookupTypeName :: EnvReader bs a m 
+lookupTypeName :: EnvReader bs a m
                => TypeName -> m DataDecl
 lookupTypeName tn = do
-  env <- asks $ declEnv . fst 
+  env <- asks $ fmap snd . declEnv . fst
   case find (\NominalDecl{..} -> data_name == tn) env of
     Just decl -> return decl
     Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
