@@ -86,9 +86,8 @@ solve :: [Constraint ConstraintInfo] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
-  case cacheHit of
-    True -> solve css
-    False -> do
+  if cacheHit then solve css
+  else do
       addToCache cs
       case cs of
         (SubType _ (TyVar PosRep uv) ub) -> do
@@ -189,15 +188,14 @@ subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
 -- Constraints between nominal and refined types:
 --
 -- Refinement types and nominal types are incomparable.
-subConstraints (SubType _ t1@(TyRefined _ tn1 _) (TyNominal _ tn2)) =
-  if tn1 == tn2 then return []
-  else throwSolverError ["The following types are incompatible:"
+subConstraints (SubType _ t1@TyRefined{} t2@TyNominal{}) =
+  throwSolverError ["The following types are incompatible:"
                         , "    " <> ppPrint t1
                         , "and"
-                        , "    " <> ppPrint tn2 ]
-subConstraints (SubType _ (TyNominal _ tn1) t2@TyRefined{}) =
+                        , "    " <> ppPrint t2 ]
+subConstraints (SubType _ t1@TyNominal{} t2@TyRefined{}) =
   throwSolverError ["The following types are incompatible:"
-                   , "    " <> ppPrint tn1
+                   , "    " <> ppPrint t1
                    , "and"
                    , "    " <> ppPrint t2 ]
 -- Constraints between structural data and codata types:
