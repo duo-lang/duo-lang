@@ -28,17 +28,16 @@ import Syntax.CommonTerm
 ---------------------------------------------------------------------------------------------
 
 data TranslateState = TranslateState 
-  { recVarMap :: Map TypeName TVar
-  , recVarsUsed :: Set TVar
+  { recVarsUsed :: Set TVar
   , varCount :: Int }
 
 initialState :: TranslateState
-initialState = TranslateState { recVarMap = M.empty, recVarsUsed = S.empty, varCount = 0 }
+initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { context :: [TypArgs Pos] }
+newtype TranslateReader = TranslateReader { recVarMap :: Map TypeName TVar }
 
 initialReader :: Environment FreeVarName -> (Environment FreeVarName, TranslateReader)
-initialReader env = (env, TranslateReader { context = [] })
+initialReader env = (env, TranslateReader { recVarMap = M.empty })
 
 newtype TranslateM a = TraM { getTraM :: ReaderT (Environment FreeVarName, TranslateReader) (StateT TranslateState (Except Error)) a }
   deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment FreeVarName, TranslateReader), MonadError Error)
@@ -50,21 +49,21 @@ runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReade
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-modifyVarMap :: (Map TypeName TVar -> Map TypeName TVar) -> TranslateM ()
-modifyVarMap f = do
-  modify (\TranslateState{..} -> 
-    TranslateState{ recVarMap = f recVarMap, recVarsUsed, varCount })
+withVarMap :: (Map TypeName TVar -> Map TypeName TVar) -> TranslateM a -> TranslateM a
+withVarMap f m = do
+  local (\(env,TranslateReader{..}) -> 
+    (env,TranslateReader{ recVarMap = f recVarMap })) m
 
 modifyVarSet :: (Set TVar -> Set TVar) -> TranslateM ()
 modifyVarSet f = do
   modify (\TranslateState{..} ->
-    TranslateState{ recVarMap, recVarsUsed = f recVarsUsed, varCount })
+    TranslateState{ recVarsUsed = f recVarsUsed, varCount })
 
 freshTVar :: TranslateM TVar
 freshTVar = do
   i <- gets varCount
   modify (\TranslateState{..} ->
-    TranslateState{ recVarMap, recVarsUsed, varCount = varCount + 1 })
+    TranslateState{ recVarsUsed, varCount = varCount + 1 })
   return $ MkTVar ("g" <> T.pack (show i))
 
 ---------------------------------------------------------------------------------------------
@@ -77,14 +76,14 @@ translateXtorSig' MkXtorSig{..} = do
   pts' <- mapM translateType' $ prdTypes sig_args
   cts' <- mapM translateType' $ cnsTypes sig_args
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
-    where
+    {- where
       xtorNameMakeStructural :: XtorName -> XtorName
-      xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s
+      xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s -}
 
 -- | Translate a nominal type into a structural type recursively
 translateType' :: Typ pol -> TranslateM (Typ pol)
 translateType' (TyNominal pr tn) = do
-  m <- gets recVarMap
+  m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
@@ -93,14 +92,14 @@ translateType' (TyNominal pr tn) = do
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
-    -- Insert current type name into cache with corresponding rec. type variable
-    modifyVarMap $ M.insert tn tv
     case data_polarity of
       Data -> do
-        xtss <- mapM translateXtorSig' $ data_xtors pr
+        -- Recursively translate xtor sig with mapping of current type name to new rec type var
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSig') $ data_xtors pr
         return $ TyRec pr tv $ TyData pr xtss
       Codata -> do
-        xtss <- mapM translateXtorSig' $ data_xtors $ flipPolarityRep pr
+        -- Recursively translate xtor sig with mapping of current type name to new rec type var
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSig') $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr xtss
 translateType' tv@TyVar{} = return tv
 translateType' t = throwOtherError ["Cannot translate type " <> ppPrint t]
