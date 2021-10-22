@@ -22,7 +22,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
-import Syntax.Kinds ( EvalOrder(CBV) )
+import Syntax.Kinds ( CallingConvention(CBV) )
 import TypeInference.Driver
 import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)
@@ -39,7 +39,7 @@ data ReplState = ReplState
   { replEnv :: Environment FreeVarName
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
-  , evalOrder :: EvalOrder
+  , evalOrder :: CallingConvention
   , mode :: Mode
   , typeInfOpts :: InferenceOptions
   }

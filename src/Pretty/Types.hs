@@ -42,7 +42,7 @@ commaSym = prettyAnn ("," :: String)
 -- Prettyprinting of Kinds
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn EvalOrder where
+instance PrettyAnn CallingConvention  where
   prettyAnn CBV = "CBV"
   prettyAnn CBN = "CBN"
 

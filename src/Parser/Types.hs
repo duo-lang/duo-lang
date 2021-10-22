@@ -24,7 +24,7 @@ import Syntax.Kinds
 -- Parsing of Kinds
 ---------------------------------------------------------------------------------
 
-evalOrderP :: Parser EvalOrder 
+evalOrderP :: Parser CallingConvention 
 evalOrderP = cbvKwP *> return CBV <|> cbnKwP *> return CBN
 
 kindP :: Parser Kind

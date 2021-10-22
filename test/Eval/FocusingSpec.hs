@@ -15,7 +15,7 @@ import Eval.Eval
 import TypeInference.Driver
 
 
-evalFocusing :: EvalOrder -> Text -> Text -> Spec
+evalFocusing :: CallingConvention -> Text -> Text -> Spec
 evalFocusing evalOrder cmd cmdRes =
   case runInteractiveParser commandP cmd of
     Left err -> it "Could not parse" $ expectationFailure (ppPrintString (errorBundlePretty err))

@@ -11,7 +11,7 @@ import Syntax.Kinds
 import Eval.STerms (areAllSubst)
 
 
-substCtorExample :: EvalOrder -> Text -> Spec
+substCtorExample :: CallingConvention -> Text -> Spec
 substCtorExample order termS = do
   it (T.unpack termS ++  " can't be substituted.") $ do
       let Right (term,_) = runInteractiveParser (stermP PrdRep) termS

@@ -15,7 +15,7 @@ import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
     ( Declaration(PrdDecl, CnsDecl, CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
 import Syntax.Types ( Polarity(..), TypeScheme)
-import Syntax.Kinds (EvalOrder(..))
+import Syntax.Kinds (CallingConvention(..))
 import Syntax.ATerms
 import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand )
 import qualified Syntax.STerms as Syntax
@@ -85,7 +85,7 @@ type family Foo (pc :: PrdCns) :: Polarity where
   Foo Prd = Pos 
   Foo Cns = Neg
 
-generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvalOrder -> (FreeVarName, (STerm pc () FreeVarName, Loc, TypeScheme (Foo pc))) -> Command |? CodeAction
+generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (STerm pc () FreeVarName, Loc, TypeScheme (Foo pc))) -> Command |? CodeAction
 generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -98,7 +98,7 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
 
                                       
 
-generateFocusEdit :: PrdCnsRep pc -> EvalOrder -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc () FreeVarName, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
+generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc () FreeVarName, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
 generateFocusEdit PrdRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) (createNamesSTerm (focusSTerm eo tm))
@@ -120,7 +120,7 @@ generateFocusEdit CnsRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   , _changeAnnotations = Nothing
                   }
 
-generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvalOrder -> (FreeVarName, (Syntax.Command () FreeVarName, Loc)) -> Command |? CodeAction
+generateCmdFocusCodeAction :: TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Syntax.Command () FreeVarName, Loc)) -> Command |? CodeAction
 generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -131,7 +131,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
                                                                   , _xdata = Nothing
                                                                   }
 
-generateCmdFocusEdit ::  EvalOrder -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command () FreeVarName, Loc)) -> WorkspaceEdit
+generateCmdFocusEdit ::  CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command () FreeVarName, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
     newDecl = NamedRep $ CmdDecl () name (createNamesCommand (focusCmd eo cmd))

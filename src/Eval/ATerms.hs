@@ -12,7 +12,7 @@ import Eval.Eval
     ( throwEvalError, lookupEvalOrder, EvalM)
 import Syntax.ATerms
     ( atermOpening, ACase(MkACase, acase_name, acase_term), ATerm(..) )
-import Syntax.Kinds ( EvalOrder(CBV, CBN) )
+import Syntax.Kinds ( CallingConvention(CBV, CBN) )
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -39,7 +39,7 @@ evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
-evalATermSingleStep' :: ATerm () bs -> EvalOrder -> EvalM bs (Maybe (ATerm () bs))
+evalATermSingleStep' :: ATerm () bs -> CallingConvention -> EvalM bs (Maybe (ATerm () bs))
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupATerm fv

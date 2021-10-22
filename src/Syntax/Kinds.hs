@@ -7,7 +7,7 @@ import Data.Text (Text)
 ------------------------------------------------------------------------------
 
 -- | An evaluation order is either call-by-value or call-by-name.
-data EvalOrder
+data CallingConvention
   = CBV -- ^ Call-by-value
   | CBN -- ^ Call-by-name
   deriving (Show, Eq)
@@ -16,6 +16,6 @@ data EvalOrder
 -- calling conventions at the type level.
 -- Kind Variables are necessary during type inference, but we don't support
 -- kind polymorphism.
-data Kind = MonoKind EvalOrder
+data Kind = MonoKind CallingConvention
           | KindVar Text
   deriving (Show, Eq)
