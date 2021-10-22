@@ -207,7 +207,7 @@ typeToAut (TypeScheme tvars ty) = do
 -- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
 insertEpsilonEdges :: SolverResult -> TTA ()
 insertEpsilonEdges solverResult =
-  forM_ (M.toList solverResult) $ \(tv, vstate) -> do
+  forM_ (M.toList (tvarSolution solverResult)) $ \(tv, vstate) -> do
     i <- lookupTVar PosRep tv
     j <- lookupTVar NegRep tv
     forM_ (vst_lowerbounds vstate) $ \ty -> do
@@ -219,7 +219,7 @@ insertEpsilonEdges solverResult =
 
 solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol)
 solverStateToTypeAut solverResult pol ty = do
-  (start,aut) <- runTypeAutTvars (M.keys solverResult) $ insertEpsilonEdges solverResult >> insertType ty
+  (start,aut) <- runTypeAutTvars (M.keys (tvarSolution solverResult)) $ insertEpsilonEdges solverResult >> insertType ty
   let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
   lint newAut
   return $ removeEpsilonEdges newAut

@@ -244,7 +244,10 @@ data VariableState = VariableState
 emptyVarState :: VariableState
 emptyVarState = VariableState [] []
 
-type SolverResult = Map TVar VariableState
+data SolverResult = MkSolverResult
+  { tvarSolution :: Map TVar VariableState
+  , kvarSolution :: Map KVar Kind 
+  }
 
 ------------------------------------------------------------------------------
 -- Data Type declarations

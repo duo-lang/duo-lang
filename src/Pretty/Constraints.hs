@@ -92,7 +92,7 @@ instance PrettyAnn SolverResult where
     [ "---------------------------------------------------------"
     , "                   Solved Constraints"
     , "---------------------------------------------------------"
-    , vsep (solvedConstraintsToDoc <$> M.toList solverResult)
+    , vsep (solvedConstraintsToDoc <$> M.toList (tvarSolution solverResult))
     , "---------------------------------------------------------"
     ]
     where

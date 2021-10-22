@@ -6,6 +6,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (find)
+import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
@@ -25,14 +26,14 @@ import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: SolverResult
+  { sst_bounds :: Map TVar VariableState 
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
 createInitState (ConstraintSet _ uvs _) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
-                                                       , sst_cache = S.empty 
-                                                       , sst_inferMode = im }
+                                                         , sst_cache = S.empty 
+                                                         , sst_inferMode = im }
 
 type SolverM a = (ReaderT (Environment FreeVarName, ()) (StateT SolverState (Except Error))) a
 
@@ -291,5 +292,7 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 solveConstraints :: ConstraintSet -> Environment FreeVarName -> InferenceMode -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env im = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
-  return (sst_bounds solverState)
+  return MkSolverResult { tvarSolution = sst_bounds solverState
+                        , kvarSolution = M.empty
+                        }
 
