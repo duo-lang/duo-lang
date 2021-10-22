@@ -12,7 +12,7 @@ import Utils
 import TypeInference.Driver
 import Parser.Parser
 import Syntax.STerms
-import Syntax.Types
+import Syntax.Kinds
 import Translate.Focusing
 
 shouldShiftTo :: STerm pc () () -> STerm pc () () -> Spec

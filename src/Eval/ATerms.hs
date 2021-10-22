@@ -12,7 +12,7 @@ import Eval.Eval
     ( throwEvalError, lookupEvalOrder, EvalM)
 import Syntax.ATerms
     ( atermOpening, ACase(MkACase, acase_name, acase_term), ATerm(..) )
-import Syntax.Types ( EvalOrder(CBV, CBN) )
+import Syntax.Kinds ( EvalOrder(CBV, CBN) )
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms

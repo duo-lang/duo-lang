@@ -12,7 +12,7 @@ import Control.Monad.Reader
 
 import Errors
 import Syntax.Program (Environment)
-import Syntax.Types(EvalOrder)
+import Syntax.Kinds(EvalOrder)
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad

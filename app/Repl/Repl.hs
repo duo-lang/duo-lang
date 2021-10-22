@@ -22,7 +22,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import Syntax.STerms ( FreeVarName )
-import Syntax.Types ( EvalOrder(CBV) )
+import Syntax.Kinds ( EvalOrder(CBV) )
 import TypeInference.Driver
 import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)

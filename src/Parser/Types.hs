@@ -18,6 +18,7 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Types
+import Syntax.Kinds
 
 ---------------------------------------------------------------------------------
 -- Parsing of Kinds

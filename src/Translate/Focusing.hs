@@ -19,7 +19,7 @@ import Syntax.STerms
       XtorArgs(..),
       commandClosingSingle,
       shiftCmd)
-import Syntax.Types ( EvalOrder(..) )
+import Syntax.Kinds ( EvalOrder(..) )
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues

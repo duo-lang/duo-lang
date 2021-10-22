@@ -11,7 +11,7 @@ import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
 
-import Syntax.Types ( EvalOrder(CBN, CBV) )
+import Syntax.Kinds ( EvalOrder(CBN, CBV) )
 import Repl.Repl
     ( Option(..),
       Repl,

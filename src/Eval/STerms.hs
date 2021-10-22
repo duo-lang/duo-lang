@@ -23,7 +23,7 @@ import Syntax.STerms
       SCase(MkSCase, scase_name),
       STerm(..),
       XtorArgs(..) )
-import Syntax.Types ( EvalOrder(CBN, CBV) )
+import Syntax.Kinds ( EvalOrder(CBN, CBV) )
 import Utils ( Twice(..) )
 
 ---------------------------------------------------------------------------------

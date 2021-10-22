@@ -14,7 +14,8 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
     ( Declaration(PrdDecl, CnsDecl, CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
-import Syntax.Types ( Polarity(..), TypeScheme, EvalOrder(..) )
+import Syntax.Types ( Polarity(..), TypeScheme)
+import Syntax.Kinds (EvalOrder(..))
 import Syntax.ATerms
 import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand )
 import qualified Syntax.STerms as Syntax

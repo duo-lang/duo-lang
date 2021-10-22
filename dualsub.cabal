@@ -83,6 +83,7 @@ library
       Pretty.TypeAutomata
       Syntax.ATerms
       Syntax.CommonTerm
+      Syntax.Kinds
       Syntax.Types
       Syntax.Program
       Syntax.STerms

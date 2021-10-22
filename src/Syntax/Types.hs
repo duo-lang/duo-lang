@@ -7,6 +7,7 @@ import Data.Text (Text)
 
 import Utils
 import Syntax.CommonTerm
+import Syntax.Kinds
 
 ------------------------------------------------------------------------------
 -- Type Variables and Names
@@ -17,24 +18,6 @@ newtype TVar = MkTVar { tvar_name :: Text } deriving (Eq, Show, Ord)
 
 -- | Name of nominal type
 newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
-
-------------------------------------------------------------------------------
--- Kinds
-------------------------------------------------------------------------------
-
--- | An evaluation order is either call-by-value or call-by-name.
-data EvalOrder
-  = CBV -- ^ Call-by-value
-  | CBN -- ^ Call-by-name
-  deriving (Show, Eq)
-
--- | We use the "Kinds are calling-conventions" approach to track
--- calling conventions at the type level.
--- Kind Variables are necessary during type inference, but we don't support
--- kind polymorphism.
-data Kind = MonoKind EvalOrder
-          | KindVar Text
-  deriving (Show, Eq)
 
 ------------------------------------------------------------------------------
 -- Polarity

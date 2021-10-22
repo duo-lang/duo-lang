@@ -4,6 +4,7 @@ import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.Types
+import Syntax.Kinds
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types

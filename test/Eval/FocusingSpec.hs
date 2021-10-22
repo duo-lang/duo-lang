@@ -9,7 +9,7 @@ import Text.Megaparsec (errorBundlePretty)
 
 import Pretty.Pretty
 import Parser.Parser
-import Syntax.Types
+import Syntax.Kinds
 import Eval.STerms (eval)
 import Eval.Eval
 import TypeInference.Driver
