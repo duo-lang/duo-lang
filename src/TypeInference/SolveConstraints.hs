@@ -13,6 +13,7 @@ import qualified Data.Set as S
 
 import Errors
 import Syntax.Types
+import Syntax.Kinds
 import Syntax.CommonTerm (XtorName, FreeVarName)
 import Syntax.Program (Environment)
 import Lookup ( translateTypeTopLevel )
@@ -88,11 +89,13 @@ solve :: [Constraint ConstraintInfo] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
-  case cacheHit of
-    True -> solve css
-    False -> do
+  if cacheHit
+    then solve css
+    else do
       addToCache cs
       case cs of
+        (KindEq k1 k2) -> do
+          unifyKinds k1 k2
         (SubType _ (TyVar PosRep uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
@@ -115,6 +118,15 @@ checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo
 checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
   MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
   pure $ zipWith (SubType XtorSubConstraint) prd1 prd2 ++ zipWith (SubType XtorSubConstraint) cns2 cns1
+
+
+unifyKinds :: Kind -> Kind -> SolverM ()
+unifyKinds (MonoKind c1) (MonoKind c2) =
+  if c1 == c2
+    then return ()
+    else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint c1 <> " and " <> ppPrint c2]
+unifyKinds (KindVar kv) k = return ()
+unifyKinds k (KindVar kv) = return ()
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
@@ -283,6 +295,8 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
                    , "<:"
                    , ppPrint ty2
                    ]
+subConstraints (KindEq _ _) =
+  throwSolverError ["Unreachable"]
 
 ------------------------------------------------------------------------------
 -- Exported Function
