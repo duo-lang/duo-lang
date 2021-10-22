@@ -27,12 +27,14 @@ import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: Map TVar VariableState 
+  { sst_bounds :: Map TVar VariableState
+  , sst_kvars :: Map KVar Kind
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
 createInitState (ConstraintSet _ uvs _) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+                                                         , sst_kvars = M.empty
                                                          , sst_cache = S.empty 
                                                          , sst_inferMode = im }
 
@@ -49,13 +51,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache im) -> SolverState gr (f cache) im)
+    modifyCache f = modify (\(SolverState gr kvars cache im) -> SolverState gr kvars (f cache) im)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache im) -> SolverState (M.adjust f uv varMap) cache im)
+modifyBounds f uv = modify (\(SolverState varMap kvars cache im) -> SolverState (M.adjust f uv varMap) kvars cache im)
 
 getBounds :: TVar -> SolverM VariableState
 getBounds uv = do
@@ -125,8 +127,8 @@ unifyKinds (MonoKind c1) (MonoKind c2) =
   if c1 == c2
     then return ()
     else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint c1 <> " and " <> ppPrint c2]
-unifyKinds (KindVar kv) k = return ()
-unifyKinds k (KindVar kv) = return ()
+unifyKinds (KindVar _kv) _k = return ()
+unifyKinds _k (KindVar _kv) = return ()
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
@@ -307,6 +309,6 @@ solveConstraints :: ConstraintSet -> Environment FreeVarName -> InferenceMode ->
 solveConstraints constraintSet@(ConstraintSet css _ _) env im = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   return MkSolverResult { tvarSolution = sst_bounds solverState
-                        , kvarSolution = M.empty
+                        , kvarSolution = sst_kvars solverState
                         }
 

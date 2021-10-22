@@ -4,6 +4,7 @@ module TypeInference.GenerateConstraints.Definition
   , GenerateReader(..)
   , runGenM
     -- Generating fresh unification variables
+  , freshKVar
   , freshTVar
   , freshTVars
     -- Throwing errors
@@ -41,6 +42,7 @@ import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
+import Syntax.Kinds
 import Utils
 
 ---------------------------------------------------------------------------------------------
@@ -51,7 +53,8 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState
-  { varCount :: Int
+  { tvarCount :: Int
+  , kvarCount :: Int
   , constraintSet :: ConstraintSet
   }
 
@@ -63,7 +66,7 @@ initialConstraintSet = ConstraintSet
   }
 
 initialState :: GenerateState
-initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
+initialState = GenerateState { tvarCount = 0, kvarCount = 0, constraintSet = initialConstraintSet }
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -95,12 +98,23 @@ runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialRe
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
+freshKVar :: GenM KVar
+freshKVar = do
+  var <- gets kvarCount
+  let kvar = MkKVar ("u" <> T.pack (show var))
+  -- We need to increment the counter:
+  modify (\gs@GenerateState{} -> gs { kvarCount = var + 1})
+  -- We also need to add the uvar to the constraintset.
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kuvars } } ->
+            gs { constraintSet = cs { cs_kuvars = cs_kuvars ++ [kvar] } })
+  return kvar
+
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
-  var <- gets varCount
+  var <- gets tvarCount
   let tvar = MkTVar ("u" <> T.pack (show var))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
+  modify (\gs@GenerateState{} -> gs { tvarCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
