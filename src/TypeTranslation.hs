@@ -1,6 +1,7 @@
 module TypeTranslation
   ( translateType
   , translateXtorSig
+  , translateWrapXtorSig
   ) where
 
 import Control.Monad.Except
@@ -54,8 +55,8 @@ withVarMap f m = do
   local (\(env,TranslateReader{..}) -> 
     (env,TranslateReader{ recVarMap = f recVarMap })) m
 
-modifyVarSet :: (Set TVar -> Set TVar) -> TranslateM ()
-modifyVarSet f = do
+modifyVarsUsed :: (Set TVar -> Set TVar) -> TranslateM ()
+modifyVarsUsed f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed = f recVarsUsed, varCount })
 
@@ -88,7 +89,7 @@ translateType' (TyNominal pr tn) = do
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
-    modifyVarSet $ S.insert tv -- add rec. type variable to used var cache
+    modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyVar pr tv
   else do
     NominalDecl{..} <- lookupTypeName tn
@@ -102,8 +103,27 @@ translateType' (TyNominal pr tn) = do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSig') $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr xtss
+-- Unwrap inner refinement types
+translateType' ty@TyRefined{} = return ty
 translateType' tv@TyVar{} = return tv
-translateType' t = throwOtherError ["Cannot translate type " <> ppPrint t]
+translateType' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
+
+---------------------------------------------------------------------------------------------
+-- Refinement type wrapping functions
+---------------------------------------------------------------------------------------------
+
+wrapXtorSigRefined :: XtorSig pol -> TranslateM (XtorSig pol)
+wrapXtorSigRefined MkXtorSig{..} = do
+  pts' <- mapM wrapTypeRefined $ prdTypes sig_args
+  cts' <- mapM wrapTypeRefined $ cnsTypes sig_args
+  return $ MkXtorSig sig_name (MkTypArgs pts' cts')
+
+wrapTypeRefined :: Typ pol -> TranslateM (Typ pol)
+wrapTypeRefined ty@(TyNominal pr tn) = do
+  trTy <- translateType' ty
+  return $ TyRefined pr tn trTy
+wrapTypeRefined ty@TyRefined{} = return ty
+wrapTypeRefined ty = throwOtherError ["Cannot wrap " <> ppPrint ty <> " as refinement type"]
 
 ---------------------------------------------------------------------------------------------
 -- Cleanup functions
@@ -111,39 +131,49 @@ translateType' t = throwOtherError ["Cannot translate type " <> ppPrint t]
 
 cleanUpXtorSig :: XtorSig pol -> TranslateM (XtorSig pol)
 cleanUpXtorSig MkXtorSig{..} = do
-  pts <- mapM cleanUp $ prdTypes sig_args
-  cts <- mapM cleanUp $ cnsTypes sig_args
+  pts <- mapM cleanUpType $ prdTypes sig_args
+  cts <- mapM cleanUpType $ cnsTypes sig_args
   return MkXtorSig{ sig_name, sig_args = MkTypArgs pts cts }
 
 -- | Remove unused recursion headers
-cleanUp :: Typ pol -> TranslateM (Typ pol)
-cleanUp ty = case ty of
+cleanUpType :: Typ pol -> TranslateM (Typ pol)
+cleanUpType ty = case ty of
   -- Remove outermost recursive type if its variable is unused
   TyRec pr tv ty' -> do
     s <- gets recVarsUsed
-    ty'Clean <- cleanUp ty'
-    if S.member tv s then return $ TyRec pr tv ty'Clean
-    else return ty'Clean
-  -- Propagate cleanup in arg types of data type
+    tyClean <- cleanUpType ty' -- propagate cleanup
+    if S.member tv s then return $ TyRec pr tv tyClean
+    else return tyClean
+  -- Propagate cleanup for data, codata and refinement types
   TyData pr xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
     return $ TyData pr xtss'
-  -- Propagate cleanup in arg types of codata type
   TyCodata pr xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
     return $ TyCodata pr xtss'
+  TyRefined pr tn ty' -> do
+    tyClean <- cleanUpType ty'
+    return $ TyRefined pr tn tyClean
   -- Type variables remain unchanged
-  tyVar@TyVar{} -> return tyVar
+  tv@TyVar{} -> return tv
   -- Other types imply incorrect translation
   t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
 
-translateType :: Environment FreeVarName -> Typ pol -> Either Error (Typ pol)
-translateType env ty = case runTranslateM env $ (cleanUp <=< translateType') ty of
-  Left err -> throwError err
-  Right (ty,_) -> return ty
-  
+---------------------------------------------------------------------------------------------
+-- Exported functions
+---------------------------------------------------------------------------------------------
 
+translateType :: Environment FreeVarName -> Typ pol -> Either Error (Typ pol)
+translateType env ty = case runTranslateM env $ (cleanUpType <=< translateType') ty of
+  Left err -> throwError err
+  Right (ty',_) -> return ty'
+  
 translateXtorSig :: Environment FreeVarName -> XtorSig pol -> Either Error (XtorSig pol)
 translateXtorSig env xts = case runTranslateM env $ (cleanUpXtorSig <=< translateXtorSig') xts of
   Left err -> throwError err
-  Right (xts,_) -> return xts
+  Right (xts',_) -> return xts'
+
+translateWrapXtorSig :: Environment FreeVarName -> XtorSig pol -> Either Error (XtorSig pol)
+translateWrapXtorSig env xts = case runTranslateM env $ (cleanUpXtorSig <=< wrapXtorSigRefined) xts of
+  Left err -> throwError err
+  Right (xts',_) -> return xts'

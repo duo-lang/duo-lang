@@ -211,3 +211,10 @@ translateXtorSig xts = do
   case TT.translateXtorSig env xts of
     Left err -> throwError err
     Right xts' -> return xts'
+
+translateWrapXtorSig :: XtorSig pol -> GenM (XtorSig pol)
+translateWrapXtorSig xts = do
+  env <- asks fst
+  case TT.translateWrapXtorSig env xts of
+    Left err -> throwError err
+    Right xts' -> return xts'
