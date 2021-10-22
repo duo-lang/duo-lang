@@ -42,13 +42,16 @@ commaSym = prettyAnn ("," :: String)
 -- Prettyprinting of Kinds
 ---------------------------------------------------------------------------------
 
+instance PrettyAnn KVar where
+  prettyAnn kv = pretty (unKVar kv)
+
 instance PrettyAnn CallingConvention  where
   prettyAnn CBV = "CBV"
   prettyAnn CBN = "CBN"
 
 instance PrettyAnn Kind where
   prettyAnn (MonoKind eo) = "Type" <+> prettyAnn eo
-  prettyAnn (KindVar var) = pretty var
+  prettyAnn (KindVar var) = prettyAnn var
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of types

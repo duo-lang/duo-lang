@@ -213,7 +213,9 @@ data ConstraintInfo
   deriving (Show)
 
 
-data Constraint a = SubType a (Typ Pos) (Typ Neg)
+data Constraint a =
+    SubType a (Typ Pos) (Typ Neg)
+  | KindEq Kind Kind
   deriving (Eq, Ord, Functor)
 
 -- | Information about the provenance of a unification variable.
@@ -228,6 +230,7 @@ data UVarProvenance
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
                                    , cs_uvars :: [(TVar, UVarProvenance)]
+                                   , cs_kuvars :: [KVar]
                                    }
 
 ------------------------------------------------------------------------------
