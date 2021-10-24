@@ -25,6 +25,7 @@ module TypeInference.GenerateConstraints.Definition
   , checkExhaustiveness
   , translateType
   , translateXtorSig
+  , translateWrapXtorSig
   ) where
 
 import Control.Monad.Except

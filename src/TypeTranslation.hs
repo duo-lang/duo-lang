@@ -104,7 +104,7 @@ translateType' (TyNominal pr tn) = do
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSig') $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr xtss
 -- Unwrap inner refinement types
-translateType' ty@TyRefined{} = return ty
+translateType' (TyRefined _ _ ty) = return ty
 translateType' tv@TyVar{} = return tv
 translateType' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
