@@ -4,15 +4,16 @@ set refined;
 # Examples for testing type decl translation
 data Nat  { Z, S(Nat) }; # Natural numbers
 
-data Even { Z, Se(Odd) }; # Dual mutual recursion
+data Even { Ze, Se(Odd) }; # Dual mutual recursion
 data Odd  { So(Even) };
 
 data X1 { A, B(X2), C(X3) }; # Multiple mutual recursion
 data X2 { D(X3) };
 data X3 { E(X1,X2) };
 
-
-# def foo := S(Z);
+prd zero := Z;
+prd one := S(Z);
+prd two := S(S(Z));
 
 # Incomplete pattern matches, level 1
 cns foo := match { True => Print('T) };
@@ -29,6 +30,13 @@ def isSucc := comatch { 'Ap(n) => match n with {
 #                   Z() => True
 #                 }
 #               }};
+
+prd isOneS := comatch { 'Ap(n)[k] => n >> match {
+                S(m) => m >> match {
+                  Z() => True >> k,
+                  S(p) => True >> k
+                }
+              }};
 
 # def isTwo := comatch { 'Ap(n) => match n with {
 #                S(p) => match p with {
