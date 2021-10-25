@@ -2,6 +2,8 @@ module Parser.ATerms ( atermP ) where
 
 import Text.Megaparsec hiding (State)
 
+import Data.List.NonEmpty
+
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
@@ -66,7 +68,7 @@ ctorP :: NominalStructural -> Parser (ATerm Loc FreeVarName, SourcePos)
 ctorP ns = do
   startPos <- getSourcePos
   (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermP) `sepBy` comma)
+  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermTopP) `sepBy` comma)
   return (Ctor (Loc startPos endPos) xt args, endPos)
 
 acaseP :: NominalStructural -> Parser (ACase Loc FreeVarName)
@@ -75,7 +77,7 @@ acaseP ns = do
   (xt, _) <- xtorName ns
   args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
   _ <- rightarrow
-  (res, endPos) <- atermP
+  (res, endPos) <- atermTopP
   return (MkACase (Loc startPos endPos) xt args (atermClosing args res))
 
 acasesP :: Parser ([ACase Loc FreeVarName], SourcePos)
@@ -111,7 +113,7 @@ lambdaP = do
   _ <- backslash
   bvar <- freeVarName
   _ <- rightarrow 
-  (tm, endPos) <- atermP
+  (tm, endPos) <- atermTopP
   let res = mkLambda (Loc startPos endPos) (fst bvar) tm
   return (res, endPos)
 
@@ -124,14 +126,14 @@ lambdaP = do
 --      | \x => t
 atermBotP :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermBotP =
-  fvarP <|>
   numLitP <|>
   ctorP Structural <|>
   ctorP Nominal <|>
   matchP <|>
   comatchP <|>
   parens (fst <$> atermTopP) <|>
-  lambdaP
+  lambdaP <|>
+  fvarP
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser
@@ -143,17 +145,15 @@ mkApp :: Loc -> ATerm Loc FreeVarName -> ATerm Loc FreeVarName -> ATerm Loc Free
 mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [arg]
 
 -- TODO replace by nonempty
-mkApps :: [ATerm Loc FreeVarName] -> ATerm Loc FreeVarName 
-mkApps = undefined -- foldl mkApp
+mkApps :: SourcePos -> [(ATerm Loc FreeVarName, SourcePos)] -> (ATerm Loc FreeVarName, SourcePos)
+mkApps _startPos [x] = x
+mkApps startPos ((tm,endPos):as) = (mkApp (Loc startPos endPos) tm (fst (mkApps startPos as)) , undefined)
 
 applicationP :: Parser (ATerm Loc FreeVarName, SourcePos)
 applicationP = do
-  a <- many atermBotP
   startPos <- getSourcePos
-  (fun,_) <- atermP
-  (arg, endPos) <- atermP
-  let app = mkApp (Loc startPos endPos) fun arg
-  return (app, endPos)
+  aterms <- some atermBotP
+  return $ mkApps startPos aterms
 
 
 -- m ::= b ... b (n-ary application, left associative)
@@ -172,7 +172,7 @@ atermMiddleP = applicationP -- applicationP handles the case of 0-ary applicatio
 destructorP' :: NominalStructural -> Parser (XtorName,[ATerm Loc FreeVarName], SourcePos)
 destructorP' ns = do
   (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermP) `sepBy` comma)
+  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermTopP) `sepBy` comma)
   return (xt, args, endPos)
 
 destructorP :: Parser (XtorName,[ATerm Loc FreeVarName], SourcePos)
@@ -181,22 +181,30 @@ destructorP = destructorP' Structural <|> destructorP' Nominal
 destructorChainP :: Parser [(XtorName,[ATerm Loc FreeVarName], SourcePos)]
 destructorChainP = many (dot >> destructorP)
 
-mkDtorChain :: ATerm Loc FreeVarName -> [(XtorName,[ATerm Loc FreeVarName], SourcePos)] -> ATerm Loc FreeVarName
-mkDtorChain destructee destructorChain = undefined 
+mkDtorChain :: SourcePos
+            -> (ATerm Loc FreeVarName, SourcePos)
+            -> [(XtorName,[ATerm Loc FreeVarName], SourcePos)]
+            -> (ATerm Loc FreeVarName, SourcePos)
+mkDtorChain _ destructee [] = destructee
+mkDtorChain startPos (destructee,_)((xt,args,endPos):dts) =
+  let
+    loc = Loc startPos endPos
+    tm :: ATerm Loc FreeVarName = Dtor loc xt destructee args
+  in
+    mkDtorChain startPos (tm, endPos) dts
 
 dtorP :: Parser (ATerm Loc FreeVarName, SourcePos)
 dtorP = do
   startPos <- getSourcePos
-  (destructee,_pos) <- atermMiddleP
+  destructee <- atermMiddleP
   destructorChain <- destructorChainP
-  return  (mkDtorChain destructee destructorChain, undefined)
+  return $ mkDtorChain startPos destructee destructorChain
 
 
 -- t ::= m.D(t,...,t). ... .D(t,...,t)
 --     | m
 atermTopP :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermTopP = dtorP -- dtorP handles the case with an empty dtor chain.
-
 
 -------------------------------------------------------------------------------------------
 -- Exported Parsers
