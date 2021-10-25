@@ -63,16 +63,15 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
     Nominal -> do
       tn <- lookupDataDecl xt
       -- Check if args of xtor are correct
-      declXtss <- translateWrapXtorSig =<< lookupXtorSig xt NegRep
+      declXtss <- translateXtorSig =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args declXtss)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
-      argsXts <- translateXtorSig $ MkXtorSig xt argTypes
       im <- asks (inferMode . snd)
       let resType = case (im, rep) of
             (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-            (InferRefined,PrdRep) -> TyRefined PosRep (data_name tn) $ TyData PosRep [argsXts]
+            (InferRefined,PrdRep) -> TyData PosRep [MkXtorSig xt argTypes]
             (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-            (InferRefined,CnsRep) -> TyRefined NegRep (data_name tn) $ TyCodata NegRep [argsXts]
+            (InferRefined,CnsRep) -> TyCodata NegRep [MkXtorSig xt argTypes]
       return (resTerm, resType)
 --
 -- Structural pattern and copattern matches:
@@ -99,17 +98,17 @@ genConstraintsSTerm (XMatch _ rep Nominal cases@(pmcase:_)) = do
   checkCorrectness (scase_name <$> cases) tn
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
-                           x <- sig_args <$> (translateWrapXtorSig =<< lookupXtorSig scase_name PosRep)
+                           x <- sig_args <$> (translateXtorSig =<< lookupXtorSig scase_name PosRep)
                            (_,fvarsNeg) <- freshTVars scase_args
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   let resTerm = XMatch () rep Nominal (fst <$> cases')
-  im <- asks (inferMode . snd); casesXtss <- mapM translateXtorSig $ snd <$> cases'
+  im <- asks (inferMode . snd)
   let resType = case (im, rep) of
         (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-        (InferRefined,PrdRep) -> TyRefined PosRep (data_name tn) $ TyCodata PosRep casesXtss
+        (InferRefined,PrdRep) -> TyCodata PosRep $ snd <$> cases'
         (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-        (InferRefined,CnsRep) -> TyRefined NegRep (data_name tn) $ TyData NegRep casesXtss
+        (InferRefined,CnsRep) -> TyData NegRep $ snd <$> cases'
   return (resTerm, resType)
 --
 -- Mu and TildeMu abstractions:
