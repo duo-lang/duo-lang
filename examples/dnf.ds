@@ -3,7 +3,7 @@ data L { Atom, NegAtom };
 data Fm { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
 data R { SetSet, Union(R,R), Distrib(R,R) };
 
-def rec nnf := comatch { 'Ap(f) => match f with {
+def rec nnf := \f => match f with {
     Lit(a)   => match a with { 
       Atom    => Lit(Atom), 
       NegAtom => Lit(NegAtom) 
@@ -21,12 +21,12 @@ def rec nnf := comatch { 'Ap(f) => match f with {
       Or(p,q)  => And(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
       Imp(p,q) => And(nnf.'Ap(p), nnf.'Ap(Not(q)))
     }
-}};
+};
 
-def nnf2dnf := comatch { 'Ap(f) => match f with {
+def nnf2dnf := \f => match f with {
 		Lit(a)   => SetSet,
 		Or(p,q)  => SetSet,  ## Union(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q)),
 		And(p,q) => SetSet   ## Distrib(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q))
-}};
+};
 
-def dnf := comatch { 'Ap(f) => nnf2dnf.'Ap(nnf.'Ap(f)) };
+def dnf := \f => nnf2dnf.'Ap(nnf.'Ap(f));

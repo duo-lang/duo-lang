@@ -19,7 +19,36 @@ fvarP = do
   return (FVar (Loc startPos endPos) fv, endPos)
 
 -------------------------------------------------------------------------------------------
--- Constructors, Destructors and Literals
+-- Sugar
+-------------------------------------------------------------------------------------------
+
+numLitP :: Parser (ATerm Loc bs, SourcePos)
+numLitP = do
+  startPos <- getSourcePos
+  (num, endPos) <- numP
+  return (numToTerm  (Loc startPos endPos) num, endPos)
+  where
+    numToTerm :: Loc -> Int -> ATerm Loc bs
+    numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
+    numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
+
+
+lambdaP :: Parser (ATerm Loc FreeVarName, SourcePos)
+lambdaP = do
+  startPos <- getSourcePos
+  _ <- backslash
+  bvars <- many freeVarName
+  _ <- rightarrow 
+  (tm, endPos) <- atermP
+  let apcase :: ACase Loc FreeVarName = MkACase (Loc startPos endPos)
+                       (MkXtorName Structural "Ap")
+                       (fst <$> bvars)
+                       (atermClosing (fst <$> bvars) tm)
+  return (Comatch (Loc startPos endPos) [apcase], endPos)
+
+
+-------------------------------------------------------------------------------------------
+-- Constructors and destructors
 -------------------------------------------------------------------------------------------
 
 ctorP :: NominalStructural -> Parser (ATerm Loc FreeVarName, SourcePos)
@@ -39,16 +68,6 @@ dtorP ns = do
   (xt, endPos) <- xtorName ns
   (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermP) `sepBy` comma)
   return (Dtor (Loc startPos endPos) xt destructee args, endPos)
-
-numLitP :: Parser (ATerm Loc bs, SourcePos)
-numLitP = do
-  startPos <- getSourcePos
-  (num, endPos) <- numP
-  return (numToTerm  (Loc startPos endPos) num, endPos)
-  where
-    numToTerm :: Loc -> Int -> ATerm Loc bs
-    numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
-    numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
 
 -------------------------------------------------------------------------------------------
 -- Pattern and Copattern Matches
@@ -93,6 +112,7 @@ comatchP = do
 -- uses left-recursion in the grammar.
 atermP' :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermP' =
+  lambdaP <|>
   parens (fst <$> atermP) <|>
   numLitP <|>
   matchP <|>
@@ -103,6 +123,7 @@ atermP' =
 
 atermP :: Parser (ATerm Loc FreeVarName, SourcePos)
 atermP =
+  lambdaP <|>
   parens (fst <$> atermP) <|>
   try (dtorP Structural) <|>
   try (dtorP Nominal) <|>
