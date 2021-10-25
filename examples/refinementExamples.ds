@@ -11,9 +11,13 @@ data X1 { A, B(X2), C(X3) }; # Multiple mutual recursion
 data X2 { D(X3) };
 data X3 { E(X1,X2) };
 
-prd zero := Z;
-prd one := S(Z);
-prd two := S(S(Z));
+prd zeroS := Z;
+prd oneS := S(Z);
+prd twoS := S(S(Z));
+prd threeS := S(S(S(Z)));
+
+def twoA := S(S(Z));
+def threeA := S(S(S(Z)));
 
 # Incomplete pattern matches, level 1
 cns foo := match { True => Print('T) };
