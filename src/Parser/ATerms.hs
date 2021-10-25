@@ -147,7 +147,12 @@ mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [arg]
 -- TODO replace by nonempty
 mkApps :: SourcePos -> [(ATerm Loc FreeVarName, SourcePos)] -> (ATerm Loc FreeVarName, SourcePos)
 mkApps _startPos [x] = x
-mkApps startPos ((tm,endPos):as) = (mkApp (Loc startPos endPos) tm (fst (mkApps startPos as)) , undefined)
+mkApps startPos ((a1,_):(a2,endPos):as) =
+  let
+    tm = mkApp (Loc startPos endPos) a1 a2
+  in
+    mkApps startPos ((tm,endPos):as)
+  
 
 applicationP :: Parser (ATerm Loc FreeVarName, SourcePos)
 applicationP = do
