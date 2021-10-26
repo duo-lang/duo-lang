@@ -33,16 +33,6 @@ numLitP ns PrdRep = do
     numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") (MkXtorArgs [] [])
     numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") (MkXtorArgs [numToTerm loc (n-1)] [])
 
-lambdaSugar :: PrdCnsRep pc -> Parser (STerm pc Loc FreeVarName, SourcePos)
-lambdaSugar CnsRep = empty
-lambdaSugar PrdRep= do
-  startPos <- getSourcePos
-  _ <- backslash
-  (args, _) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
-  _ <- rightarrow
-  (cmd, endPos) <- commandP
-  return (XMatch (Loc startPos endPos) PrdRep Structural [MkSCase (MkXtorName Structural "Ap") args (commandClosing args cmd)], endPos)
-
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (XtorArgs Loc FreeVarName, SourcePos)
 xtorArgsP = do
@@ -133,7 +123,6 @@ stermP pc = fst <$> (parens (stermP pc))
   <|> patternMatch pc
   <|> muAbstraction pc
   <|> freeVar pc
-  <|> lambdaSugar pc
 
 --------------------------------------------------------------------------------------------
 -- Commands
