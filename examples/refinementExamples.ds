@@ -11,24 +11,24 @@ data X1 { A, B(X2), C(X3) }; # Multiple mutual recursion
 data X2 { D(X3) };
 data X3 { E(X1,X2) };
 
-def ex1 := match True with { True => S(Z), False => 'H };
+# def ex1 := match True with { True => S(Z), False => 'H };
 
-def ex2 := match True with { True => S(Z), False => True };
+# def ex2 := match True with { True => S(Z), False => True };
 
-prd zeroS := Z;
-prd oneS := S(Z);
-prd twoS := S(S(Z));
-prd threeS := S(S(S(Z)));
+# prd zeroS := Z;
+# prd oneS := S(Z);
+# prd twoS := S(S(Z));
+# prd threeS := S(S(S(Z)));
 
-def twoA := S(S(Z));
-def threeA := S(S(S(Z)));
+# def twoA := S(S(Z));
+# def threeA := S(S(S(Z)));
 
 # Incomplete pattern matches, level 1
-cns foo := match { True => Print('T) };
+# cns foo := match { True => Print('T) };
 
-def isSucc := comatch { 'Ap(n) => match n with { 
-             S(m) => True
-           }};
+# def isSucc := comatch { 'Ap(n) => match n with { 
+#              S(m) => True
+#            }};
 
 # Incomplete pattern match, level 2
 # Case arg m is inferred as {{ Nat :>> < 'Z | 'S(Nat) > }},
@@ -39,12 +39,12 @@ def isSucc := comatch { 'Ap(n) => match n with {
 #                 }
 #               }};
 
-prd isOneS := comatch { 'Ap(n)[k] => n >> match {
-                S(m) => m >> match {
-                  Z() => True >> k,
-                  S(p) => True >> k
-                }
-              }};
+# prd isOneS := comatch { 'Ap(n)[k] => n >> match {
+#                 S(m) => m >> match {
+#                   Z() => True >> k,
+#                   S(p) => True >> k
+#                 }
+#               }};
 
 # def isTwo := comatch { 'Ap(n) => match n with {
 #                S(p) => match p with {
