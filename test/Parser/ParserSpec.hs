@@ -1,6 +1,7 @@
 module Parser.ParserSpec ( spec ) where
 
 import Test.Hspec
+import Data.Bifunctor
 import Data.Either (isLeft)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -8,9 +9,10 @@ import qualified Data.Text as T
 import Parser.Parser
 import Parser.Types
 import Syntax.Types
-import Syntax.CommonTerm
+import Syntax.ATerms
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
+import Pretty.ATerms ()
 
 instance Show (Typ pol) where
   show typ = ppPrintString typ
@@ -27,6 +29,12 @@ typeParseCounterEx input polRep = do
   it ("Input " ++ T.unpack input ++ " cannot be parsed") $ do
     let res = runInteractiveParser (typP polRep) input
     res `shouldSatisfy` isLeft
+
+atermParseExample :: Text -> ATerm () () -> Spec
+atermParseExample input tm = do
+  it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrintString tm) $ do
+    let Right (parsedTerm,_) = runInteractiveParser atermP input
+    (bimap (const ()) (const ()) parsedTerm) `shouldBe` tm
 
 spec :: Spec
 spec = do
@@ -57,3 +65,10 @@ spec = do
                        , TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") mempty]]
     --
     typeParseCounterEx "{{ 'Ap() }" PosRep
+  describe "Check aterm parsing" $ do
+    atermParseExample "x y z" (Dtor () (MkXtorName Structural "Ap")
+                                       (Dtor () (MkXtorName Structural "Ap") (FVar () "x") [FVar () "y"]) [FVar () "z"])
+    atermParseExample "x.A.B" (Dtor () (MkXtorName Nominal "B")
+                                       (Dtor () (MkXtorName Nominal "A") (FVar () "x") []) [])
+    atermParseExample "f C(x)" (Dtor () (MkXtorName Structural "Ap") (FVar () "f") [Ctor () (MkXtorName Nominal "C") [FVar () "x"]])
+ 

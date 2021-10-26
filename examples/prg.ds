@@ -53,10 +53,6 @@ prd impl       := comatch {
 ## gives the input out
 prd id      := comatch { 'Ap(x)[k] => x >> k };
 
-## idAlt :: forall t0. { 'Ap(t0)[t0] }
-## gives the input out
-prd idAlt   := \(x)[k] => x >> k;
-
 ## curry :: forall t0t1t2. { 'Ap({ 'Ap(t2,t1)[t0] })[{ 'Ap(t2)[{ 'Ap(t1)[t0] }] }] }
 ## curries a given binary function f
 prd curry   := comatch { 'Ap(f)[k]   => 
@@ -481,14 +477,15 @@ prd admissabilityTest := comatch { 'Ap(f)[k] => 'True >> match { 'True => comatc
 prd implicationConstraintsTest1 := comatch { 'Ap(x) => x >> match { 'A => Done, 'B => x >> match { 'B => Done }}};
 
 prd parserTest := comatch { 'Ap(x)[x] => x >> x };
-prd parserTest2 := \(x)[x] => x >> x;
 
 ## Nominal Types
+
 
 data Bool : Type CBV { TT, FF };
 data Nat : Type CBV { Z, S(Nat) };
 codata NatBoolFun : Type CBN { Ap(Nat)[Bool] };
-prd nominalNot := \(x)[k] => x >> match { TT => FF >> k, FF => TT >> k };
+prd nominalNot := comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k } };
+
 
 prd addNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu w. S(w) >> k] }} >> k })['Ap(m)[k]] };
 prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
