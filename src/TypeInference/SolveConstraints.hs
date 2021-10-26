@@ -86,8 +86,9 @@ solve :: [Constraint ConstraintInfo] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
-  if cacheHit then solve css
-  else do
+  case cacheHit of
+    True -> solve css
+    False -> do
       addToCache cs
       case cs of
         (SubType _ (TyVar PosRep uv) ub) -> do
