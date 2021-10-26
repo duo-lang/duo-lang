@@ -11,6 +11,10 @@ data X1 { A, B(X2), C(X3) }; # Multiple mutual recursion
 data X2 { D(X3) };
 data X3 { E(X1,X2) };
 
+def ex1 := match True with { True => S(Z), False => 'H };
+
+def ex2 := match True with { True => S(Z), False => True };
+
 prd zeroS := Z;
 prd oneS := S(Z);
 prd twoS := S(S(Z));
