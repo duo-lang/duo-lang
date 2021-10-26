@@ -127,7 +127,7 @@ optionP = lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
 -------------------------------------------------------------------------------------------
 
 freeVarName :: Parser (FreeVarName, SourcePos)
-freeVarName = do
+freeVarName = try $ do
   (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
   checkReserved name
   return (name, pos)
@@ -137,20 +137,20 @@ checkTick Nominal = return ()
 checkTick Structural = () <$ tick
 
 xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
-xtorName ns = do
+xtorName ns = try $ do
   () <- checkTick ns
   (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkXtorName ns name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
-typeNameP = do
+typeNameP = try $ do
   (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (MkTypeName name, pos)
 
 moduleNameP :: Parser (ModuleName, SourcePos)
-moduleNameP = do
+moduleNameP = try $ do
   (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   return (ModuleName name, pos)
