@@ -127,11 +127,11 @@ genConstraintsCommand (Done _) = return (Done ())
 genConstraintsCommand (Print _ t) = do
   (t',_) <- genConstraintsSTerm t
   return (Print () t')
-genConstraintsCommand (Apply loc t1 t2) = do
+genConstraintsCommand (Apply loc _ t1 t2) = do
   (t1',ty1) <- genConstraintsSTerm t1
   (t2',ty2) <- genConstraintsSTerm t2
   addConstraint (SubType (CommandConstraint loc) ty1 ty2)
-  return (Apply () t1' t2')
+  return (Apply () Nothing t1' t2')
 
 
 ---------------------------------------------------------------------------------------------

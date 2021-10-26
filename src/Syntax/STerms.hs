@@ -33,6 +33,7 @@ import qualified Data.Text as T
 import Utils
 import Errors
 import Syntax.CommonTerm
+import Syntax.Kinds
 
 ---------------------------------------------------------------------------------
 -- # Symmetric Terms
@@ -123,13 +124,13 @@ data Command ext bs
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  = Apply ext (STerm Prd ext bs) (STerm Cns ext bs)
+  = Apply ext (Maybe CallingConvention) (STerm Prd ext bs) (STerm Cns ext bs)
   | Print ext (STerm Prd ext bs)
   | Done ext
   deriving (Show, Eq, Functor)
 
 instance Bifunctor Command where
-  bimap f g (Apply ext prd cns) = Apply (f ext) (bimap f g prd) (bimap f g cns)
+  bimap f g (Apply ext cc prd cns) = Apply (f ext) cc (bimap f g prd) (bimap f g cns)
   bimap f g (Print ext prd) = Print (f ext) (bimap f g prd)
   bimap f _ (Done ext) = Done (f ext)
 
@@ -154,7 +155,7 @@ termOpeningRec k args (MuAbs _ pc a cmd) =
 commandOpeningRec :: Int -> XtorArgs () bs -> Command () bs -> Command () bs
 commandOpeningRec _ _ (Done _) = Done ()
 commandOpeningRec k args (Print _ t) = Print () (termOpeningRec k args t)
-commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec k args (Apply _ cc t1 t2) = Apply () cc (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 
 -- replaces bound variables pointing "outside" of a command with given arguments
@@ -185,7 +186,7 @@ termClosingRec k vars (MuAbs ext pc a cmd) =
 commandClosingRec :: Int -> Twice [FreeVarName] -> Command ext bs -> Command ext bs
 commandClosingRec _ _ (Done ext) = Done ext
 commandClosingRec k args (Print ext t) = Print ext (termClosingRec k args t)
-commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (Apply ext cc t1 t2) = Apply ext cc (termClosingRec k args t1) (termClosingRec k args t2)
 
 commandClosing :: Twice [FreeVarName] -> Command ext bs -> Command ext bs
 commandClosing = commandClosingRec 0
@@ -221,7 +222,7 @@ termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec (Twice
 commandLocallyClosedRec :: [Twice [()]] -> Command () a -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
-commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
 termLocallyClosed :: STerm pc () a -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -261,7 +262,7 @@ openSTermComplete (MuAbs _ CnsRep fv cmd) =
   MuAbs () CnsRep fv (commandOpeningSingle PrdRep (FreeVar () PrdRep fv) (openCommandComplete cmd))
 
 openCommandComplete :: Command ext FreeVarName -> Command () FreeVarName
-openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
+openCommandComplete (Apply _ cc t1 t2) = Apply () cc (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()
 
@@ -308,10 +309,10 @@ createNamesSTerm' (MuAbs ext pc _ cmd) = do
 
 createNamesCommand' :: Command ext bs -> CreateNameM (Command ext FreeVarName)
 createNamesCommand' (Done ext) = return $ Done ext
-createNamesCommand' (Apply ext prd cns) = do
+createNamesCommand' (Apply ext cc prd cns) = do
   prd' <- createNamesSTerm' prd 
   cns' <- createNamesSTerm' cns 
-  return (Apply ext prd' cns')
+  return (Apply ext cc prd' cns')
 createNamesCommand' (Print ext prd) = createNamesSTerm' prd >>= \prd' -> return (Print ext prd')
 
 createNamesCase :: SCase ext bs -> CreateNameM (SCase ext FreeVarName)
@@ -341,7 +342,7 @@ shiftSCase :: Int -> SCase ext bs -> SCase ext bs
 shiftSCase n (MkSCase name bs cmd) = MkSCase name bs (shiftCmd' n cmd)
 
 shiftCmd' :: Int -> Command ext bs -> Command ext bs
-shiftCmd' n (Apply ext prd cns) = Apply ext (shiftSTerm' n prd) (shiftSTerm' n cns)
+shiftCmd' n (Apply ext cc prd cns) = Apply ext cc (shiftSTerm' n prd) (shiftSTerm' n cns)
 shiftCmd' _ (Done ext) = Done ext
 shiftCmd' n (Print ext prd) = Print ext (shiftSTerm' n prd)
 

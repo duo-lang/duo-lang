@@ -145,7 +145,7 @@ applyCmdP = do
   (prd, _pos) <- stermP PrdRep
   _ <- commandSym
   (cns, endPos) <- stermP CnsRep
-  return (Apply (Loc startPos endPos) prd cns, endPos)
+  return (Apply (Loc startPos endPos) Nothing prd cns, endPos)
 
 doneCmdP :: Parser (Command Loc FreeVarName, SourcePos)
 doneCmdP = do

@@ -54,24 +54,24 @@ checkArgs cmd argTypes args =
 evalSTermOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 evalSTermOnce (Done _) = return Nothing
 evalSTermOnce (Print _ _) = return Nothing
-evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
+evalSTermOnce (Apply _ _ prd cns) = evalApplyOnce prd cns
 
 evalApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
-  return (Just (Apply () prd cns))
+  return (Just (Apply () Nothing prd cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupSTerm CnsRep fv
-  return (Just (Apply () prd cns))
+  return (Just (Apply () Nothing prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply () prd cns) argTypes args
+  checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
   (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply () prd cns) argTypes args
+  checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
@@ -93,7 +93,7 @@ evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot ev
 focusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 focusOnce (Done _) = return Nothing
 focusOnce (Print _ _) = return Nothing
-focusOnce (Apply _ prd cns) = focusApplyOnce prd cns
+focusOnce (Apply _ _ prd cns) = focusApplyOnce prd cns
 
 focusApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
@@ -116,8 +116,8 @@ focusApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
         (args', mu) ->
           let xc = XtorCall ext PrdRep xt args'
           in return $ Just $ case order of
-                CBV -> Apply ext (fromLeft mu) (MuAbs ext CnsRep "r" (Apply ext xc cns))
-                CBN -> Apply ext (MuAbs ext PrdRep "r" (Apply ext xc cns)) (fromRight mu)
+                CBV -> Apply ext Nothing (fromLeft mu) (MuAbs ext CnsRep "r" (Apply ext Nothing xc cns))
+                CBN -> Apply ext Nothing (MuAbs ext PrdRep "r" (Apply ext Nothing xc cns)) (fromRight mu)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- Copattern matches.
 focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
@@ -138,8 +138,8 @@ focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
         (args', mu) ->
           let xc = XtorCall ext CnsRep xt args'
           in return $ Just $ case order of
-            CBV -> Apply ext (fromLeft mu) (MuAbs ext CnsRep "r" $ Apply ext prd xc)
-            CBN -> Apply ext (MuAbs ext PrdRep "r" $ Apply ext prd xc) (fromRight mu)
+            CBV -> Apply ext Nothing (fromLeft mu) (MuAbs ext CnsRep "r" $ Apply ext Nothing prd xc)
+            CBN -> Apply ext Nothing (MuAbs ext PrdRep "r" $ Apply ext Nothing prd xc) (fromRight mu)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- all other cases don't need focusing steps
 focusApplyOnce _ _ = return Nothing

@@ -53,9 +53,9 @@ isFocusedCase eo MkSCase { scase_cmd } = isFocusedCmd eo scase_cmd
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: CallingConvention -> Command ext bs -> Bool
-isFocusedCmd eo (Apply _ prd cns) = isFocusedSTerm eo prd && isFocusedSTerm eo cns
-isFocusedCmd _  (Done _)          = True
-isFocusedCmd eo (Print _ prd)     = isFocusedSTerm eo prd
+isFocusedCmd eo (Apply _ _ prd cns) = isFocusedSTerm eo prd && isFocusedSTerm eo cns
+isFocusedCmd _  (Done _)            = True
+isFocusedCmd eo (Print _ prd)       = isFocusedSTerm eo prd
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -140,21 +140,21 @@ focusXtor eo pcrep name prdArgs cnsArgs = MuAbs () pcrep () cmd
 
 
 focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [STerm Prd ext bs] -> [STerm Cns ext bs] -> [STerm Prd () ()] -> [STerm Cns () ()] -> Command () ()
-focusXtor' _  CnsRep name []         []         prd' cns' = Apply () (FreeVar () PrdRep alphaVar) (XtorCall () CnsRep name (MkXtorArgs (reverse prd') (reverse cns')))
-focusXtor' _  PrdRep name []         []         prd' cns' = Apply () (XtorCall () PrdRep name (MkXtorArgs (reverse prd') (reverse cns'))) (FreeVar () CnsRep alphaVar)
+focusXtor' _  CnsRep name []         []         prd' cns' = Apply () Nothing (FreeVar () PrdRep alphaVar) (XtorCall () CnsRep name (MkXtorArgs (reverse prd') (reverse cns')))
+focusXtor' _  PrdRep name []         []         prd' cns' = Apply () Nothing (XtorCall () PrdRep name (MkXtorArgs (reverse prd') (reverse cns'))) (FreeVar () CnsRep alphaVar)
 focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueSTerm eo PrdRep prd = focusXtor' eo pc name prds cns (bimap (const ()) (const ()) prd : prd') cns'
                                                           | otherwise                   = 
                                                               let
                                                                   var = betaVar (length (prd:prds) + length cns)
                                                                   cmd = commandClosingSingle PrdRep var (shiftCmd (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns'))
                                                               in
-                                                                  Apply () (focusSTerm eo prd) (MuAbs () CnsRep () cmd)
+                                                                  Apply () Nothing (focusSTerm eo prd) (MuAbs () CnsRep () cmd)
 focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' (bimap (const ()) (const ()) cns : cns')
                                                           | otherwise                   = 
                                                               let 
                                                                   var = betaVar (length (cns:cnss))
                                                                   cmd = commandClosingSingle CnsRep var (shiftCmd (focusXtor' eo pc name [] cnss prd' (FreeVar () CnsRep var: cns')))
-                                                              in Apply () (MuAbs () PrdRep () cmd) (focusSTerm eo cns)
+                                                              in Apply () Nothing (MuAbs () PrdRep () cmd) (focusSTerm eo cns)
 
 
 
@@ -165,7 +165,7 @@ focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: CallingConvention -> Command ext bs -> Command () ()
-focusCmd eo (Apply _ prd cns) = Apply () (focusSTerm eo prd) (focusSTerm eo cns)
+focusCmd eo (Apply _ cc prd cns) = Apply () cc (focusSTerm eo prd) (focusSTerm eo cns)
 focusCmd _  (Done _) = Done ()
 -- TODO: Treatment of Print still a bit unclear. Treat similarly to Ctors?
 focusCmd eo (Print _ prd) = Print () (focusSTerm eo prd)

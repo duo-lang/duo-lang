@@ -67,8 +67,8 @@ spec = do
         (BoundVar () PrdRep (0,0)) `shouldShiftTo` (BoundVar () PrdRep (1,0))
         (BoundVar () PrdRep (10,0)) `shouldShiftTo` (BoundVar () PrdRep (11,0))
         (MuAbs () PrdRep () (Done ())) `shouldShiftTo` (MuAbs () PrdRep () (Done ()))
-        (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0))))
-        (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (1,0))(BoundVar () CnsRep (1,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (2,0))(BoundVar () CnsRep (2,0))))
+        (MuAbs () PrdRep () (Apply () Nothing (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () Nothing (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0))))
+        (MuAbs () PrdRep () (Apply () Nothing (BoundVar () PrdRep (1,0))(BoundVar () CnsRep (1,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () Nothing (BoundVar () PrdRep (2,0))(BoundVar () CnsRep (2,0))))
     describe "Static Focusing works on concrete examples" $ do
         focusShouldBeNoOp "Done"
         focusShouldBeNoOp "S(Z) >> mu x.Done"
