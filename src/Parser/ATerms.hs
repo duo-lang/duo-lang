@@ -1,13 +1,37 @@
 module Parser.ATerms ( atermP ) where
 
-import Text.Megaparsec hiding (State)
+import Text.Megaparsec
+    ( many,
+      some,
+      sepBy,
+      option,
+      getSourcePos,
+      (<|>),
+      MonadParsec(try),
+      SourcePos )
 
-import Data.List.NonEmpty
 
-import Parser.Definition
+import Parser.Definition ( Parser )
 import Parser.Lexer
-import Syntax.CommonTerm
+    ( dot,
+      backslash,
+      comatchKwP,
+      withKwP,
+      matchKwP,
+      braces,
+      rightarrow,
+      comma,
+      parens,
+      xtorName,
+      numP,
+      freeVarName )
 import Syntax.ATerms
+    ( atermClosing,
+      ACase(..),
+      NominalStructural(..),
+      XtorName(..),
+      ATerm(..),
+      FreeVarName )
 import Utils (Loc(..))
 
 -------------------------------------------------------------------------------------------
@@ -144,8 +168,8 @@ atermBotP =
 mkApp :: Loc -> ATerm Loc FreeVarName -> ATerm Loc FreeVarName -> ATerm Loc FreeVarName
 mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [arg]
 
--- TODO replace by nonempty
 mkApps :: SourcePos -> [(ATerm Loc FreeVarName, SourcePos)] -> (ATerm Loc FreeVarName, SourcePos)
+mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
 mkApps _startPos [x] = x
 mkApps startPos ((a1,_):(a2,endPos):as) =
   let
@@ -169,9 +193,6 @@ atermMiddleP = applicationP -- applicationP handles the case of 0-ary applicatio
 -------------------------------------------------------------------------------------------
 -- Top Parser
 -------------------------------------------------------------------------------------------
-
-
-
 
 -- | Parses "D(t,...,t)"
 destructorP' :: NominalStructural -> Parser (XtorName,[ATerm Loc FreeVarName], SourcePos)
