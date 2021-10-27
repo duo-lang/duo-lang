@@ -2,7 +2,6 @@ module Eval.FocusingSpec ( spec ) where
 
 import Test.Hspec
 import TestUtils
-import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Megaparsec (errorBundlePretty)

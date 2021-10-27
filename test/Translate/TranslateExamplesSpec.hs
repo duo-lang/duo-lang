@@ -1,7 +1,6 @@
 module Translate.TranslateExamplesSpec ( spec ) where
 
 import Test.Hspec
-import Data.Bifunctor
 import Data.Either (isRight)
 import Data.Text (Text)
 import qualified Data.Text as T

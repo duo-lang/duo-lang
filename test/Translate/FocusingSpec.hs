@@ -1,7 +1,6 @@
 module Translate.FocusingSpec (spec) where
 
 import Control.Monad
-import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Test.Hspec
