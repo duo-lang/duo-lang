@@ -22,6 +22,9 @@ module Syntax.STerms
   -- Shift unbound BoundVars up by one.
   , shiftSTerm
   , shiftCmd
+  -- Remove names
+  , removeNamesSTerm
+  , removeNamesCmd
   ) where
 
 import Control.Monad.State
@@ -336,3 +339,24 @@ shiftSTerm = shiftSTerm' 0
 -- | Shift all unbound BoundVars up by one.
 shiftCmd :: Command ext -> Command ext
 shiftCmd = shiftCmd' 0
+
+---------------------------------------------------------------------------------
+-- Remove Names
+--
+-- Replaces all variable binding sites with Nothing
+---------------------------------------------------------------------------------
+
+removeNamesSTerm :: STerm pc  ext -> STerm pc ext 
+removeNamesSTerm f@FreeVar{} = f
+removeNamesSTerm f@BoundVar{} = f
+removeNamesSTerm (XtorCall ext pc xt (MkXtorArgs prdArgs cnsArgs)) = XtorCall ext pc xt (MkXtorArgs (removeNamesSTerm <$> prdArgs) (removeNamesSTerm <$> cnsArgs))
+removeNamesSTerm (MuAbs ext pc _ cmd) = MuAbs ext pc Nothing (removeNamesCmd cmd)
+removeNamesSTerm (XMatch ext pc ns cases) = XMatch ext pc ns (removeNamesSCase <$> cases)
+
+removeNamesSCase :: SCase ext -> SCase ext
+removeNamesSCase (MkSCase xt args cmd)= MkSCase xt (fmap (const Nothing) <$> args) (removeNamesCmd cmd)
+
+removeNamesCmd :: Command ext -> Command ext 
+removeNamesCmd (Apply ext prd cns) = Apply ext (removeNamesSTerm prd) (removeNamesSTerm cns)
+removeNamesCmd (Print ext prd) = Print ext (removeNamesSTerm prd)
+removeNamesCmd (Done ext) = Done ext

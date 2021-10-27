@@ -29,7 +29,7 @@ shouldFocusTo input output = do
         let Right (inputCmd,_)  = runInteractiveParser commandP input
         let Right (outputCmd,_) = runInteractiveParser commandP output
         let focusResult = focusCmd CBV inputCmd
-        focusResult `shouldBe` const () <$>  outputCmd
+        removeNamesCmd focusResult `shouldBe` (removeNamesCmd $ const () <$>  outputCmd)
 
 -- Examples where Focusing should be a NoOp, since command is already
 -- focused.
