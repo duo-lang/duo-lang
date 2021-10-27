@@ -20,7 +20,7 @@ data Declaration a b
   = PrdDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (STerm Prd b a)
   | CnsDecl IsRec b FreeVarName (Maybe (TypeScheme Neg)) (STerm Cns b a)
   | CmdDecl b FreeVarName (Command b a)
-  | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b a)
+  | DefDecl IsRec b FreeVarName (Maybe (TypeScheme Pos)) (ATerm b)
   | DataDecl b DataDecl
   | ImportDecl b ModuleName
   | SetDecl b Text
@@ -33,7 +33,7 @@ instance Bifunctor Declaration where
   bimap f g (PrdDecl isRec b v ts t) = PrdDecl isRec (g b) v ts $ bimap g f t
   bimap f g (CnsDecl isRec b v ts t) = CnsDecl isRec (g b) v ts $ bimap g f t
   bimap f g (CmdDecl b v cmd) = CmdDecl (g b) v $ bimap g f cmd
-  bimap f g (DefDecl isRec b v ts t) = DefDecl isRec (g b) v ts $ bimap g f t
+  bimap _ g (DefDecl isRec b v ts t) = DefDecl isRec (g b) v ts $ g <$>  t
   bimap _ g (DataDecl b dataDecl) = DataDecl (g b) dataDecl
   bimap _ g (ImportDecl b mod) = ImportDecl (g b) mod
   bimap _ g (SetDecl b txt) = SetDecl (g b) txt
@@ -49,7 +49,7 @@ data Environment bs = Environment
   { prdEnv :: Map FreeVarName (STerm Prd () bs, Loc, TypeScheme Pos)
   , cnsEnv :: Map FreeVarName (STerm Cns () bs, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command () bs, Loc)
-  , defEnv :: Map FreeVarName (ATerm () bs, Loc,  TypeScheme Pos)
+  , defEnv :: Map FreeVarName (ATerm (), Loc,  TypeScheme Pos)
   , declEnv :: [(Loc,DataDecl)]
   }
 

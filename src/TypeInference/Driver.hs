@@ -179,7 +179,7 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
 inferATermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> ATerm Loc FreeVarName
+                 -> ATerm Loc
                  -> DriverM (TypeInferenceTrace Pos)
 inferATermTraced isRec loc fv tm = do
   infopts <- gets driverOpts
@@ -197,7 +197,7 @@ inferATermTraced isRec loc fv tm = do
 inferATerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> ATerm Loc FreeVarName
+           -> ATerm Loc
            -> DriverM (TypeScheme Pos)
 inferATerm isRec loc fv tm =
   trace_resType <$> inferATermTraced isRec loc fv tm
@@ -298,7 +298,7 @@ insertDecl (DefDecl isRec loc v annot t) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { defEnv  = M.insert v (first (const ()) t, loc,ty) (defEnv env)}
+  let newEnv = env { defEnv  = M.insert v ( const () <$> t, loc,ty) (defEnv env)}
   setEnvironment newEnv
 insertDecl (DataDecl loc dcl) = do
   -- Insert into environment

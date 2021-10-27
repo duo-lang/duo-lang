@@ -50,7 +50,7 @@ prdCnsToPol CnsRep = NegRep
 
 -- | Lookup the term and the type of a asymmetric term bound in the environment.
 lookupATerm :: EnvReader bs a m
-            => FreeVarName -> m (ATerm () bs, TypeScheme Pos)
+            => FreeVarName -> m (ATerm (), TypeScheme Pos)
 lookupATerm fv = do
   env <- asks fst
   case M.lookup fv (defEnv env) of
@@ -143,7 +143,7 @@ withSTerm CnsRep fv tm loc tys m = do
   local modifyEnv m
 
 withATerm :: EnvReader bs a m
-        => FreeVarName -> ATerm () bs -> Loc -> TypeScheme Pos
+        => FreeVarName -> ATerm () -> Loc -> TypeScheme Pos
         -> (m b -> m b)
 withATerm fv tm loc tys m = do
   let modifyEnv (env@Environment { defEnv }, rest) =

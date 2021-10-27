@@ -146,7 +146,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Translation Actions
 ---------------------------------------------------------------------------------
 
-generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(ATerm () FreeVarName, Loc, TypeScheme Pos)) -> Command |? CodeAction
+generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(ATerm (), Loc, TypeScheme Pos)) -> Command |? CodeAction
 generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -157,7 +157,7 @@ generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Tr
                                                                   , _xdata = Nothing
                                                                   }
 
-generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm () FreeVarName, Loc, TypeScheme Pos)) -> WorkspaceEdit 
+generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm (), Loc, TypeScheme Pos)) -> WorkspaceEdit 
 generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
   let
     newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) (createNamesSTerm (compile tm))

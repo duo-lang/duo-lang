@@ -125,7 +125,7 @@ cmdSymmetric s = do
 cmdAsymmetric :: Text -> Repl ()
 cmdAsymmetric s = do
   (tmLoc,_) <- parseInteractive atermP s
-  let tm = first (const ()) tmLoc
+  let tm = const () <$> tmLoc
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps

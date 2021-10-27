@@ -15,7 +15,7 @@ import Syntax.ATerms
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------
 
-isValue :: ATerm () bs -> Bool
+isValue :: ATerm () -> Bool
 isValue (BVar _ _) = True
 isValue (FVar _ _) = False
 isValue (Ctor _ _ args) = and (isValue <$> args)
@@ -23,7 +23,7 @@ isValue (Dtor _ _ _ _) = False
 isValue (Match _ _ _ ) = False
 isValue (Comatch _ _) = True
 
-isWHNF :: ATerm () bs -> Bool
+isWHNF :: ATerm () -> Bool
 isWHNF (BVar _ _) = True
 isWHNF (FVar _ _) = False
 isWHNF (Ctor _ _ _) = True
@@ -31,12 +31,12 @@ isWHNF (Dtor _ _ _ _) = False
 isWHNF (Match _ _ _ ) = False
 isWHNF (Comatch _ _) = True
 
-evalArgsSingleStep :: [ATerm () bs] -> EvalM bs (Maybe [ATerm () bs])
+evalArgsSingleStep :: [ATerm ()] -> EvalM bs (Maybe [ATerm ()])
 evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
-evalATermSingleStep' :: ATerm () bs -> EvalOrder -> EvalM bs (Maybe (ATerm () bs))
+evalATermSingleStep' :: ATerm () -> EvalOrder -> EvalM bs (Maybe (ATerm ()))
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupATerm fv
@@ -69,13 +69,13 @@ evalATermSingleStep' (Dtor _ _ _ _) _ = throwEvalError ["unreachable if properly
 evalATermSingleStep' (Comatch _ _) _ = return Nothing
 
 -- | Choose the correct evaluation strategy
-evalATermSingleStep :: ATerm () bs -> EvalM bs (Maybe (ATerm () bs))
+evalATermSingleStep :: ATerm () -> EvalM bs (Maybe (ATerm ()))
 evalATermSingleStep t = do
   order <- lookupEvalOrder
   evalATermSingleStep' t order
 
 -- | Return just thef final evaluation result
-evalATermComplete :: ATerm () bs -> EvalM bs (ATerm () bs)
+evalATermComplete :: ATerm () -> EvalM bs (ATerm ())
 evalATermComplete t = do
   t' <- evalATermSingleStep t
   case t' of
@@ -83,10 +83,10 @@ evalATermComplete t = do
     Just t'' -> evalATermComplete t''
 
 -- | Return all intermediate evaluation results
-evalATermSteps :: ATerm () bs -> EvalM bs [ATerm () bs]
+evalATermSteps :: ATerm () -> EvalM bs [ATerm ()]
 evalATermSteps t = evalATermSteps' [t] t
   where
-    evalATermSteps' :: [ATerm () bs] -> ATerm () bs -> EvalM bs [ATerm () bs]
+    evalATermSteps' :: [ATerm ()] -> ATerm () -> EvalM bs [ATerm ()]
     evalATermSteps' ts t = do
       t' <- evalATermSingleStep t
       case t' of
