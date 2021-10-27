@@ -10,7 +10,7 @@ import System.FilePath ((</>), (<.>))
 
 import Text.Megaparsec ( errorBundlePretty )
 import Parser.Parser ( runInteractiveParser, atermP, stermP, typeSchemeP )
-import Pretty.Pretty ( ppPrint )
+import Pretty.Pretty ( ppPrint, PrettyAnn )
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
 import Repl.Repl
@@ -48,28 +48,37 @@ saveCmd s = do
       Right (tloc,loc) -> do
         let inferenceAction = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
-        trace <- fromRight $ fst <$> traceEither
-        saveGraphFiles "0_typeAut" (trace_typeAut trace)
-        saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
-        saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
-        saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-        prettyText (" :: " <> ppPrint (trace_resType trace))
+        case fst <$> traceEither of
+          Right trace -> saveFromTrace trace
+          Left err2 -> case runInteractiveParser atermP s of
+            Right (tloc,loc) -> do
+              let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
+              traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
+              trace <- fromRight $ fst <$> traceEither
+              saveFromTrace trace
+            Left err3 -> saveParseError (errorBundlePretty err1) err2 (errorBundlePretty err3)
       Left err2 -> case runInteractiveParser atermP s of
         Right (tloc,loc) -> do
           let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
           traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
-          trace <- fromRight $ fst <$> traceEither
-          saveGraphFiles "0_typeAut" (trace_typeAut trace)
-          saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
-          saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
-          saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-          prettyText (" :: " <> ppPrint (trace_resType trace))
-        Left err3 -> prettyText (T.unlines [ "Type parsing error:"
-                                           , ppPrint (errorBundlePretty err1)
-                                           , "Term parsing error:"
-                                           , ppPrint (errorBundlePretty err2)
-                                           , "Term parsing error:"
-                                           , ppPrint (errorBundlePretty err3) ])
+          case fst <$> traceEither of
+            Right trace -> saveFromTrace trace
+            Left err3 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2) err3
+        Left err3 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2) (errorBundlePretty err3)
+
+saveFromTrace :: TypeInferenceTrace pol -> Repl ()
+saveFromTrace trace = do
+  saveGraphFiles "0_typeAut" (trace_typeAut trace)
+  saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
+  saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
+  saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
+  prettyText (" :: " <> ppPrint (trace_resType trace))
+
+saveParseError :: PrettyAnn a => PrettyAnn b => PrettyAnn c => a -> b -> c -> Repl ()
+saveParseError e1 e2 e3 = do
+  prettyText (T.unlines [ "Type parsing error:", ppPrint e1
+                        , "STerm parsing error:", ppPrint e2
+                        , "ATerm parsing error:", ppPrint e3 ])
 
 saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
 saveGraphFiles fileName aut = do
