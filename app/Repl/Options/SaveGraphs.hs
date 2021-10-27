@@ -9,7 +9,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
 import Text.Megaparsec ( errorBundlePretty )
-import Parser.Parser ( runInteractiveParser, stermP, typeSchemeP )
+import Parser.Parser ( runInteractiveParser, atermP, stermP, typeSchemeP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
@@ -28,6 +28,7 @@ import TypeAutomata.ToAutomaton (typeToAut)
 import TypeInference.Driver
     ( execDriverM,
       DriverState(DriverState),
+      inferATermTraced,
       inferSTermTraced,
       TypeInferenceTrace(trace_typeAut, trace_typeAutDet,
                          trace_typeAutDetAdms, trace_minTypeAut, trace_resType) )
@@ -53,10 +54,22 @@ saveCmd s = do
         saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
         saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
         prettyText (" :: " <> ppPrint (trace_resType trace))
-      Left err2 -> prettyText (T.unlines [ "Type parsing error:"
-                                         , ppPrint (errorBundlePretty err1)
-                                         , "Term parsing error:"
-                                         , ppPrint (errorBundlePretty err2) ])
+      Left err2 -> case runInteractiveParser atermP s of
+        Right (tloc,loc) -> do
+          let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
+          traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
+          trace <- fromRight $ fst <$> traceEither
+          saveGraphFiles "0_typeAut" (trace_typeAut trace)
+          saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
+          saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
+          saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
+          prettyText (" :: " <> ppPrint (trace_resType trace))
+        Left err3 -> prettyText (T.unlines [ "Type parsing error:"
+                                           , ppPrint (errorBundlePretty err1)
+                                           , "Term parsing error:"
+                                           , ppPrint (errorBundlePretty err2)
+                                           , "Term parsing error:"
+                                           , ppPrint (errorBundlePretty err3) ])
 
 saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
 saveGraphFiles fileName aut = do
