@@ -24,16 +24,16 @@ data EvalOrder
   | CBN -- ^ Call-by-name
   deriving (Show, Eq)
 
-newtype EvalM bs a = EvalM { unEvalM :: ReaderT (Environment bs, EvalOrder) (Except Error) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment bs, EvalOrder))
+newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment, EvalOrder) (Except Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment, EvalOrder))
 
-runEval :: EvalM bs a -> EvalOrder -> Environment bs -> Either Error a
+runEval :: EvalM a -> EvalOrder -> Environment -> Either Error a
 runEval e evalorder env = runExcept (runReaderT (unEvalM e) (env,evalorder))
 
 ---------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------
 
-lookupEvalOrder :: EvalM bs EvalOrder
+lookupEvalOrder :: EvalM EvalOrder
 lookupEvalOrder = asks snd
 

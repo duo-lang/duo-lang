@@ -18,16 +18,16 @@ import Lookup
 -- Symmetric Terms
 ---------------------------------------------------------------------------------------------
 
-genConstraintsArgs :: XtorArgs Loc FreeVarName
-                   -> GenM (XtorArgs () FreeVarName, TypArgs Pos)
+genConstraintsArgs :: XtorArgs Loc
+                   -> GenM (XtorArgs (), TypArgs Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm
   return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), MkTypArgs (snd <$> prdArgs') (snd <$> cnsArgs'))
 
 -- | Generate the constraints for a given STerm.
-genConstraintsSTerm :: STerm pc Loc FreeVarName
-                    -> GenM ( STerm pc () FreeVarName
+genConstraintsSTerm :: STerm pc Loc
+                    -> GenM ( STerm pc ()
                             , Typ (PrdCnsToPol pc))
 --
 -- Bound variables:
@@ -78,7 +78,7 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
 --
 genConstraintsSTerm (XMatch _ rep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
-                      (fvarsPos, fvarsNeg) <- freshTVars scase_args
+                      (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                       cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   let resTerm = XMatch () rep Structural (fst <$> cases')
@@ -99,7 +99,7 @@ genConstraintsSTerm (XMatch _ rep Nominal cases@(pmcase:_)) = do
   checkExhaustiveness (scase_name <$> cases) tn
   cases' <- forM cases (\MkSCase {..} -> do
                            x <- sig_args <$> lookupXtorSig scase_name PosRep
-                           (_,fvarsNeg) <- freshTVars scase_args
+                           (_,fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   let resTerm = XMatch () rep Nominal (fst <$> cases')
@@ -114,15 +114,15 @@ genConstraintsSTerm (XMatch _ rep Nominal cases@(pmcase:_)) = do
 -- Mu and TildeMu abstractions:
 --
 genConstraintsSTerm (MuAbs _ PrdRep bs cmd) = do
-  (fvpos, fvneg) <- freshTVar (ProgramVariable bs)
+  (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [] [fvneg]) (genConstraintsCommand cmd)
   return (MuAbs () PrdRep bs cmd', fvpos)
 genConstraintsSTerm (MuAbs _ CnsRep bs cmd) = do
-  (fvpos, fvneg) <- freshTVar (ProgramVariable bs)
+  (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [fvpos] []) (genConstraintsCommand cmd)
   return (MuAbs () CnsRep bs cmd', fvneg)
 
-genConstraintsCommand :: Command Loc FreeVarName -> GenM (Command () FreeVarName)
+genConstraintsCommand :: Command Loc -> GenM (Command ())
 genConstraintsCommand (Done _) = return (Done ())
 genConstraintsCommand (Print _ t) = do
   (t',_) <- genConstraintsSTerm t
@@ -140,8 +140,8 @@ genConstraintsCommand (Apply loc t1 t2) = do
 
 genConstraintsSTermRecursive :: Loc
                              -> FreeVarName
-                             -> PrdCnsRep pc -> STerm pc Loc FreeVarName
-                             -> GenM (STerm pc () FreeVarName, Typ (PrdCnsToPol pc))
+                             -> PrdCnsRep pc -> STerm pc Loc
+                             -> GenM (STerm pc (), Typ (PrdCnsToPol pc))
 genConstraintsSTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   (tm, ty) <- withSTerm PrdRep fv (FreeVar () PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)

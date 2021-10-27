@@ -122,10 +122,6 @@ genConstraintsATerm (Comatch _ cocases) = do
   let ty = TyCodata PosRep (snd <$> cocases')
   return (Comatch () (fst <$> cocases'), ty)
 
-fromMaybeVar :: Maybe FreeVarName -> FreeVarName
-fromMaybeVar Nothing = "generated"
-fromMaybeVar (Just fv) = fv
-
 genConstraintsATermCase :: Typ Neg
                         -> ACase Loc
                         -> GenM (ACase (), XtorSig Neg)

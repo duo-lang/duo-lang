@@ -16,7 +16,7 @@ compileExample termA termS = do
   it (T.unpack termA ++  " compiles to: " ++ T.unpack termS) $ do
       let Right (termS',_pos) = runInteractiveParser (stermP PrdRep) termS
       let Right (termA',_pos) = runInteractiveParser atermP termA
-      compile termA' `shouldBe` (bimap (const ()) (const ()) termS')
+      compile termA' `shouldBe` (const () <$> termS')
 
 isClosed :: Text -> Spec
 isClosed termA = do

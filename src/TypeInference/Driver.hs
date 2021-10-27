@@ -2,7 +2,6 @@ module TypeInference.Driver where
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.Bifunctor (first)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -68,7 +67,7 @@ defaultInferenceOptions = InferenceOptions Silent InferNominal []
 
 data DriverState = DriverState
   { driverOpts :: InferenceOptions
-  , driverEnv :: Environment FreeVarName
+  , driverEnv :: Environment
   }
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT LocatedError IO) a }
@@ -81,7 +80,7 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 -- Utility functions
 ---------------------------------------------------------------------------------
 
-setEnvironment :: Environment FreeVarName -> DriverM ()
+setEnvironment :: Environment -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
 
 -- | Only execute an action if verbosity is set to Verbose.
@@ -209,7 +208,7 @@ inferATerm isRec loc fv tm =
 inferSTermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> PrdCnsRep pc -> STerm pc Loc FreeVarName
+                 -> PrdCnsRep pc -> STerm pc Loc
                  -> DriverM (TypeInferenceTrace (PrdCnsToPol pc))
 inferSTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
@@ -228,13 +227,13 @@ inferSTermTraced isRec loc fv rep tm = do
 inferSTerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> PrdCnsRep pc -> STerm pc Loc FreeVarName
+           -> PrdCnsRep pc -> STerm pc Loc
            -> DriverM (TypeScheme (PrdCnsToPol pc))
 inferSTerm isRec loc fv rep tm =
     trace_resType <$> inferSTermTraced isRec loc fv rep tm
 
 checkCmd :: Loc
-         -> Command Loc FreeVarName
+         -> Command Loc
          -> DriverM (ConstraintSet, SolverResult)
 checkCmd loc cmd = do
   infopts <- gets driverOpts
@@ -249,7 +248,7 @@ checkCmd loc cmd = do
 -- Insert Declarations
 ---------------------------------------------------------------------------------
 
-insertDecl :: Declaration FreeVarName Loc
+insertDecl :: Declaration Loc
            -> DriverM ()
 insertDecl (PrdDecl isRec loc v annot loct) = do
   -- Infer a type
@@ -262,7 +261,7 @@ insertDecl (PrdDecl isRec loc v annot loct) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { prdEnv  = M.insert v ( first (const ()) loct ,loc, ty) (prdEnv env) }
+  let newEnv = env { prdEnv  = M.insert v (const () <$> loct ,loc, ty) (prdEnv env) }
   setEnvironment newEnv
 insertDecl (CnsDecl isRec loc v annot loct) = do
   -- Infer a type
@@ -275,7 +274,7 @@ insertDecl (CnsDecl isRec loc v annot loct) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { cnsEnv  = M.insert v (first (const ()) loct, loc, ty) (cnsEnv env) }
+  let newEnv = env { cnsEnv  = M.insert v (const () <$> loct, loc, ty) (cnsEnv env) }
   setEnvironment newEnv
 insertDecl (CmdDecl loc v loct) = do
   -- Check whether command is typeable
@@ -285,7 +284,7 @@ insertDecl (CmdDecl loc v loct) = do
       ppPrintIO solverResult
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { cmdEnv  = M.insert v (first (const ()) loct, loc) (cmdEnv env)}
+  let newEnv = env { cmdEnv  = M.insert v (const () <$> loct, loc) (cmdEnv env)}
   setEnvironment newEnv
 insertDecl (DefDecl isRec loc v annot t) = do
   -- Infer a type
@@ -319,7 +318,7 @@ insertDecl ParseErrorDecl = do
 
 
 inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment FreeVarName)
+                     -> DriverM Environment
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file
@@ -332,15 +331,15 @@ inferProgramFromDisk fp = do
             Left err -> throwError err
             Right env -> return env
 
-inferProgram :: [Declaration FreeVarName Loc]
+inferProgram :: [Declaration Loc]
              -> DriverM ()
 inferProgram decls = forM_ decls insertDecl
 
 
 
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> [Declaration FreeVarName Loc]
-                -> IO (Either LocatedError (Environment FreeVarName))
+                -> [Declaration Loc]
+                -> IO (Either LocatedError Environment)
 inferProgramIO state decls = do
     x <- execDriverM state (inferProgram decls)
     case x of

@@ -31,12 +31,12 @@ isWHNF (Dtor _ _ _ _) = False
 isWHNF (Match _ _ _ ) = False
 isWHNF (Comatch _ _) = True
 
-evalArgsSingleStep :: [ATerm ()] -> EvalM bs (Maybe [ATerm ()])
+evalArgsSingleStep :: [ATerm ()] -> EvalM (Maybe [ATerm ()])
 evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
-evalATermSingleStep' :: ATerm () -> EvalOrder -> EvalM bs (Maybe (ATerm ()))
+evalATermSingleStep' :: ATerm () -> EvalOrder -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupATerm fv
@@ -69,13 +69,13 @@ evalATermSingleStep' (Dtor _ _ _ _) _ = throwEvalError ["unreachable if properly
 evalATermSingleStep' (Comatch _ _) _ = return Nothing
 
 -- | Choose the correct evaluation strategy
-evalATermSingleStep :: ATerm () -> EvalM bs (Maybe (ATerm ()))
+evalATermSingleStep :: ATerm () -> EvalM (Maybe (ATerm ()))
 evalATermSingleStep t = do
   order <- lookupEvalOrder
   evalATermSingleStep' t order
 
 -- | Return just thef final evaluation result
-evalATermComplete :: ATerm () -> EvalM bs (ATerm ())
+evalATermComplete :: ATerm () -> EvalM (ATerm ())
 evalATermComplete t = do
   t' <- evalATermSingleStep t
   case t' of
@@ -83,10 +83,10 @@ evalATermComplete t = do
     Just t'' -> evalATermComplete t''
 
 -- | Return all intermediate evaluation results
-evalATermSteps :: ATerm () -> EvalM bs [ATerm ()]
+evalATermSteps :: ATerm () -> EvalM [ATerm ()]
 evalATermSteps t = evalATermSteps' [t] t
   where
-    evalATermSteps' :: [ATerm ()] -> ATerm () -> EvalM bs [ATerm ()]
+    evalATermSteps' :: [ATerm ()] -> ATerm () -> EvalM [ATerm ()]
     evalATermSteps' ts t = do
       t' <- evalATermSingleStep t
       case t' of

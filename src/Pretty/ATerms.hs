@@ -16,10 +16,6 @@ isNumATerm (Ctor _ (MkXtorName Nominal "S") [n]) = case isNumATerm n of
   Just n -> Just (n + 1)
 isNumATerm _ = Nothing
 
-instance PrettyAnn (Maybe FreeVarName) where
-  prettyAnn Nothing = "_"
-  prettyAnn (Just fv) = prettyAnn fv
-
 instance PrettyAnn (ACase ext) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =
     prettyAnn acase_name <>

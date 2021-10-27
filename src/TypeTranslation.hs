@@ -37,13 +37,13 @@ initialState = TranslateState { recVarMap = M.empty, recVarsUsed = S.empty, varC
 
 newtype TranslateReader = TranslateReader { context :: [TypArgs Pos] }
 
-initialReader :: Environment FreeVarName -> (Environment FreeVarName, TranslateReader)
+initialReader :: Environment -> (Environment, TranslateReader)
 initialReader env = (env, TranslateReader { context = [] })
 
-newtype TranslateM a = TraM { getTraM :: ReaderT (Environment FreeVarName, TranslateReader) (StateT TranslateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment FreeVarName, TranslateReader), MonadError Error)
+newtype TranslateM a = TraM { getTraM :: ReaderT (Environment, TranslateReader) (StateT TranslateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment, TranslateReader), MonadError Error)
 
-runTranslateM :: Environment FreeVarName -> TranslateM a -> Either Error (a, TranslateState)
+runTranslateM :: Environment -> TranslateM a -> Either Error (a, TranslateState)
 runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState)
 
 ---------------------------------------------------------------------------------------------
@@ -136,13 +136,13 @@ cleanUp ty = case ty of
   -- Other types imply incorrect translation
   t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
 
-translateType :: Environment FreeVarName -> Typ pol -> Either Error (Typ pol)
+translateType :: Environment -> Typ pol -> Either Error (Typ pol)
 translateType env ty = case runTranslateM env $ (cleanUp <=< translateType') ty of
   Left err -> throwError err
   Right (ty,_) -> return ty
   
 
-translateXtorSig :: Environment FreeVarName -> XtorSig pol -> Either Error (XtorSig pol)
+translateXtorSig :: Environment -> XtorSig pol -> Either Error (XtorSig pol)
 translateXtorSig env xts = case runTranslateM env $ (cleanUpXtorSig <=< translateXtorSig') xts of
   Left err -> throwError err
   Right (xts,_) -> return xts
