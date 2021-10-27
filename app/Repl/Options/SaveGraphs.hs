@@ -47,23 +47,22 @@ saveCmd s = do
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,loc) -> do
         let inferenceAction = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
-        traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
+        traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
           Right trace -> saveFromTrace trace
           Left err2 -> case runInteractiveParser atermP s of
             Right (tloc,loc) -> do
               let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
-              traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
+              traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
               trace <- fromRight $ fst <$> traceEither
               saveFromTrace trace
             Left err3 -> saveParseError (errorBundlePretty err1) err2 (errorBundlePretty err3)
       Left err2 -> case runInteractiveParser atermP s of
         Right (tloc,loc) -> do
           let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
-          traceEither <- liftIO $  execDriverM (DriverState opts env) inferenceAction
-          case fst <$> traceEither of
-            Right trace -> saveFromTrace trace
-            Left err3 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2) err3
+          traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
+          trace <- fromRight $ fst <$> traceEither
+          saveFromTrace trace
         Left err3 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2) (errorBundlePretty err3)
 
 saveFromTrace :: TypeInferenceTrace pol -> Repl ()
