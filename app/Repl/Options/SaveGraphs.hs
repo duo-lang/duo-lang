@@ -73,7 +73,7 @@ saveFromTrace trace = do
   saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
   prettyText (" :: " <> ppPrint (trace_resType trace))
 
-saveParseError :: PrettyAnn a => PrettyAnn b => PrettyAnn c => a -> b -> c -> Repl ()
+saveParseError :: PrettyAnn a => String -> a -> String -> Repl ()
 saveParseError e1 e2 e3 = do
   prettyText (T.unlines [ "Type parsing error:", ppPrint e1
                         , "STerm parsing error:", ppPrint e2
