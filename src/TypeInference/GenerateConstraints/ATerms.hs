@@ -17,8 +17,8 @@ import Lookup
 ---------------------------------------------------------------------------------------------
 
 -- | Every asymmetric terms gets assigned a positive type.
-genConstraintsATerm :: ATerm Loc FreeVarName
-                    -> GenM ( ATerm () FreeVarName
+genConstraintsATerm :: ATerm Loc
+                    -> GenM ( ATerm ()
                             , Typ Pos)
 genConstraintsATerm (BVar _ idx) = do
   ty <- lookupContext PrdRep idx
@@ -127,18 +127,18 @@ genConstraintsATerm (Comatch _ cocases) = do
   return (Comatch () (fst <$> cocases'), ty)
 
 genConstraintsATermCase :: Typ Neg
-                        -> ACase Loc FreeVarName
-                        -> GenM (ACase () FreeVarName, XtorSig Neg)
+                        -> ACase Loc
+                        -> GenM (ACase (), XtorSig Neg)
 genConstraintsATermCase retType MkACase { acase_ext, acase_name, acase_args, acase_term } = do
-  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable) -- Generate type var for each case arg
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable . fromMaybeVar) -- Generate type var for each case arg
   (acase_term', retTypeInf) <- withContext (MkTypArgs argtsPos []) (genConstraintsATerm acase_term) -- Type case term using new type vars
   addConstraint (SubType (CaseConstraint acase_ext) retTypeInf retType) -- Case type
   return (MkACase () acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
 
-genConstraintsATermCocase :: ACase Loc FreeVarName
-                          -> GenM (ACase () FreeVarName, XtorSig Neg)
+genConstraintsATermCocase :: ACase Loc
+                          -> GenM (ACase (), XtorSig Neg)
 genConstraintsATermCocase MkACase { acase_name, acase_args, acase_term } = do
-  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable)
+  (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable . fromMaybeVar)
   (acase_term', retType) <- withContext (MkTypArgs argtsPos []) (genConstraintsATerm acase_term)
   let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [retType])
   return (MkACase () acase_name acase_args acase_term', sig)
@@ -162,8 +162,8 @@ genConstraintsACaseArgs xtsigs1 xtsigs2 loc = do
 
 genConstraintsATermRecursive :: Loc 
                              -> FreeVarName
-                             -> ATerm Loc FreeVarName
-                             -> GenM (ATerm () FreeVarName, Typ Pos)
+                             -> ATerm Loc
+                             -> GenM (ATerm (), Typ Pos)
 genConstraintsATermRecursive loc fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   (tm, ty) <- withATerm fv (FVar () fv) loc (TypeScheme [] x) (genConstraintsATerm tm)

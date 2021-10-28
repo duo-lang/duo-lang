@@ -32,7 +32,7 @@ import Utils
 -- (2) MonadReader (Environment bs, a)
 ---------------------------------------------------------------------------------
 
-type EnvReader bs a m = (MonadError Error m, MonadReader (Environment bs, a) m)
+type EnvReader bs a m = (MonadError Error m, MonadReader (Environment, a) m)
 
 
 -- | We map producer terms to positive types, and consumer terms to negative types.
@@ -50,7 +50,7 @@ prdCnsToPol CnsRep = NegRep
 
 -- | Lookup the term and the type of a asymmetric term bound in the environment.
 lookupATerm :: EnvReader bs a m
-            => FreeVarName -> m (ATerm () bs, TypeScheme Pos)
+            => FreeVarName -> m (ATerm (), TypeScheme Pos)
 lookupATerm fv = do
   env <- asks fst
   case M.lookup fv (defEnv env) of
@@ -59,7 +59,7 @@ lookupATerm fv = do
 
 -- | Lookup the term and the type of a symmetric term bound in the environment.
 lookupSTerm :: EnvReader bs a m
-            => PrdCnsRep pc -> FreeVarName -> m (STerm pc () bs, TypeScheme (PrdCnsToPol pc))
+            => PrdCnsRep pc -> FreeVarName -> m (STerm pc (), TypeScheme (PrdCnsToPol pc))
 lookupSTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
@@ -131,7 +131,7 @@ translateTypeTopLevel _ = do
 ---------------------------------------------------------------------------------
 
 withSTerm :: EnvReader bs a m
-          => PrdCnsRep pc -> FreeVarName -> STerm pc () bs -> Loc -> TypeScheme (PrdCnsToPol pc)
+          => PrdCnsRep pc -> FreeVarName -> STerm pc () -> Loc -> TypeScheme (PrdCnsToPol pc)
           -> (m b -> m b)
 withSTerm PrdRep fv tm loc tys m = do
   let modifyEnv (env@Environment { prdEnv }, rest) =
@@ -143,7 +143,7 @@ withSTerm CnsRep fv tm loc tys m = do
   local modifyEnv m
 
 withATerm :: EnvReader bs a m
-        => FreeVarName -> ATerm () bs -> Loc -> TypeScheme Pos
+        => FreeVarName -> ATerm () -> Loc -> TypeScheme Pos
         -> (m b -> m b)
 withATerm fv tm loc tys m = do
   let modifyEnv (env@Environment { defEnv }, rest) =

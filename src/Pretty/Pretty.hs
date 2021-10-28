@@ -136,6 +136,10 @@ instance PrettyAnn XtorName where
   prettyAnn (MkXtorName Structural xt) = annXtorName $ "'" <> prettyAnn xt
   prettyAnn (MkXtorName Nominal    xt) = annXtorName $ prettyAnn xt
 
+instance PrettyAnn (Maybe FreeVarName) where
+  prettyAnn Nothing = "_"
+  prettyAnn (Just fv) = prettyAnn fv
+
 -- | This identity wrapper is used to indicate that we want to transform the element to
 -- a named representation before prettyprinting it.
 newtype NamedRep a = NamedRep a

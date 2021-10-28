@@ -20,6 +20,7 @@ module TypeInference.GenerateConstraints.Definition
   , InferenceMode(..)
   , PrdCnsToPol
   , foo
+  , fromMaybeVar
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
@@ -74,17 +75,17 @@ data GenerateReader = GenerateReader { context :: [LinearContext Pos]
                                      , inferMode :: InferenceMode
                                      }
 
-initialReader :: Environment FreeVarName -> InferenceMode -> (Environment FreeVarName, GenerateReader)
+initialReader :: Environment -> InferenceMode -> (Environment, GenerateReader)
 initialReader env im = (env, GenerateReader { context = [], inferMode = im })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Environment FreeVarName, GenerateReader) (StateT GenerateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment FreeVarName, GenerateReader), MonadError Error)
+newtype GenM a = GenM { getGenM :: ReaderT (Environment, GenerateReader) (StateT GenerateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment, GenerateReader), MonadError Error)
 
-runGenM :: Environment FreeVarName -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
+runGenM :: Environment -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
@@ -169,6 +170,10 @@ data InferenceMode = InferNominal | InferRefined
 foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
+
+fromMaybeVar :: Maybe FreeVarName -> FreeVarName
+fromMaybeVar Nothing = "generated"
+fromMaybeVar (Just fv) = fv
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
