@@ -24,7 +24,7 @@ typArgListP :: PolarityRep pol -> Parser (LinearContext pol)
 typArgListP rep = do
   prdArgs <- option [] (fst <$> (parens   $ (typP rep) `sepBy` comma))
   cnsArgs <- option [] (fst <$> (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma))
-  return (MkTypArgs prdArgs cnsArgs)
+  return (combineLctxtLists prdArgs cnsArgs)
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
 nominalTypeP rep = do
@@ -112,7 +112,12 @@ switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 
 switchSig :: XtorSig pol -> XtorSig (FlipPol pol)
-switchSig (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) = MkXtorSig xt (MkTypArgs (switchPol <$> prdArgs) (switchPol <$> cnsArgs))
+switchSig (MkXtorSig xt lctxt) = MkXtorSig xt (switchLinearContext lctxt)
+
+switchLinearContext :: LinearContext pol -> LinearContext (FlipPol pol)
+switchLinearContext EmptyCtx = EmptyCtx 
+switchLinearContext (CtxPrd ty ctx) = CtxPrd (switchPol ty) (switchLinearContext ctx)
+switchLinearContext (CtxCns ty ctx) = CtxCns (switchPol ty) (switchLinearContext ctx)
 
 invariantP :: Parser Invariant
 invariantP = do

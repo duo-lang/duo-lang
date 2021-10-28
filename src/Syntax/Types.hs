@@ -64,10 +64,11 @@ deriving instance Ord (DataCodataRep pol)
 -- Linear Contexts
 ------------------------------------------------------------------------------
 
-data LinearContext (pol :: Polarity) = MkTypArgs
-  { prdTypes :: [Typ pol]
-  , cnsTypes :: [Typ (FlipPol pol)]
-  }
+data LinearContext (pol :: Polarity) where
+  EmptyCtx ::                                           LinearContext pol
+  CtxPrd   :: Typ pol           -> LinearContext pol -> LinearContext pol
+  CtxCns   :: Typ (FlipPol pol) -> LinearContext pol -> LinearContext pol
+
 
 deriving instance Eq (LinearContext Pos)
 deriving instance Eq (LinearContext Neg)
@@ -75,10 +76,22 @@ deriving instance Ord (LinearContext Pos)
 deriving instance Ord (LinearContext Neg)
 
 instance Semigroup (LinearContext pol) where
-    (MkTypArgs ps cs) <> (MkTypArgs ps' cs') = MkTypArgs (ps <> ps') (cs <> cs')
+  EmptyCtx        <> ctx' = ctx'
+  (CtxPrd ty ctx) <> ctx' = CtxPrd ty (ctx <> ctx')
+  (CtxCns ty ctx) <> ctx' = CtxCns ty (ctx <> ctx')
+      
 
 instance Monoid (LinearContext pol) where
-    mempty = MkTypArgs mempty mempty
+    mempty = EmptyCtx
+
+-- TODO: Deprecate
+combineLctxtLists :: [Typ pol] -> [Typ (FlipPol pol)] -> LinearContext pol
+combineLctxtLists prdArgs cnsArgs = foo prdArgs <> bar cnsArgs
+  where
+    foo [] = EmptyCtx 
+    foo (p:prds) = CtxPrd p (foo prds)
+    bar [] = EmptyCtx
+    bar (c:cnss) = CtxCns c (bar cnss)
 
 ------------------------------------------------------------------------------
 -- Types
@@ -151,8 +164,13 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyCodata _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
     freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
-    freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
-      concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)
+    freeTypeVarsXtorSig (MkXtorSig _ lctxt) = freeTypeVarsCtx lctxt
+
+    freeTypeVarsCtx :: LinearContext pol -> [TVar]
+    freeTypeVarsCtx EmptyCtx = []
+    freeTypeVarsCtx (CtxPrd ty ctx) = freeTypeVars' ty ++ freeTypeVarsCtx ctx
+    freeTypeVarsCtx (CtxCns ty ctx) = freeTypeVars' ty ++ freeTypeVarsCtx ctx
+
 
 
 -- | Generalize over all free type variables of a type.
@@ -190,8 +208,10 @@ substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
 substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArgs m sig_args)
 
 substituteTypeArgs :: Map TVar (Typ Pos, Typ Neg) -> LinearContext pol -> LinearContext pol
-substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
-  MkTypArgs (substituteType m <$> prdTypes) (substituteType m <$> cnsTypes)
+substituteTypeArgs _ EmptyCtx = EmptyCtx
+substituteTypeArgs m (CtxPrd ty ctx) = CtxPrd (substituteType m ty) (substituteTypeArgs m ctx)
+substituteTypeArgs m (CtxCns ty ctx) = CtxCns (substituteType m ty) (substituteTypeArgs m ctx)
+
 
 ------------------------------------------------------------------------------
 -- Constraints
