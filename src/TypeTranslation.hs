@@ -19,7 +19,6 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
-import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------------------
 -- TranslationState:
@@ -36,13 +35,13 @@ initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
 newtype TranslateReader = TranslateReader { recVarMap :: Map TypeName TVar }
 
-initialReader :: Environment FreeVarName -> (Environment FreeVarName, TranslateReader)
+initialReader :: Environment -> (Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
 
-newtype TranslateM a = TraM { getTraM :: ReaderT (Environment FreeVarName, TranslateReader) (StateT TranslateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment FreeVarName, TranslateReader), MonadError Error)
+newtype TranslateM a = TraM { getTraM :: ReaderT (Environment, TranslateReader) (StateT TranslateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment, TranslateReader), MonadError Error)
 
-runTranslateM :: Environment FreeVarName -> TranslateM a -> Either Error (a, TranslateState)
+runTranslateM :: Environment -> TranslateM a -> Either Error (a, TranslateState)
 runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState)
 
 ---------------------------------------------------------------------------------------------
@@ -140,12 +139,12 @@ cleanUpType ty = case ty of
 -- Exported functions
 ---------------------------------------------------------------------------------------------
 
-translateType :: Environment FreeVarName -> Typ pol -> Either Error (Typ pol)
+translateType :: Environment -> Typ pol -> Either Error (Typ pol)
 translateType env ty = case runTranslateM env $ cleanUpType =<< translateType' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSig :: Environment FreeVarName -> XtorSig pol -> Either Error (XtorSig pol)
+translateXtorSig :: Environment -> XtorSig pol -> Either Error (XtorSig pol)
 translateXtorSig env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSig' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'

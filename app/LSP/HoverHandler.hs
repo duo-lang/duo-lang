@@ -6,7 +6,7 @@ import Language.LSP.Types
       Hover(Hover),
       HoverContents(HoverContents),
       HoverParams(HoverParams),
-      Position(Position),
+      Position,
       MarkupContent(MarkupContent),
       MarkupKind(MkPlainText),
       RequestMessage(RequestMessage),
@@ -24,10 +24,8 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( posToPosition, lookupPos )
-import Utils ( Loc(..) )
+import LSP.MegaparsecToLSP ( lookupPos )
 import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv, declEnv) )
-import Syntax.CommonTerm ( FreeVarName )
 import Syntax.Types ( Typ(TyNominal), PolarityRep (PosRep), DataDecl (data_name) )
 import TypeInference.Driver
     ( defaultInferenceOptions,
@@ -62,7 +60,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
         Right env -> do
           responder (Right (lookupHoverEnv pos env))
 
-lookupHoverEnv :: Position -> Environment FreeVarName -> Maybe Hover
+lookupHoverEnv :: Position -> Environment -> Maybe Hover
 lookupHoverEnv pos env =
   let
     defs = M.toList (defEnv env)

@@ -12,7 +12,7 @@ import qualified Data.Set as S
 
 import Errors
 import Syntax.Types
-import Syntax.CommonTerm (XtorName, FreeVarName)
+import Syntax.CommonTerm (XtorName)
 import Syntax.Program (Environment)
 import Pretty.Pretty
 import Pretty.Types ()
@@ -33,9 +33,9 @@ createInitState (ConstraintSet _ uvs) im = SolverState { sst_bounds = M.fromList
                                                        , sst_cache = S.empty 
                                                        , sst_inferMode = im }
 
-type SolverM a = (ReaderT (Environment FreeVarName, ()) (StateT SolverState (Except Error))) a
+type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
 
-runSolverM :: SolverM a -> Environment FreeVarName -> SolverState -> Either Error (a, SolverState)
+runSolverM :: SolverM a -> Environment -> SolverState -> Either Error (a, SolverState)
 runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 ------------------------------------------------------------------------------
@@ -262,7 +262,7 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment FreeVarName -> InferenceMode -> Either Error SolverResult
+solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) env im = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   return (sst_bounds solverState)
