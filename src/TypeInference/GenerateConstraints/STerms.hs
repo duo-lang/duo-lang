@@ -65,7 +65,7 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
       -- Check if args of xtor are correct
       xtorSig <- lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
-        addConstraint $ SubType (case rep of { PrdRep -> (CtorArgsConstraint loc); CnsRep -> (DtorArgsConstraint loc) }) t1 t2
+        addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
       im <- asks (inferMode . snd)
       let resType = case (im, rep) of
             (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)

@@ -124,7 +124,7 @@ translateTypeTopLevel (TyNominal pr tn) = do
       let xtorSig = xtorSigMakeStructural <$> data_xtors (flipPolarityRep pr)
       return $ TyCodata pr xtorSig
 translateTypeTopLevel _ = do
-  throwOtherError ["Can't translate structural types to nominal"]
+  throwOtherError ["Can only translate nominal types"]
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.
