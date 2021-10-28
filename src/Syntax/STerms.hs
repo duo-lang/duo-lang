@@ -1,6 +1,6 @@
 module Syntax.STerms
   ( module Syntax.CommonTerm
-  , XtorArgs(..)
+  , Substitution(..)
   , SCase(..)
   , STerm(..)
   , Command(..)
@@ -62,9 +62,9 @@ import Syntax.CommonTerm
 ---------------------------------------------------------------------------------
 
 -- | Represents an argument list to a constructor or destructor.
-data XtorArgs ext = MkXtorArgs { prdArgs :: [STerm Prd ext]
-                               , cnsArgs :: [STerm Cns ext]
-                               }
+data Substitution ext = MkXtorArgs { prdArgs :: [STerm Prd ext]
+                                   , cnsArgs :: [STerm Cns ext]
+                                   }
   deriving (Show, Eq, Functor)
 
 -- | Represents one case in a pattern match or copattern match.
@@ -89,7 +89,7 @@ data STerm (pc :: PrdCns) ext where
   FreeVar :: ext -> PrdCnsRep pc -> FreeVarName -> STerm pc ext
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  XtorCall :: ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> STerm pc ext
+  XtorCall :: ext -> PrdCnsRep pc -> XtorName -> Substitution ext -> STerm pc ext
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
   XMatch :: ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> STerm pc ext
@@ -121,7 +121,7 @@ data Command ext
 -- Variable Opening
 ---------------------------------------------------------------------------------
 
-termOpeningRec :: Int -> XtorArgs () -> STerm pc () -> STerm pc ()
+termOpeningRec :: Int -> Substitution () -> STerm pc () -> STerm pc ()
 termOpeningRec k MkXtorArgs { prdArgs } bv@(BoundVar _ PrdRep (i,j)) | i == k    = prdArgs !! j
                                                                      | otherwise = bv
 termOpeningRec k MkXtorArgs { cnsArgs } bv@(BoundVar _ CnsRep (i,j)) | i == k    = cnsArgs !! j
@@ -135,14 +135,14 @@ termOpeningRec k args (XMatch _ pc sn cases) =
 termOpeningRec k args (MuAbs _ pc a cmd) =
   MuAbs () pc a (commandOpeningRec (k+1) args cmd)
 
-commandOpeningRec :: Int -> XtorArgs () -> Command () -> Command ()
+commandOpeningRec :: Int -> Substitution () -> Command () -> Command ()
 commandOpeningRec _ _ (Done _) = Done ()
 commandOpeningRec k args (Print _ t) = Print () (termOpeningRec k args t)
 commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 
 -- replaces bound variables pointing "outside" of a command with given arguments
-commandOpening :: XtorArgs () -> Command () -> Command ()
+commandOpening :: Substitution () -> Command () -> Command ()
 commandOpening = commandOpeningRec 0
 
 commandOpeningSingle :: PrdCnsRep pc -> STerm pc () -> Command () -> Command ()
@@ -220,11 +220,11 @@ commandLocallyClosed = commandLocallyClosedRec []
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openXtorArgsComplete :: XtorArgs ext -> XtorArgs ()
+openXtorArgsComplete :: Substitution ext -> Substitution ()
 openXtorArgsComplete (MkXtorArgs prdArgs cnsArgs) =
   MkXtorArgs (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
 
-freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> XtorArgs ()
+freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> Substitution ()
 freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\case {Just fv -> FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> prds)
                                                       ((\case {Just fv -> FreeVar () CnsRep fv; Nothing -> error "Create Names first!"}) <$> cnss)
 

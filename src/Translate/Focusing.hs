@@ -14,7 +14,7 @@ import Syntax.STerms
     ( Command(..),
       STerm(..),
       SCase(..),
-      XtorArgs(..),
+      Substitution(..),
       commandClosingSingle,
       shiftCmd)
 
@@ -31,7 +31,7 @@ isValueSTerm CBN CnsRep MuAbs {}          = False            -- CBN: So Mu~ is n
 isValueSTerm eo  _      tm                = isFocusedSTerm eo tm
 
 -- | Check whether all arguments in the given argument list are substitutable.
-isValueArgs :: EvalOrder -> XtorArgs ext -> Bool
+isValueArgs :: EvalOrder -> Substitution ext -> Bool
 isValueArgs eo MkXtorArgs { prdArgs, cnsArgs } = and (valuePrds <> valueCnss)
     where
         valuePrds = isValueSTerm eo PrdRep <$> prdArgs

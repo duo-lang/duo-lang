@@ -18,8 +18,8 @@ import Lookup
 -- Symmetric Terms
 ---------------------------------------------------------------------------------------------
 
-genConstraintsArgs :: XtorArgs Loc
-                   -> GenM (XtorArgs (), LinearContext Pos)
+genConstraintsArgs :: Substitution Loc
+                   -> GenM (Substitution (), LinearContext Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm

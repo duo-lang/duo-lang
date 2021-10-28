@@ -16,7 +16,7 @@ instance PrettyAnn (SCase ext) where
     annSymbol "=>" <+>
     prettyAnn scase_cmd
 
-instance PrettyAnn (XtorArgs ext) where
+instance PrettyAnn (Substitution ext) where
   prettyAnn (MkXtorArgs prds cns) = prettyTwice' prds cns
 
 isNumSTerm :: STerm pc ext -> Maybe Int

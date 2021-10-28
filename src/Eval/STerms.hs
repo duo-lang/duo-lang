@@ -26,10 +26,10 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthXtorArgs :: XtorArgs () -> Twice Int
+lengthXtorArgs :: Substitution () -> Twice Int
 lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: Command () -> Twice [a] -> XtorArgs () -> EvalM ()
+checkArgs :: Command () -> Twice [a] -> Substitution () -> EvalM ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
@@ -165,7 +165,7 @@ evalSteps cmd = evalSteps' [cmd] cmd
 -- | Helper functions for CBV evaluation of match and comatch
     
 -- | Replace currently evaluated MuAbs-argument in Xtor with bound variable and give the searched mu-term out
-replaceMu :: EvalOrder -> XtorArgs () -> (XtorArgs (), Either (STerm Prd ()) (STerm Cns ()))
+replaceMu :: EvalOrder -> Substitution () -> (Substitution (), Either (STerm Prd ()) (STerm Cns ()))
 replaceMu order MkXtorArgs { prdArgs, cnsArgs }
   | not (all (isSubstPrd order) prdArgs) = 
       case replaceMuPrd order prdArgs of 
@@ -220,7 +220,7 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
 
 -- | Checks wether all producer arguments are substitutable.
 -- | The evaluation order determines which arguments are substitutable.
-areAllSubst :: EvalOrder -> XtorArgs ext -> Bool
+areAllSubst :: EvalOrder -> Substitution ext -> Bool
 areAllSubst order (MkXtorArgs { prdArgs, cnsArgs }) =
   all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
 

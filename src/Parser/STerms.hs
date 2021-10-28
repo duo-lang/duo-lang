@@ -34,7 +34,7 @@ numLitP ns PrdRep = do
     numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") (MkXtorArgs [numToTerm loc (n-1)] [])
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
-xtorArgsP :: Parser (XtorArgs Loc, SourcePos)
+xtorArgsP :: Parser (Substitution Loc, SourcePos)
 xtorArgsP = do
   endPos <- getSourcePos
   (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (stermP PrdRep)) `sepBy` comma)
