@@ -67,12 +67,12 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyData _ xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ xtors) = braces' commaSym (prettyAnn <$> xtors)
 
-instance PrettyAnn (TypArgs a) where
+instance PrettyAnn (LinearContext pol) where
   prettyAnn (MkTypArgs [] []) = mempty
   prettyAnn (MkTypArgs prdArgs []) = parens'   commaSym (prettyAnn <$> prdArgs)
   prettyAnn (MkTypArgs [] cnsArgs) = brackets' commaSym (prettyAnn <$> cnsArgs)
-  prettyAnn (MkTypArgs prdArgs cnsArgs) = align $ sep [ (parens'   commaSym (prettyAnn <$> prdArgs))
-                                                      , (brackets' commaSym (prettyAnn <$> cnsArgs))
+  prettyAnn (MkTypArgs prdArgs cnsArgs) = align $ sep [ parens'   commaSym (prettyAnn <$> prdArgs)
+                                                      , brackets' commaSym (prettyAnn <$> cnsArgs)
                                                       ]
 
 instance PrettyAnn (XtorSig a) where

@@ -61,28 +61,32 @@ deriving instance Eq (DataCodataRep pol)
 deriving instance Ord (DataCodataRep pol)
 
 ------------------------------------------------------------------------------
--- Types
+-- Linear Contexts
 ------------------------------------------------------------------------------
 
-data TypArgs (pol :: Polarity) = MkTypArgs
+data LinearContext (pol :: Polarity) = MkTypArgs
   { prdTypes :: [Typ pol]
   , cnsTypes :: [Typ (FlipPol pol)]
   }
 
-deriving instance Eq (TypArgs Pos)
-deriving instance Eq (TypArgs Neg)
-deriving instance Ord (TypArgs Pos)
-deriving instance Ord (TypArgs Neg)
+deriving instance Eq (LinearContext Pos)
+deriving instance Eq (LinearContext Neg)
+deriving instance Ord (LinearContext Pos)
+deriving instance Ord (LinearContext Neg)
 
-instance Semigroup (TypArgs pol) where
+instance Semigroup (LinearContext pol) where
     (MkTypArgs ps cs) <> (MkTypArgs ps' cs') = MkTypArgs (ps <> ps') (cs <> cs')
 
-instance Monoid (TypArgs pol) where
+instance Monoid (LinearContext pol) where
     mempty = MkTypArgs mempty mempty
+
+------------------------------------------------------------------------------
+-- Types
+------------------------------------------------------------------------------
 
 data XtorSig (pol :: Polarity) = MkXtorSig
   { sig_name :: XtorName
-  , sig_args :: TypArgs pol
+  , sig_args :: LinearContext pol
   }
 
 deriving instance Eq (XtorSig Pos)
@@ -185,7 +189,7 @@ substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
 substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArgs m sig_args)
 
-substituteTypeArgs :: Map TVar (Typ Pos, Typ Neg) -> TypArgs pol -> TypArgs pol
+substituteTypeArgs :: Map TVar (Typ Pos, Typ Neg) -> LinearContext pol -> LinearContext pol
 substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
   MkTypArgs (substituteType m <$> prdTypes) (substituteType m <$> cnsTypes)
 

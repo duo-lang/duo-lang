@@ -19,7 +19,7 @@ import Lookup
 ---------------------------------------------------------------------------------------------
 
 genConstraintsArgs :: XtorArgs Loc FreeVarName
-                   -> GenM (XtorArgs () FreeVarName, TypArgs Pos)
+                   -> GenM (XtorArgs () FreeVarName, LinearContext Pos)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm

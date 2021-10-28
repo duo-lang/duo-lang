@@ -20,7 +20,7 @@ import Syntax.Types
 -- Parsing of Simple and Target types
 ---------------------------------------------------------------------------------
 
-typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
+typArgListP :: PolarityRep pol -> Parser (LinearContext pol)
 typArgListP rep = do
   prdArgs <- option [] (fst <$> (parens   $ (typP rep) `sepBy` comma))
   cnsArgs <- option [] (fst <$> (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma))
