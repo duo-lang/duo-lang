@@ -12,6 +12,7 @@ import Syntax.ATerms
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
 import Pretty.ATerms ()
+import Translate.Translate
 
 instance Show (Typ pol) where
   show typ = ppPrintString typ
@@ -33,14 +34,14 @@ atermParseExample :: Text -> ATerm Compiled -> Spec
 atermParseExample input tm = do
   it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrintString tm) $ do
     let Right (parsedTerm,_) = runInteractiveParser atermP input
-    (undefined parsedTerm) `shouldBe` tm
+    compileATerm parsedTerm `shouldBe` tm
 
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
     typeParseExample "{{ < > <<: Nat }}" $ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep [])
     typeParseExample "{ 'A() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []]
-    typeParseExample "{ 'A[{ 'B }] }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
+    typeParseExample "{ 'A[{ 'B }] }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs []
       [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]]
     typeParseExample "{{ {} <<: Fun}}" $ TyRefined PosRep (MkTypeName "Fun") (TyCodata PosRep [])
     typeParseExample "< 'X({{ < > <<: Nat }}) >" $ TyData PosRep [MkXtorSig (MkXtorName Structural "X") $ MkTypArgs
@@ -48,7 +49,7 @@ spec = do
     typeParseExample "{{ < 'A > <<: Nat }}"$ TyRefined PosRep (MkTypeName "Nat")
       (TyData PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []])
     typeParseExample "{{ { 'A[{ 'B }] } <<: Foo }}" $ TyRefined PosRep (MkTypeName "Foo")
-      (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
+      (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs []
       [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]])
     typeParseExample "< 'A | 'B > /\\ < 'B >"
         $ TySet NegRep [ TyData   NegRep [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
