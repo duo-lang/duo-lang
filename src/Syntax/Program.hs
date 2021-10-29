@@ -1,9 +1,13 @@
 module Syntax.Program where
-  
+
+import Data.Kind (Type)  
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Text (Text)
-import Syntax.STerms( PrdCns(..), Command, STerm, FreeVarName )
+
+import Syntax.CommonTerm
+    ( FreeVarName, PrdCns(Cns, Prd), Phase(..) )
+import Syntax.STerms( Command, STerm )
 import Syntax.ATerms ( ATerm )
 import Syntax.Types ( TypeScheme, Polarity(..), DataDecl )
 import Utils ( Loc )
@@ -12,19 +16,24 @@ import Utils ( Loc )
 -- Declarations
 ---------------------------------------------------------------------------------
 
+type family DeclExt (ext :: Phase) :: Type where
+  DeclExt Parsed = Loc
+  DeclExt Inferred = Loc
+  DeclExt Compiled = ()
+
 newtype ModuleName = ModuleName { unModuleName :: Text }
 data IsRec = Recursive | NonRecursive
 
-data Declaration ext
-  = PrdDecl IsRec ext FreeVarName (Maybe (TypeScheme Pos)) (STerm Prd ext)
-  | CnsDecl IsRec ext FreeVarName (Maybe (TypeScheme Neg)) (STerm Cns ext)
-  | CmdDecl ext FreeVarName (Command ext)
-  | DefDecl IsRec ext FreeVarName (Maybe (TypeScheme Pos)) (ATerm ext)
-  | DataDecl ext DataDecl
-  | ImportDecl ext ModuleName
-  | SetDecl ext Text
-  | ParseErrorDecl
-  deriving (Functor)
+data Declaration (ext :: Phase) where
+  PrdDecl        :: DeclExt ext -> IsRec -> FreeVarName -> Maybe (TypeScheme Pos) -> STerm Prd ext -> Declaration ext
+  CnsDecl        :: DeclExt ext -> IsRec -> FreeVarName -> Maybe (TypeScheme Neg) -> STerm Cns ext -> Declaration ext
+  CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
+  DefDecl        :: DeclExt ext -> IsRec -> FreeVarName -> Maybe (TypeScheme Pos) -> ATerm ext     -> Declaration ext
+  DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
+  ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
+  SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
+  ParseErrorDecl ::                                                                                   Declaration ext
+
 
 instance Show (Declaration ext) where
   show _ = "<Show for Declaration not implemented>"
@@ -36,10 +45,10 @@ type Program ext = [Declaration ext]
 ---------------------------------------------------------------------------------
 
 data Environment = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd (), Loc, TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (STerm Cns (), Loc, TypeScheme Neg)
-  , cmdEnv :: Map FreeVarName (Command (), Loc)
-  , defEnv :: Map FreeVarName (ATerm (), Loc,  TypeScheme Pos)
+  { prdEnv :: Map FreeVarName (STerm Prd Compiled, Loc, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns Compiled, Loc, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command Compiled, Loc)
+  , defEnv :: Map FreeVarName (ATerm Compiled, Loc,  TypeScheme Pos)
   , declEnv :: [(Loc,DataDecl)]
   }
 
