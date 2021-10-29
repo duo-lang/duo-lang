@@ -9,13 +9,14 @@ import Pretty.Pretty
 import Utils
 
 import TypeInference.Driver
+import Translate.Translate
 import Parser.Parser
 import Syntax.STerms
 import Syntax.Program
 import Translate.Focusing
 import Eval.Eval
 
-shouldShiftTo :: STerm pc () -> STerm pc () -> Spec
+shouldShiftTo :: STerm pc Compiled -> STerm pc Compiled -> Spec
 shouldShiftTo tm1 tm2 = do
     it (ppPrintString tm1 <> " should shift to " <> ppPrintString tm2)  $ do
         shiftSTerm tm1 `shouldBe` tm2
@@ -28,7 +29,7 @@ shouldFocusTo input output = do
         let Right (inputCmd,_)  = runInteractiveParser commandP input
         let Right (outputCmd,_) = runInteractiveParser commandP output
         let focusResult = focusCmd CBV inputCmd
-        removeNamesCmd focusResult `shouldBe` (removeNamesCmd $ const () <$>  outputCmd)
+        removeNamesCmd focusResult `shouldBe` (removeNamesCmd $ compileCmd  outputCmd)
 
 -- Examples where Focusing should be a NoOp, since command is already
 -- focused.
@@ -44,7 +45,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls :: Program Loc = (fmap $ const defaultLoc) <$> (focusProgram CBV (fmap (const ()) <$> decls))
+                let focusedDecls :: Program Parsed = undefined -- (fmap $ const defaultLoc) <$> (focusProgram CBV (fmap (undefined) <$> decls))
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -54,7 +55,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls = fmap (const defaultLoc) <$> (focusProgram CBN (fmap (const ()) <$> decls))
+                let focusedDecls = undefined -- fmap (const defaultLoc) <$> (focusProgram CBN (fmap (undefined) <$> decls))
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)

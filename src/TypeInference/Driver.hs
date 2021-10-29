@@ -14,6 +14,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
+import Syntax.CommonTerm
 import Syntax.ATerms ( FreeVarName, PrdCnsRep(..), ATerm )
 import Syntax.STerms ( Command, STerm )
 import Syntax.Types
@@ -45,6 +46,7 @@ import TypeInference.GenerateConstraints.STerms
       genConstraintsCommand,
       genConstraintsSTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
+import Translate.Translate
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 
 ------------------------------------------------------------------------------
@@ -178,7 +180,7 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
 inferATermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> ATerm Loc
+                 -> ATerm Parsed
                  -> DriverM (TypeInferenceTrace Pos)
 inferATermTraced isRec loc fv tm = do
   infopts <- gets driverOpts
@@ -196,7 +198,7 @@ inferATermTraced isRec loc fv tm = do
 inferATerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> ATerm Loc
+           -> ATerm Parsed
            -> DriverM (TypeScheme Pos)
 inferATerm isRec loc fv tm =
   trace_resType <$> inferATermTraced isRec loc fv tm
@@ -208,7 +210,7 @@ inferATerm isRec loc fv tm =
 inferSTermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> PrdCnsRep pc -> STerm pc Loc
+                 -> PrdCnsRep pc -> STerm pc Parsed
                  -> DriverM (TypeInferenceTrace (PrdCnsToPol pc))
 inferSTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
@@ -227,13 +229,13 @@ inferSTermTraced isRec loc fv rep tm = do
 inferSTerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> PrdCnsRep pc -> STerm pc Loc
+           -> PrdCnsRep pc -> STerm pc Parsed
            -> DriverM (TypeScheme (PrdCnsToPol pc))
 inferSTerm isRec loc fv rep tm =
     trace_resType <$> inferSTermTraced isRec loc fv rep tm
 
 checkCmd :: Loc
-         -> Command Loc
+         -> Command Parsed
          -> DriverM (ConstraintSet, SolverResult)
 checkCmd loc cmd = do
   infopts <- gets driverOpts
@@ -248,9 +250,9 @@ checkCmd loc cmd = do
 -- Insert Declarations
 ---------------------------------------------------------------------------------
 
-insertDecl :: Declaration Loc
+insertDecl :: Declaration Parsed
            -> DriverM ()
-insertDecl (PrdDecl isRec loc v annot loct) = do
+insertDecl (PrdDecl loc isRec v annot loct) = do
   -- Infer a type
   trace <- inferSTermTraced isRec loc v PrdRep loct
   guardVerbose $ do
@@ -261,9 +263,9 @@ insertDecl (PrdDecl isRec loc v annot loct) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { prdEnv  = M.insert v (const () <$> loct ,loc, ty) (prdEnv env) }
+  let newEnv = env { prdEnv  = M.insert v (compileSTerm loct ,loc, ty) (prdEnv env) }
   setEnvironment newEnv
-insertDecl (CnsDecl isRec loc v annot loct) = do
+insertDecl (CnsDecl loc isRec v annot loct) = do
   -- Infer a type
   trace <- inferSTermTraced isRec loc v CnsRep loct
   guardVerbose $ do
@@ -274,7 +276,7 @@ insertDecl (CnsDecl isRec loc v annot loct) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { cnsEnv  = M.insert v (const () <$> loct, loc, ty) (cnsEnv env) }
+  let newEnv = env { cnsEnv  = M.insert v (compileSTerm loct, loc, ty) (cnsEnv env) }
   setEnvironment newEnv
 insertDecl (CmdDecl loc v loct) = do
   -- Check whether command is typeable
@@ -284,9 +286,9 @@ insertDecl (CmdDecl loc v loct) = do
       ppPrintIO solverResult
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { cmdEnv  = M.insert v (const () <$> loct, loc) (cmdEnv env)}
+  let newEnv = env { cmdEnv  = M.insert v (compileCmd loct, loc) (cmdEnv env)}
   setEnvironment newEnv
-insertDecl (DefDecl isRec loc v annot t) = do
+insertDecl (DefDecl loc isRec v annot t) = do
   -- Infer a type
   trace <- inferATermTraced isRec loc v t
   guardVerbose $ do
@@ -297,7 +299,7 @@ insertDecl (DefDecl isRec loc v annot t) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { defEnv  = M.insert v ( const () <$> t, loc,ty) (defEnv env)}
+  let newEnv = env { defEnv  = M.insert v ( undefined t, loc,ty) (defEnv env)}
   setEnvironment newEnv
 insertDecl (DataDecl loc dcl) = do
   -- Insert into environment
@@ -331,14 +333,14 @@ inferProgramFromDisk fp = do
             Left err -> throwError err
             Right env -> return env
 
-inferProgram :: [Declaration Loc]
+inferProgram :: [Declaration Parsed]
              -> DriverM ()
 inferProgram decls = forM_ decls insertDecl
 
 
 
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> [Declaration Loc]
+                -> [Declaration Parsed]
                 -> IO (Either LocatedError Environment)
 inferProgramIO state decls = do
     x <- execDriverM state (inferProgram decls)
