@@ -93,8 +93,9 @@ deriving instance Ord (XtorSig Neg)
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
-  TyData   :: PolarityRep pol ->  [XtorSig pol]   -> Typ pol
-  TyCodata :: PolarityRep pol ->  [XtorSig (FlipPol pol)] -> Typ pol
+  -- | Refinement types are represented by the presence of the TypeName parameter
+  TyData   :: PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
+  TyCodata :: PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
@@ -107,8 +108,8 @@ deriving instance Ord (Typ Neg)
 
 getPolarity :: Typ pol -> PolarityRep pol
 getPolarity (TyVar rep _)       = rep
-getPolarity (TyData rep _)      = rep
-getPolarity (TyCodata rep _)    = rep
+getPolarity (TyData rep _ _)      = rep
+getPolarity (TyCodata rep _ _)    = rep
 getPolarity (TyNominal rep _)   = rep
 getPolarity (TySet rep _)       = rep
 getPolarity (TyRec rep _ _)     = rep
@@ -140,8 +141,8 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _) = []
-    freeTypeVars' (TyData _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
-    freeTypeVars' (TyCodata _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyData _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyCodata _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
     freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
@@ -172,8 +173,8 @@ substituteType m var@(TyVar NegRep tv) =
     Nothing -> var
     Just (_,ty) -> ty
 -- Other cases
-substituteType m (TyData polrep args) = TyData polrep (substituteXtorSig m <$> args)
-substituteType m (TyCodata polrep args) = TyCodata polrep (substituteXtorSig m <$> args)
+substituteType m (TyData polrep mtn args) = TyData polrep mtn (substituteXtorSig m <$> args)
+substituteType m (TyCodata polrep mtn args) = TyCodata polrep mtn (substituteXtorSig m <$> args)
 substituteType _ ty@(TyNominal _ _) = ty
 substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
