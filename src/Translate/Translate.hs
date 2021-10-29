@@ -5,6 +5,7 @@ module Translate.Translate
   , compileSTerm
   , compileCmd
   , compileATerm
+  , compileDecl'
   )
   where
 
@@ -68,6 +69,16 @@ compileDecl (DataDecl _ decl)             = DataDecl () decl
 compileDecl (ImportDecl _ mn)             = ImportDecl () mn
 compileDecl (SetDecl _ txt)               = SetDecl () txt
 compileDecl ParseErrorDecl                = ParseErrorDecl   
+
+compileDecl' :: Declaration ext -> Declaration Compiled
+compileDecl' (DefDecl _ isRec v ts t)      = DefDecl () isRec v ts $ compileATerm t
+compileDecl' (PrdDecl _ isRec fv annot tm) = PrdDecl () isRec fv annot (compileSTerm tm)
+compileDecl' (CnsDecl _ isRec fv annot tm) = CnsDecl () isRec fv annot (compileSTerm tm)
+compileDecl' (CmdDecl _ fv cmd)            = CmdDecl () fv (compileCmd cmd)
+compileDecl' (DataDecl _ decl)             = DataDecl () decl
+compileDecl' (ImportDecl _ mn)             = ImportDecl () mn
+compileDecl' (SetDecl _ txt)               = SetDecl () txt
+compileDecl' ParseErrorDecl                = ParseErrorDecl   
 
 compileProgram :: Program ext -> Program Compiled
 compileProgram ps = compileDecl <$> ps

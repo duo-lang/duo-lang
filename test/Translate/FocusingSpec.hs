@@ -6,7 +6,6 @@ import qualified Data.Text as T
 import Test.Hspec
 import TestUtils
 import Pretty.Pretty
-import Utils
 
 import TypeInference.Driver
 import Translate.Translate
@@ -15,6 +14,8 @@ import Syntax.STerms
 import Syntax.Program
 import Translate.Focusing
 import Eval.Eval
+
+import Unsafe.Coerce (unsafeCoerce)
 
 shouldShiftTo :: STerm pc Compiled -> STerm pc Compiled -> Spec
 shouldShiftTo tm1 tm2 = do
@@ -36,6 +37,9 @@ shouldFocusTo input output = do
 focusShouldBeNoOp :: Text -> Spec
 focusShouldBeNoOp input = shouldFocusTo input input
 
+reParse :: Declaration ext -> Declaration Parsed
+reParse = unsafeCoerce
+
 focusExamples :: Spec
 focusExamples = do
     examples <- runIO $ getAvailableExamples "examples/"
@@ -45,7 +49,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls :: Program Parsed = undefined -- (fmap $ const defaultLoc) <$> (focusProgram CBV (fmap (undefined) <$> decls))
+                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBV (compileDecl' <$> decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -55,7 +59,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls = undefined -- fmap (const defaultLoc) <$> (focusProgram CBN (fmap (undefined) <$> decls))
+                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBN (compileDecl' <$> decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
