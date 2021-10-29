@@ -15,7 +15,8 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.CommonTerm
-import Syntax.ATerms ( FreeVarName, PrdCnsRep(..), ATerm )
+    ( FreeVarName, Phase(Parsed), PrdCnsRep(..) )
+import Syntax.ATerms ( ATerm )
 import Syntax.STerms ( Command, STerm )
 import Syntax.Types
     ( SolverResult,
@@ -299,7 +300,7 @@ insertDecl (DefDecl loc isRec v annot t) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { defEnv  = M.insert v ( undefined t, loc,ty) (defEnv env)}
+  let newEnv = env { defEnv  = M.insert v (compileATerm t, loc,ty) (defEnv env)}
   setEnvironment newEnv
 insertDecl (DataDecl loc dcl) = do
   -- Insert into environment

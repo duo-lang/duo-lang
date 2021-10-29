@@ -4,6 +4,7 @@ module Translate.Translate
   , compileProgram
   , compileSTerm
   , compileCmd
+  , compileATerm
   )
   where
 
@@ -71,3 +72,13 @@ compileDecl ParseErrorDecl                = ParseErrorDecl
 compileProgram :: Program ext -> Program Compiled
 compileProgram ps = compileDecl <$> ps
 
+compileATerm :: ATerm ext -> ATerm Compiled
+compileATerm (BVar _ idx) = BVar () idx
+compileATerm (FVar _ fv) = FVar () fv
+compileATerm (Ctor _ xt args) = Ctor () xt (compileATerm <$> args)
+compileATerm (Dtor _ xt a args) = Dtor () xt (compileATerm a) (compileATerm <$> args)
+compileATerm (Match _ a cases) = Match () (compileATerm a) (compileACase <$> cases)
+compileATerm (Comatch _ cocases) = Comatch () (compileACase <$> cocases)
+
+compileACase :: ACase ext -> ACase Compiled
+compileACase (MkACase _ name args tm) = MkACase () name args (compileATerm tm)

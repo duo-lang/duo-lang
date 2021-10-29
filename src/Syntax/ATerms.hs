@@ -15,7 +15,16 @@ import Data.List (elemIndex)
 import Data.Maybe (isJust, fromJust)
 
 import Syntax.CommonTerm
-import Utils
+    ( flipPrdCns,
+      FlipPrdCns,
+      FreeVarName,
+      Index,
+      NominalStructural(..),
+      Phase(..),
+      PrdCns(..),
+      PrdCnsRep(..),
+      XtorName(..) )
+import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
 -- # Asymmetric Terms
