@@ -143,25 +143,76 @@ subConstraints (SubType _ ty (TySet NegRep tys)) =
 --     rec a.ty1 <: ty2          ~>     ty1 [rec a.ty1 / a] <: ty2
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
-subConstraints (SubType _ ty@(TyRec _ _ _) ty') =
+subConstraints (SubType _ ty@TyRec{} ty') =
   return [SubType RecTypeSubConstraint (unfoldRecType ty) ty']
-subConstraints (SubType _ ty' ty@(TyRec _ _ _)) =
+subConstraints (SubType _ ty' ty@TyRec{}) =
   return [SubType RecTypeSubConstraint ty' (unfoldRecType ty)]
--- Constraints between structural data or codata types.
+-- Constraints between structural data or codata types:
 --
--- Constraints between structural data and codata types generates constraints based
+-- Constraints between structural data and codata types generate constraints based
 -- on the xtors of the two types. In order to generate the constraints, the helper
 -- function `checkXtors` is invoked.
 --
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TyData PosRep ctors1) (TyData NegRep ctors2)) = do
+subConstraints (SubType _ (TyData PosRep Nothing ctors1) (TyData NegRep Nothing ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure $ concat constraints
-subConstraints (SubType _ (TyCodata PosRep dtors1) (TyCodata NegRep dtors2)) = do
+subConstraints (SubType _ (TyCodata PosRep Nothing dtors1) (TyCodata NegRep Nothing dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
+-- Constraints between refinement data or codata types:
+--
+-- These constraints are treated in the same way as those between structural (co)data types, with
+-- the added condition that the type names must match. E.g.
+--
+--     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
+--     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
+--
+subConstraints (SubType _ t1@(TyData PosRep (Just tn1) ctors1) t2@(TyData NegRep (Just tn2) ctors2)) = do
+  if tn1 == tn2 then do
+    constraints <- forM ctors1 (checkXtor ctors2)
+    pure $ concat constraints
+  else throwSolverError ["The following refinement types are incompatible:"
+                        , "    " <> ppPrint t1
+                        , "and"
+                        , "    " <> ppPrint t2 ]
+subConstraints (SubType _ t1@(TyCodata PosRep (Just tn1) dtors1) t2@(TyCodata NegRep (Just tn2) dtors2)) = do
+  if tn1 == tn2 then do
+    constraints <- forM dtors2 (checkXtor dtors1)
+    pure $ concat constraints
+  else throwSolverError ["The following refinement types are incompatible:"
+                        , "    " <> ppPrint t1
+                        , "and"
+                        , "    " <> ppPrint t2 ]
+-- Constraints between structural (co)data types and refinement (co)data types:
+--
+-- These constraints are unsolvable. E.g.
+--
+--     < ctors > <: {{ TyName :>> < ctors > }}    ~>     FAIL
+--     { dtors } <: {{ TyName :>> { dtors } }}    ~>     FAIL
+--
+subConstraints (SubType _ t1@(TyData PosRep (Just _) _) t2@(TyData NegRep Nothing _)) = do
+  throwSolverError ["Cannot constraint refinement data type"
+                   , "    " <> ppPrint t1
+                   , "by structural data type"
+                   , "    " <> ppPrint t2 ]
+subConstraints (SubType _ t1@(TyData PosRep Nothing _) t2@(TyData NegRep (Just _) _)) = do
+  throwSolverError ["Cannot constraint structural data type"
+                   , "    " <> ppPrint t1
+                   , "by refinement data type"
+                   , "    " <> ppPrint t2 ]
+subConstraints (SubType _ t1@(TyCodata PosRep (Just _) _) t2@(TyCodata NegRep Nothing _)) = do
+  throwSolverError ["Cannot constraint refinement codata type"
+                   , "    " <> ppPrint t1
+                   , "by structural codata type"
+                   , "    " <> ppPrint t2 ]
+subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Just _) _)) = do
+  throwSolverError ["Cannot constraint structural codata type"
+                   , "    " <> ppPrint t1
+                   , "by refinement codata type"
+                   , "    " <> ppPrint t2 ]
 -- Constraints between nominal types:
 --
 -- We currently do not have any subtyping relationships between nominal types.
@@ -184,11 +235,11 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
 --     < ctors > <: { dtors }    ~>     FAIL
 --     { dtors } <: < ctors >    ~>     FAIL
 --
-subConstraints cs@(SubType _ (TyData _ _) (TyCodata _ _)) =
+subConstraints cs@(SubType _ TyData{} TyCodata{}) =
   throwSolverError [ "Constraint:"
                    , "     " <> ppPrint cs
                    , "is unsolvable. A data type can't be a subtype of a codata type!" ]
-subConstraints cs@(SubType _ (TyCodata _ _) (TyData _ _)) =
+subConstraints cs@(SubType _ TyCodata{} TyData{}) =
   throwSolverError [ "Constraint:"
                    , "     " <> ppPrint cs
                    , "is unsolvable. A codata type can't be a subtype of a data type!" ]
