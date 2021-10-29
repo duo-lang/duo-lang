@@ -173,7 +173,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Data xt
           argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyData rep sig]
+        return [TyData rep Nothing sig]
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
@@ -182,7 +182,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Codata xt
           argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyCodata rep sig]
+        return [TyCodata rep Nothing sig]
     -- Creating Nominal types
     let nominals = TyNominal rep <$> S.toList tns
 
