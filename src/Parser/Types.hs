@@ -41,11 +41,11 @@ dataTypeP CodataRep polrep = fst <$> braces (do
 
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP PosRep = do
-  (xt, _pos) <- xtorName Structural
+  (xt, _pos) <- xtorName Structural <|> xtorName Nominal
   args <- typArgListP PosRep
   return (MkXtorSig xt args)
 xtorSignatureP NegRep = do
-  (xt, _pos) <- xtorName Structural
+  (xt, _pos) <- xtorName Structural <|> xtorName Nominal
   args <- typArgListP NegRep
   return (MkXtorSig xt args)
 
@@ -77,10 +77,14 @@ recType rep = do
 
 refTypeP :: PolarityRep pol -> Parser (Typ pol)
 refTypeP rep = fst <$> dbraces (do
-  _ <- typP rep
-  _ <- refineSym
   (tn,_) <- typeNameP
-  return $ TyNominal rep tn) -- Temporary parsing for ref types
+  _ <- refineSym
+  ty <- typP rep
+  case ty of
+    TyData _ Nothing ctors -> return $ TyData rep (Just tn) ctors
+    TyCodata _ Nothing dtors -> return $ TyCodata rep (Just tn) dtors
+    _ -> error "Second component of refinement type must be data or codata type"
+  )
 
 -- Without joins and meets
 typP' :: PolarityRep pol -> Parser (Typ pol)
