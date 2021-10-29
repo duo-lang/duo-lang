@@ -2,7 +2,6 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
-import Pretty.Pretty ( ppPrint )
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import Utils
@@ -13,7 +12,7 @@ import Control.Monad.Reader
 
 import Errors
 import Data.Maybe (fromJust)
-import Data.List (intersect, maximumBy, find)
+import Data.List (intersect, maximumBy)
 import Data.Ord (comparing)
 import Data.Graph.Inductive.PatriciaTree
 import Data.Functor.Identity
@@ -161,7 +160,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just label@(MkNodeLabel _ datSet codatSet tns trs)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns _)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables
@@ -186,17 +185,8 @@ nodeToTypeNoCache rep i = do
         return [TyCodata rep sig]
     -- Creating Nominal types
     let nominals = TyNominal rep <$> S.toList tns
-    -- Creating refinement types
-    refs <- concat <$> forM (S.toList trs) (\tn -> do
-        case find (\case (RefineEdge tn1, _) -> tn1==tn; _ -> False) outs of
-          Just (RefineEdge _, ref) -> do
-            typ <- nodeToType rep ref
-            return [TyRefined rep tn typ]
-          _ -> throwAutomatonError 
-            ["No fitting refinement edge for type " <> 
-             unTypeName tn <> " in node " <> ppPrint label] )
 
-    let typs = varL ++ datL ++ codatL ++ nominals ++ refs
+    let typs = varL ++ datL ++ codatL ++ nominals
     return $ case typs of [t] -> t; _ -> TySet rep typs
 
   -- If the graph is cyclic, make a recursive type

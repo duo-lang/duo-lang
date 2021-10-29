@@ -38,18 +38,18 @@ atermParseExample input tm = do
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
-    typeParseExample "{{ < > <<: Nat }}" $ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep [])
+    -- typeParseExample "{{ < > <<: Nat }}" $ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep [])
     typeParseExample "{ 'A() }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []]
     typeParseExample "{ 'A[{ 'B }] }" $ TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
       [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]]
-    typeParseExample "{{ {} <<: Fun}}" $ TyRefined PosRep (MkTypeName "Fun") (TyCodata PosRep [])
-    typeParseExample "< 'X({{ < > <<: Nat }}) >" $ TyData PosRep [MkXtorSig (MkXtorName Structural "X") $ MkTypArgs
-      [ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep []) ] []]
-    typeParseExample "{{ < 'A > <<: Nat }}"$ TyRefined PosRep (MkTypeName "Nat")
-      (TyData PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []])
-    typeParseExample "{{ { 'A[{ 'B }] } <<: Foo }}" $ TyRefined PosRep (MkTypeName "Foo")
-      (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
-      [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]])
+    -- typeParseExample "{{ {} <<: Fun}}" $ TyRefined PosRep (MkTypeName "Fun") (TyCodata PosRep [])
+    -- typeParseExample "< 'X({{ < > <<: Nat }}) >" $ TyData PosRep [MkXtorSig (MkXtorName Structural "X") $ MkTypArgs
+    --   [ TyRefined PosRep (MkTypeName "Nat") (TyData PosRep []) ] []]
+    -- typeParseExample "{{ < 'A > <<: Nat }}"$ TyRefined PosRep (MkTypeName "Nat")
+    --   (TyData PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []])
+    -- typeParseExample "{{ { 'A[{ 'B }] } <<: Foo }}" $ TyRefined PosRep (MkTypeName "Foo")
+    --   (TyCodata PosRep [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
+    --   [TyCodata PosRep [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]])
     typeParseExample "< 'A | 'B > /\\ < 'B >"
         $ TySet NegRep [ TyData   NegRep [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                        , TyData   NegRep [MkXtorSig (MkXtorName Structural "B") mempty]]

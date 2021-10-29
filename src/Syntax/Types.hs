@@ -96,7 +96,6 @@ data Typ (pol :: Polarity) where
   TyData   :: PolarityRep pol ->  [XtorSig pol]   -> Typ pol
   TyCodata :: PolarityRep pol ->  [XtorSig (FlipPol pol)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
-  TyRefined :: PolarityRep pol -> TypeName -> Typ pol -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
@@ -111,7 +110,6 @@ getPolarity (TyVar rep _)       = rep
 getPolarity (TyData rep _)      = rep
 getPolarity (TyCodata rep _)    = rep
 getPolarity (TyNominal rep _)   = rep
-getPolarity (TyRefined rep _ _) = rep
 getPolarity (TySet rep _)       = rep
 getPolarity (TyRec rep _ _)     = rep
 
@@ -142,7 +140,6 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _) = []
-    freeTypeVars' TyRefined{} = []
     freeTypeVars' (TyData _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
     freeTypeVars' (TyCodata _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
@@ -178,7 +175,6 @@ substituteType m var@(TyVar NegRep tv) =
 substituteType m (TyData polrep args) = TyData polrep (substituteXtorSig m <$> args)
 substituteType m (TyCodata polrep args) = TyCodata polrep (substituteXtorSig m <$> args)
 substituteType _ ty@(TyNominal _ _) = ty
-substituteType m (TyRefined rep n ty) = TyRefined rep n (substituteType m ty)
 substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 

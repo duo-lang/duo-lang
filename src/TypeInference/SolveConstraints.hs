@@ -176,29 +176,6 @@ subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
                      , "    " <> ppPrint tn1
                      , "and"
                      , "    " <> ppPrint tn2 ]
--- Constraints between refined types:
---
--- If left and right side refine the same nominal type, check if left side refinement is
--- subtype of right side refinement.
-subConstraints (SubType ci t1@(TyRefined _ tn1 ty1) (TyRefined _ tn2 ty2)) =
-  if tn1 == tn2 then return [SubType ci ty1 ty2] else
-    throwSolverError ["The following refined types are incompatible:"
-                     , "    " <> ppPrint t1
-                     , "and"
-                     , "    " <> ppPrint tn2 ]
--- Constraints between nominal and refined types:
---
--- Refinement types and nominal types are incomparable.
-subConstraints (SubType _ t1@TyRefined{} t2@TyNominal{}) =
-  throwSolverError ["The following types are incompatible:"
-                        , "    " <> ppPrint t1
-                        , "and"
-                        , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@TyNominal{} t2@TyRefined{}) =
-  throwSolverError ["The following types are incompatible:"
-                   , "    " <> ppPrint t1
-                   , "and"
-                   , "    " <> ppPrint t2 ]
 -- Constraints between structural data and codata types:
 --
 -- A constraint between a structural data type and a structural codata type
@@ -230,14 +207,6 @@ subConstraints (SubType _ t1@TyNominal{} t2@TyData{}) =
   throwSolverError ["Cannot constrain nominal type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
 subConstraints (SubType _ t1@TyNominal{} t2@TyCodata{}) =
   throwSolverError ["Cannot constrain nominal type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyData{} t2@TyRefined{}) =
-  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by refinement type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyCodata{} t2@TyRefined{}) =
-  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by refinement type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyRefined{} t2@TyData{}) =
-  throwSolverError ["Cannot constrain refinement type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyRefined{} t2@TyCodata{}) =
-  throwSolverError ["Cannot constrain refinement type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
 -- Atomic constraints:
 --
 -- Atomic constraints, i.e. constraints between a type and a type variable, should be

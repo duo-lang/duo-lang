@@ -180,13 +180,6 @@ insertType (TyNominal rep tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
-insertType (TyRefined rep tn ty) = do
-  let pol = polarityRepToPol rep
-  newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_refined = S.singleton tn })
-  nodeStructural <- insertType ty
-  insertEdges [(newNode, nodeStructural, RefineEdge tn)]
-  return newNode
 
 
 --------------------------------------------------------------------------

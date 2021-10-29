@@ -43,8 +43,7 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal PosRep (data_name tn)
-        InferRefined -> TyRefined PosRep (data_name tn) $ 
-          TyData PosRep $ xtorSigMakeStructural <$> [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
+        InferRefined -> TyData PosRep $ xtorSigMakeStructural <$> [MkXtorSig xt $ MkTypArgs (snd <$> args') [] ]
   return (Ctor () xt (fst <$> args'), ty)
 
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
@@ -88,7 +87,7 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal NegRep (data_name tn)
-        InferRefined -> TyRefined NegRep (data_name tn) (TyData NegRep (xtorSigMakeStructural . snd <$> cases'))
+        InferRefined -> TyData NegRep (xtorSigMakeStructural . snd <$> cases')
   addConstraint (SubType (PatternMatchConstraint loc) matchType ty)
   return (Match () t' (fst <$> cases') , retTypePos)
 
@@ -118,7 +117,7 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   im <- asks (inferMode . snd)
   let ty = case im of
         InferNominal -> TyNominal PosRep (data_name tn)
-        InferRefined -> TyRefined PosRep (data_name tn) (TyCodata PosRep (xtorSigMakeStructural . snd <$> cocases'))
+        InferRefined -> TyCodata PosRep (xtorSigMakeStructural . snd <$> cocases')
   return (Comatch () (fst <$> cocases'), ty)
 
 genConstraintsATerm (Comatch _ cocases) = do

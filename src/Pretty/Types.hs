@@ -59,10 +59,8 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyVar _ tv)       = prettyAnn tv
   -- Recursive types
   prettyAnn (TyRec _ rv t)     = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
-  -- Nominal and Refinement Types
+  -- Nominal types
   prettyAnn (TyNominal _ tn)   = prettyAnn tn
-  prettyAnn (TyRefined _ tn t) =
-    dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn t]
   -- Structural data and codata types
   prettyAnn (TyData _ xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ xtors) = braces' commaSym (prettyAnn <$> xtors)
