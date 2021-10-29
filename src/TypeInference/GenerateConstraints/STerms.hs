@@ -57,21 +57,23 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
   case xtorNominalStructural xt of
     Structural -> do
       let resType = case rep of
-            PrdRep -> TyData PosRep [MkXtorSig xt argTypes]
-            CnsRep -> TyCodata NegRep [MkXtorSig xt argTypes]
+            PrdRep -> TyData PosRep Nothing [MkXtorSig xt argTypes]
+            CnsRep -> TyCodata NegRep Nothing [MkXtorSig xt argTypes]
       return (resTerm, resType)
     Nominal -> do
       tn <- lookupDataDecl xt
+      im <- asks (inferMode . snd)
       -- Check if args of xtor are correct
-      xtorSig <- lookupXtorSig xt NegRep
+      xtorSig <- case im of
+        InferNominal -> lookupXtorSig xt NegRep
+        InferRefined -> translateXtorSig =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
-      im <- asks (inferMode . snd)
       let resType = case (im, rep) of
             (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-            (InferRefined,PrdRep) -> TyData PosRep $ xtorSigMakeStructural <$> [MkXtorSig xt argTypes]
+            (InferRefined,PrdRep) -> TyData PosRep (Just $ data_name tn) [MkXtorSig xt argTypes]
             (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-            (InferRefined,CnsRep) -> TyCodata NegRep $ xtorSigMakeStructural <$> [MkXtorSig xt argTypes]
+            (InferRefined,CnsRep) -> TyCodata NegRep (Just $ data_name tn) [MkXtorSig xt argTypes]
       return (resTerm, resType)
 --
 -- Structural pattern and copattern matches:
@@ -83,8 +85,8 @@ genConstraintsSTerm (XMatch _ rep Structural cases) = do
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   let resTerm = XMatch () rep Structural (fst <$> cases')
   let resType = case rep of
-        PrdRep -> TyCodata PosRep (snd <$> cases')
-        CnsRep -> TyData NegRep (snd <$> cases')
+        PrdRep -> TyCodata PosRep Nothing (snd <$> cases')
+        CnsRep -> TyData NegRep Nothing (snd <$> cases')
   return (resTerm, resType)
 --
 -- Nominal pattern and copattern matches:
@@ -97,18 +99,20 @@ genConstraintsSTerm (XMatch _ rep Nominal cases@(pmcase:_)) = do
   tn <- lookupDataDecl (scase_name pmcase)
   checkCorrectness (scase_name <$> cases) tn
   checkExhaustiveness (scase_name <$> cases) tn
+  im <- asks (inferMode . snd)
   cases' <- forM cases (\MkSCase {..} -> do
-                           x <- sig_args <$> lookupXtorSig scase_name PosRep
+                           x <- case im of
+                             InferNominal -> sig_args <$> lookupXtorSig scase_name PosRep
+                             InferRefined -> sig_args <$> (translateXtorSig =<< lookupXtorSig scase_name PosRep)
                            (_,fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   let resTerm = XMatch () rep Nominal (fst <$> cases')
-  im <- asks (inferMode . snd)
   let resType = case (im, rep) of
         (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-        (InferRefined,PrdRep) -> TyCodata PosRep (xtorSigMakeStructural . snd <$> cases')
+        (InferRefined,PrdRep) -> TyCodata PosRep (Just $ data_name tn) (snd <$> cases')
         (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-        (InferRefined,CnsRep) -> TyData NegRep (xtorSigMakeStructural . snd <$> cases')
+        (InferRefined,CnsRep) -> TyData NegRep (Just $ data_name tn) (snd <$> cases')
   return (resTerm, resType)
 --
 -- Mu and TildeMu abstractions:
