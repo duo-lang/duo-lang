@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 module LSP.LSP where
 
+import Data.IORef
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Map as M
 import Data.Maybe ( fromMaybe )
@@ -36,7 +37,7 @@ import Pretty.Program ()
 import TypeInference.Driver
 import Utils ( Located(..))
 import LSP.Definition
-import LSP.HoverHandler ( hoverHandler )
+import LSP.HoverHandler ( hoverHandler, updateHoverCache )
 import LSP.CodeActionHandler ( codeActionHandler )
 
 ---------------------------------------------------------------------------------
@@ -63,15 +64,17 @@ serverOptions = Options
                                  }
   }
 
-definition :: ServerDefinition LSPConfig
-definition = ServerDefinition
-  { defaultConfig = MkLSPConfig
-  , onConfigurationChange = \config _ -> pure config
-  , doInitialize = \env _req -> pure $ Right env
-  , staticHandlers = handlers
-  , interpretHandler = \env -> Iso { forward = runLspT env . unLSPMonad, backward = liftIO }
-  , options = serverOptions
-  }
+definition :: IO (ServerDefinition LSPConfig)
+definition = do
+  initialCache <- newIORef (const Nothing)
+  return ServerDefinition
+    { defaultConfig = MkLSPConfig initialCache
+    , onConfigurationChange = \config _ -> pure config
+    , doInitialize = \env _req -> pure $ Right env
+    , staticHandlers = handlers
+    , interpretHandler = \env -> Iso { forward = runLspT env . unLSPMonad, backward = liftIO }
+    , options = serverOptions
+    }
 
 initialize :: LanguageContextEnv LSPConfig
            -> Message Initialize
@@ -86,7 +89,8 @@ runLSP :: IO ()
 runLSP = do
   setupLogger (Just "lsplog.txt") ["lspserver"] DEBUG
   debugM "lspserver" $ "Starting LSP Server"
-  errCode <- runServer definition
+  initalDefinition <- definition
+  errCode <- runServer initialDefinition
   case errCode of
     0 -> exitSuccess
     i -> exitWith $ ExitFailure i
@@ -201,6 +205,7 @@ publishErrors uri = do
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
           -- sendError "Typeinference error!"
-        Right _ -> do
+        Right env -> do
+          updateHoverCache env
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 
