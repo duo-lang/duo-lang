@@ -14,8 +14,6 @@ import Pretty.Types ()
 import Pretty.ATerms ()
 import Translate.Translate
 
-instance Show (Typ pol) where
-  show typ = ppPrintString typ
 
 typeParseExample :: Text -> Typ pol -> Spec
 typeParseExample input ty = do
@@ -25,9 +23,13 @@ typeParseExample input ty = do
     ppPrint ty `shouldBe` ppPrint ty2
 
 typeParseCounterEx :: Text -> PolarityRep pol -> Spec
-typeParseCounterEx input polRep = do
+typeParseCounterEx input PosRep = do
   it ("Input " ++ T.unpack input ++ " cannot be parsed") $ do
-    let res = runInteractiveParser (typP polRep) input
+    let res = runInteractiveParser (typP PosRep) input
+    res `shouldSatisfy` isLeft
+typeParseCounterEx input NegRep = do
+  it ("Input " ++ T.unpack input ++ " cannot be parsed") $ do
+    let res = runInteractiveParser (typP NegRep) input
     res `shouldSatisfy` isLeft
 
 atermParseExample :: Text -> ATerm Compiled -> Spec
