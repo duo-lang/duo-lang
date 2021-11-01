@@ -131,6 +131,12 @@ data SomeType where
   NegType :: Typ Neg -> SomeType
   deriving (Eq, Ord, Show)
 
+toSomeType :: Typ pol -> SomeType
+toSomeType ty = case getPolarity ty of
+  PosRep -> PosType ty
+  NegRep -> NegType ty
+
+
 ------------------------------------------------------------------------------
 -- Type Schemes
 ------------------------------------------------------------------------------

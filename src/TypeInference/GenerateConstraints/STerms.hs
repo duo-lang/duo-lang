@@ -36,7 +36,7 @@ genConstraintsSTerm :: STerm pc Parsed
 --
 genConstraintsSTerm (BoundVar loc rep idx) = do
   ty <- lookupContext rep idx
-  return (BoundVar loc rep idx, ty)
+  return (BoundVar (loc, toSomeType ty) rep idx, ty)
 --
 -- Free variables:
 --
@@ -47,19 +47,19 @@ genConstraintsSTerm (BoundVar loc rep idx) = do
 genConstraintsSTerm (FreeVar loc rep v) = do
   tys <- snd <$> lookupSTerm rep v
   ty <- instantiateTypeScheme v loc tys
-  return (FreeVar loc rep v, ty)
+  return (FreeVar (loc, toSomeType ty) rep v, ty)
 --
 -- Xtors
 --
 genConstraintsSTerm (XtorCall loc rep xt args) = do
   (args', argTypes) <- genConstraintsArgs args
-  let resTerm = XtorCall loc rep xt args'
+  let resTerm = \ty -> XtorCall (loc,ty) rep xt args'
   case xtorNominalStructural xt of
     Structural -> do
       let resType = case rep of
             PrdRep -> TyData PosRep [MkXtorSig xt argTypes]
             CnsRep -> TyCodata NegRep [MkXtorSig xt argTypes]
-      return (resTerm, resType)
+      return (resTerm (toSomeType resType), resType)
     Nominal -> do
       tn <- lookupDataDecl xt
       -- Check if args of xtor are correct
@@ -72,7 +72,7 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
             (InferRefined,PrdRep) -> TyRefined PosRep (data_name tn) $ TyData PosRep $ xtorSigMakeStructural <$> [MkXtorSig xt argTypes]
             (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
             (InferRefined,CnsRep) -> TyRefined NegRep (data_name tn) $ TyCodata NegRep $ xtorSigMakeStructural <$> [MkXtorSig xt argTypes]
-      return (resTerm, resType)
+      return (resTerm (toSomeType resType), resType)
 --
 -- Structural pattern and copattern matches:
 --
@@ -81,11 +81,11 @@ genConstraintsSTerm (XMatch loc rep Structural cases) = do
                       (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                       cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
-  let resTerm = XMatch loc rep Structural (fst <$> cases')
+  let resTerm = \ty -> XMatch (loc,ty) rep Structural (fst <$> cases')
   let resType = case rep of
         PrdRep -> TyCodata PosRep (snd <$> cases')
         CnsRep -> TyData NegRep (snd <$> cases')
-  return (resTerm, resType)
+  return (resTerm (toSomeType resType), resType)
 --
 -- Nominal pattern and copattern matches:
 --
@@ -102,25 +102,25 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                            (_,fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
-  let resTerm = XMatch loc rep Nominal (fst <$> cases')
+  let resTerm = \ty -> XMatch (loc,ty) rep Nominal (fst <$> cases')
   im <- asks (inferMode . snd)
   let resType = case (im, rep) of
         (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
         (InferRefined,PrdRep) -> TyRefined PosRep (data_name tn) $ TyCodata PosRep (xtorSigMakeStructural . snd <$> cases')
         (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
         (InferRefined,CnsRep) -> TyRefined NegRep (data_name tn) $ TyData NegRep (xtorSigMakeStructural . snd <$> cases')
-  return (resTerm, resType)
+  return (resTerm (toSomeType resType), resType)
 --
 -- Mu and TildeMu abstractions:
 --
 genConstraintsSTerm (MuAbs loc PrdRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [] [fvneg]) (genConstraintsCommand cmd)
-  return (MuAbs loc PrdRep bs cmd', fvpos)
+  return (MuAbs (loc, toSomeType fvpos) PrdRep bs cmd', fvpos)
 genConstraintsSTerm (MuAbs loc CnsRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [fvpos] []) (genConstraintsCommand cmd)
-  return (MuAbs loc CnsRep bs cmd', fvneg)
+  return (MuAbs (loc, toSomeType fvneg) CnsRep bs cmd', fvneg)
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)

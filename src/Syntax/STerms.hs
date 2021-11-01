@@ -38,6 +38,7 @@ import qualified Data.Text as T
 import Utils
 import Errors
 import Syntax.CommonTerm
+import Syntax.Types (SomeType)
 
 ---------------------------------------------------------------------------------
 -- # Symmetric Terms
@@ -62,11 +63,6 @@ import Syntax.CommonTerm
 -- The locally namelesss representation is well documented here:
 -- https://www.chargueraud.org/softs/ln/
 ---------------------------------------------------------------------------------
-
-type family STermExt (ext :: Phase) :: Type where
-  STermExt Parsed = Loc
-  STermExt Inferred = Loc
-  STermExt Compiled = ()
 
 -- | Represents an argument list to a constructor or destructor.
 data XtorArgs ext = MkXtorArgs { prdArgs :: [STerm Prd ext]
@@ -100,6 +96,11 @@ deriving instance (Show (SCase Parsed))
 deriving instance (Show (SCase Inferred))
 deriving instance (Show (SCase Compiled))
 
+type family STermExt (ext :: Phase) :: Type where
+  STermExt Parsed = Loc
+  STermExt Inferred = (Loc, SomeType)
+  STermExt Compiled = ()
+
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
 data STerm (pc :: PrdCns) (ext :: Phase) where
@@ -129,14 +130,19 @@ deriving instance (Show (STerm pc Compiled))
 -- Commands
 ---------------------------------------------------------------------------------
 
+type family CommandExt (ext :: Phase) :: Type where
+  CommandExt Parsed = Loc
+  CommandExt Inferred = Loc
+  CommandExt Compiled = ()
+
 -- | An executable command.
 data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply :: STermExt ext -> STerm Prd ext -> STerm Cns ext -> Command ext
-  Print :: STermExt ext -> STerm Prd ext -> Command ext
-  Done  :: STermExt ext -> Command ext
+  Apply :: CommandExt ext -> STerm Prd ext -> STerm Cns ext -> Command ext
+  Print :: CommandExt ext -> STerm Prd ext -> Command ext
+  Done  :: CommandExt ext -> Command ext
 
 deriving instance (Eq (Command Parsed))
 deriving instance (Eq (Command Inferred))
