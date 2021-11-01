@@ -12,6 +12,7 @@ import qualified Data.Text as T
 -- LSPMonad and Utility Functions
 ---------------------------------------------------------------------------------
 
+type HoverMap   = Map Range Hover
 type HoverCache = Map Uri (Position -> Maybe Hover)
 data LSPConfig = MkLSPConfig (IORef HoverCache)
 
