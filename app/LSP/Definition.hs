@@ -3,6 +3,7 @@ module LSP.Definition where
 import Control.Monad.IO.Class ( MonadIO)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 
+import Data.Map (Map)
 import Data.IORef
 import Language.LSP.Server
 import Language.LSP.Types
@@ -11,7 +12,7 @@ import qualified Data.Text as T
 -- LSPMonad and Utility Functions
 ---------------------------------------------------------------------------------
 
-type HoverCache = Position -> Maybe Hover
+type HoverCache = Map Uri (Position -> Maybe Hover)
 data LSPConfig = MkLSPConfig (IORef HoverCache)
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: (LspT LSPConfig IO a) }

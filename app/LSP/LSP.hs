@@ -66,7 +66,7 @@ serverOptions = Options
 
 definition :: IO (ServerDefinition LSPConfig)
 definition = do
-  initialCache <- newIORef (const Nothing)
+  initialCache <- newIORef M.empty 
   return ServerDefinition
     { defaultConfig = MkLSPConfig initialCache
     , onConfigurationChange = \config _ -> pure config
@@ -89,7 +89,7 @@ runLSP :: IO ()
 runLSP = do
   setupLogger (Just "lsplog.txt") ["lspserver"] DEBUG
   debugM "lspserver" $ "Starting LSP Server"
-  initalDefinition <- definition
+  initialDefinition <- definition
   errCode <- runServer initialDefinition
   case errCode of
     0 -> exitSuccess
@@ -206,6 +206,6 @@ publishErrors uri = do
           sendLocatedError (toNormalizedUri uri) err
           -- sendError "Typeinference error!"
         Right env -> do
-          updateHoverCache env
+          updateHoverCache uri env
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 

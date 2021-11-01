@@ -11,7 +11,7 @@ import Language.LSP.Types
       MarkupKind(MkPlainText),
       RequestMessage(RequestMessage),
       SMethod(STextDocumentHover),
-      TextDocumentIdentifier(TextDocumentIdentifier) )
+      TextDocumentIdentifier(TextDocumentIdentifier), Position, Uri )
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
 import qualified Data.Map as M
@@ -19,14 +19,14 @@ import Data.List ( find )
 import System.Log.Logger ( debugM )
 import Pretty.Pretty ( ppPrint )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
-import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverCache )
+import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig) )
 import LSP.MegaparsecToLSP ( lookupPos )
 import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv, declEnv) )
 import Syntax.Types ( Typ(TyNominal), PolarityRep (PosRep), DataDecl (data_name) )
 import TypeTranslation ( translateType )
 import Syntax.Types (Polarity(Pos))
 import Data.Either (fromRight)
-import Data.IORef (writeIORef, readIORef)
+import Data.IORef (readIORef, modifyIORef)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -38,16 +38,17 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri)
   MkLSPConfig ref <- getConfig 
   cache <- liftIO $ readIORef ref
-  responder (Right (cache pos))
+  case M.lookup uri cache of
+    Nothing -> responder (Right Nothing)
+    Just cache -> responder (Right (cache pos))
  
 
-updateHoverCache :: Environment -> LSPMonad ()
-updateHoverCache env = do
+updateHoverCache :: Uri -> Environment -> LSPMonad ()
+updateHoverCache uri env = do
   MkLSPConfig ref <- getConfig
-  liftIO $ writeIORef ref (lookupHoverEnv env)
-  return ()
-
-lookupHoverEnv :: Environment -> HoverCache 
+  liftIO $ modifyIORef ref (M.insert uri (lookupHoverEnv env))
+  
+lookupHoverEnv :: Environment -> Position -> Maybe Hover
 lookupHoverEnv env pos =
   let
     defs = M.toList (defEnv env)
