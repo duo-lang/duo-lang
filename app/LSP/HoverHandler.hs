@@ -12,15 +12,20 @@ import System.Log.Logger ( debugM )
 import Pretty.Pretty ( ppPrint )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
-import LSP.MegaparsecToLSP ( lookupPos )
-import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv, declEnv) )
-import Syntax.Types ( Typ(TyNominal), PolarityRep (PosRep), DataDecl (data_name) )
-import TypeTranslation ( translateType )
-import Syntax.Types (Polarity(Pos))
+import LSP.MegaparsecToLSP ( lookupPos, locToRange )
+import Syntax.Program 
+import Syntax.ATerms
+import Syntax.STerms hiding (Command)
+import qualified Syntax.STerms as STerms
+import Syntax.Types 
+import TypeTranslation 
+import Syntax.Types 
 import Data.Either (fromRight)
 import Data.IORef (readIORef, modifyIORef)
 import Data.Text.Internal.Lazy (Text)
 import Data.Map (Map)
+import GHC.IO.Exception (ArrayException(UndefinedElement))
+import Utils (Loc)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -34,7 +39,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   cache <- liftIO $ readIORef ref
   case M.lookup uri cache of
     Nothing -> responder (Right Nothing)
-    Just cache -> responder (Right (cache pos))
+    Just cache -> responder (Right (lookupInHoverMap pos cache))
  
 
 updateHoverCache :: Uri -> Environment -> LSPMonad ()
@@ -72,28 +77,51 @@ lookupInHoverMap pos map =
       ((_,ho):_) -> Just ho
 
 
-lookupHoverEnv :: Environment -> Position -> Maybe Hover
-lookupHoverEnv env pos =
+
+
+prdEnvToHoverMap :: Map FreeVarName (STerm Prd Compiled, Loc, TypeScheme Pos) -> HoverMap
+prdEnvToHoverMap m =
   let
-    defs = M.toList (defEnv env)
-    defres = find (\(_,(_,loc,_)) -> lookupPos pos loc) defs
-    prds = M.toList (prdEnv env)
-    prdres = find (\(_,(_,loc,_)) -> lookupPos pos loc) prds
-    cnss = M.toList (cnsEnv env)
-    cnsres = find (\(_,(_,loc,_)) -> lookupPos pos loc) cnss
-    typs = find (\(loc,_) -> lookupPos pos loc) (declEnv env)
+    ls = M.toList m
+    ls' = (\(_,(_,loc,ty)) -> (locToRange loc,Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)) <$> ls
   in
-    case defres of
-      Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
-      Nothing -> case prdres of
-        Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
-        Nothing -> case cnsres of
-          Just (_,(_,_,ty)) -> Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
-          Nothing -> case typs of
-            Just (_,decl) ->
-              let ty :: Typ Pos = fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl)))
-              in Just (Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)
-            Nothing -> Nothing
+    M.fromList ls'
+
+cnsEnvToHoverMap :: Map FreeVarName (STerm Cns Compiled, Loc, TypeScheme Neg) -> HoverMap
+cnsEnvToHoverMap m = 
+  let
+    ls = M.toList m
+    ls' = (\(_,(_,loc,ty)) -> (locToRange loc,Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)) <$> ls
+  in
+    M.fromList ls'
+
+cmdEnvToHoverMap :: Map FreeVarName (STerms.Command Compiled, Loc) -> HoverMap
+cmdEnvToHoverMap _ = M.empty
+
+defEnvToHoverMap :: Map FreeVarName (ATerm Compiled, Loc,  TypeScheme Pos) -> HoverMap
+defEnvToHoverMap m =
+  let
+    ls = M.toList m
+    ls' = (\(_,(_,loc,ty)) -> (locToRange loc, Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)) <$> ls
+  in
+    M.fromList ls'
+
+declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
+declEnvToHoverMap env ls =
+  let
+    ls' = (\(loc,decl) -> (locToRange loc, Hover (HoverContents (MarkupContent MkPlainText (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))))) Nothing)) <$> ls
+  in
+    M.fromList ls'
+
+lookupHoverEnv :: Environment -> HoverMap
+lookupHoverEnv env@Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } = 
+  M.unions [ prdEnvToHoverMap prdEnv
+           , cnsEnvToHoverMap cnsEnv
+           , cmdEnvToHoverMap cmdEnv
+           , defEnvToHoverMap defEnv
+           , declEnvToHoverMap env declEnv
+           ]
+
 
 
 
