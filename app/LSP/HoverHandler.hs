@@ -1,40 +1,32 @@
-module LSP.HoverHandler (hoverHandler) where
+module LSP.HoverHandler
+  ( hoverHandler
+  , updateHoverCache
+  ) where
 
 import Language.LSP.Types
-    ( toNormalizedUri,
-      uriToFilePath,
-      Hover(Hover),
+    ( Hover(Hover),
       HoverContents(HoverContents),
       HoverParams(HoverParams),
-      Position,
       MarkupContent(MarkupContent),
       MarkupKind(MkPlainText),
       RequestMessage(RequestMessage),
       SMethod(STextDocumentHover),
-      TextDocumentIdentifier(TextDocumentIdentifier) )
+      TextDocumentIdentifier(TextDocumentIdentifier), Position, Uri )
 import Language.LSP.Server
-    ( getVirtualFile, requestHandler, Handlers )
-import Language.LSP.VFS ( VirtualFile, virtualFileText )
+    ( requestHandler, Handlers, getConfig )
 import qualified Data.Map as M
 import Data.List ( find )
-import Data.Maybe ( fromMaybe )
 import System.Log.Logger ( debugM )
-import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
-import LSP.Definition ( LSPMonad )
+import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig) )
 import LSP.MegaparsecToLSP ( lookupPos )
 import Syntax.Program ( Environment(defEnv, prdEnv, cnsEnv, declEnv) )
 import Syntax.Types ( Typ(TyNominal), PolarityRep (PosRep), DataDecl (data_name) )
-import TypeInference.Driver
-    ( defaultInferenceOptions,
-      inferProgramIO,
-      DriverState(DriverState),
-      InferenceOptions(infOptsLibPath) )
 import TypeTranslation ( translateType )
 import Syntax.Types (Polarity(Pos))
 import Data.Either (fromRight)
+import Data.IORef (readIORef, modifyIORef)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -44,24 +36,20 @@ hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
   liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri)
-  mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
-  let file = virtualFileText vfile
-  let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp programP file
-  case decls of
-    Left _err -> do
-      responder (Right Nothing)
-    Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
-      case res of
-        Left _err -> do
-          responder (Right Nothing)
-        Right env -> do
-          responder (Right (lookupHoverEnv pos env))
+  MkLSPConfig ref <- getConfig 
+  cache <- liftIO $ readIORef ref
+  case M.lookup uri cache of
+    Nothing -> responder (Right Nothing)
+    Just cache -> responder (Right (cache pos))
+ 
 
-lookupHoverEnv :: Position -> Environment -> Maybe Hover
-lookupHoverEnv pos env =
+updateHoverCache :: Uri -> Environment -> LSPMonad ()
+updateHoverCache uri env = do
+  MkLSPConfig ref <- getConfig
+  liftIO $ modifyIORef ref (M.insert uri (lookupHoverEnv env))
+  
+lookupHoverEnv :: Environment -> Position -> Maybe Hover
+lookupHoverEnv env pos =
   let
     defs = M.toList (defEnv env)
     defres = find (\(_,(_,loc,_)) -> lookupPos pos loc) defs
