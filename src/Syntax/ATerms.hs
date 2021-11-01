@@ -25,6 +25,7 @@ import Syntax.CommonTerm
       PrdCnsRep(..),
       XtorName(..) )
 import Utils ( Loc )
+import Syntax.Types ( Typ, Polarity(Pos) )
 
 ---------------------------------------------------------------------------------
 -- # Asymmetric Terms
@@ -42,10 +43,10 @@ import Utils ( Loc )
 -- https://www.chargueraud.org/softs/ln/
 ---------------------------------------------------------------------------------
 
-type family ATermExt (ext :: Phase) :: Type where
-  ATermExt Parsed = Loc
-  ATermExt Inferred = Loc
-  ATermExt Compiled = ()
+type family ACaseExt (ext :: Phase) :: Type where
+  ACaseExt Parsed = Loc
+  ACaseExt Inferred = Loc
+  ACaseExt Compiled = ()
 
 -- | Represents one case in a pattern match or copattern match.
 -- The `ext` field is used to save additional information, such as source code locations.
@@ -58,7 +59,7 @@ type family ATermExt (ext :: Phase) :: Type where
 --    acase_name
 --
 data ACase (ext :: Phase) = MkACase
-  { acase_ext :: ATermExt ext
+  { acase_ext :: ACaseExt ext
   , acase_name :: XtorName
   , acase_args :: [Maybe FreeVarName]
   , acase_term :: ATerm ext
@@ -73,6 +74,11 @@ deriving instance (Show (ACase Compiled))
 --deriving instance (Ord (ACase Parsed)) -- Missing Ord for Loc.
 --deriving instance (Ord (ACase Inferred))
 --deriving instance (Ord (ACase Compiled))
+
+type family ATermExt (ext :: Phase) :: Type where
+  ATermExt Parsed = Loc
+  ATermExt Inferred = (Loc, Typ Pos)
+  ATermExt Compiled = ()
 
 -- | An asymmetric term.
 -- The `ext` field is used to save additional information, such as source code locations.

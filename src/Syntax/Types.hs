@@ -73,6 +73,8 @@ deriving instance Eq (TypArgs Pos)
 deriving instance Eq (TypArgs Neg)
 deriving instance Ord (TypArgs Pos)
 deriving instance Ord (TypArgs Neg)
+deriving instance Show (TypArgs Pos)
+deriving instance Show (TypArgs Neg)
 
 instance Semigroup (TypArgs pol) where
     (MkTypArgs ps cs) <> (MkTypArgs ps' cs') = MkTypArgs (ps <> ps') (cs <> cs')
@@ -89,6 +91,8 @@ deriving instance Eq (XtorSig Pos)
 deriving instance Eq (XtorSig Neg)
 deriving instance Ord (XtorSig Pos)
 deriving instance Ord (XtorSig Neg)
+deriving instance Show (XtorSig Pos)
+deriving instance Show (XtorSig Neg)
 
 data Typ (pol :: Polarity) where
   TyVar :: PolarityRep pol -> TVar -> Typ pol
@@ -105,6 +109,8 @@ deriving instance Eq (Typ Pos)
 deriving instance Eq (Typ Neg)
 deriving instance Ord (Typ Pos)
 deriving instance Ord (Typ Neg)
+deriving instance Show (Typ Pos)
+deriving instance Show (Typ Neg)
 
 getPolarity :: Typ pol -> PolarityRep pol
 getPolarity (TyVar rep _)       = rep
@@ -119,6 +125,11 @@ getPolarity (TyRec rep _ _)     = rep
 xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
 xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) typArgs) =
   MkXtorSig (MkXtorName Structural s) typArgs
+
+data SomeType where
+  PosType :: Typ Pos -> SomeType
+  NegType :: Typ Neg -> SomeType
+  deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------------------------
 -- Type Schemes
