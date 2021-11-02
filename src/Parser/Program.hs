@@ -16,7 +16,7 @@ import Syntax.STerms
 import Syntax.Types
 import Utils (Loc(..))
 
-recoverDeclaration :: Parser (Declaration FreeVarName Loc) -> Parser (Declaration FreeVarName Loc)
+recoverDeclaration :: Parser (Declaration Loc) -> Parser (Declaration Loc)
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
 
 isRecP :: Parser IsRec
@@ -27,7 +27,7 @@ annotP rep = optional annotP'
   where
     annotP' = try (colon >> typeSchemeP rep)
 
-prdDeclarationP :: Parser (Declaration FreeVarName Loc)
+prdDeclarationP :: Parser (Declaration Loc)
 prdDeclarationP = do
   startPos <- getSourcePos
   try (void prdKwP)
@@ -40,7 +40,7 @@ prdDeclarationP = do
     endPos <- semi
     return (PrdDecl isRec (Loc startPos endPos) v annot t)
 
-cnsDeclarationP :: Parser (Declaration FreeVarName Loc)
+cnsDeclarationP :: Parser (Declaration Loc)
 cnsDeclarationP = do
   startPos <- getSourcePos
   try (void cnsKwP)
@@ -53,7 +53,7 @@ cnsDeclarationP = do
     endPos <- semi
     return (CnsDecl isRec (Loc startPos endPos) v annot t)
 
-cmdDeclarationP :: Parser (Declaration FreeVarName Loc)
+cmdDeclarationP :: Parser (Declaration Loc)
 cmdDeclarationP = do
   startPos <- getSourcePos
   try (void cmdKwP)
@@ -64,7 +64,7 @@ cmdDeclarationP = do
     endPos <- semi
     return (CmdDecl (Loc startPos endPos) v t)
 
-defDeclarationP :: Parser (Declaration FreeVarName Loc)
+defDeclarationP :: Parser (Declaration Loc)
 defDeclarationP = do
   startPos <- getSourcePos
   try (void defKwP)
@@ -77,7 +77,7 @@ defDeclarationP = do
     endPos <- semi
     return (DefDecl isRec (Loc startPos endPos) v annot t)
 
-importDeclP :: Parser (Declaration bs Loc)
+importDeclP :: Parser (Declaration Loc)
 importDeclP = do
   startPos <- getSourcePos
   try (void importKwP)
@@ -85,7 +85,7 @@ importDeclP = do
   endPos <- semi
   return (ImportDecl (Loc startPos endPos) mn)
 
-setDeclP :: Parser (Declaration bs Loc)
+setDeclP :: Parser (Declaration Loc)
 setDeclP = do
   startPos <- getSourcePos
   try (void setKwP)
@@ -111,7 +111,7 @@ combineXtors ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
        ((\x -> (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : combineXtors rest rep
 
 
-dataDeclP :: Parser (Declaration FreeVarName Loc)
+dataDeclP :: Parser (Declaration Loc)
 dataDeclP = do
   startPos <- getSourcePos
   dataCodata <- dataCodataDeclP
@@ -138,7 +138,7 @@ dataDeclP = do
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
-declarationP :: Parser (Declaration FreeVarName Loc)
+declarationP :: Parser (Declaration Loc)
 declarationP =
   prdDeclarationP <|>
   cnsDeclarationP <|>
@@ -148,7 +148,7 @@ declarationP =
   setDeclP <|>
   dataDeclP
 
-programP :: Parser [Declaration FreeVarName Loc]
+programP :: Parser [Declaration Loc]
 programP = do
   sc
   decls <- many declarationP

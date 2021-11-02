@@ -11,7 +11,6 @@ import Pretty.STerms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
-import Syntax.CommonTerm
 import Syntax.STerms
 import Syntax.ATerms
 import Utils (Loc)
@@ -62,7 +61,7 @@ prettyDefDecl Recursive    fv annot ptm =
 prettyDefDecl NonRecursive fv annot ptm =
   annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
-instance PrettyAnn a => PrettyAnn (Declaration a b) where
+instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdDecl isRec _ fv annot tm) =
     prettyPrdDecl isRec fv annot (prettyAnn tm)
   prettyAnn (CnsDecl isRec _ fv annot tm) =
@@ -81,7 +80,7 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
     "<ParseError>"
 
 
-instance PrettyAnn (NamedRep (Declaration FreeVarName b)) where
+instance PrettyAnn (NamedRep (Declaration ext)) where
   prettyAnn (NamedRep (PrdDecl isRec _ fv annot tm)) =
     prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CnsDecl isRec _ fv annot tm)) =
@@ -100,14 +99,14 @@ instance PrettyAnn (NamedRep (Declaration FreeVarName b)) where
     "<ParseError>"
 
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration FreeVarName Loc] where
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration Loc] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (Environment bs) where
+instance PrettyAnn Environment where
   prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
     vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
     where

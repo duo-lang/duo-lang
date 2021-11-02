@@ -1,7 +1,6 @@
 module Parser.ParserSpec ( spec ) where
 
 import Test.Hspec
-import Data.Bifunctor
 import Data.Either (isLeft)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -30,11 +29,11 @@ typeParseCounterEx input polRep = do
     let res = runInteractiveParser (typP polRep) input
     res `shouldSatisfy` isLeft
 
-atermParseExample :: Text -> ATerm () () -> Spec
+atermParseExample :: Text -> ATerm () -> Spec
 atermParseExample input tm = do
   it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrintString tm) $ do
     let Right (parsedTerm,_) = runInteractiveParser atermP input
-    (bimap (const ()) (const ()) parsedTerm) `shouldBe` tm
+    (const () <$> parsedTerm) `shouldBe` tm
 
 spec :: Spec
 spec = do

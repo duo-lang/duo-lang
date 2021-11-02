@@ -30,7 +30,7 @@ import Utils ( Twice(..) )
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
-lookupMatchCase :: XtorName -> [SCase () FreeVarName] -> EvalM FreeVarName (SCase () FreeVarName)
+lookupMatchCase :: XtorName -> [SCase ()] -> EvalM (SCase ())
 lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError ["Error during evaluation. The xtor: "
@@ -38,10 +38,10 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthXtorArgs :: XtorArgs () FreeVarName -> Twice Int
+lengthXtorArgs :: XtorArgs () -> Twice Int
 lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: Command () FreeVarName -> Twice [FreeVarName] -> XtorArgs () FreeVarName -> EvalM FreeVarName ()
+checkArgs :: Command () -> Twice [a] -> XtorArgs () -> EvalM ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()
@@ -51,12 +51,12 @@ checkArgs cmd argTypes args =
                       ]
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalSTermOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+evalSTermOnce :: Command () -> EvalM (Maybe (Command ()))
 evalSTermOnce (Done _) = return Nothing
 evalSTermOnce (Print _ _) = return Nothing
 evalSTermOnce (Apply _ _ prd cns) = evalApplyOnce prd cns
 
-evalApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+evalApplyOnce :: STerm Prd () -> STerm Cns () -> EvalM  (Maybe (Command ()))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
@@ -90,12 +90,12 @@ evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot ev
 
 
 -- | Returns Notihng if command doesn't need a focusing step, just cmd' if cmd changes to cmd' in one focusing step
-focusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+focusOnce :: Command () -> EvalM (Maybe (Command ()))
 focusOnce (Done _) = return Nothing
 focusOnce (Print _ _) = return Nothing
 focusOnce (Apply _ _ prd cns) = focusApplyOnce prd cns
 
-focusApplyOnce :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+focusApplyOnce :: STerm Prd () -> STerm Cns () -> EvalM (Maybe (Command ()))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 -- Pattern match depend on wether all arguments can be subst. into the Pattern.
 focusApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
@@ -109,15 +109,15 @@ focusApplyOnce prd@(XtorCall _ PrdRep _ args) cns@(XMatch _ CnsRep _ _) = do
     -- to:         not-sub >> mu r. C(prds r prds)[cnss] >> cns
     -- at CBN in:  C(prds)[cnss not-sub cnss] >> cns
     -- to:         mu r. C(prds)[cnss r cnss] >> not-sub
-    focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+    focusingStep :: STerm Prd () -> STerm Cns () -> EvalM (Maybe (Command ()))
     focusingStep (XtorCall ext PrdRep xt args) cns =  do
       order <- lookupEvalOrder
       case replaceMu order args of
         (args', mu) ->
           let xc = XtorCall ext PrdRep xt args'
           in return $ Just $ case order of
-                CBV -> Apply ext Nothing (fromLeft mu) (MuAbs ext CnsRep "r" (Apply ext Nothing xc cns))
-                CBN -> Apply ext Nothing (MuAbs ext PrdRep "r" (Apply ext Nothing xc cns)) (fromRight mu)
+                CBV -> Apply ext Nothing (fromLeft mu) (MuAbs ext CnsRep (Just "r") (Apply ext Nothing xc cns))
+                CBN -> Apply ext Nothing (MuAbs ext PrdRep (Just "r") (Apply ext Nothing xc cns)) (fromRight mu)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- Copattern matches.
 focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
@@ -131,15 +131,15 @@ focusApplyOnce prd@(XMatch _ PrdRep _ _) cns@(XtorCall _ CnsRep _ args) = do
     -- to:         not-sub >> mu r. prd >> D(prds r prds)[cnss]
     -- at CBN in:  prd >> D(prds)[cnss not-sub cnss]
     -- to:         mu r.prd >> D(prds)[cnss r cnss] >> not-sub
-    focusingStep :: STerm Prd () FreeVarName -> STerm Cns () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+    focusingStep :: STerm Prd () -> STerm Cns () -> EvalM (Maybe (Command ()))
     focusingStep prd (XtorCall ext CnsRep xt args) = do
       order <- lookupEvalOrder
       case replaceMu order args of
         (args', mu) ->
           let xc = XtorCall ext CnsRep xt args'
           in return $ Just $ case order of
-            CBV -> Apply ext Nothing (fromLeft mu) (MuAbs ext CnsRep "r" $ Apply ext Nothing prd xc)
-            CBN -> Apply ext Nothing (MuAbs ext PrdRep "r" $ Apply ext Nothing prd xc) (fromRight mu)
+            CBV -> Apply ext Nothing (fromLeft mu) (MuAbs ext CnsRep (Just "r") $ Apply ext Nothing prd xc)
+            CBN -> Apply ext Nothing (MuAbs ext PrdRep (Just "r") $ Apply ext Nothing prd xc) (fromRight mu)
     focusingStep _ _ = error "unrechable cases due to local definition of focusingStep"
 -- all other cases don't need focusing steps
 focusApplyOnce _ _ = return Nothing
@@ -148,7 +148,7 @@ focusApplyOnce _ _ = return Nothing
 -- | Returns Notihng if command doesn't need a focusing or eval step, 
 -- | just cmd' if cmd changes to cmd' in one focusing step 
 -- | or cmd'' if cmd cahnges throough an eval step
-evalOrFocusOnce :: Command () FreeVarName -> EvalM FreeVarName (Maybe (Command () FreeVarName))
+evalOrFocusOnce :: Command () -> EvalM (Maybe (Command ()))
 evalOrFocusOnce cmd = do
   focusedCmd <- focusOnce cmd
   case focusedCmd of
@@ -156,7 +156,7 @@ evalOrFocusOnce cmd = do
     Just cmd' -> return $ Just cmd'
 
 -- | Return just thef final evaluation result
-eval :: Command () FreeVarName -> EvalM FreeVarName (Command () FreeVarName)
+eval :: Command () -> EvalM (Command ())
 eval cmd = do
   cmd' <- evalOrFocusOnce cmd
   case cmd' of
@@ -164,10 +164,10 @@ eval cmd = do
     Just cmd' -> eval cmd'
 
 -- | Return all intermediate evaluation results
-evalSteps :: Command () FreeVarName -> EvalM FreeVarName [Command () FreeVarName]
+evalSteps :: Command () -> EvalM [Command ()]
 evalSteps cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: [Command () FreeVarName] -> Command () FreeVarName -> EvalM FreeVarName [Command () FreeVarName]
+    evalSteps' :: [Command ()] -> Command () -> EvalM [Command ()]
     evalSteps' cmds cmd = do
       cmd' <- evalOrFocusOnce cmd
       case cmd' of
@@ -177,7 +177,7 @@ evalSteps cmd = evalSteps' [cmd] cmd
 -- | Helper functions for CBV evaluation of match and comatch
     
 -- | Replace currently evaluated MuAbs-argument in Xtor with bound variable and give the searched mu-term out
-replaceMu :: CallingConvention -> XtorArgs () FreeVarName -> (XtorArgs () FreeVarName, Either (STerm Prd () FreeVarName) (STerm Cns () FreeVarName))
+replaceMu :: CallingConvention -> XtorArgs () -> (XtorArgs (), Either (STerm Prd ()) (STerm Cns ()))
 replaceMu order MkXtorArgs { prdArgs, cnsArgs }
   | not (all (isSubstPrd order) prdArgs) = 
       case replaceMuPrd order prdArgs of 
@@ -186,7 +186,7 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
       case replaceMuCns order cnsArgs of 
         (newCns, mu) -> (MkXtorArgs prdArgs newCns, mu)
   where
-    replaceMuPrd :: CallingConvention -> [STerm Prd () FreeVarName] -> ([STerm Prd () FreeVarName], Either (STerm Prd () FreeVarName) (STerm Cns () FreeVarName))
+    replaceMuPrd :: CallingConvention -> [STerm Prd ()] -> ([STerm Prd ()], Either (STerm Prd ()) (STerm Cns ()))
     replaceMuPrd CBV   (mu@(MuAbs ext _ _ _) : prdArgs) = 
       ((BoundVar ext PrdRep (0,0) : prdArgs), Left mu)
     replaceMuPrd order (xtor@(XtorCall ext PrdRep xt args@(MkXtorArgs { prdArgs, cnsArgs })) : ts) 
@@ -208,7 +208,7 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
     replaceMuPrd _ [] =
       error "Couldn't find and replace a (tilde) mu abstraction, but should have!"
 
-    replaceMuCns :: CallingConvention -> [STerm Cns () FreeVarName] ->  ([STerm Cns () FreeVarName],  Either (STerm Prd () FreeVarName) (STerm Cns () FreeVarName))
+    replaceMuCns :: CallingConvention -> [STerm Cns ()] ->  ([STerm Cns ()],  Either (STerm Prd ()) (STerm Cns ()))
     replaceMuCns CBN   (mu@(MuAbs ext _ _ _) : cnsArgs) =
       ((BoundVar ext CnsRep (0,0) : cnsArgs), Right mu)
     replaceMuCns order (xtor@(XtorCall ext CnsRep xt args@(MkXtorArgs { prdArgs, cnsArgs })) : ts)
@@ -232,12 +232,12 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
 
 -- | Checks wether all producer arguments are substitutable.
 -- | The evaluation order determines which arguments are substitutable.
-areAllSubst :: CallingConvention -> XtorArgs ext FreeVarName -> Bool
+areAllSubst :: CallingConvention -> XtorArgs ext -> Bool
 areAllSubst order (MkXtorArgs { prdArgs, cnsArgs }) =
   all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
 
 -- | subst every producer argument, not containing any mu-abstractions
-isSubstPrd :: CallingConvention -> STerm Prd ext FreeVarName -> Bool
+isSubstPrd :: CallingConvention -> STerm Prd ext -> Bool
 isSubstPrd _   (BoundVar _ _ _) = True
 isSubstPrd _   (FreeVar _ _ _)  = True
 isSubstPrd ord (XtorCall _ _ _ args) = areAllSubst ord args
@@ -246,7 +246,7 @@ isSubstPrd CBV (MuAbs _ _ _ _)  = False
 isSubstPrd CBN (MuAbs _ _ _ _)  = True
 
 -- | subst every producer argument, not containing any ~mu-abstractions
-isSubstCns :: CallingConvention -> STerm Cns ext FreeVarName -> Bool
+isSubstCns :: CallingConvention -> STerm Cns ext -> Bool
 isSubstCns _   (BoundVar _ _ _) = True
 isSubstCns _   (FreeVar _ _ _)  = True
 isSubstCns ord (XtorCall _ _ _ args) = areAllSubst ord args

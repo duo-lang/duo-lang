@@ -21,7 +21,7 @@ import Utils
 instance Show (TypeScheme pol) where
   show = ppPrintString
 
-typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
+typecheckExample :: Environment -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,loc) = runInteractiveParser (stermP PrdRep) termS
