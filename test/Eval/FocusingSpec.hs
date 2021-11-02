@@ -11,7 +11,7 @@ import Parser.Parser
 import Eval.STerms (eval)
 import Eval.Eval
 import TypeInference.Driver
-
+import Translate.Translate
 
 evalFocusing :: EvalOrder -> Text -> Text -> Spec
 evalFocusing evalOrder cmd cmdRes =
@@ -23,11 +23,11 @@ evalFocusing evalOrder cmd cmdRes =
       case prgEnv of
         Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrintString err)
         Right prgEnv -> do
-          case runEval (eval $ const () <$> cmd') evalOrder prgEnv of
+          case runEval (eval $ compileCmd cmd') evalOrder prgEnv of
             Left err -> it "Could not evaluate" $ expectationFailure (ppPrintString err)
             Right b ->
               it (T.unpack (cmd <>  " evaluates to: " <> cmdRes)) $ do
-              b `shouldBe` const () <$> cmdRes'
+              b `shouldBe` compileCmd cmdRes'
 
 
 cbvExamples :: [Spec]

@@ -28,7 +28,9 @@ module Syntax.STerms
   ) where
 
 import Control.Monad.State
+
 import Data.Bifunctor
+import Data.Kind (Type)
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 import qualified Data.Text as T
@@ -36,6 +38,7 @@ import qualified Data.Text as T
 import Utils
 import Errors
 import Syntax.CommonTerm
+import Syntax.Types (SomeType)
 
 ---------------------------------------------------------------------------------
 -- # Symmetric Terms
@@ -65,7 +68,13 @@ import Syntax.CommonTerm
 data XtorArgs ext = MkXtorArgs { prdArgs :: [STerm Prd ext]
                                , cnsArgs :: [STerm Cns ext]
                                }
-  deriving (Show, Eq, Functor)
+
+deriving instance (Eq (XtorArgs Parsed))
+deriving instance (Eq (XtorArgs Inferred))
+deriving instance (Eq (XtorArgs Compiled))
+deriving instance (Show (XtorArgs Parsed))
+deriving instance (Show (XtorArgs Inferred))
+deriving instance (Show (XtorArgs Compiled))
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -74,54 +83,79 @@ data XtorArgs ext = MkXtorArgs { prdArgs :: [STerm Prd ext]
 --        |              |               |
 --    scase_name     scase_args      scase_cmd
 --
-data SCase ext = MkSCase
+data SCase (ext :: Phase) = MkSCase
   { scase_name :: XtorName
   , scase_args :: Twice [Maybe FreeVarName]
   , scase_cmd  :: Command ext
-  } deriving (Show, Eq, Functor)
+  }
+
+deriving instance (Eq (SCase Parsed))
+deriving instance (Eq (SCase Inferred))
+deriving instance (Eq (SCase Compiled))
+deriving instance (Show (SCase Parsed))
+deriving instance (Show (SCase Inferred))
+deriving instance (Show (SCase Compiled))
+
+type family STermExt (ext :: Phase) :: Type where
+  STermExt Parsed = Loc
+  STermExt Inferred = (Loc, SomeType)
+  STermExt Compiled = ()
 
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
-data STerm (pc :: PrdCns) ext where
+data STerm (pc :: PrdCns) (ext :: Phase) where
   -- | A bound variable in the locally nameless system.
-  BoundVar :: ext -> PrdCnsRep pc -> Index -> STerm pc ext
+  BoundVar :: STermExt ext -> PrdCnsRep pc -> Index -> STerm pc ext
   -- | A free variable in the locally nameless system.
-  FreeVar :: ext -> PrdCnsRep pc -> FreeVarName -> STerm pc ext
+  FreeVar :: STermExt ext -> PrdCnsRep pc -> FreeVarName -> STerm pc ext
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  XtorCall :: ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> STerm pc ext
+  XtorCall :: STermExt ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> STerm pc ext
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> STerm pc ext
+  XMatch :: STermExt ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> STerm pc ext
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> STerm pc ext
-  deriving (Eq)
-deriving instance (Show ext) => Show (STerm pc ext)
-deriving instance Functor (STerm pc)
-
+  MuAbs :: STermExt ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> STerm pc ext
+deriving instance (Eq (STerm pc Parsed))
+deriving instance (Eq (STerm pc Inferred))
+deriving instance (Eq (STerm pc Compiled))
+deriving instance (Show (STerm pc Parsed))
+deriving instance (Show (STerm pc Inferred))
+deriving instance (Show (STerm pc Compiled))
 
 ---------------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------------
 
+type family CommandExt (ext :: Phase) :: Type where
+  CommandExt Parsed = Loc
+  CommandExt Inferred = Loc
+  CommandExt Compiled = ()
+
 -- | An executable command.
-data Command ext
+data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  = Apply ext (STerm Prd ext) (STerm Cns ext)
-  | Print ext (STerm Prd ext)
-  | Done ext
-  deriving (Show, Eq, Functor)
+  Apply :: CommandExt ext -> STerm Prd ext -> STerm Cns ext -> Command ext
+  Print :: CommandExt ext -> STerm Prd ext -> Command ext
+  Done  :: CommandExt ext -> Command ext
+
+deriving instance (Eq (Command Parsed))
+deriving instance (Eq (Command Inferred))
+deriving instance (Eq (Command Compiled))
+deriving instance (Show (Command Parsed))
+deriving instance (Show (Command Inferred))
+deriving instance (Show (Command Compiled))
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
 ---------------------------------------------------------------------------------
 
-termOpeningRec :: Int -> XtorArgs () -> STerm pc () -> STerm pc ()
+termOpeningRec :: Int -> XtorArgs Compiled -> STerm pc Compiled -> STerm pc Compiled
 termOpeningRec k MkXtorArgs { prdArgs } bv@(BoundVar _ PrdRep (i,j)) | i == k    = prdArgs !! j
                                                                      | otherwise = bv
 termOpeningRec k MkXtorArgs { cnsArgs } bv@(BoundVar _ CnsRep (i,j)) | i == k    = cnsArgs !! j
@@ -135,17 +169,17 @@ termOpeningRec k args (XMatch _ pc sn cases) =
 termOpeningRec k args (MuAbs _ pc a cmd) =
   MuAbs () pc a (commandOpeningRec (k+1) args cmd)
 
-commandOpeningRec :: Int -> XtorArgs () -> Command () -> Command ()
+commandOpeningRec :: Int -> XtorArgs Compiled -> Command Compiled -> Command Compiled
 commandOpeningRec _ _ (Done _) = Done ()
 commandOpeningRec k args (Print _ t) = Print () (termOpeningRec k args t)
 commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 
 -- replaces bound variables pointing "outside" of a command with given arguments
-commandOpening :: XtorArgs () -> Command () -> Command ()
+commandOpening :: XtorArgs Compiled -> Command Compiled -> Command Compiled
 commandOpening = commandOpeningRec 0
 
-commandOpeningSingle :: PrdCnsRep pc -> STerm pc () -> Command () -> Command ()
+commandOpeningSingle :: PrdCnsRep pc -> STerm pc Compiled -> Command Compiled -> Command Compiled
 commandOpeningSingle PrdRep t = commandOpening (MkXtorArgs [t] [])
 commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
 
@@ -191,7 +225,7 @@ checkIfBound' :: Twice [a] -> PrdCnsRep pc -> Int -> Either Error ()
 checkIfBound' (Twice prds _) PrdRep j = if j < length prds then Right () else Left $ OtherError "Variable is not bound"
 checkIfBound' (Twice _ cnss) CnsRep j = if j < length cnss then Right () else Left $ OtherError "Variable is not bound"
 
-termLocallyClosedRec :: [Twice [()]] -> STerm pc () -> Either Error ()
+termLocallyClosedRec :: [Twice [()]] -> STerm pc ext -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
 termLocallyClosedRec env (XtorCall _ _ _ (MkXtorArgs prds cnss)) = do
@@ -202,15 +236,15 @@ termLocallyClosedRec env (XMatch _ _ _ cases) = do
 termLocallyClosedRec env (MuAbs _ PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
 termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
 
-commandLocallyClosedRec :: [Twice [()]] -> Command () -> Either Error ()
+commandLocallyClosedRec :: [Twice [()]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
 commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
-termLocallyClosed :: STerm pc () -> Either Error ()
+termLocallyClosed :: STerm pc ext -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
-commandLocallyClosed :: Command () -> Either Error ()
+commandLocallyClosed :: Command ext -> Either Error ()
 commandLocallyClosed = commandLocallyClosedRec []
 
 ---------------------------------------------------------------------------------
@@ -220,20 +254,20 @@ commandLocallyClosed = commandLocallyClosedRec []
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openXtorArgsComplete :: XtorArgs ext -> XtorArgs ()
+openXtorArgsComplete :: XtorArgs ext -> XtorArgs Compiled
 openXtorArgsComplete (MkXtorArgs prdArgs cnsArgs) =
   MkXtorArgs (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
 
-freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> XtorArgs ()
+freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> XtorArgs Compiled
 freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\case {Just fv -> FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> prds)
                                                       ((\case {Just fv -> FreeVar () CnsRep fv; Nothing -> error "Create Names first!"}) <$> cnss)
 
-openSTermComplete :: STerm pc ext -> STerm pc ()
+openSTermComplete :: STerm pc ext -> STerm pc Compiled
 openSTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openSTermComplete (FreeVar _ pc v) = FreeVar () pc v
 openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openXtorArgsComplete args)
 openSTermComplete (XMatch _ pc ns cases) = let
-  openSCase :: SCase ext -> SCase ()
+  openSCase :: SCase ext -> SCase Compiled
   openSCase MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase { scase_name = scase_name
             , scase_args = scase_args
@@ -247,7 +281,7 @@ openSTermComplete (MuAbs _ CnsRep (Just fv) cmd) =
   MuAbs () CnsRep (Just fv) (commandOpeningSingle PrdRep (FreeVar () PrdRep fv) (openCommandComplete cmd))
 openSTermComplete (MuAbs _ CnsRep Nothing _) = error "Create names first!"
 
-openCommandComplete :: Command ext -> Command ()
+openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openSTermComplete t)
 openCommandComplete (Done _) = Done ()

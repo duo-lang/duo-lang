@@ -85,7 +85,7 @@ type family Foo (pc :: PrdCns) :: Polarity where
   Foo Prd = Pos 
   Foo Cns = Neg
 
-generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvalOrder -> (FreeVarName, (STerm pc (), Loc, TypeScheme (Foo pc))) -> Command |? CodeAction
+generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvalOrder -> (FreeVarName, (STerm pc Inferred, Loc, TypeScheme (Foo pc))) -> Command |? CodeAction
 generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -98,10 +98,10 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
 
                                       
 
-generateFocusEdit :: PrdCnsRep pc -> EvalOrder -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc (), Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
+generateFocusEdit :: PrdCnsRep pc -> EvalOrder -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc Inferred, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
 generateFocusEdit PrdRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+    newDecl = NamedRep $ PrdDecl () Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -111,7 +111,7 @@ generateFocusEdit PrdRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   }
 generateFocusEdit CnsRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl = NamedRep $ CnsDecl Recursive () name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+    newDecl = NamedRep $ CnsDecl () Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -120,7 +120,7 @@ generateFocusEdit CnsRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   , _changeAnnotations = Nothing
                   }
 
-generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvalOrder -> (FreeVarName, (Syntax.Command (), Loc)) -> Command |? CodeAction
+generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvalOrder -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
 generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -131,7 +131,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
                                                                   , _xdata = Nothing
                                                                   }
 
-generateCmdFocusEdit ::  EvalOrder -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command (), Loc)) -> WorkspaceEdit
+generateCmdFocusEdit ::  EvalOrder -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
     newDecl = NamedRep $ CmdDecl () name (createNamesCommand (focusCmd eo cmd))
@@ -146,7 +146,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Translation Actions
 ---------------------------------------------------------------------------------
 
-generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(ATerm (), Loc, TypeScheme Pos)) -> Command |? CodeAction
+generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
 generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -157,10 +157,10 @@ generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Tr
                                                                   , _xdata = Nothing
                                                                   }
 
-generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm (), Loc, TypeScheme Pos)) -> WorkspaceEdit 
+generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
 generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
   let
-    newDecl = NamedRep $ PrdDecl Recursive () name (Just ty) (createNamesSTerm (compile tm))
+    newDecl = NamedRep $ PrdDecl () Recursive name (Just ty) (createNamesSTerm (compile tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in
