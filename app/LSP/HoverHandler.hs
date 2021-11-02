@@ -93,15 +93,41 @@ foo :: (Loc, Typ Pos) -> HoverMap
 foo (loc, ty) = M.fromList [(locToRange loc, mkHover $ ppPrint ty)]
 
 atermToHoverMap :: ATerm Inferred -> HoverMap
-atermToHoverMap (FVar ext _) = foo ext
-atermToHoverMap (BVar ext _) = foo ext
-atermToHoverMap (Ctor ext _ args) = M.unions $ [foo ext] <> (atermToHoverMap <$> args)
-atermToHoverMap (Dtor ext _ e args) = M.unions $ [foo ext] <> (atermToHoverMap <$> (e:args))
-atermToHoverMap (Match ext e cases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [atermToHoverMap e]
+atermToHoverMap (FVar ext _)          = foo ext
+atermToHoverMap (BVar ext _)          = foo ext
+atermToHoverMap (Ctor ext _ args)     = M.unions $ [foo ext] <> (atermToHoverMap <$> args)
+atermToHoverMap (Dtor ext _ e args)   = M.unions $ [foo ext] <> (atermToHoverMap <$> (e:args))
+atermToHoverMap (Match ext e cases)   = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [atermToHoverMap e]
 atermToHoverMap (Comatch ext cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
 
 acaseToHoverMap :: ACase Inferred -> HoverMap 
 acaseToHoverMap (MkACase _ _ _ tm) = atermToHoverMap tm
+
+bar :: (Loc, SomeType) -> HoverMap
+bar (loc, PosType ty) = M.fromList [(locToRange loc, mkHover $ ppPrint ty)]
+bar (loc, NegType ty) = M.fromList [(locToRange loc, mkHover $ ppPrint ty)]
+
+
+stermToHoverMap :: STerm pc Inferred -> HoverMap 
+stermToHoverMap (BoundVar ext _ _)      = bar ext
+stermToHoverMap (FreeVar ext _ _)       = bar ext
+stermToHoverMap (XtorCall ext _ _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
+stermToHoverMap (XMatch ext _ _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
+stermToHoverMap (MuAbs ext _ _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
+
+commandToHoverMap :: STerms.Command Inferred -> HoverMap
+commandToHoverMap (Apply _ prd cns) = M.unions [stermToHoverMap prd, stermToHoverMap cns]
+commandToHoverMap (Print _ prd)     = stermToHoverMap prd
+commandToHoverMap (Done _)          = M.empty 
+
+xtorArgsToHoverMap :: XtorArgs Inferred -> HoverMap
+xtorArgsToHoverMap (MkXtorArgs prdArgs cnsArgs) =
+  M.unions $ (stermToHoverMap <$> prdArgs) <> (stermToHoverMap <$> cnsArgs)
+
+scaseToHoverMap :: SCase Inferred -> HoverMap
+scaseToHoverMap (MkSCase {scase_cmd}) = commandToHoverMap scase_cmd
+
+
 ---------------------------------------------------------------------------------
 -- Converting an environment to a HoverMap
 ---------------------------------------------------------------------------------
@@ -110,37 +136,41 @@ mkHover :: Text -> Hover
 mkHover txt = Hover (HoverContents (MarkupContent MkPlainText txt)) Nothing
 
 prdEnvToHoverMap :: Map FreeVarName (STerm Prd Inferred, Loc, TypeScheme Pos) -> HoverMap
-prdEnvToHoverMap m =
-  let
-    ls = M.toList m
-    ls' = (\(_,(_,loc,ty)) -> (locToRange loc, mkHover (ppPrint ty))) <$> ls
-  in
-    M.fromList ls'
+prdEnvToHoverMap = M.unions . fmap f . M.toList
+  where
+    f (_,(e,loc,ty)) = 
+      let
+        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        termHover = stermToHoverMap e
+      in
+        M.union outerHover termHover
 
 cnsEnvToHoverMap :: Map FreeVarName (STerm Cns Inferred, Loc, TypeScheme Neg) -> HoverMap
-cnsEnvToHoverMap m = 
-  let
-    ls = M.toList m
-    ls' = (\(_,(_,loc,ty)) -> (locToRange loc,mkHover (ppPrint ty))) <$> ls
-  in
-    M.fromList ls'
-
-cmdEnvToHoverMap :: Map FreeVarName (STerms.Command Inferred, Loc) -> HoverMap
-cmdEnvToHoverMap _ = M.empty
-
-defEnvToHoverMap :: Map FreeVarName (ATerm Inferred, Loc,  TypeScheme Pos) -> HoverMap
-defEnvToHoverMap m =
-  let
-    ls = M.toList m
+cnsEnvToHoverMap = M.unions . fmap f . M.toList
+  where
     f (_,(e,loc,ty)) =
       let
-        x :: HoverMap = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
-        y :: HoverMap = atermToHoverMap e
+        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        termHover = stermToHoverMap e 
       in
-        M.union x y
-    z = f <$> ls
-  in
-    M.unions z
+        M.union outerHover termHover
+  
+
+cmdEnvToHoverMap :: Map FreeVarName (STerms.Command Inferred, Loc) -> HoverMap
+cmdEnvToHoverMap = M.unions. fmap f . M.toList
+  where
+    f (_, (cmd,_)) = commandToHoverMap cmd
+
+defEnvToHoverMap :: Map FreeVarName (ATerm Inferred, Loc,  TypeScheme Pos) -> HoverMap
+defEnvToHoverMap = M.unions . fmap f . M.toList
+  where
+    f (_,(e,loc,ty)) =
+      let
+        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        termHover  = atermToHoverMap e
+      in
+        M.union outerHover termHover
+
 
 declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
