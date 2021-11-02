@@ -14,9 +14,6 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
-import Syntax.CommonTerm
-    ( FreeVarName, Phase(Parsed), PrdCnsRep(..) )
-import Syntax.ATerms ( ATerm )
 import Syntax.STerms ( Command, STerm )
 import Syntax.Types
     ( SolverResult,
@@ -47,7 +44,6 @@ import TypeInference.GenerateConstraints.STerms
       genConstraintsCommand,
       genConstraintsSTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
-import Translate.Translate
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 import Syntax.ATerms
 
@@ -203,7 +199,7 @@ inferATerm :: IsRec
            -> FreeVarName
            -> ATerm Parsed
            -> DriverM (TypeScheme Pos, ATerm Inferred)
-inferATerm isRec loc fv tm = do 
+inferATerm isRec loc fv tm = do
   (trace, tmInferred) <- inferATermTraced isRec loc fv tm
   return (trace_resType trace, tmInferred)
 

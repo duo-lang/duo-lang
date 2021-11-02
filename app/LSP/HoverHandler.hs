@@ -7,24 +7,22 @@ import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
 import qualified Data.Map as M
-import Data.List ( find, sortBy )
+import Data.List (sortBy )
 import System.Log.Logger ( debugM )
 import Pretty.Pretty ( ppPrint )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
-import LSP.MegaparsecToLSP ( lookupPos, locToRange )
+import LSP.MegaparsecToLSP ( locToRange )
 import Syntax.Program 
 import Syntax.ATerms
 import Syntax.STerms hiding (Command)
 import qualified Syntax.STerms as STerms
 import Syntax.Types 
 import TypeTranslation 
-import Syntax.Types 
 import Data.Either (fromRight)
 import Data.IORef (readIORef, modifyIORef)
 import Data.Text (Text)
 import Data.Map (Map)
-import GHC.IO.Exception (ArrayException(UndefinedElement))
 import Utils (Loc)
 
 ---------------------------------------------------------------------------------
@@ -97,9 +95,11 @@ atermToHoverMap (FVar ext _) = foo ext
 atermToHoverMap (BVar ext _) = foo ext
 atermToHoverMap (Ctor ext _ args) = M.unions $ [foo ext] <> (atermToHoverMap <$> args)
 atermToHoverMap (Dtor ext _ e args) = M.unions $ [foo ext] <> (atermToHoverMap <$> (e:args))
-atermToHoverMap (Match ext _ cases) = foo ext
-atermToHoverMap (Comatch ext cocases) = foo ext
+atermToHoverMap (Match ext e cases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [atermToHoverMap e]
+atermToHoverMap (Comatch ext cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
 
+acaseToHoverMap :: ACase Inferred -> HoverMap 
+acaseToHoverMap (MkACase _ _ _ tm) = atermToHoverMap tm
 ---------------------------------------------------------------------------------
 -- Converting an environment to a HoverMap
 ---------------------------------------------------------------------------------
