@@ -3,11 +3,13 @@ module Translate.Focusing where
 import qualified Data.Text as T
 
 import Syntax.Program ( Declaration(..), Program )
+import Translate.Translate (compileSTerm)
 import Syntax.CommonTerm
     ( FreeVarName,
       PrdCns(Cns, Prd),
       PrdCnsRep(..),
       XtorName,
+      Phase(..),
       flipPrdCns )
 import Syntax.STerms
     ( Command(..),
@@ -108,9 +110,9 @@ isFocusedCmd eo (Print _ prd)     = isFocusedSTerm eo prd
 -- focusXtor' _ _ ps     (c:cs) Ps Cs := (mu beta_i. focusXtor' _ _ ps cs Ps (beta_i:Cs)) >> [[c]]
 ---------------------------------------------------------------------------------
 
-focusSTerm :: CallingConvention -> STerm pc ext -> STerm pc ()
+focusSTerm :: CallingConvention -> STerm pc ext -> STerm pc Compiled
 -- If the term is already focused, we don't want to do anything
-focusSTerm eo tm | isFocusedSTerm eo tm                                = const () <$> tm
+focusSTerm eo tm | isFocusedSTerm eo tm                                = compileSTerm tm
 focusSTerm _  (BoundVar _ rep var)                                     = BoundVar () rep var
 focusSTerm _  (FreeVar _ rep var)                                      = FreeVar () rep var
 focusSTerm eo (XtorCall _ pcrep name MkXtorArgs { prdArgs, cnsArgs })  = focusXtor eo pcrep name prdArgs cnsArgs
@@ -120,7 +122,7 @@ focusSTerm eo (MuAbs _ rep _ cmd)                                      = MuAbs (
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
-alphaVar :: FreeVarName 
+alphaVar :: FreeVarName
 alphaVar = "$alpha"
 
 -- | The variable used for focusing the individual arguments of the Xtor.
@@ -130,23 +132,23 @@ betaVar i = "$beta" <> T.pack (show i)
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
-focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> [STerm Prd ext] -> [STerm Cns ext] -> STerm pc ()
+focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> [STerm Prd ext] -> [STerm Cns ext] -> STerm pc Compiled
 focusXtor eo pcrep name prdArgs cnsArgs = MuAbs () pcrep Nothing cmd
   where
       cmd = commandClosingSingle (flipPrdCns pcrep) alphaVar (shiftCmd (focusXtor' eo pcrep name prdArgs cnsArgs [] []))
 
 
-focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [STerm Prd ext] -> [STerm Cns ext] -> [STerm Prd ()] -> [STerm Cns ()] -> Command ()
+focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [STerm Prd ext] -> [STerm Cns ext] -> [STerm Prd Compiled] -> [STerm Cns Compiled] -> Command Compiled
 focusXtor' _  CnsRep name []         []         prd' cns' = Apply () Nothing (FreeVar () PrdRep alphaVar) (XtorCall () CnsRep name (MkXtorArgs (reverse prd') (reverse cns')))
 focusXtor' _  PrdRep name []         []         prd' cns' = Apply () Nothing (XtorCall () PrdRep name (MkXtorArgs (reverse prd') (reverse cns'))) (FreeVar () CnsRep alphaVar)
-focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueSTerm eo PrdRep prd = focusXtor' eo pc name prds cns ((const () <$> prd) : prd') cns'
+focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueSTerm eo PrdRep prd = focusXtor' eo pc name prds cns (compileSTerm prd : prd') cns'
                                                           | otherwise                   = 
                                                               let
                                                                   var = betaVar (length (prd:prds) + length cns)
                                                                   cmd = commandClosingSingle PrdRep var (shiftCmd (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns'))
                                                               in
                                                                   Apply () Nothing (focusSTerm eo prd) (MuAbs () CnsRep Nothing cmd)
-focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' ((const () <$> cns) : cns')
+focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' (compileSTerm cns : cns')
                                                           | otherwise                   = 
                                                               let 
                                                                   var = betaVar (length (cns:cnss))
@@ -155,13 +157,13 @@ focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueSTerm eo CnsR
 
 
 
-focusSCase :: CallingConvention -> SCase ext -> SCase ()
+focusSCase :: CallingConvention -> SCase ext -> SCase Compiled
 focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
     MkSCase scase_name (fmap (const Nothing) <$> scase_args) (focusCmd eo scase_cmd)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
-focusCmd :: CallingConvention -> Command ext -> Command ()
+focusCmd :: CallingConvention -> Command ext -> Command Compiled
 focusCmd eo (Apply _ cc prd cns) = Apply () cc (focusSTerm eo prd) (focusSTerm eo cns)
 focusCmd _  (Done _) = Done ()
 -- TODO: Treatment of Print still a bit unclear. Treat similarly to Ctors?
@@ -171,9 +173,9 @@ focusCmd eo (Print _ prd) = Print () (focusSTerm eo prd)
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
 
-focusDecl :: CallingConvention -> Declaration () -> Declaration ()
-focusDecl eo (PrdDecl isRec _ name annot prd) = PrdDecl isRec () name annot (focusSTerm eo prd)
-focusDecl eo (CnsDecl isRec _ name annot cns) = CnsDecl isRec () name annot (focusSTerm eo cns)
+focusDecl :: CallingConvention -> Declaration Compiled -> Declaration Compiled
+focusDecl eo (PrdDecl _ isRec name annot prd) = PrdDecl () isRec name annot (focusSTerm eo prd)
+focusDecl eo (CnsDecl _ isRec name annot cns) = CnsDecl () isRec name annot (focusSTerm eo cns)
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
 focusDecl _  decl@(DefDecl _ _ _ _ _)         = decl
 focusDecl _  decl@(DataDecl _ _)              = decl
@@ -181,5 +183,5 @@ focusDecl _  decl@(ImportDecl _ _)            = decl
 focusDecl _  decl@(SetDecl _ _)               = decl
 focusDecl _  decl@ParseErrorDecl              = decl
 
-focusProgram :: CallingConvention -> Program () -> Program ()
+focusProgram :: CallingConvention -> Program Compiled -> Program Compiled
 focusProgram eo = fmap (focusDecl eo)

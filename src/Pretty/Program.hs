@@ -13,7 +13,6 @@ import Syntax.Program
 import Syntax.Types
 import Syntax.STerms
 import Syntax.ATerms
-import Utils (Loc)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -62,13 +61,13 @@ prettyDefDecl NonRecursive fv annot ptm =
   annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 instance PrettyAnn (Declaration ext) where
-  prettyAnn (PrdDecl isRec _ fv annot tm) =
+  prettyAnn (PrdDecl _ isRec fv annot tm) =
     prettyPrdDecl isRec fv annot (prettyAnn tm)
-  prettyAnn (CnsDecl isRec _ fv annot tm) =
+  prettyAnn (CnsDecl _ isRec fv annot tm) =
     prettyCnsDecl isRec fv annot (prettyAnn tm)
   prettyAnn (CmdDecl _ fv cm) =
     prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (DefDecl isRec _ fv annot tm) =
+  prettyAnn (DefDecl _ isRec fv annot tm) =
     prettyDefDecl isRec fv annot (prettyAnn tm)
   prettyAnn (DataDecl _ decl) =
     prettyAnn decl
@@ -81,13 +80,13 @@ instance PrettyAnn (Declaration ext) where
 
 
 instance PrettyAnn (NamedRep (Declaration ext)) where
-  prettyAnn (NamedRep (PrdDecl isRec _ fv annot tm)) =
+  prettyAnn (NamedRep (PrdDecl _ isRec fv annot tm)) =
     prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
-  prettyAnn (NamedRep (CnsDecl isRec _ fv annot tm)) =
+  prettyAnn (NamedRep (CnsDecl _ isRec fv annot tm)) =
     prettyCnsDecl isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
-  prettyAnn (NamedRep (DefDecl isRec _ fv annot tm)) =
+  prettyAnn (NamedRep (DefDecl _ isRec fv annot tm)) =
     prettyDefDecl isRec fv annot (prettyAnn (openATermComplete tm))
   prettyAnn (NamedRep (DataDecl _ decl)) =
     prettyAnn decl
@@ -99,7 +98,10 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     "<ParseError>"
 
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration Loc] where
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
+  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
+
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------

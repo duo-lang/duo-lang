@@ -7,7 +7,7 @@ import qualified Data.Text as T
 
 import Parser.Parser
 import Syntax.STerms
-import Translate.Translate (compile)
+import Translate.Translate (compile, compileSTerm )
 
 
 compileExample :: Text -> Text -> Spec
@@ -15,7 +15,7 @@ compileExample termA termS = do
   it (T.unpack termA ++  " compiles to: " ++ T.unpack termS) $ do
       let Right (termS',_pos) = runInteractiveParser (stermP PrdRep) termS
       let Right (termA',_pos) = runInteractiveParser atermP termA
-      removeNamesSTerm (compile termA') `shouldBe` removeNamesSTerm (const () <$> termS')
+      removeNamesSTerm (compile termA') `shouldBe` removeNamesSTerm (compileSTerm termS')
 
 isClosed :: Text -> Spec
 isClosed termA = do
