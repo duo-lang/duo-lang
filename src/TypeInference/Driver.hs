@@ -187,11 +187,11 @@ inferATermTraced isRec loc fv tm = do
   let genFun = case isRec of
         Recursive -> genConstraintsATermRecursive loc fv tm
         NonRecursive -> genConstraintsATerm tm
-  ((tmInferred, ty), constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState ty
+  trace <- liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState (getTypeATerm tmInferred)
   return (trace, tmInferred)
 
 inferATerm :: IsRec
