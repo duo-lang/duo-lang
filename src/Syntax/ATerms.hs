@@ -10,11 +10,22 @@ module Syntax.ATerms
   , module Syntax.CommonTerm
   ) where
 
-import Data.Bifunctor
+import Data.Kind (Type)
 import Data.List (elemIndex)
 import Data.Maybe (isJust, fromJust)
 
 import Syntax.CommonTerm
+    ( flipPrdCns,
+      FlipPrdCns,
+      FreeVarName,
+      Index,
+      NominalStructural(..),
+      Phase(..),
+      PrdCns(..),
+      PrdCnsRep(..),
+      XtorName(..) )
+import Utils ( Loc )
+import Syntax.Types ( Typ, Polarity(Pos) )
 
 ---------------------------------------------------------------------------------
 -- # Asymmetric Terms
@@ -32,6 +43,11 @@ import Syntax.CommonTerm
 -- https://www.chargueraud.org/softs/ln/
 ---------------------------------------------------------------------------------
 
+type family ACaseExt (ext :: Phase) :: Type where
+  ACaseExt Parsed = Loc
+  ACaseExt Inferred = Loc
+  ACaseExt Compiled = ()
+
 -- | Represents one case in a pattern match or copattern match.
 -- The `ext` field is used to save additional information, such as source code locations.
 --
@@ -42,59 +58,64 @@ import Syntax.CommonTerm
 --        |
 --    acase_name
 --
-data ACase ext bs = MkACase
-  { acase_ext :: ext
+data ACase (ext :: Phase) = MkACase
+  { acase_ext :: ACaseExt ext
   , acase_name :: XtorName
-  , acase_args :: [bs]
-  , acase_term :: ATerm ext bs
-  } deriving (Eq, Show, Ord)
+  , acase_args :: [Maybe FreeVarName]
+  , acase_term :: ATerm ext
+  }
 
-instance Bifunctor ACase where
-  bimap f g MkACase { acase_ext, acase_name, acase_args, acase_term } =
-    MkACase { acase_ext = f acase_ext
-            , acase_name = acase_name
-            , acase_args = g <$> acase_args
-            , acase_term = bimap f g acase_term
-            }
+deriving instance (Eq (ACase Parsed))
+deriving instance (Eq (ACase Inferred))
+deriving instance (Eq (ACase Compiled))
+deriving instance (Show (ACase Parsed))
+deriving instance (Show (ACase Inferred))
+deriving instance (Show (ACase Compiled))
+--deriving instance (Ord (ACase Parsed)) -- Missing Ord for Loc.
+--deriving instance (Ord (ACase Inferred))
+--deriving instance (Ord (ACase Compiled))
+
+type family ATermExt (ext :: Phase) :: Type where
+  ATermExt Parsed = Loc
+  ATermExt Inferred = (Loc, Typ Pos)
+  ATermExt Compiled = ()
 
 -- | An asymmetric term.
 -- The `ext` field is used to save additional information, such as source code locations.
 -- The `bs` parameter indicates the type of additional information stored at binding sites.
-data ATerm ext bs where
+data ATerm (ext :: Phase) where
   -- | A bound variable in the locally nameless system.
-  BVar :: ext -> Index -> ATerm ext bs
+  BVar :: ATermExt ext -> Index -> ATerm ext
   -- | A free variable in the locally nameless system.
-  FVar :: ext -> FreeVarName -> ATerm ext bs
+  FVar :: ATermExt ext -> FreeVarName -> ATerm ext
   -- | A constructor applied to a list of arguments:
   --
   --   C(e_1,...,e_n)
   --
-  Ctor :: ext -> XtorName -> [ATerm ext bs] -> ATerm ext bs
+  Ctor :: ATermExt ext -> XtorName -> [ATerm ext] -> ATerm ext
   -- | An expression on which a destructor is called, where the destructor is
   -- applied to a list of arguments:
   --
   --   e.D(e_1,...,e_n)
   --
-  Dtor :: ext -> XtorName -> ATerm ext bs -> [ATerm ext bs] -> ATerm ext bs
+  Dtor :: ATermExt ext -> XtorName -> ATerm ext -> [ATerm ext] -> ATerm ext
   -- | A pattern match:
   --
   -- match e with { ... }
   --
-  Match :: ext -> ATerm ext bs -> [ACase ext bs] -> ATerm ext bs
+  Match :: ATermExt ext -> ATerm ext -> [ACase ext] -> ATerm ext
   -- | A copattern match:
   --
   -- comatch { ... }
   --
-  Comatch :: ext -> [ACase ext bs] -> ATerm ext bs
-  deriving (Eq, Show, Ord)
+  Comatch :: ATermExt ext -> [ACase ext] -> ATerm ext
 
-instance Bifunctor ATerm where
-  bimap f _ (BVar ext idx) = BVar (f ext) idx
-  bimap f _ (FVar ext v) = FVar (f ext) v
-  bimap f g (Ctor ext xt args) = Ctor (f ext) xt (bimap f g <$> args)
-  bimap f g (Dtor ext xt t args) = Dtor (f ext) xt (bimap f g t) (bimap f g <$> args)
-  bimap f g (Match ext t cases) = Match (f ext) (bimap f g t) (bimap f g <$> cases)
-  bimap f g (Comatch ext cocases) = Comatch (f ext) (bimap f g <$> cocases)
+deriving instance (Eq (ATerm Parsed))
+deriving instance (Eq (ATerm Inferred))
+deriving instance (Eq (ATerm Compiled))
+deriving instance (Show (ATerm Parsed))
+deriving instance (Show (ATerm Inferred))
+deriving instance (Show (ATerm Compiled))
 
 ---------------------------------------------------------------------------------
 -- Variable Opening and Closing
@@ -103,7 +124,7 @@ instance Bifunctor ATerm where
 -- locally nameless representation cited above.
 ---------------------------------------------------------------------------------
 
-atermClosingRec :: Int -> [FreeVarName] -> ATerm ext a -> ATerm ext a
+atermClosingRec :: Int -> [FreeVarName] -> ATerm ext -> ATerm ext
 atermClosingRec _ _ bv@(BVar _ _) = bv
 atermClosingRec k args fv@(FVar ext v) | isJust (v `elemIndex` args) = BVar ext (k, fromJust (v `elemIndex` args))
                                        | otherwise                   = fv
@@ -116,13 +137,13 @@ atermClosingRec k args (Match ext t cases) =
 atermClosingRec k args (Comatch ext cocases) =
   Comatch ext ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = atermClosingRec (k + 1) args acase_term }) <$> cocases)
 
-atermClosing :: [FreeVarName] -> ATerm ext a -> ATerm ext a
+atermClosing :: [FreeVarName] -> ATerm ext -> ATerm ext
 atermClosing = atermClosingRec 0
 
-atermOpening :: [ATerm () a] -> ATerm () a -> ATerm () a
+atermOpening :: [ATerm Compiled] -> ATerm Compiled -> ATerm Compiled
 atermOpening = atermOpeningRec 0
 
-atermOpeningRec :: Int -> [ATerm () a] -> ATerm () a -> ATerm () a
+atermOpeningRec :: Int -> [ATerm Compiled] -> ATerm Compiled -> ATerm Compiled
 atermOpeningRec k args bv@(BVar _ (i,j)) | i == k = args !! j
                                          | otherwise = bv
 atermOpeningRec _ _ fv@(FVar _ _) = fv
@@ -143,15 +164,15 @@ atermOpeningRec k args (Comatch _ cocases) =
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openACase :: ACase ext FreeVarName -> ACase () FreeVarName
+openACase :: ACase ext -> ACase Compiled
 openACase MkACase { acase_name, acase_args, acase_term } =
     MkACase { acase_ext = ()
             , acase_name = acase_name
             , acase_args = acase_args
-            , acase_term = atermOpening ((\fv -> FVar () fv) <$> acase_args) (openATermComplete acase_term)
+            , acase_term = atermOpening ((\case {Just fv ->  FVar () fv; Nothing -> error "Create Names first!"}) <$> acase_args) (openATermComplete acase_term)
             }
 
-openATermComplete :: ATerm ext FreeVarName -> ATerm () FreeVarName
+openATermComplete :: ATerm ext -> ATerm Compiled
 openATermComplete (BVar _ idx) = BVar () idx
 openATermComplete (FVar _ v) = FVar () v
 openATermComplete (Ctor _ name args) = Ctor () name (openATermComplete <$> args)

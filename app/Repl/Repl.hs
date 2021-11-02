@@ -21,8 +21,8 @@ import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
-import Syntax.STerms ( FreeVarName )
 import TypeInference.Driver
+import Translate.Translate
 import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -35,7 +35,7 @@ data EvalSteps = Steps | NoSteps
 data Mode = Symmetric | Asymmetric
 
 data ReplState = ReplState
-  { replEnv :: Environment FreeVarName
+  { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvalOrder
@@ -60,7 +60,7 @@ initialReplState = ReplState { replEnv = mempty
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment FreeVarName -> Environment FreeVarName) -> Repl ()
+modifyEnvironment :: (Environment -> Environment) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
@@ -110,7 +110,7 @@ cmd s = do
 cmdSymmetric :: Text -> Repl ()
 cmdSymmetric s = do
   (comLoc,_) <- parseInteractive commandP s
-  let com = first (const ()) comLoc
+  let com = compileCmd comLoc
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
@@ -125,7 +125,7 @@ cmdSymmetric s = do
 cmdAsymmetric :: Text -> Repl ()
 cmdAsymmetric s = do
   (tmLoc,_) <- parseInteractive atermP s
-  let tm = first (const ()) tmLoc
+  let tm = compileATerm tmLoc
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps

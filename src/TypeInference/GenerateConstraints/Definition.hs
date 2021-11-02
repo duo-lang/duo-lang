@@ -19,11 +19,13 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , InferenceMode(..)
   , PrdCnsToPol
-  , xtorSigMakeStructural
   , foo
+  , fromMaybeVar
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
+  , translateType
+  , translateXtorSig
   ) where
 
 import Control.Monad.Except
@@ -41,6 +43,7 @@ import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
+import qualified TypeTranslation as TT
 import Utils
 
 ---------------------------------------------------------------------------------------------
@@ -72,17 +75,17 @@ data GenerateReader = GenerateReader { context :: [TypArgs Pos]
                                      , inferMode :: InferenceMode
                                      }
 
-initialReader :: Environment FreeVarName -> InferenceMode -> (Environment FreeVarName, GenerateReader)
+initialReader :: Environment -> InferenceMode -> (Environment, GenerateReader)
 initialReader env im = (env, GenerateReader { context = [], inferMode = im })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Environment FreeVarName, GenerateReader) (StateT GenerateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment FreeVarName, GenerateReader), MonadError Error)
+newtype GenM a = GenM { getGenM :: ReaderT (Environment, GenerateReader) (StateT GenerateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment, GenerateReader), MonadError Error)
 
-runGenM :: Environment FreeVarName -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
+runGenM :: Environment -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
@@ -168,6 +171,10 @@ foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
 
+fromMaybeVar :: Maybe FreeVarName -> FreeVarName
+fromMaybeVar Nothing = "generated"
+fromMaybeVar (Just fv) = fv
+
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
 checkCorrectness :: [XtorName]
@@ -193,3 +200,19 @@ checkExhaustiveness matched decl = do
       forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
+
+-- | Recursively translate a nominal type to a corresponding structural representation
+translateType :: Typ pol -> GenM (Typ pol)
+translateType ty = do
+  env <- asks fst
+  case TT.translateType env ty of
+    Left err -> throwError err
+    Right ty' -> return ty'
+
+-- | Recursively translate an xtor signature
+translateXtorSig :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSig xts = do
+  env <- asks fst
+  case TT.translateXtorSig env xts of
+    Left err -> throwError err
+    Right xts' -> return xts'

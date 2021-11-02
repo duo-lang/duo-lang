@@ -46,20 +46,20 @@ saveCmd s = do
       saveGraphFiles "gr" aut
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,loc) -> do
-        let inferenceAction = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
+        let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
           Right trace -> saveFromTrace trace
           Left err2 -> case runInteractiveParser atermP s of
             Right (tloc,loc) -> do
-              let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
+              let inferenceAction = fst <$> inferATermTraced NonRecursive (Loc loc loc) "" tloc
               traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
               trace <- fromRight $ fst <$> traceEither
               saveFromTrace trace
             Left err3 -> saveParseError (errorBundlePretty err1) err2 (errorBundlePretty err3)
       Left err2 -> case runInteractiveParser atermP s of
         Right (tloc,loc) -> do
-          let inferenceAction = inferATermTraced NonRecursive (Loc loc loc) "" tloc
+          let inferenceAction = fst <$> inferATermTraced NonRecursive (Loc loc loc) "" tloc
           traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
           trace <- fromRight $ fst <$> traceEither
           saveFromTrace trace

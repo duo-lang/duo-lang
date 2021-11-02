@@ -1,21 +1,23 @@
 module Translate.FocusingSpec (spec) where
 
 import Control.Monad
-import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Test.Hspec
 import TestUtils
 import Pretty.Pretty
-import Utils
 
 import TypeInference.Driver
+import Translate.Translate
 import Parser.Parser
 import Syntax.STerms
+import Syntax.Program
 import Translate.Focusing
 import Eval.Eval
 
-shouldShiftTo :: STerm pc () () -> STerm pc () () -> Spec
+import Unsafe.Coerce (unsafeCoerce)
+
+shouldShiftTo :: STerm pc Compiled -> STerm pc Compiled -> Spec
 shouldShiftTo tm1 tm2 = do
     it (ppPrintString tm1 <> " should shift to " <> ppPrintString tm2)  $ do
         shiftSTerm tm1 `shouldBe` tm2
@@ -28,12 +30,15 @@ shouldFocusTo input output = do
         let Right (inputCmd,_)  = runInteractiveParser commandP input
         let Right (outputCmd,_) = runInteractiveParser commandP output
         let focusResult = focusCmd CBV inputCmd
-        focusResult `shouldBe` bimap (const ()) (const ()) outputCmd
+        removeNamesCmd focusResult `shouldBe` (removeNamesCmd $ compileCmd  outputCmd)
 
 -- Examples where Focusing should be a NoOp, since command is already
 -- focused.
 focusShouldBeNoOp :: Text -> Spec
 focusShouldBeNoOp input = shouldFocusTo input input
+
+reParse :: Declaration ext -> Declaration Parsed
+reParse = unsafeCoerce
 
 focusExamples :: Spec
 focusExamples = do
@@ -44,7 +49,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram CBV (bimap (const ()) (const ()) <$> decls))
+                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBV (compileDecl' <$> decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -54,7 +59,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls = bimap (const "x") (const defaultLoc) <$> (focusProgram CBN (bimap (const ()) (const ()) <$> decls))
+                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBN (compileDecl' <$> decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -66,9 +71,9 @@ spec = do
     describe "Shifting works" $ do
         (BoundVar () PrdRep (0,0)) `shouldShiftTo` (BoundVar () PrdRep (1,0))
         (BoundVar () PrdRep (10,0)) `shouldShiftTo` (BoundVar () PrdRep (11,0))
-        (MuAbs () PrdRep () (Done ())) `shouldShiftTo` (MuAbs () PrdRep () (Done ()))
-        (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0))))
-        (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (1,0))(BoundVar () CnsRep (1,0)))) `shouldShiftTo` (MuAbs () PrdRep () (Apply () (BoundVar () PrdRep (2,0))(BoundVar () CnsRep (2,0))))
+        (MuAbs () PrdRep Nothing (Done ())) `shouldShiftTo` (MuAbs () PrdRep Nothing (Done ()))
+        (MuAbs () PrdRep Nothing (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0)))) `shouldShiftTo` (MuAbs () PrdRep Nothing (Apply () (BoundVar () PrdRep (0,0))(BoundVar () CnsRep (0,0))))
+        (MuAbs () PrdRep Nothing (Apply () (BoundVar () PrdRep (1,0))(BoundVar () CnsRep (1,0)))) `shouldShiftTo` (MuAbs () PrdRep Nothing (Apply () (BoundVar () PrdRep (2,0))(BoundVar () CnsRep (2,0))))
     describe "Static Focusing works on concrete examples" $ do
         focusShouldBeNoOp "Done"
         focusShouldBeNoOp "S(Z) >> mu x.Done"
