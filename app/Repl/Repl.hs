@@ -22,6 +22,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
 import TypeInference.Driver
+import Translate.Translate
 import Utils (trimStr)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -109,7 +110,7 @@ cmd s = do
 cmdSymmetric :: Text -> Repl ()
 cmdSymmetric s = do
   (comLoc,_) <- parseInteractive commandP s
-  let com = const () <$> comLoc
+  let com = compileCmd comLoc
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
@@ -124,7 +125,7 @@ cmdSymmetric s = do
 cmdAsymmetric :: Text -> Repl ()
 cmdAsymmetric s = do
   (tmLoc,_) <- parseInteractive atermP s
-  let tm = const () <$> tmLoc
+  let tm = compileATerm tmLoc
   evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
