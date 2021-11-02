@@ -225,7 +225,7 @@ checkIfBound' :: Twice [a] -> PrdCnsRep pc -> Int -> Either Error ()
 checkIfBound' (Twice prds _) PrdRep j = if j < length prds then Right () else Left $ OtherError "Variable is not bound"
 checkIfBound' (Twice _ cnss) CnsRep j = if j < length cnss then Right () else Left $ OtherError "Variable is not bound"
 
-termLocallyClosedRec :: [Twice [()]] -> STerm pc Compiled -> Either Error ()
+termLocallyClosedRec :: [Twice [()]] -> STerm pc ext -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
 termLocallyClosedRec env (XtorCall _ _ _ (MkXtorArgs prds cnss)) = do
@@ -236,15 +236,15 @@ termLocallyClosedRec env (XMatch _ _ _ cases) = do
 termLocallyClosedRec env (MuAbs _ PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
 termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
 
-commandLocallyClosedRec :: [Twice [()]] -> Command Compiled -> Either Error ()
+commandLocallyClosedRec :: [Twice [()]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
 commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
-termLocallyClosed :: STerm pc Compiled -> Either Error ()
+termLocallyClosed :: STerm pc ext -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
-commandLocallyClosed :: Command Compiled -> Either Error ()
+commandLocallyClosed :: Command ext -> Either Error ()
 commandLocallyClosed = commandLocallyClosedRec []
 
 ---------------------------------------------------------------------------------
