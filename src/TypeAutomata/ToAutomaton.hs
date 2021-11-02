@@ -173,21 +173,16 @@ insertType (TyRec rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData polrep xtors)   = insertXtors Data   (polarityRepToPol polrep) xtors
-insertType (TyCodata polrep xtors) = insertXtors Codata (polarityRepToPol polrep) xtors
+-- Insert refinement (co)data as structural (co)data for now
+insertType (TyData polrep _ xtors)   = insertXtors Data   (polarityRepToPol polrep) xtors
+insertType (TyCodata polrep _ xtors) = insertXtors Codata (polarityRepToPol polrep) xtors
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
-insertType (TyRefined rep tn ty) = do
-  let pol = polarityRepToPol rep
-  newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_refined = S.singleton tn })
-  nodeStructural <- insertType ty
-  insertEdges [(newNode, nodeStructural, RefineEdge tn)]
-  return newNode
-
+-- insertType ty@(TyData _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
+-- insertType ty@(TyCodata _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 
 --------------------------------------------------------------------------
 --

@@ -11,24 +11,26 @@ data X1 : Type CBV { A, B(X2), C(X3) }; # Multiple mutual recursion
 data X2 : Type CBV { D(X3) };
 data X3 : Type CBV { E(X1,X2) };
 
-# def ex1 := match True with { True => S(Z), False => 'H };
+# Structural and refinement (co)data as well as refinements of different 
+# nominal types should not mix
+def ex1 := match True with { True => S(Z), False => 'H };
 
-# def ex2 := match True with { True => S(Z), False => True };
+def ex2 := match True with { True => S(Z), False => True };
 
-# prd zeroS := Z;
-# prd oneS := S(Z);
-# prd twoS := S(S(Z));
-# prd threeS := S(S(S(Z)));
+prd zeroS := Z;
+prd oneS := S(Z);
+prd twoS := S(S(Z));
+prd threeS := S(S(S(Z)));
 
-# def twoA := S(S(Z));
-# def threeA := S(S(S(Z)));
+def twoA := S(S(Z));
+def threeA := S(S(S(Z)));
 
 # Incomplete pattern matches, level 1
-# cns foo := match { True => Print('T) };
+cns foo := match { True => Print('T) };
 
-# def isSucc := comatch { 'Ap(n) => match n with { 
-#              S(m) => True
-#            }};
+def isSucc := comatch { 'Ap(n) => match n with { 
+                S(m) => True
+              }};
 
 # Incomplete pattern match, level 2
 # Case arg m is inferred as {{ Nat :>> < 'Z | 'S(Nat) > }},
@@ -39,12 +41,12 @@ data X3 : Type CBV { E(X1,X2) };
 #                 }
 #               }};
 
-# prd isOneS := comatch { 'Ap(n)[k] => n >> match {
-#                 S(m) => m >> match {
-#                   Z() => True >> k,
-#                   S(p) => True >> k
-#                 }
-#               }};
+prd isOneS := comatch { 'Ap(n)[k] => n >> match {
+                S(m) => m >> match {
+                  Z() => True >> k,
+                  S(p) => False >> k
+                }
+              }};
 
 # def isTwo := comatch { 'Ap(n) => match n with {
 #                S(p) => match p with {

@@ -6,7 +6,6 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
-  , translateTypeTopLevel
   , withSTerm
   , withATerm
   ) where
@@ -106,25 +105,6 @@ lookupXtorSig xtn pol = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
     Just xts -> return xts
     Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
-
----------------------------------------------------------------------------------
--- Translation of types from nominal to structural
----------------------------------------------------------------------------------
-
--- | Translate a nominal type into a structural type non-recursively at the top level
-translateTypeTopLevel :: EnvReader bs a m
-                      => Typ pol -> m (Typ pol)
-translateTypeTopLevel (TyNominal pr tn) = do
-  NominalDecl{..} <- lookupTypeName tn
-  case data_polarity of
-    Data -> do
-      let xtorSig = xtorSigMakeStructural <$> data_xtors pr
-      return $ TyData pr xtorSig
-    Codata -> do
-      let xtorSig = xtorSigMakeStructural <$> data_xtors (flipPolarityRep pr)
-      return $ TyCodata pr xtorSig
-translateTypeTopLevel _ = do
-  throwOtherError ["Can only translate nominal types"]
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.
