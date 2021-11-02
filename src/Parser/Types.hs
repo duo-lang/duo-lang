@@ -22,8 +22,8 @@ import Syntax.Types
 
 typArgListP :: PolarityRep pol -> Parser (TypArgs pol)
 typArgListP rep = do
-  prdArgs <- option [] (fst <$> (parens   $ (typP rep) `sepBy` comma))
-  cnsArgs <- option [] (fst <$> (brackets $ (typP (flipPolarityRep rep)) `sepBy` comma))
+  prdArgs <- option [] (fst <$> parens   (typP rep `sepBy` comma))
+  cnsArgs <- option [] (fst <$> brackets (typP (flipPolarityRep rep) `sepBy` comma))
   return (MkTypArgs prdArgs cnsArgs)
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
@@ -32,20 +32,20 @@ nominalTypeP rep = do
   pure $ TyNominal rep name
 
 dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
-dataTypeP DataRep polrep = fst <$> (angles $ do
+dataTypeP DataRep polrep = fst <$> angles (do
   xtorSigs <- xtorSignatureP polrep `sepBy` pipe
-  return (TyData polrep xtorSigs))
-dataTypeP CodataRep polrep = fst <$> (braces $ do
+  return (TyData polrep Nothing xtorSigs))
+dataTypeP CodataRep polrep = fst <$> braces (do
   xtorSigs <- xtorSignatureP (flipPolarityRep polrep) `sepBy` comma
-  return (TyCodata polrep xtorSigs))
+  return (TyCodata polrep Nothing xtorSigs))
 
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP PosRep = do
-  (xt, _pos) <- xtorName Structural
+  (xt, _pos) <- xtorName Structural <|> xtorName Nominal
   args <- typArgListP PosRep
   return (MkXtorSig xt args)
 xtorSignatureP NegRep = do
-  (xt, _pos) <- xtorName Structural
+  (xt, _pos) <- xtorName Structural <|> xtorName Nominal
   args <- typArgListP NegRep
   return (MkXtorSig xt args)
 
@@ -77,10 +77,14 @@ recType rep = do
 
 refTypeP :: PolarityRep pol -> Parser (Typ pol)
 refTypeP rep = fst <$> dbraces (do
-  ty <- typP rep
-  _ <- refineSym
   (tn,_) <- typeNameP
-  return $ TyRefined rep tn ty)
+  _ <- refineSym
+  ty <- typP rep
+  case ty of
+    TyData _ Nothing ctors -> return $ TyData rep (Just tn) ctors
+    TyCodata _ Nothing dtors -> return $ TyCodata rep (Just tn) dtors
+    _ -> error "Second component of refinement type must be data or codata type"
+  )
 
 -- Without joins and meets
 typP' :: PolarityRep pol -> Parser (Typ pol)
@@ -104,10 +108,9 @@ newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> 
 -- DO NOT EXPORT! Hacky workaround.
 switchPol :: Typ pol -> Typ (FlipPol pol)
 switchPol (TyVar rep tv) = TyVar (flipPolarityRep rep) tv
-switchPol (TyData rep xtors) = TyData (flipPolarityRep rep) (switchSig <$> xtors)
-switchPol (TyCodata rep xtors) = TyCodata (flipPolarityRep rep) (switchSig <$> xtors)
+switchPol (TyData rep mtn xtors) = TyData (flipPolarityRep rep) mtn (switchSig <$> xtors)
+switchPol (TyCodata rep mtn xtors) = TyCodata (flipPolarityRep rep) mtn (switchSig <$> xtors)
 switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
-switchPol (TyRefined rep tn typ) = TyRefined (flipPolarityRep rep) tn (switchPol typ)
 switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 

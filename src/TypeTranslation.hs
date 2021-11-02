@@ -96,11 +96,11 @@ translateType' (TyNominal pr tn) = do
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSig') $ data_xtors pr
-        return $ TyRec pr tv $ TyData pr xtss
+        return $ TyRec pr tv $ TyData pr (Just tn) xtss
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSig') $ data_xtors $ flipPolarityRep pr
-        return $ TyRec pr tv $ TyCodata pr xtss
+        return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
 translateType' tv@TyVar{} = return tv
 translateType' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -124,12 +124,12 @@ cleanUpType ty = case ty of
     if S.member tv s then return $ TyRec pr tv tyClean
     else return tyClean
   -- Propagate cleanup for data and codata types
-  TyData pr xtss -> do
+  TyData pr mtn xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
-    return $ TyData pr xtss'
-  TyCodata pr xtss -> do
+    return $ TyData pr mtn xtss'
+  TyCodata pr mtn xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
-    return $ TyCodata pr xtss'
+    return $ TyCodata pr mtn xtss'
   -- Type variables remain unchanged
   tv@TyVar{} -> return tv
   -- Other types imply incorrect translation

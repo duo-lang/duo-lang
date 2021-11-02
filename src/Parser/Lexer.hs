@@ -268,7 +268,7 @@ subtypeSym :: Parser SourcePos
 subtypeSym = symbol "<:"
 
 refineSym :: Parser SourcePos
-refineSym = symbol "<<:"
+refineSym = symbol ":>>"
 
 -------------------------------------------------------------------------------------------
 -- Parens
