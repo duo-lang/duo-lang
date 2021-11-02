@@ -36,6 +36,7 @@ flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
 flipPrdCns PrdRep = CnsRep
 flipPrdCns CnsRep = PrdRep
 
+
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------
