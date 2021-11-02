@@ -22,7 +22,7 @@ import TypeTranslation
 import Syntax.Types 
 import Data.Either (fromRight)
 import Data.IORef (readIORef, modifyIORef)
-import Data.Text.Internal.Lazy (Text)
+import Data.Text (Text)
 import Data.Map (Map)
 import GHC.IO.Exception (ArrayException(UndefinedElement))
 import Utils (Loc)
@@ -47,10 +47,18 @@ updateHoverCache uri env = do
   MkLSPConfig ref <- getConfig
   liftIO $ modifyIORef ref (M.insert uri (lookupHoverEnv env))
 
-
+---------------------------------------------------------------------------------
+-- Computations on positions and ranges
+---------------------------------------------------------------------------------
 
 before :: Position -> Position -> Bool
-before = undefined
+before (Position line1 column1) (Position line2 column2) = case compare line1 line2 of
+  LT -> True
+  EQ -> case compare column1 column2 of
+    LT -> True
+    EQ -> True
+    GT -> False
+  GT -> False
 
 inRange :: Position -> Range -> Bool
 inRange pos (Range startPos endPos) = before startPos pos && before pos endPos
@@ -77,39 +85,65 @@ lookupInHoverMap pos map =
       ((_,ho):_) -> Just ho
 
 
+---------------------------------------------------------------------------------
+-- Converting Terms to a HoverMap
+---------------------------------------------------------------------------------
 
+foo :: (Loc, Typ Pos) -> HoverMap
+foo (loc, ty) = M.fromList [(locToRange loc, mkHover $ ppPrint ty)]
 
-prdEnvToHoverMap :: Map FreeVarName (STerm Prd Compiled, Loc, TypeScheme Pos) -> HoverMap
+atermToHoverMap :: ATerm Inferred -> HoverMap
+atermToHoverMap (FVar ext _) = foo ext
+atermToHoverMap (BVar ext _) = foo ext
+atermToHoverMap (Ctor ext _ args) = M.unions $ [foo ext] <> (atermToHoverMap <$> args)
+atermToHoverMap (Dtor ext _ e args) = M.unions $ [foo ext] <> (atermToHoverMap <$> (e:args))
+atermToHoverMap (Match ext _ cases) = foo ext
+atermToHoverMap (Comatch ext cocases) = foo ext
+
+---------------------------------------------------------------------------------
+-- Converting an environment to a HoverMap
+---------------------------------------------------------------------------------
+
+mkHover :: Text -> Hover
+mkHover txt = Hover (HoverContents (MarkupContent MkPlainText txt)) Nothing
+
+prdEnvToHoverMap :: Map FreeVarName (STerm Prd Inferred, Loc, TypeScheme Pos) -> HoverMap
 prdEnvToHoverMap m =
   let
     ls = M.toList m
-    ls' = (\(_,(_,loc,ty)) -> (locToRange loc,Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)) <$> ls
+    ls' = (\(_,(_,loc,ty)) -> (locToRange loc, mkHover (ppPrint ty))) <$> ls
   in
     M.fromList ls'
 
-cnsEnvToHoverMap :: Map FreeVarName (STerm Cns Compiled, Loc, TypeScheme Neg) -> HoverMap
+cnsEnvToHoverMap :: Map FreeVarName (STerm Cns Inferred, Loc, TypeScheme Neg) -> HoverMap
 cnsEnvToHoverMap m = 
   let
     ls = M.toList m
-    ls' = (\(_,(_,loc,ty)) -> (locToRange loc,Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)) <$> ls
+    ls' = (\(_,(_,loc,ty)) -> (locToRange loc,mkHover (ppPrint ty))) <$> ls
   in
     M.fromList ls'
 
-cmdEnvToHoverMap :: Map FreeVarName (STerms.Command Compiled, Loc) -> HoverMap
+cmdEnvToHoverMap :: Map FreeVarName (STerms.Command Inferred, Loc) -> HoverMap
 cmdEnvToHoverMap _ = M.empty
 
-defEnvToHoverMap :: Map FreeVarName (ATerm Compiled, Loc,  TypeScheme Pos) -> HoverMap
+defEnvToHoverMap :: Map FreeVarName (ATerm Inferred, Loc,  TypeScheme Pos) -> HoverMap
 defEnvToHoverMap m =
   let
     ls = M.toList m
-    ls' = (\(_,(_,loc,ty)) -> (locToRange loc, Hover (HoverContents (MarkupContent MkPlainText (ppPrint ty))) Nothing)) <$> ls
+    f (_,(e,loc,ty)) =
+      let
+        x :: HoverMap = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        y :: HoverMap = atermToHoverMap e
+      in
+        M.union x y
+    z = f <$> ls
   in
-    M.fromList ls'
+    M.unions z
 
 declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
   let
-    ls' = (\(loc,decl) -> (locToRange loc, Hover (HoverContents (MarkupContent MkPlainText (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))))) Nothing)) <$> ls
+    ls' = (\(loc,decl) -> (locToRange loc, mkHover (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))))) <$> ls
   in
     M.fromList ls'
 

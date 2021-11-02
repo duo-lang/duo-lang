@@ -10,6 +10,7 @@ import Data.Maybe (fromJust)
 import Lookup
 import Eval.Eval
 import Syntax.ATerms
+import Translate.Translate
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -40,7 +41,7 @@ evalATermSingleStep' :: ATerm Compiled -> EvalOrder -> EvalM (Maybe (ATerm Compi
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupATerm fv
-  return (Just tm)
+  return (Just (compileATerm tm))
 evalATermSingleStep' (Ctor _ xt args) _ | and (isValue <$> args) = return Nothing
                                         | otherwise = evalArgsSingleStep args >>= 
                                                       \args' -> return (Just (Ctor () xt (fromJust args')))

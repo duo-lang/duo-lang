@@ -167,6 +167,6 @@ genConstraintsATermRecursive :: Loc
                              -> GenM (ATerm Inferred, Typ Pos)
 genConstraintsATermRecursive loc fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withATerm fv (FVar () fv) loc (TypeScheme [] x) (genConstraintsATerm tm)
+  (tm, ty) <- withATerm fv (FVar (loc,x) fv) loc (TypeScheme [] x) (genConstraintsATerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)

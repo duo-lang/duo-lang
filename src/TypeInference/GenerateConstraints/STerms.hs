@@ -144,12 +144,12 @@ genConstraintsSTermRecursive :: Loc
                              -> GenM (STerm pc Inferred, Typ (PrdCnsToPol pc))
 genConstraintsSTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withSTerm PrdRep fv (FreeVar () PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)
+  (tm, ty) <- withSTerm PrdRep fv (FreeVar (loc,PosType x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)
   addConstraint (SubType RecursionConstraint ty y)
   return (tm, ty)
 genConstraintsSTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withSTerm CnsRep fv (FreeVar () CnsRep fv) loc (TypeScheme [] y) (genConstraintsSTerm tm)
+  (tm, ty) <- withSTerm CnsRep fv (FreeVar (loc,NegType y) CnsRep fv) loc (TypeScheme [] y) (genConstraintsSTerm tm)
   addConstraint (SubType RecursionConstraint x ty)
   return (tm, ty)
 

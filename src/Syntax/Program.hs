@@ -45,10 +45,10 @@ type Program ext = [Declaration ext]
 ---------------------------------------------------------------------------------
 
 data Environment = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd Compiled, Loc, TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (STerm Cns Compiled, Loc, TypeScheme Neg)
-  , cmdEnv :: Map FreeVarName (Command Compiled, Loc)
-  , defEnv :: Map FreeVarName (ATerm Compiled, Loc,  TypeScheme Pos)
+  { prdEnv :: Map FreeVarName (STerm Prd Inferred, Loc, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (STerm Cns Inferred, Loc, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command Inferred, Loc)
+  , defEnv :: Map FreeVarName (ATerm Inferred, Loc,  TypeScheme Pos)
   , declEnv :: [(Loc,DataDecl)]
   }
 
