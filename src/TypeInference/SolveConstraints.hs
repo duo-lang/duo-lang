@@ -6,11 +6,12 @@ module TypeInference.SolveConstraints
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List (find)
+import Data.List (find, partition)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Set (Set)
 import qualified Data.Set as S
+import Data.Maybe ( fromJust, isJust )
 
 import Errors
 import Syntax.Types
@@ -28,15 +29,15 @@ import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 
 data SolverState = SolverState
   { sst_bounds :: Map TVar VariableState
-  , sst_kvars :: Map KVar Kind
+  , sst_kvars :: [([KVar],Maybe CallingConvention)] -- Union-find algorithm
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
-                                                         , sst_kvars = M.fromList [(kv, KindVar kv) | kv <- kuvs]
-                                                         , sst_cache = S.empty
-                                                         , sst_inferMode = im }
+                                                            , sst_kvars = [([kv], Nothing) | kv <- kuvs]
+                                                            , sst_cache = S.empty
+                                                            , sst_inferMode = im }
 
 type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
 
@@ -83,8 +84,11 @@ addLowerBound uv ty = do
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
-modifyKvars :: (Map KVar Kind -> Map KVar Kind) -> SolverM ()
-modifyKvars f = modify (\s@SolverState { sst_kvars} -> s { sst_kvars = f sst_kvars })
+getKVars :: SolverM [([KVar],Maybe CallingConvention)]
+getKVars = gets sst_kvars
+
+putKVars :: [([KVar],Maybe CallingConvention)] -> SolverM ()
+putKVars x = modify (\s -> s { sst_kvars = x })
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -124,18 +128,59 @@ checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
   MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
   pure $ zipWith (SubType XtorSubConstraint) prd1 prd2 ++ zipWith (SubType XtorSubConstraint) cns2 cns1
 
+------------------------------------------------------------------------------
+-- Kind Inference
+------------------------------------------------------------------------------
 
 unifyKinds :: Kind -> Kind -> SolverM ()
 unifyKinds (MonoKind c1) (MonoKind c2) =
   if c1 == c2
     then return ()
     else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint c1 <> " and " <> ppPrint c2]
-unifyKinds (KindVar kv) k@(MonoKind _) = do
-  return ()
-unifyKinds k@(MonoKind _) (KindVar kv) = do
-  return ()
+unifyKinds (KindVar kv) (MonoKind cc1) = do
+  -- Add the MonoKind to set containing kv
+  sets <- getKVars
+  let ([(kvset, cc2)] , rest)  = partition (\x -> kv `elem` fst x) sets
+  case cc2 of
+    Nothing -> putKVars $ (kvset, Just cc1):rest
+    Just cc2 -> if cc1 == cc2
+                then return () -- We have not learned new information!
+                else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+unifyKinds (MonoKind cc1) (KindVar kv) = do
+  -- Add the MonoKind to the set containing kv
+  sets <- getKVars
+  let ([(kvset, cc2)] , rest)  = partition (\x -> kv `elem` fst x) sets
+  case cc2 of
+    Nothing -> putKVars $ (kvset, Just cc1):rest
+    Just cc2 -> if cc1 == cc2
+                then return () -- We have not learned new information!
+                else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
 unifyKinds (KindVar kv) (KindVar kv')  = do
-  return ()
+  -- Union the two sets.
+  sets <- getKVars
+  let ([(kvset, cc1)] , rest)  = partition (\x -> kv `elem` fst x) sets
+  let ([(kv'set, cc2)], rest') = partition (\x -> kv' `elem` fst x) rest
+  let newSet = kvset ++ kv'set
+  case (cc1, cc2) of
+    (cc1, Nothing) -> putKVars $ (newSet, cc1):rest'
+    (Nothing, cc2) -> putKVars $ (newSet, cc2):rest'
+    (Just cc1, Just cc2) | cc1 == cc2 -> putKVars $ (newSet, Just cc1):rest'
+                         | otherwise  -> throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+
+      
+
+computeKVarSolution :: KindPolicy -> [([KVar],Maybe CallingConvention)] -> Either Error (Map KVar Kind)
+computeKVarSolution DefaultCBV      sets = return $ computeKVarSolution' ((\(xs,cc) -> case cc of Nothing -> (xs, CBV); Just cc' -> (xs,cc')) <$> sets)
+computeKVarSolution DefaultCBN      sets = return $ computeKVarSolution' ((\(xs,cc) -> case cc of Nothing -> (xs, CBN); Just cc' -> (xs,cc')) <$> sets)
+computeKVarSolution ErrorUnresolved sets = if all (\(_,cc) -> isJust cc) sets
+                                           then return $ computeKVarSolution' (map (\(xs,mcc) -> (xs, fromJust mcc)) sets)
+                                           else Left $ SolveConstraintsError "Not all kind variables could be resolved"
+
+computeKVarSolution' :: [([KVar], CallingConvention)] -> Map KVar Kind
+computeKVarSolution' sets = M.fromList (concat (f <$> sets))
+  where
+    f :: ([a], CallingConvention) -> [(a,Kind)]
+    f (xs,cc) = zip xs (repeat (MonoKind cc))
 
 data KindPolicy
   = DefaultCBV -- ^ Default all non-constrained KindVariables to CBV
@@ -143,23 +188,9 @@ data KindPolicy
   | ErrorUnresolved  -- ^ Error if non-constrained KindVariables remain after constraint solving.
   deriving (Show, Eq)
 
-enforceKindPolicy :: KindPolicy -> Map KVar Kind -> Either Error (Map KVar Kind)
-enforceKindPolicy DefaultCBV m = return $ M.map f m
-  where
-    f (KindVar _) = MonoKind CBV
-    f k           = k
-enforceKindPolicy DefaultCBN m = return $ M.map f m
-  where
-    f (KindVar _) = MonoKind CBN
-    f k           = k
-enforceKindPolicy ErrorUnresolved m =
-  let
-    isKVar (MonoKind _) = False
-    isKVar (KindVar _) = True
-  in
-    if any isKVar (M.elems m)
-      then Left (SolveConstraintsError "Found unconstrained kind variables")
-      else return m
+------------------------------------------------------------------------------
+-- Computing Subconstraints
+------------------------------------------------------------------------------
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
@@ -335,7 +366,7 @@ solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> KindPolicy 
 solveConstraints constraintSet@(ConstraintSet css _ _) env im policy = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   let kvarSolution = sst_kvars solverState
-  kvarSolution' <- enforceKindPolicy policy kvarSolution
+  kvarSolution' <- computeKVarSolution policy kvarSolution
   return MkSolverResult { tvarSolution = sst_bounds solverState
                         , kvarSolution = kvarSolution'
                         }
