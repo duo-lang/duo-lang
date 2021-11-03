@@ -88,7 +88,7 @@ translateType' (TyNominal pr tn) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar pr tv
+    return $ TyVar pr (error "TODO: Kinds") tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar

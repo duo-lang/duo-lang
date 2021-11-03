@@ -27,6 +27,7 @@ module TypeInference.GenerateConstraints.Definition
   , checkExhaustiveness
   , translateType
   , translateXtorSig
+  , computeKind
   ) where
 
 import Control.Monad.Except
@@ -115,19 +116,39 @@ freshKVar = do
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
   var <- gets tvarCount
+  var' <- gets kvarCount
   let tvar = MkTVar ("u" <> T.pack (show var))
-  -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { tvarCount = var + 1 })
+  let kvar = MkKVar ("k" <> T.pack (show var'))
+  -- We need to increment the counters:
+  modify (\gs@GenerateState{} -> gs { tvarCount =  var  + 1 })
+  modify (\gs@GenerateState{} -> gs { kvarCount =  var' + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TyVar PosRep tvar, TyVar NegRep tvar)
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kuvars } } ->
+            gs { constraintSet = cs { cs_kuvars = cs_kuvars ++ [kvar] } })
+  -- Then we return the resulting type variables      
+  return (TyVar PosRep (KindVar kvar) tvar, TyVar NegRep (KindVar kvar) tvar)
 
 freshTVars :: Twice [FreeVarName] -> GenM (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
   (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\fv -> freshTVar (ProgramVariable fv))
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
+
+---------------------------------------------------------------------------------------------
+-- Compute the Kind of a Type.
+---------------------------------------------------------------------------------------------
+
+computeKind :: Typ pol -> GenM Kind
+computeKind (TyVar _ kind _) = return kind
+computeKind (TyData _ _ _)   = return $ MonoKind CBV
+computeKind (TyCodata _ _ _) = return $ MonoKind CBN
+computeKind (TyNominal _ tn) = do
+  decl <- lookupTypeName tn
+  return $ data_kind decl
+computeKind (TySet _ kind _) = return kind
+computeKind (TyRec _ _ ty)   = computeKind ty
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment

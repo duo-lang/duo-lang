@@ -96,14 +96,14 @@ deriving instance Show (XtorSig Pos)
 deriving instance Show (XtorSig Neg)
 
 data Typ (pol :: Polarity) where
-  TyVar :: PolarityRep pol -> TVar -> Typ pol
+  TyVar :: PolarityRep pol -> Kind -> TVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData   :: PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
   TyCodata :: PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   TyNominal :: PolarityRep pol -> TypeName -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
-  TySet :: PolarityRep pol -> [Typ pol] -> Typ pol
+  TySet :: PolarityRep pol -> Kind -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
 
 deriving instance Eq (Typ Pos)
@@ -114,12 +114,12 @@ deriving instance Show (Typ Pos)
 deriving instance Show (Typ Neg)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TyVar rep _)       = rep
+getPolarity (TyVar rep _ _)       = rep
 getPolarity (TyData rep _ _)      = rep
 getPolarity (TyCodata rep _ _)    = rep
-getPolarity (TyNominal rep _)   = rep
-getPolarity (TySet rep _)       = rep
-getPolarity (TyRec rep _ _)     = rep
+getPolarity (TyNominal rep _)     = rep
+getPolarity (TySet rep _ _)       = rep
+getPolarity (TyRec rep _ _)       = rep
 
 -- | Make the XtorName of an XtorSig structural
 xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
@@ -153,8 +153,8 @@ freeTypeVars :: Typ pol -> [TVar]
 freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: Typ pol -> [TVar]
-    freeTypeVars' (TyVar _ tv) = [tv]
-    freeTypeVars' (TySet _ ts) = concat $ map freeTypeVars' ts
+    freeTypeVars' (TyVar _ _ tv) = [tv]
+    freeTypeVars' (TySet _ _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _) = []
     freeTypeVars' (TyData _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
@@ -180,11 +180,11 @@ unfoldRecType recty@(TyRec NegRep var ty) = substituteType (M.fromList [(var,(er
 unfoldRecType ty = ty
 
 substituteType :: Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
-substituteType m var@(TyVar PosRep tv) =
+substituteType m var@(TyVar PosRep _kind tv) =
   case M.lookup tv m of
     Nothing -> var
     Just (ty,_) -> ty
-substituteType m var@(TyVar NegRep tv) =
+substituteType m var@(TyVar NegRep _kind tv) =
   case M.lookup tv m of
     Nothing -> var
     Just (_,ty) -> ty
@@ -192,7 +192,7 @@ substituteType m var@(TyVar NegRep tv) =
 substituteType m (TyData polrep mtn args) = TyData polrep mtn (substituteXtorSig m <$> args)
 substituteType m (TyCodata polrep mtn args) = TyCodata polrep mtn (substituteXtorSig m <$> args)
 substituteType _ ty@(TyNominal _ _) = ty
-substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
+substituteType m (TySet rep kind args) = TySet rep kind (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 
 substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol

@@ -66,14 +66,14 @@ instance PrettyAnn TVar where
 
 instance PrettyAnn (Typ pol) where
   -- Lattice types
-  prettyAnn (TySet PosRep [])  = botSym
-  prettyAnn (TySet PosRep [t]) = prettyAnn t
-  prettyAnn (TySet PosRep tts) = parens' unionSym (map prettyAnn tts)
-  prettyAnn (TySet NegRep [])  = topSym
-  prettyAnn (TySet NegRep [t]) = prettyAnn t
-  prettyAnn (TySet NegRep tts) = parens' interSym (map prettyAnn tts)
+  prettyAnn (TySet PosRep _ [])  = botSym
+  prettyAnn (TySet PosRep _ [t]) = prettyAnn t
+  prettyAnn (TySet PosRep _ tts) = parens' unionSym (map prettyAnn tts)
+  prettyAnn (TySet NegRep _ [])  = topSym
+  prettyAnn (TySet NegRep _ [t]) = prettyAnn t
+  prettyAnn (TySet NegRep _ tts) = parens' interSym (map prettyAnn tts)
   -- Type Variables
-  prettyAnn (TyVar _ tv)       = prettyAnn tv
+  prettyAnn (TyVar _ _ tv)       = prettyAnn tv
   -- Recursive types
   prettyAnn (TyRec _ rv t)     = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types

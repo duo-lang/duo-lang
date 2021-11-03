@@ -23,3 +23,7 @@ newtype KVar = MkKVar { unKVar :: Text }
 data Kind = MonoKind CallingConvention
           | KindVar KVar
   deriving (Show, Eq, Ord)
+
+freeKindVars :: Kind -> [KVar]
+freeKindVars (MonoKind _) = []
+freeKindVars (KindVar kv) = [kv]

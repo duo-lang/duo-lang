@@ -157,8 +157,8 @@ insertXtors dc pol xtors = do
   return newNode
 
 insertType :: Typ pol -> TTA Node
-insertType (TyVar rep tv) = lookupTVar rep tv
-insertType (TySet rep tys) = do
+insertType (TyVar rep _ tv) = lookupTVar rep tv
+insertType (TySet rep _ tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
   ns <- mapM insertType tys

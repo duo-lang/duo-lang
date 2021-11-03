@@ -72,7 +72,7 @@ typeVariable rep = do
   tvs <- asks tvars
   tv <- MkTVar . fst <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyVar rep tv
+  return $ TyVar rep (error "TODO: Kind") tv
 
 sepBy2 :: Parser a -> Parser sep -> Parser [a]
 sepBy2 p sep = do
@@ -82,8 +82,8 @@ sepBy2 p sep = do
   return (fst : rest)
 
 setType :: PolarityRep pol -> Parser (Typ pol)
-setType PosRep = botKwP *> return (TySet PosRep []) <|> TySet PosRep <$> (typP' PosRep) `sepBy2` unionSym
-setType NegRep = topKwP *> return (TySet NegRep []) <|> TySet NegRep <$> (typP' NegRep) `sepBy2` intersectionSym
+setType PosRep = botKwP *> return (TySet PosRep (error "TODO: Kinds") []) <|> TySet PosRep (error "TODO: Kinds") <$> (typP' PosRep) `sepBy2` unionSym
+setType NegRep = topKwP *> return (TySet NegRep (error "TODO: Kinds") []) <|> TySet NegRep (error "TODO: Kinds") <$> (typP' NegRep) `sepBy2` intersectionSym
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
@@ -125,11 +125,11 @@ newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> 
 
 -- DO NOT EXPORT! Hacky workaround.
 switchPol :: Typ pol -> Typ (FlipPol pol)
-switchPol (TyVar rep tv) = TyVar (flipPolarityRep rep) tv
+switchPol (TyVar rep kind tv) = TyVar (flipPolarityRep rep) kind tv
 switchPol (TyData rep mtn xtors) = TyData (flipPolarityRep rep) mtn (switchSig <$> xtors)
 switchPol (TyCodata rep mtn xtors) = TyCodata (flipPolarityRep rep) mtn (switchSig <$> xtors)
 switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
-switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
+switchPol (TySet rep kind typs) = TySet (flipPolarityRep rep) kind (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 
 switchSig :: XtorSig pol -> XtorSig (FlipPol pol)
