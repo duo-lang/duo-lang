@@ -90,7 +90,7 @@ lookupInHoverMap pos map =
 ---------------------------------------------------------------------------------
 
 foo :: (Loc, Typ Pos) -> HoverMap
-foo (loc, ty) = M.fromList [(locToRange loc, mkHover $ ppPrint ty)]
+foo (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
 
 atermToHoverMap :: ATerm Inferred -> HoverMap
 atermToHoverMap (FVar ext _)          = foo ext
@@ -104,8 +104,7 @@ acaseToHoverMap :: ACase Inferred -> HoverMap
 acaseToHoverMap (MkACase _ _ _ tm) = atermToHoverMap tm
 
 bar :: (Loc, Typ pol) -> HoverMap
-bar (loc, ty) = M.fromList [(locToRange loc, mkHover $ ppPrint ty)]
-
+bar (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
 
 stermToHoverMap :: STerm pc Inferred -> HoverMap 
 stermToHoverMap (BoundVar ext PrdRep _)      = bar ext
@@ -136,15 +135,15 @@ scaseToHoverMap (MkSCase {scase_cmd}) = commandToHoverMap scase_cmd
 -- Converting an environment to a HoverMap
 ---------------------------------------------------------------------------------
 
-mkHover :: Text -> Hover
-mkHover txt = Hover (HoverContents (MarkupContent MkPlainText txt)) Nothing
+mkHover :: Text -> Range ->  Hover
+mkHover txt rng = Hover (HoverContents (MarkupContent MkPlainText txt)) (Just rng)
 
 prdEnvToHoverMap :: Map FreeVarName (STerm Prd Inferred, Loc, TypeScheme Pos) -> HoverMap
 prdEnvToHoverMap = M.unions . fmap f . M.toList
   where
     f (_,(e,loc,ty)) = 
       let
-        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
         termHover = stermToHoverMap e
       in
         M.union outerHover termHover
@@ -154,7 +153,7 @@ cnsEnvToHoverMap = M.unions . fmap f . M.toList
   where
     f (_,(e,loc,ty)) =
       let
-        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
         termHover = stermToHoverMap e 
       in
         M.union outerHover termHover
@@ -170,7 +169,7 @@ defEnvToHoverMap = M.unions . fmap f . M.toList
   where
     f (_,(e,loc,ty)) =
       let
-        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty))]
+        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
         termHover  = atermToHoverMap e
       in
         M.union outerHover termHover
@@ -179,7 +178,7 @@ defEnvToHoverMap = M.unions . fmap f . M.toList
 declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
   let
-    ls' = (\(loc,decl) -> (locToRange loc, mkHover (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))))) <$> ls
+    ls' = (\(loc,decl) -> (locToRange loc, mkHover (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))) (locToRange loc))) <$> ls
   in
     M.fromList ls'
 
