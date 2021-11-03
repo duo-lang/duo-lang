@@ -7,6 +7,7 @@ import Text.Megaparsec.Pos
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Types
+import Syntax.Kinds
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -51,8 +52,8 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (KindEq k1 k2) =
     prettyAnn k1 <+> "~" <+> prettyAnn k2
 
-printUVar :: (TVar, UVarProvenance) -> Doc Annotation
-printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
+printUVar :: (TVar, Kind, UVarProvenance) -> Doc Annotation
+printUVar (tv,kind,prov) = prettyAnn tv <+> prettyAnn kind <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep

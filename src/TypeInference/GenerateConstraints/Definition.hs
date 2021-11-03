@@ -123,7 +123,7 @@ freshTVar uvp = do
   modify (\gs@GenerateState{} -> gs { kvarCount =  var' + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, KindVar kvar, uvp)] } })
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kuvars } } ->
             gs { constraintSet = cs { cs_kuvars = cs_kuvars ++ [kvar] } })
   -- Then we return the resulting type variables      

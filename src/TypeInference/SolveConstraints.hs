@@ -35,7 +35,7 @@ data SolverState = SolverState
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(uv,emptyVarState k) | (uv,k,_) <- uvs]
                                                             , sst_kvars = [([kv], Nothing) | kv <- kuvs]
                                                             , sst_cache = S.empty
                                                             , sst_inferMode = im }
@@ -73,14 +73,14 @@ getBounds uv = do
 
 addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
+  modifyBounds (\(VariableState ubs lbs k) -> VariableState (ty:ubs) lbs k) uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
+  modifyBounds (\(VariableState ubs lbs k) -> VariableState ubs (ty:lbs) k) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
@@ -211,7 +211,7 @@ zonkXtorSig m (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) =
   MkXtorSig xt (MkTypArgs (zonkType m <$> prdArgs) (zonkType m <$> cnsArgs))
 
 zonkVariableState :: Map KVar Kind -> VariableState -> VariableState
-zonkVariableState m (VariableState lbs ubs) = VariableState (zonkType m <$> lbs) (zonkType m <$> ubs)
+zonkVariableState m (VariableState lbs ubs k) = VariableState (zonkType m <$> lbs) (zonkType m <$> ubs) (zonkKind m k)
 
 ------------------------------------------------------------------------------
 -- Computing Subconstraints

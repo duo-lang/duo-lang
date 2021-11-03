@@ -241,7 +241,7 @@ data UVarProvenance
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
-                                   , cs_uvars :: [(TVar, UVarProvenance)]
+                                   , cs_uvars :: [(TVar, Kind, UVarProvenance)]
                                    , cs_kuvars :: [KVar]
                                    }
 
@@ -251,10 +251,12 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInf
 
 data VariableState = VariableState
   { vst_upperbounds :: [Typ Neg]
-  , vst_lowerbounds :: [Typ Pos] }
+  , vst_lowerbounds :: [Typ Pos]
+  , vst_kind        :: Kind
+  }
 
-emptyVarState :: VariableState
-emptyVarState = VariableState [] []
+emptyVarState :: Kind -> VariableState
+emptyVarState kind = VariableState [] [] kind
 
 data SolverResult = MkSolverResult
   { tvarSolution :: Map TVar VariableState

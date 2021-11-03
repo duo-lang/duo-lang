@@ -51,17 +51,17 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes :: [(TVar,Kind)] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
 createNodes tvars = createNode <$> (createPairs tvars)
   where
-    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos undefined), (negNode, emptyNodeLabel Neg undefined), (negNode, posNode))
+    createNode :: (TVar,Kind, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode (tv, kind, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos kind), (negNode, emptyNodeLabel Neg kind), (negNode, posNode))
 
-    createPairs :: [TVar] -> [(TVar,Node,Node)]
-    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
+    createPairs :: [(TVar, Kind)] -> [(TVar,Kind, Node,Node)]
+    createPairs tvs = (\i -> (fst $ tvs !! i, snd $ tvs !! i,  2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [(TVar,Kind)] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -75,7 +75,7 @@ initialize tvars =
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
-runTypeAutTvars :: [TVar]
+runTypeAutTvars :: [(TVar,Kind)]
                 -> TTA a
                 -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
@@ -147,7 +147,7 @@ sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prd
 insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TTA Node
 insertXtors dc pol xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol undefined dc (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol (case dc of Data -> MonoKind CBV; Codata -> MonoKind CBN) dc (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType
@@ -165,7 +165,7 @@ insertType (TySet rep (Just kind) tys) = do
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType (TySet _ Nothing _) = error "Boom"
+insertType (TySet rep Nothing tys) = insertType (TySet rep (Just (MonoKind CBV)) tys) -- HACKY HACKY HACKY!
 insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
@@ -183,7 +183,7 @@ insertType (TyNominal rep (Just kind) tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol kind) { nl_nominal = S.singleton tn })
   return newNode
-insertType (TyNominal _ Nothing _) = error "Boom"
+insertType (TyNominal rep Nothing tn) = insertType (TyNominal rep (Just (MonoKind CBV)) tn) -- HACKY HACKY HACKY ! 
 -- insertType ty@(TyData _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 -- insertType ty@(TyCodata _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 
@@ -195,7 +195,7 @@ insertType (TyNominal _ Nothing _) = error "Boom"
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutDet pol)
 typeToAut (TypeScheme tvars ty) = do
-  (start, aut) <- runTypeAutTvars tvars (insertType ty)
+  (start, aut) <- runTypeAutTvars ((\tv -> (tv, MonoKind CBV)) <$> tvars) (insertType ty)
   let newaut = TypeAut { ta_pol = getPolarity ty
                        , ta_starts = [start]
                        , ta_core = aut
@@ -217,7 +217,8 @@ insertEpsilonEdges solverResult =
 
 solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol)
 solverStateToTypeAut solverResult pol ty = do
-  (start,aut) <- runTypeAutTvars (M.keys (tvarSolution solverResult)) $ insertEpsilonEdges solverResult >> insertType ty
+  let foo :: [(TVar, Kind)]= (\(tv,vs) -> (tv, vst_kind vs)) <$> M.toList (tvarSolution solverResult)
+  (start,aut) <- runTypeAutTvars  foo $ insertEpsilonEdges solverResult >> insertType ty
   let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
   lint newAut
   return $ removeEpsilonEdges newAut
