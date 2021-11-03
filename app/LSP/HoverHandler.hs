@@ -24,6 +24,7 @@ import Data.IORef (readIORef, modifyIORef)
 import Data.Text (Text)
 import Data.Map (Map)
 import Utils (Loc)
+import Syntax.Kinds (CallingConvention)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -115,8 +116,12 @@ stermToHoverMap (XtorCall ext _ _ args) = M.unions [bar ext, xtorArgsToHoverMap 
 stermToHoverMap (XMatch ext _ _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
 stermToHoverMap (MuAbs ext _ _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 
+applyToHoverMap :: Range -> Maybe CallingConvention -> HoverMap
+applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "<Nothing>")]
+applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover $ ppPrint cc)]
+
 commandToHoverMap :: STerms.Command Inferred -> HoverMap
-commandToHoverMap (Apply _ _ prd cns) = M.unions [stermToHoverMap prd, stermToHoverMap cns]
+commandToHoverMap (Apply loc cc prd cns) = M.unions [stermToHoverMap prd, stermToHoverMap cns, applyToHoverMap (locToRange loc) cc]
 commandToHoverMap (Print _ prd)     = stermToHoverMap prd
 commandToHoverMap (Done _)          = M.empty 
 
