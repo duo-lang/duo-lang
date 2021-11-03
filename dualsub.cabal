@@ -63,7 +63,6 @@ library
   exposed-modules:
       Errors
       Eval.Eval
-      Eval.ATerms
       Eval.STerms
       Lookup
       Parser.ATerms
