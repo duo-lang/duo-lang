@@ -22,6 +22,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
+import Syntax.Types (VariableState(VariableState))
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -167,7 +168,6 @@ unifyKinds (KindVar kv) (KindVar kv')  = do
     (Just cc1, Just cc2) | cc1 == cc2 -> putKVars $ (newSet, Just cc1):rest'
                          | otherwise  -> throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
 
-      
 
 computeKVarSolution :: KindPolicy -> [([KVar],Maybe CallingConvention)] -> Either Error (Map KVar Kind)
 computeKVarSolution DefaultCBV      sets = return $ computeKVarSolution' ((\(xs,cc) -> case cc of Nothing -> (xs, CBV); Just cc' -> (xs,cc')) <$> sets)
@@ -187,6 +187,31 @@ data KindPolicy
   | DefaultCBN -- ^ Default all non-constrained KindVariables to CBN
   | ErrorUnresolved  -- ^ Error if non-constrained KindVariables remain after constraint solving.
   deriving (Show, Eq)
+
+------------------------------------------------------------------------------
+-- Zonking
+------------------------------------------------------------------------------      
+
+zonkKind :: Map KVar Kind -> Kind -> Kind
+zonkKind m (MonoKind cc) = MonoKind cc
+zonkKind m (KindVar kv) = case M.lookup kv m of
+  Nothing -> error "Should not occur"
+  Just ki -> ki
+
+zonkType :: Map KVar Kind -> Typ pol -> Typ pol
+zonkType m (TyVar rep m_ki tv) = TyVar rep (zonkKind m <$> m_ki) tv
+zonkType m (TyData rep m_tn xss) = TyData rep m_tn (zonkXtorSig m <$> xss)
+zonkType m (TyCodata rep m_tn xss) = TyCodata rep m_tn (zonkXtorSig m <$> xss)
+zonkType m (TyNominal rep m_ki tn) = TyNominal rep (zonkKind m <$> m_ki) tn
+zonkType m (TySet rep m_ki typs) = TySet rep (zonkKind m <$> m_ki) (zonkType m <$> typs)
+zonkType m (TyRec rep tv typ) = TyRec rep tv (zonkType m typ)
+
+zonkXtorSig :: Map KVar Kind -> XtorSig pol -> XtorSig pol
+zonkXtorSig m (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) =
+  MkXtorSig xt (MkTypArgs (zonkType m <$> prdArgs) (zonkType m <$> cnsArgs))
+
+zonkVariableState :: Map KVar Kind -> VariableState -> VariableState
+zonkVariableState m (VariableState lbs ubs) = VariableState (zonkType m <$> lbs) (zonkType m <$> ubs)
 
 ------------------------------------------------------------------------------
 -- Computing Subconstraints
@@ -367,7 +392,8 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env im policy = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   let kvarSolution = sst_kvars solverState
   kvarSolution' <- computeKVarSolution policy kvarSolution
-  return MkSolverResult { tvarSolution = sst_bounds solverState
+  let tvarSol = zonkVariableState kvarSolution' <$> sst_bounds solverState
+  return MkSolverResult { tvarSolution = tvarSol
                         , kvarSolution = kvarSolution'
                         }
 
