@@ -117,8 +117,8 @@ stermToHoverMap (XMatch ext _ _ cases)  = M.unions $ bar ext : (scaseToHoverMap 
 stermToHoverMap (MuAbs ext _ _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 
 applyToHoverMap :: Range -> Maybe CallingConvention -> HoverMap
-applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "<Nothing>")]
-applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover $ ppPrint cc)]
+applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "<Nothing>" rng)]
+applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 commandToHoverMap :: STerms.Command Inferred -> HoverMap
 commandToHoverMap (Apply loc cc prd cns) = M.unions [stermToHoverMap prd, stermToHoverMap cns, applyToHoverMap (locToRange loc) cc]
