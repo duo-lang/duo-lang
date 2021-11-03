@@ -268,7 +268,7 @@ subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Ju
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
+subConstraints (SubType _ (TyNominal _ _ tn1) (TyNominal _ _ tn2)) =
   if tn1 == tn2 then pure [] else
     throwSolverError ["The following nominal types are incompatible:"
                      , "    " <> ppPrint tn1

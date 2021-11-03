@@ -43,7 +43,7 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   -- Nominal type constraint!!
   forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (CtorArgsConstraint loc) (getTypeATerm t1) t2
   let ty = case im of
-        InferNominal -> TyNominal PosRep (data_name tn)
+        InferNominal -> TyNominal PosRep Nothing (data_name tn)
         InferRefined -> TyData PosRep (Just $ data_name tn) [MkXtorSig xt $ MkTypArgs (getTypeATerm <$> args') []]
   return (Ctor (loc,ty) xt args')
 
@@ -58,7 +58,7 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   args' <- sequence (genConstraintsATerm <$> args)
   tn <- lookupDataDecl xt
   t'<- genConstraintsATerm t
-  addConstraint (SubType (DtorApConstraint loc) (getTypeATerm t') (TyNominal NegRep (data_name tn)) )
+  addConstraint (SubType (DtorApConstraint loc) (getTypeATerm t') (TyNominal NegRep Nothing (data_name tn)) )
   im <- asks (inferMode . snd)
   xtorSig <- case im of
     InferNominal -> lookupXtorSig xt NegRep
@@ -94,7 +94,7 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
     InferRefined -> mapM translateXtorSig $ data_xtors tn PosRep
   genConstraintsACaseArgs (snd <$> cases') xtorSigs loc
   let ty = case im of
-        InferNominal -> TyNominal NegRep (data_name tn)
+        InferNominal -> TyNominal NegRep Nothing (data_name tn)
         InferRefined -> TyData NegRep (Just $ data_name tn) (snd <$> cases')
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeATerm t') ty)
   return (Match (loc,retTypePos) t' (fst <$> cases'))
@@ -127,7 +127,7 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
     InferRefined -> mapM translateXtorSig $ data_xtors tn PosRep
   genConstraintsACaseArgs (snd <$> cocases') xtorSigs loc
   let ty = case im of
-        InferNominal -> TyNominal PosRep (data_name tn)
+        InferNominal -> TyNominal PosRep Nothing (data_name tn)
         InferRefined -> TyCodata PosRep (Just $ data_name tn) (snd <$> cocases')
   return (Comatch (loc, ty) (fst <$> cocases'))
 

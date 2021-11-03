@@ -127,7 +127,7 @@ freshTVar uvp = do
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kuvars } } ->
             gs { constraintSet = cs { cs_kuvars = cs_kuvars ++ [kvar] } })
   -- Then we return the resulting type variables      
-  return (TyVar PosRep (KindVar kvar) tvar, TyVar NegRep (KindVar kvar) tvar)
+  return (TyVar PosRep (Just (KindVar kvar)) tvar, TyVar NegRep (Just (KindVar kvar)) tvar)
 
 freshTVars :: Twice [FreeVarName] -> GenM (TypArgs Pos, TypArgs Neg)
 freshTVars (Twice prdArgs cnsArgs) = do

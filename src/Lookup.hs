@@ -8,7 +8,8 @@ module Lookup
   , lookupXtorSig
   , withSTerm
   , withATerm
-  , computeKind
+  , annotateKind
+  , getKind
   ) where
 
 import Control.Monad.Except
@@ -126,13 +127,38 @@ withATerm fv tm loc tys m = do
 -- Compute the Kind of a Type.
 ---------------------------------------------------------------------------------------------
 
-computeKind :: EnvReader bs a m
-            => Typ pol -> m Kind
-computeKind (TyVar _ kind _) = return kind
-computeKind (TyData _ _ _)   = return $ MonoKind CBV
-computeKind (TyCodata _ _ _) = return $ MonoKind CBN
-computeKind (TyNominal _ tn) = do
+-- | Annotate the nominal kinds
+annotateKind :: EnvReader bs a m
+            => Typ pol -> m (Typ pol)
+annotateKind ty@TyVar {} = return ty
+annotateKind (TyData rep ref xtors) = do
+  xtors' <- sequence $ annotateXtors <$> xtors
+  return $ TyData rep ref xtors'
+annotateKind (TyCodata rep ref xtors) = do
+  xtors' <- sequence $ annotateXtors <$> xtors
+  return $ TyCodata rep ref xtors'
+annotateKind (TyNominal rep _ tn) = do
   decl <- lookupTypeName tn
-  return $ data_kind decl
-computeKind (TySet _ kind _) = return kind
-computeKind (TyRec _ _ ty)   = computeKind ty
+  return $ TyNominal rep (Just (data_kind decl)) tn
+annotateKind (TySet rep kind tys) = do
+  tys' <- sequence $ annotateKind <$> tys
+  return (TySet rep kind tys')
+annotateKind (TyRec rep tv ty)    = do
+  ty' <- annotateKind ty
+  return $ TyRec rep tv ty'
+
+annotateXtors :: EnvReader bs a m
+              => XtorSig pol -> m (XtorSig pol)
+annotateXtors (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) = do
+  prdArgs' <- sequence $ annotateKind <$> prdArgs
+  cnsArgs' <- sequence $ annotateKind <$> cnsArgs
+  return $ MkXtorSig xt (MkTypArgs prdArgs' cnsArgs')
+
+getKind :: Typ pol -> Kind
+getKind (TyVar _ (Just kind) _) = kind
+getKind TyData {} = MonoKind CBV
+getKind TyCodata {} = MonoKind CBN
+getKind (TyNominal _ (Just kind) _ ) = kind
+getKind (TySet _ (Just kind) _) = kind
+getKind (TyRec _ _ ty) = getKind ty
+getKind _              = error "getKind failed: Only apply to fully kind-inferred types!"

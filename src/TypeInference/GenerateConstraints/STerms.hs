@@ -75,9 +75,9 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
       case (im, rep) of
-            (InferNominal,PrdRep) -> return (XtorCall (loc, TyNominal PosRep (data_name tn))                               rep xt args')
+            (InferNominal,PrdRep) -> return (XtorCall (loc, TyNominal PosRep Nothing (data_name tn))                               rep xt args')
             (InferRefined,PrdRep) -> return (XtorCall (loc, TyData PosRep (Just $ data_name tn) [MkXtorSig xt argTypes])   rep xt args')
-            (InferNominal,CnsRep) -> return (XtorCall (loc, TyNominal NegRep (data_name tn))                               rep xt args')
+            (InferNominal,CnsRep) -> return (XtorCall (loc, TyNominal NegRep Nothing (data_name tn))                               rep xt args')
             (InferRefined,CnsRep) -> return (XtorCall (loc, TyCodata NegRep (Just $ data_name tn) [MkXtorSig xt argTypes]) rep xt args')
 
 --
@@ -112,9 +112,9 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case (im, rep) of
-        (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep (data_name tn))                        rep Nominal (fst <$> cases')
-        (InferRefined,PrdRep) -> return $ XMatch (loc, TyCodata PosRep (Just $ data_name tn) (snd <$> cases')) rep Nominal (fst <$> cases')
-        (InferNominal,CnsRep) -> return $ XMatch (loc, TyNominal NegRep (data_name tn))                        rep Nominal (fst <$> cases')
+        (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep Nothing (data_name tn))                        rep Nominal (fst <$> cases')
+        (InferRefined,PrdRep) -> return $ XMatch (loc, TyCodata PosRep  (Just $ data_name tn) (snd <$> cases')) rep Nominal (fst <$> cases')
+        (InferNominal,CnsRep) -> return $ XMatch (loc, TyNominal NegRep Nothing (data_name tn))                        rep Nominal (fst <$> cases')
         (InferRefined,CnsRep) -> return $ XMatch (loc, TyData NegRep (Just $ data_name tn) (snd <$> cases'))   rep Nominal (fst <$> cases')
 --
 -- Mu and TildeMu abstractions:
@@ -138,9 +138,11 @@ genConstraintsCommand (Apply loc _ tm1 tm2) = do
   tmInferred2 <- genConstraintsSTerm tm2
   let ty1 = getTypeSTerm tmInferred1
   let ty2 = getTypeSTerm tmInferred2
-  kind1 <- computeKind ty1
-  kind2 <- computeKind ty2
-  addConstraint (SubType (CommandConstraint loc) ty1 ty2)
+  ty1' <- annotateKind ty1
+  ty2' <- annotateKind ty2
+  let kind1 = getKind ty1'
+  let kind2 = getKind ty2'
+  addConstraint (SubType (CommandConstraint loc) ty1' ty2')
   addConstraint (KindEq kind1 kind2)
   return (Apply loc (Just kind1) tmInferred1 tmInferred2)
 

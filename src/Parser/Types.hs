@@ -47,7 +47,7 @@ typArgListP rep = do
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
 nominalTypeP rep = do
   (name, _pos) <- typeNameP
-  pure $ TyNominal rep name
+  pure $ TyNominal rep Nothing name
 
 dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
 dataTypeP DataRep polrep = fst <$> angles (do
@@ -72,7 +72,7 @@ typeVariable rep = do
   tvs <- asks tvars
   tv <- MkTVar . fst <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyVar rep todoKind tv
+  return $ TyVar rep Nothing tv
 
 sepBy2 :: Parser a -> Parser sep -> Parser [a]
 sepBy2 p sep = do
@@ -81,12 +81,9 @@ sepBy2 p sep = do
   rest <- sepBy1 p sep
   return (fst : rest)
 
-todoKind :: Kind 
-todoKind = KindVar (MkKVar "X")
-
 setType :: PolarityRep pol -> Parser (Typ pol)
-setType PosRep = botKwP *> return (TySet PosRep todoKind []) <|> TySet PosRep todoKind <$> (typP' PosRep) `sepBy2` unionSym
-setType NegRep = topKwP *> return (TySet NegRep todoKind []) <|> TySet NegRep todoKind <$> (typP' NegRep) `sepBy2` intersectionSym
+setType PosRep = botKwP *> return (TySet PosRep Nothing []) <|> TySet PosRep Nothing <$> (typP' PosRep) `sepBy2` unionSym
+setType NegRep = topKwP *> return (TySet NegRep Nothing []) <|> TySet NegRep Nothing <$> (typP' NegRep) `sepBy2` intersectionSym
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do
@@ -131,7 +128,7 @@ switchPol :: Typ pol -> Typ (FlipPol pol)
 switchPol (TyVar rep kind tv) = TyVar (flipPolarityRep rep) kind tv
 switchPol (TyData rep mtn xtors) = TyData (flipPolarityRep rep) mtn (switchSig <$> xtors)
 switchPol (TyCodata rep mtn xtors) = TyCodata (flipPolarityRep rep) mtn (switchSig <$> xtors)
-switchPol (TyNominal rep tn) = TyNominal (flipPolarityRep rep) tn
+switchPol (TyNominal rep kind tn) = TyNominal (flipPolarityRep rep) kind tn
 switchPol (TySet rep kind typs) = TySet (flipPolarityRep rep) kind (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 

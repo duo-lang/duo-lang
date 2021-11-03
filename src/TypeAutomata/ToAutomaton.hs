@@ -16,6 +16,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Set as S
+import Syntax.Kinds
 
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -158,12 +159,13 @@ insertXtors dc pol xtors = do
 
 insertType :: Typ pol -> TTA Node
 insertType (TyVar rep _ tv) = lookupTVar rep tv
-insertType (TySet rep kind tys) = do
+insertType (TySet rep (Just kind) tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel (polarityRepToPol rep) kind)
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
+insertType (TySet _ Nothing _) = error "Boom"
 insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
@@ -176,11 +178,12 @@ insertType (TyRec rep rv ty) = do
 -- Insert refinement (co)data as structural (co)data for now
 insertType (TyData polrep _ xtors)   = insertXtors Data   (polarityRepToPol polrep) xtors
 insertType (TyCodata polrep _ xtors) = insertXtors Codata (polarityRepToPol polrep) xtors
-insertType (TyNominal rep tn) = do
+insertType (TyNominal rep (Just kind) tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol undefined) { nl_nominal = S.singleton tn })
+  insertNode newNode ((emptyNodeLabel pol kind) { nl_nominal = S.singleton tn })
   return newNode
+insertType (TyNominal _ Nothing _) = error "Boom"
 -- insertType ty@(TyData _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 -- insertType ty@(TyCodata _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 

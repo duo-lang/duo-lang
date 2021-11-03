@@ -183,7 +183,7 @@ defEnvToHoverMap = M.unions . fmap f . M.toList
 declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
   let
-    ls' = (\(loc,decl) -> (locToRange loc, mkHover (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))) (locToRange loc))) <$> ls
+    ls' = (\(loc,decl) -> (locToRange loc, mkHover (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep Nothing (data_name decl))))) (locToRange loc))) <$> ls
   in
     M.fromList ls'
 

@@ -184,10 +184,10 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return [TyCodata rep Nothing sig]
     -- Creating Nominal types
-    let nominals = TyNominal rep <$> S.toList tns
+    let nominals = TyNominal rep (Just kind) <$> S.toList tns
 
     let typs = varL ++ datL ++ codatL ++ nominals
-    return $ case typs of [t] -> t; _ -> TySet rep kind typs
+    return $ case typs of [t] -> t; _ -> TySet rep (Just kind) typs
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
