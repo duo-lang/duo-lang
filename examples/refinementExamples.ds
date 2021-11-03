@@ -1,7 +1,7 @@
-import Prelude;
 set refined;
 
 # Examples for testing type decl translation
+data Bool { True, False }; # Boolean values
 data Nat  { Z, S(Nat) }; # Natural numbers
 
 data Even { Ze, Se(Odd) }; # Dual mutual recursion
@@ -17,41 +17,42 @@ def ex1 := match True with { True => S(Z), False => 'H };
 
 def ex2 := match True with { True => S(Z), False => True };
 
-prd zeroS := Z;
 prd oneS := S(Z);
-prd twoS := S(S(Z));
 prd threeS := S(S(S(Z)));
 
-def twoA := S(S(Z));
+def oneA := S(Z);
 def threeA := S(S(S(Z)));
 
 # Incomplete pattern matches, level 1
 cns foo := match { True => Print('T) };
 
-def isSucc := comatch { 'Ap(n) => match n with { 
-                S(m) => True
-              }};
+def isSuccA := comatch { 'Ap(n) => match n with { 
+                 S(m) => True
+               }};
+
+prd isSuccS := comatch { 'Ap(n)[k] => n >> match {
+                 S(m) => True >> k
+               }};
 
 # Incomplete pattern match, level 2
 # Case arg m is inferred as {{ Nat :>> < 'Z | 'S(Nat) > }},
 # therefore case S() is recognized as missing in pattern match
-# def isOneA := comatch { 'Ap(n) => match n with {
-#                 S(m) => match m with {
-#                   Z() => True
-#                 }
-#               }};
-
-prd isOneS := comatch { 'Ap(n)[k] => n >> match {
-                S(m) => m >> match {
-                  Z() => True >> k,
-                  S(p) => False >> k
+def isOneA := comatch { 'Ap(n) => match n with {
+                S(m) => match m with {
+                  Z() => True
                 }
               }};
 
-# def isTwo := comatch { 'Ap(n) => match n with {
-#                S(p) => match p with {
-#                  S(q) => match q with {
-#                    Z() => True
-#                  }
-#                }
-#              }};
+prd isOneS := comatch { 'Ap(n)[k] => n >> match {
+                S(m) => m >> match {
+                  Z() => True >> k
+                }
+              }};
+
+def isTwoA := comatch { 'Ap(n) => match n with {
+               S(p) => match p with {
+                 S(q) => match q with {
+                   Z() => True
+                 }
+               }
+             }};
