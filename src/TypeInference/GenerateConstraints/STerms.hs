@@ -71,7 +71,7 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
       -- Check if args of xtor are correct
       xtorSig <- case im of
         InferNominal -> lookupXtorSig xt NegRep
-        InferRefined -> translateXtorSig =<< lookupXtorSig xt NegRep
+        InferRefined -> translateXtorSigFull =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
       case (im, rep) of
@@ -107,9 +107,10 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
   cases' <- forM cases (\MkSCase {..} -> do
                            x <- case im of
                              InferNominal -> sig_args <$> lookupXtorSig scase_name PosRep
-                             InferRefined -> sig_args <$> (translateXtorSig =<< lookupXtorSig scase_name PosRep)
-                           (_,fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
-                           cmd' <- withContext x (genConstraintsCommand scase_cmd)
+                             InferRefined -> sig_args <$> (translateXtorSigEmpty =<< lookupXtorSig scase_name PosRep)
+                           (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
+                           cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
+                           genConstraintsSCaseArgs fvarsNeg x loc
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case (im, rep) of
         (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep (data_name tn))                        rep Nominal (fst <$> cases')
@@ -139,6 +140,10 @@ genConstraintsCommand (Apply loc t1 t2) = do
   addConstraint (SubType (CommandConstraint loc) (getTypeSTerm t1') (getTypeSTerm t2'))
   return (Apply loc t1' t2')
 
+genConstraintsSCaseArgs :: TypArgs Neg -> TypArgs Pos -> Loc -> GenM ()
+genConstraintsSCaseArgs sa1 sa2 loc = do
+  zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt2 pt1) (prdTypes sa1) (prdTypes sa2)
+  zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct1 ct2) (cnsTypes sa1) (cnsTypes sa2)
 
 ---------------------------------------------------------------------------------------------
 -- Symmetric Terms with recursive binding
