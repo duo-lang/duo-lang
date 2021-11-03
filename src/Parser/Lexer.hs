@@ -123,7 +123,7 @@ numP = do
 
 -- | Used for parsing options using the "set option;" syntax
 optionP :: Parser (Text, SourcePos)
-optionP = lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
+optionP = lexeme $ (T.cons <$> alphaNumChar <*> (T.pack <$> many alphaNumChar))
 
 -------------------------------------------------------------------------------------------
 -- Names

@@ -6,6 +6,8 @@ codata NatFun : Type CBN { Ap(Nat)[Nat] };
 
 # Symmetric system:
 
+set CBV;
+
 prd idPoly : forall a. { 'Ap(a)[a] } := comatch { 'Ap(x)[k] => x >> k };
 
 prd idPolyTwo : forall a b. { 'Ap(a /\ b)[a \/ b] } := comatch { 'Ap(x)[k] => x >> k };

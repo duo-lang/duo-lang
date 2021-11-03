@@ -1,3 +1,5 @@
+set CBV;
+
 prd rec addS := comatch { 'Ap(x,y)[k] =>
                        x
                        >>

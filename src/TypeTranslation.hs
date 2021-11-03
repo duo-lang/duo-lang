@@ -19,6 +19,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
+import Syntax.Kinds
 
 ---------------------------------------------------------------------------------------------
 -- TranslationState:
@@ -88,7 +89,7 @@ translateType' (TyNominal pr tn) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar pr (error "TODO: Kinds") tv
+    return $ TyVar pr (KindVar (MkKVar "X")) tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar

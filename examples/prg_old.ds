@@ -1,3 +1,5 @@
+set CBV;
+
 ## Generic print consumer ##
 cns print := mu x.Print(x);
 

@@ -72,7 +72,7 @@ typeVariable rep = do
   tvs <- asks tvars
   tv <- MkTVar . fst <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyVar rep (error "TODO: Kind") tv
+  return $ TyVar rep todoKind tv
 
 sepBy2 :: Parser a -> Parser sep -> Parser [a]
 sepBy2 p sep = do
@@ -81,9 +81,12 @@ sepBy2 p sep = do
   rest <- sepBy1 p sep
   return (fst : rest)
 
+todoKind :: Kind 
+todoKind = KindVar (MkKVar "X")
+
 setType :: PolarityRep pol -> Parser (Typ pol)
-setType PosRep = botKwP *> return (TySet PosRep (error "TODO: Kinds") []) <|> TySet PosRep (error "TODO: Kinds") <$> (typP' PosRep) `sepBy2` unionSym
-setType NegRep = topKwP *> return (TySet NegRep (error "TODO: Kinds") []) <|> TySet NegRep (error "TODO: Kinds") <$> (typP' NegRep) `sepBy2` intersectionSym
+setType PosRep = botKwP *> return (TySet PosRep todoKind []) <|> TySet PosRep todoKind <$> (typP' PosRep) `sepBy2` unionSym
+setType NegRep = topKwP *> return (TySet NegRep todoKind []) <|> TySet NegRep todoKind <$> (typP' NegRep) `sepBy2` intersectionSym
 
 recType :: PolarityRep pol -> Parser (Typ pol)
 recType rep = do

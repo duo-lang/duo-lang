@@ -1,5 +1,6 @@
 import Prelude;
 set refined;
+set CBV;
 
 # Examples for testing type decl translation
 data Nat  : Type CBV { Z, S(Nat) }; # Natural numbers

@@ -317,6 +317,9 @@ insertDecl (ImportDecl loc mod) = do
   setEnvironment (oldEnv <> newEnv)
 insertDecl (SetDecl loc txt) = case T.unpack txt of
   "refined" -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
+  "CBV" -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsPolicy = DefaultCBV }driverEnv)
+  "CBN" -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsPolicy = DefaultCBN }driverEnv)
+  "nodefault" -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsPolicy = ErrorUnresolved }driverEnv)
   _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
 insertDecl ParseErrorDecl = do
     throwError (Located defaultLoc (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))

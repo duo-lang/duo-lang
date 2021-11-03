@@ -1,5 +1,6 @@
 import Prelude;
 
+set CBV;
 ## Boolean functions ##
 
 ## iftenelse :: forall t0. { 'Ap(< 'False | 'True >,t0,t0)[t0] }
