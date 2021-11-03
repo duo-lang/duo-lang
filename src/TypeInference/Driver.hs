@@ -43,7 +43,7 @@ import TypeInference.GenerateConstraints.STerms
     ( genConstraintsSTerm,
       genConstraintsCommand,
       genConstraintsSTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints)
+import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 import Syntax.ATerms
 
@@ -54,11 +54,12 @@ import Syntax.ATerms
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity :: Verbosity -- ^ Whether to print debug information to the terminal.
   , infOptsMode :: InferenceMode  -- ^ Whether to infer nominal or refinement types
+  , infOptsPolicy :: KindPolicy   -- ^ How to handle unresolved Kind Variables
   , infOptsLibPath :: [FilePath]  -- ^ Where to search for imported modules
   }
 
 defaultInferenceOptions :: InferenceOptions
-defaultInferenceOptions = InferenceOptions Silent InferNominal []
+defaultInferenceOptions = InferenceOptions Silent InferNominal ErrorUnresolved []
 
 
 ---------------------------------------------------------------------------------
@@ -189,7 +190,7 @@ inferATermTraced isRec loc fv tm = do
         NonRecursive -> genConstraintsATerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
-  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) (infOptsPolicy infopts)
   -- Generate result type
   trace <- liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState (getTypeATerm tmInferred)
   return (trace, tmInferred)
@@ -221,7 +222,7 @@ inferSTermTraced isRec loc fv rep tm = do
         NonRecursive -> genConstraintsSTerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
-  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) (infOptsPolicy infopts)
   -- Generate result type
   trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeSTerm tmInferred)
   return (trace, tmInferred)
@@ -245,7 +246,7 @@ checkCmd loc cmd = do
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) (infOptsPolicy infopts)
   return (constraints, solverResult, cmdInferred)
 
 ---------------------------------------------------------------------------------

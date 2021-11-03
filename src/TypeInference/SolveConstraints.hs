@@ -1,5 +1,6 @@
 module TypeInference.SolveConstraints
   ( solveConstraints
+  , KindPolicy(..)
   ) where
 
 import Control.Monad.Except
@@ -330,11 +331,11 @@ subConstraints (KindEq _ _) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _ _) env im = do
+solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> KindPolicy -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _ _) env im policy = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   let kvarSolution = sst_kvars solverState
-  kvarSolution' <- enforceKindPolicy ErrorUnresolved kvarSolution
+  kvarSolution' <- enforceKindPolicy policy kvarSolution
   return MkSolverResult { tvarSolution = sst_bounds solverState
                         , kvarSolution = kvarSolution'
                         }
