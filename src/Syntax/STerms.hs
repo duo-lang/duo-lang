@@ -166,7 +166,7 @@ data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply :: CommandExt ext -> Maybe CallingConvention -> STerm Prd ext -> STerm Cns ext -> Command ext
+  Apply :: CommandExt ext -> Maybe Kind -> STerm Prd ext -> STerm Cns ext -> Command ext
   Print :: CommandExt ext -> STerm Prd ext -> Command ext
   Done  :: CommandExt ext -> Command ext
 

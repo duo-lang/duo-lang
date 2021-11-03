@@ -133,11 +133,16 @@ genConstraintsCommand (Done loc) = return (Done loc)
 genConstraintsCommand (Print loc t) = do
   t' <- genConstraintsSTerm t
   return (Print loc t')
-genConstraintsCommand (Apply loc _ t1 t2) = do
-  t1' <- genConstraintsSTerm t1
-  t2' <- genConstraintsSTerm t2
-  addConstraint (SubType (CommandConstraint loc) (getTypeSTerm t1') (getTypeSTerm t2'))
-  return (Apply loc Nothing t1' t2')
+genConstraintsCommand (Apply loc _ tm1 tm2) = do
+  tmInferred1 <- genConstraintsSTerm tm1
+  tmInferred2 <- genConstraintsSTerm tm2
+  let ty1 = getTypeSTerm tmInferred1
+  let ty2 = getTypeSTerm tmInferred2
+  kind1 <- computeKind ty1
+  kind2 <- computeKind ty2
+  addConstraint (SubType (CommandConstraint loc) ty1 ty2)
+  addConstraint (KindEq kind1 kind2)
+  return (Apply loc (Just kind1) tmInferred1 tmInferred2)
 
 
 ---------------------------------------------------------------------------------------------
