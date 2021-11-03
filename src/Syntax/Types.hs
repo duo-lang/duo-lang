@@ -126,16 +126,14 @@ xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
 xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) typArgs) =
   MkXtorSig (MkXtorName Structural s) typArgs
 
-data SomeType where
-  PosType :: Typ Pos -> SomeType
-  NegType :: Typ Neg -> SomeType
-  deriving (Eq, Ord, Show)
+-- | We map producer terms to positive types, and consumer terms to negative types.
+type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
+  PrdCnsToPol Prd = Pos
+  PrdCnsToPol Cns = Neg
 
-toSomeType :: Typ pol -> SomeType
-toSomeType ty = case getPolarity ty of
-  PosRep -> PosType ty
-  NegRep -> NegType ty
-
+prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
+prdCnsToPol PrdRep = PosRep
+prdCnsToPol CnsRep = NegRep
 
 ------------------------------------------------------------------------------
 -- Type Schemes

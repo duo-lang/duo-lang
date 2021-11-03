@@ -1,6 +1,7 @@
 module Syntax.ATerms
   ( ACase(..)
   , ATerm(..)
+  , getTypeATerm
   -- Variable Closing
   , atermClosing
   -- Variable Opening
@@ -116,6 +117,14 @@ deriving instance (Eq (ATerm Compiled))
 deriving instance (Show (ATerm Parsed))
 deriving instance (Show (ATerm Inferred))
 deriving instance (Show (ATerm Compiled))
+
+getTypeATerm :: ATerm Inferred -> Typ Pos
+getTypeATerm (BVar (_,ty) _)     = ty
+getTypeATerm (FVar (_,ty) _)     = ty
+getTypeATerm (Ctor (_,ty) _ _)   = ty
+getTypeATerm (Dtor (_,ty) _ _ _) = ty
+getTypeATerm (Match (_,ty) _ _)  = ty
+getTypeATerm (Comatch (_,ty) _)  = ty
 
 ---------------------------------------------------------------------------------
 -- Variable Opening and Closing

@@ -104,17 +104,20 @@ atermToHoverMap (Comatch ext cocases) = M.unions $ [foo ext] <> (acaseToHoverMap
 acaseToHoverMap :: ACase Inferred -> HoverMap 
 acaseToHoverMap (MkACase _ _ _ tm) = atermToHoverMap tm
 
-bar :: (Loc, SomeType) -> HoverMap
-bar (loc, PosType ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-bar (loc, NegType ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-
+bar :: (Loc, Typ pol) -> HoverMap
+bar (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
 
 stermToHoverMap :: STerm pc Inferred -> HoverMap 
-stermToHoverMap (BoundVar ext _ _)      = bar ext
-stermToHoverMap (FreeVar ext _ _)       = bar ext
-stermToHoverMap (XtorCall ext _ _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
-stermToHoverMap (XMatch ext _ _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
-stermToHoverMap (MuAbs ext _ _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
+stermToHoverMap (BoundVar ext PrdRep _)      = bar ext
+stermToHoverMap (BoundVar ext CnsRep _)      = bar ext
+stermToHoverMap (FreeVar ext PrdRep _)       = bar ext
+stermToHoverMap (FreeVar ext CnsRep _)       = bar ext
+stermToHoverMap (XtorCall ext PrdRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
+stermToHoverMap (XtorCall ext CnsRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
+stermToHoverMap (XMatch ext PrdRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
+stermToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
+stermToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
+stermToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 
 applyToHoverMap :: Range -> Maybe CallingConvention -> HoverMap
 applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "<Nothing>" rng)]

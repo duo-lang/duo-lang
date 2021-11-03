@@ -4,6 +4,8 @@ module Syntax.STerms
   , SCase(..)
   , STerm(..)
   , Command(..)
+  , getTypeSTerm
+  , getTypArgs
     -- Variable Opening
   , commandOpening
   , commandOpeningSingle
@@ -39,7 +41,7 @@ import Utils
 import Errors
 import Syntax.CommonTerm
 import Syntax.Kinds
-import Syntax.Types (SomeType)
+import Syntax.Types
 
 ---------------------------------------------------------------------------------
 -- # Symmetric Terms
@@ -97,35 +99,58 @@ deriving instance (Show (SCase Parsed))
 deriving instance (Show (SCase Inferred))
 deriving instance (Show (SCase Compiled))
 
-type family STermExt (ext :: Phase) :: Type where
-  STermExt Parsed = Loc
-  STermExt Inferred = (Loc, SomeType)
-  STermExt Compiled = ()
+type family STermExt (pc :: PrdCns) (ext :: Phase) :: Type where
+  STermExt _ Parsed = Loc
+  STermExt Prd Inferred = (Loc, Typ Pos)
+  STermExt Cns Inferred = (Loc, Typ Neg)
+  STermExt _ Compiled = ()
 
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
 data STerm (pc :: PrdCns) (ext :: Phase) where
   -- | A bound variable in the locally nameless system.
-  BoundVar :: STermExt ext -> PrdCnsRep pc -> Index -> STerm pc ext
+  BoundVar :: STermExt pc ext -> PrdCnsRep pc -> Index -> STerm pc ext
   -- | A free variable in the locally nameless system.
-  FreeVar :: STermExt ext -> PrdCnsRep pc -> FreeVarName -> STerm pc ext
+  FreeVar :: STermExt pc ext -> PrdCnsRep pc -> FreeVarName -> STerm pc ext
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  XtorCall :: STermExt ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> STerm pc ext
+  XtorCall :: STermExt pc ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> STerm pc ext
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: STermExt ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> STerm pc ext
+  XMatch :: STermExt pc ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> STerm pc ext
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: STermExt ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> STerm pc ext
+  MuAbs :: STermExt pc ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> STerm pc ext
 deriving instance (Eq (STerm pc Parsed))
-deriving instance (Eq (STerm pc Inferred))
+deriving instance (Eq (STerm Prd Inferred))
+deriving instance (Eq (STerm Cns Inferred))
 deriving instance (Eq (STerm pc Compiled))
 deriving instance (Show (STerm pc Parsed))
-deriving instance (Show (STerm pc Inferred))
+deriving instance (Show (STerm Prd Inferred))
+deriving instance (Show (STerm Cns Inferred))
 deriving instance (Show (STerm pc Compiled))
+
+getTypeSTerm :: STerm pc Inferred -> Typ (PrdCnsToPol pc)
+getTypeSTerm (BoundVar ext rep _)  = case rep of
+  PrdRep -> case ext of (_,ty) -> ty
+  CnsRep -> case ext of (_,ty) -> ty
+getTypeSTerm (FreeVar  ext rep _)  = case rep of
+  PrdRep -> case ext of (_,ty) -> ty
+  CnsRep -> case ext of (_,ty) -> ty
+getTypeSTerm (XtorCall ext rep _ _)  = case rep of
+  PrdRep -> case ext of (_,ty) -> ty
+  CnsRep -> case ext of (_,ty) -> ty
+getTypeSTerm (XMatch   ext rep _ _)  = case rep of
+  PrdRep -> case ext of (_,ty) -> ty
+  CnsRep -> case ext of (_,ty) -> ty
+getTypeSTerm (MuAbs    ext rep _ _)  = case rep of
+  PrdRep -> case ext of (_,ty) -> ty
+  CnsRep -> case ext of (_,ty) -> ty
+
+getTypArgs :: XtorArgs Inferred -> TypArgs Pos
+getTypArgs (MkXtorArgs prdArgs cnsArgs )= MkTypArgs (getTypeSTerm <$> prdArgs) (getTypeSTerm <$> cnsArgs)
 
 ---------------------------------------------------------------------------------
 -- Commands
