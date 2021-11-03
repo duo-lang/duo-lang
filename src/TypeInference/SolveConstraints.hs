@@ -34,7 +34,7 @@ data SolverState = SolverState
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
                                                          , sst_kvars = M.fromList [(kv, KindVar kv) | kv <- kuvs]
-                                                         , sst_cache = S.empty 
+                                                         , sst_cache = S.empty
                                                          , sst_inferMode = im }
 
 type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
@@ -82,6 +82,9 @@ addLowerBound uv ty = do
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
+modifyKvars :: (Map KVar Kind -> Map KVar Kind) -> SolverM ()
+modifyKvars f = modify (\s@SolverState { sst_kvars} -> s { sst_kvars = f sst_kvars })
+
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
 ------------------------------------------------------------------------------
@@ -126,8 +129,36 @@ unifyKinds (MonoKind c1) (MonoKind c2) =
   if c1 == c2
     then return ()
     else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint c1 <> " and " <> ppPrint c2]
-unifyKinds (KindVar _kv) _k = return ()
-unifyKinds _k (KindVar _kv) = return ()
+unifyKinds (KindVar kv) k@(MonoKind _) = do
+  return ()
+unifyKinds k@(MonoKind _) (KindVar kv) = do
+  return ()
+unifyKinds (KindVar kv) (KindVar kv')  = do
+  return ()
+
+data KindPolicy
+  = DefaultCBV -- ^ Default all non-constrained KindVariables to CBV
+  | DefaultCBN -- ^ Default all non-constrained KindVariables to CBN
+  | ErrorUnresolved  -- ^ Error if non-constrained KindVariables remain after constraint solving.
+  deriving (Show, Eq)
+
+enforceKindPolicy :: KindPolicy -> Map KVar Kind -> Either Error (Map KVar Kind)
+enforceKindPolicy DefaultCBV m = return $ M.map f m
+  where
+    f (KindVar _) = MonoKind CBV
+    f k           = k
+enforceKindPolicy DefaultCBN m = return $ M.map f m
+  where
+    f (KindVar _) = MonoKind CBN
+    f k           = k
+enforceKindPolicy ErrorUnresolved m =
+  let
+    isKVar (MonoKind _) = False
+    isKVar (KindVar _) = True
+  in
+    if any isKVar (M.elems m)
+      then Left (SolveConstraintsError "Found unconstrained kind variables")
+      else return m
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
@@ -302,7 +333,9 @@ subConstraints (KindEq _ _) =
 solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env im = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
+  let kvarSolution = sst_kvars solverState
+  kvarSolution' <- enforceKindPolicy ErrorUnresolved kvarSolution
   return MkSolverResult { tvarSolution = sst_bounds solverState
-                        , kvarSolution = sst_kvars solverState
+                        , kvarSolution = kvarSolution'
                         }
 

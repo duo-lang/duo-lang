@@ -9,6 +9,7 @@ import Parser.Parser
 import Parser.Types
 import Syntax.Types
 import Syntax.ATerms
+import Syntax.Kinds
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
 import Pretty.ATerms ()
@@ -54,17 +55,17 @@ spec = do
       [MkXtorSig (MkXtorName Nominal "A") $ MkTypArgs [] 
       [TyCodata PosRep Nothing [MkXtorSig (MkXtorName Nominal "B") $ MkTypArgs [] []] ]]
     typeParseExample "< 'A | 'B > /\\ < 'B >"
-        $ TySet NegRep [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                       , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
+        $ TySet NegRep (KindVar (MkKVar "X")) [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                              , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
     typeParseExample "< 'A | 'B > \\/ < 'B >"
-        $ TySet PosRep [ TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                       , TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
+        $ TySet PosRep (KindVar (MkKVar "X")) [ TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                              , TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
     typeParseExample "{ 'A , 'B } /\\ { 'B }"
-        $ TySet NegRep [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                       , TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
+        $ TySet NegRep (KindVar (MkKVar "X")) [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                              , TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
     typeParseExample "{ 'A , 'B} \\/ { 'B }"
-        $ TySet PosRep [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                       , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
+        $ TySet PosRep (KindVar (MkKVar "X")) [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                              , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
     --
     typeParseCounterEx "{{ 'Ap() }" PosRep
   describe "Check aterm parsing" $ do
