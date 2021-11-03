@@ -32,8 +32,8 @@ data SolverState = SolverState
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs _) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
-                                                         , sst_kvars = M.empty
+createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+                                                         , sst_kvars = M.fromList [(kv, KindVar kv) | kv <- kuvs]
                                                          , sst_cache = S.empty 
                                                          , sst_inferMode = im }
 

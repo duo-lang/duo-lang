@@ -12,9 +12,10 @@ import Lookup ( lookupSTerm )
 import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()
 import Syntax.STerms
-import Syntax.Kinds ( CallingConvention(CBN, CBV) )
+import Syntax.Kinds
+    ( Kind(MonoKind, KindVar), CallingConvention(..) ) 
 import Utils ( Twice(..) )
-import Translate.Translate
+import Translate.Translate ( compileSTerm )
 
 
 
@@ -44,10 +45,11 @@ checkArgs cmd argTypes args =
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalSTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
-evalSTermOnce (Done _) = return Nothing
-evalSTermOnce (Print _ _) = return Nothing
-evalSTermOnce (Apply _ Nothing   _   _  ) = throwEvalError ["Found Apply command without calling convention"]
-evalSTermOnce (Apply _ (Just cc) prd cns) = evalApplyOnce cc prd cns
+evalSTermOnce (Done _)                               = return Nothing
+evalSTermOnce (Print _ _)                            = return Nothing
+evalSTermOnce (Apply _ Nothing   _   _  )            = throwEvalError ["Found Apply command without kind annotation"]
+evalSTermOnce (Apply _ (Just (KindVar _)) _ _)       = throwEvalError ["Found Apply command with kind variable annotation"]
+evalSTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
 
 evalApplyOnce :: CallingConvention -> STerm Prd Compiled -> STerm Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.

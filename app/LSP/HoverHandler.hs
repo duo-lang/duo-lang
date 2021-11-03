@@ -24,7 +24,7 @@ import Data.IORef (readIORef, modifyIORef)
 import Data.Text (Text)
 import Data.Map (Map)
 import Utils (Loc)
-import Syntax.Kinds (CallingConvention)
+import Syntax.Kinds ( Kind )
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -119,7 +119,7 @@ stermToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (scaseToHove
 stermToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 stermToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 
-applyToHoverMap :: Range -> Maybe CallingConvention -> HoverMap
+applyToHoverMap :: Range -> Maybe Kind -> HoverMap
 applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "<Nothing>" rng)]
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
