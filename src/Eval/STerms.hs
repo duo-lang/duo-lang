@@ -7,7 +7,7 @@ import Data.List (find)
 import qualified Data.Text as T
 
 import Eval.Eval
-    ( throwEvalError, lookupEvalOrder, EvalM )
+    ( throwEvalError, EvalM )
 import Lookup ( lookupSTerm )
 import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()
@@ -46,39 +46,37 @@ checkArgs cmd argTypes args =
 evalSTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
 evalSTermOnce (Done _) = return Nothing
 evalSTermOnce (Print _ _) = return Nothing
-evalSTermOnce (Apply _ _ prd cns) = evalApplyOnce prd cns
+evalSTermOnce (Apply _ Nothing   _   _  ) = throwEvalError ["Found Apply command without calling convention"]
+evalSTermOnce (Apply _ (Just cc) prd cns) = evalApplyOnce cc prd cns
 
-evalApplyOnce :: STerm Prd Compiled -> STerm Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: CallingConvention -> STerm Prd Compiled -> STerm Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
-evalApplyOnce (FreeVar _ PrdRep fv) cns = do
+evalApplyOnce _ (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
   return (Just (Apply () Nothing (compileSTerm prd) cns))
-evalApplyOnce prd (FreeVar _ CnsRep fv) = do
+evalApplyOnce _ prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupSTerm CnsRep fv
   return (Just (Apply () Nothing prd (compileSTerm cns)))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
-evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
+evalApplyOnce _ prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
+evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
   (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
-evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
-  order <- lookupEvalOrder
-  case order of
-    CBV -> return (Just (commandOpeningSingle CnsRep cns cmd))
-    CBN -> return (Just (commandOpeningSingle PrdRep prd cmd'))
-evalApplyOnce (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpeningSingle CnsRep cns cmd))
-evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
+evalApplyOnce CBV     (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _  ) = return (Just (commandOpeningSingle CnsRep cns cmd))
+evalApplyOnce CBN prd@(MuAbs _ PrdRep _ _  )     (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
+evalApplyOnce _ (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpeningSingle CnsRep cns cmd))
+evalApplyOnce _ prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
-evalApplyOnce (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
-evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
+evalApplyOnce _ (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
+evalApplyOnce _ _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
 -- Match applied to Match, or Xtor to Xtor can't evaluate
-evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError ["Cannot evaluate match applied to match"]
-evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot evaluate constructor applied to destructor"]
+evalApplyOnce _ (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError ["Cannot evaluate match applied to match"]
+evalApplyOnce _ (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot evaluate constructor applied to destructor"]
 
 
 

@@ -11,12 +11,11 @@ import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
 
-import Syntax.Kinds ( CallingConvention(CBN, CBV) )
 import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(evalOrder, typeInfOpts, mode, steps, ReplState),
+      ReplState(typeInfOpts, mode, steps, ReplState),
       Mode(Asymmetric, Symmetric),
       EvalSteps(NoSteps, Steps),
       prettyRepl,
@@ -28,9 +27,7 @@ import TypeInference.Driver
 -- Set & Unset
 
 setCmdVariants :: [(Text, Repl ())]
-setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                   , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
-                   , ("steps", modify (\rs -> rs { steps = Steps }))
+setCmdVariants = [   ("steps", modify (\rs -> rs { steps = Steps }))
                    , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
                    , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
                    , ("symmetric", modify (\rs -> rs { mode = Symmetric }))

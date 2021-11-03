@@ -4,30 +4,23 @@ module Eval.Eval
   , runEval
     -- Helper functions
   , throwEvalError
-  , lookupEvalOrder
   ) where
 
-import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Monad.Except ( MonadError, runExcept, Except )
+import Control.Monad.Reader ( ReaderT(..), MonadReader )
 
-import Errors
+import Errors ( Error, throwEvalError )
 import Syntax.Program (Environment)
-import Syntax.Kinds(CallingConvention)
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment, CallingConvention) (Except Error) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment, CallingConvention))
+newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment, ()) (Except Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment, ()))
 
-runEval :: EvalM a -> CallingConvention -> Environment -> Either Error a
-runEval e evalorder env = runExcept (runReaderT (unEvalM e) (env,evalorder))
+runEval :: EvalM a -> Environment -> Either Error a
+runEval e  env = runExcept (runReaderT (unEvalM e) (env,()))
 
----------------------------------------------------------------------------------
--- Helper functions
----------------------------------------------------------------------------------
 
-lookupEvalOrder :: EvalM CallingConvention
-lookupEvalOrder = asks snd
 

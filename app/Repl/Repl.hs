@@ -15,13 +15,11 @@ import Errors ()
 import Eval.Eval ( runEval )
 import Eval.STerms ( eval, evalSteps )
 import Parser.Parser
-    ( Parser, atermP, runFileParser, runInteractiveParser, commandP )
+    ( Parser, runFileParser, runInteractiveParser, commandP )
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
-import Syntax.STerms ( FreeVarName )
-import Syntax.Kinds ( CallingConvention(CBV) )
 import TypeInference.Driver
 import Translate.Translate
 import Utils (trimStr)
@@ -39,7 +37,6 @@ data ReplState = ReplState
   { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
-  , evalOrder :: CallingConvention
   , mode :: Mode
   , typeInfOpts :: InferenceOptions
   }
@@ -49,7 +46,6 @@ initialReplState :: ReplState
 initialReplState = ReplState { replEnv = mempty
                              , loadedFiles = []
                              , steps = NoSteps
-                             , evalOrder = CBV
                              , mode = Symmetric
                              , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
                              }
@@ -112,15 +108,14 @@ cmdSymmetric :: Text -> Repl ()
 cmdSymmetric s = do
   (comLoc,_) <- parseInteractive commandP s
   let com = compileCmd comLoc
-  evalOrder <- gets evalOrder
   env <- gets replEnv
   steps <- gets steps
   case steps of
     NoSteps -> do
-      res <- fromRight $ runEval (eval com) evalOrder env
+      res <- fromRight $ runEval (eval com) env
       prettyRepl res
     Steps -> do
-      res <- fromRight $ runEval (evalSteps com) evalOrder env
+      res <- fromRight $ runEval (evalSteps com) env
       forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
 
 ------------------------------------------------------------------------------
