@@ -24,8 +24,10 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
-  , translateType
-  , translateXtorSig
+  , translateTypeFull
+  , translateXtorSigFull
+  , translateTypeEmpty
+  , translateXtorSigEmpty
   ) where
 
 import Control.Monad.Except
@@ -201,18 +203,36 @@ checkExhaustiveness matched decl = do
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
 
--- | Recursively translate a nominal type to a corresponding structural representation
-translateType :: Typ pol -> GenM (Typ pol)
-translateType ty = do
+-- | Recursively translate a nominal type to a complete refinement type
+translateTypeFull :: Typ pol -> GenM (Typ pol)
+translateTypeFull ty = do
   env <- asks fst
   case TT.translateType env ty of
     Left err -> throwError err
     Right ty' -> return ty'
 
--- | Recursively translate an xtor signature
-translateXtorSig :: XtorSig pol -> GenM (XtorSig pol)
-translateXtorSig xts = do
+-- | Recursively translate types in xtor signature to complete refinement types
+translateXtorSigFull :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSigFull xts = do
   env <- asks fst
   case TT.translateXtorSig env xts of
     Left err -> throwError err
     Right xts' -> return xts'
+
+-- | Translate a nominal type to corresponding empty refinement type
+translateTypeEmpty :: Typ pol -> GenM (Typ pol)
+translateTypeEmpty (TyNominal pr tn) = do
+  NominalDecl{..} <- lookupTypeName tn
+  case data_polarity of
+    Data   -> return $ TyData pr (Just tn) []
+    Codata -> return $ TyCodata pr (Just tn) []
+translateTypeEmpty ty = throwGenError ["Cannot translate type " <> ppPrint ty <> " to empty refinement"]
+
+-- | Translate types in xtor signature to empty refinement types
+translateXtorSigEmpty :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSigEmpty MkXtorSig{..} = do
+  -- Translate producer and consumer arg types
+  pts' <- mapM translateTypeEmpty $ prdTypes sig_args
+  cts' <- mapM translateTypeEmpty $ cnsTypes sig_args
+  -- Reassemble xtor signature
+  return $ MkXtorSig sig_name (MkTypArgs pts' cts')
