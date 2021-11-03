@@ -19,24 +19,26 @@ import Lookup
 ---------------------------------------------------------------------------------------------
 
 genConstraintsArgs :: XtorArgs Parsed
-                   -> GenM (XtorArgs Inferred, TypArgs Pos)
+                   -> GenM (XtorArgs Inferred)
 genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm
-  return (MkXtorArgs (fst <$> prdArgs') (fst <$> cnsArgs'), MkTypArgs (snd <$> prdArgs') (snd <$> cnsArgs'))
+  return (MkXtorArgs prdArgs' cnsArgs')
 
 -- | Generate the constraints for a given STerm.
 genConstraintsSTerm :: STerm pc Parsed
-                    -> GenM ( STerm pc Inferred
-                            , Typ (PrdCnsToPol pc))
+                    -> GenM ( STerm pc Inferred )
 --
 -- Bound variables:
 --
 -- Bound variables can be looked up in the context.
 --
-genConstraintsSTerm (BoundVar loc rep idx) = do
-  ty <- lookupContext rep idx
-  return (BoundVar (loc, toSomeType ty) rep idx, ty)
+genConstraintsSTerm (BoundVar loc PrdRep idx) = do
+  ty <- lookupContext PrdRep idx
+  return (BoundVar (loc, ty) PrdRep idx)
+genConstraintsSTerm (BoundVar loc CnsRep idx) = do
+  ty <- lookupContext CnsRep idx
+  return (BoundVar (loc, ty) CnsRep idx)
 --
 -- Free variables:
 --
@@ -44,22 +46,25 @@ genConstraintsSTerm (BoundVar loc rep idx) = do
 -- where they correspond to typing schemes. This typing
 -- scheme has to be instantiated with fresh unification variables.
 --
-genConstraintsSTerm (FreeVar loc rep v) = do
-  tys <- snd <$> lookupSTerm rep v
+genConstraintsSTerm (FreeVar loc PrdRep v) = do
+  tys <- snd <$> lookupSTerm PrdRep v
   ty <- instantiateTypeScheme v loc tys
-  return (FreeVar (loc, toSomeType ty) rep v, ty)
+  return (FreeVar (loc, ty) PrdRep v)
+genConstraintsSTerm (FreeVar loc CnsRep v) = do
+  tys <- snd <$> lookupSTerm CnsRep v
+  ty <- instantiateTypeScheme v loc tys
+  return (FreeVar (loc, ty) CnsRep v)
 --
 -- Xtors
 --
 genConstraintsSTerm (XtorCall loc rep xt args) = do
-  (args', argTypes) <- genConstraintsArgs args
-  let resTerm = \ty -> XtorCall (loc,ty) rep xt args'
+  args' <- genConstraintsArgs args
+  let argTypes = getTypArgs args'
   case xtorNominalStructural xt of
     Structural -> do
-      let resType = case rep of
-            PrdRep -> TyData PosRep Nothing [MkXtorSig xt argTypes]
-            CnsRep -> TyCodata NegRep Nothing [MkXtorSig xt argTypes]
-      return (resTerm (toSomeType resType), resType)
+      case rep of
+        PrdRep -> return $ XtorCall (loc, TyData   PosRep Nothing [MkXtorSig xt (getTypArgs args')]) rep xt args'
+        CnsRep -> return $ XtorCall (loc, TyCodata NegRep Nothing [MkXtorSig xt (getTypArgs args')]) rep xt args'
     Nominal -> do
       tn <- lookupDataDecl xt
       im <- asks (inferMode . snd)
@@ -69,12 +74,12 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
         InferRefined -> translateXtorSig =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
-      let resType = case (im, rep) of
-            (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-            (InferRefined,PrdRep) -> TyData PosRep (Just $ data_name tn) [MkXtorSig xt argTypes]
-            (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-            (InferRefined,CnsRep) -> TyCodata NegRep (Just $ data_name tn) [MkXtorSig xt argTypes]
-      return (resTerm (toSomeType resType), resType)
+      case (im, rep) of
+            (InferNominal,PrdRep) -> return (XtorCall (loc, TyNominal PosRep (data_name tn))                               rep xt args')
+            (InferRefined,PrdRep) -> return (XtorCall (loc, TyData PosRep (Just $ data_name tn) [MkXtorSig xt argTypes])   rep xt args')
+            (InferNominal,CnsRep) -> return (XtorCall (loc, TyNominal NegRep (data_name tn))                               rep xt args')
+            (InferRefined,CnsRep) -> return (XtorCall (loc, TyCodata NegRep (Just $ data_name tn) [MkXtorSig xt argTypes]) rep xt args')
+
 --
 -- Structural pattern and copattern matches:
 --
@@ -83,11 +88,10 @@ genConstraintsSTerm (XMatch loc rep Structural cases) = do
                       (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                       cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
-  let resTerm = \ty -> XMatch (loc,ty) rep Structural (fst <$> cases')
-  let resType = case rep of
-        PrdRep -> TyCodata PosRep Nothing (snd <$> cases')
-        CnsRep -> TyData NegRep Nothing (snd <$> cases')
-  return (resTerm (toSomeType resType), resType)
+  case rep of
+        PrdRep -> return $ XMatch (loc, TyCodata PosRep Nothing (snd <$> cases')) rep Structural (fst <$> cases')
+        CnsRep -> return $ XMatch (loc, TyData   NegRep Nothing (snd <$> cases')) rep Structural (fst <$> cases')
+
 --
 -- Nominal pattern and copattern matches:
 --
@@ -107,34 +111,32 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                            (_,fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                            cmd' <- withContext x (genConstraintsCommand scase_cmd)
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
-  let resTerm = \s -> XMatch (loc, s) rep Nominal (fst <$> cases')
-  let resType = case (im, rep) of
-        (InferNominal,PrdRep) -> TyNominal PosRep (data_name tn)
-        (InferRefined,PrdRep) -> TyCodata PosRep (Just $ data_name tn) (snd <$> cases')
-        (InferNominal,CnsRep) -> TyNominal NegRep (data_name tn)
-        (InferRefined,CnsRep) -> TyData NegRep (Just $ data_name tn) (snd <$> cases')
-  return (resTerm (toSomeType resType), resType)
+  case (im, rep) of
+        (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep (data_name tn))                        rep Nominal (fst <$> cases')
+        (InferRefined,PrdRep) -> return $ XMatch (loc, TyCodata PosRep (Just $ data_name tn) (snd <$> cases')) rep Nominal (fst <$> cases')
+        (InferNominal,CnsRep) -> return $ XMatch (loc, TyNominal NegRep (data_name tn))                        rep Nominal (fst <$> cases')
+        (InferRefined,CnsRep) -> return $ XMatch (loc, TyData NegRep (Just $ data_name tn) (snd <$> cases'))   rep Nominal (fst <$> cases')
 --
 -- Mu and TildeMu abstractions:
 --
 genConstraintsSTerm (MuAbs loc PrdRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [] [fvneg]) (genConstraintsCommand cmd)
-  return (MuAbs (loc, toSomeType fvpos) PrdRep bs cmd', fvpos)
+  return (MuAbs (loc, fvpos) PrdRep bs cmd')
 genConstraintsSTerm (MuAbs loc CnsRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [fvpos] []) (genConstraintsCommand cmd)
-  return (MuAbs (loc, toSomeType fvneg) CnsRep bs cmd', fvneg)
+  return (MuAbs (loc, fvneg) CnsRep bs cmd')
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)
 genConstraintsCommand (Print loc t) = do
-  (t',_) <- genConstraintsSTerm t
+  t' <- genConstraintsSTerm t
   return (Print loc t')
 genConstraintsCommand (Apply loc t1 t2) = do
-  (t1',ty1) <- genConstraintsSTerm t1
-  (t2',ty2) <- genConstraintsSTerm t2
-  addConstraint (SubType (CommandConstraint loc) ty1 ty2)
+  t1' <- genConstraintsSTerm t1
+  t2' <- genConstraintsSTerm t2
+  addConstraint (SubType (CommandConstraint loc) (getTypeSTerm t1') (getTypeSTerm t2'))
   return (Apply loc t1' t2')
 
 
@@ -145,15 +147,15 @@ genConstraintsCommand (Apply loc t1 t2) = do
 genConstraintsSTermRecursive :: Loc
                              -> FreeVarName
                              -> PrdCnsRep pc -> STerm pc Parsed
-                             -> GenM (STerm pc Inferred, Typ (PrdCnsToPol pc))
+                             -> GenM (STerm pc Inferred)
 genConstraintsSTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withSTerm PrdRep fv (FreeVar (loc,PosType x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)
-  addConstraint (SubType RecursionConstraint ty y)
-  return (tm, ty)
+  tm <- withSTerm PrdRep fv (FreeVar (loc, x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)
+  addConstraint (SubType RecursionConstraint (getTypeSTerm tm) y)
+  return tm
 genConstraintsSTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  (tm, ty) <- withSTerm CnsRep fv (FreeVar (loc,NegType y) CnsRep fv) loc (TypeScheme [] y) (genConstraintsSTerm tm)
-  addConstraint (SubType RecursionConstraint x ty)
-  return (tm, ty)
+  tm <- withSTerm CnsRep fv (FreeVar (loc,y) CnsRep fv) loc (TypeScheme [] y) (genConstraintsSTerm tm)
+  addConstraint (SubType RecursionConstraint x (getTypeSTerm tm))
+  return tm
 

@@ -14,7 +14,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
-import Syntax.STerms ( Command, STerm )
+import Syntax.STerms ( Command, STerm, getTypeSTerm )
 import Syntax.Types
     ( SolverResult,
       ConstraintSet,
@@ -187,11 +187,11 @@ inferATermTraced isRec loc fv tm = do
   let genFun = case isRec of
         Recursive -> genConstraintsATermRecursive loc fv tm
         NonRecursive -> genConstraintsATerm tm
-  ((tmInferred, ty), constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState ty
+  trace <- liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState (getTypeATerm tmInferred)
   return (trace, tmInferred)
 
 inferATerm :: IsRec
@@ -219,11 +219,11 @@ inferSTermTraced isRec loc fv rep tm = do
   let genFun = case isRec of
         Recursive -> genConstraintsSTermRecursive loc fv rep tm
         NonRecursive -> genConstraintsSTerm tm
-  ((tmInferred,ty), constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState ty
+  trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeSTerm tmInferred)
   return (trace, tmInferred)
 
 

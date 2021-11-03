@@ -33,16 +33,6 @@ import Utils
 
 type EnvReader bs a m = (MonadError Error m, MonadReader (Environment, a) m)
 
-
--- | We map producer terms to positive types, and consumer terms to negative types.
-type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
-  PrdCnsToPol Prd = Pos
-  PrdCnsToPol Cns = Neg
-
-prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
-prdCnsToPol PrdRep = PosRep
-prdCnsToPol CnsRep = NegRep
-
 ---------------------------------------------------------------------------------
 -- Lookup Terms
 ---------------------------------------------------------------------------------
