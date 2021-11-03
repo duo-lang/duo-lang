@@ -27,7 +27,6 @@ module TypeInference.GenerateConstraints.Definition
   , checkExhaustiveness
   , translateType
   , translateXtorSig
-  , computeKind
   ) where
 
 import Control.Monad.Except
@@ -136,19 +135,6 @@ freshTVars (Twice prdArgs cnsArgs) = do
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
   return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
 
----------------------------------------------------------------------------------------------
--- Compute the Kind of a Type.
----------------------------------------------------------------------------------------------
-
-computeKind :: Typ pol -> GenM Kind
-computeKind (TyVar _ kind _) = return kind
-computeKind (TyData _ _ _)   = return $ MonoKind CBV
-computeKind (TyCodata _ _ _) = return $ MonoKind CBN
-computeKind (TyNominal _ tn) = do
-  decl <- lookupTypeName tn
-  return $ data_kind decl
-computeKind (TySet _ kind _) = return kind
-computeKind (TyRec _ _ ty)   = computeKind ty
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment

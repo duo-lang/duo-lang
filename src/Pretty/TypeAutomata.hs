@@ -26,7 +26,7 @@ instance PrettyAnn XtorLabel where
     brackets (pretty labelCnsArity)
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns rts) = intercalateX ";" (catMaybes [printDat <$> maybeDat
+  prettyAnn (MkNodeLabel _ _ maybeDat maybeCodat tns rts) = intercalateX ";" (catMaybes [printDat <$> maybeDat
                                                                           , printCodat <$> maybeCodat
                                                                           , printNominal tns
                                                                           , printNominal rts])

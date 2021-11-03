@@ -8,6 +8,7 @@ module Lookup
   , lookupXtorSig
   , withSTerm
   , withATerm
+  , computeKind
   ) where
 
 import Control.Monad.Except
@@ -22,6 +23,7 @@ import Syntax.CommonTerm
 import Syntax.STerms
 import Syntax.ATerms
 import Syntax.Types
+import Syntax.Kinds
 import Syntax.Program
 import Utils
 
@@ -119,3 +121,18 @@ withATerm fv tm loc tys m = do
   let modifyEnv (env@Environment { defEnv }, rest) =
         (env { defEnv = M.insert fv (tm,loc,tys) defEnv }, rest)
   local modifyEnv m
+
+---------------------------------------------------------------------------------------------
+-- Compute the Kind of a Type.
+---------------------------------------------------------------------------------------------
+
+computeKind :: EnvReader bs a m
+            => Typ pol -> m Kind
+computeKind (TyVar _ kind _) = return kind
+computeKind (TyData _ _ _)   = return $ MonoKind CBV
+computeKind (TyCodata _ _ _) = return $ MonoKind CBN
+computeKind (TyNominal _ tn) = do
+  decl <- lookupTypeName tn
+  return $ data_kind decl
+computeKind (TySet _ kind _) = return kind
+computeKind (TyRec _ _ ty)   = computeKind ty

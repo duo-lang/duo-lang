@@ -160,7 +160,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns _)) = lab gr i
+  let (Just (MkNodeLabel _ kind datSet codatSet tns _)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   resType <- local (visitNode i) $ do
     -- Creating type variables
@@ -187,7 +187,7 @@ nodeToTypeNoCache rep i = do
     let nominals = TyNominal rep <$> S.toList tns
 
     let typs = varL ++ datL ++ codatL ++ nominals
-    return $ case typs of [t] -> t; _ -> TySet rep (error "TODO: Kinds") typs
+    return $ case typs of [t] -> t; _ -> TySet rep kind typs
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr

@@ -9,6 +9,8 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 import Syntax.Types
+    ( DataCodata(..), PolarityRep, Polarity, TypeName )
+import Syntax.Kinds
 import Syntax.CommonTerm
 
 --------------------------------------------------------------------------------
@@ -153,18 +155,19 @@ data XtorLabel = MkXtorLabel
 
 data NodeLabel = MkNodeLabel
   { nl_pol :: Polarity
+  , nl_kind :: Kind
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
   , nl_nominal :: Set TypeName
   , nl_refined :: Set TypeName
   } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> NodeLabel
-emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty S.empty
+emptyNodeLabel :: Polarity -> Kind ->  NodeLabel
+emptyNodeLabel pol kind = MkNodeLabel pol kind Nothing Nothing S.empty S.empty
 
-singleNodeLabel :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
-singleNodeLabel pol Data xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty S.empty
-singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty S.empty
+singleNodeLabel :: Polarity -> Kind -> DataCodata -> Set XtorLabel -> NodeLabel
+singleNodeLabel pol kind Data xtors   = MkNodeLabel pol kind (Just xtors) Nothing S.empty S.empty
+singleNodeLabel pol kind Codata xtors = MkNodeLabel pol kind Nothing (Just xtors) S.empty S.empty
 
 --------------------------------------------------------------------------------
 -- Edge labels for type automata

@@ -54,7 +54,7 @@ createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
 createNodes tvars = createNode <$> (createPairs tvars)
   where
     createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos undefined), (negNode, emptyNodeLabel Neg undefined), (negNode, posNode))
 
     createPairs :: [TVar] -> [(TVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -146,7 +146,7 @@ sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prd
 insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TTA Node
 insertXtors dc pol xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol undefined dc (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType
@@ -158,16 +158,16 @@ insertXtors dc pol xtors = do
 
 insertType :: Typ pol -> TTA Node
 insertType (TyVar rep _ tv) = lookupTVar rep tv
-insertType (TySet rep _ tys) = do
+insertType (TySet rep kind tys) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
+  insertNode newNode (emptyNodeLabel (polarityRepToPol rep) kind)
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
 insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel pol)
+  insertNode newNode (emptyNodeLabel pol undefined)
   let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
       extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
   n <- local (extendEnv rep) (insertType ty)
@@ -179,7 +179,7 @@ insertType (TyCodata polrep _ xtors) = insertXtors Codata (polarityRepToPol polr
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
+  insertNode newNode ((emptyNodeLabel pol undefined) { nl_nominal = S.singleton tn })
   return newNode
 -- insertType ty@(TyData _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 -- insertType ty@(TyCodata _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
