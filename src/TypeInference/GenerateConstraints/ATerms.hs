@@ -82,29 +82,32 @@ If X_1 has nominal type N, then:
 -}
 genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _:_)) = do
   t' <- genConstraintsATerm t
-  tn <- lookupDataDecl xtn
+  tn@NominalDecl{..} <- lookupDataDecl xtn
   checkCorrectness (acase_name <$> cases) tn
   checkExhaustiveness (acase_name <$> cases) tn
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
-  cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
+  (cases',casesXtssNeg,casesXtssPos) <- unzip3 <$> sequence (genConstraintsATermCase retTypeNeg <$> cases)
   im <- asks (inferMode . snd)
   -- Nominal type constraint!!
-  xtorSigs <- case im of
-    InferNominal -> return $ data_xtors tn PosRep
-    InferRefined -> mapM translateXtorSigEmpty $ data_xtors tn PosRep
-  genConstraintsACaseArgs (snd <$> cases') xtorSigs loc
+  case im of
+    InferNominal -> genConstraintsACaseArgs casesXtssNeg (data_xtors PosRep) loc
+    InferRefined -> do
+      xtssEmpty <- mapM translateXtorSigEmpty $ data_xtors PosRep 
+      xtssFull <- mapM translateXtorSigFull $ data_xtors NegRep
+      genConstraintsACaseArgs casesXtssNeg xtssEmpty loc -- empty refinement as lower bound
+      genConstraintsACaseArgs xtssFull casesXtssPos loc -- full refinement as upper bound
   let ty = case im of
-        InferNominal -> TyNominal NegRep (data_name tn)
-        InferRefined -> TyData NegRep (Just $ data_name tn) (snd <$> cases')
+        InferNominal -> TyNominal NegRep data_name
+        InferRefined -> TyData NegRep (Just data_name) casesXtssNeg
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeATerm t') ty)
-  return (Match (loc,retTypePos) t' (fst <$> cases'))
+  return (Match (loc,retTypePos) t' cases')
 
 genConstraintsATerm (Match loc t cases) = do
   t' <- genConstraintsATerm t
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
-  cases' <- sequence (genConstraintsATermCase retTypeNeg <$> cases)
-  addConstraint (SubType (PatternMatchConstraint loc) (getTypeATerm t') (TyData NegRep Nothing (snd <$> cases')))
-  return (Match (loc, retTypePos) t' (fst <$> cases'))
+  (cases',casesXtssNeg,_) <- unzip3 <$> sequence (genConstraintsATermCase retTypeNeg <$> cases)
+  addConstraint (SubType (PatternMatchConstraint loc) (getTypeATerm t') (TyData NegRep Nothing casesXtssNeg))
+  return (Match (loc, retTypePos) t' cases')
 
 {-
 comatch { X_1(x_1,...,x_n) => e_1, ... }
@@ -116,42 +119,48 @@ If X_1 has nominal type N, then:
 - Types of x_1,...,x_n in e_i must correspond with types in declaration of X_i
 -}
 genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _ _:_)) = do
-  tn <- lookupDataDecl xtn
+  tn@NominalDecl{..} <- lookupDataDecl xtn
   checkCorrectness (acase_name <$> cocases) tn
   checkExhaustiveness (acase_name <$> cocases) tn
-  cocases' <- sequence (genConstraintsATermCocase <$> cocases)
+  (cocases',cocasesXtssNeg,cocasesXtssPos) <- unzip3 <$> sequence (genConstraintsATermCocase <$> cocases)
   im <- asks (inferMode . snd)
   -- Nominal type constraint!!
-  xtorSigs <- case im of
-    InferNominal -> return $ data_xtors tn PosRep
-    InferRefined -> mapM translateXtorSigEmpty $ data_xtors tn PosRep
-  genConstraintsACaseArgs (snd <$> cocases') xtorSigs loc
+  case im of
+    InferNominal -> genConstraintsACaseArgs cocasesXtssNeg (data_xtors PosRep) loc
+    InferRefined -> do
+      xtssEmpty <- mapM translateXtorSigEmpty $ data_xtors PosRep
+      xtssFull <- mapM translateXtorSigFull $ data_xtors NegRep
+      genConstraintsACaseArgs cocasesXtssNeg xtssEmpty loc -- empty refinement as lower bound
+      genConstraintsACaseArgs xtssFull cocasesXtssPos loc -- full refinement as upper bound
   let ty = case im of
-        InferNominal -> TyNominal PosRep (data_name tn)
-        InferRefined -> TyCodata PosRep (Just $ data_name tn) (snd <$> cocases')
-  return (Comatch (loc, ty) (fst <$> cocases'))
+        InferNominal -> TyNominal PosRep data_name
+        InferRefined -> TyCodata PosRep (Just data_name) cocasesXtssNeg
+  return (Comatch (loc, ty) cocases')
 
 genConstraintsATerm (Comatch loc cocases) = do
-  cocases' <- sequence (genConstraintsATermCocase <$> cocases)
-  let ty = TyCodata PosRep Nothing (snd <$> cocases')
-  return (Comatch (loc,ty) (fst <$> cocases'))
+  (cocases',cocasesXtssNeg,_) <- unzip3 <$> sequence (genConstraintsATermCocase <$> cocases)
+  let ty = TyCodata PosRep Nothing cocasesXtssNeg
+  return (Comatch (loc,ty) cocases')
 
 genConstraintsATermCase :: Typ Neg
                         -> ACase Parsed
-                        -> GenM (ACase Inferred, XtorSig Neg)
+                        -> GenM (ACase Inferred, XtorSig Neg, XtorSig Pos)
 genConstraintsATermCase retType MkACase { acase_ext, acase_name, acase_args, acase_term } = do
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable . fromMaybeVar) -- Generate type var for each case arg
   acase_term' <- withContext (MkTypArgs argtsPos []) (genConstraintsATerm acase_term) -- Type case term using new type vars
   addConstraint (SubType (CaseConstraint acase_ext) (getTypeATerm acase_term') retType) -- Case type
-  return (MkACase acase_ext acase_name acase_args acase_term', MkXtorSig acase_name (MkTypArgs argtsNeg []))
+  let sigNeg = MkXtorSig acase_name (MkTypArgs argtsNeg [])
+  let sigPos = MkXtorSig acase_name (MkTypArgs argtsPos [])
+  return (MkACase acase_ext acase_name acase_args acase_term', sigNeg, sigPos)
 
 genConstraintsATermCocase :: ACase Parsed
-                          -> GenM (ACase Inferred, XtorSig Neg)
+                          -> GenM (ACase Inferred, XtorSig Neg, XtorSig Pos)
 genConstraintsATermCocase MkACase { acase_ext, acase_name, acase_args, acase_term } = do
   (argtsPos,argtsNeg) <- unzip <$> forM acase_args (freshTVar . ProgramVariable . fromMaybeVar)
   acase_term'<- withContext (MkTypArgs argtsPos []) (genConstraintsATerm acase_term)
-  let sig = MkXtorSig acase_name (MkTypArgs argtsNeg [getTypeATerm acase_term'])
-  return (MkACase acase_ext acase_name acase_args acase_term', sig)
+  let sigNeg = MkXtorSig acase_name (MkTypArgs argtsNeg [getTypeATerm acase_term'])
+  let sigPos = MkXtorSig acase_name (MkTypArgs argtsPos [])
+  return (MkACase acase_ext acase_name acase_args acase_term', sigNeg, sigPos)
 
 genConstraintsACaseArgs :: [XtorSig Neg] -> [XtorSig Pos] -> Loc -> GenM ()
 genConstraintsACaseArgs xtsigs1 xtsigs2 loc = do
