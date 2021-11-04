@@ -49,8 +49,8 @@ instance PrettyAnn UVarProvenance where
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
-  prettyAnn (KindEq k1 k2) =
-    prettyAnn k1 <+> "~" <+> prettyAnn k2
+  prettyAnn (KindEq ann k1 k2) =
+    prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
 
 printUVar :: (TVar, Kind, UVarProvenance) -> Doc Annotation
 printUVar (tv,kind,prov) = prettyAnn tv <+> prettyAnn kind <+> prettyAnn prov

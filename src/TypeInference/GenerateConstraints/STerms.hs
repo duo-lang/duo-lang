@@ -143,7 +143,7 @@ genConstraintsCommand (Apply loc _ tm1 tm2) = do
   let kind1 = getKind ty1'
   let kind2 = getKind ty2'
   addConstraint (SubType (CommandConstraint loc) ty1' ty2')
-  addConstraint (KindEq kind1 kind2)
+  addConstraint (KindEq (CommandConstraint loc) kind1 kind2)
   return (Apply loc (Just kind1) tmInferred1 tmInferred2)
 
 

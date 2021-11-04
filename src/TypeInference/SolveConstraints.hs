@@ -107,7 +107,7 @@ solve (cs:css) = do
     else do
       addToCache cs
       case cs of
-        (KindEq k1 k2) -> do
+        (KindEq _ k1 k2) -> do
           unifyKinds k1 k2
         (SubType _ (TyVar PosRep _ uv) ub) -> do
           newCss <- addUpperBound uv ub
@@ -407,7 +407,7 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _  _)) =
                    , "<:"
                    , ppPrint ty2
                    ]
-subConstraints (KindEq _ _) =
+subConstraints (KindEq _ _ _) =
   throwSolverError ["Unreachable"]
 
 ------------------------------------------------------------------------------

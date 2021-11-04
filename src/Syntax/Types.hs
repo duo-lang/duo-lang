@@ -227,7 +227,7 @@ data ConstraintInfo
 
 data Constraint a =
     SubType a (Typ Pos) (Typ Neg)
-  | KindEq Kind Kind
+  | KindEq a Kind Kind
   deriving (Eq, Ord, Functor)
 
 -- | Information about the provenance of a unification variable.
