@@ -105,12 +105,17 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
   checkExhaustiveness (scase_name <$> cases) tn
   im <- asks (inferMode . snd)
   cases' <- forM cases (\MkSCase {..} -> do
-                           x <- case im of
-                             InferNominal -> sig_args <$> lookupXtorSig scase_name PosRep
-                             InferRefined -> sig_args <$> (translateXtorSigEmpty =<< lookupXtorSig scase_name PosRep)
                            (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                            cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
-                           genConstraintsSCaseArgs fvarsNeg x loc
+                           case im of
+                             InferNominal -> do
+                               x <- sig_args <$> lookupXtorSig scase_name PosRep
+                               genConstraintsSCaseArgs fvarsNeg x loc
+                             InferRefined -> do
+                               x1 <- sig_args <$> (translateXtorSigEmpty =<< lookupXtorSig scase_name PosRep)
+                               x2 <- sig_args <$> (translateXtorSigFull =<< lookupXtorSig scase_name NegRep)
+                               genConstraintsSCaseArgs fvarsNeg x1 loc
+                               genConstraintsSCaseArgs x2 fvarsPos loc
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case (im, rep) of
         (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep (data_name tn))                        rep Nominal (fst <$> cases')
