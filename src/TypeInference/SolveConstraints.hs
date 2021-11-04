@@ -109,6 +109,7 @@ solve (cs:css) = do
       case cs of
         (KindEq _ k1 k2) -> do
           unifyKinds k1 k2
+          solve css
         (SubType _ (TyVar PosRep _ uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
@@ -418,10 +419,9 @@ subConstraints (KindEq _ _ _) =
 solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> KindPolicy -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env im policy = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
-  let kvarSolution = sst_kvars solverState
-  kvarSolution' <- computeKVarSolution policy kvarSolution
-  let tvarSol = zonkVariableState kvarSolution' <$> sst_bounds solverState
+  kvarSolution <- computeKVarSolution policy (sst_kvars solverState)
+  let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return MkSolverResult { tvarSolution = tvarSol
-                        , kvarSolution = kvarSolution'
+                        , kvarSolution = kvarSolution
                         }
 

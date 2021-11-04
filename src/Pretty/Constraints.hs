@@ -83,8 +83,9 @@ printUpperBounds upperbounds =
        , nest 3 (line' <> vsep (prettyAnn <$> upperbounds) <> line') ]
 
 instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds , vst_upperbounds } =
-    vsep [ printLowerBounds vst_lowerbounds
+  prettyAnn VariableState { vst_lowerbounds , vst_upperbounds, vst_kind} =
+    vsep [ "Kind:" <+> prettyAnn vst_kind
+         , printLowerBounds vst_lowerbounds
          , printUpperBounds vst_upperbounds
          ]
 
