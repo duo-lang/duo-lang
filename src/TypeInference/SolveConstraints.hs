@@ -1,6 +1,8 @@
 module TypeInference.SolveConstraints
   ( solveConstraints
   , KindPolicy(..)
+  , zonkSTerm
+  , zonkCommand
   ) where
 
 import Control.Monad.Except
@@ -17,6 +19,7 @@ import Errors
 import Syntax.Types
 import Syntax.Kinds
 import Syntax.CommonTerm (XtorName, FreeVarName)
+import Syntax.STerms
 import Syntax.Program (Environment)
 import Pretty.Pretty
 import Pretty.Types ()
@@ -212,6 +215,31 @@ zonkXtorSig m (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) =
 
 zonkVariableState :: Map KVar Kind -> VariableState -> VariableState
 zonkVariableState m (VariableState lbs ubs k) = VariableState (zonkType m <$> lbs) (zonkType m <$> ubs) (zonkKind m k)
+
+zonkSTerm :: Map KVar Kind -> STerm pc Inferred -> STerm pc Inferred
+zonkSTerm m (BoundVar ext rep idx) = case rep of
+  PrdRep -> case ext of (loc, ty) -> BoundVar (loc, zonkType m ty) PrdRep idx
+  CnsRep -> case ext of (loc, ty) -> BoundVar (loc, zonkType m ty) CnsRep idx
+zonkSTerm m (FreeVar ext rep v) = case rep of
+  PrdRep -> case ext of (loc, ty) -> FreeVar (loc, zonkType m ty) PrdRep v
+  CnsRep -> case ext of (loc, ty) -> FreeVar (loc, zonkType m ty) CnsRep v
+zonkSTerm m (XtorCall ext rep xt (MkXtorArgs prdArgs cnsArgs)) = case rep of
+  PrdRep -> case ext of (loc, ty) -> XtorCall (loc, zonkType m ty) PrdRep xt (MkXtorArgs (zonkSTerm m <$> prdArgs) (zonkSTerm m <$> cnsArgs))
+  CnsRep -> case ext of (loc, ty) -> XtorCall (loc, zonkType m ty) CnsRep xt (MkXtorArgs (zonkSTerm m <$> prdArgs) (zonkSTerm m <$> cnsArgs))
+zonkSTerm m (XMatch ext rep ns cases) = case rep of
+  PrdRep -> case ext of (loc, ty) -> XMatch (loc, zonkType m ty) PrdRep ns (zonkCase m <$> cases)
+  CnsRep -> case ext of (loc, ty) -> XMatch (loc, zonkType m ty) CnsRep ns (zonkCase m <$> cases)
+zonkSTerm m (MuAbs ext rep bs cmd) = case rep of
+  PrdRep -> case ext of (loc, ty) -> MuAbs (loc, zonkType m ty) PrdRep bs (zonkCommand m cmd)
+  CnsRep -> case ext of (loc, ty) -> MuAbs (loc, zonkType m ty) CnsRep bs (zonkCommand m cmd)
+
+zonkCase :: Map KVar Kind -> SCase Inferred -> SCase Inferred
+zonkCase m (MkSCase xt bs cmd) = MkSCase xt bs (zonkCommand m cmd)
+
+zonkCommand :: Map KVar Kind -> Command Inferred -> Command Inferred
+zonkCommand m (Apply ext m_ki prd cns) = Apply ext (zonkKind m <$> m_ki) (zonkSTerm m prd) (zonkSTerm m cns)
+zonkCommand m (Print ext prd) = Print ext (zonkSTerm m prd)
+zonkCommand _ (Done ext) = Done ext
 
 ------------------------------------------------------------------------------
 -- Computing Subconstraints

@@ -16,7 +16,7 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.STerms ( Command, STerm, getTypeSTerm )
 import Syntax.Types
-    ( SolverResult,
+    ( SolverResult (kvarSolution),
       ConstraintSet,
       TypeScheme,
       Typ,
@@ -43,7 +43,7 @@ import TypeInference.GenerateConstraints.STerms
     ( genConstraintsSTerm,
       genConstraintsCommand,
       genConstraintsSTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
+import TypeInference.SolveConstraints
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 import Syntax.ATerms
 
@@ -225,7 +225,7 @@ inferSTermTraced isRec loc fv rep tm = do
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) (infOptsPolicy infopts)
   -- Generate result type
   trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeSTerm tmInferred)
-  return (trace, tmInferred)
+  return (trace, zonkSTerm (kvarSolution solverState) tmInferred)
 
 
 inferSTerm :: IsRec
@@ -247,7 +247,7 @@ checkCmd loc cmd = do
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
   -- Solve the constraints
   solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) (infOptsPolicy infopts)
-  return (constraints, solverResult, cmdInferred)
+  return (constraints, solverResult, zonkCommand (kvarSolution solverResult) cmdInferred)
 
 ---------------------------------------------------------------------------------
 -- Insert Declarations
