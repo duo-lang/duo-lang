@@ -18,6 +18,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
+import TypeInference.Constraints
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

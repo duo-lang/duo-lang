@@ -16,9 +16,7 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.STerms ( Command, STerm, getTypeSTerm )
 import Syntax.Types
-    ( SolverResult,
-      ConstraintSet,
-      TypeScheme,
+    ( TypeScheme,
       Typ,
       PolarityRep(PosRep),
       Polarity(Pos) )
@@ -35,6 +33,7 @@ import TypeAutomata.Minimize ( minimize )
 import TypeAutomata.FromAutomaton ( autToType )
 import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
 import TypeAutomata.Subsume (subsume)
+import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
     ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.ATerms

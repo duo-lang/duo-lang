@@ -43,6 +43,7 @@ import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
+import TypeInference.Constraints
 import qualified TypeTranslation as TT
 import Utils
 

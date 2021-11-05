@@ -23,6 +23,7 @@ import qualified Data.Map as M
 import Data.Graph.Inductive.Graph (Node)
 import qualified Data.Graph.Inductive.Graph as G
 import TypeAutomata.Lint (lint)
+import TypeInference.Constraints
 
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
