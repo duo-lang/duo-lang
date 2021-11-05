@@ -95,6 +95,7 @@ library
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
+      TypeInference.Coalescing
       TypeInference.Driver
       TypeInference.GenerateConstraints.ATerms
       TypeInference.GenerateConstraints.Definition
