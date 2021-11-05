@@ -1,6 +1,6 @@
 module Translate.Focusing where
 
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Syntax.Program ( Declaration(..), Program )
 import Translate.Translate (compileSTerm)

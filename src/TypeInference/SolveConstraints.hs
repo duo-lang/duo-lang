@@ -6,9 +6,9 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (find)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 
 import Errors
 import Syntax.Types

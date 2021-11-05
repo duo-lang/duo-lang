@@ -5,7 +5,7 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Eval.Eval
     ( throwEvalError, lookupEvalOrder, EvalM )

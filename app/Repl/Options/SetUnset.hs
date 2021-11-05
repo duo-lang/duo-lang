@@ -6,7 +6,7 @@ module Repl.Options.SetUnset
 import Control.Monad.State ( modify )
 import Data.List (isPrefixOf, intersperse)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 

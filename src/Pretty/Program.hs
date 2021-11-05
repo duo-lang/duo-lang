@@ -1,6 +1,6 @@
 module Pretty.Program where
 
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Prettyprinter
 
 import Data.List (intersperse)

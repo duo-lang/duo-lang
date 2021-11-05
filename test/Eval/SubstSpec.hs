@@ -1,7 +1,7 @@
 module Eval.SubstSpec ( spec )  where
 
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Test.Hspec
 
 import Parser.Parser

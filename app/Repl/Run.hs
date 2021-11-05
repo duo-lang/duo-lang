@@ -3,10 +3,10 @@ module Repl.Run (runRepl) where
 import Control.Monad.Reader ( forM_ )
 import Control.Monad.State ( gets, StateT(runStateT) )
 import Data.List (isPrefixOf)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 import System.Console.Repline

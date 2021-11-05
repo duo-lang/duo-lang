@@ -6,10 +6,10 @@ module TypeAutomata.Subsume
 
 import Data.Graph.Inductive.Graph
 
-import qualified Data.Set as S
+import Data.Set qualified as S
 
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 
 import Data.Maybe (fromJust)
 import Data.Tuple (swap)

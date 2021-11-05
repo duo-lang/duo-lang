@@ -2,9 +2,9 @@ module TypeInference.Driver where
 
 import Control.Monad.State
 import Control.Monad.Except
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Map qualified as M
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 import Text.Megaparsec hiding (Pos)

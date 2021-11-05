@@ -35,7 +35,7 @@ import Data.Bifunctor
 import Data.Kind (Type)
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Utils
 import Errors

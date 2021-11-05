@@ -3,7 +3,7 @@ module Eval.FocusingSpec ( spec ) where
 import Test.Hspec
 import TestUtils
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Megaparsec (errorBundlePretty)
 
 import Pretty.Pretty

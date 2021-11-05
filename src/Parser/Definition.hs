@@ -8,7 +8,7 @@ module Parser.Definition
 import Control.Applicative (Alternative)
 import Control.Monad.Reader ( MonadPlus, ReaderT(..), MonadReader )
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Void (Void)
 import Data.Text (Text)
 import Text.Megaparsec

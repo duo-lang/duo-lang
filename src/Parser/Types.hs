@@ -11,7 +11,7 @@ module Parser.Types
 
 import Control.Monad.State
 import Control.Monad.Reader
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
