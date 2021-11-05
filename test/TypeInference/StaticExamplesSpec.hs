@@ -2,7 +2,7 @@ module TypeInference.StaticExamplesSpec ( spec )  where
 
 import Control.Monad (forM_)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.FilePath
 import Test.Hspec
 

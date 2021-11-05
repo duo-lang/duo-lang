@@ -3,17 +3,18 @@ module Eval.FocusingSpec ( spec ) where
 import Test.Hspec
 import TestUtils
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Megaparsec (errorBundlePretty)
 
 import Pretty.Pretty
 import Parser.Parser
+import Syntax.Kinds
 import Eval.STerms (eval)
 import Eval.Eval
 import TypeInference.Driver
 import Translate.Translate
 
-evalFocusing :: EvalOrder -> Text -> Text -> Spec
+evalFocusing :: CallingConvention -> Text -> Text -> Spec
 evalFocusing evalOrder cmd cmdRes =
   case runInteractiveParser commandP cmd of
     Left err -> it "Could not parse" $ expectationFailure (ppPrintString (errorBundlePretty err))

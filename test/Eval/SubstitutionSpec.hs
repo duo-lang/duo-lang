@@ -2,8 +2,8 @@ module Eval.SubstitutionSpec where
 
 import Control.Monad (forM_)
 import Data.Either (isLeft, isRight)
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Test.Hspec
 
 

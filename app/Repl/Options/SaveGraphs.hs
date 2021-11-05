@@ -4,7 +4,7 @@ import Control.Monad.State ( MonadIO(liftIO), gets )
 import Data.GraphViz
     ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 

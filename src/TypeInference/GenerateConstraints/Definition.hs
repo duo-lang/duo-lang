@@ -31,8 +31,8 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Text qualified as T
 
 import Errors
 import Lookup
@@ -43,7 +43,8 @@ import Pretty.Types ()
 import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
-import qualified TypeTranslation as TT
+import TypeInference.Constraints
+import TypeTranslation qualified as TT
 import Utils
 
 ---------------------------------------------------------------------------------------------

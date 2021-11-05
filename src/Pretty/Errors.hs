@@ -2,7 +2,7 @@ module Pretty.Errors (printLocatedError) where
 
 import Control.Monad (forM_)
 import Control.Monad.IO.Class
-import qualified Data.Text.IO as T
+import Data.Text.IO qualified as T
 import Prettyprinter
 import Text.Megaparsec.Pos
 

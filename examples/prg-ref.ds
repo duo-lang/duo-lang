@@ -1,6 +1,6 @@
 set refined;
-data Bool { True, False };
-data Nat { S(Nat), Z };
-codata FunBoolBool { Ap(Bool)[Bool] };
+data Bool : Type CBV { True, False };
+data Nat : Type CBV { S(Nat), Z };
+codata FunBoolBool : Type CBN { Ap(Bool)[Bool] };
 
 cns foo := match { True => Print('T) };

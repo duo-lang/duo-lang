@@ -3,11 +3,11 @@ module LSP.LSP where
 
 import Data.IORef
 import Control.Monad.IO.Class (liftIO)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
-import qualified Data.SortedList as SL
+import Data.SortedList qualified as SL
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Version (showVersion)
 import Data.Void ( Void )
 import Language.LSP.VFS ( virtualFileText, VirtualFile )
