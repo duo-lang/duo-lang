@@ -15,7 +15,7 @@ module Lookup
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List
-import qualified Data.Map as M
+import Data.Map qualified as M
 
 
 import Errors

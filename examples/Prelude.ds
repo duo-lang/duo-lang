@@ -1,7 +1,10 @@
 # Standard Prelude
 
+<<<<<<< HEAD
 set CBV;
 
+=======
+>>>>>>> main
 # Bool
 
 data Bool : Type CBV { True, False };

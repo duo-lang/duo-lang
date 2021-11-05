@@ -1,2 +1,8 @@
 cradle:
   stack:
+    - path: "./src"
+      component: "dualsub:lib"
+    - path: "./app"
+      component: "dualsub:exe:dualsub"
+    - path: "./test"
+      component: "dualsub:test:dualsub-test"

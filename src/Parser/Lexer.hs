@@ -56,10 +56,10 @@ module Parser.Lexer
   ) where
 
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char.Lexer qualified as L
 
 import Parser.Definition
 import Syntax.CommonTerm

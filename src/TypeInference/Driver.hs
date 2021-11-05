@@ -2,9 +2,9 @@ module TypeInference.Driver where
 
 import Control.Monad.State
 import Control.Monad.Except
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Map qualified as M
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 import Text.Megaparsec hiding (Pos)
@@ -16,9 +16,7 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.STerms ( Command, STerm, getTypeSTerm )
 import Syntax.Types
-    ( SolverResult (kvarSolution),
-      ConstraintSet,
-      TypeScheme,
+    ( TypeScheme,
       Typ,
       PolarityRep(PosRep),
       Polarity(Pos) )
@@ -35,6 +33,7 @@ import TypeAutomata.Minimize ( minimize )
 import TypeAutomata.FromAutomaton ( autToType )
 import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
 import TypeAutomata.Subsume (subsume)
+import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
     ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.ATerms

@@ -3,7 +3,7 @@ module Parser.ParserSpec ( spec ) where
 import Test.Hspec
 import Data.Either (isLeft)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Parser.Parser
 import Parser.Types

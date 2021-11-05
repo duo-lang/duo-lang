@@ -3,7 +3,11 @@ set refined;
 set CBV;
 
 # Examples for testing type decl translation
+<<<<<<< HEAD
 data Nat  : Type CBV { Z, S(Nat) }; # Natural numbers
+=======
+data Nat : Type CBV { Z, S(Nat) }; # Natural numbers
+>>>>>>> main
 
 data Even : Type CBV { Ze, Se(Odd) }; # Dual mutual recursion
 data Odd  : Type CBV { So(Even) };

@@ -2,7 +2,7 @@ module Translate.FocusingSpec (spec) where
 
 import Control.Monad
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Test.Hspec
 import TestUtils
 import Pretty.Pretty

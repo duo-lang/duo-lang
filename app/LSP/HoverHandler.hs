@@ -6,7 +6,7 @@ module LSP.HoverHandler
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.List (sortBy )
 import System.Log.Logger ( debugM )
 import Pretty.Pretty ( ppPrint )
@@ -16,7 +16,7 @@ import LSP.MegaparsecToLSP ( locToRange )
 import Syntax.Program 
 import Syntax.ATerms
 import Syntax.STerms hiding (Command)
-import qualified Syntax.STerms as STerms
+import Syntax.STerms qualified as STerms
 import Syntax.Types 
 import TypeTranslation 
 import Data.Either (fromRight)

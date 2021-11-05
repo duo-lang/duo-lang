@@ -4,10 +4,10 @@ module LSP.CodeActionHandler (codeActionHandler) where
 import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
-import qualified Data.Map as M 
+import Data.Map qualified as M 
 import Data.Maybe ( fromMaybe )
 import System.Log.Logger ( debugM )
-import qualified Data.HashMap.Strict as Map
+import Data.HashMap.Strict qualified as Map
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
@@ -18,7 +18,7 @@ import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.ATerms
 import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand )
-import qualified Syntax.STerms as Syntax
+import Syntax.STerms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
       inferProgramIO,

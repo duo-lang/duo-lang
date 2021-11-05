@@ -4,8 +4,8 @@ import Control.Monad.State
     ( gets, forM_, StateT, MonadIO(liftIO), modify )
 import Data.Bifunctor (first)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import System.Console.Haskeline.Completion
     ( Completion, CompletionFunc, completeWord )
 import System.Console.Repline ( HaskelineT, abort )
@@ -20,6 +20,7 @@ import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment )
+import Syntax.Kinds ( CallingConvention(CBV) )
 import TypeInference.Driver
 import Translate.Translate
 import Utils (trimStr)

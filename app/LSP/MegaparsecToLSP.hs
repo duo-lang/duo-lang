@@ -1,9 +1,9 @@
 module LSP.MegaparsecToLSP where
 
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Text.Megaparsec
     ( PosState(pstateSourcePos),
       SourcePos(SourcePos),

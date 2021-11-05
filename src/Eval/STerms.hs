@@ -4,7 +4,7 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Eval.Eval
     ( throwEvalError, EvalM )
@@ -13,11 +13,8 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()
 import Syntax.STerms
 import Syntax.Kinds
-    ( Kind(MonoKind, KindVar), CallingConvention(..) ) 
-import Utils ( Twice(..) )
-import Translate.Translate ( compileSTerm )
-
-
+import Utils
+import Translate.Translate
 
 ---------------------------------------------------------------------------------
 -- Symmetric Terms

@@ -4,7 +4,7 @@ import Data.Graph.Inductive.Graph
 import Data.List (intersect, (\\), delete, partition)
 
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 
 import TypeAutomata.Definition
 

@@ -3,7 +3,7 @@ module Translate.TranslateExamplesSpec ( spec ) where
 import Test.Hspec
 import Data.Either (isRight)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Parser.Parser
 import Syntax.STerms

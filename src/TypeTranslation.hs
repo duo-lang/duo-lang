@@ -8,10 +8,10 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Set
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Data.Set qualified as S
+import Data.Text qualified as T
 
 import Errors
 import Lookup

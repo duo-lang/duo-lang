@@ -1,14 +1,16 @@
 module Pretty.Constraints () where
 
 import Prettyprinter
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Text.Megaparsec.Pos
 
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Types
 import Syntax.Kinds
+import TypeInference.Constraints
 import Utils
+
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of constraints, constraint sets and solved constraints.

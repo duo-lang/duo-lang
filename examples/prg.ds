@@ -481,7 +481,10 @@ prd parserTest := comatch { 'Ap(x)[x] => x >> x };
 
 ## Nominal Types
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 data Bool : Type CBV { TT, FF };
 data Nat : Type CBV { Z, S(Nat) };
 codata NatBoolFun : Type CBN { Ap(Nat)[Bool] };

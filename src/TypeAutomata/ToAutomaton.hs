@@ -2,6 +2,7 @@ module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
 
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
+import Syntax.Kinds
 import TypeAutomata.Definition
 import Pretty.Types()
 import Utils
@@ -15,15 +16,15 @@ import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
-import qualified Data.Set as S
-import Syntax.Kinds
+import Data.Set qualified as S
 
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 
 import Data.Graph.Inductive.Graph (Node)
-import qualified Data.Graph.Inductive.Graph as G
+import Data.Graph.Inductive.Graph qualified as G
 import TypeAutomata.Lint (lint)
+import TypeInference.Constraints
 
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad

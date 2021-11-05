@@ -2,7 +2,7 @@ module Syntax.Program where
 
 import Data.Kind (Type)  
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.CommonTerm
