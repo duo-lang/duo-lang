@@ -22,16 +22,21 @@ import Repl.Repl
       fromRight )
 import Syntax.Program ( IsRec(NonRecursive) )
 import Syntax.STerms ( PrdCnsRep(PrdRep) )
-import Syntax.Types ( PolarityRep(PosRep) )
+import Syntax.Types ( PolarityRep(PosRep), TypeScheme (TypeScheme) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
-import TypeAutomata.ToAutomaton (typeToAut)
+import TypeAutomata.RemoveEpsilon ( removeEpsilonEdges )
+import TypeAutomata.Determinize ( determinize )
+import TypeAutomata.Simplify
+    ( simplify,
+      SimplifyTrace(..)
+    )
 import TypeInference.Driver
     ( execDriverM,
       DriverState(DriverState),
       inferATermTraced,
       inferSTermTraced,
-      TypeInferenceTrace(trace_typeAut, trace_typeAutDet,
-                         trace_typeAutDetAdms, trace_minTypeAut, trace_resType) )
+      TypeInferenceTrace(..)
+    )
 import Utils
 
 -- Save
@@ -42,36 +47,36 @@ saveCmd s = do
   opts <- gets typeInfOpts
   case runInteractiveParser (typeSchemeP PosRep) s of
     Right ty -> do
-      aut <- fromRight (typeToAut ty)
-      saveGraphFiles "gr" aut
+      (trace, tySimplified) <- fromRight (simplify ty)
+      saveFromTrace trace tySimplified
     Left err1 -> case runInteractiveParser (stermP PrdRep) s of
       Right (tloc,loc) -> do
         let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
-          Right trace -> saveFromTrace trace
+          Right trace -> saveFromTrace (trace_automata trace) (trace_resType trace)
           Left err2 -> case runInteractiveParser atermP s of
             Right (tloc,loc) -> do
               let inferenceAction = fst <$> inferATermTraced NonRecursive (Loc loc loc) "" tloc
               traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
               trace <- fromRight $ fst <$> traceEither
-              saveFromTrace trace
+              saveFromTrace (trace_automata trace) (trace_resType trace)
             Left err3 -> saveParseError (errorBundlePretty err1) err2 (errorBundlePretty err3)
       Left err2 -> case runInteractiveParser atermP s of
         Right (tloc,loc) -> do
           let inferenceAction = fst <$> inferATermTraced NonRecursive (Loc loc loc) "" tloc
           traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
           trace <- fromRight $ fst <$> traceEither
-          saveFromTrace trace
+          saveFromTrace (trace_automata trace) (trace_resType trace)
         Left err3 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2) (errorBundlePretty err3)
 
-saveFromTrace :: TypeInferenceTrace pol -> Repl ()
-saveFromTrace trace = do
+saveFromTrace :: SimplifyTrace pol -> TypeScheme pol -> Repl ()
+saveFromTrace trace tys = do
   saveGraphFiles "0_typeAut" (trace_typeAut trace)
   saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
   saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
   saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-  prettyText (" :: " <> ppPrint (trace_resType trace))
+  prettyText (" :: " <> ppPrint tys)
 
 saveParseError :: PrettyAnn a => String -> a -> String -> Repl ()
 saveParseError e1 e2 e3 = do

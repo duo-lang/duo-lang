@@ -18,24 +18,19 @@ import Syntax.STerms ( Command, STerm, getTypeSTerm )
 import Syntax.Types
     ( TypeScheme,
       Typ,
-      PolarityRep(PosRep),
-      Polarity(Pos) )
+      Polarity(Pos)
+      , generalize )
 import Syntax.Program
     ( Environment(..),
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
-import TypeAutomata.ToAutomaton ( solverStateToTypeAut )
-import TypeAutomata.Definition ( TypeAutDet, TypeAut )
-import TypeAutomata.Determinize ( determinize )
-import TypeAutomata.Lint (lint)
-import TypeAutomata.Minimize ( minimize )
-import TypeAutomata.FromAutomaton ( autToType )
-import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
+import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
+import TypeInference.Coalescing ( coalesce, zonk )
 import TypeInference.GenerateConstraints.Definition
-    ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
+    ( PrdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.ATerms
     ( genConstraintsATerm, genConstraintsATermRecursive )
 import TypeInference.GenerateConstraints.STerms
@@ -138,36 +133,23 @@ liftEitherErr loc x = case x of
 data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
   , trace_solvedConstraints :: SolverResult
-  , trace_typeAut :: TypeAut pol
-  , trace_typeAutDet :: TypeAutDet pol
-  , trace_typeAutDetAdms :: TypeAutDet pol
-  , trace_minTypeAut :: TypeAutDet pol
+  , trace_automata :: SimplifyTrace pol
   , trace_resType :: TypeScheme pol
   }
 
-generateTypeInferenceTrace :: PolarityRep pol
-                           -> ConstraintSet
+generateTypeInferenceTrace :: ConstraintSet
                            -> SolverResult
                            -> Typ pol
                            -> Either Error (TypeInferenceTrace pol)
-generateTypeInferenceTrace rep constraintSet solverState typ = do
-  typeAut <- solverStateToTypeAut solverState rep typ
-  lint typeAut
-  let typeAutDet = determinize typeAut
-  lint typeAutDet
-  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-  lint typeAutDetAdms
-  let minTypeAut = minimize typeAutDetAdms
-  lint minTypeAut
-  resType <- autToType minTypeAut
+generateTypeInferenceTrace constraintSet solverResult typ = do
+  let bisubst = coalesce solverResult
+  let typ' = zonk bisubst typ
+  (trace, tys) <- simplify (generalize typ')
   return TypeInferenceTrace
     { trace_constraintSet = constraintSet
-    , trace_solvedConstraints = solverState
-    , trace_typeAut = typeAut
-    , trace_typeAutDet = typeAutDet
-    , trace_typeAutDetAdms = typeAutDetAdms
-    , trace_minTypeAut = minTypeAut
-    , trace_resType = resType
+    , trace_solvedConstraints = solverResult
+    , trace_automata = trace
+    , trace_resType = tys
     }
 
 ------------------------------------------------------------------------------
@@ -190,7 +172,7 @@ inferATermTraced isRec loc fv tm = do
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace PosRep constraintSet solverState (getTypeATerm tmInferred)
+  trace <- liftEitherErr loc $ generateTypeInferenceTrace constraintSet solverState (getTypeATerm tmInferred)
   return (trace, tmInferred)
 
 inferATerm :: IsRec
@@ -222,7 +204,7 @@ inferSTermTraced isRec loc fv rep tm = do
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeSTerm tmInferred)
+  trace <- liftEitherErr loc $ generateTypeInferenceTrace constraintSet solverState (getTypeSTerm tmInferred)
   return (trace, tmInferred)
 
 

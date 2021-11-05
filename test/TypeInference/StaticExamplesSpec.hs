@@ -15,6 +15,9 @@ import Syntax.Types
 import Syntax.Program
 import TypeInference.Driver
 import TypeAutomata.ToAutomaton
+import TypeAutomata.Determinize
+import TypeAutomata.RemoveEpsilon
+import TypeAutomata.Simplify
 import TypeAutomata.Subsume (typeAutEqual)
 import Utils
 
@@ -27,9 +30,9 @@ typecheckExample env termS typS = do
       let Right (term,loc) = runInteractiveParser (stermP PrdRep) termS
       let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep term
       inferenceResult <- execDriverM (DriverState defaultInferenceOptions env) inferenceAction
-      let Right inferredTypeAut = trace_minTypeAut. fst <$> inferenceResult
+      let Right inferredTypeAut = trace_minTypeAut . trace_automata . fst <$> inferenceResult
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
-      let Right specTypeAut = typeToAut specTypeScheme
+      let Right specTypeAut = (determinize . removeEpsilonEdges) <$> typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
 prgExamples :: [(Text,Text)]
