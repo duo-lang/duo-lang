@@ -5,13 +5,15 @@ module Eval.STerms
   ) where
 
 import Data.List (find)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Eval.Eval
-import Lookup
-import Pretty.Pretty
+    ( throwEvalError, lookupEvalOrder, EvalM )
+import Lookup ( lookupSTerm )
+import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()
 import Syntax.STerms
+import Syntax.Kinds
 import Utils
 import Translate.Translate
 
@@ -166,7 +168,7 @@ evalSteps cmd = evalSteps' [cmd] cmd
 -- | Helper functions for CBV evaluation of match and comatch
     
 -- | Replace currently evaluated MuAbs-argument in Xtor with bound variable and give the searched mu-term out
-replaceMu :: EvalOrder -> XtorArgs Compiled -> (XtorArgs Compiled, Either (STerm Prd Compiled) (STerm Cns Compiled))
+replaceMu :: CallingConvention -> XtorArgs Compiled -> (XtorArgs Compiled, Either (STerm Prd Compiled) (STerm Cns Compiled))
 replaceMu order MkXtorArgs { prdArgs, cnsArgs }
   | not (all (isSubstPrd order) prdArgs) = 
       case replaceMuPrd order prdArgs of 
@@ -175,7 +177,7 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
       case replaceMuCns order cnsArgs of 
         (newCns, mu) -> (MkXtorArgs prdArgs newCns, mu)
   where
-    replaceMuPrd :: EvalOrder -> [STerm Prd Compiled] -> ([STerm Prd Compiled], Either (STerm Prd Compiled) (STerm Cns Compiled))
+    replaceMuPrd :: CallingConvention -> [STerm Prd Compiled] -> ([STerm Prd Compiled], Either (STerm Prd Compiled) (STerm Cns Compiled))
     replaceMuPrd CBV   (mu@(MuAbs ext _ _ _) : prdArgs) = 
       ((BoundVar ext PrdRep (0,0) : prdArgs), Left mu)
     replaceMuPrd order (xtor@(XtorCall ext PrdRep xt args@(MkXtorArgs { prdArgs, cnsArgs })) : ts) 
@@ -197,7 +199,7 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
     replaceMuPrd _ [] =
       error "Couldn't find and replace a (tilde) mu abstraction, but should have!"
 
-    replaceMuCns :: EvalOrder -> [STerm Cns Compiled] ->  ([STerm Cns Compiled],  Either (STerm Prd Compiled) (STerm Cns Compiled))
+    replaceMuCns :: CallingConvention -> [STerm Cns Compiled] ->  ([STerm Cns Compiled],  Either (STerm Prd Compiled) (STerm Cns Compiled))
     replaceMuCns CBN   (mu@(MuAbs ext _ _ _) : cnsArgs) =
       ((BoundVar ext CnsRep (0,0) : cnsArgs), Right mu)
     replaceMuCns order (xtor@(XtorCall ext CnsRep xt args@(MkXtorArgs { prdArgs, cnsArgs })) : ts)
@@ -221,12 +223,12 @@ replaceMu order MkXtorArgs { prdArgs, cnsArgs }
 
 -- | Checks wether all producer arguments are substitutable.
 -- | The evaluation order determines which arguments are substitutable.
-areAllSubst :: EvalOrder -> XtorArgs ext -> Bool
+areAllSubst :: CallingConvention -> XtorArgs ext -> Bool
 areAllSubst order (MkXtorArgs { prdArgs, cnsArgs }) =
   all (isSubstPrd order) prdArgs && all (isSubstCns order) cnsArgs
 
 -- | subst every producer argument, not containing any mu-abstractions
-isSubstPrd :: EvalOrder -> STerm Prd ext -> Bool
+isSubstPrd :: CallingConvention -> STerm Prd ext -> Bool
 isSubstPrd _   (BoundVar _ _ _) = True
 isSubstPrd _   (FreeVar _ _ _)  = True
 isSubstPrd ord (XtorCall _ _ _ args) = areAllSubst ord args
@@ -235,7 +237,7 @@ isSubstPrd CBV (MuAbs _ _ _ _)  = False
 isSubstPrd CBN (MuAbs _ _ _ _)  = True
 
 -- | subst every producer argument, not containing any ~mu-abstractions
-isSubstCns :: EvalOrder -> STerm Cns ext -> Bool
+isSubstCns :: CallingConvention -> STerm Cns ext -> Bool
 isSubstCns _   (BoundVar _ _ _) = True
 isSubstCns _   (FreeVar _ _ _)  = True
 isSubstCns ord (XtorCall _ _ _ args) = areAllSubst ord args

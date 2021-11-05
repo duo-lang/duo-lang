@@ -7,9 +7,11 @@ module Eval.ATerms
 import Data.List (find)
 import Data.Maybe (fromJust)
 
-import Lookup
+import Lookup ( lookupATerm )
 import Eval.Eval
+    ( throwEvalError, lookupEvalOrder, EvalM)
 import Syntax.ATerms
+import Syntax.Kinds
 import Translate.Translate
 
 ---------------------------------------------------------------------------------
@@ -37,7 +39,7 @@ evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
-evalATermSingleStep' :: ATerm Compiled -> EvalOrder -> EvalM (Maybe (ATerm Compiled))
+evalATermSingleStep' :: ATerm Compiled -> CallingConvention -> EvalM (Maybe (ATerm Compiled))
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupATerm fv

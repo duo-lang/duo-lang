@@ -6,7 +6,7 @@ module Repl.Options.LoadReload
 import Control.Monad.IO.Class ( MonadIO(liftIO) ) 
 import Control.Monad.State ( forM_, gets )
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Console.Repline ( fileCompleter )
 
 import Parser.Parser ( programP )

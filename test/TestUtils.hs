@@ -1,8 +1,8 @@
 module TestUtils where
 
 import Data.Bifunctor (first)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
 import Text.Megaparsec (errorBundlePretty)
 

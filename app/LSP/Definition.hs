@@ -7,7 +7,7 @@ import Data.Map (Map)
 import Data.IORef
 import Language.LSP.Server
 import Language.LSP.Types
-import qualified Data.Text as T
+import Data.Text qualified as T
 ---------------------------------------------------------------------------------
 -- LSPMonad and Utility Functions
 ---------------------------------------------------------------------------------

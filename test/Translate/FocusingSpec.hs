@@ -2,7 +2,7 @@ module Translate.FocusingSpec (spec) where
 
 import Control.Monad
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Test.Hspec
 import TestUtils
 import Pretty.Pretty
@@ -11,9 +11,9 @@ import TypeInference.Driver
 import Translate.Translate
 import Parser.Parser
 import Syntax.STerms
+import Syntax.Kinds
 import Syntax.Program
 import Translate.Focusing
-import Eval.Eval
 
 import Unsafe.Coerce (unsafeCoerce)
 

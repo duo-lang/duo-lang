@@ -1,8 +1,8 @@
 # Examples which illustrate type annotations on toplevel declarations.
 
-data Nat { Zero, Succ(Nat) };
+data Nat : Type CBV { Zero, Succ(Nat) };
 
-codata NatFun { Ap(Nat)[Nat] };
+codata NatFun : Type CBN { Ap(Nat)[Nat] };
 
 # Symmetric system:
 

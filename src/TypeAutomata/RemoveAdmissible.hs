@@ -14,7 +14,7 @@ import Control.Monad (guard, forM_)
 import Data.List (delete, find)
 import Data.Tuple (swap)
 import Data.Maybe (isJust)
-import qualified Data.Set as S
+import Data.Set qualified as S
 
 ----------------------------------------------------------------------------------------
 -- Removal of admissible flow edges.

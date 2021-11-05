@@ -3,7 +3,7 @@ module Repl.Options.Let (letOption) where
 import Control.Monad.State ( gets, MonadIO(liftIO) )
 import Data.Bifunctor ( Bifunctor(first) )
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Megaparsec ( errorBundlePretty )
 
 import Parser.Parser ( runInteractiveParser, declarationP )

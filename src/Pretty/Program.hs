@@ -1,6 +1,6 @@
 module Pretty.Program where
 
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Prettyprinter
 
 import Data.List (intersperse)
@@ -23,9 +23,11 @@ instance PrettyAnn DataCodata where
   prettyAnn Codata = annKeyword "codata"
 
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl tn dc xtors) =
+  prettyAnn (NominalDecl tn dc knd xtors) =
     prettyAnn dc <+>
     prettyAnn tn <+>
+    colon <+>
+    prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
     semi
 

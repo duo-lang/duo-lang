@@ -11,6 +11,7 @@ import Pretty.Types ()
 import Syntax.STerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
+import TypeInference.Constraints
 import Utils
 import Lookup
 
