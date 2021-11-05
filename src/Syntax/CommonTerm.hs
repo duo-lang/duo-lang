@@ -1,6 +1,17 @@
 module Syntax.CommonTerm where
 
 import Data.Text (Text)
+
+---------------------------------------------------------------------------------
+-- Phases
+---------------------------------------------------------------------------------
+
+data Phase where
+  Parsed :: Phase
+  Inferred :: Phase
+  Compiled :: Phase
+  deriving (Show, Eq, Ord)
+
 ---------------------------------------------------------------------------------
 -- Tags
 ---------------------------------------------------------------------------------
@@ -24,6 +35,7 @@ type family FlipPrdCns (pc :: PrdCns) :: PrdCns where
 flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
 flipPrdCns PrdRep = CnsRep
 flipPrdCns CnsRep = PrdRep
+
 
 ---------------------------------------------------------------------------------
 -- Names

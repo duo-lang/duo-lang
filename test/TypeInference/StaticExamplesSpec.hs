@@ -21,11 +21,11 @@ import Utils
 instance Show (TypeScheme pol) where
   show = ppPrintString
 
-typecheckExample :: Environment FreeVarName -> Text -> Text -> Spec
+typecheckExample :: Environment -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,loc) = runInteractiveParser (stermP PrdRep) termS
-      let inferenceAction = inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep term
+      let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep term
       inferenceResult <- execDriverM (DriverState defaultInferenceOptions env) inferenceAction
       let Right inferredTypeAut = trace_minTypeAut. fst <$> inferenceResult
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
@@ -34,23 +34,23 @@ typecheckExample env termS typS = do
 
 prgExamples :: [(Text,Text)]
 prgExamples = 
-    [ ( "\\(x)[k] => x >> k"
+    [ ( "comatch { 'Ap(x)[k] => x >> k }"
         , "forall a. { 'Ap(a)[a] }" )
     , ( "'S('Z)"
         , "< 'S(< 'Z >) >" )
-    , ( "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
+    , ( "comatch { 'Ap(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }}"
         , "forall a. { 'Ap(< 'True | 'False >, a, a)[a] }" )
-    , ( "\\(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }"
+    , ( "comatch { 'Ap(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }}"
         , "forall a b. { 'Ap(<'True|'False>, a, b)[a \\/ b] }" )
-    , ( "\\(f)[k] => (\\(x)[k] => f >> 'Ap(x)[mu y. f >> 'Ap(y)[k]]) >> k"
+    , ( "comatch { 'Ap(f)[k] => (comatch { 'Ap(x)[k] => f >> 'Ap(x)[mu y. f >> 'Ap(y)[k]]}) >> k}"
         , "forall a b. { 'Ap({ 'Ap(a \\/ b)[b] })[{ 'Ap(a)[b] }] }" )
 
     -- Nominal Examples
-    , ( "\\(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }"
+    , ( "comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }}"
         , "{ 'Ap(Bool)[Bool] }" )
-    , ( "\\(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }"
+    , ( "comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }}"
         , "{ 'Ap(Bool)[(Bool \\/ Nat)] }" )
-    , ( "\\(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }"
+    , ( "comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }}"
         , "{ 'Ap(Bool)[(Nat \\/ Bool)] }" )
 
     -- addNominal

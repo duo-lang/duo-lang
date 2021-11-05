@@ -1,32 +1,33 @@
 set refined;
+
 data L : Type CBV { Atom, NegAtom };
 data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
 data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };
 
-def rec nnf := comatch { 'Ap(f) => match f with {
-    Lit(a)   => match a with { 
-      Atom    => Lit(Atom), 
-      NegAtom => Lit(NegAtom) 
-    },
-    And(p,q) => And(nnf.'Ap(p), nnf.'Ap(q)),
-    Or(p,q)  => Or(nnf.'Ap(p), nnf.'Ap(q)),
-    Imp(p,q) => Or(nnf.'Ap(Not(p)), nnf.'Ap(q)),
-    Not(x)   => match x with {
-      Lit(a)   => match a with {
-        Atom    => Lit(NegAtom),
-        NegAtom => Lit(Atom)
-      },
-      Not(p)   => nnf.'Ap(p),
-      And(p,q) => Or(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
-      Or(p,q)  => And(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
-      Imp(p,q) => And(nnf.'Ap(p), nnf.'Ap(Not(q)))
-    }
-}};
+# def rec nnf := comatch { 'Ap(f) => match f with {
+#     Lit(a)   => match a with { 
+#       Atom    => Lit(Atom), 
+#       NegAtom => Lit(NegAtom) 
+#     },
+#     And(p,q) => And(nnf.'Ap(p), nnf.'Ap(q)),
+#     Or(p,q)  => Or(nnf.'Ap(p), nnf.'Ap(q)),
+#     Imp(p,q) => Or(nnf.'Ap(Not(p)), nnf.'Ap(q)),
+#     Not(x)   => match x with {
+#       Lit(a)   => match a with {
+#         Atom    => Lit(NegAtom),
+#         NegAtom => Lit(Atom)
+#       },
+#       Not(p)   => nnf.'Ap(p),
+#       And(p,q) => Or(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
+#       Or(p,q)  => And(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
+#       Imp(p,q) => And(nnf.'Ap(p), nnf.'Ap(Not(q)))
+#     }
+# }};
 
-def nnf2dnf := comatch { 'Ap(f) => match f with {
-		Lit(a)   => SetSet,
-		Or(p,q)  => SetSet,  ## Union(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q)),
-		And(p,q) => SetSet   ## Distrib(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q))
-}};
+# def nnf2dnf := comatch { 'Ap(f) => match f with {
+# 		Lit(a)   => SetSet,
+# 		Or(p,q)  => SetSet,  ## Union(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q)),
+# 		And(p,q) => SetSet   ## Distrib(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q))
+# }};
 
-def dnf := comatch { 'Ap(f) => nnf2dnf.'Ap(nnf.'Ap(f)) };
+# def dnf := comatch { 'Ap(f) => nnf2dnf.'Ap(nnf.'Ap(f)) };

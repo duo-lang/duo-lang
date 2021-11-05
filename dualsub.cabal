@@ -104,7 +104,6 @@ library
       TypeTranslation
       Utils
       Translate.Translate
-      Translate.TranslateProgram
       Translate.Focusing
   other-modules:
       Paths_dualsub

@@ -11,10 +11,8 @@ import Pretty.STerms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
-import Syntax.CommonTerm
 import Syntax.STerms
 import Syntax.ATerms
-import Utils (Loc)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -62,14 +60,14 @@ prettyDefDecl Recursive    fv annot ptm =
 prettyDefDecl NonRecursive fv annot ptm =
   annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
-instance PrettyAnn a => PrettyAnn (Declaration a b) where
-  prettyAnn (PrdDecl isRec _ fv annot tm) =
+instance PrettyAnn (Declaration ext) where
+  prettyAnn (PrdDecl _ isRec fv annot tm) =
     prettyPrdDecl isRec fv annot (prettyAnn tm)
-  prettyAnn (CnsDecl isRec _ fv annot tm) =
+  prettyAnn (CnsDecl _ isRec fv annot tm) =
     prettyCnsDecl isRec fv annot (prettyAnn tm)
   prettyAnn (CmdDecl _ fv cm) =
     prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (DefDecl isRec _ fv annot tm) =
+  prettyAnn (DefDecl _ isRec fv annot tm) =
     prettyDefDecl isRec fv annot (prettyAnn tm)
   prettyAnn (DataDecl _ decl) =
     prettyAnn decl
@@ -81,14 +79,14 @@ instance PrettyAnn a => PrettyAnn (Declaration a b) where
     "<ParseError>"
 
 
-instance PrettyAnn (NamedRep (Declaration FreeVarName b)) where
-  prettyAnn (NamedRep (PrdDecl isRec _ fv annot tm)) =
+instance PrettyAnn (NamedRep (Declaration ext)) where
+  prettyAnn (NamedRep (PrdDecl _ isRec fv annot tm)) =
     prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
-  prettyAnn (NamedRep (CnsDecl isRec _ fv annot tm)) =
+  prettyAnn (NamedRep (CnsDecl _ isRec fv annot tm)) =
     prettyCnsDecl isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
-  prettyAnn (NamedRep (DefDecl isRec _ fv annot tm)) =
+  prettyAnn (NamedRep (DefDecl _ isRec fv annot tm)) =
     prettyDefDecl isRec fv annot (prettyAnn (openATermComplete tm))
   prettyAnn (NamedRep (DataDecl _ decl)) =
     prettyAnn decl
@@ -100,14 +98,17 @@ instance PrettyAnn (NamedRep (Declaration FreeVarName b)) where
     "<ParseError>"
 
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration FreeVarName Loc] where
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
+  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
+
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (Environment bs) where
+instance PrettyAnn Environment where
   prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
     vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
     where

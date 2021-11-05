@@ -2,7 +2,6 @@ module Eval.FocusingSpec ( spec ) where
 
 import Test.Hspec
 import TestUtils
-import Data.Bifunctor
 import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Megaparsec (errorBundlePretty)
@@ -13,7 +12,7 @@ import Syntax.Kinds
 import Eval.STerms (eval)
 import Eval.Eval
 import TypeInference.Driver
-
+import Translate.Translate
 
 evalFocusing :: CallingConvention -> Text -> Text -> Spec
 evalFocusing evalOrder cmd cmdRes =
@@ -25,11 +24,11 @@ evalFocusing evalOrder cmd cmdRes =
       case prgEnv of
         Left err -> it "Could not load prg.ds" $ expectationFailure (ppPrintString err)
         Right prgEnv -> do
-          case runEval (eval $ first (const ()) cmd') evalOrder prgEnv of
+          case runEval (eval $ compileCmd cmd') evalOrder prgEnv of
             Left err -> it "Could not evaluate" $ expectationFailure (ppPrintString err)
             Right b ->
               it (T.unpack (cmd <>  " evaluates to: " <> cmdRes)) $ do
-              b `shouldBe` first (const ()) cmdRes'
+              b `shouldBe` compileCmd cmdRes'
 
 
 cbvExamples :: [Spec]

@@ -8,10 +8,10 @@ import Text.Megaparsec (errorBundlePretty)
 
 import Errors
 import Parser.Parser
-import Syntax.CommonTerm (FreeVarName)
+import Syntax.CommonTerm
 import Syntax.Program
 import TypeInference.Driver
-import Utils ( Located(Located), Loc )
+import Utils ( Located(Located) )
 
 
 getAvailableCounterExamples :: IO [FilePath]
@@ -24,12 +24,12 @@ getAvailableExamples fp = do
   examples <- listDirectory fp
   return ((fp ++) <$> examples)
 
-getParsedDeclarations :: FilePath -> IO (Either Error [Declaration FreeVarName Loc])
+getParsedDeclarations :: FilePath -> IO (Either Error [Declaration Parsed])
 getParsedDeclarations fp = do
   s <- T.readFile fp
   return (first (ParseError . T.pack . errorBundlePretty) (runFileParser fp programP s))
 
-getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment FreeVarName))
+getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error Environment)
 getEnvironment fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of

@@ -11,14 +11,14 @@ import Lookup ( lookupATerm )
 import Eval.Eval
     ( throwEvalError, lookupEvalOrder, EvalM)
 import Syntax.ATerms
-    ( atermOpening, ACase(MkACase, acase_name, acase_term), ATerm(..) )
-import Syntax.Kinds ( CallingConvention(CBV, CBN) )
+import Syntax.Kinds
+import Translate.Translate
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------
 
-isValue :: ATerm () bs -> Bool
+isValue :: ATerm Compiled -> Bool
 isValue (BVar _ _) = True
 isValue (FVar _ _) = False
 isValue (Ctor _ _ args) = and (isValue <$> args)
@@ -26,7 +26,7 @@ isValue (Dtor _ _ _ _) = False
 isValue (Match _ _ _ ) = False
 isValue (Comatch _ _) = True
 
-isWHNF :: ATerm () bs -> Bool
+isWHNF :: ATerm Compiled -> Bool
 isWHNF (BVar _ _) = True
 isWHNF (FVar _ _) = False
 isWHNF (Ctor _ _ _) = True
@@ -34,16 +34,16 @@ isWHNF (Dtor _ _ _ _) = False
 isWHNF (Match _ _ _ ) = False
 isWHNF (Comatch _ _) = True
 
-evalArgsSingleStep :: [ATerm () bs] -> EvalM bs (Maybe [ATerm () bs])
+evalArgsSingleStep :: [ATerm Compiled] -> EvalM (Maybe [ATerm Compiled])
 evalArgsSingleStep [] = return Nothing
 evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args 
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
-evalATermSingleStep' :: ATerm () bs -> CallingConvention -> EvalM bs (Maybe (ATerm () bs))
+evalATermSingleStep' :: ATerm Compiled -> CallingConvention -> EvalM (Maybe (ATerm Compiled))
 evalATermSingleStep' (BVar _ _) _ = return Nothing
 evalATermSingleStep' (FVar _ fv) _ = do
   (tm,_) <- lookupATerm fv
-  return (Just tm)
+  return (Just (compileATerm tm))
 evalATermSingleStep' (Ctor _ xt args) _ | and (isValue <$> args) = return Nothing
                                         | otherwise = evalArgsSingleStep args >>= 
                                                       \args' -> return (Just (Ctor () xt (fromJust args')))
@@ -72,13 +72,13 @@ evalATermSingleStep' (Dtor _ _ _ _) _ = throwEvalError ["unreachable if properly
 evalATermSingleStep' (Comatch _ _) _ = return Nothing
 
 -- | Choose the correct evaluation strategy
-evalATermSingleStep :: ATerm () bs -> EvalM bs (Maybe (ATerm () bs))
+evalATermSingleStep :: ATerm Compiled -> EvalM (Maybe (ATerm Compiled))
 evalATermSingleStep t = do
   order <- lookupEvalOrder
   evalATermSingleStep' t order
 
 -- | Return just thef final evaluation result
-evalATermComplete :: ATerm () bs -> EvalM bs (ATerm () bs)
+evalATermComplete :: ATerm Compiled -> EvalM (ATerm Compiled)
 evalATermComplete t = do
   t' <- evalATermSingleStep t
   case t' of
@@ -86,10 +86,10 @@ evalATermComplete t = do
     Just t'' -> evalATermComplete t''
 
 -- | Return all intermediate evaluation results
-evalATermSteps :: ATerm () bs -> EvalM bs [ATerm () bs]
+evalATermSteps :: ATerm Compiled -> EvalM [ATerm Compiled]
 evalATermSteps t = evalATermSteps' [t] t
   where
-    evalATermSteps' :: [ATerm () bs] -> ATerm () bs -> EvalM bs [ATerm () bs]
+    evalATermSteps' :: [ATerm Compiled] -> ATerm Compiled -> EvalM [ATerm Compiled]
     evalATermSteps' ts t = do
       t' <- evalATermSingleStep t
       case t' of
