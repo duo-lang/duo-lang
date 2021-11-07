@@ -24,9 +24,7 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
-  , translateTypeFull
   , translateXtorSigFull
-  , translateTypeEmpty
   , translateXtorSigEmpty
   ) where
 
@@ -203,14 +201,6 @@ checkExhaustiveness matched decl = do
       forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
-
--- | Recursively translate a nominal type to a complete refinement type
-translateTypeFull :: Typ pol -> GenM (Typ pol)
-translateTypeFull ty = do
-  env <- asks fst
-  case TT.translateType env ty of
-    Left err -> throwError err
-    Right ty' -> return ty'
 
 -- | Recursively translate types in xtor signature to complete refinement types
 translateXtorSigFull :: XtorSig pol -> GenM (XtorSig pol)
