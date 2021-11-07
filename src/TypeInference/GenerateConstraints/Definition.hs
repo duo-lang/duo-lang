@@ -25,7 +25,9 @@ module TypeInference.GenerateConstraints.Definition
   , checkCorrectness
   , checkExhaustiveness
   , translateXtorSigUpper
+  , translateTypeUpper
   , translateXtorSigLower
+  , translateTypeLower
   ) where
 
 import Control.Monad.Except
@@ -172,11 +174,27 @@ translateXtorSigUpper xts = do
     Left err -> throwError err
     Right xts' -> return xts'
 
+-- | Recursively translate a nominal type to an upper bound refinement type
+translateTypeUpper :: Typ Neg -> GenM (Typ Neg)
+translateTypeUpper ty = do
+  env <- asks fst
+  case TT.translateTypeUpper env ty of
+    Left err -> throwError err
+    Right xts' -> return xts'
+
 -- | Recursively translate types in xtor signature to lower bound refinement types
 translateXtorSigLower :: XtorSig Pos -> GenM (XtorSig Pos)
 translateXtorSigLower xts = do
   env <- asks fst
   case TT.translateXtorSigLower env xts of
+    Left err -> throwError err
+    Right xts' -> return xts'
+
+-- | Recursively translate a nominal type to a lower bound refinement type
+translateTypeLower :: Typ Pos -> GenM (Typ Pos)
+translateTypeLower ty = do
+  env <- asks fst
+  case TT.translateTypeLower env ty of
     Left err -> throwError err
     Right xts' -> return xts'
 
