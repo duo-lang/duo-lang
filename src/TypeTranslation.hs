@@ -97,9 +97,8 @@ translateTypeUpper' (TyNominal pr tn) = do
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ data_xtors pr
         return $ TyRec pr tv $ TyData pr (Just tn) xtss
       Codata -> do
-        -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigLower') $ data_xtors $ flipPolarityRep pr
-        return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
+        -- Upper bound translation of codata is empty
+        return $ TyRec pr tv $ TyCodata pr (Just tn) []
 translateTypeUpper' tv@TyVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -129,9 +128,8 @@ translateTypeLower' (TyNominal pr tn) = do
     tv <- freshTVar
     case data_polarity of
       Data -> do
-        -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigLower') $ data_xtors pr
-        return $ TyRec pr tv $ TyData pr (Just tn) xtss
+        -- Lower bound translation of data is empty
+        return $ TyRec pr tv $ TyData pr (Just tn) []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ data_xtors $ flipPolarityRep pr
