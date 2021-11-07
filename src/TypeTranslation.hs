@@ -72,18 +72,18 @@ freshTVar = do
 ---------------------------------------------------------------------------------------------
 
 -- | Translate all producer and consumer types in an xtor signature
-translateXtorSigUpper' :: XtorSig pol -> TranslateM (XtorSig pol)
+translateXtorSigUpper' :: XtorSig Neg -> TranslateM (XtorSig Neg)
 translateXtorSigUpper' MkXtorSig{..} = do
   -- Translate producer and consumer arg types recursively
   pts' <- mapM translateTypeUpper' $ prdTypes sig_args
-  cts' <- mapM translateTypeUpper' $ cnsTypes sig_args
+  cts' <- mapM translateTypeLower' $ cnsTypes sig_args
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
     {- where
       xtorNameMakeStructural :: XtorName -> XtorName
       xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s -}
 
 -- | Translate a nominal type into a structural type recursively
-translateTypeUpper' :: Typ pol -> TranslateM (Typ pol)
+translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
 translateTypeUpper' (TyNominal pr tn) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
@@ -101,7 +101,7 @@ translateTypeUpper' (TyNominal pr tn) = do
         return $ TyRec pr tv $ TyData pr (Just tn) xtss
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ data_xtors $ flipPolarityRep pr
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigLower') $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
 translateTypeUpper' tv@TyVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
@@ -111,10 +111,10 @@ translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty
 ---------------------------------------------------------------------------------------------
 
 -- | Translate all producer and consumer types in an xtor signature
-translateXtorSigLower' :: XtorSig pol -> TranslateM (XtorSig pol)
+translateXtorSigLower' :: XtorSig Pos -> TranslateM (XtorSig Pos)
 translateXtorSigLower' MkXtorSig{..} = do
   -- Translate producer and consumer arg types recursively
-  pts' <- mapM translateTypeUpper' $ prdTypes sig_args
+  pts' <- mapM translateTypeLower' $ prdTypes sig_args
   cts' <- mapM translateTypeUpper' $ cnsTypes sig_args
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
     {- where
@@ -122,7 +122,7 @@ translateXtorSigLower' MkXtorSig{..} = do
       xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s -}
 
 -- | Translate a nominal type into a structural type recursively
-translateTypeLower' :: Typ pol -> TranslateM (Typ pol)
+translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
 translateTypeLower' (TyNominal pr tn) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
@@ -140,7 +140,7 @@ translateTypeLower' (TyNominal pr tn) = do
         return $ TyRec pr tv $ TyData pr (Just tn) xtss
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigLower') $ data_xtors $ flipPolarityRep pr
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ data_xtors $ flipPolarityRep pr
         return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
 translateTypeLower' tv@TyVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
@@ -180,22 +180,22 @@ cleanUpType ty = case ty of
 -- Exported functions
 ---------------------------------------------------------------------------------------------
 
-translateTypeUpper :: Environment -> Typ pol -> Either Error (Typ pol)
+translateTypeUpper :: Environment -> Typ Neg -> Either Error (Typ Neg)
 translateTypeUpper env ty = case runTranslateM env $ cleanUpType =<< translateTypeUpper' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSigUpper :: Environment -> XtorSig pol -> Either Error (XtorSig pol)
+translateXtorSigUpper :: Environment -> XtorSig Neg -> Either Error (XtorSig Neg)
 translateXtorSigUpper env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSigUpper' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'
 
-translateTypeLower :: Environment -> Typ pol -> Either Error (Typ pol)
+translateTypeLower :: Environment -> Typ Pos -> Either Error (Typ Pos)
 translateTypeLower env ty = case runTranslateM env $ cleanUpType =<< translateTypeLower' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSigLower :: Environment -> XtorSig pol -> Either Error (XtorSig pol)
+translateXtorSigLower :: Environment -> XtorSig Pos -> Either Error (XtorSig Pos)
 translateXtorSigLower env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSigLower' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'

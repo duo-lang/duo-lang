@@ -165,7 +165,7 @@ addConstraint c = modify foo
 ---------------------------------------------------------------------------------------------
 
 -- | Recursively translate types in xtor signature to upper bound refinement types
-translateXtorSigUpper :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSigUpper :: XtorSig Neg -> GenM (XtorSig Neg)
 translateXtorSigUpper xts = do
   env <- asks fst
   case TT.translateXtorSigUpper env xts of
@@ -173,7 +173,7 @@ translateXtorSigUpper xts = do
     Right xts' -> return xts'
 
 -- | Recursively translate types in xtor signature to lower bound refinement types
-translateXtorSigLower :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSigLower :: XtorSig Pos -> GenM (XtorSig Pos)
 translateXtorSigLower xts = do
   env <- asks fst
   case TT.translateXtorSigLower env xts of
