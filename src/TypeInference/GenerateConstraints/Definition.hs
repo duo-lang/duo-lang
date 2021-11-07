@@ -164,31 +164,21 @@ addConstraint c = modify foo
 -- Translate nominal types to structural refinement types
 ---------------------------------------------------------------------------------------------
 
--- | Recursively translate types in xtor signature to complete refinement types
+-- | Recursively translate types in xtor signature to upper bound refinement types
 translateXtorSigUpper :: XtorSig pol -> GenM (XtorSig pol)
 translateXtorSigUpper xts = do
   env <- asks fst
-  case TT.translateXtorSig env xts of
+  case TT.translateXtorSigUpper env xts of
     Left err -> throwError err
     Right xts' -> return xts'
 
--- | Translate a nominal type to corresponding empty refinement type
-translateTypeLower :: Typ pol -> GenM (Typ pol)
-translateTypeLower (TyNominal pr tn) = do
-  NominalDecl{..} <- lookupTypeName tn
-  case data_polarity of
-    Data   -> return $ TyData pr (Just tn) []
-    Codata -> return $ TyCodata pr (Just tn) []
-translateTypeLower ty = throwGenError ["Cannot translate type " <> ppPrint ty <> " to empty refinement"]
-
--- | Translate types in xtor signature to empty refinement types
+-- | Recursively translate types in xtor signature to lower bound refinement types
 translateXtorSigLower :: XtorSig pol -> GenM (XtorSig pol)
-translateXtorSigLower MkXtorSig{..} = do
-  -- Translate producer and consumer arg types
-  pts' <- mapM translateTypeLower $ prdTypes sig_args
-  cts' <- mapM translateTypeLower $ cnsTypes sig_args
-  -- Reassemble xtor signature
-  return $ MkXtorSig sig_name (MkTypArgs pts' cts')
+translateXtorSigLower xts = do
+  env <- asks fst
+  case TT.translateXtorSigLower env xts of
+    Left err -> throwError err
+    Right xts' -> return xts'
 
 ---------------------------------------------------------------------------------------------
 -- Other
