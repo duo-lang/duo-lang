@@ -59,7 +59,11 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   args' <- sequence (genConstraintsATerm <$> args)
   tn <- lookupDataDecl xt
   t'<- genConstraintsATerm t
-  addConstraint (SubType (DtorApConstraint loc) (getTypeATerm t') (TyNominal NegRep (data_name tn)) )
+  im <- asks (inferMode . snd)
+  ty <- case im of
+    InferNominal -> return $ TyNominal NegRep (data_name tn)
+    InferRefined -> translateTypeUpper $ TyNominal NegRep (data_name tn)
+  addConstraint (SubType (DtorApConstraint loc) (getTypeATerm t') ty )
   im <- asks (inferMode . snd)
   xtorSig <- case im of
     InferNominal -> lookupXtorSig xt NegRep
