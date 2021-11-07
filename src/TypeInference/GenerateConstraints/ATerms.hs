@@ -38,7 +38,7 @@ genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   im <- asks (inferMode . snd)
   xtorSig <- case im of
     InferNominal -> lookupXtorSig xt NegRep
-    InferRefined -> translateXtorSigFull =<< lookupXtorSig xt NegRep
+    InferRefined -> translateXtorSigUpper =<< lookupXtorSig xt NegRep
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Ctor " <> unXtorName xt <> " called with incorrect number of arguments"]
   -- Nominal type constraint!!
@@ -63,7 +63,7 @@ genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } 
   im <- asks (inferMode . snd)
   xtorSig <- case im of
     InferNominal -> lookupXtorSig xt NegRep
-    InferRefined -> translateXtorSigFull =<< lookupXtorSig xt NegRep
+    InferRefined -> translateXtorSigUpper =<< lookupXtorSig xt NegRep
   when (length args' /= length (prdTypes $ sig_args xtorSig)) $
     throwGenError ["Dtor " <> unXtorName xt <> " called with incorrect number of arguments"]
   -- Nominal type constraint!!
@@ -93,10 +93,10 @@ genConstraintsATerm (Match loc t cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _
   case im of
     InferNominal -> genConstraintsACaseArgs (data_xtors PosRep) casesXtssNeg loc
     InferRefined -> do
-      xtssEmpty <- mapM translateXtorSigEmpty $ data_xtors PosRep 
-      xtssFull <- mapM translateXtorSigFull $ data_xtors NegRep
-      genConstraintsACaseArgs xtssEmpty casesXtssNeg loc -- empty refinement as lower bound
-      genConstraintsACaseArgs casesXtssPos xtssFull loc -- full refinement as upper bound
+      xtssLower <- mapM translateXtorSigLower $ data_xtors PosRep 
+      xtssUpper <- mapM translateXtorSigUpper $ data_xtors NegRep
+      genConstraintsACaseArgs xtssLower casesXtssNeg loc -- empty refinement as lower bound
+      genConstraintsACaseArgs casesXtssPos xtssUpper loc -- full refinement as upper bound
   let ty = case im of
         InferNominal -> TyNominal NegRep data_name
         InferRefined -> TyData NegRep (Just data_name) casesXtssNeg
@@ -129,10 +129,10 @@ genConstraintsATerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _
   case im of
     InferNominal -> genConstraintsACaseArgs (data_xtors PosRep) cocasesXtssNeg loc
     InferRefined -> do
-      xtssEmpty <- mapM translateXtorSigEmpty $ data_xtors PosRep
-      xtssFull <- mapM translateXtorSigFull $ data_xtors NegRep
-      genConstraintsACaseArgs xtssEmpty cocasesXtssNeg loc -- empty refinement as lower bound
-      genConstraintsACaseArgs cocasesXtssPos xtssFull loc -- full refinement as upper bound
+      xtssLower <- mapM translateXtorSigLower $ data_xtors PosRep
+      xtssUpper <- mapM translateXtorSigUpper $ data_xtors NegRep
+      genConstraintsACaseArgs xtssLower cocasesXtssNeg loc -- empty refinement as lower bound
+      genConstraintsACaseArgs cocasesXtssPos xtssUpper loc -- full refinement as upper bound
   let ty = case im of
         InferNominal -> TyNominal PosRep data_name
         InferRefined -> TyCodata PosRep (Just data_name) cocasesXtssNeg

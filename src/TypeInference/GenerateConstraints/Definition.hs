@@ -24,8 +24,8 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
-  , translateXtorSigFull
-  , translateXtorSigEmpty
+  , translateXtorSigUpper
+  , translateXtorSigLower
   ) where
 
 import Control.Monad.Except
@@ -165,28 +165,28 @@ addConstraint c = modify foo
 ---------------------------------------------------------------------------------------------
 
 -- | Recursively translate types in xtor signature to complete refinement types
-translateXtorSigFull :: XtorSig pol -> GenM (XtorSig pol)
-translateXtorSigFull xts = do
+translateXtorSigUpper :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSigUpper xts = do
   env <- asks fst
   case TT.translateXtorSig env xts of
     Left err -> throwError err
     Right xts' -> return xts'
 
 -- | Translate a nominal type to corresponding empty refinement type
-translateTypeEmpty :: Typ pol -> GenM (Typ pol)
-translateTypeEmpty (TyNominal pr tn) = do
+translateTypeLower :: Typ pol -> GenM (Typ pol)
+translateTypeLower (TyNominal pr tn) = do
   NominalDecl{..} <- lookupTypeName tn
   case data_polarity of
     Data   -> return $ TyData pr (Just tn) []
     Codata -> return $ TyCodata pr (Just tn) []
-translateTypeEmpty ty = throwGenError ["Cannot translate type " <> ppPrint ty <> " to empty refinement"]
+translateTypeLower ty = throwGenError ["Cannot translate type " <> ppPrint ty <> " to empty refinement"]
 
 -- | Translate types in xtor signature to empty refinement types
-translateXtorSigEmpty :: XtorSig pol -> GenM (XtorSig pol)
-translateXtorSigEmpty MkXtorSig{..} = do
+translateXtorSigLower :: XtorSig pol -> GenM (XtorSig pol)
+translateXtorSigLower MkXtorSig{..} = do
   -- Translate producer and consumer arg types
-  pts' <- mapM translateTypeEmpty $ prdTypes sig_args
-  cts' <- mapM translateTypeEmpty $ cnsTypes sig_args
+  pts' <- mapM translateTypeLower $ prdTypes sig_args
+  cts' <- mapM translateTypeLower $ cnsTypes sig_args
   -- Reassemble xtor signature
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
 
