@@ -1,7 +1,7 @@
 module TypeInference.FileExamplesSpec ( spec ) where
 
-import           Test.Hspec
-import           Control.Monad (forM_)
+import Test.Hspec
+import Control.Monad (forM_)
 
 import TestUtils
 import Pretty.Pretty

@@ -8,9 +8,9 @@ import TypeAutomata.Definition
 import Control.Monad (forM_)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive (Gr)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Syntax.STerms (PrdCns(..))
-import qualified Data.Set
+import Data.Set qualified
 import Syntax.CommonTerm (XtorName)
 
 

@@ -3,7 +3,7 @@ module TypeAutomata.Definition where
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)

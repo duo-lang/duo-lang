@@ -1,7 +1,7 @@
 module Repl.Options.Simplify (simplifyOption) where
 
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Bifunctor (first)
 
 import Errors ( Error(ParseError) )

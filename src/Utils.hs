@@ -4,9 +4,9 @@ import Data.Char (isSpace)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Set (Set)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Megaparsec.Pos
 
 ----------------------------------------------------------------------------------

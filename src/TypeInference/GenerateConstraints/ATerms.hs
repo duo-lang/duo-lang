@@ -9,6 +9,7 @@ import Data.List (find)
 import Syntax.ATerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
+import TypeInference.Constraints
 import Utils
 import Lookup
 

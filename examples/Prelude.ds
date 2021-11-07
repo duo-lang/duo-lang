@@ -2,7 +2,7 @@
 
 # Bool
 
-data Bool { True, False };
+data Bool : Type CBV { True, False };
 
 def not := \b => match b with { True => False, False => True};
 
@@ -14,7 +14,7 @@ def or := \b1 => \b2 => ifthenelse b1 True b2;
 
 # Peano natural numbers
 
-data Nat { Z, S(Nat) };
+data Nat : Type CBV { Z, S(Nat) };
 
 def rec add := \n => \m => match n with { Z => m
                                         , S(n) => S(add n m)};
@@ -27,7 +27,7 @@ def rec nateq := \n => \m => match n with { Z => match m with { Z => True, S(m) 
 
 # Unit
 
-data Unit { Unit };
+data Unit : Type CBV { Unit };
 
 
 # Other functions

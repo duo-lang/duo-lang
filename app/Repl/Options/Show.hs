@@ -5,7 +5,7 @@ module Repl.Options.Show
 
 import Control.Monad.State ( forM_, gets )
 import Data.List (find)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Text (Text)
 import System.Console.Repline ()
 
