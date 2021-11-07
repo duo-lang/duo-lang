@@ -78,9 +78,6 @@ translateXtorSigUpper' MkXtorSig{..} = do
   pts' <- mapM translateTypeUpper' $ prdTypes sig_args
   cts' <- mapM translateTypeLower' $ cnsTypes sig_args
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
-    {- where
-      xtorNameMakeStructural :: XtorName -> XtorName
-      xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s -}
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
@@ -117,9 +114,6 @@ translateXtorSigLower' MkXtorSig{..} = do
   pts' <- mapM translateTypeLower' $ prdTypes sig_args
   cts' <- mapM translateTypeUpper' $ cnsTypes sig_args
   return $ MkXtorSig sig_name (MkTypArgs pts' cts')
-    {- where
-      xtorNameMakeStructural :: XtorName -> XtorName
-      xtorNameMakeStructural (MkXtorName _ s) = MkXtorName Structural s -}
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
