@@ -110,12 +110,12 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                            case im of
                              InferNominal -> do
                                x <- sig_args <$> lookupXtorSig scase_name PosRep
-                               genConstraintsSCaseArgs fvarsNeg x loc
+                               genConstraintsSCaseArgs x fvarsNeg loc
                              InferRefined -> do
                                x1 <- sig_args <$> (translateXtorSigEmpty =<< lookupXtorSig scase_name PosRep)
                                x2 <- sig_args <$> (translateXtorSigFull =<< lookupXtorSig scase_name NegRep)
-                               genConstraintsSCaseArgs fvarsNeg x1 loc
-                               genConstraintsSCaseArgs x2 fvarsPos loc
+                               genConstraintsSCaseArgs x1 fvarsNeg loc -- Empty translation as lower bound
+                               genConstraintsSCaseArgs fvarsPos x2 loc -- Full translation as upper bound
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case (im, rep) of
         (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep (data_name tn))                        rep Nominal (fst <$> cases')
@@ -145,10 +145,10 @@ genConstraintsCommand (Apply loc t1 t2) = do
   addConstraint (SubType (CommandConstraint loc) (getTypeSTerm t1') (getTypeSTerm t2'))
   return (Apply loc t1' t2')
 
-genConstraintsSCaseArgs :: TypArgs Neg -> TypArgs Pos -> Loc -> GenM ()
+genConstraintsSCaseArgs :: TypArgs Pos -> TypArgs Neg -> Loc -> GenM ()
 genConstraintsSCaseArgs sa1 sa2 loc = do
-  zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt2 pt1) (prdTypes sa1) (prdTypes sa2)
-  zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct1 ct2) (cnsTypes sa1) (cnsTypes sa2)
+  zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt1 pt2) (prdTypes sa1) (prdTypes sa2)
+  zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct2 ct1) (cnsTypes sa1) (cnsTypes sa2)
 
 ---------------------------------------------------------------------------------------------
 -- Symmetric Terms with recursive binding
