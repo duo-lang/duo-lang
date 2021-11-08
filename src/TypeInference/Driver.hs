@@ -251,6 +251,7 @@ insertDecl (PrdDecl loc isRec v annot loct) = do
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
+      ppPrintIO (trace_bisubst trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
@@ -264,6 +265,7 @@ insertDecl (CnsDecl loc isRec v annot loct) = do
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
+      ppPrintIO (trace_bisubst trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
@@ -287,6 +289,7 @@ insertDecl (DefDecl loc isRec v annot t) = do
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
+      ppPrintIO (trace_bisubst trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
