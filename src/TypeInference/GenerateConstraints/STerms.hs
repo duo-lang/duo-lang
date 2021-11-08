@@ -72,7 +72,7 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
       -- Check if args of xtor are correct
       xtorSig <- case im of
         InferNominal -> lookupXtorSig xt NegRep
-        InferRefined -> translateXtorSig =<< lookupXtorSig xt NegRep
+        InferRefined -> translateXtorSigFull =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
       case (im, rep) of
@@ -106,11 +106,17 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
   checkExhaustiveness (scase_name <$> cases) tn
   im <- asks (inferMode . snd)
   cases' <- forM cases (\MkSCase {..} -> do
-                           x <- case im of
-                             InferNominal -> sig_args <$> lookupXtorSig scase_name PosRep
-                             InferRefined -> sig_args <$> (translateXtorSig =<< lookupXtorSig scase_name PosRep)
-                           (_,fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
-                           cmd' <- withContext x (genConstraintsCommand scase_cmd)
+                           (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
+                           cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
+                           case im of
+                             InferNominal -> do
+                               x <- sig_args <$> lookupXtorSig scase_name PosRep
+                               genConstraintsSCaseArgs x fvarsNeg loc
+                             InferRefined -> do
+                               x1 <- sig_args <$> (translateXtorSigEmpty =<< lookupXtorSig scase_name PosRep)
+                               x2 <- sig_args <$> (translateXtorSigFull =<< lookupXtorSig scase_name NegRep)
+                               genConstraintsSCaseArgs x1 fvarsNeg loc -- Empty translation as lower bound
+                               genConstraintsSCaseArgs fvarsPos x2 loc -- Full translation as upper bound
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case (im, rep) of
         (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep Nothing (data_name tn))                        rep Nominal (fst <$> cases')
@@ -147,6 +153,10 @@ genConstraintsCommand (Apply loc _ tm1 tm2) = do
   addConstraint (KindEq (CommandConstraint loc) kind1 kind2)
   return (Apply loc (Just kind1) tmInferred1 tmInferred2)
 
+genConstraintsSCaseArgs :: TypArgs Pos -> TypArgs Neg -> Loc -> GenM ()
+genConstraintsSCaseArgs sa1 sa2 loc = do
+  zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt1 pt2) (prdTypes sa1) (prdTypes sa2)
+  zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct2 ct1) (cnsTypes sa1) (cnsTypes sa2)
 
 ---------------------------------------------------------------------------------------------
 -- Symmetric Terms with recursive binding
