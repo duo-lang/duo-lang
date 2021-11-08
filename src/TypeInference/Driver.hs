@@ -17,7 +17,6 @@ import Pretty.Errors ( printLocatedError )
 import Syntax.STerms ( Command, STerm, getTypeSTerm )
 import Syntax.Types
     ( TypeScheme,
-      Typ,
       Polarity(Pos)
       , generalize )
 import Syntax.Program
@@ -28,7 +27,7 @@ import Syntax.Program
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
-import TypeInference.Coalescing ( coalesce, zonk )
+import TypeInference.Coalescing ( coalesce, zonk, Bisubstitution )
 import TypeInference.GenerateConstraints.Definition
     ( PrdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.ATerms
@@ -133,24 +132,10 @@ liftEitherErr loc x = case x of
 data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
   , trace_solvedConstraints :: SolverResult
+  , trace_bisubst :: Bisubstitution 
   , trace_automata :: SimplifyTrace pol
   , trace_resType :: TypeScheme pol
   }
-
-generateTypeInferenceTrace :: ConstraintSet
-                           -> SolverResult
-                           -> Typ pol
-                           -> Either Error (TypeInferenceTrace pol)
-generateTypeInferenceTrace constraintSet solverResult typ = do
-  let bisubst = coalesce solverResult
-  let typ' = zonk bisubst typ
-  (trace, tys) <- simplify (generalize typ')
-  return TypeInferenceTrace
-    { trace_constraintSet = constraintSet
-    , trace_solvedConstraints = solverResult
-    , trace_automata = trace
-    , trace_resType = tys
-    }
 
 ------------------------------------------------------------------------------
 -- ASymmetric Terms
@@ -170,10 +155,23 @@ inferATermTraced isRec loc fv tm = do
         NonRecursive -> genConstraintsATerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
-  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  -- Read of the type and generate the resulting type
+  let typ = zonk bisubst (getTypeATerm tmInferred)
+  -- Simplify the resulting type
+  (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace constraintSet solverState (getTypeATerm tmInferred)
+  let trace = TypeInferenceTrace 
+        { trace_constraintSet = constraintSet
+        , trace_solvedConstraints = solverResult
+        , trace_bisubst = bisubst
+        , trace_automata = simpTrace
+        , trace_resType = tys
+        }
   return (trace, tmInferred)
+
 
 inferATerm :: IsRec
            -> Loc
@@ -202,9 +200,21 @@ inferSTermTraced isRec loc fv rep tm = do
         NonRecursive -> genConstraintsSTerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
-  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  -- Read of the type and generate the resulting type
+  let typ = zonk bisubst (getTypeSTerm tmInferred)
+  -- Simplify the resulting type
+  (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace constraintSet solverState (getTypeSTerm tmInferred)
+  let trace = TypeInferenceTrace 
+        { trace_constraintSet = constraintSet
+        , trace_solvedConstraints = solverResult
+        , trace_bisubst = bisubst
+        , trace_automata = simpTrace
+        , trace_resType = tys
+        }
   return (trace, tmInferred)
 
 
