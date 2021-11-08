@@ -57,7 +57,7 @@ coalesceType (TyVar PosRep tv) = do
             recVar <- freshRecVar
             let f (i,m) = (i,M.insert (tv, Pos) recVar m)
             lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
-            return (TyRec PosRep recVar (TySet PosRep lbs'))
+            return (TyRec PosRep recVar (TySet PosRep (TyVar PosRep recVar:lbs')))
         (Just recvar) -> return (TyVar PosRep recvar)
 coalesceType (TyVar NegRep tv) = do
     mp <- asks snd
@@ -67,7 +67,7 @@ coalesceType (TyVar NegRep tv) = do
           recVar <- freshRecVar
           let f (i,m) = (i,M.insert (tv, Neg) recVar m)
           ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
-          return (TyRec NegRep recVar (TySet NegRep ubs'))
+          return (TyRec NegRep recVar (TySet NegRep (TyVar NegRep recVar:ubs')))
       Just recvar -> return (TyVar NegRep recvar)
 coalesceType (TyData rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
