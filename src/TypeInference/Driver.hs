@@ -133,6 +133,7 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
   , trace_solvedConstraints :: SolverResult
   , trace_bisubst :: Bisubstitution 
+  , trace_resTypeOrig :: TypeScheme pol
   , trace_automata :: SimplifyTrace pol
   , trace_resType :: TypeScheme pol
   }
@@ -167,6 +168,7 @@ inferATermTraced isRec loc fv tm = do
         { trace_constraintSet = constraintSet
         , trace_solvedConstraints = solverResult
         , trace_bisubst = bisubst
+        , trace_resTypeOrig = generalize typ
         , trace_automata = simpTrace
         , trace_resType = tys
         }
@@ -212,6 +214,7 @@ inferSTermTraced isRec loc fv rep tm = do
         { trace_constraintSet = constraintSet
         , trace_solvedConstraints = solverResult
         , trace_bisubst = bisubst
+        , trace_resTypeOrig = generalize typ
         , trace_automata = simpTrace
         , trace_resType = tys
         }
@@ -252,6 +255,7 @@ insertDecl (PrdDecl loc isRec v annot loct) = do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
       ppPrintIO (trace_bisubst trace)
+      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
@@ -266,6 +270,7 @@ insertDecl (CnsDecl loc isRec v annot loct) = do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
       ppPrintIO (trace_bisubst trace)
+      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
@@ -290,6 +295,7 @@ insertDecl (DefDecl loc isRec v annot t) = do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
       ppPrintIO (trace_bisubst trace)
+      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
