@@ -34,11 +34,11 @@ simplify tys = do
     let typeAutDet' = determinize typeAutDet
     lint typeAutDet'
     -- Remove admissable flow edges
-    let typeAutDetAdms = removeAdmissableFlowEdges typeAutDetAdms
+    let typeAutDetAdms = removeAdmissableFlowEdges typeAutDet'
     lint typeAutDetAdms
     -- Minimize automaton
     let typeAutMin = minimize typeAutDetAdms
     lint typeAutMin
     -- Read back to type
     tysSimplified <- autToType typeAutMin
-    return (MkSimplifyTrace undefined undefined undefined undefined , tysSimplified)
+    return (MkSimplifyTrace typeAutDet typeAutDet' typeAutDetAdms typeAutMin , tysSimplified)

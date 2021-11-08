@@ -19,19 +19,26 @@ type Bisubstitution = (Map TVar (Typ Pos, Typ Neg))
 -- Coalescing
 ---------------------------------------------------------------------------------
 
-type CoalesceState  = (Int, Map (TVar, Polarity) TVar)
-type CoalesceReader = SolverResult 
+type CoalesceState  = Int 
+type CoalesceReader = (SolverResult, Map (TVar, Polarity) TVar)
 
 type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 
 runCoalesceM :: SolverResult ->  CoalesceM a -> a
-runCoalesceM res m = evalState (runReaderT m res) (0,M.empty)
+runCoalesceM res m = evalState (runReaderT m (res,M.empty)) 0
 
 freshRecVar :: CoalesceM TVar
 freshRecVar = do
-    i <- gets fst
-    modify (\(i,m) -> (i + 1, m))
+    i <- get
+    modify (+1) 
     return (MkTVar (T.pack $ show i))
+
+getVariableState :: TVar -> CoalesceM VariableState
+getVariableState tv = do
+    mp <- asks fst
+    case M.lookup tv mp of
+      Nothing -> error ("Not in variable states: " ++ show (tvar_name tv))
+      Just vs -> return vs
 
 coalesce :: SolverResult -> Bisubstitution
 coalesce result = M.fromList xs
@@ -43,30 +50,24 @@ coalesce result = M.fromList xs
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (TyVar PosRep tv) = do
-    mp <- gets snd
+    mp <- asks snd
     case M.lookup (tv, Pos) mp of
         Nothing -> do
-            variableState <- ask
-            case M.lookup tv variableState of
-                Nothing -> error "Not in variable state"
-                Just VariableState { vst_lowerbounds } -> do
-                    recVar <- freshRecVar
-                    modify (\(i,m) -> (i,M.insert (tv, Pos) recVar m)) 
-                    lbs' <- sequence $ coalesceType <$> vst_lowerbounds
-                    return (TyRec PosRep recVar (TySet PosRep lbs'))
+            VariableState { vst_lowerbounds } <- getVariableState tv
+            recVar <- freshRecVar
+            let f (i,m) = (i,M.insert (tv, Pos) recVar m)
+            lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
+            return (TyRec PosRep recVar (TySet PosRep lbs'))
         (Just recvar) -> return (TyVar PosRep recvar)
 coalesceType (TyVar NegRep tv) = do
-    mp <- gets snd
+    mp <- asks snd
     case M.lookup (tv, Neg) mp of
       Nothing -> do
-          variableState <- ask
-          case M.lookup tv variableState of
-              Nothing -> error "Not in variable state"
-              Just VariableState { vst_upperbounds } -> do
-                  recVar <- freshRecVar
-                  modify (\(i,m) -> (i,M.insert (tv, Neg) recVar m)) 
-                  ubs' <- sequence $ coalesceType <$> vst_upperbounds
-                  return (TyRec NegRep recVar (TySet NegRep ubs'))
+          VariableState {vst_upperbounds } <- getVariableState tv
+          recVar <- freshRecVar
+          let f (i,m) = (i,M.insert (tv, Neg) recVar m)
+          ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
+          return (TyRec NegRep recVar (TySet NegRep ubs'))
       Just recvar -> return (TyVar NegRep recvar)
 coalesceType (TyData rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
@@ -79,9 +80,14 @@ coalesceType (TyNominal rep tn) =
 coalesceType (TySet rep tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet rep tys')
-coalesceType (TyRec rep tv ty) = do
-    ty' <- coalesceType ty
-    return $ TyRec rep tv ty'
+coalesceType (TyRec PosRep tv ty) = do
+    let f (i,m) = (i, M.insert (tv, Pos) tv m)
+    ty' <- local f $ coalesceType ty
+    return $ TyRec PosRep tv ty'
+coalesceType (TyRec NegRep tv ty) = do
+    let f (i,m) = (i, M.insert (tv, Neg) tv m)
+    ty' <- local f $ coalesceType ty
+    return $ TyRec NegRep tv ty'
 
 coalesceXtor :: XtorSig pol -> CoalesceM (XtorSig pol)
 coalesceXtor (MkXtorSig name (MkTypArgs  prdArgs cnsArgs)) = do
