@@ -9,6 +9,7 @@ import Pretty.Types ()
 import Syntax.Types
 import TypeInference.Constraints
 import Utils
+import TypeInference.Coalescing (Bisubstitution(..))
 
 
 ---------------------------------------------------------------------------------
@@ -100,3 +101,18 @@ instance PrettyAnn SolverResult where
       solvedConstraintsToDoc (v, vs) = vsep ["Type variable:" <+> prettyAnn v
                                             , nest 3 (line' <> prettyAnn vs)]
 
+
+prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyBisubst (v, (typ,tyn)) = vsep ["Type variable:" <+> prettyAnn v
+                                    , nest 3 (line' <> vsep ["+ |->" <+> prettyAnn typ
+                                                            , "- |->" <+> prettyAnn tyn])
+                                    ]
+
+instance PrettyAnn Bisubstitution where
+  prettyAnn (MkBisubstitution bisubst) = vsep
+    [ "---------------------------------------------------------"
+    , "                 Bisubstitution                          "
+    , "---------------------------------------------------------"
+    , vsep (prettyBisubst <$> M.toList bisubst)
+    , "---------------------------------------------------------"
+    ]

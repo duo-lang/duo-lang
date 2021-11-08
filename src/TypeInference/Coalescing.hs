@@ -13,7 +13,7 @@ import TypeInference.Constraints
 -- Bisubstitution
 ---------------------------------------------------------------------------------
 
-type Bisubstitution = (Map TVar (Typ Pos, Typ Neg))
+newtype Bisubstitution = MkBisubstitution { unBisubstitution :: Map TVar (Typ Pos, Typ Neg) }
 
 ---------------------------------------------------------------------------------
 -- Coalescing
@@ -41,7 +41,7 @@ getVariableState tv = do
       Just vs -> return vs
 
 coalesce :: SolverResult -> Bisubstitution
-coalesce result = M.fromList xs
+coalesce result = MkBisubstitution $ M.fromList xs
     where
         res = M.keys result
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep tvar
@@ -100,10 +100,10 @@ coalesceXtor (MkXtorSig name (MkTypArgs  prdArgs cnsArgs)) = do
 ---------------------------------------------------------------------------------
 
 zonk :: Bisubstitution -> Typ pol -> Typ pol
-zonk bisubst ty@(TyVar PosRep tv ) = case M.lookup tv bisubst of
+zonk bisubst ty@(TyVar PosRep tv ) = case M.lookup tv (unBisubstitution bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (tyPos,_) -> tyPos
-zonk bisubst ty@(TyVar NegRep tv ) = case M.lookup tv bisubst of
+zonk bisubst ty@(TyVar NegRep tv ) = case M.lookup tv (unBisubstitution bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (_,tyNeg) -> tyNeg
 zonk bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)
