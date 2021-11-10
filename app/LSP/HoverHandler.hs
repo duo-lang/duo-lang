@@ -15,9 +15,6 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
 import LSP.MegaparsecToLSP
 
-import Syntax.CommonTerm ( FreeVarName )
-import TypeInference.Driver
-
 
 import Syntax.Program 
 import Syntax.ATerms
@@ -185,9 +182,14 @@ defEnvToHoverMap = M.unions . fmap f . M.toList
 declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
   let
-    ls' = (\(loc,decl) -> (locToRange loc, mkHover (ppPrint (fromRight (error "boom") (translateType env (TyNominal PosRep (data_name decl))))) (locToRange loc))) <$> ls
+    ls' = (\(loc,decl) -> (locToRange loc, mkHover (printTranslation decl) (locToRange loc))) <$> ls
   in
     M.fromList ls'
+  where
+    printTranslation :: DataDecl -> Text
+    printTranslation NominalDecl{..} = case data_polarity of
+      Data   -> ppPrint $ fromRight (error "boom") $ translateTypeUpper env (TyNominal NegRep data_name)
+      Codata -> ppPrint $ fromRight (error "boom") $ translateTypeLower env (TyNominal PosRep data_name)
 
 lookupHoverEnv :: Environment -> HoverMap
 lookupHoverEnv env@Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } = 

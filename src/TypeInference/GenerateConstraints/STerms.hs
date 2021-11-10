@@ -72,7 +72,7 @@ genConstraintsSTerm (XtorCall loc rep xt args) = do
       -- Check if args of xtor are correct
       xtorSig <- case im of
         InferNominal -> lookupXtorSig xt NegRep
-        InferRefined -> translateXtorSigFull =<< lookupXtorSig xt NegRep
+        InferRefined -> translateXtorSigUpper =<< lookupXtorSig xt NegRep
       forM_ (zip (prdTypes argTypes) (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> do
         addConstraint $ SubType (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc }) t1 t2
       case (im, rep) of
@@ -113,8 +113,8 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                                x <- sig_args <$> lookupXtorSig scase_name PosRep
                                genConstraintsSCaseArgs x fvarsNeg loc
                              InferRefined -> do
-                               x1 <- sig_args <$> (translateXtorSigEmpty =<< lookupXtorSig scase_name PosRep)
-                               x2 <- sig_args <$> (translateXtorSigFull =<< lookupXtorSig scase_name NegRep)
+                               x1 <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig scase_name PosRep)
+                               x2 <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig scase_name NegRep)
                                genConstraintsSCaseArgs x1 fvarsNeg loc -- Empty translation as lower bound
                                genConstraintsSCaseArgs fvarsPos x2 loc -- Full translation as upper bound
                            return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
