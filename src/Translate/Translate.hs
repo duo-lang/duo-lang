@@ -9,7 +9,7 @@ module Translate.Translate
   )
   where
 
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Program ( Declaration(..), Program )
 import Utils ( Twice(..))

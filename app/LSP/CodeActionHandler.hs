@@ -17,8 +17,8 @@ import Syntax.Program
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
-import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand, ATerm )
-import Syntax.STerms qualified as Syntax
+import Syntax.Terms ( createNamesSTerm, STerm, createNamesCommand, ATerm )
+import Syntax.Terms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
       inferProgramIO,

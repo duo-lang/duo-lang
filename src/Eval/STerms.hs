@@ -12,7 +12,7 @@ import Eval.Eval
 import Lookup ( lookupSTerm )
 import Pretty.Pretty ( ppPrint )
 import Pretty.STerms ()
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds
 import Utils

@@ -1,4 +1,4 @@
-module Parser.STerms
+module Parser.Terms
   ( stermP
   , commandP
   , atermP
@@ -9,7 +9,7 @@ import Text.Megaparsec hiding (State)
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Utils
 

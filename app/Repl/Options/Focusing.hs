@@ -5,7 +5,7 @@ import Data.Text (Text)
 import Text.Megaparsec ( errorBundlePretty )
 
 import Parser.Definition ( runInteractiveParser )
-import Parser.STerms ( commandP )
+import Parser.Terms ( commandP )
 import Pretty.Pretty ( ppPrint )
 import Repl.Repl ( Option(..), Repl, prettyRepl, prettyText, evalOrder )
 import Translate.Focusing ( focusCmd )

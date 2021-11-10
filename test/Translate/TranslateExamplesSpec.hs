@@ -6,7 +6,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Parser.Parser
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Translate.Translate (compile, compileSTerm )
 

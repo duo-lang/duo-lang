@@ -11,7 +11,7 @@ import Syntax.CommonTerm
       XtorName,
       Phase(..),
       flipPrdCns )
-import Syntax.STerms
+import Syntax.Terms
     ( Command(..),
       STerm(..),
       SCase(..),

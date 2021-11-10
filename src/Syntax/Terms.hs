@@ -1,4 +1,4 @@
-module Syntax.STerms where
+module Syntax.Terms where
 
 import Control.Monad.State
 

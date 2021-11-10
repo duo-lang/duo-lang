@@ -8,7 +8,7 @@ import Control.Monad.Reader
 
 import Pretty.STerms ()
 import Pretty.Types ()
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition

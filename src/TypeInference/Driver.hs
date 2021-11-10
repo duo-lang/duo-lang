@@ -14,7 +14,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,

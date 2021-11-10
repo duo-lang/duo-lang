@@ -10,7 +10,7 @@ import Pretty.STerms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------

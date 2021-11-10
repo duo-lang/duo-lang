@@ -10,7 +10,7 @@ import TestUtils
 import Parser.Parser
 import Pretty.Pretty
 import Pretty.Errors ()
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.Program

@@ -8,7 +8,7 @@ import Data.Text qualified as T
 import Parser.Parser
 import Parser.Types
 import Syntax.Types
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()

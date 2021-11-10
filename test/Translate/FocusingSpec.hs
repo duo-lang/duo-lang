@@ -10,7 +10,7 @@ import Pretty.Pretty
 import TypeInference.Driver
 import Translate.Translate
 import Parser.Parser
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds
 import Syntax.Program

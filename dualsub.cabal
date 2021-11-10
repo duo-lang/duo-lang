@@ -70,7 +70,7 @@ library
       Parser.Lexer
       Parser.Parser
       Parser.Program
-      Parser.STerms
+      Parser.Terms
       Parser.Types
       Pretty.Pretty
       Pretty.Constraints
@@ -83,7 +83,7 @@ library
       Syntax.Kinds
       Syntax.Types
       Syntax.Program
-      Syntax.STerms
+      Syntax.Terms
       TypeAutomata.Definition
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton

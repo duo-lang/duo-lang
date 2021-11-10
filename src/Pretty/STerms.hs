@@ -3,7 +3,7 @@ module Pretty.STerms where
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.STerms
+import Syntax.Terms
 import Syntax.CommonTerm
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
