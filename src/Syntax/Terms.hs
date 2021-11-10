@@ -46,26 +46,23 @@ deriving instance (Show (ACase Parsed))
 deriving instance (Show (ACase Inferred))
 deriving instance (Show (ACase Compiled))
 
-type family ATermExt (ext :: Phase) :: Type where
-  ATermExt Parsed = Loc
-  ATermExt Inferred = (Loc, Typ Pos)
-  ATermExt Compiled = ()
+
 
 -- | An asymmetric term.
 -- The `ext` field is used to save additional information, such as source code locations.
 -- The `bs` parameter indicates the type of additional information stored at binding sites.
 data ATerm (ext :: Phase) where
-  Dtor :: ATermExt ext -> XtorName -> ATerm ext -> [ATerm ext] -> ATerm ext
+  Dtor :: STermExt Prd ext -> XtorName -> ATerm ext -> [ATerm ext] -> ATerm ext
   -- | A pattern match:
   --
   -- match e with { ... }
   --
-  Match :: ATermExt ext -> ATerm ext -> [ACase ext] -> ATerm ext
+  Match :: STermExt Prd ext -> ATerm ext -> [ACase ext] -> ATerm ext
   -- | A copattern match:
   --
   -- comatch { ... }
   --
-  Comatch :: ATermExt ext -> [ACase ext] -> ATerm ext
+  Comatch :: STermExt Prd ext -> [ACase ext] -> ATerm ext
 
 deriving instance (Eq (ATerm Parsed))
 deriving instance (Eq (ATerm Inferred))
