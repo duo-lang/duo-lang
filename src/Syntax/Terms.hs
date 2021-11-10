@@ -13,6 +13,7 @@ import Errors
 import Syntax.CommonTerm
 import Syntax.Types 
 import Syntax.CommonTerm (Phase(Compiled))
+import Control.Monad.Except (ExceptT)
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -436,6 +437,12 @@ shiftSTerm' n (XtorCall ext pcrep name MkXtorArgs { prdArgs, cnsArgs }) =
     XtorCall ext pcrep name (MkXtorArgs (shiftSTerm' n <$> prdArgs) (shiftSTerm' n <$> cnsArgs))
 shiftSTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftSCase (n + 1) <$> cases)
 shiftSTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
+shiftSTerm' n (Dtor ext xt e args) = Dtor ext xt (shiftSTerm' n e) (shiftSTerm' n <$> args)
+shiftSTerm' n (Match ext e cases) = Match ext (shiftSTerm' n e) (shiftACase n <$> cases)
+shiftSTerm' n (Comatch ext cases) = Comatch ext (shiftACase n <$> cases)
+
+shiftACase :: Int -> ACase ext -> ACase ext
+shiftACase n (MkACase ext xt args e) = MkACase ext xt args (shiftSTerm' n e)
 
 shiftSCase :: Int -> SCase ext-> SCase ext
 shiftSCase n (MkSCase name bs cmd) = MkSCase name bs (shiftCmd' n cmd)
@@ -465,6 +472,12 @@ removeNamesSTerm f@BoundVar{} = f
 removeNamesSTerm (XtorCall ext pc xt (MkXtorArgs prdArgs cnsArgs)) = XtorCall ext pc xt (MkXtorArgs (removeNamesSTerm <$> prdArgs) (removeNamesSTerm <$> cnsArgs))
 removeNamesSTerm (MuAbs ext pc _ cmd) = MuAbs ext pc Nothing (removeNamesCmd cmd)
 removeNamesSTerm (XMatch ext pc ns cases) = XMatch ext pc ns (removeNamesSCase <$> cases)
+removeNamesSTerm (Dtor ext xt e args) = Dtor ext xt (removeNamesSTerm e) (removeNamesSTerm <$> args)
+removeNamesSTerm (Match ext e cases) = Match ext (removeNamesSTerm e) (removeNamesACase <$> cases)
+removeNamesSTerm (Comatch ext cases) = Comatch ext (removeNamesACase <$> cases)
+
+removeNamesACase :: ACase ext -> ACase ext
+removeNamesACase (MkACase ext xt args e) = MkACase ext xt (const Nothing <$> args) (removeNamesSTerm e)
 
 removeNamesSCase :: SCase ext -> SCase ext
 removeNamesSCase (MkSCase xt args cmd)= MkSCase xt (fmap (const Nothing) <$> args) (removeNamesCmd cmd)
