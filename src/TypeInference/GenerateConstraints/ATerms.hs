@@ -1,6 +1,5 @@
 module TypeInference.GenerateConstraints.ATerms
   ( genConstraintsATerm
-  , genConstraintsATermRecursive
   ) where
 
 import Control.Monad.Reader
@@ -151,17 +150,3 @@ genConstraintsACaseArgs xtsigs1 xtsigs2 loc = do
     )
 
 
-
----------------------------------------------------------------------------------------------
--- Asymmetric Terms with recursive binding
----------------------------------------------------------------------------------------------
-
-genConstraintsATermRecursive :: Loc 
-                             -> FreeVarName
-                             -> ATerm Parsed
-                             -> GenM (ATerm Inferred)
-genConstraintsATermRecursive loc fv tm = do
-  (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withATerm fv (undefined(loc,x) fv) loc (TypeScheme [] x) (genConstraintsATerm tm)
-  addConstraint (SubType RecursionConstraint (getTypeATerm tm) y)
-  return tm

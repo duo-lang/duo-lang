@@ -165,17 +165,6 @@ cmdEnvToHoverMap = M.unions. fmap f . M.toList
   where
     f (_, (cmd,_)) = commandToHoverMap cmd
 
-defEnvToHoverMap :: Map FreeVarName (ATerm Inferred, Loc,  TypeScheme Pos) -> HoverMap
-defEnvToHoverMap = M.unions . fmap f . M.toList
-  where
-    f (_,(e,loc,ty)) =
-      let
-        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover  = atermToHoverMap e
-      in
-        M.union outerHover termHover
-
-
 declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
   let
@@ -189,11 +178,10 @@ declEnvToHoverMap env ls =
       Codata -> ppPrint $ fromRight (error "boom") $ translateTypeLower env (TyNominal PosRep data_name)
 
 lookupHoverEnv :: Environment -> HoverMap
-lookupHoverEnv env@Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } = 
+lookupHoverEnv env@Environment { prdEnv, cnsEnv, cmdEnv, declEnv } = 
   M.unions [ prdEnvToHoverMap prdEnv
            , cnsEnvToHoverMap cnsEnv
            , cmdEnvToHoverMap cmdEnv
-           , defEnvToHoverMap defEnv
            , declEnvToHoverMap env declEnv
            ]
 

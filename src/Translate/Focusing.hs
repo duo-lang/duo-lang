@@ -176,7 +176,6 @@ focusCmd eo (Print _ prd) = Print () (focusSTerm eo prd)
 focusDecl :: CallingConvention -> Declaration Compiled -> Declaration Compiled
 focusDecl eo (PrdCnsDecl _ pc isRec name annot prd) = PrdCnsDecl () pc isRec name annot (focusSTerm eo prd)
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
-focusDecl _  decl@(DefDecl _ _ _ _ _)         = decl
 focusDecl _  decl@(DataDecl _ _)              = decl
 focusDecl _  decl@(ImportDecl _ _)            = decl
 focusDecl _  decl@(SetDecl _ _)               = decl

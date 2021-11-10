@@ -62,19 +62,6 @@ cmdDeclarationP = do
     endPos <- semi
     return (CmdDecl (Loc startPos endPos) v t)
 
-defDeclarationP :: Parser (Declaration Parsed)
-defDeclarationP = do
-  startPos <- getSourcePos
-  try (void defKwP)
-  recoverDeclaration $ do
-    isRec <- isRecP
-    (v, _pos) <- freeVarName
-    annot <- annotP PosRep
-    _ <- coloneq
-    (t, _pos) <- atermP
-    endPos <- semi
-    return (DefDecl (Loc startPos endPos) isRec v annot t)
-
 importDeclP :: Parser (Declaration Parsed)
 importDeclP = do
   startPos <- getSourcePos
@@ -141,7 +128,6 @@ declarationP =
   prdCnsDeclarationP PrdRep <|>
   prdCnsDeclarationP CnsRep <|>
   cmdDeclarationP <|>
-  defDeclarationP <|>
   importDeclP <|>
   setDeclP <|>
   dataDeclP

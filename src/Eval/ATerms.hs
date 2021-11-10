@@ -7,7 +7,6 @@ module Eval.ATerms
 import Data.List (find)
 import Data.Maybe (fromJust)
 
-import Lookup ( lookupATerm )
 import Eval.Eval
     ( throwEvalError, lookupEvalOrder, EvalM)
 import Syntax.ATerms

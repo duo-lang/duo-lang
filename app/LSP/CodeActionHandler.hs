@@ -13,7 +13,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
-    ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
+    ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.ATerms
@@ -72,10 +72,7 @@ generateCodeActions ident (Range {_start= start}) env = do
   let cmds = M.toList $ cmdEnv env
   let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, not (isFocusedCmd CBV command), lookupPos start loc]
   let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, not (isFocusedCmd CBN command), lookupPos start loc]
-  -- Def declarations
-  let defs = M.toList $ defEnv env
-  let translateActions = [ generateTranslateCodeAction ident def | def@(_,(_,loc,_)) <- defs, lookupPos start loc]
-  List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd <> translateActions)
+  List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd)
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions
