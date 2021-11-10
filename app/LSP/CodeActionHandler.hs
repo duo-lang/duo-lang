@@ -16,8 +16,8 @@ import Syntax.Program
     ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
-import Syntax.ATerms
-import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand )
+import Syntax.CommonTerm
+import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand, ATerm )
 import Syntax.STerms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,

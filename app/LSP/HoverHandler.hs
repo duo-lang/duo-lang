@@ -17,7 +17,7 @@ import LSP.MegaparsecToLSP
 
 
 import Syntax.Program 
-import Syntax.ATerms
+import Syntax.CommonTerm
 import Syntax.STerms hiding (Command)
 import Syntax.STerms qualified as STerms
 import Syntax.Types 

@@ -6,13 +6,12 @@ import Prettyprinter
 import Data.List (intersperse)
 
 import Pretty.Pretty
-import Pretty.ATerms ()
 import Pretty.STerms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
 import Syntax.STerms
-import Syntax.ATerms
+import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations

@@ -7,6 +7,7 @@ import Test.Hspec
 import Parser.Parser
 import Pretty.Errors ()
 import Syntax.STerms
+import Syntax.CommonTerm
 import Syntax.Kinds
 import Eval.STerms (areAllSubst)
 

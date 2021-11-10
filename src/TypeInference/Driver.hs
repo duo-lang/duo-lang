@@ -14,7 +14,8 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
-import Syntax.STerms ( Command, STerm, getTypeSTerm )
+import Syntax.STerms
+import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,
       Typ,
@@ -42,7 +43,7 @@ import TypeInference.GenerateConstraints.STerms
       genConstraintsSTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
-import Syntax.ATerms
+
 
 ------------------------------------------------------------------------------
 -- Typeinference Options

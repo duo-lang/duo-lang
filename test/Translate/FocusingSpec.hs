@@ -11,6 +11,7 @@ import TypeInference.Driver
 import Translate.Translate
 import Parser.Parser
 import Syntax.STerms
+import Syntax.CommonTerm
 import Syntax.Kinds
 import Syntax.Program
 import Translate.Focusing

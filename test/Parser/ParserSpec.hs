@@ -8,10 +8,11 @@ import Data.Text qualified as T
 import Parser.Parser
 import Parser.Types
 import Syntax.Types
-import Syntax.ATerms
+import Syntax.STerms
+import Syntax.CommonTerm
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
-import Pretty.ATerms ()
+import Pretty.STerms ()
 import Translate.Translate
 
 

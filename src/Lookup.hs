@@ -18,7 +18,6 @@ import Errors
 import Pretty.Pretty
 import Syntax.CommonTerm
 import Syntax.STerms
-import Syntax.ATerms
 import Syntax.Types
 import Syntax.Program
 import Utils

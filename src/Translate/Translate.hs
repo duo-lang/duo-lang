@@ -10,7 +10,7 @@ module Translate.Translate
   where
 
 import Syntax.STerms
-import Syntax.ATerms ( ACase(..), ATerm(..) )
+import Syntax.CommonTerm
 import Syntax.Program ( Declaration(..), Program )
 import Utils ( Twice(..))
 

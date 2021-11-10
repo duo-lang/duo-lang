@@ -21,7 +21,7 @@ import Repl.Repl
       prettyText,
       fromRight )
 import Syntax.Program ( IsRec(NonRecursive) )
-import Syntax.STerms ( PrdCnsRep(PrdRep) )
+import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
 import Syntax.Types ( PolarityRep(PosRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
 import TypeAutomata.ToAutomaton (typeToAut)

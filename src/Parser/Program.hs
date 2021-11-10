@@ -14,6 +14,7 @@ import Parser.Types
 import Syntax.Program
 import Syntax.STerms
 import Syntax.Types
+import Syntax.CommonTerm
 import Utils (Loc(..))
 
 recoverDeclaration :: Parser (Declaration Parsed) -> Parser (Declaration Parsed)

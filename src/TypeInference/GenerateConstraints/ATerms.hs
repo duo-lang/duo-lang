@@ -5,7 +5,8 @@ module TypeInference.GenerateConstraints.ATerms
 import Control.Monad.Reader
 import Data.List (find)
 
-import Syntax.ATerms
+import Syntax.CommonTerm
+import Syntax.STerms
 import Syntax.Types
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints

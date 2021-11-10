@@ -8,7 +8,6 @@ import Data.Text (Text)
 import Syntax.CommonTerm
     ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep )
 import Syntax.STerms( Command, STerm )
-import Syntax.ATerms ( ATerm )
 import Syntax.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
 import Utils ( Loc )
 

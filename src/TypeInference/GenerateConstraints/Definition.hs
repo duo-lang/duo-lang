@@ -40,11 +40,10 @@ import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.STerms ()
-import Pretty.ATerms ()
 import Pretty.Types ()
-import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
+import Syntax.CommonTerm
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils

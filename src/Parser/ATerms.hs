@@ -30,11 +30,7 @@ import Syntax.CommonTerm
       FreeVarName,
       NominalStructural(..),
       Phase(Parsed) )
-import Syntax.ATerms
-    ( atermClosing,
-      ACase(..),
-      ATerm(..)
-    )
+import Syntax.STerms
 import Utils (Loc(..))
 
 -------------------------------------------------------------------------------------------
