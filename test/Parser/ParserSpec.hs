@@ -33,11 +33,11 @@ typeParseCounterEx input NegRep = do
     let res = runInteractiveParser (typP NegRep) input
     res `shouldSatisfy` isLeft
 
-atermParseExample :: Text -> ATerm Compiled -> Spec
+atermParseExample :: Text -> STerm Prd Compiled -> Spec
 atermParseExample input tm = do
   it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrintString tm) $ do
     let Right (parsedTerm,_) = runInteractiveParser atermP input
-    compileATerm parsedTerm `shouldBe` tm
+    compile parsedTerm `shouldBe` tm
 
 spec :: Spec
 spec = do

@@ -50,7 +50,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBV (compileDecl' <$> decls)
+                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBV (compileProgram decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -60,7 +60,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBN (compileDecl' <$> decls)
+                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBN (compileProgram decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
