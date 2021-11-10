@@ -13,7 +13,6 @@ import System.IO.Error (tryIOError)
 
 import Errors ()
 import Eval.Eval ( runEval )
-import Eval.ATerms ( evalATermComplete, evalATermSteps )
 import Eval.STerms ( eval, evalSteps )
 import Parser.Parser
     ( Parser, atermP, runFileParser, runInteractiveParser, commandP )
