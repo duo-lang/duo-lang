@@ -94,7 +94,6 @@ library
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
       TypeInference.Driver
-      TypeInference.GenerateConstraints.ATerms
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.STerms
       TypeInference.SolveConstraints
