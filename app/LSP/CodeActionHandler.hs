@@ -17,7 +17,7 @@ import Syntax.Program
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
-import Syntax.Terms ( createNamesSTerm, STerm, createNamesCommand, ATerm )
+import Syntax.Terms ( createNamesSTerm, STerm, createNamesCommand)
 import Syntax.Terms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
@@ -136,7 +136,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Translation Actions
 ---------------------------------------------------------------------------------
 
-generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
+generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
 generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -147,7 +147,7 @@ generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Tr
                                                                   , _xdata = Nothing
                                                                   }
 
-generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
+generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
 generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
   let
     newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))

@@ -265,6 +265,9 @@ commandClosingRec _ _ (Done ext) = Done ext
 commandClosingRec k args (Print ext t) = Print ext (termClosingRec k args t)
 commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
 
+termClosing :: Twice [FreeVarName] -> STerm pc ext -> STerm pc ext
+termClosing = termClosingRec 0
+
 commandClosing :: Twice [FreeVarName] -> Command ext -> Command ext
 commandClosing = commandClosingRec 0
 
