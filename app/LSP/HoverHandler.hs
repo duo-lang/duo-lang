@@ -97,9 +97,6 @@ foo :: (Loc, Typ Pos) -> HoverMap
 foo (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
 
 atermToHoverMap :: ATerm Inferred -> HoverMap
-atermToHoverMap (FVar ext _)          = foo ext
-atermToHoverMap (BVar ext _)          = foo ext
-atermToHoverMap (Ctor ext _ args)     = M.unions $ [foo ext] <> (atermToHoverMap <$> args)
 atermToHoverMap (Dtor ext _ e args)   = M.unions $ [foo ext] <> (atermToHoverMap <$> (e:args))
 atermToHoverMap (Match ext e cases)   = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [atermToHoverMap e]
 atermToHoverMap (Comatch ext cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)

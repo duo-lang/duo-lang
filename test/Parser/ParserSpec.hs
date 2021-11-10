@@ -67,10 +67,10 @@ spec = do
                        , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
     --
     typeParseCounterEx "{{ 'Ap() }" PosRep
-  describe "Check aterm parsing" $ do
-    atermParseExample "x y z" (Dtor () (MkXtorName Structural "Ap")
-                                       (Dtor () (MkXtorName Structural "Ap") (FVar () "x") [FVar () "y"]) [FVar () "z"])
-    atermParseExample "x.A.B" (Dtor () (MkXtorName Nominal "B")
-                                       (Dtor () (MkXtorName Nominal "A") (FVar () "x") []) [])
-    atermParseExample "f C(x)" (Dtor () (MkXtorName Structural "Ap") (FVar () "f") [Ctor () (MkXtorName Nominal "C") [FVar () "x"]])
+  -- describe "Check aterm parsing" $ do
+  --   atermParseExample "x y z" (Dtor () (MkXtorName Structural "Ap")
+  --                                      (Dtor () (MkXtorName Structural "Ap") (FVar () "x") [FVar () "y"]) [FVar () "z"])
+  --   atermParseExample "x.A.B" (Dtor () (MkXtorName Nominal "B")
+  --                                      (Dtor () (MkXtorName Nominal "A") (FVar () "x") []) [])
+  --   atermParseExample "f C(x)" (Dtor () (MkXtorName Structural "Ap") (FVar () "f") [Ctor () (MkXtorName Nominal "C") [FVar () "x"]])
  

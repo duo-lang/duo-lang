@@ -20,34 +20,6 @@ import Lookup
 -- | Every asymmetric terms gets assigned a positive type.
 genConstraintsATerm :: ATerm Parsed
                     -> GenM (ATerm Inferred)
-genConstraintsATerm (BVar loc idx) = do
-  ty <- lookupContext PrdRep idx
-  return (BVar (loc, ty) idx)
-genConstraintsATerm (FVar loc fv) = do
-  tys <- snd <$> lookupATerm fv
-  ty <- instantiateTypeScheme fv loc tys
-  return (FVar (loc,ty) fv)
-
-genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Structural } args) = do
-  args' <- sequence (genConstraintsATerm <$> args)
-  let ty = TyData PosRep Nothing [MkXtorSig xt (MkTypArgs (getTypeATerm <$> args') [])]
-  return (Ctor (loc,ty) xt args')
-genConstraintsATerm (Ctor loc xt@MkXtorName { xtorNominalStructural = Nominal } args) = do
-  args' <- sequence (genConstraintsATerm <$> args)
-  tn <- lookupDataDecl xt
-  im <- asks (inferMode . snd)
-  xtorSig <- case im of
-    InferNominal -> lookupXtorSig xt NegRep
-    InferRefined -> translateXtorSigUpper =<< lookupXtorSig xt NegRep
-  when (length args' /= length (prdTypes $ sig_args xtorSig)) $
-    throwGenError ["Ctor " <> unXtorName xt <> " called with incorrect number of arguments"]
-  -- Nominal type constraint!!
-  forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (CtorArgsConstraint loc) (getTypeATerm t1) t2
-  let ty = case im of
-        InferNominal -> TyNominal PosRep (data_name tn)
-        InferRefined -> TyData PosRep (Just $ data_name tn) [MkXtorSig xt $ MkTypArgs (getTypeATerm <$> args') []]
-  return (Ctor (loc,ty) xt args')
-
 genConstraintsATerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
   args' <- sequence (genConstraintsATerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
@@ -190,6 +162,6 @@ genConstraintsATermRecursive :: Loc
                              -> GenM (ATerm Inferred)
 genConstraintsATermRecursive loc fv tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withATerm fv (FVar (loc,x) fv) loc (TypeScheme [] x) (genConstraintsATerm tm)
+  tm <- withATerm fv (undefined(loc,x) fv) loc (TypeScheme [] x) (genConstraintsATerm tm)
   addConstraint (SubType RecursionConstraint (getTypeATerm tm) y)
   return tm

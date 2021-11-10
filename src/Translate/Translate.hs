@@ -19,9 +19,6 @@ resVar :: FreeVarName
 resVar = "$result"
 
 compile :: ATerm ext -> STerm Prd Compiled
-compile (BVar _ i) = BoundVar () PrdRep i
-compile (FVar _ n) = FreeVar () PrdRep n
-compile (Ctor _ xt args)   = XtorCall () PrdRep xt $ MkXtorArgs (compile <$> args) []
 -- we want to compile e.D(args')
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]
 compile (Dtor _ xt t args) =
@@ -82,9 +79,6 @@ compileProgram :: Program ext -> Program Compiled
 compileProgram ps = compileDecl <$> ps
 
 compileATerm :: ATerm ext -> ATerm Compiled
-compileATerm (BVar _ idx) = BVar () idx
-compileATerm (FVar _ fv) = FVar () fv
-compileATerm (Ctor _ xt args) = Ctor () xt (compileATerm <$> args)
 compileATerm (Dtor _ xt a args) = Dtor () xt (compileATerm a) (compileATerm <$> args)
 compileATerm (Match _ a cases) = Match () (compileATerm a) (compileACase <$> cases)
 compileATerm (Comatch _ cocases) = Comatch () (compileACase <$> cocases)

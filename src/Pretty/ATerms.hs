@@ -9,12 +9,6 @@ import Syntax.ATerms
 -- Asymmetric Terms
 ---------------------------------------------------------------------------------
 
-isNumATerm :: ATerm ext -> Maybe Int
-isNumATerm (Ctor _ (MkXtorName Nominal "Z") []) = Just 0
-isNumATerm (Ctor _ (MkXtorName Nominal "S") [n]) = case isNumATerm n of
-  Nothing -> Nothing
-  Just n -> Just (n + 1)
-isNumATerm _ = Nothing
 
 instance PrettyAnn (ACase ext) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =
@@ -24,10 +18,6 @@ instance PrettyAnn (ACase ext) where
     prettyAnn acase_term
 
 instance PrettyAnn (ATerm ext) where
-  prettyAnn (isNumATerm -> Just n) = pretty n
-  prettyAnn (BVar _ (i,j)) = parens (pretty i <> "," <> pretty j)
-  prettyAnn (FVar _ v) = pretty v
-  prettyAnn (Ctor _ xt args) = prettyAnn xt <> parens (intercalateComma (map prettyAnn args))
   prettyAnn (Dtor _ xt t args) =
     parens ( prettyAnn t <> "." <> prettyAnn xt <> parens (intercalateComma (map prettyAnn args)))
   prettyAnn (Match _ t cases) =

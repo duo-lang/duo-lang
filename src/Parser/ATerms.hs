@@ -75,29 +75,6 @@ import Utils (Loc(..))
 -- Bottom Parser
 -------------------------------------------------------------------------------------------
 
-fvarP :: Parser (ATerm Parsed, SourcePos)
-fvarP = do
-  startPos <- getSourcePos
-  (fv, endPos) <- freeVarName
-  return (FVar (Loc startPos endPos) fv, endPos)
-
-numLitP :: Parser (ATerm Parsed, SourcePos)
-numLitP = do
-  startPos <- getSourcePos
-  (num, endPos) <- numP
-  return (numToTerm  (Loc startPos endPos) num, endPos)
-  where
-    numToTerm :: Loc -> Int -> ATerm Parsed
-    numToTerm loc 0 = Ctor loc (MkXtorName Nominal "Z") []
-    numToTerm loc n = Ctor loc (MkXtorName Nominal "S") [numToTerm loc (n-1)]
-
-ctorP :: NominalStructural -> Parser (ATerm Parsed, SourcePos)
-ctorP ns = do
-  startPos <- getSourcePos
-  (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermTopP) `sepBy` comma)
-  return (Ctor (Loc startPos endPos) xt args, endPos)
-
 acaseP :: NominalStructural -> Parser (ACase Parsed)
 acaseP ns = do
   startPos <- getSourcePos
@@ -153,14 +130,10 @@ lambdaP = do
 --      | \x => t
 atermBotP :: Parser (ATerm Parsed, SourcePos)
 atermBotP =
-  numLitP <|>
-  ctorP Structural <|>
-  ctorP Nominal <|>
   matchP <|>
   comatchP <|>
   parens (fst <$> atermTopP) <|>
-  lambdaP <|>
-  fvarP
+  lambdaP 
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser

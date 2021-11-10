@@ -19,17 +19,11 @@ import Translate.Translate
 ---------------------------------------------------------------------------------
 
 isValue :: ATerm Compiled -> Bool
-isValue (BVar _ _) = True
-isValue (FVar _ _) = False
-isValue (Ctor _ _ args) = and (isValue <$> args)
 isValue (Dtor _ _ _ _) = False
 isValue (Match _ _ _ ) = False
 isValue (Comatch _ _) = True
 
 isWHNF :: ATerm Compiled -> Bool
-isWHNF (BVar _ _) = True
-isWHNF (FVar _ _) = False
-isWHNF (Ctor _ _ _) = True
 isWHNF (Dtor _ _ _ _) = False
 isWHNF (Match _ _ _ ) = False
 isWHNF (Comatch _ _) = True
@@ -40,23 +34,12 @@ evalArgsSingleStep (a:args) | isValue a = fmap (a:) <$> evalArgsSingleStep args
                             | otherwise = fmap (:args) <$> evalATermSingleStep a
 
 evalATermSingleStep' :: ATerm Compiled -> CallingConvention -> EvalM (Maybe (ATerm Compiled))
-evalATermSingleStep' (BVar _ _) _ = return Nothing
-evalATermSingleStep' (FVar _ fv) _ = do
-  (tm,_) <- lookupATerm fv
-  return (Just (compileATerm tm))
-evalATermSingleStep' (Ctor _ xt args) _ | and (isValue <$> args) = return Nothing
-                                        | otherwise = evalArgsSingleStep args >>= 
-                                                      \args' -> return (Just (Ctor () xt (fromJust args')))
 evalATermSingleStep' (Match _ t cases) CBV | not (isValue t) = do
   t' <- (evalATermSingleStep' t CBV)
   return (Just (Match () (fromJust t') cases))
 evalATermSingleStep' (Match _ t cases) CBN | not (isWHNF t) = do 
   t' <- (evalATermSingleStep' t CBN)
   return (Just (Match () (fromJust t') cases))
-evalATermSingleStep' (Match _ (Ctor _ xt args) cases) _ =
-  case find (\MkACase { acase_name } -> acase_name == xt) cases of
-    Nothing -> throwEvalError ["Pattern match error"]
-    Just acase -> return (Just $ atermOpening args (acase_term acase))
 evalATermSingleStep' (Match _ _ _) _ = throwEvalError ["unreachable if properly typechecked"]
 evalATermSingleStep' (Dtor _ xt t args) order | not (isValue t) = do
   t' <- evalATermSingleStep' t order
