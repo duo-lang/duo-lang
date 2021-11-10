@@ -13,7 +13,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
-    ( Declaration(PrdDecl, CnsDecl, CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
+    ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.ATerms
@@ -99,9 +99,11 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
                                       
 
 generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc Inferred, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
-generateFocusEdit PrdRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
+generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl = NamedRep $ PrdDecl () Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+    newDecl :: NamedRep (Declaration 'Compiled) = case pc of
+                PrdRep -> NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+                CnsRep -> NamedRep $ PrdCnsDecl () CnsRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -109,16 +111,7 @@ generateFocusEdit PrdRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
-generateFocusEdit CnsRep eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
-  let
-    newDecl = NamedRep $ CnsDecl () Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
-    replacement = ppPrint newDecl
-    edit = TextEdit {_range= locToRange loc, _newText= replacement }
-  in 
-    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                  , _documentChanges = Nothing
-                  , _changeAnnotations = Nothing
-                  }
+
 
 generateCmdFocusCodeAction :: TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
 generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
@@ -160,7 +153,7 @@ generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Tr
 generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
 generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
   let
-    newDecl = NamedRep $ PrdDecl () Recursive name (Just ty) (createNamesSTerm (compile tm))
+    newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in

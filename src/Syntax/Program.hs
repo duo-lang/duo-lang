@@ -6,10 +6,10 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.CommonTerm
-    ( FreeVarName, PrdCns(Cns, Prd), Phase(..) )
+    ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep )
 import Syntax.STerms( Command, STerm )
 import Syntax.ATerms ( ATerm )
-import Syntax.Types ( TypeScheme, Polarity(..), DataDecl )
+import Syntax.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -25,8 +25,7 @@ newtype ModuleName = ModuleName { unModuleName :: Text }
 data IsRec = Recursive | NonRecursive
 
 data Declaration (ext :: Phase) where
-  PrdDecl        :: DeclExt ext -> IsRec -> FreeVarName -> Maybe (TypeScheme Pos) -> STerm Prd ext -> Declaration ext
-  CnsDecl        :: DeclExt ext -> IsRec -> FreeVarName -> Maybe (TypeScheme Neg) -> STerm Cns ext -> Declaration ext
+  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> STerm pc ext -> Declaration ext
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DefDecl        :: DeclExt ext -> IsRec -> FreeVarName -> Maybe (TypeScheme Pos) -> ATerm ext     -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext

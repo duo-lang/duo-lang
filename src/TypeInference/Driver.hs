@@ -253,9 +253,9 @@ checkCmd loc cmd = do
 
 insertDecl :: Declaration Parsed
            -> DriverM ()
-insertDecl (PrdDecl loc isRec v annot loct) = do
+insertDecl (PrdCnsDecl loc pc isRec v annot loct) = do
   -- Infer a type
-  (trace, tmInferred) <- inferSTermTraced isRec loc v PrdRep loct
+  (trace, tmInferred) <- inferSTermTraced isRec loc v pc loct
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
@@ -264,21 +264,13 @@ insertDecl (PrdDecl loc isRec v annot loct) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
-  setEnvironment newEnv
-insertDecl (CnsDecl loc isRec v annot loct) = do
-  -- Infer a type
-  (trace, tmInferred) <- inferSTermTraced isRec loc v CnsRep loct
-  guardVerbose $ do
-      ppPrintIO (trace_constraintSet trace)
-      ppPrintIO (trace_solvedConstraints trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-  -- Check whether annotation matches inferred type
-  ty <- checkAnnot (trace_resType trace) annot loc
-  -- Insert into environment
-  env <- gets driverEnv
-  let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
-  setEnvironment newEnv
+  case pc of
+    PrdRep -> do
+      let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
+      setEnvironment newEnv
+    CnsRep -> do
+      let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
+      setEnvironment newEnv
 insertDecl (CmdDecl loc v loct) = do
   -- Check whether command is typeable
   (constraints, solverResult, cmdInferred) <- checkCmd loc loct

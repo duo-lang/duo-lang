@@ -27,8 +27,8 @@ annotP rep = optional annotP'
   where
     annotP' = try (colon >> typeSchemeP rep)
 
-prdDeclarationP :: Parser (Declaration Parsed)
-prdDeclarationP = do
+prdCnsDeclarationP :: PrdCnsRep pc -> Parser (Declaration Parsed)
+prdCnsDeclarationP PrdRep = do
   startPos <- getSourcePos
   try (void prdKwP)
   recoverDeclaration $ do
@@ -38,10 +38,8 @@ prdDeclarationP = do
     _ <- coloneq
     (t,_) <- stermP PrdRep
     endPos <- semi
-    return (PrdDecl (Loc startPos endPos) isRec v annot t)
-
-cnsDeclarationP :: Parser (Declaration Parsed)
-cnsDeclarationP = do
+    return (PrdCnsDecl (Loc startPos endPos) PrdRep isRec v annot t)
+prdCnsDeclarationP CnsRep = do
   startPos <- getSourcePos
   try (void cnsKwP)
   recoverDeclaration $ do
@@ -51,7 +49,7 @@ cnsDeclarationP = do
     _ <- coloneq
     (t,_) <- stermP CnsRep
     endPos <- semi
-    return (CnsDecl (Loc startPos endPos) isRec v annot t)
+    return (PrdCnsDecl (Loc startPos endPos) CnsRep isRec v annot t)
 
 cmdDeclarationP :: Parser (Declaration Parsed)
 cmdDeclarationP = do
@@ -140,8 +138,8 @@ dataDeclP = do
 
 declarationP :: Parser (Declaration Parsed)
 declarationP =
-  prdDeclarationP <|>
-  cnsDeclarationP <|>
+  prdCnsDeclarationP PrdRep <|>
+  prdCnsDeclarationP CnsRep <|>
   cmdDeclarationP <|>
   defDeclarationP <|>
   importDeclP <|>
