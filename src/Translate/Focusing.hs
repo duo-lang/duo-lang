@@ -3,7 +3,7 @@ module Translate.Focusing where
 import Data.Text qualified as T
 
 import Syntax.Program ( Declaration(..), Program )
-import Translate.Translate (compileSTerm)
+import Translate.Translate (compile)
 import Syntax.CommonTerm
     ( FreeVarName,
       PrdCns(Cns, Prd),
