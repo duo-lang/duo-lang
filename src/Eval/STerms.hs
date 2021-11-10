@@ -11,7 +11,7 @@ import Eval.Eval
     ( throwEvalError, lookupEvalOrder, EvalM )
 import Lookup ( lookupSTerm )
 import Pretty.Pretty ( ppPrint )
-import Pretty.STerms ()
+import Pretty.Terms ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds

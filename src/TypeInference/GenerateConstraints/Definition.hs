@@ -39,7 +39,7 @@ import Data.Text qualified as T
 import Errors
 import Lookup
 import Pretty.Pretty
-import Pretty.STerms ()
+import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types

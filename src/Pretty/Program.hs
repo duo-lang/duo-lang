@@ -6,7 +6,7 @@ import Prettyprinter
 import Data.List (intersperse)
 
 import Pretty.Pretty
-import Pretty.STerms ()
+import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types

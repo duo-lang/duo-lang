@@ -74,7 +74,7 @@ library
       Parser.Types
       Pretty.Pretty
       Pretty.Constraints
-      Pretty.STerms
+      Pretty.Terms
       Pretty.Types
       Pretty.Program
       Pretty.Errors

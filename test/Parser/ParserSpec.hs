@@ -12,7 +12,7 @@ import Syntax.Terms
 import Syntax.CommonTerm
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
-import Pretty.STerms ()
+import Pretty.Terms ()
 import Translate.Translate
 
 

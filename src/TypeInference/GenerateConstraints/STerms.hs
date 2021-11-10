@@ -6,7 +6,7 @@ module TypeInference.GenerateConstraints.STerms
 
 import Control.Monad.Reader
 
-import Pretty.STerms ()
+import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Terms
 import Syntax.CommonTerm

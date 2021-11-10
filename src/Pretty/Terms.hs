@@ -1,4 +1,4 @@
-module Pretty.STerms where
+module Pretty.Terms where
 
 import Prettyprinter
 
