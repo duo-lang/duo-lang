@@ -4,25 +4,25 @@
 
 data Bool : Type CBV { True, False };
 
-def not := \b => match b with { True => False, False => True};
+prd not := \b => match b with { True => False, False => True};
 
-def ifthenelse := \b => \e1 => \e2 => match b with { True => e1, False => e2 };
+prd ifthenelse := \b => \e1 => \e2 => match b with { True => e1, False => e2 };
 
-def and := \b1 => \b2 => ifthenelse b1 b2 False;
+prd and := \b1 => \b2 => ifthenelse b1 b2 False;
 
-def or := \b1 => \b2 => ifthenelse b1 True b2;
+prd or := \b1 => \b2 => ifthenelse b1 True b2;
 
 # Peano natural numbers
 
 data Nat : Type CBV { Z, S(Nat) };
 
-def rec add := \n => \m => match n with { Z => m
+prd rec add := \n => \m => match n with { Z => m
                                         , S(n) => S(add n m)};
 
-def rec mul := \n => \m => match n with { Z => Z
+prd rec mul := \n => \m => match n with { Z => Z
                                         , S(n) => add m (mul n m)};
 
-def rec nateq := \n => \m => match n with { Z => match m with { Z => True, S(m) => False}
+prd rec nateq := \n => \m => match n with { Z => match m with { Z => True, S(m) => False}
                                           , S(n) => match m with { Z => False, S(m) => nateq n m}};
 
 # Unit
@@ -32,7 +32,7 @@ data Unit : Type CBV { Unit };
 
 # Other functions
 
-def id := \x => x;
+prd id := \x => x;
 
 # Generic print consumer
 cns print := mu x.Print(x);

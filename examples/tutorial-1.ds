@@ -23,13 +23,13 @@ data Nat : Type CBV { Z, S(Nat) };
 # We can define toplevel values using the following syntax, where the names of defined terms have
 # to start with a lowercase letter.
 
-def true := True;
-def two := S(S(Z));
+prd true := True;
+prd two := S(S(Z));
 
 # We also provide some syntactic sugar for (Peano) natural numbers, so that `two` can
 # alternatively be written in the following way.
 
-def twoSugared := 2;
+prd twoSugared := 2;
 
 # We now want to check the inferred types of our declared terms. In order to do that you can
 # enter the following command in the REPL:
@@ -40,7 +40,7 @@ def twoSugared := 2;
 # Datatypes would be quite useless if you couldn't also destruct them via pattern matching.
 # A convoluted way to define the number two is to define it as the predecessor of 3:
 
-def convolutedTwo := match 3 with { Z => Z, S(x) => x };
+prd convolutedTwo := match 3 with { Z => Z, S(x) => x };
 
 # Pattern matches on the constructors of a declared datatype have to be exhaustive,
 # otherwise an error is reported.
@@ -71,12 +71,12 @@ codata Fun : Type CBN { Ap(Nat)[Bool] };
 # We can use a copattern match (or "comatch" for short) to construct a term of this codata type.
 # For example, we can define the functions which return constant True or False:
 
-def constTrue := comatch { Ap(x) => True };
-def constFalse := comatch { Ap(x) => False };
+prd constTrue := comatch { Ap(x) => True };
+prd constFalse := comatch { Ap(x) => False };
 
 # or, we can combine a copattern match with a pattern match to implement the `isZ` function:
 
-def isZ := comatch { Ap(x) => match x with { Z => True, S(x) => False } };
+prd isZ := comatch { Ap(x) => match x with { Z => True, S(x) => False } };
 
 # We can call a function which is declared in this way by using its destructor on it.
 # For example, in order to check whether 5 is zero, we can write:

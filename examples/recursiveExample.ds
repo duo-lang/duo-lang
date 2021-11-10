@@ -6,7 +6,7 @@ prd rec addS := comatch { 'Ap(x,y)[k] =>
                              }
                    };
 
-def rec addA := comatch { 'Ap(x,y) => match x with { 'Z => y
+prd rec addA := comatch { 'Ap(x,y) => match x with { 'Z => y
                                                , 'S(z) => addA.'Ap(z, 'S(y))
 					      }
 		     };
