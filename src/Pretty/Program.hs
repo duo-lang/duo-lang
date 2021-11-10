@@ -34,21 +34,19 @@ instance PrettyAnn DataDecl where
 instance PrettyAnn ModuleName where
   prettyAnn (ModuleName nm) = prettyAnn nm
 
+instance PrettyAnn (PrdCnsRep pc) where
+  prettyAnn PrdRep = annKeyword "prd"
+  prettyAnn CnsRep = annKeyword "cns"
+
 prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdDecl :: Pretty a => IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
-prettyPrdDecl Recursive    fv annot ptm =
-  annKeyword "prd" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
-prettyPrdDecl NonRecursive fv annot ptm =
-  annKeyword "prd" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
-
-prettyCnsDecl :: Pretty a => IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
-prettyCnsDecl Recursive    fv annot ptm =
-  annKeyword "cns" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
-prettyCnsDecl NonRecursive fv annot ptm =
-  annKeyword "cns" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+prettyPrdCnsDecl :: Pretty a => PrdCnsRep pc -> IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyPrdCnsDecl pc Recursive fv annot ptm =
+  prettyAnn pc <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+prettyPrdCnsDecl pc NonRecursive fv annot ptm =
+  prettyAnn pc <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
@@ -61,10 +59,8 @@ prettyDefDecl NonRecursive fv annot ptm =
   annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 instance PrettyAnn (Declaration ext) where
-  prettyAnn (PrdDecl _ isRec fv annot tm) =
-    prettyPrdDecl isRec fv annot (prettyAnn tm)
-  prettyAnn (CnsDecl _ isRec fv annot tm) =
-    prettyCnsDecl isRec fv annot (prettyAnn tm)
+  prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
+    prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
   prettyAnn (CmdDecl _ fv cm) =
     prettyCmdDecl fv (prettyAnn cm)
   prettyAnn (DefDecl _ isRec fv annot tm) =
@@ -80,10 +76,8 @@ instance PrettyAnn (Declaration ext) where
 
 
 instance PrettyAnn (NamedRep (Declaration ext)) where
-  prettyAnn (NamedRep (PrdDecl _ isRec fv annot tm)) =
-    prettyPrdDecl isRec fv annot (prettyAnn (openSTermComplete tm))
-  prettyAnn (NamedRep (CnsDecl _ isRec fv annot tm)) =
-    prettyCnsDecl isRec fv annot (prettyAnn (openSTermComplete tm))
+  prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
+    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
   prettyAnn (NamedRep (DefDecl _ isRec fv annot tm)) =

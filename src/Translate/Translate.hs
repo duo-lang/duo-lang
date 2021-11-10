@@ -61,9 +61,8 @@ compileCmd (Print _ prd) = Print () (compileSTerm prd)
 compileCmd (Done _) = Done ()
 
 compileDecl :: Declaration ext -> Declaration Compiled
-compileDecl (DefDecl _ isRec v ts t)      = PrdDecl () isRec v ts $ compile t
-compileDecl (PrdDecl _ isRec fv annot tm) = PrdDecl () isRec fv annot (compileSTerm tm)
-compileDecl (CnsDecl _ isRec fv annot tm) = CnsDecl () isRec fv annot (compileSTerm tm)
+compileDecl (DefDecl _ isRec v ts t)      = PrdCnsDecl () PrdRep isRec v ts $ compile t
+compileDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (compileSTerm tm)
 compileDecl (CmdDecl _ fv cmd)            = CmdDecl () fv (compileCmd cmd)
 compileDecl (DataDecl _ decl)             = DataDecl () decl
 compileDecl (ImportDecl _ mn)             = ImportDecl () mn
@@ -72,8 +71,7 @@ compileDecl ParseErrorDecl                = ParseErrorDecl
 
 compileDecl' :: Declaration ext -> Declaration Compiled
 compileDecl' (DefDecl _ isRec v ts t)      = DefDecl () isRec v ts $ compileATerm t
-compileDecl' (PrdDecl _ isRec fv annot tm) = PrdDecl () isRec fv annot (compileSTerm tm)
-compileDecl' (CnsDecl _ isRec fv annot tm) = CnsDecl () isRec fv annot (compileSTerm tm)
+compileDecl' (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (compileSTerm tm)
 compileDecl' (CmdDecl _ fv cmd)            = CmdDecl () fv (compileCmd cmd)
 compileDecl' (DataDecl _ decl)             = DataDecl () decl
 compileDecl' (ImportDecl _ mn)             = ImportDecl () mn
