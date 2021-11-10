@@ -66,7 +66,6 @@ library
       Eval.Eval
       Eval.STerms
       Lookup
-      Parser.ATerms
       Parser.Definition
       Parser.Lexer
       Parser.Parser
