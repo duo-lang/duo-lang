@@ -11,7 +11,6 @@ import Parser.Lexer
 import Parser.Terms
 import Parser.Types
 import Syntax.Program
-import Syntax.Terms
 import Syntax.Types
 import Syntax.CommonTerm
 import Utils (Loc(..))
