@@ -19,8 +19,9 @@ import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,
       Typ,
-      PolarityRep(PosRep),
-      Polarity(Pos) )
+      PolarityRep
+    )
+      
 import Syntax.Program
     ( Environment(..),
       Declaration(..),
