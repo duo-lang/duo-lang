@@ -30,7 +30,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
 import Translate.Focusing ( focusSTerm, isFocusedSTerm, isFocusedCmd, focusCmd )
-import Translate.Translate ( compile )
+-- import Translate.Translate ( compile )
 
 
 
@@ -136,24 +136,24 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Translation Actions
 ---------------------------------------------------------------------------------
 
-generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
-generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
-                                                                  , _kind = Just CodeActionQuickFix 
-                                                                  , _diagnostics = Nothing
-                                                                  , _isPreferred = Nothing
-                                                                  , _disabled = Nothing
-                                                                  , _edit = Just (generateTranslateEdit ident arg)
-                                                                  , _command = Nothing
-                                                                  , _xdata = Nothing
-                                                                  }
+-- generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
+-- generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
+--                                                                   , _kind = Just CodeActionQuickFix 
+--                                                                   , _diagnostics = Nothing
+--                                                                   , _isPreferred = Nothing
+--                                                                   , _disabled = Nothing
+--                                                                   , _edit = Just (generateTranslateEdit ident arg)
+--                                                                   , _command = Nothing
+--                                                                   , _xdata = Nothing
+--                                                                   }
 
-generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
-generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
-  let
-    newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))
-    replacement = ppPrint newDecl
-    edit = TextEdit {_range=locToRange loc, _newText=replacement}
-  in
-    WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
-                  , _documentChanges=Nothing 
-                  , _changeAnnotations=Nothing}
+-- generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
+-- generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
+--   let
+--     newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))
+--     replacement = ppPrint newDecl
+--     edit = TextEdit {_range=locToRange loc, _newText=replacement}
+--   in
+--     WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
+--                   , _documentChanges=Nothing 
+--                   , _changeAnnotations=Nothing}

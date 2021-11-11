@@ -9,7 +9,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
 import Text.Megaparsec ( errorBundlePretty )
-import Parser.Parser ( runInteractiveParser, atermP, stermP, typeSchemeP )
+import Parser.Parser ( runInteractiveParser, stermP, typeSchemeP )
 import Pretty.Pretty ( ppPrint, PrettyAnn )
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)

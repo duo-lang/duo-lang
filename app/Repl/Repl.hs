@@ -15,7 +15,7 @@ import Errors ()
 import Eval.Eval ( runEval )
 import Eval.STerms ( eval, evalSteps )
 import Parser.Parser
-    ( Parser, atermP, runFileParser, runInteractiveParser, commandP )
+    ( Parser, runFileParser, runInteractiveParser, commandP )
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
