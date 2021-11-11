@@ -399,58 +399,58 @@ fresh CnsRep = do
   modify (second tail)
   pure (Just var)
 
-createNamesSTerm :: STerm pc ext -> STerm pc ext
+createNamesSTerm :: STerm pc ext -> STerm pc Parsed
 createNamesSTerm tm = evalState (createNamesSTerm' tm) names
 
-createNamesCommand :: Command ext -> Command ext
+createNamesCommand :: Command ext -> Command Parsed
 createNamesCommand cmd = evalState (createNamesCommand' cmd) names
 
-createNamesSTerm' :: STerm pc ext -> CreateNameM (STerm pc ext)
-createNamesSTerm' (BoundVar ext pc idx) = return $ BoundVar ext pc idx
-createNamesSTerm' (FreeVar ext pc nm)   = return $ FreeVar ext pc nm
-createNamesSTerm' (XtorCall ext pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
+createNamesSTerm' :: STerm pc ext -> CreateNameM (STerm pc Parsed)
+createNamesSTerm' (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
+createNamesSTerm' (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
+createNamesSTerm' (XtorCall _ pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
   prdArgs' <- sequence $ createNamesSTerm' <$> prdArgs
   cnsArgs' <- sequence $ createNamesSTerm' <$> cnsArgs
-  return $ XtorCall ext pc xt (MkXtorArgs prdArgs' cnsArgs')
-createNamesSTerm' (XMatch ext pc ns cases) = do
+  return $ XtorCall defaultLoc pc xt (MkXtorArgs prdArgs' cnsArgs')
+createNamesSTerm' (XMatch _ pc ns cases) = do
   cases' <- sequence $ createNamesSCase <$> cases
-  return $ XMatch ext pc ns cases'
-createNamesSTerm' (MuAbs ext pc _ cmd) = do
+  return $ XMatch defaultLoc pc ns cases'
+createNamesSTerm' (MuAbs _ pc _ cmd) = do
   cmd' <- createNamesCommand' cmd
   var <- fresh (flipPrdCns pc)
-  return $ MuAbs ext pc var cmd'
-createNamesSTerm' (Dtor ext xt e args) = do
+  return $ MuAbs defaultLoc pc var cmd'
+createNamesSTerm' (Dtor _ xt e args) = do
   e' <- createNamesSTerm' e
   args' <- sequence (createNamesSTerm' <$> args)
-  return $ Dtor ext xt e' args'
-createNamesSTerm' (Match ext e cases) = do
+  return $ Dtor defaultLoc xt e' args'
+createNamesSTerm' (Match _ e cases) = do
   e' <- createNamesSTerm' e
   cases' <- sequence (createNamesACase <$> cases)
-  return $ Match ext e' cases'
-createNamesSTerm' (Comatch ext cases) = do
+  return $ Match defaultLoc e' cases'
+createNamesSTerm' (Comatch _ cases) = do
   cases' <- sequence (createNamesACase <$> cases)
-  return $ Comatch ext cases'
+  return $ Comatch defaultLoc cases'
 
-createNamesCommand' :: Command ext -> CreateNameM (Command ext)
-createNamesCommand' (Done ext) = return $ Done ext
-createNamesCommand' (Apply ext prd cns) = do
+createNamesCommand' :: Command ext -> CreateNameM (Command Parsed)
+createNamesCommand' (Done _) = return $ Done defaultLoc
+createNamesCommand' (Apply _ prd cns) = do
   prd' <- createNamesSTerm' prd 
   cns' <- createNamesSTerm' cns 
-  return (Apply ext prd' cns')
-createNamesCommand' (Print ext prd) = createNamesSTerm' prd >>= \prd' -> return (Print ext prd')
+  return (Apply defaultLoc prd' cns')
+createNamesCommand' (Print _ prd) = createNamesSTerm' prd >>= \prd' -> return (Print defaultLoc prd')
 
-createNamesSCase :: SCase ext -> CreateNameM (SCase ext)
+createNamesSCase :: SCase ext -> CreateNameM (SCase Parsed)
 createNamesSCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
   cmd' <- createNamesCommand' scase_cmd
   as' <- sequence $ (const (fresh PrdRep)) <$> as
   bs' <- sequence $ (const (fresh CnsRep)) <$> bs
   return $ MkSCase scase_name (Twice as' bs') cmd'
 
-createNamesACase :: ACase ext -> CreateNameM (ACase ext)
-createNamesACase (MkACase ext xt args e) = do
+createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
+createNamesACase (MkACase _ xt args e) = do
   e' <- createNamesSTerm' e
   args' <- sequence $ (const (fresh PrdRep)) <$> args
-  return $ MkACase ext xt args' e'
+  return $ MkACase defaultLoc xt args' e'
 
   
 

@@ -24,7 +24,7 @@ import TypeInference.Driver
       inferProgramIO,
       DriverState(DriverState),
       InferenceOptions(infOptsLibPath) )
-import Utils ( Loc )
+import Utils 
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
@@ -98,9 +98,9 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
 generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc Inferred, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl :: NamedRep (Declaration 'Compiled) = case pc of
-                PrdRep -> NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
-                CnsRep -> NamedRep $ PrdCnsDecl () CnsRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+    newDecl :: NamedRep (Declaration 'Parsed) = case pc of
+                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -124,7 +124,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = NamedRep $ CmdDecl () name (createNamesCommand (focusCmd eo cmd))
+    newDecl = NamedRep $ CmdDecl defaultLoc name (createNamesCommand (focusCmd eo cmd))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 

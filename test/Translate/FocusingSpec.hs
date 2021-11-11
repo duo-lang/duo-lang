@@ -15,8 +15,7 @@ import Syntax.CommonTerm
 import Syntax.Kinds
 import Syntax.Program
 import Translate.Focusing
-
-import Unsafe.Coerce (unsafeCoerce)
+import Utils
 
 shouldShiftTo :: STerm pc Compiled -> STerm pc Compiled -> Spec
 shouldShiftTo tm1 tm2 = do
@@ -38,8 +37,16 @@ shouldFocusTo input output = do
 focusShouldBeNoOp :: Text -> Spec
 focusShouldBeNoOp input = shouldFocusTo input input
 
-reParse :: Declaration ext -> Declaration Parsed
-reParse = unsafeCoerce
+reParseDecl :: Declaration ext -> Declaration Parsed
+reParseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl defaultLoc rep isRec fv ts (createNamesSTerm tm)
+reParseDecl (CmdDecl _ fv cmd) = CmdDecl defaultLoc fv (createNamesCommand cmd)
+reParseDecl (DataDecl _ decl) = DataDecl defaultLoc decl
+reParseDecl (ImportDecl _ mn) = ImportDecl defaultLoc mn
+reParseDecl (SetDecl _ txt) = SetDecl defaultLoc txt
+reParseDecl ParseErrorDecl = ParseErrorDecl
+
+reParse :: Program ext -> Program Parsed
+reParse = fmap reParseDecl
 
 focusExamples :: Spec
 focusExamples = do
@@ -50,7 +57,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBV (compileProgram decls)
+                let focusedDecls :: Program Parsed = reParse $ focusProgram CBV (compileProgram decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -60,7 +67,7 @@ focusExamples = do
         case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let focusedDecls :: Program Parsed = reParse <$> focusProgram CBN (compileProgram decls)
+                let focusedDecls :: Program Parsed = reParse $ focusProgram CBN (compileProgram decls)
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) focusedDecls
                 case res of
                     Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
