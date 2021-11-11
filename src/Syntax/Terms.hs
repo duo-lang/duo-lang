@@ -12,8 +12,6 @@ import Utils
 import Errors
 import Syntax.CommonTerm
 import Syntax.Types 
-import Syntax.CommonTerm (Phase(Compiled))
-import Control.Monad.Except (ExceptT)
 
 ---------------------------------------------------------------------------------
 -- Asymmetric Terms
@@ -298,6 +296,18 @@ termLocallyClosedRec env (XMatch _ _ _ cases) = do
   sequence_ ((\MkSCase { scase_cmd, scase_args } -> commandLocallyClosedRec (twiceMap (fmap (const ())) (fmap (const ())) scase_args : env) scase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
 termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
+termLocallyClosedRec env (Dtor _ _ e args) = do
+  termLocallyClosedRec env e
+  sequence_ (termLocallyClosedRec env <$> args)
+termLocallyClosedRec env (Match _ e cases) = do
+  termLocallyClosedRec env e
+  sequence_ (acaseLocallyClosedRec env <$> cases)
+termLocallyClosedRec env (Comatch _ cases) =
+  sequence_ (acaseLocallyClosedRec env <$> cases)
+
+acaseLocallyClosedRec :: [Twice [()]] -> ACase ext -> Either Error ()
+acaseLocallyClosedRec env (MkACase _ _ args e) = do
+  termLocallyClosedRec ((Twice (const () <$> args) []):env) e
 
 commandLocallyClosedRec :: [Twice [()]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
@@ -403,12 +413,23 @@ createNamesSTerm' (XtorCall ext pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
   cnsArgs' <- sequence $ createNamesSTerm' <$> cnsArgs
   return $ XtorCall ext pc xt (MkXtorArgs prdArgs' cnsArgs')
 createNamesSTerm' (XMatch ext pc ns cases) = do
-  cases' <- sequence $ createNamesCase <$> cases
+  cases' <- sequence $ createNamesSCase <$> cases
   return $ XMatch ext pc ns cases'
 createNamesSTerm' (MuAbs ext pc _ cmd) = do
   cmd' <- createNamesCommand' cmd
   var <- fresh (flipPrdCns pc)
   return $ MuAbs ext pc var cmd'
+createNamesSTerm' (Dtor ext xt e args) = do
+  e' <- createNamesSTerm' e
+  args' <- sequence (createNamesSTerm' <$> args)
+  return $ Dtor ext xt e' args'
+createNamesSTerm' (Match ext e cases) = do
+  e' <- createNamesSTerm' e
+  cases' <- sequence (createNamesACase <$> cases)
+  return $ Match ext e' cases'
+createNamesSTerm' (Comatch ext cases) = do
+  cases' <- sequence (createNamesACase <$> cases)
+  return $ Comatch ext cases'
 
 createNamesCommand' :: Command ext -> CreateNameM (Command ext)
 createNamesCommand' (Done ext) = return $ Done ext
@@ -418,13 +439,20 @@ createNamesCommand' (Apply ext prd cns) = do
   return (Apply ext prd' cns')
 createNamesCommand' (Print ext prd) = createNamesSTerm' prd >>= \prd' -> return (Print ext prd')
 
-createNamesCase :: SCase ext -> CreateNameM (SCase ext)
-createNamesCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
+createNamesSCase :: SCase ext -> CreateNameM (SCase ext)
+createNamesSCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
   cmd' <- createNamesCommand' scase_cmd
   as' <- sequence $ (const (fresh PrdRep)) <$> as
   bs' <- sequence $ (const (fresh CnsRep)) <$> bs
   return $ MkSCase scase_name (Twice as' bs') cmd'
 
+createNamesACase :: ACase ext -> CreateNameM (ACase ext)
+createNamesACase (MkACase ext xt args e) = do
+  e' <- createNamesSTerm' e
+  args' <- sequence $ (const (fresh PrdRep)) <$> args
+  return $ MkACase ext xt args' e'
+
+  
 
 ---------------------------------------------------------------------------------
 -- Shifting
