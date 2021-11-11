@@ -1,7 +1,6 @@
 module Parser.Terms
-  ( stermP
+  ( termP
   , commandP
-  , atermP
   )where
 
 import Text.Megaparsec hiding (State)
@@ -39,8 +38,8 @@ numLitP ns PrdRep = do
 xtorArgsP :: Parser (XtorArgs Parsed, SourcePos)
 xtorArgsP = do
   endPos <- getSourcePos
-  (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (stermP PrdRep)) `sepBy` comma)
-  (ys, endPos) <- option ([],endPos) (brackets $ (fst <$> (stermP CnsRep)) `sepBy` comma)
+  (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (termP PrdRep)) `sepBy` comma)
+  (ys, endPos) <- option ([],endPos) (brackets $ (fst <$> (termP CnsRep)) `sepBy` comma)
   return (MkXtorArgs xs ys, endPos)
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
@@ -113,29 +112,15 @@ muAbstraction CnsRep = do
   return (MuAbs (Loc startPos endPos) CnsRep (Just v) (commandClosingSingle PrdRep v cmd), endPos)
 
 --------------------------------------------------------------------------------------------
--- Combined STerms parser
---------------------------------------------------------------------------------------------
-
-stermP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
-stermP pc = fst <$> (parens (stermP pc))
-  <|> try (numLitP Structural pc)
-  <|> try (numLitP Nominal pc)
-  <|> xtorCall Structural pc
-  <|> xtorCall Nominal pc
-  <|> patternMatch pc
-  <|> muAbstraction pc
-  <|> freeVar pc
-
---------------------------------------------------------------------------------------------
 -- Commands
 --------------------------------------------------------------------------------------------
 
 applyCmdP :: Parser (Command Parsed, SourcePos)
 applyCmdP = do
   startPos <- getSourcePos
-  (prd, _pos) <- stermP PrdRep
+  (prd, _pos) <- termP PrdRep
   _ <- commandSym
-  (cns, endPos) <- stermP CnsRep
+  (cns, endPos) <- termP CnsRep
   return (Apply (Loc startPos endPos) prd cns, endPos)
 
 doneCmdP :: Parser (Command Parsed, SourcePos)
@@ -148,7 +133,7 @@ printCmdP :: Parser (Command Parsed, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
   _ <- printKwP
-  (arg,endPos) <- parens (fst <$> stermP PrdRep)
+  (arg,endPos) <- parens (fst <$> termP PrdRep)
   return (Print (Loc startPos endPos) arg, endPos)
 
 commandP :: Parser (Command Parsed, SourcePos)
@@ -169,8 +154,10 @@ commandP =
 --      | n                                Natural number literal     (Syntax Sugar)
 --      | x                                Variable
 --      | C(e,...,e)                       Ctor
---      | match e with { case,...,case }   Pattern match
---      | comatch { case,...,case }        Copattern match
+--      | match { scase,...,scase }        Pattern match (symmetric)
+--      | case e of { acase,...,acase }    Pattern match (asymmetric)
+--      | comatch { scase,...,scase }      Copattern match (symmetric)
+--      | cocase { acase,..., acase }      Copattern match (asymmetric)
 --      | (e)                              Parenthesized expression
 --      | \x => e                          Lambda abstraction         (Syntax sugar)
 --
@@ -204,7 +191,7 @@ acaseP ns = do
   (xt, _) <- xtorName ns
   args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
   _ <- rightarrow
-  (res, endPos) <- atermTopP
+  (res, endPos) <- termTopP PrdRep
   return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing (Twice args []) res))
 
 acasesP :: Parser ([ACase Parsed], SourcePos)
@@ -213,17 +200,19 @@ acasesP = try structuralCases <|> nominalCases
     structuralCases = braces $ acaseP Structural `sepBy` comma
     nominalCases = braces $ acaseP Nominal `sepBy` comma
 
-matchP :: Parser (STerm Prd Parsed, SourcePos)
-matchP = do
+matchP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+matchP CnsRep = empty
+matchP PrdRep = do
   startPos <- getSourcePos
   _ <- matchKwP
-  (arg, _pos) <- atermP
+  (arg, _pos) <- termP PrdRep
   _ <- withKwP
   (cases, endPos) <- acasesP
   return (Match (Loc startPos endPos) arg cases, endPos)
 
-comatchP :: Parser (STerm Prd Parsed, SourcePos)
-comatchP = do
+comatchP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+comatchP CnsRep = empty
+comatchP PrdRep = do
   startPos <- getSourcePos
   _ <- comatchKwP
   (cocases, endPos) <- acasesP
@@ -234,13 +223,14 @@ mkLambda :: Loc -> FreeVarName -> STerm Prd Parsed -> STerm Prd Parsed
 mkLambda loc var tm = Comatch loc [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing (Twice [var] []) tm)]
 
 
-lambdaP :: Parser (STerm Prd Parsed, SourcePos)
-lambdaP = do
+lambdaP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+lambdaP CnsRep = empty
+lambdaP PrdRep = do
   startPos <- getSourcePos
   _ <- backslash
   bvar <- freeVarName
   _ <- rightarrow 
-  (tm, endPos) <- atermTopP
+  (tm, endPos) <- termTopP PrdRep
   let res = mkLambda (Loc startPos endPos) (fst bvar) tm
   return (res, endPos)
 
@@ -251,12 +241,19 @@ lambdaP = do
 --      | comatch {...}
 --      | (t)
 --      | \x => t
-atermBotP :: Parser (STerm Prd Parsed, SourcePos)
-atermBotP =
-  matchP <|>
-  comatchP <|>
-  parens (fst <$> atermTopP) <|>
-  lambdaP 
+termBotP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+termBotP rep =
+  try (numLitP Structural rep) <|>
+  try (numLitP Nominal rep) <|>
+  xtorCall Structural rep <|>
+  xtorCall Nominal rep <|>
+  patternMatch rep <|>
+  matchP rep <|>
+  comatchP rep <|>
+  muAbstraction rep <|>
+  parens (fst <$> termTopP rep) <|>
+  lambdaP rep <|>
+  freeVar rep
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser
@@ -277,17 +274,18 @@ mkApps startPos ((a1,_):(a2,endPos):as) =
     mkApps startPos ((tm,endPos):as)
   
 
-applicationP :: Parser (STerm Prd Parsed, SourcePos)
-applicationP = do
+applicationP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+applicationP CnsRep = termBotP CnsRep
+applicationP PrdRep = do
   startPos <- getSourcePos
-  aterms <- some atermBotP
+  aterms <- some (termBotP PrdRep)
   return $ mkApps startPos aterms
 
 
 -- m ::= b ... b (n-ary application, left associative)
 --     | b
-atermMiddleP :: Parser (STerm Prd Parsed, SourcePos)
-atermMiddleP = applicationP -- applicationP handles the case of 0-ary application
+termMiddleP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 
 -------------------------------------------------------------------------------------------
 -- Top Parser
@@ -297,7 +295,7 @@ atermMiddleP = applicationP -- applicationP handles the case of 0-ary applicatio
 destructorP' :: NominalStructural -> Parser (XtorName,[STerm Prd Parsed], SourcePos)
 destructorP' ns = do
   (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ (fst <$> atermTopP) `sepBy` comma)
+  (args, endPos) <- option ([], endPos) (parens $ (fst <$> termTopP PrdRep) `sepBy` comma)
   return (xt, args, endPos)
 
 destructorP :: Parser (XtorName,[STerm Prd Parsed], SourcePos)
@@ -318,22 +316,25 @@ mkDtorChain startPos (destructee,_)((xt,args,endPos):dts) =
   in
     mkDtorChain startPos (tm, endPos) dts
 
-dtorP :: Parser (STerm Prd Parsed, SourcePos)
-dtorP = do
+dtorP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+dtorP CnsRep = termMiddleP CnsRep
+dtorP PrdRep = do
   startPos <- getSourcePos
-  destructee <- atermMiddleP
+  destructee <- termMiddleP PrdRep
   destructorChain <- destructorChainP
   return $ mkDtorChain startPos destructee destructorChain
 
 
 -- t ::= m.D(t,...,t). ... .D(t,...,t)
 --     | m
-atermTopP :: Parser (STerm Prd Parsed, SourcePos)
-atermTopP = dtorP -- dtorP handles the case with an empty dtor chain.
+termTopP :: PrdCnsRep pc ->  Parser (STerm pc Parsed, SourcePos)
+termTopP = dtorP -- dtorP handles the case with an empty dtor chain.
 
 -------------------------------------------------------------------------------------------
 -- Exported Parsers
 -------------------------------------------------------------------------------------------
 
-atermP :: Parser (STerm Prd Parsed, SourcePos)
-atermP = atermTopP
+termP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
+termP = termTopP
+
+

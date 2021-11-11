@@ -35,7 +35,7 @@ prdCnsDeclarationP PrdRep = do
     (v, _pos) <- freeVarName
     annot <- annotP PosRep
     _ <- coloneq
-    (t,_) <- stermP PrdRep
+    (t,_) <- termP PrdRep
     endPos <- semi
     return (PrdCnsDecl (Loc startPos endPos) PrdRep isRec v annot t)
 prdCnsDeclarationP CnsRep = do
@@ -46,7 +46,7 @@ prdCnsDeclarationP CnsRep = do
     (v, _pos) <- freeVarName
     annot <- annotP NegRep
     _ <- coloneq
-    (t,_) <- stermP CnsRep
+    (t,_) <- termP CnsRep
     endPos <- semi
     return (PrdCnsDecl (Loc startPos endPos) CnsRep isRec v annot t)
 

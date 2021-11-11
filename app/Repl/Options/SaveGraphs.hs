@@ -9,7 +9,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
 import Text.Megaparsec ( errorBundlePretty )
-import Parser.Parser ( runInteractiveParser, stermP, typeSchemeP )
+import Parser.Parser ( runInteractiveParser, termP, typeSchemeP )
 import Pretty.Pretty ( ppPrint, PrettyAnn )
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
@@ -43,7 +43,7 @@ saveCmd s = do
     Right ty -> do
       aut <- fromRight (typeToAut ty)
       saveGraphFiles "gr" aut
-    Left err1 -> case runInteractiveParser (stermP PrdRep) s of
+    Left err1 -> case runInteractiveParser (termP PrdRep) s of
       Right (tloc,loc) -> do
         let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
