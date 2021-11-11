@@ -204,9 +204,9 @@ matchP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
 matchP CnsRep = empty
 matchP PrdRep = do
   startPos <- getSourcePos
-  _ <- matchKwP
+  _ <- caseKwP
   (arg, _pos) <- termP PrdRep
-  _ <- withKwP
+  _ <- ofKwP
   (cases, endPos) <- acasesP
   return (Match (Loc startPos endPos) arg cases, endPos)
 
@@ -214,7 +214,7 @@ comatchP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
 comatchP CnsRep = empty
 comatchP PrdRep = do
   startPos <- getSourcePos
-  _ <- comatchKwP
+  _ <- cocaseKwP
   (cocases, endPos) <- acasesP
   return (Comatch (Loc startPos endPos) cocases, endPos)
 
@@ -242,7 +242,7 @@ lambdaP PrdRep = do
 --      | (t)
 --      | \x => t
 termBotP :: PrdCnsRep pc -> Parser (STerm pc Parsed, SourcePos)
-termBotP rep =
+termBotP rep = freeVar rep <|>
   try (numLitP Structural rep) <|>
   try (numLitP Nominal rep) <|>
   xtorCall Structural rep <|>
@@ -252,8 +252,8 @@ termBotP rep =
   comatchP rep <|>
   muAbstraction rep <|>
   parens (fst <$> termTopP rep) <|>
-  lambdaP rep <|>
-  freeVar rep
+  lambdaP rep
+  
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser
