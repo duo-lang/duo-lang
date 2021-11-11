@@ -15,7 +15,7 @@ import Eval.STerms (areAllSubst)
 substCtorExample :: CallingConvention -> Text -> Spec
 substCtorExample order termS = do
   it (T.unpack termS ++  " can't be substituted.") $ do
-      let Right (term,_) = runInteractiveParser (stermP PrdRep) termS
+      let Right (term,_) = runInteractiveParser (termP PrdRep) termS
       case term of
         XtorCall _ PrdRep _ args -> (areAllSubst order args) `shouldBe` False
         _ -> expectationFailure $ T.unpack termS ++ "is not a Ctor."

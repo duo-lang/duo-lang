@@ -14,14 +14,14 @@ import Translate.Translate (compile)
 compileExample :: Text -> Text -> Spec
 compileExample termA termS = do
   it (T.unpack termA ++  " compiles to: " ++ T.unpack termS) $ do
-      let Right (termS',_pos) = runInteractiveParser (stermP PrdRep) termS
-      let Right (termA',_pos) = runInteractiveParser atermP termA
+      let Right (termS',_pos) = runInteractiveParser (termP PrdRep) termS
+      let Right (termA',_pos) = runInteractiveParser (termP PrdRep) termA
       removeNamesSTerm (compile termA') `shouldBe` removeNamesSTerm (compile termS')
 
 isClosed :: Text -> Spec
 isClosed termA = do
   it ("Compilation of " ++ T.unpack termA ++  " is a closed STerm.") $ do
-      let Right (termA', _pos) = runInteractiveParser atermP termA
+      let Right (termA', _pos) = runInteractiveParser (termP PrdRep) termA
       termLocallyClosed (compile termA') `shouldSatisfy` isRight
 
 -- | Compiles ATerms to STerms.

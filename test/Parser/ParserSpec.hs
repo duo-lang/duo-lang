@@ -36,7 +36,7 @@ typeParseCounterEx input NegRep = do
 atermParseExample :: Text -> STerm Prd Compiled -> Spec
 atermParseExample input tm = do
   it ("Parsing of " ++ T.unpack input ++ " yields " ++ ppPrintString tm) $ do
-    let Right (parsedTerm,_) = runInteractiveParser atermP input
+    let Right (parsedTerm,_) = runInteractiveParser (termP PrdRep) input
     compile parsedTerm `shouldBe` tm
 
 spec :: Spec
