@@ -102,29 +102,12 @@ subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
   (MkNodeLabel Pos _ _ nominal2 _) <- lab ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
--- Require at least one common type name in ref type set for which the two structural refinements fulfil
--- subtypeData/subtypeCodata
-subtypeRefined :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
-subtypeRefined aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg _ _ _ tyNames1) <- lab ta_gr i
-  (MkNodeLabel Pos _ _ _ tyNames2) <- lab ta_gr j
-  let (_,_,_,iOuts) = context ta_gr i
-  let (_,_,_,jOuts) = context ta_gr j
-  guard (not . S.null $ S.intersection tyNames1 tyNames2) -- Check for common type names
-  forM_ (S.intersection tyNames1 tyNames2) (\tn -> do -- For all common type names:
-    (_, ref1) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) iOuts
-    (_, ref2) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) jOuts
-    admissableM aut (ref1,ref2)
-    -- Check subtyping relation between corresponding structural refinements
-    )
-
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 admissableM aut@TypeAutCore{..} e =
   guard (e `elem` ta_flowEdges) <|>
     subtypeData aut e <|>
     subtypeCodata aut e <|>
-    subtypeNominal aut e <|>
-    subtypeRefined aut e
+    subtypeNominal aut e
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
