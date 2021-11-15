@@ -17,17 +17,20 @@ import Utils ( Twice(..))
 resVar :: FreeVarName
 resVar = "$result"
 
+compileSubstitution :: Substitution ext -> Substitution Compiled
+compileSubstitution (MkSubst prdArgs cnsArgs) = MkSubst (compile <$> prdArgs) (compile <$> cnsArgs)
+
 compile :: Term pc ext -> Term pc Compiled
 compile (BoundVar _ pc idx) = BoundVar () pc idx
 compile (FreeVar _ pc fv) = FreeVar () pc fv
-compile (XtorCall _ pc xt MkXtorArgs {prdArgs, cnsArgs}) = XtorCall () pc xt (MkXtorArgs (compile <$> prdArgs) (compile <$> cnsArgs))
+compile (XtorCall _ pc xt args) = XtorCall () pc xt (compileSubstitution args)
 compile (MuAbs _ pc bs cmd) = MuAbs () pc bs (compileCmd cmd)
 compile (XMatch _ pc ns cases) = XMatch () pc ns (compileSCase <$> cases)
 -- we want to compile e.D(args')
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]
 compile (Dtor _ xt t args) =
   let
-    cmd = Apply () (compile t) (XtorCall () CnsRep xt $ MkXtorArgs (compile <$> args) [FreeVar () CnsRep resVar])
+    cmd = Apply () (compile t) (XtorCall () CnsRep xt $ MkSubst (compile <$> args) [FreeVar () CnsRep resVar])
   in
     MuAbs () PrdRep Nothing $ commandClosingSingle CnsRep resVar $ shiftCmd cmd
 -- we want to compile match t { C (args) => e1 }

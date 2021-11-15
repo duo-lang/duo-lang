@@ -124,8 +124,8 @@ commandToHoverMap (Apply _ prd cns) = M.unions [stermToHoverMap prd, stermToHove
 commandToHoverMap (Print _ prd)     = stermToHoverMap prd
 commandToHoverMap (Done _)          = M.empty 
 
-xtorArgsToHoverMap :: XtorArgs Inferred -> HoverMap
-xtorArgsToHoverMap (MkXtorArgs prdArgs cnsArgs) =
+xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
+xtorArgsToHoverMap (MkSubst prdArgs cnsArgs) =
   M.unions $ (stermToHoverMap <$> prdArgs) <> (stermToHoverMap <$> cnsArgs)
 
 scaseToHoverMap :: SCase Inferred -> HoverMap

@@ -27,16 +27,16 @@ import Syntax.Types
 ---------------------------------------------------------------------------------
 
 -- | Represents an argument list to a constructor or destructor.
-data XtorArgs ext = MkXtorArgs { prdArgs :: [Term Prd ext]
-                               , cnsArgs :: [Term Cns ext]
-                               }
+data Substitution ext = MkSubst { prdArgs :: [Term Prd ext]
+                                , cnsArgs :: [Term Cns ext]
+                                }
 
-deriving instance (Eq (XtorArgs Parsed))
-deriving instance (Eq (XtorArgs Inferred))
-deriving instance (Eq (XtorArgs Compiled))
-deriving instance (Show (XtorArgs Parsed))
-deriving instance (Show (XtorArgs Inferred))
-deriving instance (Show (XtorArgs Compiled))
+deriving instance (Eq (Substitution Parsed))
+deriving instance (Eq (Substitution Inferred))
+deriving instance (Eq (Substitution Compiled))
+deriving instance (Show (Substitution Parsed))
+deriving instance (Show (Substitution Inferred))
+deriving instance (Show (Substitution Compiled))
 
 ---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
@@ -111,7 +111,7 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   FreeVar :: TermExt pc ext -> PrdCnsRep pc -> FreeVarName -> Term pc ext
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  XtorCall :: TermExt pc ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> Term pc ext
+  XtorCall :: TermExt pc ext -> PrdCnsRep pc -> XtorName -> Substitution ext -> Term pc ext
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
   XMatch :: TermExt pc ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> Term pc ext
@@ -166,8 +166,8 @@ getTypeSTerm (Dtor (_,ty) _ _ _) = ty
 getTypeSTerm (Match (_,ty) _ _)  = ty
 getTypeSTerm (Comatch (_,ty) _)  = ty
 
-getTypArgs :: XtorArgs Inferred -> TypArgs Pos
-getTypArgs (MkXtorArgs prdArgs cnsArgs )= MkTypArgs (getTypeSTerm <$> prdArgs) (getTypeSTerm <$> cnsArgs)
+getTypArgs :: Substitution Inferred -> TypArgs Pos
+getTypArgs (MkSubst prdArgs cnsArgs )= MkTypArgs (getTypeSTerm <$> prdArgs) (getTypeSTerm <$> cnsArgs)
 
 ---------------------------------------------------------------------------------
 -- Commands
@@ -199,15 +199,15 @@ deriving instance (Show (Command Compiled))
 -- Variable Opening
 ---------------------------------------------------------------------------------
 
-termOpeningRec :: Int -> XtorArgs Compiled -> Term pc Compiled -> Term pc Compiled
-termOpeningRec k MkXtorArgs { prdArgs } bv@(BoundVar _ PrdRep (i,j)) | i == k    = prdArgs !! j
-                                                                     | otherwise = bv
-termOpeningRec k MkXtorArgs { cnsArgs } bv@(BoundVar _ CnsRep (i,j)) | i == k    = cnsArgs !! j
-                                                                     | otherwise = bv
+termOpeningRec :: Int -> Substitution Compiled -> Term pc Compiled -> Term pc Compiled
+termOpeningRec k MkSubst { prdArgs } bv@(BoundVar _ PrdRep (i,j)) | i == k    = prdArgs !! j
+                                                                  | otherwise = bv
+termOpeningRec k MkSubst { cnsArgs } bv@(BoundVar _ CnsRep (i,j)) | i == k    = cnsArgs !! j
+                                                                  | otherwise = bv
 termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
-termOpeningRec k args (XtorCall _ s xt (MkXtorArgs prdArgs cnsArgs)) =
-  XtorCall () s xt (MkXtorArgs (termOpeningRec k args <$> prdArgs)
-                               (termOpeningRec k args <$> cnsArgs))
+termOpeningRec k args (XtorCall _ s xt (MkSubst prdArgs cnsArgs)) =
+  XtorCall () s xt (MkSubst (termOpeningRec k args <$> prdArgs)
+                            (termOpeningRec k args <$> cnsArgs))
 termOpeningRec k args (XMatch _ pc sn cases) =
   XMatch () pc sn $ map (\pmcase@MkSCase{ scase_cmd } -> pmcase { scase_cmd = commandOpeningRec (k+1) args scase_cmd }) cases
 termOpeningRec k args (MuAbs _ pc a cmd) =
@@ -220,28 +220,26 @@ termOpeningRec k args (Match _ t cases) =
 termOpeningRec k args (Comatch _ cocases) =
   Comatch () ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termOpeningRec (k + 1) args acase_term }) <$> cocases)
 
-termOpening :: XtorArgs Compiled -> Term pc Compiled -> Term pc Compiled
+termOpening :: Substitution Compiled -> Term pc Compiled -> Term pc Compiled
 termOpening = termOpeningRec 0
 
-commandOpeningRec :: Int -> XtorArgs Compiled -> Command Compiled -> Command Compiled
+commandOpeningRec :: Int -> Substitution Compiled -> Command Compiled -> Command Compiled
 commandOpeningRec _ _ (Done _) = Done ()
 commandOpeningRec k args (Print _ t) = Print () (termOpeningRec k args t)
 commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 
 -- replaces bound variables pointing "outside" of a command with given arguments
-commandOpening :: XtorArgs Compiled -> Command Compiled -> Command Compiled
+commandOpening :: Substitution Compiled -> Command Compiled -> Command Compiled
 commandOpening = commandOpeningRec 0
 
 commandOpeningSingle :: PrdCnsRep pc -> Term pc Compiled -> Command Compiled -> Command Compiled
-commandOpeningSingle PrdRep t = commandOpening (MkXtorArgs [t] [])
-commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
+commandOpeningSingle PrdRep t = commandOpening (MkSubst [t] [])
+commandOpeningSingle CnsRep t = commandOpening (MkSubst [] [t])
 
 ---------------------------------------------------------------------------------
 -- Variable Closing
 ---------------------------------------------------------------------------------
-
-
 
 --atermClosingRec :: Int -> [FreeVarName] -> ATerm ext -> ATerm ext
 termClosingRec :: Int -> Twice [FreeVarName] -> Term pc ext -> Term pc ext
@@ -250,8 +248,8 @@ termClosingRec k (Twice prdvars _) (FreeVar ext PrdRep v) | isJust (v `elemIndex
                                                           | otherwise = FreeVar ext PrdRep v
 termClosingRec k (Twice _ cnsvars) (FreeVar ext CnsRep v) | isJust (v `elemIndex` cnsvars) = BoundVar ext CnsRep (k, fromJust (v `elemIndex` cnsvars))
                                                           | otherwise = FreeVar ext CnsRep v
-termClosingRec k vars (XtorCall ext s xt (MkXtorArgs prdArgs cnsArgs)) =
-  XtorCall ext s xt (MkXtorArgs (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
+termClosingRec k vars (XtorCall ext s xt (MkSubst prdArgs cnsArgs)) =
+  XtorCall ext s xt (MkSubst (termClosingRec k vars <$> prdArgs)(termClosingRec k vars <$> cnsArgs))
 termClosingRec k vars (XMatch ext pc sn cases) =
   XMatch ext pc sn $ map (\pmcase@MkSCase { scase_cmd } -> pmcase { scase_cmd = commandClosingRec (k+1) vars scase_cmd }) cases
 termClosingRec k vars (MuAbs ext pc a cmd) =
@@ -295,7 +293,7 @@ checkIfBound' (Twice _ cnss) CnsRep j = if j < length cnss then Right () else Le
 termLocallyClosedRec :: [Twice [()]] -> Term pc ext -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
-termLocallyClosedRec env (XtorCall _ _ _ (MkXtorArgs prds cnss)) = do
+termLocallyClosedRec env (XtorCall _ _ _ (MkSubst prds cnss)) = do
   sequence_ (termLocallyClosedRec env <$> prds)
   sequence_ (termLocallyClosedRec env <$> cnss)
 termLocallyClosedRec env (XMatch _ _ _ cases) = do
@@ -333,20 +331,20 @@ commandLocallyClosed = commandLocallyClosedRec []
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-openXtorArgsComplete :: XtorArgs ext -> XtorArgs Compiled
-openXtorArgsComplete (MkXtorArgs prdArgs cnsArgs) =
-  MkXtorArgs (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
+openSubstitutionComplete :: Substitution ext -> Substitution Compiled
+openSubstitutionComplete (MkSubst prdArgs cnsArgs) =
+  MkSubst (openSTermComplete <$> prdArgs) (openSTermComplete <$> cnsArgs)
 
-freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> XtorArgs Compiled
-freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\case {Just fv -> FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> prds)
-                                                      ((\case {Just fv -> FreeVar () CnsRep fv; Nothing -> error "Create Names first!"}) <$> cnss)
+freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> Substitution Compiled
+freeVarNamesToXtorArgs (Twice prds cnss) = MkSubst ((\case {Just fv -> FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> prds)
+                                                   ((\case {Just fv -> FreeVar () CnsRep fv; Nothing -> error "Create Names first!"}) <$> cnss)
 
 openACase :: ACase ext -> ACase Compiled
 openACase MkACase { acase_name, acase_args, acase_term } =
     MkACase { acase_ext = ()
             , acase_name = acase_name
             , acase_args = acase_args
-            , acase_term = termOpening (MkXtorArgs ((\case {Just fv ->  FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> acase_args) []) (openSTermComplete acase_term)
+            , acase_term = termOpening (MkSubst ((\case {Just fv ->  FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> acase_args) []) (openSTermComplete acase_term)
             }
 
 openSCase :: SCase ext -> SCase Compiled
@@ -360,7 +358,7 @@ openSCase MkSCase { scase_name, scase_args, scase_cmd } =
 openSTermComplete :: Term pc ext -> Term pc Compiled
 openSTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openSTermComplete (FreeVar _ pc v) = FreeVar () pc v
-openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openXtorArgsComplete args)
+openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openSubstitutionComplete args)
 openSTermComplete (XMatch _ pc ns cases) = XMatch () pc ns (openSCase <$> cases)
 openSTermComplete (MuAbs _ PrdRep (Just fv) cmd) =
   MuAbs () PrdRep (Just fv) (commandOpeningSingle CnsRep (FreeVar () CnsRep fv) (openCommandComplete cmd))
@@ -406,10 +404,10 @@ createNamesCommand cmd = evalState (createNamesCommand' cmd) names
 createNamesSTerm' :: Term pc ext -> CreateNameM (Term pc Parsed)
 createNamesSTerm' (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
 createNamesSTerm' (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
-createNamesSTerm' (XtorCall _ pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
+createNamesSTerm' (XtorCall _ pc xt MkSubst { prdArgs, cnsArgs}) = do
   prdArgs' <- sequence $ createNamesSTerm' <$> prdArgs
   cnsArgs' <- sequence $ createNamesSTerm' <$> cnsArgs
-  return $ XtorCall defaultLoc pc xt (MkXtorArgs prdArgs' cnsArgs')
+  return $ XtorCall defaultLoc pc xt (MkSubst prdArgs' cnsArgs')
 createNamesSTerm' (XMatch _ pc ns cases) = do
   cases' <- sequence $ createNamesSCase <$> cases
   return $ XMatch defaultLoc pc ns cases'
@@ -462,8 +460,8 @@ shiftSTerm' :: Int -> Term pc ext -> Term pc ext
 shiftSTerm' _ var@FreeVar {} = var
 shiftSTerm' n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
                                          | otherwise = BoundVar ext pcrep (i    , j)
-shiftSTerm' n (XtorCall ext pcrep name MkXtorArgs { prdArgs, cnsArgs }) =
-    XtorCall ext pcrep name (MkXtorArgs (shiftSTerm' n <$> prdArgs) (shiftSTerm' n <$> cnsArgs))
+shiftSTerm' n (XtorCall ext pcrep name MkSubst { prdArgs, cnsArgs }) =
+    XtorCall ext pcrep name (MkSubst (shiftSTerm' n <$> prdArgs) (shiftSTerm' n <$> cnsArgs))
 shiftSTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftSCase (n + 1) <$> cases)
 shiftSTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
 shiftSTerm' n (Dtor ext xt e args) = Dtor ext xt (shiftSTerm' n e) (shiftSTerm' n <$> args)
@@ -498,7 +496,7 @@ shiftCmd = shiftCmd' 0
 removeNamesSTerm :: Term pc  ext -> Term pc ext 
 removeNamesSTerm f@FreeVar{} = f
 removeNamesSTerm f@BoundVar{} = f
-removeNamesSTerm (XtorCall ext pc xt (MkXtorArgs prdArgs cnsArgs)) = XtorCall ext pc xt (MkXtorArgs (removeNamesSTerm <$> prdArgs) (removeNamesSTerm <$> cnsArgs))
+removeNamesSTerm (XtorCall ext pc xt (MkSubst prdArgs cnsArgs)) = XtorCall ext pc xt (MkSubst (removeNamesSTerm <$> prdArgs) (removeNamesSTerm <$> cnsArgs))
 removeNamesSTerm (MuAbs ext pc _ cmd) = MuAbs ext pc Nothing (removeNamesCmd cmd)
 removeNamesSTerm (XMatch ext pc ns cases) = XMatch ext pc ns (removeNamesSCase <$> cases)
 removeNamesSTerm (Dtor ext xt e args) = Dtor ext xt (removeNamesSTerm e) (removeNamesSTerm <$> args)

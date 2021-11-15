@@ -29,10 +29,10 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthXtorArgs :: XtorArgs Compiled -> Twice Int
-lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
+lengthXtorArgs :: Substitution Compiled -> Twice Int
+lengthXtorArgs MkSubst { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: Command Compiled -> Twice [a] -> XtorArgs Compiled -> EvalM ()
+checkArgs :: Command Compiled -> Twice [a] -> Substitution Compiled -> EvalM ()
 checkArgs cmd argTypes args =
   if fmap length argTypes == lengthXtorArgs args
   then return ()

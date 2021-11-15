@@ -24,12 +24,12 @@ instance PrettyAnn (ACase ext) where
     annSymbol "=>" <+>
     prettyAnn acase_term
 
-instance PrettyAnn (XtorArgs ext) where
-  prettyAnn (MkXtorArgs prds cns) = prettyTwice' prds cns
+instance PrettyAnn (Substitution ext) where
+  prettyAnn (MkSubst prds cns) = prettyTwice' prds cns
 
 isNumSTerm :: Term pc ext -> Maybe Int
-isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") (MkXtorArgs [] [])) = Just 0
-isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "S") (MkXtorArgs [n] [])) = case isNumSTerm n of
+isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") (MkSubst [] [])) = Just 0
+isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "S") (MkSubst [n] [])) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing

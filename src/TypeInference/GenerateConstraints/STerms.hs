@@ -17,15 +17,15 @@ import Utils
 import Lookup
 
 ---------------------------------------------------------------------------------------------
--- Symmetric Terms
+-- Terms
 ---------------------------------------------------------------------------------------------
 
-genConstraintsArgs :: XtorArgs Parsed
-                   -> GenM (XtorArgs Inferred)
-genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
+genConstraintsArgs :: Substitution Parsed
+                   -> GenM (Substitution Inferred)
+genConstraintsArgs (MkSubst prdArgs cnsArgs) = do
   prdArgs' <- forM prdArgs genConstraintsSTerm
   cnsArgs' <- forM cnsArgs genConstraintsSTerm
-  return (MkXtorArgs prdArgs' cnsArgs')
+  return (MkSubst prdArgs' cnsArgs')
 
 -- | Generate the constraints for a given STerm.
 genConstraintsSTerm :: Term pc Parsed
