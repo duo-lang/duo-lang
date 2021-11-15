@@ -16,9 +16,10 @@ import Syntax.Terms
       Term(..),
       SCase(..),
       Substitution(..),
-      commandClosingSingle,
+      commandClosing,
       shiftCmd, PrdCnsTerm(..))
 import Syntax.Kinds ( CallingConvention(..) )
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -134,9 +135,8 @@ betaVar i = "$beta" <> T.pack (show i)
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
 focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> Substitution ext -> Term pc Compiled
-focusXtor eo pcrep name subst = MuAbs () pcrep Nothing cmd
-  where
-      cmd = commandClosingSingle (flipPrdCns pcrep) alphaVar (shiftCmd (focusXtor' eo pcrep name subst []))
+focusXtor eo PrdRep name subst = MuAbs () PrdRep Nothing (commandClosing (Twice [] [alphaVar]) (shiftCmd (focusXtor' eo PrdRep name subst [])))
+focusXtor eo CnsRep name subst = MuAbs () CnsRep Nothing (commandClosing (Twice [alphaVar] []) (shiftCmd (focusXtor' eo CnsRep name subst [])))
 
 
 focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [PrdCnsTerm ext] -> [PrdCnsTerm Compiled] -> Command Compiled
@@ -148,14 +148,14 @@ focusXtor' eo pc     name (PrdTerm prd:pcterms) pcterms' | isValueTerm eo PrdRep
                                                          | otherwise                 =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
-                                                                  cmd = commandClosingSingle PrdRep var (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
+                                                                  cmd = commandClosing (Twice [var] [])  (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
                                                               in
                                                                   Apply () (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
 focusXtor' eo pc     name (CnsTerm cns:pcterms) pcterms' | isValueTerm eo CnsRep cns = focusXtor' eo pc name pcterms (CnsTerm (compile cns) : pcterms')
                                                          | otherwise                 =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
-                                                                  cmd = commandClosingSingle CnsRep var (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
+                                                                  cmd = commandClosing (Twice [] [var]) (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
                                                               in Apply () (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 

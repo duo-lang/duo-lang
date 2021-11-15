@@ -16,7 +16,7 @@ compileExample termA termS = do
   it (T.unpack termA ++  " compiles to: " ++ T.unpack termS) $ do
       let Right (termS',_pos) = runInteractiveParser (termP PrdRep) termS
       let Right (termA',_pos) = runInteractiveParser (termP PrdRep) termA
-      removeNamesSTerm (compile termA') `shouldBe` removeNamesSTerm (compile termS')
+      removeNamesTerm (compile termA') `shouldBe` removeNamesTerm (compile termS')
 
 isClosed :: Text -> Spec
 isClosed termA = do

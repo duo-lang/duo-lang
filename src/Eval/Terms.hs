@@ -70,10 +70,10 @@ evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
 evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
   order <- lookupEvalOrder
   case order of
-    CBV -> return (Just (commandOpeningSingle CnsRep cns cmd))
-    CBN -> return (Just (commandOpeningSingle PrdRep prd cmd'))
-evalApplyOnce (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpeningSingle CnsRep cns cmd))
-evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
+    CBV -> return (Just (commandOpening [CnsTerm cns] cmd))
+    CBN -> return (Just (commandOpening [PrdTerm prd] cmd'))
+evalApplyOnce (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpening [PrdTerm prd] cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
 evalApplyOnce (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
 evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]

@@ -35,7 +35,7 @@ compile (Dtor _ xt t args) =
   let
     cmd = Apply () (compile t) (XtorCall () CnsRep xt $ (PrdTerm . compile <$> args) ++ [CnsTerm $ FreeVar () CnsRep resVar])
   in
-    MuAbs () PrdRep Nothing $ commandClosingSingle CnsRep resVar $ shiftCmd cmd
+    MuAbs () PrdRep Nothing $ commandClosing (Twice [] [resVar]) $ shiftCmd cmd
 -- we want to compile match t { C (args) => e1 }
 -- Mu k.[ (compile t) >> match {C (args) => (compile e1) >> k } ]
 compile (Match _ t cases)   =
@@ -46,7 +46,7 @@ compile (Match _ t cases)   =
     compileMatchCase (MkACase _ xt args t) = MkSCase () xt (Twice (const Nothing <$> args) [])   $ Apply () (compile t) (FreeVar () CnsRep resVar)
     cmd = Apply () (compile t) (XMatch () CnsRep nominalStructural  (compileMatchCase <$> cases))
   in
-    MuAbs () PrdRep Nothing $ commandClosingSingle CnsRep resVar $ shiftCmd cmd
+    MuAbs () PrdRep Nothing $ commandClosing (Twice [] [resVar]) $ shiftCmd cmd
 -- we want to compile comatch { D(args) => e }
 -- comatch { D(args)[k] => (compile e) >> k }
 compile (Comatch _ cocases) =

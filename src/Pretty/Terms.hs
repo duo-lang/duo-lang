@@ -71,7 +71,7 @@ instance PrettyAnn (Command ext) where
   prettyAnn (Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
 
 instance PrettyAnn (NamedRep (Term pc ext)) where
-  prettyAnn (NamedRep tm) = prettyAnn (openSTermComplete tm)
+  prettyAnn (NamedRep tm) = prettyAnn (openTermComplete tm)
 
 instance PrettyAnn (NamedRep (Command ext)) where
   prettyAnn (NamedRep cmd) = prettyAnn (openCommandComplete cmd)
