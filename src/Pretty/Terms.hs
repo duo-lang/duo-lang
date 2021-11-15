@@ -5,6 +5,7 @@ import Prettyprinter
 import Pretty.Pretty
 import Syntax.Terms
 import Syntax.CommonTerm
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -12,10 +13,13 @@ import Syntax.CommonTerm
 
 instance PrettyAnn (SCase ext) where
   prettyAnn MkSCase{..} =
-    prettyAnn scase_name <>
-    prettyTwice scase_args <+>
-    annSymbol "=>" <+>
-    prettyAnn scase_cmd
+    let
+      (Twice prds cnss) = scase_args
+    in
+      prettyAnn scase_name <>
+      prettyTwice prds cnss <+>
+      annSymbol "=>" <+>
+      prettyAnn scase_cmd
 
 instance PrettyAnn (ACase ext) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =
@@ -25,7 +29,7 @@ instance PrettyAnn (ACase ext) where
     prettyAnn acase_term
 
 instance {-# OVERLAPPING #-} PrettyAnn (Substitution ext) where
-  prettyAnn subst = prettyTwice' prds cns
+  prettyAnn subst = prettyTwice prds cns
     where
       (prds, cns) = newToOldSubst subst
 
