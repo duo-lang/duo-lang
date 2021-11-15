@@ -43,7 +43,7 @@ instance {-# OVERLAPPING #-} PrettyAnn String where
   prettyAnn = pretty
 
 instance PrettyAnn a => PrettyAnn [a] where
-  prettyAnn xs = list (prettyAnn <$> xs)
+   prettyAnn xs = list (prettyAnn <$> xs)
 
 instance PrettyAnn Text where
   prettyAnn = pretty

@@ -30,7 +30,9 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             ]
 
 lengthSubstitution :: Substitution Compiled -> Twice Int
-lengthSubstitution MkSubst { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
+lengthSubstitution subst = Twice (length prdArgs) (length cnsArgs)
+  where
+    (prdArgs, cnsArgs) = newToOldSubst subst
 
 checkArgs :: Command Compiled -> Twice [a] -> Substitution Compiled -> EvalM ()
 checkArgs cmd argTypes args =

@@ -31,8 +31,8 @@ numLitP ns PrdRep = do
   return (numToTerm (Loc startPos endPos) num, endPos)
   where
     numToTerm :: Loc -> Int -> Term Prd Parsed
-    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") (MkSubst [] [])
-    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") (MkSubst [numToTerm loc (n-1)] [])
+    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") []
+    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
 xtorArgsP :: Parser (Substitution Parsed, SourcePos)
@@ -40,7 +40,7 @@ xtorArgsP = do
   endPos <- getSourcePos
   (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (termP PrdRep)) `sepBy` comma)
   (ys, endPos) <- option ([],endPos) (brackets $ (fst <$> (termP CnsRep)) `sepBy` comma)
-  return (MkSubst xs ys, endPos)
+  return (oldToNewSubst (xs, ys), endPos)
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 xtorCall ns pc = do

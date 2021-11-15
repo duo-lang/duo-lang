@@ -119,14 +119,17 @@ stermToHoverMap (Dtor ext _ e args)   = M.unions $ [foo ext] <> (stermToHoverMap
 stermToHoverMap (Match ext e cases)   = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [stermToHoverMap e]
 stermToHoverMap (Comatch ext cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
 
+pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
+pctermToHoverMap (PrdTerm tm) = stermToHoverMap tm
+pctermToHoverMap (CnsTerm tm) = stermToHoverMap tm
+
 commandToHoverMap :: Terms.Command Inferred -> HoverMap
 commandToHoverMap (Apply _ prd cns) = M.unions [stermToHoverMap prd, stermToHoverMap cns]
 commandToHoverMap (Print _ prd)     = stermToHoverMap prd
 commandToHoverMap (Done _)          = M.empty 
 
 xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
-xtorArgsToHoverMap (MkSubst prdArgs cnsArgs) =
-  M.unions $ (stermToHoverMap <$> prdArgs) <> (stermToHoverMap <$> cnsArgs)
+xtorArgsToHoverMap subst = M.unions (pctermToHoverMap <$> subst)
 
 scaseToHoverMap :: SCase Inferred -> HoverMap
 scaseToHoverMap (MkSCase {scase_cmd}) = commandToHoverMap scase_cmd

@@ -20,12 +20,15 @@ import Lookup
 -- Terms
 ---------------------------------------------------------------------------------------------
 
+genConstraintsPCTerm :: PrdCnsTerm Parsed
+                    -> GenM (PrdCnsTerm Inferred)
+genConstraintsPCTerm (PrdTerm tm) = PrdTerm <$> genConstraintsTerm tm
+genConstraintsPCTerm (CnsTerm tm) = CnsTerm <$> genConstraintsTerm tm
+
 genConstraintsArgs :: Substitution Parsed
                    -> GenM (Substitution Inferred)
-genConstraintsArgs (MkSubst prdArgs cnsArgs) = do
-  prdArgs' <- forM prdArgs genConstraintsTerm
-  cnsArgs' <- forM cnsArgs genConstraintsTerm
-  return (MkSubst prdArgs' cnsArgs')
+genConstraintsArgs subst = sequence (genConstraintsPCTerm <$> subst)
+
 
 -- | Generate the constraints for a given Term.
 genConstraintsTerm :: Term pc Parsed

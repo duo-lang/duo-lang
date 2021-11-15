@@ -11,6 +11,14 @@ import Data.Text qualified as T
 import Utils
 import Errors
 import Syntax.CommonTerm
+    ( Index,
+      FreeVarName,
+      XtorName,
+      NominalStructural,
+      PrdCnsRep(..),
+      PrdCns(..),
+      Phase(..),
+      flipPrdCns )
 import Syntax.Types
 
 ---------------------------------------------------------------------------------
@@ -43,11 +51,16 @@ type Substitution ext = [PrdCnsTerm ext]
 
 {-# DEPRECATED oldToNewSubst "Deprecated" #-}
 oldToNewSubst :: ([Term Prd ext],[Term Cns ext]) -> Substitution ext
-oldToNewSubst = undefined
+oldToNewSubst (prdArgs, cnsArgs) = (PrdTerm <$> prdArgs) ++ (CnsTerm <$> cnsArgs)
 
 {-# DEPRECATED newToOldSubst "Deprecated" #-}
 newToOldSubst :: Substitution ext -> ([Term Prd ext],[Term Cns ext])
-newToOldSubst = undefined
+newToOldSubst subst = foo subst ([],[])
+  where
+    foo :: Substitution ext -> ([Term Prd ext],[Term Cns ext]) -> ([Term Prd ext],[Term Cns ext])
+    foo [] res = res
+    foo (PrdTerm tm:rest) (prdArgs,cnsArgs) = foo rest (tm : prdArgs, cnsArgs)
+    foo (CnsTerm tm:rest) (prdArgs,cnsArgs) = foo rest (prdArgs, tm : cnsArgs)
 
 ---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
