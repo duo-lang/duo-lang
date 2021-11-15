@@ -13,7 +13,7 @@ import System.IO.Error (tryIOError)
 
 import Errors ()
 import Eval.Eval ( runEval )
-import Eval.STerms ( eval, evalSteps )
+import Eval.Terms ( eval, evalSteps )
 import Parser.Parser
     ( Parser, runFileParser, runInteractiveParser, commandP )
 import Pretty.Errors ()

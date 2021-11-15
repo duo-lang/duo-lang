@@ -64,7 +64,7 @@ library
   exposed-modules:
       Errors
       Eval.Eval
-      Eval.STerms
+      Eval.Terms
       Lookup
       Parser.Definition
       Parser.Lexer

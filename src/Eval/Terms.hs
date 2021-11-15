@@ -1,4 +1,4 @@
-module Eval.STerms
+module Eval.Terms
   ( eval
   , evalSteps
   ) where
@@ -29,12 +29,12 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthXtorArgs :: Substitution Compiled -> Twice Int
-lengthXtorArgs MkSubst { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
+lengthSubstitution :: Substitution Compiled -> Twice Int
+lengthSubstitution MkSubst { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
 checkArgs :: Command Compiled -> Twice [a] -> Substitution Compiled -> EvalM ()
 checkArgs cmd argTypes args =
-  if fmap length argTypes == lengthXtorArgs args
+  if fmap length argTypes == lengthSubstitution args
   then return ()
   else throwEvalError [ "Error during evaluation of:"
                       , ppPrint cmd
@@ -42,10 +42,10 @@ checkArgs cmd argTypes args =
                       ]
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalSTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
-evalSTermOnce (Done _) = return Nothing
-evalSTermOnce (Print _ _) = return Nothing
-evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
+evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
+evalTermOnce (Done _) = return Nothing
+evalTermOnce (Print _ _) = return Nothing
+evalTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 
 evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
@@ -83,7 +83,7 @@ evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot ev
 -- | Return just thef final evaluation result
 eval :: Command Compiled -> EvalM (Command Compiled)
 eval cmd = do
-  cmd' <- evalSTermOnce cmd
+  cmd' <- evalTermOnce cmd
   case cmd' of
     Nothing -> return cmd
     Just cmd' -> eval cmd'
@@ -94,7 +94,7 @@ evalSteps cmd = evalSteps' [cmd] cmd
   where
     evalSteps' :: [Command Compiled] -> Command Compiled -> EvalM [Command Compiled]
     evalSteps' cmds cmd = do
-      cmd' <- evalSTermOnce cmd
+      cmd' <- evalTermOnce cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'
