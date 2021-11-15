@@ -38,10 +38,10 @@ import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
     ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
-import TypeInference.GenerateConstraints.STerms
-    ( genConstraintsSTerm,
+import TypeInference.GenerateConstraints.Terms
+    ( genConstraintsTerm,
       genConstraintsCommand,
-      genConstraintsSTermRecursive )
+      genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 
@@ -184,8 +184,8 @@ inferSTermTraced isRec loc fv rep tm = do
   env <- gets driverEnv
   -- Generate the constraints
   let genFun = case isRec of
-        Recursive -> genConstraintsSTermRecursive loc fv rep tm
-        NonRecursive -> genConstraintsSTerm tm
+        Recursive -> genConstraintsTermRecursive loc fv rep tm
+        NonRecursive -> genConstraintsTerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
