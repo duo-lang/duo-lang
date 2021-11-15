@@ -36,7 +36,7 @@ type EnvReader bs a m = (MonadError Error m, MonadReader (Environment, a) m)
 
 -- | Lookup the term and the type of a symmetric term bound in the environment.
 lookupSTerm :: EnvReader bs a m
-            => PrdCnsRep pc -> FreeVarName -> m (STerm pc Inferred, TypeScheme (PrdCnsToPol pc))
+            => PrdCnsRep pc -> FreeVarName -> m (Term pc Inferred, TypeScheme (PrdCnsToPol pc))
 lookupSTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
@@ -89,7 +89,7 @@ lookupXtorSig xtn pol = do
 ---------------------------------------------------------------------------------
 
 withSTerm :: EnvReader bs a m
-          => PrdCnsRep pc -> FreeVarName -> STerm pc Inferred -> Loc -> TypeScheme (PrdCnsToPol pc)
+          => PrdCnsRep pc -> FreeVarName -> Term pc Inferred -> Loc -> TypeScheme (PrdCnsToPol pc)
           -> (m b -> m b)
 withSTerm PrdRep fv tm loc tys m = do
   let modifyEnv (env@Environment { prdEnv }, rest) =

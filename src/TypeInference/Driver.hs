@@ -177,8 +177,8 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
 inferSTermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> PrdCnsRep pc -> STerm pc Parsed
-                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), STerm pc Inferred)
+                 -> PrdCnsRep pc -> Term pc Parsed
+                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), Term pc Inferred)
 inferSTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
   env <- gets driverEnv
@@ -197,8 +197,8 @@ inferSTermTraced isRec loc fv rep tm = do
 inferSTerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> PrdCnsRep pc -> STerm pc Parsed
-           -> DriverM (TypeScheme (PrdCnsToPol pc), STerm pc Inferred)
+           -> PrdCnsRep pc -> Term pc Parsed
+           -> DriverM (TypeScheme (PrdCnsToPol pc), Term pc Inferred)
 inferSTerm isRec loc fv rep tm = do
   (trace, tmInferred) <- inferSTermTraced isRec loc fv rep tm
   return (trace_resType trace, tmInferred)

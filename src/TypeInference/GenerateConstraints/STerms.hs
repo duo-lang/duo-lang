@@ -28,8 +28,8 @@ genConstraintsArgs (MkXtorArgs prdArgs cnsArgs) = do
   return (MkXtorArgs prdArgs' cnsArgs')
 
 -- | Generate the constraints for a given STerm.
-genConstraintsSTerm :: STerm pc Parsed
-                    -> GenM ( STerm pc Inferred )
+genConstraintsSTerm :: Term pc Parsed
+                    -> GenM (Term pc Inferred)
 --
 -- Bound variables:
 --
@@ -288,8 +288,8 @@ genConstraintsSCaseArgs sa1 sa2 loc = do
 
 genConstraintsSTermRecursive :: Loc
                              -> FreeVarName
-                             -> PrdCnsRep pc -> STerm pc Parsed
-                             -> GenM (STerm pc Inferred)
+                             -> PrdCnsRep pc -> Term pc Parsed
+                             -> GenM (Term pc Inferred)
 genConstraintsSTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   tm <- withSTerm PrdRep fv (FreeVar (loc, x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsSTerm tm)

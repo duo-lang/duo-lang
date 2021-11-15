@@ -47,7 +47,7 @@ evalSTermOnce (Done _) = return Nothing
 evalSTermOnce (Print _ _) = return Nothing
 evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 
-evalApplyOnce :: STerm Prd Compiled -> STerm Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv

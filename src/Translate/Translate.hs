@@ -17,7 +17,7 @@ import Utils ( Twice(..))
 resVar :: FreeVarName
 resVar = "$result"
 
-compile :: STerm pc ext -> STerm pc Compiled
+compile :: Term pc ext -> Term pc Compiled
 compile (BoundVar _ pc idx) = BoundVar () pc idx
 compile (FreeVar _ pc fv) = FreeVar () pc fv
 compile (XtorCall _ pc xt MkXtorArgs {prdArgs, cnsArgs}) = XtorCall () pc xt (MkXtorArgs (compile <$> prdArgs) (compile <$> cnsArgs))

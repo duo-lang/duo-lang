@@ -14,6 +14,31 @@ import Syntax.CommonTerm
 import Syntax.Types 
 
 ---------------------------------------------------------------------------------
+-- Variable representation
+--
+-- We use the locally nameless representation for terms, which combines names for
+-- free variables with  anonymous deBruijn indexes for bound variables.
+-- The locally namelesss representation is well documented here:
+-- https://www.chargueraud.org/softs/ln/
+---------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------
+-- Substitution
+---------------------------------------------------------------------------------
+
+-- | Represents an argument list to a constructor or destructor.
+data XtorArgs ext = MkXtorArgs { prdArgs :: [Term Prd ext]
+                               , cnsArgs :: [Term Cns ext]
+                               }
+
+deriving instance (Eq (XtorArgs Parsed))
+deriving instance (Eq (XtorArgs Inferred))
+deriving instance (Eq (XtorArgs Compiled))
+deriving instance (Show (XtorArgs Parsed))
+deriving instance (Show (XtorArgs Inferred))
+deriving instance (Show (XtorArgs Compiled))
+
+---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
@@ -36,7 +61,7 @@ data ACase (ext :: Phase) = MkACase
   { acase_ext  :: CaseExt ext
   , acase_name :: XtorName
   , acase_args :: [Maybe FreeVarName]
-  , acase_term :: STerm Prd ext
+  , acase_term :: Term Prd ext
   }
 
 deriving instance (Eq (ACase Parsed))
@@ -68,79 +93,60 @@ deriving instance (Show (SCase Inferred))
 deriving instance (Show (SCase Compiled))
 
 ---------------------------------------------------------------------------------
--- # Terms
--- 
--- ## Variable representation
---
--- We use the locally nameless representation for terms, which combines names for
--- free variables with  anonymous deBruijn indexes for bound variables.
--- The locally namelesss representation is well documented here:
--- https://www.chargueraud.org/softs/ln/
+-- Terms
 ---------------------------------------------------------------------------------
 
--- | Represents an argument list to a constructor or destructor.
-data XtorArgs ext = MkXtorArgs { prdArgs :: [STerm Prd ext]
-                               , cnsArgs :: [STerm Cns ext]
-                               }
-
-deriving instance (Eq (XtorArgs Parsed))
-deriving instance (Eq (XtorArgs Inferred))
-deriving instance (Eq (XtorArgs Compiled))
-deriving instance (Show (XtorArgs Parsed))
-deriving instance (Show (XtorArgs Inferred))
-deriving instance (Show (XtorArgs Compiled))
-
-type family STermExt (pc :: PrdCns) (ext :: Phase) :: Type where
-  STermExt _ Parsed = Loc
-  STermExt Prd Inferred = (Loc, Typ Pos)
-  STermExt Cns Inferred = (Loc, Typ Neg)
-  STermExt _ Compiled = ()
+type family TermExt (pc :: PrdCns) (ext :: Phase) :: Type where
+  TermExt _ Parsed = Loc
+  TermExt Prd Inferred = (Loc, Typ Pos)
+  TermExt Cns Inferred = (Loc, Typ Neg)
+  TermExt _ Compiled = ()
 
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
-data STerm (pc :: PrdCns) (ext :: Phase) where
+data Term (pc :: PrdCns) (ext :: Phase) where
   -- | A bound variable in the locally nameless system.
-  BoundVar :: STermExt pc ext -> PrdCnsRep pc -> Index -> STerm pc ext
+  BoundVar :: TermExt pc ext -> PrdCnsRep pc -> Index -> Term pc ext
   -- | A free variable in the locally nameless system.
-  FreeVar :: STermExt pc ext -> PrdCnsRep pc -> FreeVarName -> STerm pc ext
+  FreeVar :: TermExt pc ext -> PrdCnsRep pc -> FreeVarName -> Term pc ext
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  XtorCall :: STermExt pc ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> STerm pc ext
+  XtorCall :: TermExt pc ext -> PrdCnsRep pc -> XtorName -> XtorArgs ext -> Term pc ext
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: STermExt pc ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> STerm pc ext
+  XMatch :: TermExt pc ext -> PrdCnsRep pc -> NominalStructural -> [SCase ext] -> Term pc ext
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: STermExt pc ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> STerm pc ext
+  MuAbs :: TermExt pc ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> Term pc ext
   --
   -- Asymmetric Terms!
   --
-  Dtor :: STermExt Prd ext -> XtorName -> STerm Prd ext -> [STerm Prd ext] -> STerm Prd ext
+  Dtor :: TermExt Prd ext -> XtorName -> Term Prd ext -> [Term Prd ext] -> Term Prd ext
   -- | A pattern match:
   --
   -- match e with { ... }
   --
-  Match :: STermExt Prd ext -> STerm Prd ext -> [ACase ext] -> STerm Prd ext
+  Match :: TermExt Prd ext -> Term Prd ext -> [ACase ext] -> Term Prd ext
   -- | A copattern match:
   --
   -- comatch { ... }
   --
-  Comatch :: STermExt Prd ext -> [ACase ext] -> STerm Prd ext
+  Comatch :: TermExt Prd ext -> [ACase ext] -> Term Prd ext
 
 
 
-deriving instance (Eq (STerm pc Parsed))
-deriving instance (Eq (STerm Prd Inferred))
-deriving instance (Eq (STerm Cns Inferred))
-deriving instance (Eq (STerm pc Compiled))
-deriving instance (Show (STerm pc Parsed))
-deriving instance (Show (STerm Prd Inferred))
-deriving instance (Show (STerm Cns Inferred))
-deriving instance (Show (STerm pc Compiled))
+deriving instance (Eq (Term pc Parsed))
+deriving instance (Eq (Term Prd Inferred))
+deriving instance (Eq (Term Cns Inferred))
+deriving instance (Eq (Term pc Compiled))
+deriving instance (Show (Term pc Parsed))
+deriving instance (Show (Term Prd Inferred))
+deriving instance (Show (Term Cns Inferred))
+deriving instance (Show (Term pc Compiled))
 
-getTypeSTerm :: STerm pc Inferred -> Typ (PrdCnsToPol pc)
+getTypeSTerm :: Term pc Inferred -> Typ (PrdCnsToPol pc)
 getTypeSTerm (BoundVar ext rep _)  = case rep of
   PrdRep -> case ext of (_,ty) -> ty
   CnsRep -> case ext of (_,ty) -> ty
@@ -177,8 +183,8 @@ data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply :: CommandExt ext -> STerm Prd ext -> STerm Cns ext -> Command ext
-  Print :: CommandExt ext -> STerm Prd ext -> Command ext
+  Apply :: CommandExt ext -> Term Prd ext -> Term Cns ext -> Command ext
+  Print :: CommandExt ext -> Term Prd ext -> Command ext
   Done  :: CommandExt ext -> Command ext
 
 deriving instance (Eq (Command Parsed))
@@ -193,8 +199,7 @@ deriving instance (Show (Command Compiled))
 -- Variable Opening
 ---------------------------------------------------------------------------------
 
---atermOpeningRec :: Int -> [ATerm Compiled] -> ATerm Compiled -> ATerm Compiled
-termOpeningRec :: Int -> XtorArgs Compiled -> STerm pc Compiled -> STerm pc Compiled
+termOpeningRec :: Int -> XtorArgs Compiled -> Term pc Compiled -> Term pc Compiled
 termOpeningRec k MkXtorArgs { prdArgs } bv@(BoundVar _ PrdRep (i,j)) | i == k    = prdArgs !! j
                                                                      | otherwise = bv
 termOpeningRec k MkXtorArgs { cnsArgs } bv@(BoundVar _ CnsRep (i,j)) | i == k    = cnsArgs !! j
@@ -215,7 +220,7 @@ termOpeningRec k args (Match _ t cases) =
 termOpeningRec k args (Comatch _ cocases) =
   Comatch () ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termOpeningRec (k + 1) args acase_term }) <$> cocases)
 
-termOpening :: XtorArgs Compiled -> STerm pc Compiled -> STerm pc Compiled
+termOpening :: XtorArgs Compiled -> Term pc Compiled -> Term pc Compiled
 termOpening = termOpeningRec 0
 
 commandOpeningRec :: Int -> XtorArgs Compiled -> Command Compiled -> Command Compiled
@@ -228,7 +233,7 @@ commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (
 commandOpening :: XtorArgs Compiled -> Command Compiled -> Command Compiled
 commandOpening = commandOpeningRec 0
 
-commandOpeningSingle :: PrdCnsRep pc -> STerm pc Compiled -> Command Compiled -> Command Compiled
+commandOpeningSingle :: PrdCnsRep pc -> Term pc Compiled -> Command Compiled -> Command Compiled
 commandOpeningSingle PrdRep t = commandOpening (MkXtorArgs [t] [])
 commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
 
@@ -239,7 +244,7 @@ commandOpeningSingle CnsRep t = commandOpening (MkXtorArgs [] [t])
 
 
 --atermClosingRec :: Int -> [FreeVarName] -> ATerm ext -> ATerm ext
-termClosingRec :: Int -> Twice [FreeVarName] -> STerm pc ext -> STerm pc ext
+termClosingRec :: Int -> Twice [FreeVarName] -> Term pc ext -> Term pc ext
 termClosingRec _ _ bv@(BoundVar _ _ _) = bv
 termClosingRec k (Twice prdvars _) (FreeVar ext PrdRep v) | isJust (v `elemIndex` prdvars) = BoundVar ext PrdRep (k, fromJust (v `elemIndex` prdvars))
                                                           | otherwise = FreeVar ext PrdRep v
@@ -264,7 +269,7 @@ commandClosingRec _ _ (Done ext) = Done ext
 commandClosingRec k args (Print ext t) = Print ext (termClosingRec k args t)
 commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
 
-termClosing :: Twice [FreeVarName] -> STerm pc ext -> STerm pc ext
+termClosing :: Twice [FreeVarName] -> Term pc ext -> Term pc ext
 termClosing = termClosingRec 0
 
 commandClosing :: Twice [FreeVarName] -> Command ext -> Command ext
@@ -287,7 +292,7 @@ checkIfBound' :: Twice [a] -> PrdCnsRep pc -> Int -> Either Error ()
 checkIfBound' (Twice prds _) PrdRep j = if j < length prds then Right () else Left $ OtherError "Variable is not bound"
 checkIfBound' (Twice _ cnss) CnsRep j = if j < length cnss then Right () else Left $ OtherError "Variable is not bound"
 
-termLocallyClosedRec :: [Twice [()]] -> STerm pc ext -> Either Error ()
+termLocallyClosedRec :: [Twice [()]] -> Term pc ext -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
 termLocallyClosedRec env (XtorCall _ _ _ (MkXtorArgs prds cnss)) = do
@@ -315,7 +320,7 @@ commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
 commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
-termLocallyClosed :: STerm pc ext -> Either Error ()
+termLocallyClosed :: Term pc ext -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
 commandLocallyClosed :: Command ext -> Either Error ()
@@ -352,7 +357,7 @@ openSCase MkSCase { scase_name, scase_args, scase_cmd } =
           , scase_cmd = commandOpening (freeVarNamesToXtorArgs scase_args) (openCommandComplete scase_cmd)
           }
 
-openSTermComplete :: STerm pc ext -> STerm pc Compiled
+openSTermComplete :: Term pc ext -> Term pc Compiled
 openSTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openSTermComplete (FreeVar _ pc v) = FreeVar () pc v
 openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openXtorArgsComplete args)
@@ -392,13 +397,13 @@ fresh CnsRep = do
   modify (second tail)
   pure (Just var)
 
-createNamesSTerm :: STerm pc ext -> STerm pc Parsed
+createNamesSTerm :: Term pc ext -> Term pc Parsed
 createNamesSTerm tm = evalState (createNamesSTerm' tm) names
 
 createNamesCommand :: Command ext -> Command Parsed
 createNamesCommand cmd = evalState (createNamesCommand' cmd) names
 
-createNamesSTerm' :: STerm pc ext -> CreateNameM (STerm pc Parsed)
+createNamesSTerm' :: Term pc ext -> CreateNameM (Term pc Parsed)
 createNamesSTerm' (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
 createNamesSTerm' (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
 createNamesSTerm' (XtorCall _ pc xt MkXtorArgs { prdArgs, cnsArgs}) = do
@@ -453,7 +458,7 @@ createNamesACase (MkACase _ xt args e) = do
 -- Used in program transformations like focusing.
 ---------------------------------------------------------------------------------
 
-shiftSTerm' :: Int -> STerm pc ext -> STerm pc ext
+shiftSTerm' :: Int -> Term pc ext -> Term pc ext
 shiftSTerm' _ var@FreeVar {} = var
 shiftSTerm' n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
                                          | otherwise = BoundVar ext pcrep (i    , j)
@@ -477,7 +482,7 @@ shiftCmd' _ (Done ext) = Done ext
 shiftCmd' n (Print ext prd) = Print ext (shiftSTerm' n prd)
 
 -- | Shift all unbound BoundVars up by one.
-shiftSTerm :: STerm pc ext -> STerm pc ext
+shiftSTerm :: Term pc ext -> Term pc ext
 shiftSTerm = shiftSTerm' 0
 
 -- | Shift all unbound BoundVars up by one.
@@ -490,7 +495,7 @@ shiftCmd = shiftCmd' 0
 -- Replaces all variable binding sites with Nothing
 ---------------------------------------------------------------------------------
 
-removeNamesSTerm :: STerm pc  ext -> STerm pc ext 
+removeNamesSTerm :: Term pc  ext -> Term pc ext 
 removeNamesSTerm f@FreeVar{} = f
 removeNamesSTerm f@BoundVar{} = f
 removeNamesSTerm (XtorCall ext pc xt (MkXtorArgs prdArgs cnsArgs)) = XtorCall ext pc xt (MkXtorArgs (removeNamesSTerm <$> prdArgs) (removeNamesSTerm <$> cnsArgs))
