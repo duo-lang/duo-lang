@@ -14,13 +14,13 @@ import Syntax.CommonTerm
 import Syntax.Types 
 
 ---------------------------------------------------------------------------------
--- Asymmetric Terms
+-- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
-type family ACaseExt (ext :: Phase) :: Type where
-  ACaseExt Parsed = Loc
-  ACaseExt Inferred = Loc
-  ACaseExt Compiled = ()
+type family CaseExt (ext :: Phase) :: Type where
+  CaseExt Parsed   = Loc
+  CaseExt Inferred = Loc
+  CaseExt Compiled = ()
 
 -- | Represents one case in a pattern match or copattern match.
 -- The `ext` field is used to save additional information, such as source code locations.
@@ -33,7 +33,7 @@ type family ACaseExt (ext :: Phase) :: Type where
 --    acase_name
 --
 data ACase (ext :: Phase) = MkACase
-  { acase_ext :: ACaseExt ext
+  { acase_ext  :: CaseExt ext
   , acase_name :: XtorName
   , acase_args :: [Maybe FreeVarName]
   , acase_term :: STerm Prd ext
@@ -45,6 +45,27 @@ deriving instance (Eq (ACase Compiled))
 deriving instance (Show (ACase Parsed))
 deriving instance (Show (ACase Inferred))
 deriving instance (Show (ACase Compiled))
+
+-- | Represents one case in a pattern match or copattern match.
+--
+--        X(x_1,...,x_n)[k_1,...,k_m] => c
+--        ^ ^^^^^^^^^^^^^^^^^^^^^^^^     ^
+--        |              |               |
+--    scase_name     scase_args      scase_cmd
+--
+data SCase (ext :: Phase) = MkSCase
+  { scase_ext  :: CaseExt ext
+  , scase_name :: XtorName
+  , scase_args :: Twice [Maybe FreeVarName]
+  , scase_cmd  :: Command ext
+  }
+
+deriving instance (Eq (SCase Parsed))
+deriving instance (Eq (SCase Inferred))
+deriving instance (Eq (SCase Compiled))
+deriving instance (Show (SCase Parsed))
+deriving instance (Show (SCase Inferred))
+deriving instance (Show (SCase Compiled))
 
 ---------------------------------------------------------------------------------
 -- # Terms
@@ -68,26 +89,6 @@ deriving instance (Eq (XtorArgs Compiled))
 deriving instance (Show (XtorArgs Parsed))
 deriving instance (Show (XtorArgs Inferred))
 deriving instance (Show (XtorArgs Compiled))
-
--- | Represents one case in a pattern match or copattern match.
---
---        X(x_1,...,x_n)[k_1,...,k_m] => c
---        ^ ^^^^^^^^^^^^^^^^^^^^^^^^     ^
---        |              |               |
---    scase_name     scase_args      scase_cmd
---
-data SCase (ext :: Phase) = MkSCase
-  { scase_name :: XtorName
-  , scase_args :: Twice [Maybe FreeVarName]
-  , scase_cmd  :: Command ext
-  }
-
-deriving instance (Eq (SCase Parsed))
-deriving instance (Eq (SCase Inferred))
-deriving instance (Eq (SCase Compiled))
-deriving instance (Show (SCase Parsed))
-deriving instance (Show (SCase Inferred))
-deriving instance (Show (SCase Compiled))
 
 type family STermExt (pc :: PrdCns) (ext :: Phase) :: Type where
   STermExt _ Parsed = Loc
@@ -440,11 +441,11 @@ createNamesCommand' (Apply _ prd cns) = do
 createNamesCommand' (Print _ prd) = createNamesSTerm' prd >>= \prd' -> return (Print defaultLoc prd')
 
 createNamesSCase :: SCase ext -> CreateNameM (SCase Parsed)
-createNamesSCase (MkSCase {scase_name, scase_args = Twice as bs, scase_cmd }) = do
+createNamesSCase (MkSCase { scase_name, scase_args = Twice as bs, scase_cmd }) = do
   cmd' <- createNamesCommand' scase_cmd
   as' <- sequence $ (const (fresh PrdRep)) <$> as
   bs' <- sequence $ (const (fresh CnsRep)) <$> bs
-  return $ MkSCase scase_name (Twice as' bs') cmd'
+  return $ MkSCase defaultLoc scase_name (Twice as' bs') cmd'
 
 createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
 createNamesACase (MkACase _ xt args e) = do
@@ -476,7 +477,7 @@ shiftACase :: Int -> ACase ext -> ACase ext
 shiftACase n (MkACase ext xt args e) = MkACase ext xt args (shiftSTerm' n e)
 
 shiftSCase :: Int -> SCase ext-> SCase ext
-shiftSCase n (MkSCase name bs cmd) = MkSCase name bs (shiftCmd' n cmd)
+shiftSCase n (MkSCase ext name bs cmd) = MkSCase ext name bs (shiftCmd' n cmd)
 
 shiftCmd' :: Int -> Command ext -> Command ext
 shiftCmd' n (Apply ext prd cns) = Apply ext (shiftSTerm' n prd) (shiftSTerm' n cns)
@@ -511,7 +512,7 @@ removeNamesACase :: ACase ext -> ACase ext
 removeNamesACase (MkACase ext xt args e) = MkACase ext xt (const Nothing <$> args) (removeNamesSTerm e)
 
 removeNamesSCase :: SCase ext -> SCase ext
-removeNamesSCase (MkSCase xt args cmd)= MkSCase xt (fmap (const Nothing) <$> args) (removeNamesCmd cmd)
+removeNamesSCase (MkSCase ext xt args cmd)= MkSCase ext xt (fmap (const Nothing) <$> args) (removeNamesCmd cmd)
 
 removeNamesCmd :: Command ext -> Command ext 
 removeNamesCmd (Apply ext prd cns) = Apply ext (removeNamesSTerm prd) (removeNamesSTerm cns)

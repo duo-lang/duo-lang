@@ -37,7 +37,7 @@ compile (Match _ t cases)   =
     nominalStructural = case cases of
       [] -> Structural
       ((MkACase _ (MkXtorName ns _ ) _ _):_) -> ns
-    compileMatchCase (MkACase _ xt args t) = MkSCase xt (Twice (const Nothing <$> args) [])   $ Apply () (compile t) (FreeVar () CnsRep resVar)
+    compileMatchCase (MkACase _ xt args t) = MkSCase () xt (Twice (const Nothing <$> args) [])   $ Apply () (compile t) (FreeVar () CnsRep resVar)
     cmd = Apply () (compile t) (XMatch () CnsRep nominalStructural  (compileMatchCase <$> cases))
   in
     MuAbs () PrdRep Nothing $ commandClosingSingle CnsRep resVar $ shiftCmd cmd
@@ -48,14 +48,14 @@ compile (Comatch _ cocases) =
     nominalStructural = case cocases of
       [] -> Structural
       ((MkACase _ (MkXtorName ns _ ) _ _):_) -> ns
-    compileComatchCase (MkACase _ xt args t) = MkSCase xt (Twice (const Nothing <$> args) [Nothing]) $ Apply () (compile t) (BoundVar () CnsRep (0,0))
+    compileComatchCase (MkACase _ xt args t) = MkSCase () xt (Twice (const Nothing <$> args) [Nothing]) $ Apply () (compile t) (BoundVar () CnsRep (0,0))
   in
     XMatch () PrdRep nominalStructural $ compileComatchCase <$> cocases
 
 
 
 compileSCase :: SCase ext -> SCase Compiled
-compileSCase (MkSCase xt args cmd) = MkSCase xt args (compileCmd cmd)
+compileSCase (MkSCase _ xt args cmd) = MkSCase () xt args (compileCmd cmd)
 
 compileCmd :: Command ext -> Command Compiled
 compileCmd (Apply _ prd cns) = Apply () (compile prd) (compile cns)

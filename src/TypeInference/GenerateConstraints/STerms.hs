@@ -89,7 +89,7 @@ genConstraintsSTerm (XMatch loc rep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
                       (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
                       cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
-                      return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
+                      return (MkSCase scase_ext scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case rep of
         PrdRep -> return $ XMatch (loc, TyCodata PosRep Nothing (snd <$> cases')) rep Structural (fst <$> cases')
         CnsRep -> return $ XMatch (loc, TyData   NegRep Nothing (snd <$> cases')) rep Structural (fst <$> cases')
@@ -118,7 +118,7 @@ genConstraintsSTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                                x2 <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig scase_name NegRep)
                                genConstraintsSCaseArgs x1 fvarsNeg loc -- Empty translation as lower bound
                                genConstraintsSCaseArgs fvarsPos x2 loc -- Full translation as upper bound
-                           return (MkSCase scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
+                           return (MkSCase scase_ext scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case (im, rep) of
         (InferNominal,PrdRep) -> return $ XMatch (loc, TyNominal PosRep (data_name tn))                        rep Nominal (fst <$> cases')
         (InferRefined,PrdRep) -> return $ XMatch (loc, TyCodata PosRep (Just $ data_name tn) (snd <$> cases')) rep Nominal (fst <$> cases')
