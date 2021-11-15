@@ -11,7 +11,7 @@ import Data.Graph.Inductive.Graph
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
 
-import Data.List (delete, find)
+import Data.List (delete)
 import Data.Tuple (swap)
 import Data.Maybe (isJust)
 import Data.Set qualified as S

@@ -162,9 +162,11 @@ data NodeLabel = MkNodeLabel
 emptyNodeLabel :: Polarity -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty []
 
-singleNodeLabel :: Polarity -> DataCodata -> Set XtorLabel -> NodeLabel
-singleNodeLabel pol Data xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty []
-singleNodeLabel pol Codata xtors = MkNodeLabel pol Nothing (Just xtors) S.empty []
+singleNodeLabel :: Polarity -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
+singleNodeLabel pol Data Nothing xtors     = MkNodeLabel pol (Just xtors) Nothing S.empty []
+singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty (map (\xtn->(tn,xtn)) $ S.toList xtors)
+singleNodeLabel pol Codata Nothing xtors   = MkNodeLabel pol Nothing (Just xtors) S.empty []
+singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing (Just xtors) S.empty (map (\xtn->(tn,xtn)) $ S.toList xtors)
 
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
