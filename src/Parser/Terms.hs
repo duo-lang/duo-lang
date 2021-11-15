@@ -13,6 +13,26 @@ import Syntax.CommonTerm
 import Utils
 
 --------------------------------------------------------------------------------------------
+-- Substitutions
+--------------------------------------------------------------------------------------------
+
+prdSubstPart :: Parser (Substitution Parsed, SourcePos)
+prdSubstPart = parens   $ (PrdTerm . fst <$> termP PrdRep) `sepBy` comma
+
+cnsSubstPart :: Parser (Substitution Parsed, SourcePos)
+cnsSubstPart = brackets $ (CnsTerm . fst <$> termP CnsRep) `sepBy` comma
+
+
+-- | Parse two lists, the first in parentheses and the second in brackets.
+substitutionP :: Parser (Substitution Parsed, SourcePos)
+substitutionP = do
+  endPos <- getSourcePos
+  xs <- many (prdSubstPart <|> cnsSubstPart)
+  case xs of
+    [] -> return ([], endPos)
+    xs -> return (concat (fst <$> xs), snd (last xs))
+
+--------------------------------------------------------------------------------------------
 -- Free Variables, Literals and Xtors
 --------------------------------------------------------------------------------------------
 
@@ -34,20 +54,12 @@ numLitP ns PrdRep = do
     numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") []
     numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
 
--- | Parse two lists, the first in parentheses and the second in brackets.
-xtorArgsP :: Parser (Substitution Parsed, SourcePos)
-xtorArgsP = do
-  endPos <- getSourcePos
-  (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (termP PrdRep)) `sepBy` comma)
-  (ys, endPos) <- option ([],endPos) (brackets $ (fst <$> (termP CnsRep)) `sepBy` comma)
-  return (oldToNewSubst (xs, ys), endPos)
-
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 xtorCall ns pc = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
-  (args, endPos) <- xtorArgsP
-  return (XtorCall (Loc startPos endPos) pc xt args, endPos)
+  (subst, endPos) <- substitutionP
+  return (XtorCall (Loc startPos endPos) pc xt subst, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Pattern and copattern matches
@@ -231,7 +243,7 @@ lambdaP PrdRep = do
   startPos <- getSourcePos
   _ <- backslash
   bvar <- freeVarName
-  _ <- rightarrow 
+  _ <- rightarrow
   (tm, endPos) <- termTopP PrdRep
   let res = mkLambda (Loc startPos endPos) (fst bvar) tm
   return (res, endPos)
@@ -255,7 +267,7 @@ termBotP rep = freeVar rep <|>
   muAbstraction rep <|>
   parens (fst <$> termTopP rep) <|>
   lambdaP rep
-  
+
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser
@@ -274,7 +286,7 @@ mkApps startPos ((a1,_):(a2,endPos):as) =
     tm = mkApp (Loc startPos endPos) a1 a2
   in
     mkApps startPos ((tm,endPos):as)
-  
+
 
 applicationP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 applicationP CnsRep = termBotP CnsRep
