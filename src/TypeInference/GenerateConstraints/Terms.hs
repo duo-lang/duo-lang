@@ -135,6 +135,9 @@ genConstraintsTerm (MuAbs loc CnsRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmd' <- withContext (MkTypArgs [fvpos] []) (genConstraintsCommand cmd)
   return (MuAbs (loc, fvneg) CnsRep bs cmd')
+--
+-- Dtor Sugar
+--
 genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
   args' <- sequence (genConstraintsTerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
