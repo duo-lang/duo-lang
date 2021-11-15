@@ -111,7 +111,7 @@ freshTVars :: Twice [FreeVarName] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
   (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\fv -> freshTVar (ProgramVariable fv))
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
-  return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
+  return ((PrdType <$> prdArgsPos)  ++ (CnsType <$> cnsArgsNeg), (PrdType <$> prdArgsNeg) ++ (CnsType <$> cnsArgsPos))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -131,15 +131,13 @@ lookupContext rep (i,j) = do
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
     Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-    Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
-      PrdRep -> do
-        case indexMaybe prdTypes j of
-          Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-          Just ty -> return ty
-      CnsRep -> do
-        case indexMaybe cnsTypes j of
-          Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-          Just ty -> return ty
+    Just (lctxt) -> case indexMaybe lctxt j of
+      Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+      Just ty -> case (rep, ty) of
+        (PrdRep, PrdType ty) -> return ty
+        (CnsRep, CnsType ty) -> return ty
+        (_,_) -> throwGenError ["BOOM"]
+
 
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.

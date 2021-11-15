@@ -82,13 +82,9 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
   prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
 
-instance PrettyAnn (LinearContext a) where
-  prettyAnn (MkTypArgs [] []) = mempty
-  prettyAnn (MkTypArgs prdArgs []) = parens'   commaSym (prettyAnn <$> prdArgs)
-  prettyAnn (MkTypArgs [] cnsArgs) = brackets' commaSym (prettyAnn <$> cnsArgs)
-  prettyAnn (MkTypArgs prdArgs cnsArgs) = align $ sep [ (parens'   commaSym (prettyAnn <$> prdArgs))
-                                                      , (brackets' commaSym (prettyAnn <$> cnsArgs))
-                                                      ]
+instance PrettyAnn (PrdCnsType pol) where
+  prettyAnn (PrdType ty) = parens $ prettyAnn ty
+  prettyAnn (CnsType ty) = parens $ prettyAnn ty
 
 instance PrettyAnn (XtorSig a) where
   prettyAnn (MkXtorSig xt args) = prettyAnn xt <> prettyAnn args

@@ -15,6 +15,7 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils
 import Lookup
+import Data.Typeable (typeOf2)
 
 ---------------------------------------------------------------------------------------------
 -- Terms
@@ -132,11 +133,11 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
 --
 genConstraintsTerm (MuAbs loc PrdRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
-  cmd' <- withContext (MkTypArgs [] [fvneg]) (genConstraintsCommand cmd)
+  cmd' <- withContext [CnsType fvneg] (genConstraintsCommand cmd)
   return (MuAbs (loc, fvpos) PrdRep bs cmd')
 genConstraintsTerm (MuAbs loc CnsRep bs cmd) = do
   (fvpos, fvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
-  cmd' <- withContext (MkTypArgs [fvpos] []) (genConstraintsCommand cmd)
+  cmd' <- withContext [PrdType fvpos] (genConstraintsCommand cmd)
   return (MuAbs (loc, fvneg) CnsRep bs cmd')
 --
 -- Dtor Sugar
@@ -144,7 +145,7 @@ genConstraintsTerm (MuAbs loc CnsRep bs cmd) = do
 genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } t args) = do
   args' <- sequence (genConstraintsTerm <$> args)
   (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
-  let codataType = TyCodata NegRep Nothing [MkXtorSig xt (MkTypArgs (getTypeSTerm <$> args') [retTypeNeg])]
+  let codataType = TyCodata NegRep Nothing [MkXtorSig xt ((PrdType . getTypeSTerm <$> args') ++  [CnsType retTypeNeg])]
   t' <- genConstraintsTerm t
   addConstraint (SubType (DtorApConstraint loc) (getTypeSTerm t') codataType)
   return (Dtor (loc,retTypePos) xt t' args')
@@ -266,8 +267,7 @@ genConstraintsACaseArgs xtsigs1 xtsigs2 loc = do
     case find (\case (MkXtorSig xtn2 _) -> xtn1==xtn2) xtsigs2 of
       Just xts2 -> do
         let sa1 = sig_args xts1; sa2 = sig_args xts2
-        zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt1 pt2) (prdTypes sa1) (prdTypes sa2)
-        zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct2 ct1) (cnsTypes sa1) (cnsTypes sa2)
+        genConstraintsSCaseArgs sa1 sa2 loc        
       Nothing -> return ()
     )
 
@@ -284,9 +284,14 @@ genConstraintsCommand (Apply loc t1 t2) = do
   return (Apply loc t1' t2')
 
 genConstraintsSCaseArgs :: LinearContext Pos -> LinearContext Neg -> Loc -> GenM ()
-genConstraintsSCaseArgs sa1 sa2 loc = do
-  zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt1 pt2) (prdTypes sa1) (prdTypes sa2)
-  zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct2 ct1) (cnsTypes sa1) (cnsTypes sa2)
+genConstraintsSCaseArgs [] [] _ = return ()
+genConstraintsSCaseArgs ((PrdType ty1) : rest1) (PrdType ty2 : rest2) loc = do
+  addConstraint $ SubType (PatternMatchConstraint loc) ty1 ty2
+  genConstraintsSCaseArgs rest1 rest2 loc
+genConstraintsSCaseArgs ((CnsType ty1) : rest1) (CnsType ty2 : rest2) loc = do
+  addConstraint $ SubType (PatternMatchConstraint loc) ty2 ty1
+  genConstraintsSCaseArgs rest1 rest2 loc
+genConstraintsSCaseArgs _ _ _ = throwGenError ["Boom"]
 
 ---------------------------------------------------------------------------------------------
 -- Symmetric Terms with recursive binding

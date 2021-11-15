@@ -187,9 +187,11 @@ getTypeSTerm (Match (_,ty) _ _)  = ty
 getTypeSTerm (Comatch (_,ty) _)  = ty
 
 getTypArgs :: Substitution Inferred -> LinearContext Pos
-getTypArgs subst = MkTypArgs (getTypeSTerm <$> prdArgs) (getTypeSTerm <$> cnsArgs)
+getTypArgs subst = getTypArgs' <$> subst
   where
-    (prdArgs, cnsArgs) = newToOldSubst subst
+    getTypArgs' (PrdTerm tm) = PrdType $ getTypeSTerm tm
+    getTypArgs' (CnsTerm tm) = CnsType $ getTypeSTerm tm
+    
 
 ---------------------------------------------------------------------------------
 -- Commands

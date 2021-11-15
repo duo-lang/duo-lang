@@ -144,7 +144,7 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
     typs <- forM ns $ \n -> do
       nodeToType (flipPolarityRep rep) n
     return $ case typs of [t] -> t; _ -> TySet (flipPolarityRep rep) typs
-  return (MkTypArgs prdTypes cnsTypes)
+  return $ (PrdType <$>  prdTypes) ++ (CnsType <$> cnsTypes)
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do

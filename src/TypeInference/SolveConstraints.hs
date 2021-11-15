@@ -111,9 +111,19 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
   Just xtorSig -> pure xtorSig
 
 checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
-checkXtor xtors2 (MkXtorSig xtName (MkTypArgs prd1 cns1)) = do
-  MkXtorSig _ (MkTypArgs prd2 cns2) <- lookupXtor xtName xtors2
-  pure $ zipWith (SubType XtorSubConstraint) prd1 prd2 ++ zipWith (SubType XtorSubConstraint) cns2 cns1
+checkXtor xtors2 (MkXtorSig xtName subst1) = do
+  MkXtorSig _ subst2 <- lookupXtor xtName xtors2
+  checkContexts subst1 subst2
+
+checkContexts :: LinearContext Pos -> LinearContext Neg -> SolverM [Constraint ConstraintInfo]
+checkContexts [] [] = return []
+checkContexts (PrdType ty1:rest1) (PrdType ty2:rest2) = do
+  xs <- checkContexts rest1 rest2
+  return (SubType XtorSubConstraint ty1 ty2:xs)
+checkContexts (CnsType ty1:rest1) (CnsType ty2:rest2) = do
+  xs <- checkContexts rest1 rest2
+  return (SubType XtorSubConstraint ty2 ty1:xs)
+checkContexts _ _ = throwSolverError ["Peng"]
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic

@@ -35,14 +35,17 @@ kindP = do
 
 
 ---------------------------------------------------------------------------------
--- Parsing of Simple and Target types
+-- Parsing of linear contexts
 ---------------------------------------------------------------------------------
-
 typArgListP :: PolarityRep pol -> Parser (LinearContext pol)
 typArgListP rep = do
   prdArgs <- option [] (fst <$> parens   (typP rep `sepBy` comma))
   cnsArgs <- option [] (fst <$> brackets (typP (flipPolarityRep rep) `sepBy` comma))
-  return (MkTypArgs prdArgs cnsArgs)
+  return ((PrdType <$> prdArgs) ++ (CnsType <$> cnsArgs))
+
+---------------------------------------------------------------------------------
+-- Parsing of Simple and Target types
+---------------------------------------------------------------------------------
 
 nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
 nominalTypeP rep = do
@@ -133,7 +136,10 @@ switchPol (TySet rep typs) = TySet (flipPolarityRep rep) (switchPol <$> typs)
 switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
 
 switchSig :: XtorSig pol -> XtorSig (FlipPol pol)
-switchSig (MkXtorSig xt (MkTypArgs prdArgs cnsArgs)) = MkXtorSig xt (MkTypArgs (switchPol <$> prdArgs) (switchPol <$> cnsArgs))
+switchSig (MkXtorSig xt ctxt) = MkXtorSig xt (switchCtxt ctxt)
+
+switchCtxt :: LinearContext pol -> LinearContext (FlipPol pol)
+switchCtxt = undefined 
 
 invariantP :: Parser Invariant
 invariantP = do
