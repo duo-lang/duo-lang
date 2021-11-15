@@ -129,7 +129,7 @@ prettyTwice' xs ys = xs' <> ys'
     xs' = if null xs then mempty else parens   (intercalateComma (map prettyAnn xs))
     ys' = if null ys then mempty else brackets (intercalateComma (map prettyAnn ys))
 
-prettyTwice :: PrettyAnn a => Twice [a] -> Doc Annotation
+prettyTwice :: PrettyAnn a => Twice a -> Doc Annotation
 prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
 instance PrettyAnn XtorName where

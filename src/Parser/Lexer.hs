@@ -304,7 +304,7 @@ angles    = betweenP (symbol "<")  (symbol ">")
 dbraces   = betweenP (symbol "{{") (symbol "}}")
 
 -- | Parse two lists, the first in parentheses and the second in brackets.
-argListP ::  Parser a -> Parser a ->  Parser (Twice [a], SourcePos)
+argListP ::  Parser a -> Parser a ->  Parser (Twice a, SourcePos)
 argListP p q = do
   endPos <- getSourcePos
   (xs, endPos) <- option ([], endPos) (parens   $ p `sepBy` comma)

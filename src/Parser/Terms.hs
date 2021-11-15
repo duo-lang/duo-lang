@@ -74,7 +74,7 @@ singleCase ns = do
   (cmd, endPos) <- commandP
   let pmcase = MkSCase { scase_ext = Loc startPos endPos
                        , scase_name = xt
-                       , scase_args = fmap Just <$> args
+                       , scase_args = Just <$> args
                        , scase_cmd = commandClosing args cmd -- de brujin transformation
                        }
   return (pmcase, endPos)

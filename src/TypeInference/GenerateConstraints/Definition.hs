@@ -107,7 +107,7 @@ freshTVar uvp = do
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
   return (TyVar PosRep tvar, TyVar NegRep tvar)
 
-freshTVars :: Twice [FreeVarName] -> GenM (LinearContext Pos, LinearContext Neg)
+freshTVars :: Twice FreeVarName -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars (Twice prdArgs cnsArgs) = do
   (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\fv -> freshTVar (ProgramVariable fv))
   (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))

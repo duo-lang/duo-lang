@@ -29,14 +29,14 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthSubstitution :: Substitution Compiled -> Twice Int
-lengthSubstitution subst = Twice (length prdArgs) (length cnsArgs)
+lengthSubstitution :: Substitution Compiled -> (Int, Int)
+lengthSubstitution subst = (length prdArgs,length cnsArgs)
   where
     (prdArgs, cnsArgs) = newToOldSubst subst
 
-checkArgs :: Command Compiled -> Twice [a] -> Substitution Compiled -> EvalM ()
-checkArgs cmd argTypes args =
-  if fmap length argTypes == lengthSubstitution args
+checkArgs :: Command Compiled -> Twice a -> Substitution Compiled -> EvalM ()
+checkArgs cmd (Twice prds cnss) args =
+  if (length prds, length cnss) == lengthSubstitution args
   then return ()
   else throwEvalError [ "Error during evaluation of:"
                       , ppPrint cmd

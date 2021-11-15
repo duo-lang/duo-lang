@@ -162,7 +162,7 @@ focusXtor' eo pc     name (CnsTerm cns:pcterms) pcterms' | isValueTerm eo CnsRep
 
 focusSCase :: CallingConvention -> SCase ext -> SCase Compiled
 focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
-    MkSCase () scase_name (fmap (const Nothing) <$> scase_args) (focusCmd eo scase_cmd)
+    MkSCase () scase_name (const Nothing <$> scase_args) (focusCmd eo scase_cmd)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.

@@ -98,7 +98,7 @@ genConstraintsTerm (XtorCall loc rep xt args) = do
 --
 genConstraintsTerm (XMatch loc rep Structural cases) = do
   cases' <- forM cases (\MkSCase{..} -> do
-                      (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
+                      (fvarsPos, fvarsNeg) <- freshTVars (fromMaybeVar <$> scase_args)
                       cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                       return (MkSCase scase_ext scase_name scase_args cmd', MkXtorSig scase_name fvarsNeg))
   case rep of
@@ -118,7 +118,7 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
   checkExhaustiveness (scase_name <$> cases) tn
   im <- asks (inferMode . snd)
   cases' <- forM cases (\MkSCase {..} -> do
-                           (fvarsPos, fvarsNeg) <- freshTVars (fmap fromMaybeVar <$> scase_args)
+                           (fvarsPos, fvarsNeg) <- freshTVars (fromMaybeVar <$> scase_args)
                            cmd' <- withContext fvarsPos (genConstraintsCommand scase_cmd)
                            case im of
                              InferNominal -> do
