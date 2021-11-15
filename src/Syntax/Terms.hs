@@ -49,10 +49,6 @@ deriving instance (Show (PrdCnsTerm Compiled))
 
 type Substitution ext = [PrdCnsTerm ext]
 
-{-# DEPRECATED oldToNewSubst "Deprecated" #-}
-oldToNewSubst :: ([Term Prd ext],[Term Cns ext]) -> Substitution ext
-oldToNewSubst (prdArgs, cnsArgs) = (PrdTerm <$> prdArgs) ++ (CnsTerm <$> cnsArgs)
-
 {-# DEPRECATED newToOldSubst "Deprecated" #-}
 newToOldSubst :: Substitution ext -> ([Term Prd ext],[Term Cns ext])
 newToOldSubst subst = foo subst ([],[])
