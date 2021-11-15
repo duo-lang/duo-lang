@@ -336,18 +336,27 @@ freeVarNamesToXtorArgs :: Twice [Maybe FreeVarName] -> XtorArgs Compiled
 freeVarNamesToXtorArgs (Twice prds cnss) = MkXtorArgs ((\case {Just fv -> FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> prds)
                                                       ((\case {Just fv -> FreeVar () CnsRep fv; Nothing -> error "Create Names first!"}) <$> cnss)
 
+openACase :: ACase ext -> ACase Compiled
+openACase MkACase { acase_name, acase_args, acase_term } =
+    MkACase { acase_ext = ()
+            , acase_name = acase_name
+            , acase_args = acase_args
+            , acase_term = termOpening (MkXtorArgs ((\case {Just fv ->  FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> acase_args) []) (openSTermComplete acase_term)
+            }
+
+openSCase :: SCase ext -> SCase Compiled
+openSCase MkSCase { scase_name, scase_args, scase_cmd } =
+  MkSCase { scase_ext = ()
+          , scase_name = scase_name
+          , scase_args = scase_args
+          , scase_cmd = commandOpening (freeVarNamesToXtorArgs scase_args) (openCommandComplete scase_cmd)
+          }
+
 openSTermComplete :: STerm pc ext -> STerm pc Compiled
 openSTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openSTermComplete (FreeVar _ pc v) = FreeVar () pc v
 openSTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openXtorArgsComplete args)
-openSTermComplete (XMatch _ pc ns cases) = let
-  openSCase :: SCase ext -> SCase Compiled
-  openSCase MkSCase { scase_name, scase_args, scase_cmd } =
-    MkSCase { scase_name = scase_name
-            , scase_args = scase_args
-            , scase_cmd = commandOpening (freeVarNamesToXtorArgs scase_args) (openCommandComplete scase_cmd)
-            }
-  in XMatch () pc ns (openSCase <$> cases)
+openSTermComplete (XMatch _ pc ns cases) = XMatch () pc ns (openSCase <$> cases)
 openSTermComplete (MuAbs _ PrdRep (Just fv) cmd) =
   MuAbs () PrdRep (Just fv) (commandOpeningSingle CnsRep (FreeVar () CnsRep fv) (openCommandComplete cmd))
 openSTermComplete (MuAbs _ PrdRep Nothing _) = error "Create names first!"
@@ -357,23 +366,6 @@ openSTermComplete (MuAbs _ CnsRep Nothing _) = error "Create names first!"
 openSTermComplete (Dtor _ name t args) = Dtor () name (openSTermComplete t) (openSTermComplete <$> args)
 openSTermComplete (Match _ t cases) = Match () (openSTermComplete t) (openACase <$> cases)
 openSTermComplete (Comatch _ cocases) = Comatch () (openACase <$> cocases)
-
----------------------------------------------------------------------------------
--- These functions  translate a locally nameless term into a named representation.
---
--- Use only for prettyprinting! These functions only "undo" the steps in the parser
--- and do not fulfil any semantic properties w.r.t shadowing etc.!
----------------------------------------------------------------------------------
-
-openACase :: ACase ext -> ACase Compiled
-openACase MkACase { acase_name, acase_args, acase_term } =
-    MkACase { acase_ext = ()
-            , acase_name = acase_name
-            , acase_args = acase_args
-            , acase_term = termOpening (MkXtorArgs ((\case {Just fv ->  FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> acase_args) []) (openSTermComplete acase_term)
-            }
-
-
 
 openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ t1 t2) = Apply () (openSTermComplete t1) (openSTermComplete t2)
