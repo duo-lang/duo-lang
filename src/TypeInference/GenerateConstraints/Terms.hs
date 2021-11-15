@@ -283,7 +283,7 @@ genConstraintsCommand (Apply loc t1 t2) = do
   addConstraint (SubType (CommandConstraint loc) (getTypeSTerm t1') (getTypeSTerm t2'))
   return (Apply loc t1' t2')
 
-genConstraintsSCaseArgs :: TypArgs Pos -> TypArgs Neg -> Loc -> GenM ()
+genConstraintsSCaseArgs :: LinearContext Pos -> LinearContext Neg -> Loc -> GenM ()
 genConstraintsSCaseArgs sa1 sa2 loc = do
   zipWithM_ (\pt1 pt2 -> addConstraint $ SubType (PatternMatchConstraint loc) pt1 pt2) (prdTypes sa1) (prdTypes sa2)
   zipWithM_ (\ct1 ct2 -> addConstraint $ SubType (PatternMatchConstraint loc) ct2 ct1) (cnsTypes sa1) (cnsTypes sa2)

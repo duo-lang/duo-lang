@@ -186,7 +186,7 @@ getTypeSTerm (Dtor (_,ty) _ _ _) = ty
 getTypeSTerm (Match (_,ty) _ _)  = ty
 getTypeSTerm (Comatch (_,ty) _)  = ty
 
-getTypArgs :: Substitution Inferred -> TypArgs Pos
+getTypArgs :: Substitution Inferred -> LinearContext Pos
 getTypArgs subst = MkTypArgs (getTypeSTerm <$> prdArgs) (getTypeSTerm <$> cnsArgs)
   where
     (prdArgs, cnsArgs) = newToOldSubst subst

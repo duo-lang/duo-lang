@@ -134,7 +134,7 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } 
     Twice prdArgs cnsArgs
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> PolarityRep pol -> AutToTypeM (TypArgs pol)
+argNodesToArgTypes :: Twice [[Node]] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
