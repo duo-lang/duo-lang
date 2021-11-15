@@ -158,8 +158,12 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyData _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
     freeTypeVars' (TyCodata _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
+    freeTypeVarsPC :: PrdCnsType pol -> [TVar]
+    freeTypeVarsPC (PrdType ty) = freeTypeVars' ty
+    freeTypeVarsPC (CnsType ty) = freeTypeVars' ty
+
     freeTypeVarsCtxt :: LinearContext pol -> [TVar]
-    freeTypeVarsCtxt = undefined
+    freeTypeVarsCtxt ctxt = concat (freeTypeVarsPC <$> ctxt)
 
     freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
     freeTypeVarsXtorSig (MkXtorSig _ ctxt) = freeTypeVarsCtxt ctxt
