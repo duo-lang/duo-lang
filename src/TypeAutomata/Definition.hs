@@ -158,17 +158,15 @@ data NodeLabel = MkNodeLabel
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
   , nl_nominal :: Set TypeName
-  , nl_ref_data :: Map TypeName (Set XtorLabel)
+  , nl_ref_data :: Map (Maybe TypeName) (Set XtorLabel)
   } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
-singleNodeLabel pol Data Nothing xtors     = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty
-singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty (M.singleton tn xtors)
-singleNodeLabel pol Codata Nothing xtors   = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty
-singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing (Just xtors) S.empty (M.singleton tn xtors)
+singleNodeLabel pol Data mtn xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty $ M.singleton mtn xtors
+singleNodeLabel pol Codata mtn xtors = MkNodeLabel pol Nothing (Just xtors) S.empty $ M.singleton mtn xtors
 
 --------------------------------------------------------------------------------
 -- Edge labels for type automata

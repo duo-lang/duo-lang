@@ -162,16 +162,16 @@ nodeToTypeNoCache rep i = do
   gr <- asks graph
   let (Just (MkNodeLabel _ datSet codatSet tns refs)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-  let refTypes = (Just <$> M.keys refs)++[Nothing] -- List of unique type names refined in node
+  let refTypes = M.keys refs -- List of unique type names refined in node
   resType <- local (visitNode i) $ do
     -- Creating type variables
     varL <- nodeToTVars rep i
     -- Creating data types
     datL <- case maybeDat of
       Nothing -> return []
-      Just xtors -> do 
+      Just _ -> do
         concat <$> forM refTypes (\mtn -> do
-          let xtors' = xtorsForTypeName mtn xtors refs
+          let xtors' = maybe [] S.toList $ M.lookup mtn refs
           sig <- forM xtors' $ \xt -> do
             let nodes = computeArgNodes outs Data xt
             argTypes <- argNodesToArgTypes nodes rep
@@ -180,9 +180,9 @@ nodeToTypeNoCache rep i = do
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
-      Just xtors -> do 
+      Just _ -> do 
         concat <$> forM refTypes (\mtn -> do
-          let xtors' = xtorsForTypeName mtn xtors refs
+          let xtors' = maybe [] S.toList $ M.lookup mtn refs
           sig <- forM xtors' $ \xt -> do
             let nodes = computeArgNodes outs Codata xt
             argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
@@ -198,7 +198,3 @@ nodeToTypeNoCache rep i = do
   if i `elem` dfs (suc gr i) gr
     then return $ TyRec rep (MkTVar ("r" <> T.pack (show i))) resType
     else return resType
-
-xtorsForTypeName :: Maybe TypeName -> [XtorLabel] -> Map TypeName (Set XtorLabel) -> [XtorLabel]
-xtorsForTypeName Nothing xtors refs = filter (\x-> x `notElem` S.toList (S.unions $ M.elems refs)) xtors
-xtorsForTypeName (Just tn) _ refs = maybe [] S.toList $ M.lookup tn refs
