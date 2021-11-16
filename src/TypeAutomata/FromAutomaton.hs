@@ -160,9 +160,10 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns refs)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns refDat refCodat)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-  let refTypes = M.keys refs -- List of unique type names refined in node
+  let refDatTypes = M.keys refDat -- Unique data ref types
+  let refCodatTypes = M.keys refCodat -- Unique codata ref types
   resType <- local (visitNode i) $ do
     -- Creating type variables
     varL <- nodeToTVars rep i
@@ -170,28 +171,46 @@ nodeToTypeNoCache rep i = do
     datL <- case maybeDat of
       Nothing -> return []
       Just xtors -> do
-        concat <$> forM refTypes (\mtn -> do
-          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup mtn refs
+        sig <- forM xtors $ \xt -> do
+          let nodes = computeArgNodes outs Data xt
+          argTypes <- argNodesToArgTypes nodes rep
+          return (MkXtorSig (labelName xt) argTypes)
+        return [TyData rep Nothing sig]
+    -- Creating codata types
+    codatL <- case maybeCodat of
+      Nothing -> return []
+      Just xtors -> do
+        sig <- forM xtors $ \xt -> do
+          let nodes = computeArgNodes outs Codata xt
+          argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+          return (MkXtorSig (labelName xt) argTypes)
+        return [TyCodata rep Nothing sig]
+    -- Creating ref data types
+    refDatL <- case maybeDat of
+      Nothing -> return []
+      Just xtors -> do
+        concat <$> forM refDatTypes (\tn -> do
+          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup tn refDat
           sig <- forM xtors' $ \xt -> do
             let nodes = computeArgNodes outs Data xt
             argTypes <- argNodesToArgTypes nodes rep
             return (MkXtorSig (labelName xt) argTypes)
-          return [TyData rep mtn sig])
-    -- Creating codata types
-    codatL <- case maybeCodat of
+          return [TyData rep (Just tn) sig])
+    -- Creating ref codata types
+    refCodatL <- case maybeCodat of
       Nothing -> return []
       Just xtors -> do 
-        concat <$> forM refTypes (\mtn -> do
-          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup mtn refs
+        concat <$> forM refCodatTypes (\tn -> do
+          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup tn refCodat
           sig <- forM xtors' $ \xt -> do
             let nodes = computeArgNodes outs Codata xt
             argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
             return (MkXtorSig (labelName xt) argTypes)
-          return [TyCodata rep mtn sig])
+          return [TyCodata rep (Just tn) sig])
     -- Creating Nominal types
     let nominals = TyNominal rep <$> S.toList tns
 
-    let typs = varL ++ datL ++ codatL ++ nominals
+    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
     return $ case typs of [t] -> t; _ -> TySet rep typs
 
   -- If the graph is cyclic, make a recursive type
