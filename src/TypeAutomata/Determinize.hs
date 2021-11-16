@@ -7,7 +7,6 @@ import Data.Graph.Inductive.Graph
     ( Node, lab, lsuc, out, Graph(mkGraph) )
 import Data.Graph.Inductive.PatriciaTree ( Gr )
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.List (union)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -89,7 +88,7 @@ combineNodeLabels nls
         nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ <- nls],
         nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ <- nls],
         nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ <- nls],
-        nl_ref_data = foldr union [] [xs | MkNodeLabel _ _ _ _ xs <- nls]
+        nl_ref_data = M.unionsWith S.union [xs | MkNodeLabel _ _ _ _ xs <- nls]
         }
   where
     pol = nl_pol (head nls)

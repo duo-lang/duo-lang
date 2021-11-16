@@ -4,6 +4,8 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
@@ -156,17 +158,17 @@ data NodeLabel = MkNodeLabel
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
   , nl_nominal :: Set TypeName
-  , nl_ref_data :: [(TypeName,XtorLabel)]
+  , nl_ref_data :: Map TypeName (Set XtorLabel)
   } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> NodeLabel
-emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty []
+emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
-singleNodeLabel pol Data Nothing xtors     = MkNodeLabel pol (Just xtors) Nothing S.empty []
-singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty (map (\xtn->(tn,xtn)) $ S.toList xtors)
-singleNodeLabel pol Codata Nothing xtors   = MkNodeLabel pol Nothing (Just xtors) S.empty []
-singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing (Just xtors) S.empty (map (\xtn->(tn,xtn)) $ S.toList xtors)
+singleNodeLabel pol Data Nothing xtors     = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty
+singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty (M.singleton tn xtors)
+singleNodeLabel pol Codata Nothing xtors   = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty
+singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing (Just xtors) S.empty (M.singleton tn xtors)
 
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
