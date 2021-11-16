@@ -32,7 +32,7 @@ data Loc = Loc SourcePos SourcePos
 data Located a = Located Loc a
 
 defaultLoc :: Loc
-defaultLoc = Loc (SourcePos "" (mkPos 0) (mkPos 0)) (SourcePos "" (mkPos 0) (mkPos 0))
+defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkPos 1))
 
 ----------------------------------------------------------------------------------
 -- Helper Functions
