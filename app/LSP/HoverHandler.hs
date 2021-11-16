@@ -116,8 +116,8 @@ stermToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (scaseToHove
 stermToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 stermToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 stermToHoverMap (Dtor ext _ e args)   = M.unions $ [foo ext] <> (stermToHoverMap <$> (e:args))
-stermToHoverMap (Match ext e cases)   = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [stermToHoverMap e]
-stermToHoverMap (Comatch ext cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
+stermToHoverMap (Match ext _ e cases)   = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [stermToHoverMap e]
+stermToHoverMap (Comatch ext _ cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
 
 pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
 pctermToHoverMap (PrdTerm tm) = stermToHoverMap tm

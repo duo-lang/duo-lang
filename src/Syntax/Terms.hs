@@ -132,19 +132,19 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   -- ~mu x.c    =   MuAbs CnsRep c
   MuAbs :: TermExt pc ext -> PrdCnsRep pc -> Maybe FreeVarName -> Command ext -> Term pc ext
   --
-  -- Asymmetric Terms!
+  -- Syntactic Sugar
   --
   Dtor :: TermExt Prd ext -> XtorName -> Term Prd ext -> [Term Prd ext] -> Term Prd ext
   -- | A pattern match:
   --
   -- match e with { ... }
   --
-  Match :: TermExt Prd ext -> Term Prd ext -> [ACase ext] -> Term Prd ext
+  Match :: TermExt Prd ext -> NominalStructural -> Term Prd ext -> [ACase ext] -> Term Prd ext
   -- | A copattern match:
   --
   -- comatch { ... }
   --
-  Comatch :: TermExt Prd ext -> [ACase ext] -> Term Prd ext
+  Comatch :: TermExt Prd ext -> NominalStructural -> [ACase ext] -> Term Prd ext
 
 
 
@@ -174,8 +174,8 @@ getTypeTerm (MuAbs    ext rep _ _)  = case rep of
   PrdRep -> case ext of (_,ty) -> ty
   CnsRep -> case ext of (_,ty) -> ty
 getTypeTerm (Dtor (_,ty) _ _ _) = ty
-getTypeTerm (Match (_,ty) _ _)  = ty
-getTypeTerm (Comatch (_,ty) _)  = ty
+getTypeTerm (Match (_,ty) _ _ _)  = ty
+getTypeTerm (Comatch (_,ty) _ _)  = ty
 
 getTypArgs :: Substitution Inferred -> LinearContext Pos
 getTypArgs subst = getTypArgs' <$> subst
@@ -234,10 +234,10 @@ termOpeningRec k args (MuAbs _ pc a cmd) =
 -- ATerms
 termOpeningRec k args (Dtor _ xt t args') =
   Dtor () xt (termOpeningRec k args t) (termOpeningRec k args <$> args')
-termOpeningRec k args (Match _ t cases) =
-  Match () (termOpeningRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termOpeningRec (k + 1) args acase_term }) <$> cases)
-termOpeningRec k args (Comatch _ cocases) =
-  Comatch () ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termOpeningRec (k + 1) args acase_term }) <$> cocases)
+termOpeningRec k args (Match _ ns t cases) =
+  Match () ns (termOpeningRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termOpeningRec (k + 1) args acase_term }) <$> cases)
+termOpeningRec k args (Comatch _ ns cocases) =
+  Comatch () ns ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termOpeningRec (k + 1) args acase_term }) <$> cocases)
 
 
 
@@ -275,10 +275,10 @@ termClosingRec k vars (MuAbs ext pc a cmd) =
 -- ATerms
 termClosingRec k args (Dtor ext xt t args') =
   Dtor ext xt (termClosingRec k args t) (termClosingRec k args <$> args')
-termClosingRec k args (Match ext t cases) =
-  Match ext (termClosingRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termClosingRec (k + 1) args acase_term }) <$> cases)
-termClosingRec k args (Comatch ext cocases) =
-  Comatch ext ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termClosingRec (k + 1) args acase_term }) <$> cocases)
+termClosingRec k args (Match ext ns t cases) =
+  Match ext ns (termClosingRec k args t) ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termClosingRec (k + 1) args acase_term }) <$> cases)
+termClosingRec k args (Comatch ext ns cocases) =
+  Comatch ext ns ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termClosingRec (k + 1) args acase_term }) <$> cocases)
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosingRec _ _ (Done ext) = Done ext
@@ -329,10 +329,10 @@ termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd
 termLocallyClosedRec env (Dtor _ _ e args) = do
   termLocallyClosedRec env e
   sequence_ (termLocallyClosedRec env <$> args)
-termLocallyClosedRec env (Match _ e cases) = do
+termLocallyClosedRec env (Match _ _ e cases) = do
   termLocallyClosedRec env e
   sequence_ (acaseLocallyClosedRec env <$> cases)
-termLocallyClosedRec env (Comatch _ cases) =
+termLocallyClosedRec env (Comatch _ _ cases) =
   sequence_ (acaseLocallyClosedRec env <$> cases)
 
 acaseLocallyClosedRec :: [[(PrdCns,())]] -> ACase ext -> Either Error ()
@@ -397,8 +397,8 @@ openTermComplete (MuAbs _ CnsRep (Just fv) cmd) =
   MuAbs () CnsRep (Just fv) (commandOpening [PrdTerm (FreeVar () PrdRep fv)] (openCommandComplete cmd))
 openTermComplete (MuAbs _ CnsRep Nothing _) = error "Create names first!"
 openTermComplete (Dtor _ name t args) = Dtor () name (openTermComplete t) (openTermComplete <$> args)
-openTermComplete (Match _ t cases) = Match () (openTermComplete t) (openACase <$> cases)
-openTermComplete (Comatch _ cocases) = Comatch () (openACase <$> cocases)
+openTermComplete (Match _ ns t cases) = Match () ns (openTermComplete t) (openACase <$> cases)
+openTermComplete (Comatch _ ns cocases) = Comatch () ns (openACase <$> cocases)
 
 openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ t1 t2) = Apply () (openTermComplete t1) (openTermComplete t2)
@@ -452,13 +452,13 @@ createNamesSTerm' (Dtor _ xt e args) = do
   e' <- createNamesSTerm' e
   args' <- sequence (createNamesSTerm' <$> args)
   return $ Dtor defaultLoc xt e' args'
-createNamesSTerm' (Match _ e cases) = do
+createNamesSTerm' (Match _ ns e cases) = do
   e' <- createNamesSTerm' e
   cases' <- sequence (createNamesACase <$> cases)
-  return $ Match defaultLoc e' cases'
-createNamesSTerm' (Comatch _ cases) = do
+  return $ Match defaultLoc ns e' cases'
+createNamesSTerm' (Comatch _ ns cases) = do
   cases' <- sequence (createNamesACase <$> cases)
-  return $ Comatch defaultLoc cases'
+  return $ Comatch defaultLoc ns cases'
 
 createNamesCommand' :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand' (Done _) = return $ Done defaultLoc
@@ -501,8 +501,8 @@ shiftTerm' n (XtorCall ext pcrep name subst) =
 shiftTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftSCase (n + 1) <$> cases)
 shiftTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
 shiftTerm' n (Dtor ext xt e args) = Dtor ext xt (shiftTerm' n e) (shiftTerm' n <$> args)
-shiftTerm' n (Match ext e cases) = Match ext (shiftTerm' n e) (shiftACase n <$> cases)
-shiftTerm' n (Comatch ext cases) = Comatch ext (shiftACase n <$> cases)
+shiftTerm' n (Match ext ns e cases) = Match ext ns (shiftTerm' n e) (shiftACase n <$> cases)
+shiftTerm' n (Comatch ext ns cases) = Comatch ext ns (shiftACase n <$> cases)
 
 shiftACase :: Int -> ACase ext -> ACase ext
 shiftACase n (MkACase ext xt args e) = MkACase ext xt args (shiftTerm' n e)
@@ -540,8 +540,8 @@ removeNamesTerm (XtorCall ext pc xt args) = XtorCall ext pc xt (removeNamesPrdCn
 removeNamesTerm (MuAbs ext pc _ cmd) = MuAbs ext pc Nothing (removeNamesCmd cmd)
 removeNamesTerm (XMatch ext pc ns cases) = XMatch ext pc ns (removeNamesSCase <$> cases)
 removeNamesTerm (Dtor ext xt e args) = Dtor ext xt (removeNamesTerm e) (removeNamesTerm <$> args)
-removeNamesTerm (Match ext e cases) = Match ext (removeNamesTerm e) (removeNamesACase <$> cases)
-removeNamesTerm (Comatch ext cases) = Comatch ext (removeNamesACase <$> cases)
+removeNamesTerm (Match ext ns e cases) = Match ext ns (removeNamesTerm e) (removeNamesACase <$> cases)
+removeNamesTerm (Comatch ext ns cases) = Comatch ext ns (removeNamesACase <$> cases)
 
 removeNamesACase :: ACase ext -> ACase ext
 removeNamesACase (MkACase ext xt args e) = MkACase ext xt (const Nothing <$> args) (removeNamesTerm e)

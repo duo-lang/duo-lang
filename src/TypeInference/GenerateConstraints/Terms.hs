@@ -201,7 +201,9 @@ If X_1 has nominal type N, then:
 - All e_i must have same type, this is the return type
 - Types of x_1,...,x_n in e_i must correspond with types in declaration of X_i
 -}
-genConstraintsTerm (Match loc destructee cases@(MkACase _ xtn@(MkXtorName Nominal _) _ _:_)) = do
+genConstraintsTerm (Match _ Nominal _ []) =
+  throwGenError ["Unreachable: A nominal match needs to have at least one case."]
+genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = xtn }:_)) = do
   destructeeInferred <- genConstraintsTerm destructee
   tn@NominalDecl{..} <- lookupDataDecl xtn
   checkCorrectness (acase_name <$> cases) tn
@@ -221,14 +223,14 @@ genConstraintsTerm (Match loc destructee cases@(MkACase _ xtn@(MkXtorName Nomina
         InferNominal -> TyNominal NegRep data_name
         InferRefined -> TyData NegRep (Just data_name) casesXtssNeg
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) ty)
-  return (Match (loc,retTypePos) destructeeInferred cases')
+  return (Match (loc,retTypePos) Nominal destructeeInferred cases')
 
-genConstraintsTerm (Match loc t cases) = do
+genConstraintsTerm (Match loc Structural t cases) = do
   t' <- genConstraintsTerm t
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   (cases',casesXtssNeg,_) <- unzip3 <$> sequence (genConstraintsATermCase retTypeNeg <$> cases)
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm t') (TyData NegRep Nothing casesXtssNeg))
-  return (Match (loc, retTypePos) t' cases')
+  return (Match (loc, retTypePos) Structural t' cases')
 
 {-
 comatch { X_1(x_1,...,x_n) => e_1, ... }
@@ -239,7 +241,9 @@ If X_1 has nominal type N, then:
 - All e_i must have same type, this is the return type
 - Types of x_1,...,x_n in e_i must correspond with types in declaration of X_i
 -}
-genConstraintsTerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _ _:_)) = do
+genConstraintsTerm (Comatch _ Nominal []) =
+  throwGenError ["Unreachable: A nominal comatch needs to have at least one case."]
+genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) = do
   tn@NominalDecl{..} <- lookupDataDecl xtn
   checkCorrectness (acase_name <$> cocases) tn
   checkExhaustiveness (acase_name <$> cocases) tn
@@ -256,12 +260,12 @@ genConstraintsTerm (Comatch loc cocases@(MkACase _ xtn@(MkXtorName Nominal _) _ 
   let ty = case im of
         InferNominal -> TyNominal PosRep       data_name
         InferRefined -> TyCodata  PosRep (Just data_name) cocasesXtssNeg
-  return (Comatch (loc, ty) cocases')
+  return (Comatch (loc, ty) Nominal cocases')
 
-genConstraintsTerm (Comatch loc cocases) = do
+genConstraintsTerm (Comatch loc Structural cocases) = do
   (cocases',cocasesXtssNeg,_) <- unzip3 <$> sequence (genConstraintsATermCocase <$> cocases)
   let ty = TyCodata PosRep Nothing cocasesXtssNeg
-  return (Comatch (loc,ty) cocases')
+  return (Comatch (loc,ty) Structural cocases')
 
 genConstraintsATermCase :: Typ Neg
                         -> ACase Parsed
