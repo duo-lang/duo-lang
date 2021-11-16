@@ -107,15 +107,15 @@ freshTVar uvp = do
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
   return (TyVar PosRep tvar, TyVar NegRep tvar)
 
-freshTVars :: [(PrdCns,FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
+freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
 freshTVars ((Prd,fv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable fv)
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdType tp:lctxtP, PrdType tn:lctxtN)
 freshTVars ((Cns,fv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable fv)
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (CnsType tn:lctxtP, CnsType tp:lctxtN)
 
 ---------------------------------------------------------------------------------------------
