@@ -304,13 +304,13 @@ checkIfBoundInner vars PrdRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Prd,_) -> return ()
-      (Cns,_) -> Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Cns,_) -> Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
     else Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 checkIfBoundInner vars CnsRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Cns,_) -> return ()
-      (Prd,_) -> Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Prd,_) -> Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
     else Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 
 pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm ext -> Either Error ()

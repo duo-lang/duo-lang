@@ -54,7 +54,7 @@ compile (Comatch _ cocases) =
     nominalStructural = case cocases of
       [] -> Structural
       ((MkACase _ (MkXtorName ns _ ) _ _):_) -> ns
-    compileComatchCase (MkACase _ xt args t) = MkSCase () xt ([(Prd, Nothing) | _ <- args] ++ [(Cns,Nothing)]) $ Apply () (compile t) (BoundVar () CnsRep (0,0))
+    compileComatchCase (MkACase _ xt args t) = MkSCase () xt ([(Prd, Nothing) | _ <- args] ++ [(Cns,Nothing)]) $ Apply () (compile t) (BoundVar () CnsRep (0,length args))
   in
     XMatch () PrdRep nominalStructural $ compileComatchCase <$> cocases
 
