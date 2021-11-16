@@ -296,22 +296,22 @@ commandClosing = commandClosingRec 0
 ---------------------------------------------------------------------------------
 
 checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError "Variable is not bound (Outer index)"
-                             | otherwise = checkIfBound' (env !! i) rep j
+checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
+                             | otherwise = checkIfBoundInner (env !! i) rep (i,j)
 
-checkIfBound' :: [(PrdCns,a)] -> PrdCnsRep pc -> Int -> Either Error ()
-checkIfBound' vars PrdRep j =
+checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either Error ()
+checkIfBoundInner vars PrdRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Prd,_) -> return ()
-      (Cns,_) -> Left $ OtherError "Variable is not bound (Inner index)"
-    else Left $ OtherError "Variable is not bound (Inner index)"
-checkIfBound' vars CnsRep j =
+      (Cns,_) -> Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+    else Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+checkIfBoundInner vars CnsRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Cns,_) -> return ()
-      (Prd,_) -> Left $ OtherError "Variable is not bound (Inner index)"
-    else Left $ OtherError "Variable is not bound (Inner index)"
+      (Prd,_) -> Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+    else Left $ OtherError $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 
 pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm ext -> Either Error ()
 pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm
