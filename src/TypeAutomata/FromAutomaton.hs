@@ -11,8 +11,8 @@ import Control.Monad.State
 import Control.Monad.Reader
 
 import Errors
-import Data.Maybe (fromJust)
-import Data.List (intersect, maximumBy)
+import Data.Maybe (fromJust, isJust, isNothing)
+import Data.List (find, intersect, maximumBy)
 import Data.Ord (comparing)
 import Data.Graph.Inductive.PatriciaTree
 import Data.Functor.Identity
@@ -160,8 +160,9 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns _)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns refs)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
+  let refTypes = nub (Just . fst <$> refs)++[Nothing] -- List of unique type names refined in node
   resType <- local (visitNode i) $ do
     -- Creating type variables
     varL <- nodeToTVars rep i
@@ -169,20 +170,24 @@ nodeToTypeNoCache rep i = do
     datL <- case maybeDat of
       Nothing -> return []
       Just xtors -> do
-        sig <- forM xtors $ \xt -> do
-          let nodes = computeArgNodes outs Data xt
-          argTypes <- argNodesToArgTypes nodes rep
-          return (MkXtorSig (labelName xt) argTypes)
-        return [TyData rep Nothing sig]
+        forM refTypes $ \mtn -> do
+          let xtors' = xtorsForTypeName mtn xtors refs
+          sig <- forM xtors' $ \xt -> do
+            let nodes = computeArgNodes outs Data xt
+            argTypes <- argNodesToArgTypes nodes rep
+            return (MkXtorSig (labelName xt) argTypes)
+          return $ TyData rep mtn sig
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
       Just xtors -> do
-        sig <- forM xtors $ \xt -> do
-          let nodes = computeArgNodes outs Codata xt
-          argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
-          return (MkXtorSig (labelName xt) argTypes)
-        return [TyCodata rep Nothing sig]
+        forM refTypes $ \mtn -> do
+          let xtors' = xtorsForTypeName mtn xtors refs
+          sig <- forM xtors' $ \xt -> do
+            let nodes = computeArgNodes outs Codata xt
+            argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+            return (MkXtorSig (labelName xt) argTypes)
+          return $ TyCodata rep mtn sig
     -- Creating Nominal types
     let nominals = TyNominal rep <$> S.toList tns
 
@@ -193,3 +198,7 @@ nodeToTypeNoCache rep i = do
   if i `elem` dfs (suc gr i) gr
     then return $ TyRec rep (MkTVar ("r" <> T.pack (show i))) resType
     else return resType
+
+xtorsForTypeName :: Maybe TypeName -> [XtorLabel] -> [(TypeName, XtorLabel)] -> [XtorLabel]
+xtorsForTypeName Nothing xtors refs   = filter (\xt -> isNothing $ find (\(_,xt') -> xt == xt') refs) xtors
+xtorsForTypeName (Just tn) xtors refs = filter (\xt -> isJust $ find (\(tn',xt') -> xt == xt' && tn == tn') refs) xtors
