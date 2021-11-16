@@ -141,7 +141,8 @@ lookupContext rep (i,j) = do
       Just ty -> case (rep, ty) of
         (PrdRep, PrdType ty) -> return ty
         (CnsRep, CnsType ty) -> return ty
-        (_,_) -> throwGenError ["BOOM"]
+        (PrdRep, CnsType _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
+        (CnsRep, PrdType _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
 
 
 ---------------------------------------------------------------------------------------------

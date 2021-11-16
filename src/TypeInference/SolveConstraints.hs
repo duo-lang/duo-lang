@@ -123,7 +123,11 @@ checkContexts (PrdType ty1:rest1) (PrdType ty2:rest2) = do
 checkContexts (CnsType ty1:rest1) (CnsType ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty2 ty1:xs)
-checkContexts _ _ = throwSolverError ["Peng"]
+checkContexts (PrdType _:_) (CnsType _:_) = throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
+checkContexts (CnsType _:_) (PrdType _:_) = throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
+checkContexts []    (_:_) = throwSolverError ["checkContexts: Linear contexts have unequal length."]
+checkContexts (_:_) []    = throwSolverError ["checkContexts: Linear contexts have unequal length."]
+
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic

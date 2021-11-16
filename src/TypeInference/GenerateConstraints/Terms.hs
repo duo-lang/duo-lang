@@ -37,7 +37,11 @@ genConstraintsCtxts ((PrdType ty1) : rest1) (PrdType ty2 : rest2) info = do
 genConstraintsCtxts ((CnsType ty1) : rest1) (CnsType ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
   genConstraintsCtxts rest1 rest2 info
-genConstraintsCtxts _ _ _ = throwGenError ["Boom"]
+genConstraintsCtxts (PrdType _:_) (CnsType _:_) _ = throwGenError ["genConstraintsCtxts: Tried to constrain PrdType by CnsType"]
+genConstraintsCtxts (CnsType _:_) (PrdType _:_) _ = throwGenError ["genConstraintsCtxts: Tried to constrain CnsType by PrdType"]
+genConstraintsCtxts [] (_:_) _ = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length."]
+genConstraintsCtxts (_:_) [] _ = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length."]
+
 
 -- | Generate the constraints for a given Term.
 genConstraintsTerm :: Term pc Parsed
