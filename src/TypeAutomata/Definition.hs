@@ -103,24 +103,18 @@ import Syntax.CommonTerm
 --
 -- ## Refinement Types:
 --
--- A refinement type is represented by a refinement edge (represented as dotted line),
--- labeled with a type name and connecting a refinement type node with a refining 
--- structural type node.
+-- Refinement types are represented by the `nl_ref_data` and `nl_ref_codata` node
+-- labels. These map type names to their corresponding set of xtor labels.
 --
---                 ------------------------------
---                 |                            |
---                 | nl_refined = { Nat, Bool } |
---                 |     nl_polarity = Pos      |
---                 |                            |
---                 ------------------------------
---                      :                 :
---                  Nat :                 : Bool
---                      V                 V
---     -----------------------       -----------------------
---     |  nl_data = { 'Z }   |       | nl_data = { 'True } |
---     -----------------------       -----------------------
+--               ------------------------------------
+--               |                                  |
+--               | nl_polarity = Pos                |
+--               | nl_ref_data = [ Bool -> { True } |
+--               |               , Nat  -> { Z } ]  |
+--               |                                  |
+--               ------------------------------------
 --
---       = {{ < 'Z > <<: Nat }} \/ {{ < 'True > <<: Bool }}
+--       = {{ < S(...) > <<: Nat }} \/ {{ < 'True > <<: Bool }}
 --
 -- ## Type variables
 --
@@ -167,8 +161,8 @@ emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
 singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty
-singleNodeLabel pol Data (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
-singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty 
+singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty
+singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
 singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors)
 
 --------------------------------------------------------------------------------
