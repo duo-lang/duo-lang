@@ -76,8 +76,9 @@ evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle Pr
 evalApplyOnce (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
 evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
 -- Match applied to Match, or Xtor to Xtor can't evaluate
-evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError ["Cannot evaluate match applied to match"]
-evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot evaluate constructor applied to destructor"]
+evalApplyOnce XMatch{} XMatch{} = throwEvalError ["Cannot evaluate match applied to match"]
+evalApplyOnce XtorCall{} XtorCall{} = throwEvalError ["Cannot evaluate constructor applied to destructor"]
+evalApplyOnce _ _ = throwEvalError ["Cannot evaluate, probably an asymmetric term..."]
 
 
 -- | Return just thef final evaluation result
