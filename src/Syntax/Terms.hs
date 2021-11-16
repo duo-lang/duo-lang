@@ -101,7 +101,7 @@ deriving instance (Show (ACase Compiled))
 data SCase (ext :: Phase) = MkSCase
   { scase_ext  :: CaseExt ext
   , scase_name :: XtorName
-  , scase_args :: Twice (Maybe FreeVarName)
+  , scase_args :: [(PrdCns, Maybe FreeVarName)]
   , scase_cmd  :: Command ext
   }
 
@@ -228,10 +228,11 @@ pctermOpeningRec k subst (PrdTerm tm) = PrdTerm $ termOpeningRec k subst tm
 pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution Compiled -> Term pc Compiled -> Term pc Compiled
-termOpeningRec k subst bv@(BoundVar _ PrdRep (i,j)) | i == k    = let (prdArgs,_) = newToOldSubst subst in prdArgs !! j
-                                                                | otherwise = bv
-termOpeningRec k subst bv@(BoundVar _ CnsRep (i,j)) | i == k    = let (_,cnsArgs) = newToOldSubst subst in cnsArgs !! j
-                                                                | otherwise = bv
+termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, subst !! j) of
+                                                                      (PrdRep, PrdTerm tm) -> tm
+                                                                      (CnsRep, CnsTerm tm) -> tm
+                                                                      _                    -> error "termOpeningRec BOOM"
+                                                   | otherwise = bv
 termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
 termOpeningRec k args (XtorCall _ s xt subst) =
   XtorCall () s xt (pctermOpeningRec k args <$> subst)
@@ -264,16 +265,16 @@ termOpening = termOpeningRec 0
 -- Variable Closing
 ---------------------------------------------------------------------------------
 
-pctermClosingRec :: Int -> Twice FreeVarName -> PrdCnsTerm ext -> PrdCnsTerm ext
+pctermClosingRec :: Int -> [(PrdCns, FreeVarName)] -> PrdCnsTerm ext -> PrdCnsTerm ext
 pctermClosingRec k vars (PrdTerm tm) = PrdTerm $ termClosingRec k vars tm
 pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
-termClosingRec :: Int -> Twice FreeVarName -> Term pc ext -> Term pc ext
+termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc ext -> Term pc ext
 termClosingRec _ _ bv@(BoundVar _ _ _) = bv
-termClosingRec k (Twice prdvars _) (FreeVar ext PrdRep v) | isJust (v `elemIndex` prdvars) = BoundVar ext PrdRep (k, fromJust (v `elemIndex` prdvars))
-                                                          | otherwise = FreeVar ext PrdRep v
-termClosingRec k (Twice _ cnsvars) (FreeVar ext CnsRep v) | isJust (v `elemIndex` cnsvars) = BoundVar ext CnsRep (k, fromJust (v `elemIndex` cnsvars))
-                                                          | otherwise = FreeVar ext CnsRep v
+termClosingRec k vars (FreeVar ext PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar ext PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
+                                             | otherwise = FreeVar ext PrdRep v
+termClosingRec k vars (FreeVar ext CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar ext CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
+                                             | otherwise = FreeVar ext CnsRep v
 termClosingRec k vars (XtorCall ext s xt subst) =
   XtorCall ext s xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XMatch ext pc sn cases) =
@@ -288,42 +289,52 @@ termClosingRec k args (Match ext t cases) =
 termClosingRec k args (Comatch ext cocases) =
   Comatch ext ((\pmcase@MkACase { acase_term } -> pmcase { acase_term = termClosingRec (k + 1) args acase_term }) <$> cocases)
 
-commandClosingRec :: Int -> Twice FreeVarName -> Command ext -> Command ext
+commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosingRec _ _ (Done ext) = Done ext
 commandClosingRec k args (Print ext t) = Print ext (termClosingRec k args t)
 commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
 
-termClosing :: Twice FreeVarName -> Term pc ext -> Term pc ext
+termClosing :: [(PrdCns, FreeVarName)] -> Term pc ext -> Term pc ext
 termClosing = termClosingRec 0
 
-commandClosing :: Twice FreeVarName -> Command ext -> Command ext
+commandClosing :: [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosing = commandClosingRec 0
 
 ---------------------------------------------------------------------------------
 -- Check for locally closedness
 ---------------------------------------------------------------------------------
 
-checkIfBound :: [Twice a] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError "Variable is not bound"
+checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
+checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError "Variable is not bound (Outer index)"
                              | otherwise = checkIfBound' (env !! i) rep j
 
-checkIfBound' :: Twice a -> PrdCnsRep pc -> Int -> Either Error ()
-checkIfBound' (Twice prds _) PrdRep j = if j < length prds then Right () else Left $ OtherError "Variable is not bound"
-checkIfBound' (Twice _ cnss) CnsRep j = if j < length cnss then Right () else Left $ OtherError "Variable is not bound"
+checkIfBound' :: [(PrdCns,a)] -> PrdCnsRep pc -> Int -> Either Error ()
+checkIfBound' vars PrdRep j =
+  if j < length vars
+    then case vars !! j of
+      (Prd,_) -> return ()
+      (Cns,_) -> Left $ OtherError "Variable is not bound (Inner index)"
+    else Left $ OtherError "Variable is not bound (Inner index)"
+checkIfBound' vars CnsRep j =
+  if j < length vars
+    then case vars !! j of
+      (Cns,_) -> return ()
+      (Prd,_) -> Left $ OtherError "Variable is not bound (Inner index)"
+    else Left $ OtherError "Variable is not bound (Inner index)"
 
-pctermLocallyClosedRec :: [Twice ()] -> PrdCnsTerm ext -> Either Error ()
+pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm ext -> Either Error ()
 pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm
 pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 
-termLocallyClosedRec :: [Twice ()] -> Term pc ext -> Either Error ()
+termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc ext -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
 termLocallyClosedRec env (XtorCall _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XMatch _ _ _ cases) = do
-  sequence_ ((\MkSCase { scase_cmd, scase_args } -> commandLocallyClosedRec (twiceMap (const ()) (const ()) scase_args : env) scase_cmd) <$> cases)
-termLocallyClosedRec env (MuAbs _ PrdRep _ cmd) = commandLocallyClosedRec (Twice [] [()] : env) cmd
-termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec (Twice [()] [] : env) cmd
+  sequence_ ((\MkSCase { scase_cmd, scase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> scase_args) : env) scase_cmd) <$> cases)
+termLocallyClosedRec env (MuAbs _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
+termLocallyClosedRec env (MuAbs _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 termLocallyClosedRec env (Dtor _ _ e args) = do
   termLocallyClosedRec env e
   sequence_ (termLocallyClosedRec env <$> args)
@@ -333,11 +344,11 @@ termLocallyClosedRec env (Match _ e cases) = do
 termLocallyClosedRec env (Comatch _ cases) =
   sequence_ (acaseLocallyClosedRec env <$> cases)
 
-acaseLocallyClosedRec :: [Twice ()] -> ACase ext -> Either Error ()
+acaseLocallyClosedRec :: [[(PrdCns,())]] -> ACase ext -> Either Error ()
 acaseLocallyClosedRec env (MkACase _ _ args e) = do
-  termLocallyClosedRec ((Twice (const () <$> args) []):env) e
+  termLocallyClosedRec ((((\_ -> (Prd,())) <$> args)):env) e
 
-commandLocallyClosedRec :: [Twice ()] -> Command ext -> Either Error ()
+commandLocallyClosedRec :: [[(PrdCns,())]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
 commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
@@ -355,11 +366,13 @@ commandLocallyClosed = commandLocallyClosedRec []
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-freeVarNamesToXtorArgs :: Twice (Maybe FreeVarName) -> Substitution Compiled
-freeVarNamesToXtorArgs (Twice prds cnss) = prdArgs ++ cnsArgs
+freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> Substitution Compiled
+freeVarNamesToXtorArgs bs = f <$> bs
   where
-    prdArgs = (\case {Just fv -> PrdTerm $ FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> prds
-    cnsArgs = (\case {Just fv -> CnsTerm $ FreeVar () CnsRep fv; Nothing -> error "Create Names first!"}) <$> cnss
+    f (Prd, Nothing) = error "Create Names first!"
+    f (Prd, Just fv) = PrdTerm $ FreeVar () PrdRep fv
+    f (Cns, Nothing) = error "Create Names first!"
+    f (Cns, Just fv) = CnsTerm $ FreeVar () CnsRep fv
 
 openACase :: ACase ext -> ACase Compiled
 openACase MkACase { acase_name, acase_args, acase_term } =
@@ -465,11 +478,10 @@ createNamesCommand' (Apply _ prd cns) = do
 createNamesCommand' (Print _ prd) = createNamesSTerm' prd >>= \prd' -> return (Print defaultLoc prd')
 
 createNamesSCase :: SCase ext -> CreateNameM (SCase Parsed)
-createNamesSCase (MkSCase { scase_name, scase_args = Twice as bs, scase_cmd }) = do
+createNamesSCase (MkSCase { scase_name, scase_args, scase_cmd }) = do
   cmd' <- createNamesCommand' scase_cmd
-  as' <- sequence $ (const (fresh PrdRep)) <$> as
-  bs' <- sequence $ (const (fresh CnsRep)) <$> bs
-  return $ MkSCase defaultLoc scase_name (Twice as' bs') cmd'
+  args <- sequence $ (\(pc,_) -> (fresh PrdRep >>= \v -> return (pc,v))) <$> scase_args
+  return $ MkSCase defaultLoc scase_name args cmd'
 
 createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
 createNamesACase (MkACase _ xt args e) = do
@@ -544,7 +556,7 @@ removeNamesACase :: ACase ext -> ACase ext
 removeNamesACase (MkACase ext xt args e) = MkACase ext xt (const Nothing <$> args) (removeNamesTerm e)
 
 removeNamesSCase :: SCase ext -> SCase ext
-removeNamesSCase (MkSCase ext xt args cmd)= MkSCase ext xt (const Nothing <$> args) (removeNamesCmd cmd)
+removeNamesSCase (MkSCase ext xt args cmd)= MkSCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesCmd cmd)
 
 removeNamesCmd :: Command ext -> Command ext
 removeNamesCmd (Apply ext prd cns) = Apply ext (removeNamesTerm prd) (removeNamesTerm cns)
