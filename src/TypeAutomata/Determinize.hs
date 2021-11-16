@@ -85,10 +85,11 @@ combineNodeLabels nls
       then error "Tried to combine node labels of different polarity!"
       else MkNodeLabel {
         nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ <- nls],
-        nl_ref_data = M.unionsWith S.union [xs | MkNodeLabel _ _ _ _ xs <- nls]
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ _ <- nls],
+        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ <- nls],
+        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs <- nls]
         }
   where
     pol = nl_pol (head nls)
@@ -96,6 +97,12 @@ combineNodeLabels nls
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
+    mrgRefDat refs = case pol of 
+      Pos -> M.unionsWith S.union refs
+      Neg -> M.unionsWith S.intersection refs
+    mrgRefCodat refs = case pol of
+      Pos -> M.unionsWith S.intersection refs
+      Neg -> M.unionsWith S.union refs
 
 -- | This function computes the new typegraph and the new starting state.
 -- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
