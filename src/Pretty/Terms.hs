@@ -1,12 +1,13 @@
-module Pretty.STerms where
+module Pretty.Terms where
 
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.STerms
+import Syntax.Terms
+import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
--- Symmetric Terms
+-- Terms
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (SCase ext) where
@@ -15,6 +16,13 @@ instance PrettyAnn (SCase ext) where
     prettyTwice scase_args <+>
     annSymbol "=>" <+>
     prettyAnn scase_cmd
+
+instance PrettyAnn (ACase ext) where
+  prettyAnn MkACase{ acase_name, acase_args, acase_term } =
+    prettyAnn acase_name <>
+    parens (intercalateComma (prettyAnn <$> acase_args)) <+>
+    annSymbol "=>" <+>
+    prettyAnn acase_term
 
 instance PrettyAnn (XtorArgs ext) where
   prettyAnn (MkXtorArgs prds cns) = prettyTwice' prds cns
@@ -40,6 +48,16 @@ instance PrettyAnn (STerm pc ext) where
   prettyAnn (MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
+  prettyAnn (Dtor _ xt t args) =
+    parens ( prettyAnn t <> "." <> prettyAnn xt <> parens (intercalateComma (map prettyAnn args)))
+  prettyAnn (Match _ t cases) =
+    annKeyword "case" <+>
+    prettyAnn t <+>
+    annKeyword "of" <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
+  prettyAnn (Comatch _ cocases) =
+    annKeyword "cocase" <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
 
 instance PrettyAnn (Command ext) where
   prettyAnn (Done _)= annKeyword "Done"

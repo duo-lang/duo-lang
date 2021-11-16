@@ -2,13 +2,11 @@ module Lookup
   ( PrdCnsToPol
   , prdCnsToPol
   , lookupSTerm
-  , lookupATerm
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
   , withSTerm
-  , withATerm
-  ) where
+    ) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -19,8 +17,7 @@ import Data.Map qualified as M
 import Errors
 import Pretty.Pretty
 import Syntax.CommonTerm
-import Syntax.STerms
-import Syntax.ATerms
+import Syntax.Terms
 import Syntax.Types
 import Syntax.Program
 import Utils
@@ -36,15 +33,6 @@ type EnvReader bs a m = (MonadError Error m, MonadReader (Environment, a) m)
 ---------------------------------------------------------------------------------
 -- Lookup Terms
 ---------------------------------------------------------------------------------
-
--- | Lookup the term and the type of a asymmetric term bound in the environment.
-lookupATerm :: EnvReader bs a m
-            => FreeVarName -> m (ATerm Inferred, TypeScheme Pos)
-lookupATerm fv = do
-  env <- asks fst
-  case M.lookup fv (defEnv env) of
-    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " not contained in the environment."]
-    Just (res1,_,res2) -> return (res1, res2)
 
 -- | Lookup the term and the type of a symmetric term bound in the environment.
 lookupSTerm :: EnvReader bs a m
@@ -112,10 +100,3 @@ withSTerm CnsRep fv tm loc tys m = do
         (env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }, rest)
   local modifyEnv m
 
-withATerm :: EnvReader bs a m
-        => FreeVarName -> ATerm Inferred -> Loc -> TypeScheme Pos
-        -> (m b -> m b)
-withATerm fv tm loc tys m = do
-  let modifyEnv (env@Environment { defEnv }, rest) =
-        (env { defEnv = M.insert fv (tm,loc,tys) defEnv }, rest)
-  local modifyEnv m

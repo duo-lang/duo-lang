@@ -36,7 +36,7 @@ import Repl.Repl
       prettyText,
       cmd )
 import Syntax.Program
-    ( Environment(prdEnv, cnsEnv, cmdEnv, defEnv, declEnv) )
+    ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.Types ( DataDecl(data_name), TypeName(unTypeName) )
 
 ------------------------------------------------------------------------------
@@ -125,7 +125,6 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
       let keys = concat [ M.keys (prdEnv env)
                         , M.keys (cnsEnv env)
                         , M.keys (cmdEnv env)
-                        , M.keys (defEnv env)
                         , (unTypeName . data_name . snd) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))

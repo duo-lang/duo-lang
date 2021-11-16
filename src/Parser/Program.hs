@@ -8,12 +8,11 @@ import Text.Megaparsec hiding (State)
 
 import Parser.Definition
 import Parser.Lexer
-import Parser.STerms
-import Parser.ATerms
+import Parser.Terms
 import Parser.Types
 import Syntax.Program
-import Syntax.STerms
 import Syntax.Types
+import Syntax.CommonTerm
 import Utils (Loc(..))
 
 recoverDeclaration :: Parser (Declaration Parsed) -> Parser (Declaration Parsed)
@@ -36,7 +35,7 @@ prdCnsDeclarationP PrdRep = do
     (v, _pos) <- freeVarName
     annot <- annotP PosRep
     _ <- coloneq
-    (t,_) <- stermP PrdRep
+    (t,_) <- termP PrdRep
     endPos <- semi
     return (PrdCnsDecl (Loc startPos endPos) PrdRep isRec v annot t)
 prdCnsDeclarationP CnsRep = do
@@ -47,7 +46,7 @@ prdCnsDeclarationP CnsRep = do
     (v, _pos) <- freeVarName
     annot <- annotP NegRep
     _ <- coloneq
-    (t,_) <- stermP CnsRep
+    (t,_) <- termP CnsRep
     endPos <- semi
     return (PrdCnsDecl (Loc startPos endPos) CnsRep isRec v annot t)
 
@@ -61,19 +60,6 @@ cmdDeclarationP = do
     (t,_) <- commandP
     endPos <- semi
     return (CmdDecl (Loc startPos endPos) v t)
-
-defDeclarationP :: Parser (Declaration Parsed)
-defDeclarationP = do
-  startPos <- getSourcePos
-  try (void defKwP)
-  recoverDeclaration $ do
-    isRec <- isRecP
-    (v, _pos) <- freeVarName
-    annot <- annotP PosRep
-    _ <- coloneq
-    (t, _pos) <- atermP
-    endPos <- semi
-    return (DefDecl (Loc startPos endPos) isRec v annot t)
 
 importDeclP :: Parser (Declaration Parsed)
 importDeclP = do
@@ -141,7 +127,6 @@ declarationP =
   prdCnsDeclarationP PrdRep <|>
   prdCnsDeclarationP CnsRep <|>
   cmdDeclarationP <|>
-  defDeclarationP <|>
   importDeclP <|>
   setDeclP <|>
   dataDeclP

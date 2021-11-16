@@ -3,16 +3,17 @@ module Repl.Options.Compile (compileOption) where
 import Data.Text (Text)
 import Text.Megaparsec ( errorBundlePretty )
 
-import Parser.Parser ( atermP, runInteractiveParser )
+import Parser.Parser ( termP, runInteractiveParser )
 import Pretty.Pretty ( ppPrint )
 import Repl.Repl ( prettyText, prettyRepl, Repl, Option(..) )
 import Translate.Translate (compile)
+import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
 
 -- Compile
 
 compileCmd :: Text -> Repl ()
 compileCmd s = do
-  case runInteractiveParser atermP s of
+  case runInteractiveParser (termP PrdRep) s of
     Right (t, _pos) ->
       prettyText (" compile " <> ppPrint t <> "\n = " <> ppPrint (compile t))
     Left err2 -> do

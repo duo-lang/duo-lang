@@ -13,24 +13,24 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
-    ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, defEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
+    ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
-import Syntax.ATerms
-import Syntax.STerms ( createNamesSTerm, STerm, createNamesCommand )
-import Syntax.STerms qualified as Syntax
+import Syntax.CommonTerm
+import Syntax.Terms ( createNamesSTerm, STerm, createNamesCommand)
+import Syntax.Terms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
       inferProgramIO,
       DriverState(DriverState),
       InferenceOptions(infOptsLibPath) )
-import Utils ( Loc )
+import Utils 
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
 import Translate.Focusing ( focusSTerm, isFocusedSTerm, isFocusedCmd, focusCmd )
-import Translate.Translate ( compile )
+-- import Translate.Translate ( compile )
 
 
 
@@ -72,10 +72,7 @@ generateCodeActions ident (Range {_start= start}) env = do
   let cmds = M.toList $ cmdEnv env
   let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, not (isFocusedCmd CBV command), lookupPos start loc]
   let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, not (isFocusedCmd CBN command), lookupPos start loc]
-  -- Def declarations
-  let defs = M.toList $ defEnv env
-  let translateActions = [ generateTranslateCodeAction ident def | def@(_,(_,loc,_)) <- defs, lookupPos start loc]
-  List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd <> translateActions)
+  List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd)
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions
@@ -101,9 +98,9 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
 generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (STerm pc Inferred, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl :: NamedRep (Declaration 'Compiled) = case pc of
-                PrdRep -> NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
-                CnsRep -> NamedRep $ PrdCnsDecl () CnsRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+    newDecl :: NamedRep (Declaration 'Parsed) = case pc of
+                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
+                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (createNamesSTerm (focusSTerm eo tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -127,7 +124,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = NamedRep $ CmdDecl () name (createNamesCommand (focusCmd eo cmd))
+    newDecl = NamedRep $ CmdDecl defaultLoc name (createNamesCommand (focusCmd eo cmd))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -139,24 +136,24 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Translation Actions
 ---------------------------------------------------------------------------------
 
-generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
-generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
-                                                                  , _kind = Just CodeActionQuickFix 
-                                                                  , _diagnostics = Nothing
-                                                                  , _isPreferred = Nothing
-                                                                  , _disabled = Nothing
-                                                                  , _edit = Just (generateTranslateEdit ident arg)
-                                                                  , _command = Nothing
-                                                                  , _xdata = Nothing
-                                                                  }
+-- generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
+-- generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
+--                                                                   , _kind = Just CodeActionQuickFix 
+--                                                                   , _diagnostics = Nothing
+--                                                                   , _isPreferred = Nothing
+--                                                                   , _disabled = Nothing
+--                                                                   , _edit = Just (generateTranslateEdit ident arg)
+--                                                                   , _command = Nothing
+--                                                                   , _xdata = Nothing
+--                                                                   }
 
-generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(ATerm Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
-generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
-  let
-    newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))
-    replacement = ppPrint newDecl
-    edit = TextEdit {_range=locToRange loc, _newText=replacement}
-  in
-    WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
-                  , _documentChanges=Nothing 
-                  , _changeAnnotations=Nothing}
+-- generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
+-- generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
+--   let
+--     newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))
+--     replacement = ppPrint newDecl
+--     edit = TextEdit {_range=locToRange loc, _newText=replacement}
+--   in
+--     WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
+--                   , _documentChanges=Nothing 
+--                   , _changeAnnotations=Nothing}
