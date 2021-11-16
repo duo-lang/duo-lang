@@ -9,7 +9,7 @@ import Control.Monad (forM_)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive (Gr)
 import Data.Text qualified as T
-import Syntax.STerms (PrdCns(..))
+import Syntax.CommonTerm (PrdCns(..))
 import Data.Set qualified
 import Syntax.CommonTerm (XtorName)
 

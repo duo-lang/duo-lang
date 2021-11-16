@@ -20,7 +20,7 @@ import Repl.Repl
       ReplState(loadedFiles, replEnv),
       Repl )
 import Syntax.Program
-    ( Environment(prdEnv, cnsEnv, cmdEnv, defEnv, declEnv) )
+    ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.Types ( TypeName(MkTypeName), DataDecl(data_name) )
 import Utils (trim)
 
@@ -41,9 +41,7 @@ showCmd str = do
       Just (cns,_,_) -> prettyRepl (NamedRep cns)
       Nothing -> case M.lookup s (cmdEnv env) of
         Just (cmd,_) -> prettyRepl (NamedRep cmd)
-        Nothing -> case M.lookup s (defEnv env) of
-          Just (def,_,_) -> prettyRepl (NamedRep def)
-          Nothing -> prettyText "Not in environment."
+        Nothing -> prettyText "Not in environment."
 
 showOption :: Option
 showOption = Option

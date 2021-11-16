@@ -5,7 +5,6 @@ import qualified Data.Map as M
 import Data.List (nub)
 import Data.Text (Text)
 
-import Utils
 import Syntax.CommonTerm
 import Syntax.Kinds
 

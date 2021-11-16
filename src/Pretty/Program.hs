@@ -6,13 +6,12 @@ import Prettyprinter
 import Data.List (intersperse)
 
 import Pretty.Pretty
-import Pretty.ATerms ()
-import Pretty.STerms ()
+import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
-import Syntax.STerms
-import Syntax.ATerms
+import Syntax.Terms
+import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -52,19 +51,12 @@ prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> pcmd <> semi
 
-prettyDefDecl :: Pretty a => IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
-prettyDefDecl Recursive    fv annot ptm =
-  annKeyword "def" <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
-prettyDefDecl NonRecursive fv annot ptm =
-  annKeyword "def" <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
   prettyAnn (CmdDecl _ fv cm) =
     prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (DefDecl _ isRec fv annot tm) =
-    prettyDefDecl isRec fv annot (prettyAnn tm)
   prettyAnn (DataDecl _ decl) =
     prettyAnn decl
   prettyAnn (ImportDecl _ mod) =
@@ -80,8 +72,6 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openSTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
-  prettyAnn (NamedRep (DefDecl _ isRec fv annot tm)) =
-    prettyDefDecl isRec fv annot (prettyAnn (openATermComplete tm))
   prettyAnn (NamedRep (DataDecl _ decl)) =
     prettyAnn decl
   prettyAnn (NamedRep (ImportDecl _ mod)) =
@@ -103,12 +93,11 @@ instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn Environment where
-  prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, defEnv, declEnv } =
-    vsep [ppPrds, "", ppCns, "", ppCmds, "",  ppDefs, "", ppDecls, ""]
+  prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, declEnv } =
+    vsep [ppPrds, "", ppCns, "", ppCmds, "", ppDecls, ""]
     where
       ppPrds = vsep $ intersperse "" $ "Producers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList prdEnv))
       ppCns  = vsep $ intersperse "" $ "Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList cnsEnv))
       ppCmds = vsep $ intersperse "" $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
-      ppDefs = vsep $ intersperse "" $ "Definitions:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList defEnv))
       ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn . snd <$> declEnv)
 
