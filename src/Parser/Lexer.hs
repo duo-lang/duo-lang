@@ -66,7 +66,6 @@ import Parser.Definition
 import Syntax.CommonTerm
 import Syntax.Program
 import Syntax.Types
-import Utils
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:

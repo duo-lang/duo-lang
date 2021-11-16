@@ -3,23 +3,22 @@ module Translate.Focusing where
 import Data.Text qualified as T
 
 import Syntax.Program ( Declaration(..), Program )
-import Translate.Translate (compile, compilePCTerm)
+import Translate.Translate (compile)
 import Syntax.CommonTerm
     ( FreeVarName,
       PrdCns(Cns, Prd),
       PrdCnsRep(..),
       XtorName,
-      Phase(..),
-      flipPrdCns )
+      Phase(..))
 import Syntax.Terms
     ( Command(..),
       Term(..),
       SCase(..),
-      Substitution(..),
+      Substitution,
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
 import Syntax.Kinds ( CallingConvention(..) )
-import Utils
+
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -48,6 +47,7 @@ isFocusedTerm _  FreeVar {}            = True
 isFocusedTerm eo (XtorCall _ _ _ args) = isValueArgs eo args
 isFocusedTerm eo (XMatch _ _ _  cases) = and (isFocusedCase eo <$> cases)
 isFocusedTerm eo (MuAbs _ _ _ cmd)     = isFocusedCmd eo cmd
+isFocusedTerm _ _ = error "isFocusedTerm should only be called on core terms."
 
 isFocusedCase :: CallingConvention -> SCase ext -> Bool
 isFocusedCase eo MkSCase { scase_cmd } = isFocusedCmd eo scase_cmd
@@ -69,13 +69,13 @@ isFocusedCmd eo (Print _ prd)     = isFocusedTerm eo prd
 --
 -- We write [[t]] for the focusing translation of the term t.
 --
--- STerms:
+-- Terms:
 --
 -- [[x]]                               := x
--- [[(co-)match { X(xs)[ks] => cmd }]] := (co-)match { X(xs)[ks] => [[cmd]] }
+-- [[(co-)match { X Gamma => cmd }]]   := (co-)match { X Gamma => [[cmd]] }
 -- [[mu x. cmd]]                       := mu x. [[cmd]]
--- [[X(prds)[cnss]]]                   := X(prds)[cnss]                     (if "X(prds)[cnss]" is already focused)
--- [[X(prds)[cnss]]]                   := focusXtor Prd/Cns X prds cnss     (otherwise, see below)
+-- [[X subst]]                         := X subst                           (if "X subst" is already focused)
+-- [[X subst]]                         := focusXtor Prd/Cns X subst         (otherwise, see below)
 --
 -- Commands:
 --
@@ -86,41 +86,40 @@ isFocusedCmd eo (Print _ prd)     = isFocusedTerm eo prd
 -- The `focusXtor` and `focusXtor'` function work together to focus a
 -- xtor which has arguments which are not substitutable. We generate 1
 -- fresh variable "alpha" for the entire term, and one additional fresh
--- variable "beta_i" for every term in the argument list which is not a value.
+-- variable "beta_i" for every term in the substitution which is not a value.
 --
--- focusXtor Prd X prds cnss := mu  alpha. (focusXtor' Prd X prds cnss [] [])
--- focusXtor Cns X prds cnss := mu~ alpha. (focusXtor' Cns X prds cnss [] [])
+-- focusXtor Prd X subst := mu  alpha. (focusXtor' Prd X subst [])
+-- focusXtor Cns X subst := mu~ alpha. (focusXtor' Cns X subst [])
 --
--- writing "p" and "P" for unfocused and focused producers, and "c" and "C" for
--- unfocused consumers, the helper function `focusXtor'`  works like this:
+-- writing "t" and "T" for unfocused and focused terms, the helper function
+-- `focusXtor'`  works like this:
 -- 
 -- If we have transformed all arguments, we reconstruct the constructor application,
 -- and apply it to the generated alpha:
 --
--- focuxXtor' Prd X [] [] Ps Cs := X(Ps)[Cs] >> alpha
--- focusXtor' Cns X [] [] Ps Cs := alpha >> X(Ps)[Cs]
+-- focuxXtor' Prd X [] Ts := X Ts >> alpha
+-- focusXtor' Cns X [] Ts := alpha >> X Ts
 -- 
--- otherwise, we handle the next prd/cns from the argument list.
+-- otherwise, we handle the next term from the substitution.
 -- If the argument is already a value, we shuffle it to the RHS:
 --
--- focusXtor' _ _ (P:ps) cs     Ps Cs := focusXtor' _ _ ps cs (P:Ps) Cs
--- focusXtor' _ _ ps     (C:cs) Ps Cs := focusXtor' _ _ ps cs Ps     (C:Cs)
+-- focusXtor' _ _ (T:ts) Ts := focusXtor' _ _ ts (T:Ts)
 --
 -- If the argument is not a value, we have to lift it:
 --
--- focusXtor' _ _ (p:ps) cs     Ps Cs := [[p]] >> (mu~ beta_i. focusXtor' _ _ ps cs (beta_i:Ps) Cs)
--- focusXtor' _ _ ps     (c:cs) Ps Cs := (mu beta_i. focusXtor' _ _ ps cs Ps (beta_i:Cs)) >> [[c]]
+-- focusXtor' _ _ (p:ts) Ts := [[p]] >> (mu~ beta_i. focusXtor' _ _ ts (beta_i:Ts))
+-- focusXtor' _ _ (c:ts) Ts := (mu beta_i. focusXtor' _ _ ts (beta_i:Ts)) >> [[c]]
 ---------------------------------------------------------------------------------
 
 focusTerm :: CallingConvention  -> Term pc ext -> Term pc Compiled
 -- If the term is already focused, we don't want to do anything
-focusTerm eo tm | isFocusedTerm eo tm                                 = compile tm
-focusTerm _  (BoundVar _ rep var)                                     = BoundVar () rep var
-focusTerm _  (FreeVar _ rep var)                                      = FreeVar () rep var
-focusTerm eo (XtorCall _ pcrep name subst)                            = focusXtor eo pcrep name subst
-focusTerm eo (XMatch _ rep ns cases)                                  = XMatch () rep ns (focusSCase eo <$> cases)
-focusTerm eo (MuAbs _ rep _ cmd)                                      = MuAbs () rep Nothing (focusCmd eo cmd)
-
+focusTerm eo tm | isFocusedTerm eo tm      = compile tm
+focusTerm _  (BoundVar _ rep var)          = BoundVar () rep var
+focusTerm _  (FreeVar _ rep var)           = FreeVar () rep var
+focusTerm eo (XtorCall _ pcrep name subst) = focusXtor eo pcrep name subst
+focusTerm eo (XMatch _ rep ns cases)       = XMatch () rep ns (focusSCase eo <$> cases)
+focusTerm eo (MuAbs _ rep _ cmd)           = MuAbs () rep Nothing (focusCmd eo cmd)
+focusTerm _ _                              = error "focusTerm should only be called on Core terms"
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.

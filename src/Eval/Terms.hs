@@ -14,7 +14,6 @@ import Pretty.Terms ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds
-import Utils
 import Translate.Translate
 
 ---------------------------------------------------------------------------------

@@ -9,7 +9,6 @@ module Translate.Translate
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Program ( Declaration(..), Program )
-import Utils ( Twice(..))
 
 ---------------------------------------------------------------------------------
 -- Translate Terms

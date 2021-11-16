@@ -13,7 +13,6 @@ import Pretty.Errors ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Program
-import Utils
 import TestUtils
 import TypeInference.Driver
 spec :: Spec
