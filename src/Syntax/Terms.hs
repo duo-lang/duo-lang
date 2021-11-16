@@ -49,15 +49,6 @@ deriving instance (Show (PrdCnsTerm Compiled))
 
 type Substitution ext = [PrdCnsTerm ext]
 
-{-# DEPRECATED newToOldSubst "Deprecated" #-}
-newToOldSubst :: Substitution ext -> ([Term Prd ext],[Term Cns ext])
-newToOldSubst subst = foo subst ([],[])
-  where
-    foo :: Substitution ext -> ([Term Prd ext],[Term Cns ext]) -> ([Term Prd ext],[Term Cns ext])
-    foo [] res = res
-    foo (PrdTerm tm:rest) (prdArgs,cnsArgs) = foo rest (tm : prdArgs, cnsArgs)
-    foo (CnsTerm tm:rest) (prdArgs,cnsArgs) = foo rest (prdArgs, tm : cnsArgs)
-
 ---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------

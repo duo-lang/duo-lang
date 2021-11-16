@@ -29,10 +29,29 @@ instance PrettyAnn (ACase ext) where
     annSymbol "=>" <+>
     prettyAnn acase_term
 
+instance PrettyAnn (PrdCnsTerm ext) where
+  prettyAnn (PrdTerm tm) = prettyAnn tm
+  prettyAnn (CnsTerm tm) = prettyAnn tm
+
+split :: Substitution ext -> [(PrdCns, Substitution ext)]
+split [] = []
+split (PrdTerm tm :rest) = reverse $ split' Prd rest [PrdTerm tm] []
+split (CnsTerm tm :rest) = reverse $ split' Cns rest [CnsTerm tm] []
+
+split' :: PrdCns -> Substitution ext -> Substitution ext -> [(PrdCns, Substitution ext)] -> [(PrdCns, Substitution ext)]
+split' pc [] ctxt accum = (pc,ctxt):accum
+split' Prd (PrdTerm tm:rest) subst accum = split' Prd rest (PrdTerm tm:subst) accum
+split' Prd (CnsTerm tm:rest) subst accum = split' Cns rest [CnsTerm tm] ((Prd, reverse subst):accum)
+split' Cns (CnsTerm tm:rest) subst accum = split' Cns rest (CnsTerm tm:subst) accum
+split' Cns (PrdTerm tm:rest) subst accum = split' Prd rest [PrdTerm tm] ((Cns, reverse subst):accum)
+
+printSegment :: (PrdCns, Substitution ext) -> Doc Annotation
+printSegment (Prd, subst) = parens'   comma (prettyAnn <$> subst)
+printSegment (Cns, subst) = brackets' comma (prettyAnn <$> subst)
+
+
 instance {-# OVERLAPPING #-} PrettyAnn (Substitution ext) where
-  prettyAnn subst = prettyTwice prds cns
-    where
-      (prds, cns) = newToOldSubst subst
+  prettyAnn subst = mconcat (printSegment <$> split subst)
 
 isNumSTerm :: Term pc ext -> Maybe Int
 isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") []) = Just 0
