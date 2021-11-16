@@ -186,27 +186,23 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return [TyCodata rep Nothing sig]
     -- Creating ref data types
-    refDatL <- case maybeDat of
-      Nothing -> return []
-      Just xtors -> do
-        concat <$> forM refDatTypes (\tn -> do
-          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup tn refDat
-          sig <- forM xtors' $ \xt -> do
-            let nodes = computeArgNodes outs Data xt
-            argTypes <- argNodesToArgTypes nodes rep
-            return (MkXtorSig (labelName xt) argTypes)
-          return [TyData rep (Just tn) sig])
+    refDatL <- do
+      forM refDatTypes $ \tn -> do
+        let xtors = maybe [] S.toList $ M.lookup tn refDat
+        sig <- forM xtors $ \xt -> do
+          let nodes = computeArgNodes outs Data xt
+          argTypes <- argNodesToArgTypes nodes rep
+          return (MkXtorSig (labelName xt) argTypes)
+        return $ TyData rep (Just tn) sig
     -- Creating ref codata types
-    refCodatL <- case maybeCodat of
-      Nothing -> return []
-      Just xtors -> do 
-        concat <$> forM refCodatTypes (\tn -> do
-          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup tn refCodat
-          sig <- forM xtors' $ \xt -> do
-            let nodes = computeArgNodes outs Codata xt
-            argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
-            return (MkXtorSig (labelName xt) argTypes)
-          return [TyCodata rep (Just tn) sig])
+    refCodatL <- do
+      forM refCodatTypes $ \tn -> do
+        let xtors = maybe [] S.toList $ M.lookup tn refCodat
+        sig <- forM xtors $ \xt -> do
+          let nodes = computeArgNodes outs Codata xt
+          argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+          return (MkXtorSig (labelName xt) argTypes)
+        return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
     let nominals = TyNominal rep <$> S.toList tns
 
