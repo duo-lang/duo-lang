@@ -108,3 +108,14 @@ prd idS := comatch {
 def succA := comatch { ApNN(n) => S(n) };
 
 prd succS := comatch { ApNN(n)[k] => S(n) >> k };
+
+def rec natIdA := comatch { 'ApNN(n) => match n with {
+            Z    => Z,
+            S(m) => S(natIdA.'ApNN(m))
+}};
+
+def rec isEvenA := comatch { 'ApNB(n) => match n with {
+  Z => True,
+  S(m) => match m with {
+    S(p) => isEvenA.'ApNB(p)
+}}};
