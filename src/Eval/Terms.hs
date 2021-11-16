@@ -29,19 +29,14 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthSubstitution :: Substitution Compiled -> (Int, Int)
-lengthSubstitution subst = (length prdArgs,length cnsArgs)
-  where
-    (prdArgs, cnsArgs) = newToOldSubst subst
-
-checkArgs :: Command Compiled -> Twice a -> Substitution Compiled -> EvalM ()
-checkArgs cmd (Twice prds cnss) args =
-  if (length prds, length cnss) == lengthSubstitution args
-  then return ()
-  else throwEvalError [ "Error during evaluation of:"
-                      , ppPrint cmd
-                      , "Argument lengths don't coincide."
-                      ]
+checkArgs :: Command Compiled -> [(PrdCns,a)] -> Substitution Compiled -> EvalM ()
+checkArgs _md [] [] = return ()
+checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
+checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
+checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
+                                   , ppPrint cmd
+                                   , "Argument lengths don't coincide."
+                                   ]
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
@@ -80,7 +75,7 @@ evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable d
 -- Match applied to Match, or Xtor to Xtor can't evaluate
 evalApplyOnce (XMatch _ _ _ _) (XMatch _ _ _ _) = throwEvalError ["Cannot evaluate match applied to match"]
 evalApplyOnce (XtorCall _ _ _ _) (XtorCall _ _ _ _) = throwEvalError ["Cannot evaluate constructor applied to destructor"]
-
+evalApplyOnce _ _ = throwEvalError ["Incomplete pattern match"]
 
 -- | Return just thef final evaluation result
 eval :: Command Compiled -> EvalM (Command Compiled)

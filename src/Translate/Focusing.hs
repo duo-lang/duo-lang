@@ -135,8 +135,8 @@ betaVar i = "$beta" <> T.pack (show i)
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
 focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> Substitution ext -> Term pc Compiled
-focusXtor eo PrdRep name subst = MuAbs () PrdRep Nothing (commandClosing (Twice [] [alphaVar]) (shiftCmd (focusXtor' eo PrdRep name subst [])))
-focusXtor eo CnsRep name subst = MuAbs () CnsRep Nothing (commandClosing (Twice [alphaVar] []) (shiftCmd (focusXtor' eo CnsRep name subst [])))
+focusXtor eo PrdRep name subst = MuAbs () PrdRep Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd (focusXtor' eo PrdRep name subst [])))
+focusXtor eo CnsRep name subst = MuAbs () CnsRep Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd (focusXtor' eo CnsRep name subst [])))
 
 
 focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [PrdCnsTerm ext] -> [PrdCnsTerm Compiled] -> Command Compiled
@@ -148,21 +148,21 @@ focusXtor' eo pc     name (PrdTerm prd:pcterms) pcterms' | isValueTerm eo PrdRep
                                                          | otherwise                 =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
-                                                                  cmd = commandClosing (Twice [var] [])  (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
+                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
                                                               in
                                                                   Apply () (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
 focusXtor' eo pc     name (CnsTerm cns:pcterms) pcterms' | isValueTerm eo CnsRep cns = focusXtor' eo pc name pcterms (CnsTerm (compile cns) : pcterms')
                                                          | otherwise                 =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
-                                                                  cmd = commandClosing (Twice [] [var]) (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
+                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
                                                               in Apply () (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 
 
 focusSCase :: CallingConvention -> SCase ext -> SCase Compiled
 focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
-    MkSCase () scase_name (const Nothing <$> scase_args) (focusCmd eo scase_cmd)
+    MkSCase () scase_name ((\(pc,_) -> (pc, Nothing)) <$> scase_args) (focusCmd eo scase_cmd)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.

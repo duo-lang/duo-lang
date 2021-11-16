@@ -14,7 +14,8 @@ import Utils
 instance PrettyAnn (SCase ext) where
   prettyAnn MkSCase{..} =
     let
-      (Twice prds cnss) = scase_args
+      prds = [x | (Prd,x) <- scase_args]
+      cnss = [x | (Cns,x) <- scase_args]
     in
       prettyAnn scase_name <>
       prettyTwice prds cnss <+>

@@ -74,7 +74,7 @@ singleCase ns = do
   (cmd, endPos) <- commandP
   let pmcase = MkSCase { scase_ext = Loc startPos endPos
                        , scase_name = xt
-                       , scase_args = Just <$> args
+                       , scase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
                        , scase_cmd = commandClosing args cmd -- de brujin transformation
                        }
   return (pmcase, endPos)
@@ -116,14 +116,14 @@ muAbstraction PrdRep = do
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP
-  return (MuAbs (Loc startPos endPos) PrdRep (Just v) (commandClosing (Twice [] [v]) cmd), endPos)
+  return (MuAbs (Loc startPos endPos) PrdRep (Just v) (commandClosing [(Cns,v)] cmd), endPos)
 muAbstraction CnsRep = do
   startPos <- getSourcePos
   _ <- muKwP
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP
-  return (MuAbs (Loc startPos endPos) CnsRep (Just v) (commandClosing (Twice [v] []) cmd), endPos)
+  return (MuAbs (Loc startPos endPos) CnsRep (Just v) (commandClosing [(Prd,v)] cmd), endPos)
 
 --------------------------------------------------------------------------------------------
 -- Commands
@@ -206,7 +206,7 @@ acaseP ns = do
   args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
-  return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing (Twice args []) res))
+  return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing ((\a -> (Prd,a)) <$> args) res))
 
 acasesP :: Parser ([ACase Parsed], SourcePos)
 acasesP = try structuralCases <|> nominalCases
@@ -234,7 +234,7 @@ comatchP PrdRep = do
 
 -- | Create a lambda abstraction. 
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing (Twice [var] []) tm)]
+mkLambda loc var tm = Comatch loc [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing [(Prd, var)] tm)]
 
 
 lambdaP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)

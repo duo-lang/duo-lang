@@ -107,11 +107,16 @@ freshTVar uvp = do
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
   return (TyVar PosRep tvar, TyVar NegRep tvar)
 
-freshTVars :: Twice FreeVarName -> GenM (LinearContext Pos, LinearContext Neg)
-freshTVars (Twice prdArgs cnsArgs) = do
-  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\fv -> freshTVar (ProgramVariable fv))
-  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
-  return ((PrdType <$> prdArgsPos)  ++ (CnsType <$> cnsArgsNeg), (PrdType <$> prdArgsNeg) ++ (CnsType <$> cnsArgsPos))
+freshTVars :: [(PrdCns,FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
+freshTVars [] = return ([],[])
+freshTVars ((Prd,fv):rest) = do
+  (lctxtP, lctxtN) <- freshTVars rest
+  (tp, tn) <- freshTVar (ProgramVariable fv)
+  return (PrdType tp:lctxtP, PrdType tn:lctxtN)
+freshTVars ((Cns,fv):rest) = do
+  (lctxtP, lctxtN) <- freshTVars rest
+  (tp, tn) <- freshTVar (ProgramVariable fv)
+  return (CnsType tn:lctxtP, CnsType tp:lctxtN)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
