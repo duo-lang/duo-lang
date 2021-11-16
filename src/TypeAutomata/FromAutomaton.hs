@@ -169,9 +169,9 @@ nodeToTypeNoCache rep i = do
     -- Creating data types
     datL <- case maybeDat of
       Nothing -> return []
-      Just _ -> do
+      Just xtors -> do
         concat <$> forM refTypes (\mtn -> do
-          let xtors' = maybe [] S.toList $ M.lookup mtn refs
+          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup mtn refs
           sig <- forM xtors' $ \xt -> do
             let nodes = computeArgNodes outs Data xt
             argTypes <- argNodesToArgTypes nodes rep
@@ -180,9 +180,9 @@ nodeToTypeNoCache rep i = do
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
-      Just _ -> do 
+      Just xtors -> do 
         concat <$> forM refTypes (\mtn -> do
-          let xtors' = maybe [] S.toList $ M.lookup mtn refs
+          let xtors' = filter (`elem` xtors) $ maybe [] S.toList $ M.lookup mtn refs
           sig <- forM xtors' $ \xt -> do
             let nodes = computeArgNodes outs Codata xt
             argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)

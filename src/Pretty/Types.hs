@@ -76,11 +76,11 @@ instance PrettyAnn (Typ pol) where
   -- Nominal types
   prettyAnn (TyNominal _ tn)   = prettyAnn tn
   -- Structural data and codata types
-  prettyAnn (TyData _ Nothing xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
-  prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
+  prettyAnn (TyData _ _ xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
+  prettyAnn (TyCodata _ _ xtors) = braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
-  prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
+  -- prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
+  -- prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
 
 instance PrettyAnn (TypArgs a) where
   prettyAnn (MkTypArgs [] []) = mempty
