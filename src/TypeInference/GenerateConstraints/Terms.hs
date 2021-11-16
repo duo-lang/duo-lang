@@ -8,6 +8,8 @@ import Control.Monad.Reader
 import Data.List (find)
 import Pretty.Terms ()
 import Pretty.Types ()
+import Pretty.Constraints ()
+import Pretty.Pretty ( ppPrint )
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
@@ -37,10 +39,10 @@ genConstraintsCtxts ((PrdType ty1) : rest1) (PrdType ty2 : rest2) info = do
 genConstraintsCtxts ((CnsType ty1) : rest1) (CnsType ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
   genConstraintsCtxts rest1 rest2 info
-genConstraintsCtxts (PrdType _:_) (CnsType _:_) _ = throwGenError ["genConstraintsCtxts: Tried to constrain PrdType by CnsType"]
-genConstraintsCtxts (CnsType _:_) (PrdType _:_) _ = throwGenError ["genConstraintsCtxts: Tried to constrain CnsType by PrdType"]
-genConstraintsCtxts [] (_:_) _ = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length."]
-genConstraintsCtxts (_:_) [] _ = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length."]
+genConstraintsCtxts (PrdType _:_) (CnsType _:_) info = throwGenError ["genConstraintsCtxts: Tried to constrain PrdType by CnsType", "Constraint Info: " <> ppPrint info]
+genConstraintsCtxts (CnsType _:_) (PrdType _:_) info = throwGenError ["genConstraintsCtxts: Tried to constrain CnsType by PrdType", "ConstraintInfo: " <> ppPrint info]
+genConstraintsCtxts [] (_:_) info = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
+genConstraintsCtxts (_:_) [] info = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
 
 
 -- | Generate the constraints for a given Term.
@@ -169,14 +171,13 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } t
     InferNominal -> return $ TyNominal NegRep (data_name tn)
     InferRefined -> translateTypeUpper $ TyNominal NegRep (data_name tn)
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm t') ty )
-  im <- asks (inferMode . snd)
   xtorSig <- case im of
     InferNominal -> lookupXtorSig xt NegRep
     InferRefined -> translateXtorSigUpper =<< lookupXtorSig xt NegRep
   when (length args' /= length (sig_args xtorSig)  - 1) $
     throwGenError ["Dtor " <> unXtorName xt <> " called with incorrect number of arguments"]
   -- Nominal type constraint!!
-  genConstraintsCtxts (PrdType . getTypeTerm <$> args') (sig_args xtorSig) (DtorArgsConstraint loc)
+  genConstraintsCtxts (PrdType . getTypeTerm <$> args') (init (sig_args xtorSig)) (DtorArgsConstraint loc)
   --forM_ (zip args' (prdTypes $ sig_args xtorSig)) $ \(t1,t2) -> addConstraint $ SubType (DtorArgsConstraint loc) (getTypeSTerm t1) t2
   let retType =case reverse (sig_args xtorSig) of
         [] -> error "BANG"
