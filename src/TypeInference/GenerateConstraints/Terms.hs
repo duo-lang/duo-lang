@@ -32,6 +32,10 @@ genConstraintsArgs :: Substitution Parsed
 genConstraintsArgs subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
+genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length"
+                                                                                , "Constraint Info: " <> ppPrint info
+                                                                                , "Pos context: " <> ppPrint ctx1
+                                                                                , "Neg context: " <> ppPrint ctx2]
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((PrdType ty1) : rest1) (PrdType ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
