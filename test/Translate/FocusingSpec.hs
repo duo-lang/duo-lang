@@ -17,7 +17,7 @@ import Syntax.Program
 import Translate.Focusing
 import Utils
 
-shouldShiftTo :: STerm pc Compiled -> STerm pc Compiled -> Spec
+shouldShiftTo :: Term pc Compiled -> Term pc Compiled -> Spec
 shouldShiftTo tm1 tm2 = do
     it (ppPrintString tm1 <> " should shift to " <> ppPrintString tm2)  $ do
         shiftSTerm tm1 `shouldBe` tm2
