@@ -109,8 +109,7 @@ deriving instance (Show (SCase Compiled))
 
 type family TermExt (pc :: PrdCns) (ext :: Phase) :: Type where
   TermExt _ Parsed = Loc
-  TermExt Prd Inferred = (Loc, Typ Pos)
-  TermExt Cns Inferred = (Loc, Typ Neg)
+  TermExt rep Inferred = (Loc, Typ (PrdCnsToPol rep))
   TermExt _ Compiled = ()
 
 -- | A symmetric term.

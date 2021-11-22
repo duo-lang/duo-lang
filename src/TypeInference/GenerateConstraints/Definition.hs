@@ -233,12 +233,7 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness matched decl = do
-  im <- asks (inferMode . snd)
-  -- Only check exhaustiveness when not using refinements
-  case im of
-    InferRefined -> return ()
-    InferNominal -> do
-      let declared = sig_name <$> data_xtors decl PosRep
-      forM_ declared $ \xn -> unless (xn `elem` matched)
-        (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
-          ppPrint (data_name decl) <> " is not matched against." ])
+  let declared = sig_name <$> data_xtors decl PosRep
+  forM_ declared $ \xn -> unless (xn `elem` matched)
+    (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
+                     ppPrint (data_name decl) <> " is not matched against." ])
