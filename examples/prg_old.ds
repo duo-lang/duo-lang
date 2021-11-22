@@ -541,7 +541,7 @@ prd repeat := comatch { 'Ap(x)[k] => fixLazy >>
 
 ## misc interesting terms
 
-prd doubleCycle := comatch { 'Ap(x) => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(x) => x >> match { 'X(x1) => x1 >> match { 'X(x2) => alpha >> 'Ap(x2)}, 'Y(y1) => y1 >> match { 'Y(y2) => alpha >> 'Ap(y2)}}} >> k })['Ap(x)]};
+# prd doubleCycle := comatch { 'Ap(x) => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(x) => x >> match { 'X(x1) => x1 >> match { 'X(x2) => alpha >> 'Ap(x2)}, 'Y(y1) => y1 >> match { 'Y(y2) => alpha >> 'Ap(y2)}}} >> k })['Ap(x)]};
 prd faultyEdgeTest := comatch { 'Ap(b,f) => b >> match { 'True => f >> match { 'X(x) => Done, 'Y(x) => Done }, 'False => f >> match { 'X(x) => Done, 'Z(x)=>Done }}};
 prd oneortwo := comatch { 'Ap(b)[k] => b >> match { 'True => 'S('Z) >> k, 'False => 'S('S('Z)) >> k }};
 prd admissabilityTest := comatch { 'Ap(f)[k] => 'True >> match { 'True => comatch { 'Ap(x)[k] => f >> 'Ap(x)[k]} >> k, 'False => f >> k }};
