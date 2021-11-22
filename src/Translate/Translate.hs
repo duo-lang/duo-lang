@@ -17,17 +17,20 @@ import Utils ( Twice(..))
 resVar :: FreeVarName
 resVar = "$result"
 
-compile :: STerm pc ext -> STerm pc Compiled
+compileSubstitution :: Substitution ext -> Substitution Compiled
+compileSubstitution (MkSubst prdArgs cnsArgs) = MkSubst (compile <$> prdArgs) (compile <$> cnsArgs)
+
+compile :: Term pc ext -> Term pc Compiled
 compile (BoundVar _ pc idx) = BoundVar () pc idx
 compile (FreeVar _ pc fv) = FreeVar () pc fv
-compile (XtorCall _ pc xt MkXtorArgs {prdArgs, cnsArgs}) = XtorCall () pc xt (MkXtorArgs (compile <$> prdArgs) (compile <$> cnsArgs))
+compile (XtorCall _ pc xt args) = XtorCall () pc xt (compileSubstitution args)
 compile (MuAbs _ pc bs cmd) = MuAbs () pc bs (compileCmd cmd)
 compile (XMatch _ pc ns cases) = XMatch () pc ns (compileSCase <$> cases)
 -- we want to compile e.D(args')
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]
 compile (Dtor _ xt t args) =
   let
-    cmd = Apply () (compile t) (XtorCall () CnsRep xt $ MkXtorArgs (compile <$> args) [FreeVar () CnsRep resVar])
+    cmd = Apply () (compile t) (XtorCall () CnsRep xt $ MkSubst (compile <$> args) [FreeVar () CnsRep resVar])
   in
     MuAbs () PrdRep Nothing $ commandClosingSingle CnsRep resVar $ shiftCmd cmd
 -- we want to compile match t { C (args) => e1 }
@@ -37,7 +40,7 @@ compile (Match _ t cases)   =
     nominalStructural = case cases of
       [] -> Structural
       ((MkACase _ (MkXtorName ns _ ) _ _):_) -> ns
-    compileMatchCase (MkACase _ xt args t) = MkSCase xt (Twice (const Nothing <$> args) [])   $ Apply () (compile t) (FreeVar () CnsRep resVar)
+    compileMatchCase (MkACase _ xt args t) = MkSCase () xt (Twice (const Nothing <$> args) [])   $ Apply () (compile t) (FreeVar () CnsRep resVar)
     cmd = Apply () (compile t) (XMatch () CnsRep nominalStructural  (compileMatchCase <$> cases))
   in
     MuAbs () PrdRep Nothing $ commandClosingSingle CnsRep resVar $ shiftCmd cmd
@@ -48,14 +51,14 @@ compile (Comatch _ cocases) =
     nominalStructural = case cocases of
       [] -> Structural
       ((MkACase _ (MkXtorName ns _ ) _ _):_) -> ns
-    compileComatchCase (MkACase _ xt args t) = MkSCase xt (Twice (const Nothing <$> args) [Nothing]) $ Apply () (compile t) (BoundVar () CnsRep (0,0))
+    compileComatchCase (MkACase _ xt args t) = MkSCase () xt (Twice (const Nothing <$> args) [Nothing]) $ Apply () (compile t) (BoundVar () CnsRep (0,0))
   in
     XMatch () PrdRep nominalStructural $ compileComatchCase <$> cocases
 
 
 
 compileSCase :: SCase ext -> SCase Compiled
-compileSCase (MkSCase xt args cmd) = MkSCase xt args (compileCmd cmd)
+compileSCase (MkSCase _ xt args cmd) = MkSCase () xt args (compileCmd cmd)
 
 compileCmd :: Command ext -> Command Compiled
 compileCmd (Apply _ prd cns) = Apply () (compile prd) (compile cns)

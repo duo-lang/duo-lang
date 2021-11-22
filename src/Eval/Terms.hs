@@ -1,4 +1,4 @@
-module Eval.STerms
+module Eval.Terms
   ( eval
   , evalSteps
   ) where
@@ -29,12 +29,12 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthXtorArgs :: XtorArgs Compiled -> Twice Int
-lengthXtorArgs MkXtorArgs { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
+lengthSubstitution :: Substitution Compiled -> Twice Int
+lengthSubstitution MkSubst { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
 
-checkArgs :: Command Compiled -> Twice [a] -> XtorArgs Compiled -> EvalM ()
+checkArgs :: Command Compiled -> Twice [a] -> Substitution Compiled -> EvalM ()
 checkArgs cmd argTypes args =
-  if fmap length argTypes == lengthXtorArgs args
+  if fmap length argTypes == lengthSubstitution args
   then return ()
   else throwEvalError [ "Error during evaluation of:"
                       , ppPrint cmd
@@ -42,12 +42,12 @@ checkArgs cmd argTypes args =
                       ]
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalSTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
-evalSTermOnce (Done _) = return Nothing
-evalSTermOnce (Print _ _) = return Nothing
-evalSTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
+evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
+evalTermOnce (Done _) = return Nothing
+evalTermOnce (Print _ _) = return Nothing
+evalTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
 
-evalApplyOnce :: STerm Prd Compiled -> STerm Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
@@ -57,11 +57,11 @@ evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   return (Just (Apply () prd (compile cns)))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
-  (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
+  (MkSCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
-  (MkSCase _ argTypes cmd') <- lookupMatchCase xt cases
+  (MkSCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
@@ -84,7 +84,7 @@ evalApplyOnce _ _ = throwEvalError ["Cannot evaluate, probably an asymmetric ter
 -- | Return just thef final evaluation result
 eval :: Command Compiled -> EvalM (Command Compiled)
 eval cmd = do
-  cmd' <- evalSTermOnce cmd
+  cmd' <- evalTermOnce cmd
   case cmd' of
     Nothing -> return cmd
     Just cmd' -> eval cmd'
@@ -95,7 +95,7 @@ evalSteps cmd = evalSteps' [cmd] cmd
   where
     evalSteps' :: [Command Compiled] -> Command Compiled -> EvalM [Command Compiled]
     evalSteps' cmds cmd = do
-      cmd' <- evalSTermOnce cmd
+      cmd' <- evalTermOnce cmd
       case cmd' of
         Nothing -> return cmds
         Just cmd' -> evalSteps' (cmds ++ [cmd']) cmd'

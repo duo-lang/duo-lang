@@ -24,17 +24,17 @@ instance PrettyAnn (ACase ext) where
     annSymbol "=>" <+>
     prettyAnn acase_term
 
-instance PrettyAnn (XtorArgs ext) where
-  prettyAnn (MkXtorArgs prds cns) = prettyTwice' prds cns
+instance PrettyAnn (Substitution ext) where
+  prettyAnn (MkSubst prds cns) = prettyTwice' prds cns
 
-isNumSTerm :: STerm pc ext -> Maybe Int
-isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") (MkXtorArgs [] [])) = Just 0
-isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "S") (MkXtorArgs [n] [])) = case isNumSTerm n of
+isNumSTerm :: Term pc ext -> Maybe Int
+isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") (MkSubst [] [])) = Just 0
+isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "S") (MkSubst [n] [])) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
 
-instance PrettyAnn (STerm pc ext) where
+instance PrettyAnn (Term pc ext) where
   prettyAnn (isNumSTerm -> Just n) = pretty n
   prettyAnn (BoundVar _ _ (i,j)) = parens (pretty i <> "," <> pretty j)
   prettyAnn (FreeVar _ _ v) = pretty v
@@ -64,7 +64,7 @@ instance PrettyAnn (Command ext) where
   prettyAnn (Print _ t) = annKeyword "Print" <> parens (prettyAnn t)
   prettyAnn (Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
 
-instance PrettyAnn (NamedRep (STerm pc ext)) where
+instance PrettyAnn (NamedRep (Term pc ext)) where
   prettyAnn (NamedRep tm) = prettyAnn (openSTermComplete tm)
 
 instance PrettyAnn (NamedRep (Command ext)) where
