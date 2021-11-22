@@ -64,7 +64,7 @@ library
   exposed-modules:
       Errors
       Eval.Eval
-      Eval.STerms
+      Eval.Terms
       Lookup
       Parser.Definition
       Parser.Lexer
@@ -95,7 +95,7 @@ library
       TypeAutomata.ToAutomaton
       TypeInference.Driver
       TypeInference.GenerateConstraints.Definition
-      TypeInference.GenerateConstraints.STerms
+      TypeInference.GenerateConstraints.Terms
       TypeInference.SolveConstraints
       TypeInference.Constraints
       TypeTranslation

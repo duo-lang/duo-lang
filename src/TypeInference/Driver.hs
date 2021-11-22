@@ -38,10 +38,10 @@ import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
     ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
-import TypeInference.GenerateConstraints.STerms
-    ( genConstraintsSTerm,
+import TypeInference.GenerateConstraints.Terms
+    ( genConstraintsTerm,
       genConstraintsCommand,
-      genConstraintsSTermRecursive )
+      genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 
@@ -177,15 +177,15 @@ generateTypeInferenceTrace rep constraintSet solverState typ = do
 inferSTermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> PrdCnsRep pc -> STerm pc Parsed
-                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), STerm pc Inferred)
+                 -> PrdCnsRep pc -> Term pc Parsed
+                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), Term pc Inferred)
 inferSTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
   env <- gets driverEnv
   -- Generate the constraints
   let genFun = case isRec of
-        Recursive -> genConstraintsSTermRecursive loc fv rep tm
-        NonRecursive -> genConstraintsSTerm tm
+        Recursive -> genConstraintsTermRecursive loc fv rep tm
+        NonRecursive -> genConstraintsTerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
@@ -197,8 +197,8 @@ inferSTermTraced isRec loc fv rep tm = do
 inferSTerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> PrdCnsRep pc -> STerm pc Parsed
-           -> DriverM (TypeScheme (PrdCnsToPol pc), STerm pc Inferred)
+           -> PrdCnsRep pc -> Term pc Parsed
+           -> DriverM (TypeScheme (PrdCnsToPol pc), Term pc Inferred)
 inferSTerm isRec loc fv rep tm = do
   (trace, tmInferred) <- inferSTermTraced isRec loc fv rep tm
   return (trace_resType trace, tmInferred)

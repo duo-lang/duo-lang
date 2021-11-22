@@ -7,7 +7,7 @@ import Data.Text (Text)
 
 import Syntax.CommonTerm
     ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep )
-import Syntax.Terms( Command, STerm )
+import Syntax.Terms( Command, Term )
 import Syntax.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
 import Utils ( Loc )
 
@@ -24,7 +24,7 @@ newtype ModuleName = ModuleName { unModuleName :: Text }
 data IsRec = Recursive | NonRecursive
 
 data Declaration (ext :: Phase) where
-  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> STerm pc ext -> Declaration ext
+  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
@@ -42,8 +42,8 @@ type Program ext = [Declaration ext]
 ---------------------------------------------------------------------------------
 
 data Environment = Environment
-  { prdEnv :: Map FreeVarName (STerm Prd Inferred, Loc, TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (STerm Cns Inferred, Loc, TypeScheme Neg)
+  { prdEnv :: Map FreeVarName (Term Prd Inferred, Loc, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (Term Cns Inferred, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command Inferred, Loc)
   , declEnv :: [(Loc,DataDecl)]
   }
