@@ -22,7 +22,7 @@ getAvailableCounterExamples = do
 getAvailableExamples :: FilePath -> IO [FilePath]
 getAvailableExamples fp = do
   examples <- listDirectory fp
-  return ((fp ++) <$> examples)
+  return ((fp ++) <$> filter (\s -> head s /= '.') examples)
 
 getParsedDeclarations :: FilePath -> IO (Either Error [Declaration Parsed])
 getParsedDeclarations fp = do
