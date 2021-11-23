@@ -190,7 +190,7 @@ inferSTermTraced isRec loc fv rep tm = do
   -- Solve the constraints
   solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeSTerm tmInferred)
+  trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeTerm tmInferred)
   return (trace, tmInferred)
 
 

@@ -69,7 +69,7 @@ instance PrettyAnn (Declaration ext) where
 
 instance PrettyAnn (NamedRep (Declaration ext)) where
   prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openSTermComplete tm))
+    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
   prettyAnn (NamedRep (DataDecl _ decl)) =

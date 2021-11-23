@@ -9,8 +9,6 @@ import System.Console.ANSI
 
 import Syntax.CommonTerm
 
-import Utils
-
 ---------------------------------------------------------------------------------
 -- Annotations
 ---------------------------------------------------------------------------------
@@ -43,7 +41,7 @@ instance {-# OVERLAPPING #-} PrettyAnn String where
   prettyAnn = pretty
 
 instance PrettyAnn a => PrettyAnn [a] where
-  prettyAnn xs = list (prettyAnn <$> xs)
+   prettyAnn xs = list (prettyAnn <$> xs)
 
 instance PrettyAnn Text where
   prettyAnn = pretty
@@ -123,14 +121,11 @@ intercalateX  x xs = cat (punctuate x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
-prettyTwice' :: (PrettyAnn a, PrettyAnn b) => [a] -> [b] -> Doc Annotation
-prettyTwice' xs ys = xs' <> ys'
+prettyTwice :: (PrettyAnn a, PrettyAnn b) => [a] -> [b] -> Doc Annotation
+prettyTwice xs ys = xs' <> ys'
   where
     xs' = if null xs then mempty else parens   (intercalateComma (map prettyAnn xs))
     ys' = if null ys then mempty else brackets (intercalateComma (map prettyAnn ys))
-
-prettyTwice :: PrettyAnn a => Twice [a] -> Doc Annotation
-prettyTwice (Twice xs ys) = prettyTwice' xs ys
 
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName Structural xt) = annXtorName $ "'" <> prettyAnn xt

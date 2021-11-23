@@ -73,7 +73,7 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 -- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
-data GenerateReader = GenerateReader { context :: [TypArgs Pos]
+data GenerateReader = GenerateReader { context :: [LinearContext Pos]
                                      , inferMode :: InferenceMode
                                      }
 
@@ -107,17 +107,22 @@ freshTVar uvp = do
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
   return (TyVar PosRep tvar, TyVar NegRep tvar)
 
-freshTVars :: Twice [FreeVarName] -> GenM (TypArgs Pos, TypArgs Neg)
-freshTVars (Twice prdArgs cnsArgs) = do
-  (prdArgsPos, prdArgsNeg) <- unzip <$> forM prdArgs (\fv -> freshTVar (ProgramVariable fv))
-  (cnsArgsPos, cnsArgsNeg) <- unzip <$> forM cnsArgs (\fv -> freshTVar (ProgramVariable fv))
-  return (MkTypArgs prdArgsPos cnsArgsNeg, MkTypArgs prdArgsNeg cnsArgsPos)
+freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
+freshTVars [] = return ([],[])
+freshTVars ((Prd,fv):rest) = do
+  (lctxtP, lctxtN) <- freshTVars rest
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
+  return (PrdType tp:lctxtP, PrdType tn:lctxtN)
+freshTVars ((Cns,fv):rest) = do
+  (lctxtP, lctxtN) <- freshTVars rest
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
+  return (CnsType tn:lctxtP, CnsType tp:lctxtN)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
 ---------------------------------------------------------------------------------------------
 
-withContext :: TypArgs 'Pos -> GenM a -> GenM a
+withContext :: LinearContext 'Pos -> GenM a -> GenM a
 withContext ctx m =
   local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ctx:context })) m
 
@@ -131,15 +136,14 @@ lookupContext rep (i,j) = do
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
     Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-    Just (MkTypArgs { prdTypes, cnsTypes }) -> case rep of
-      PrdRep -> do
-        case indexMaybe prdTypes j of
-          Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-          Just ty -> return ty
-      CnsRep -> do
-        case indexMaybe cnsTypes j of
-          Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-          Just ty -> return ty
+    Just (lctxt) -> case indexMaybe lctxt j of
+      Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+      Just ty -> case (rep, ty) of
+        (PrdRep, PrdType ty) -> return ty
+        (CnsRep, CnsType ty) -> return ty
+        (PrdRep, CnsType _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
+        (CnsRep, PrdType _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
+
 
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.
@@ -229,12 +233,7 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness matched decl = do
-  im <- asks (inferMode . snd)
-  -- Only check exhaustiveness when not using refinements
-  case im of
-    InferRefined -> return ()
-    InferNominal -> do
-      let declared = sig_name <$> data_xtors decl PosRep
-      forM_ declared $ \xn -> unless (xn `elem` matched)
-        (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
-          ppPrint (data_name decl) <> " is not matched against." ])
+  let declared = sig_name <$> data_xtors decl PosRep
+  forM_ declared $ \xn -> unless (xn `elem` matched)
+    (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
+                     ppPrint (data_name decl) <> " is not matched against." ])

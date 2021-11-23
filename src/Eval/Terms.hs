@@ -14,7 +14,6 @@ import Pretty.Terms ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds
-import Utils
 import Translate.Translate
 
 ---------------------------------------------------------------------------------
@@ -29,17 +28,14 @@ lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_nam
                             , "doesn't occur in match."
                             ]
 
-lengthSubstitution :: Substitution Compiled -> Twice Int
-lengthSubstitution MkSubst { prdArgs, cnsArgs } = Twice (length prdArgs) (length cnsArgs)
-
-checkArgs :: Command Compiled -> Twice [a] -> Substitution Compiled -> EvalM ()
-checkArgs cmd argTypes args =
-  if fmap length argTypes == lengthSubstitution args
-  then return ()
-  else throwEvalError [ "Error during evaluation of:"
-                      , ppPrint cmd
-                      , "Argument lengths don't coincide."
-                      ]
+checkArgs :: Command Compiled -> [(PrdCns,a)] -> Substitution Compiled -> EvalM ()
+checkArgs _md [] [] = return ()
+checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
+checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
+checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
+                                   , ppPrint cmd
+                                   , "Argument lengths don't coincide."
+                                   ]
 
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
@@ -68,10 +64,10 @@ evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
 evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do
   order <- lookupEvalOrder
   case order of
-    CBV -> return (Just (commandOpeningSingle CnsRep cns cmd))
-    CBN -> return (Just (commandOpeningSingle PrdRep prd cmd'))
-evalApplyOnce (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpeningSingle CnsRep cns cmd))
-evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpeningSingle PrdRep prd cmd))
+    CBV -> return (Just (commandOpening [CnsTerm cns] cmd))
+    CBN -> return (Just (commandOpening [PrdTerm prd] cmd'))
+evalApplyOnce (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpening [PrdTerm prd] cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
 evalApplyOnce (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
 evalApplyOnce _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
