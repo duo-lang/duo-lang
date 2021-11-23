@@ -11,48 +11,100 @@ data X1 : Type CBV { A, B(X2), C(X3) }; # Multiple mutual recursion
 data X2 : Type CBV { D(X3) };
 data X3 : Type CBV { E(X1,X2) };
 
+codata Tuple : Type CBV { Left, Right };
+codata Fun : Type CBV { ApNN(Nat)[Nat], ApBB(Bool)[Bool], ApNB(Nat)[Bool] };
+
 # Structural and refinement (co)data as well as refinements of different 
 # nominal types should not mix
-def ex1 := match True with { True => S(Z), False => 'H };
+prd ex1 := case True of { True => S(Z), False => 'H };
 
-def ex2 := match True with { True => S(Z), False => True };
+prd ex2 := case True of { True => S(Z), False => True };
 
+# Data construction
 prd oneS := S(Z);
 prd threeS := S(S(S(Z)));
 
-def oneA := S(Z);
-def threeA := S(S(S(Z)));
+prd oneA := S(Z);
+prd threeA := S(S(S(Z)));
 
-# Incomplete pattern matches, level 1
+# Incomplete pattern and copattern matches
 cns foo := match { True => Print('T) };
 
-def isSuccA := comatch { 'Ap(n) => match n with { 
+prd isSuccA := cocase { ApNB(n) => case n of { 
                  S(m) => True
                }};
 
-prd isSuccS := comatch { 'Ap(n)[k] => n >> match {
+prd isSuccS := comatch { ApNB(n)[k] => n >> match {
                  S(m) => True >> k
                }};
 
-# Incomplete pattern match, level 2
-# Case arg m is inferred as {{ Nat :>> < 'Z | 'S(Nat) > }},
-# therefore case S() is recognized as missing in pattern match
-def isOneA := comatch { 'Ap(n) => match n with {
-                S(m) => match m with {
+prd isOneA := cocase { ApNB(n) => case n of {
+                S(m) => case m of {
                   Z() => True
                 }
               }};
 
-prd isOneS := comatch { 'Ap(n)[k] => n >> match {
+prd isOneS := comatch { ApNB(n)[k] => n >> match {
                 S(m) => m >> match {
                   Z() => True >> k
                 }
               }};
 
-def isTwoA := comatch { 'Ap(n) => match n with {
-               S(p) => match p with {
-                 S(q) => match q with {
+prd isTwoA := cocase { ApNB(n) => case n of {
+               S(p) => case p of {
+                 S(q) => case q of {
                    Z() => True
                  }
                }
              }};
+
+prd isTwoS := comatch { ApNB(n)[k] => n >> match {
+                S(p) => p >> match {
+                  S(q) => q >> match {
+                    Z() => True >> k
+                  }
+                }
+              }};
+
+prd notA := cocase { ApBB(b) => case b of {
+              True => False,
+              False => True
+            }};
+
+prd notS := comatch { ApBB(b)[k] => b >> match {
+              True => False >> k,
+              False => True >> k
+            }};
+
+# Codata examples
+prd pairA := cocase {
+               Left  => True,
+               Right => False
+             };
+
+prd pairS := comatch {
+              Left[k]  => True >> k,
+              Right[k] => False >> k
+            };
+
+prd pairLeftA := cocase {
+                  Left => True
+                };
+
+prd pairLeftS := comatch {
+                   Left[k] => True >> k
+                 };
+
+prd idA := cocase {
+            ApNN(n) => n,
+            ApBB(b) => b
+          };
+
+prd idS := comatch {
+            ApNN(n)[k] => n >> k,
+            ApBB(b)[k] => b >> k
+          };
+
+prd succA := cocase { ApNN(n) => S(n) };
+
+prd succS := comatch { ApNN(n)[k] => S(n) >> k };

@@ -14,11 +14,16 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
-import Syntax.STerms ( Command, STerm, getTypeSTerm )
+import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,
-      Polarity(Pos)
-      , generalize )
+      Polarity(Pos),
+      generalize,
+      Typ,
+      PolarityRep
+    )
+      
 import Syntax.Program
     ( Environment(..),
       Declaration(..),
@@ -29,16 +34,14 @@ import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
 import TypeInference.Coalescing ( coalesce, zonk, Bisubstitution )
 import TypeInference.GenerateConstraints.Definition
-    ( PrdCnsToPol, InferenceMode(..), runGenM )
-import TypeInference.GenerateConstraints.ATerms
-    ( genConstraintsATerm, genConstraintsATermRecursive )
-import TypeInference.GenerateConstraints.STerms
-    ( genConstraintsSTerm,
+    ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
+import TypeInference.GenerateConstraints.Terms
+    ( genConstraintsTerm,
       genConstraintsCommand,
-      genConstraintsSTermRecursive )
+      genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
-import Syntax.ATerms
+
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -139,67 +142,21 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   }
 
 ------------------------------------------------------------------------------
--- ASymmetric Terms
-------------------------------------------------------------------------------
-
-inferATermTraced :: IsRec
-                 -> Loc
-                 -> FreeVarName
-                 -> ATerm Parsed
-                 -> DriverM (TypeInferenceTrace Pos, ATerm Inferred)
-inferATermTraced isRec loc fv tm = do
-  infopts <- gets driverOpts
-  env <- gets driverEnv
-  -- Generate the constraints
-  let genFun = case isRec of
-        Recursive -> genConstraintsATermRecursive loc fv tm
-        NonRecursive -> genConstraintsATerm tm
-  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
-  -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
-  -- Coalesce the result
-  let bisubst = coalesce solverResult
-  -- Read of the type and generate the resulting type
-  let typ = zonk bisubst (getTypeATerm tmInferred)
-  -- Simplify the resulting type
-  (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
-  -- Generate result type
-  let trace = TypeInferenceTrace 
-        { trace_constraintSet = constraintSet
-        , trace_solvedConstraints = solverResult
-        , trace_bisubst = bisubst
-        , trace_resTypeOrig = generalize typ
-        , trace_automata = simpTrace
-        , trace_resType = tys
-        }
-  return (trace, tmInferred)
-
-
-inferATerm :: IsRec
-           -> Loc
-           -> FreeVarName
-           -> ATerm Parsed
-           -> DriverM (TypeScheme Pos, ATerm Inferred)
-inferATerm isRec loc fv tm = do
-  (trace, tmInferred) <- inferATermTraced isRec loc fv tm
-  return (trace_resType trace, tmInferred)
-
-------------------------------------------------------------------------------
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
 inferSTermTraced :: IsRec
                  -> Loc
                  -> FreeVarName
-                 -> PrdCnsRep pc -> STerm pc Parsed
-                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), STerm pc Inferred)
+                 -> PrdCnsRep pc -> Term pc Parsed
+                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), Term pc Inferred)
 inferSTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
   env <- gets driverEnv
   -- Generate the constraints
   let genFun = case isRec of
-        Recursive -> genConstraintsSTermRecursive loc fv rep tm
-        NonRecursive -> genConstraintsSTerm tm
+        Recursive -> genConstraintsTermRecursive loc fv rep tm
+        NonRecursive -> genConstraintsTerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
   solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
@@ -224,8 +181,8 @@ inferSTermTraced isRec loc fv rep tm = do
 inferSTerm :: IsRec
            -> Loc
            -> FreeVarName
-           -> PrdCnsRep pc -> STerm pc Parsed
-           -> DriverM (TypeScheme (PrdCnsToPol pc), STerm pc Inferred)
+           -> PrdCnsRep pc -> Term pc Parsed
+           -> DriverM (TypeScheme (PrdCnsToPol pc), Term pc Inferred)
 inferSTerm isRec loc fv rep tm = do
   (trace, tmInferred) <- inferSTermTraced isRec loc fv rep tm
   return (trace_resType trace, tmInferred)
@@ -248,9 +205,9 @@ checkCmd loc cmd = do
 
 insertDecl :: Declaration Parsed
            -> DriverM ()
-insertDecl (PrdDecl loc isRec v annot loct) = do
+insertDecl (PrdCnsDecl loc pc isRec v annot loct) = do
   -- Infer a type
-  (trace, tmInferred) <- inferSTermTraced isRec loc v PrdRep loct
+  (trace, tmInferred) <- inferSTermTraced isRec loc v pc loct
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
@@ -261,23 +218,13 @@ insertDecl (PrdDecl loc isRec v annot loct) = do
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
-  setEnvironment newEnv
-insertDecl (CnsDecl loc isRec v annot loct) = do
-  -- Infer a type
-  (trace, tmInferred) <- inferSTermTraced isRec loc v CnsRep loct
-  guardVerbose $ do
-      ppPrintIO (trace_constraintSet trace)
-      ppPrintIO (trace_solvedConstraints trace)
-      ppPrintIO (trace_bisubst trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-  -- Check whether annotation matches inferred type
-  ty <- checkAnnot (trace_resType trace) annot loc
-  -- Insert into environment
-  env <- gets driverEnv
-  let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
-  setEnvironment newEnv
+  case pc of
+    PrdRep -> do
+      let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
+      setEnvironment newEnv
+    CnsRep -> do
+      let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
+      setEnvironment newEnv
 insertDecl (CmdDecl loc v loct) = do
   -- Check whether command is typeable
   (constraints, solverResult, cmdInferred) <- checkCmd loc loct
@@ -287,21 +234,6 @@ insertDecl (CmdDecl loc v loct) = do
   -- Insert into environment
   env <- gets driverEnv
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
-  setEnvironment newEnv
-insertDecl (DefDecl loc isRec v annot t) = do
-  -- Infer a type
-  (trace, tmInferred) <- inferATermTraced isRec loc v t
-  guardVerbose $ do
-      ppPrintIO (trace_constraintSet trace)
-      ppPrintIO (trace_solvedConstraints trace)
-      ppPrintIO (trace_bisubst trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
-  -- Check whether annotation matches inferred type
-  ty <- checkAnnot (trace_resType trace) annot loc
-  -- Insert into environment
-  env <- gets driverEnv
-  let newEnv = env { defEnv  = M.insert v (tmInferred, loc,ty) (defEnv env)}
   setEnvironment newEnv
 insertDecl (DataDecl loc dcl) = do
   -- Insert into environment

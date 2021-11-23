@@ -10,7 +10,8 @@ import Test.Hspec
 
 import Pretty.Pretty
 import Pretty.Errors ()
-import Syntax.STerms
+import Syntax.Terms
+import Syntax.CommonTerm
 import Syntax.Program
 import Utils
 import TestUtils

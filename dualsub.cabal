@@ -64,30 +64,26 @@ library
   exposed-modules:
       Errors
       Eval.Eval
-      Eval.ATerms
-      Eval.STerms
+      Eval.Terms
       Lookup
-      Parser.ATerms
       Parser.Definition
       Parser.Lexer
       Parser.Parser
       Parser.Program
-      Parser.STerms
+      Parser.Terms
       Parser.Types
       Pretty.Pretty
       Pretty.Constraints
-      Pretty.STerms
-      Pretty.ATerms
+      Pretty.Terms
       Pretty.Types
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
-      Syntax.ATerms
       Syntax.CommonTerm
       Syntax.Kinds
       Syntax.Types
       Syntax.Program
-      Syntax.STerms
+      Syntax.Terms
       TypeAutomata.Definition
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
@@ -100,9 +96,8 @@ library
       TypeAutomata.ToAutomaton
       TypeInference.Coalescing
       TypeInference.Driver
-      TypeInference.GenerateConstraints.ATerms
       TypeInference.GenerateConstraints.Definition
-      TypeInference.GenerateConstraints.STerms
+      TypeInference.GenerateConstraints.Terms
       TypeInference.SolveConstraints
       TypeInference.Constraints
       TypeTranslation
@@ -161,9 +156,7 @@ test-suite dualsub-test
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
-      Eval.SubstSpec
-    , Eval.FocusingSpec
-    , Translate.TranslateExamplesSpec
+      Translate.TranslateExamplesSpec
     , Translate.FocusingSpec
     , TypeInference.StaticExamplesSpec
     , TypeInference.FileExamplesSpec

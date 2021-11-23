@@ -16,8 +16,7 @@ import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(evalOrder, typeInfOpts, mode, steps, ReplState),
-      Mode(Asymmetric, Symmetric),
+      ReplState(evalOrder, typeInfOpts, steps, ReplState),
       EvalSteps(NoSteps, Steps),
       prettyRepl,
       mkWordCompleter )
@@ -33,8 +32,6 @@ setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
                    , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
                    , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
-                   , ("symmetric", modify (\rs -> rs { mode = Symmetric }))
-                   , ("asymmetric", modify (\rs -> rs { mode = Asymmetric }))
                    , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferRefined  } })) ]
 
 setCmd :: Text -> Repl ()

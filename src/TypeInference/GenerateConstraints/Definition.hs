@@ -24,10 +24,10 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
-  , translateTypeFull
-  , translateXtorSigFull
-  , translateTypeEmpty
-  , translateXtorSigEmpty
+  , translateXtorSigUpper
+  , translateTypeUpper
+  , translateXtorSigLower
+  , translateTypeLower
   ) where
 
 import Control.Monad.Except
@@ -39,12 +39,11 @@ import Data.Text qualified as T
 import Errors
 import Lookup
 import Pretty.Pretty
-import Pretty.STerms ()
-import Pretty.ATerms ()
+import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.ATerms
 import Syntax.Program
 import Syntax.Types
+import Syntax.CommonTerm
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
@@ -163,6 +162,42 @@ addConstraint c = modify foo
     bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
 
 ---------------------------------------------------------------------------------------------
+-- Translate nominal types to structural refinement types
+---------------------------------------------------------------------------------------------
+
+-- | Recursively translate types in xtor signature to upper bound refinement types
+translateXtorSigUpper :: XtorSig Neg -> GenM (XtorSig Neg)
+translateXtorSigUpper xts = do
+  env <- asks fst
+  case TT.translateXtorSigUpper env xts of
+    Left err -> throwError err
+    Right xts' -> return xts'
+
+-- | Recursively translate a nominal type to an upper bound refinement type
+translateTypeUpper :: Typ Neg -> GenM (Typ Neg)
+translateTypeUpper ty = do
+  env <- asks fst
+  case TT.translateTypeUpper env ty of
+    Left err -> throwError err
+    Right xts' -> return xts'
+
+-- | Recursively translate types in xtor signature to lower bound refinement types
+translateXtorSigLower :: XtorSig Pos -> GenM (XtorSig Pos)
+translateXtorSigLower xts = do
+  env <- asks fst
+  case TT.translateXtorSigLower env xts of
+    Left err -> throwError err
+    Right xts' -> return xts'
+
+-- | Recursively translate a nominal type to a lower bound refinement type
+translateTypeLower :: Typ Pos -> GenM (Typ Pos)
+translateTypeLower ty = do
+  env <- asks fst
+  case TT.translateTypeLower env ty of
+    Left err -> throwError err
+    Right xts' -> return xts'
+
+---------------------------------------------------------------------------------------------
 -- Other
 ---------------------------------------------------------------------------------------------
 
@@ -203,37 +238,3 @@ checkExhaustiveness matched decl = do
       forM_ declared $ \xn -> unless (xn `elem` matched)
         (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
           ppPrint (data_name decl) <> " is not matched against." ])
-
--- | Recursively translate a nominal type to a complete refinement type
-translateTypeFull :: Typ pol -> GenM (Typ pol)
-translateTypeFull ty = do
-  env <- asks fst
-  case TT.translateType env ty of
-    Left err -> throwError err
-    Right ty' -> return ty'
-
--- | Recursively translate types in xtor signature to complete refinement types
-translateXtorSigFull :: XtorSig pol -> GenM (XtorSig pol)
-translateXtorSigFull xts = do
-  env <- asks fst
-  case TT.translateXtorSig env xts of
-    Left err -> throwError err
-    Right xts' -> return xts'
-
--- | Translate a nominal type to corresponding empty refinement type
-translateTypeEmpty :: Typ pol -> GenM (Typ pol)
-translateTypeEmpty (TyNominal pr tn) = do
-  NominalDecl{..} <- lookupTypeName tn
-  case data_polarity of
-    Data   -> return $ TyData pr (Just tn) []
-    Codata -> return $ TyCodata pr (Just tn) []
-translateTypeEmpty ty = throwGenError ["Cannot translate type " <> ppPrint ty <> " to empty refinement"]
-
--- | Translate types in xtor signature to empty refinement types
-translateXtorSigEmpty :: XtorSig pol -> GenM (XtorSig pol)
-translateXtorSigEmpty MkXtorSig{..} = do
-  -- Translate producer and consumer arg types
-  pts' <- mapM translateTypeEmpty $ prdTypes sig_args
-  cts' <- mapM translateTypeEmpty $ cnsTypes sig_args
-  -- Reassemble xtor signature
-  return $ MkXtorSig sig_name (MkTypArgs pts' cts')

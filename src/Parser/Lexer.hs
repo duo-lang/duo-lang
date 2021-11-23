@@ -9,12 +9,13 @@ module Parser.Lexer
   , optionP
     -- Keywords
   , matchKwP
+  , caseKwP
   , comatchKwP
+  , cocaseKwP
+  , ofKwP
   , prdKwP
   , cnsKwP
   , cmdKwP
-  , defKwP
-  , withKwP
   , doneKwP
   , printKwP
   , forallKwP
@@ -163,7 +164,7 @@ moduleNameP = try $ do
 -------------------------------------------------------------------------------------------
 
 keywords :: [Text]
-keywords = ["match", "comatch", "prd", "cns", "cmd", "def", "with", "set", "Top", "Bot"
+keywords = ["match", "comatch", "case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
            , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN"]
 
 -- Check if the string is in the list of reserved keywords.
@@ -175,8 +176,17 @@ checkReserved str | str `elem` keywords = fail . T.unpack $ "Keyword " <> str <>
 matchKwP :: Parser SourcePos
 matchKwP = keywordP "match"
 
+caseKwP :: Parser SourcePos 
+caseKwP = keywordP "case"
+
 comatchKwP :: Parser SourcePos
 comatchKwP = keywordP "comatch"
+
+cocaseKwP :: Parser SourcePos
+cocaseKwP = keywordP "cocase"
+
+ofKwP :: Parser SourcePos
+ofKwP = keywordP "of"
 
 prdKwP :: Parser SourcePos
 prdKwP = keywordP "prd"
@@ -186,12 +196,6 @@ cnsKwP = keywordP "cns"
 
 cmdKwP :: Parser SourcePos
 cmdKwP = keywordP "cmd"
-
-defKwP :: Parser SourcePos
-defKwP = keywordP "def"
-
-withKwP :: Parser SourcePos
-withKwP = keywordP "with"
 
 doneKwP :: Parser SourcePos
 doneKwP = keywordP "Done"
@@ -313,7 +317,7 @@ argListP p q = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> defKwP <|> dataKwP <|> codataKwP <|> setKwP <|> (eof >> getSourcePos)
+  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> (eof >> getSourcePos)
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

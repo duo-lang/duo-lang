@@ -13,10 +13,9 @@ import System.IO.Error (tryIOError)
 
 import Errors ()
 import Eval.Eval ( runEval )
-import Eval.ATerms ( evalATermComplete, evalATermSteps )
-import Eval.STerms ( eval, evalSteps )
+import Eval.Terms ( eval, evalSteps )
 import Parser.Parser
-    ( Parser, atermP, runFileParser, runInteractiveParser, commandP )
+    ( Parser, runFileParser, runInteractiveParser, commandP )
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
@@ -33,14 +32,11 @@ import Text.Megaparsec.Error (errorBundlePretty)
 
 data EvalSteps = Steps | NoSteps
 
-data Mode = Symmetric | Asymmetric
-
 data ReplState = ReplState
   { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: CallingConvention
-  , mode :: Mode
   , typeInfOpts :: InferenceOptions
   }
 
@@ -50,7 +46,6 @@ initialReplState = ReplState { replEnv = mempty
                              , loadedFiles = []
                              , steps = NoSteps
                              , evalOrder = CBV
-                             , mode = Symmetric
                              , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
                              }
 
@@ -101,11 +96,7 @@ safeRead file =  do
 ------------------------------------------------------------------------------
 
 cmd :: String -> Repl ()
-cmd s = do
-  mode <- gets mode
-  case mode of
-    Symmetric  -> cmdSymmetric  (T.pack s)
-    Asymmetric -> cmdAsymmetric (T.pack s)
+cmd s = cmdSymmetric  (T.pack s)
 
 
 cmdSymmetric :: Text -> Repl ()
@@ -122,23 +113,6 @@ cmdSymmetric s = do
     Steps -> do
       res <- fromRight $ runEval (evalSteps com) evalOrder env
       forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
-
-cmdAsymmetric :: Text -> Repl ()
-cmdAsymmetric s = do
-  (tmLoc,_) <- parseInteractive atermP s
-  let tm = compileATerm tmLoc
-  evalOrder <- gets evalOrder
-  env <- gets replEnv
-  steps <- gets steps
-  case steps of
-    NoSteps -> do
-      let res = runEval (evalATermComplete tm) evalOrder env
-      case res of
-        Left error -> prettyRepl error
-        Right res' -> prettyRepl res'
-    Steps -> do
-      res <- fromRight $ runEval (evalATermSteps tm) evalOrder env
-      forM_ res (\t -> prettyRepl t >> prettyText "----")
 
 ------------------------------------------------------------------------------
 -- Options
