@@ -20,7 +20,7 @@ import Utils
 shouldShiftTo :: Term pc Compiled -> Term pc Compiled -> Spec
 shouldShiftTo tm1 tm2 = do
     it (ppPrintString tm1 <> " should shift to " <> ppPrintString tm2)  $ do
-        shiftSTerm tm1 `shouldBe` tm2
+        shiftTerm tm1 `shouldBe` tm2
 
 shouldFocusTo :: Text -- ^ The command that should be focused
               -> Text -- ^ The expected result of focusing

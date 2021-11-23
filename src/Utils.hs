@@ -14,9 +14,10 @@ import Text.Megaparsec.Pos
 ----------------------------------------------------------------------------------
 
 -- oftenly used data structure, so extracting it and making it a functor is useful
-data Twice a = Twice a a deriving (Eq, Show, Ord)
+data Twice a = Twice [a] [a] deriving (Eq, Show, Ord)
+
 twiceMap :: (a -> b) -> (a -> b) -> Twice a -> Twice b
-twiceMap f g (Twice x y) = Twice (f x) (g y)
+twiceMap f g (Twice x y) = Twice (f <$> x) (g <$> y)
 
 instance Functor Twice where
   fmap f = twiceMap f f
@@ -31,7 +32,7 @@ data Loc = Loc SourcePos SourcePos
 data Located a = Located Loc a
 
 defaultLoc :: Loc
-defaultLoc = Loc (SourcePos "" (mkPos 0) (mkPos 0)) (SourcePos "" (mkPos 0) (mkPos 0))
+defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkPos 1))
 
 ----------------------------------------------------------------------------------
 -- Helper Functions

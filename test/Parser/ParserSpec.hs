@@ -43,17 +43,13 @@ spec :: Spec
 spec = do
   describe "Check type parsing" $ do
     typeParseExample "{{ Nat :>> < > }}" $ TyData PosRep (Just $ MkTypeName "Nat") []
-    typeParseExample "{ 'A() }" $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] []]
-    typeParseExample "{ 'A[{ 'B }] }" $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") $ MkTypArgs [] 
-      [TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") $ MkTypArgs [] []] ]]
+    typeParseExample "{ 'A() }" $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") []]
+    typeParseExample "{ 'A[{ 'B }] }" $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") [CnsType $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") []] ]]
     typeParseExample "{{Fun :>> {} }}" $ TyCodata PosRep (Just $ MkTypeName "Fun") []
-    typeParseExample "< 'X({{ Nat :>> < > }}) >" $ TyData PosRep Nothing [MkXtorSig (MkXtorName Structural "X") $ MkTypArgs
-      [ TyData PosRep (Just $ MkTypeName "Nat") [] ] []]
-    typeParseExample "{{ Nat :>> < S > }}" $ TyData PosRep (Just $ MkTypeName "Nat")
-      [MkXtorSig (MkXtorName Nominal "S") $ MkTypArgs [] []]
+    typeParseExample "< 'X({{ Nat :>> < > }}) >" $ TyData PosRep Nothing [MkXtorSig (MkXtorName Structural "X") [ PrdType $ TyData PosRep (Just $ MkTypeName "Nat") [] ]]
+    typeParseExample "{{ Nat :>> < S > }}" $ TyData PosRep (Just $ MkTypeName "Nat") [MkXtorSig (MkXtorName Nominal "S") []]
     typeParseExample "{{ Foo :>> { A[{ B }] } }}" $ TyCodata PosRep (Just $ MkTypeName "Foo")
-      [MkXtorSig (MkXtorName Nominal "A") $ MkTypArgs [] 
-      [TyCodata PosRep Nothing [MkXtorSig (MkXtorName Nominal "B") $ MkTypArgs [] []] ]]
+      [MkXtorSig (MkXtorName Nominal "A") [CnsType $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Nominal "B") []] ]]
     typeParseExample "< 'A | 'B > /\\ < 'B >"
         $ TySet NegRep [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                        , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]

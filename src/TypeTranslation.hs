@@ -71,13 +71,19 @@ freshTVar = do
 -- Upper bound translation functions
 ---------------------------------------------------------------------------------------------
 
+translatePCTypeUpper :: PrdCnsType Neg -> TranslateM (PrdCnsType Neg)
+translatePCTypeUpper (PrdType ty) = PrdType <$> translateTypeUpper' ty
+translatePCTypeUpper (CnsType ty) = CnsType <$> translateTypeLower' ty
+
+translateCtxtUpper :: LinearContext Neg -> TranslateM (LinearContext Neg)
+translateCtxtUpper ctxt = sequence (translatePCTypeUpper <$> ctxt)
+
 -- | Translate all producer and consumer types in an xtor signature
 translateXtorSigUpper' :: XtorSig Neg -> TranslateM (XtorSig Neg)
 translateXtorSigUpper' MkXtorSig{..} = do
   -- Translate producer and consumer arg types recursively
-  pts' <- mapM translateTypeUpper' $ prdTypes sig_args
-  cts' <- mapM translateTypeLower' $ cnsTypes sig_args
-  return $ MkXtorSig sig_name (MkTypArgs pts' cts')
+  ctxt <- translateCtxtUpper sig_args
+  return $ MkXtorSig sig_name ctxt
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
@@ -106,13 +112,19 @@ translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty
 -- Lower bound translation functions
 ---------------------------------------------------------------------------------------------
 
+translatePCTypeLower :: PrdCnsType Pos -> TranslateM (PrdCnsType Pos)
+translatePCTypeLower (PrdType ty) = PrdType <$> translateTypeLower' ty
+translatePCTypeLower (CnsType ty) = CnsType <$> translateTypeUpper' ty
+
+translateCtxtLower :: LinearContext Pos -> TranslateM (LinearContext Pos)
+translateCtxtLower ctxt = sequence (translatePCTypeLower <$> ctxt)
+
 -- | Translate all producer and consumer types in an xtor signature
 translateXtorSigLower' :: XtorSig Pos -> TranslateM (XtorSig Pos)
 translateXtorSigLower' MkXtorSig{..} = do
   -- Translate producer and consumer arg types recursively
-  pts' <- mapM translateTypeLower' $ prdTypes sig_args
-  cts' <- mapM translateTypeUpper' $ cnsTypes sig_args
-  return $ MkXtorSig sig_name (MkTypArgs pts' cts')
+  ctxt <- translateCtxtLower sig_args
+  return $ MkXtorSig sig_name ctxt
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
@@ -141,11 +153,17 @@ translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty
 -- Cleanup functions
 ---------------------------------------------------------------------------------------------
 
+cleanUpPCType :: PrdCnsType pol -> TranslateM (PrdCnsType pol)
+cleanUpPCType (PrdType ty) = PrdType <$> cleanUpType ty
+cleanUpPCType (CnsType ty) = CnsType <$> cleanUpType ty
+
+cleanUpCtxt :: LinearContext pol -> TranslateM (LinearContext pol)
+cleanUpCtxt ctxt = sequence (cleanUpPCType <$> ctxt)
+
 cleanUpXtorSig :: XtorSig pol -> TranslateM (XtorSig pol)
 cleanUpXtorSig MkXtorSig{..} = do
-  pts <- mapM cleanUpType $ prdTypes sig_args
-  cts <- mapM cleanUpType $ cnsTypes sig_args
-  return MkXtorSig{ sig_name, sig_args = MkTypArgs pts cts }
+  ctxt <- cleanUpCtxt sig_args
+  return MkXtorSig{ sig_name, sig_args = ctxt }
 
 -- | Remove unused recursion headers
 cleanUpType :: Typ pol -> TranslateM (Typ pol)

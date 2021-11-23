@@ -8,6 +8,7 @@ import Utils
 
 import Control.Monad.Except
 import Control.Monad.State
+    ( MonadState(get), runState, State, modify )
 import Control.Monad.Reader
 
 import Errors
@@ -123,7 +124,7 @@ nodeToOuts i = do
 computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a node.
                 -> DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorLabel -- ^ The Label of the constructor / destructor
-                -> Twice [[Node]] -- ^ The nodes which contain the arguments of the constructor / destructor
+                -> Twice [Node] -- ^ The nodes which contain the arguments of the constructor / destructor
 computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } =
   let
     prdFun n = [ node | ((EdgeSymbol dc' xt pc pos), node) <- outs, dc' == dc, xt == labelName, pc == Prd, pos == n]
@@ -134,7 +135,7 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } 
     Twice prdArgs cnsArgs
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [[Node]] -> PolarityRep pol -> AutToTypeM (TypArgs pol)
+argNodesToArgTypes :: Twice [Node] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
   prdTypes <- forM prdNodes $ \ns -> do
     typs <- forM ns $ \n -> do
@@ -144,7 +145,7 @@ argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
     typs <- forM ns $ \n -> do
       nodeToType (flipPolarityRep rep) n
     return $ case typs of [t] -> t; _ -> TySet (flipPolarityRep rep) typs
-  return (MkTypArgs prdTypes cnsTypes)
+  return $ (PrdType <$>  prdTypes) ++ (CnsType <$> cnsTypes)
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do

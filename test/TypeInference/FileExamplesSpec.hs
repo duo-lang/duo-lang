@@ -5,8 +5,6 @@ import Control.Monad (forM_)
 
 import Data.Either( isRight)
 import TestUtils
-import Pretty.Pretty
-import Pretty.Errors ()
 import TypeInference.Driver
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
