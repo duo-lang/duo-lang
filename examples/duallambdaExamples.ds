@@ -4,6 +4,10 @@ import Prelude;
 data Error : Type CBV { Error(Nat) };
 
 codata Par : Type CBN { MkPar[Error,Bool]};
+codata Par2 : Type CBN { MkPar2[List,Unit]};
+
+data List : Type CBV { Nil, Cons(Nat,List) };
+data Pred : Type CBV { Ap(Nat)[Bool] };
 
 # Implementation is not important, since I only want to do typechecking.
 prd rec f : { 'Ap(Bool)[Par] } := f;
@@ -13,3 +17,25 @@ prd rec h : { 'Ap(Bool)[Par] } := f;
 prd compose := \x => cocase { MkPar[err] =>
                                 (h (g ((f x).MkPar[err]).MkPar[err])).MkPar[err]
                             };
+
+prd rec filterHelper := \p => \l => case l of { 
+    Nil => comatch {
+        MkPar2[k1,k2] => Unit >> k2
+    },
+    Cons(x,xs) => case p.Ap(x) of {
+        True => 
+            comatch {
+                MkPar2[k1,k2] =>
+                    filterHelper.'Ap(p).'Ap(xs) >> MkPar2[mu ys. Cons(x,ys) >> k1, k2]
+            },
+        False => 
+            comatch {
+                MkPar2[k1,k2] =>
+                    filterHelper.'Ap(p).'Ap(xs) >> MkPar2[k1, mu y. xs >> k1]
+            }
+    }
+};
+
+prd filter := \p => \l => mu k. filterHelper.'Ap(p).'Ap(l) >> MkPar2[k, mu y. l >> k];
+prd filter2 := \p => \l => mu k. filterHelper.'Ap(p).'Ap(l).MkPar2[k] >> mu y. l >> k;
+
