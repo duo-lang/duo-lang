@@ -336,7 +336,7 @@ termLocallyClosedRec env (Comatch _ _ cases) =
 
 acaseLocallyClosedRec :: [[(PrdCns,())]] -> ACase ext -> Either Error ()
 acaseLocallyClosedRec env (MkACase _ _ args e) = do
-  termLocallyClosedRec ((((\_ -> (Prd,())) <$> args)):env) e
+  termLocallyClosedRec ((((\(x,_) -> (x,())) <$> args)):env) e
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
