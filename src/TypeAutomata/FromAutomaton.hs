@@ -162,8 +162,8 @@ nodeToTypeNoCache rep i = do
   gr <- asks graph
   let (Just (MkNodeLabel _ datSet codatSet tns refDat refCodat)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-  let refDatTypes = M.keys refDat -- Unique data ref types
-  let refCodatTypes = M.keys refCodat -- Unique codata ref types
+  let refDatTypes = M.toList refDat -- Unique data ref types
+  let refCodatTypes = M.toList refCodat -- Unique codata ref types
   resType <- local (visitNode i) $ do
     -- Creating type variables
     varL <- nodeToTVars rep i
@@ -187,18 +187,16 @@ nodeToTypeNoCache rep i = do
         return [TyCodata rep Nothing sig]
     -- Creating ref data types
     refDatL <- do
-      forM refDatTypes $ \tn -> do
-        let xtors = maybe [] S.toList $ M.lookup tn refDat
-        sig <- forM xtors $ \xt -> do
+      forM refDatTypes $ \(tn,xtors) -> do
+        sig <- forM (S.toList xtors) $ \xt -> do
           let nodes = computeArgNodes outs Data xt
           argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
         return $ TyData rep (Just tn) sig
     -- Creating ref codata types
     refCodatL <- do
-      forM refCodatTypes $ \tn -> do
-        let xtors = maybe [] S.toList $ M.lookup tn refCodat
-        sig <- forM xtors $ \xt -> do
+      forM refCodatTypes $ \(tn,xtors) -> do
+        sig <- forM (S.toList xtors) $ \xt -> do
           let nodes = computeArgNodes outs Codata xt
           argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
