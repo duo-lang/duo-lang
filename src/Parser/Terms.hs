@@ -279,7 +279,7 @@ termBotP rep = freeVar rep <|>
 
 -- | Create an application.
 mkApp :: Loc -> Term Prd Parsed -> Term Prd Parsed -> Term Prd Parsed
-mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [arg]
+mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [PrdTerm arg]
 
 mkApps :: SourcePos -> [(Term Prd Parsed, SourcePos)] -> (Term Prd Parsed, SourcePos)
 mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
@@ -309,21 +309,21 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -------------------------------------------------------------------------------------------
 
 -- | Parses "D(t,...,t)"
-destructorP' :: NominalStructural -> Parser (XtorName,[Term Prd Parsed], SourcePos)
+destructorP' :: NominalStructural -> Parser (XtorName,Substitution Parsed, SourcePos)
 destructorP' ns = do
-  (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ (fst <$> termTopP PrdRep) `sepBy` comma)
-  return (xt, args, endPos)
+  (xt, _) <- xtorName ns
+  (subst, endPos) <- substitutionP
+  return (xt, subst, endPos)
 
-destructorP :: Parser (XtorName,[Term Prd Parsed], SourcePos)
+destructorP :: Parser (XtorName,Substitution Parsed, SourcePos)
 destructorP = destructorP' Structural <|> destructorP' Nominal
 
-destructorChainP :: Parser [(XtorName,[Term Prd Parsed], SourcePos)]
+destructorChainP :: Parser [(XtorName,Substitution Parsed, SourcePos)]
 destructorChainP = many (dot >> destructorP)
 
 mkDtorChain :: SourcePos
             -> (Term Prd Parsed, SourcePos)
-            -> [(XtorName,[Term Prd Parsed], SourcePos)]
+            -> [(XtorName,Substitution Parsed, SourcePos)]
             -> (Term Prd Parsed, SourcePos)
 mkDtorChain _ destructee [] = destructee
 mkDtorChain startPos (destructee,_)((xt,args,endPos):dts) =
