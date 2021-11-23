@@ -57,7 +57,8 @@ common shared-build-depends
                      LambdaCase,
                      DeriveFunctor,
                      OverloadedStrings,
-                     ImportQualifiedPost
+                     ImportQualifiedPost,
+                     ViewPatterns
 
 library
   import: shared-build-depends

@@ -18,11 +18,11 @@ resVar :: FreeVarName
 resVar = "$result"
 
 
-compilePCTerm :: PrdCnsTerm ext -> PrdCnsTerm Compiled
+compilePCTerm :: PrdCnsTerm Inferred -> PrdCnsTerm Compiled
 compilePCTerm (PrdTerm tm) = PrdTerm $ compile tm
 compilePCTerm (CnsTerm tm) = CnsTerm $ compile tm
 
-compile :: Term pc ext -> Term pc Compiled
+compile :: Term pc Inferred -> Term pc Compiled
 compile (BoundVar _ pc idx) = BoundVar () pc idx
 compile (FreeVar _ pc fv) = FreeVar () pc fv
 compile (XtorCall _ pc xt args) = XtorCall () pc xt (compilePCTerm <$> args)
@@ -53,10 +53,10 @@ compile (Comatch _ ns cocases) =
 
 
 
-compileSCase :: SCase ext -> SCase Compiled
+compileSCase :: SCase Inferred -> SCase Compiled
 compileSCase (MkSCase _ xt args cmd) = MkSCase () xt args (compileCmd cmd)
 
-compileCmd :: Command ext -> Command Compiled
+compileCmd :: Command Inferred -> Command Compiled
 compileCmd (Apply _ prd cns) = Apply () (compile prd) (compile cns)
 compileCmd (Print _ prd) = Print () (compile prd)
 compileCmd (Done _) = Done ()
@@ -65,7 +65,7 @@ compileCmd (Done _) = Done ()
 -- Translate Program
 ---------------------------------------------------------------------------------
 
-compileDecl :: Declaration ext -> Declaration Compiled
+compileDecl :: Declaration Inferred -> Declaration Compiled
 compileDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (compile tm)
 compileDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (compileCmd cmd)
 compileDecl (DataDecl _ decl)                   = DataDecl () decl
@@ -73,6 +73,6 @@ compileDecl (ImportDecl _ mn)                   = ImportDecl () mn
 compileDecl (SetDecl _ txt)                     = SetDecl () txt
 compileDecl ParseErrorDecl                      = ParseErrorDecl   
 
-compileProgram :: Program ext -> Program Compiled
+compileProgram :: Program Inferred -> Program Compiled
 compileProgram ps = compileDecl <$> ps
 
