@@ -1,4 +1,4 @@
-module Translate.Translate
+module Translate.Desugar
   ( compile
   , compilePCTerm
   , compileProgram

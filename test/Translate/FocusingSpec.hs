@@ -8,7 +8,7 @@ import TestUtils
 import Pretty.Pretty
 
 import TypeInference.Driver
-import Translate.Translate
+import Translate.Desugar
 import Parser.Parser
 import Syntax.Terms
 import Syntax.CommonTerm

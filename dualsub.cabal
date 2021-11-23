@@ -101,7 +101,7 @@ library
       TypeInference.Constraints
       TypeTranslation
       Utils
-      Translate.Translate
+      Translate.Desugar
       Translate.Focusing
   other-modules:
       Paths_dualsub

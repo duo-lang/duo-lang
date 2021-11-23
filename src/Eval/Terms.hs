@@ -14,7 +14,7 @@ import Pretty.Terms ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds
-import Translate.Translate
+import Translate.Desugar
 
 ---------------------------------------------------------------------------------
 -- Symmetric Terms
