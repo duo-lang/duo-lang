@@ -16,14 +16,19 @@ import Utils
 -- Substitutions
 --------------------------------------------------------------------------------------------
 
+-- | Parse a non-empty list of producers in parentheses.
+-- E.g. "(prd,prd,prd)""
 prdSubstPart :: Parser (Substitution Parsed, SourcePos)
 prdSubstPart = parens   $ (PrdTerm . fst <$> termP PrdRep) `sepBy` comma
 
+-- | Parse a non-empty list of consumers in brackets.
+-- E.g. "[cns,cns,cns]"
 cnsSubstPart :: Parser (Substitution Parsed, SourcePos)
 cnsSubstPart = brackets $ (CnsTerm . fst <$> termP CnsRep) `sepBy` comma
 
 
--- | Parse two lists, the first in parentheses and the second in brackets.
+-- | Parse a substitution, consisting of lists of producers and consumers.
+-- E.g.: "[cns,cns](prd)[cns](prd,prd)"
 substitutionP :: Parser (Substitution Parsed, SourcePos)
 substitutionP = do
   endPos <- getSourcePos
