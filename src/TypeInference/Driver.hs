@@ -163,7 +163,7 @@ inferSTermTraced isRec loc fv rep tm = do
   -- Coalesce the result
   let bisubst = coalesce solverResult
   -- Read of the type and generate the resulting type
-  let typ = zonk bisubst (getTypeSTerm tmInferred)
+  let typ = zonk bisubst (getTypeTerm tmInferred)
   -- Simplify the resulting type
   (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
   -- Generate result type

@@ -116,11 +116,17 @@ coalesceType (TyRec NegRep tv ty) = do
     ty' <- local f $ coalesceType ty
     return $ TyRec NegRep tv ty'
 
+coalescePrdCnsType :: PrdCnsType pol -> CoalesceM (PrdCnsType pol)
+coalescePrdCnsType (PrdType ty) = PrdType <$> coalesceType ty
+coalescePrdCnsType (CnsType ty) = CnsType <$> coalesceType ty
+
+coalesceCtxt :: LinearContext pol -> CoalesceM (LinearContext pol)
+coalesceCtxt = mapM coalescePrdCnsType
+
 coalesceXtor :: XtorSig pol -> CoalesceM (XtorSig pol)
-coalesceXtor (MkXtorSig name (MkTypArgs  prdArgs cnsArgs)) = do
-    prdArgs' <- sequence $ coalesceType <$> prdArgs
-    cnsArgs' <- sequence $ coalesceType <$> cnsArgs
-    return $ MkXtorSig name (MkTypArgs prdArgs' cnsArgs')
+coalesceXtor (MkXtorSig name ctxt) = do
+    ctxt' <- coalesceCtxt ctxt
+    return $ MkXtorSig name ctxt'
 
 ---------------------------------------------------------------------------------
 -- Zonking
@@ -139,7 +145,14 @@ zonk _       (TyNominal rep tn) = TyNominal rep tn
 zonk bisubst (TySet rep tys) = TySet rep (zonk bisubst <$> tys)
 zonk bisubst (TyRec rep tv ty) = TyRec rep tv (zonk bisubst ty)
 
+zonkPrdCnsType :: Bisubstitution -> PrdCnsType pol -> PrdCnsType pol
+zonkPrdCnsType bisubst (PrdType ty) = PrdType (zonk bisubst ty)
+zonkPrdCnsType bisubst (CnsType ty) = CnsType (zonk bisubst ty)
+
+zonkLinearCtxt :: Bisubstitution -> LinearContext pol -> LinearContext pol
+zonkLinearCtxt bisubst = fmap (zonkPrdCnsType bisubst)
+
 zonkXtorSig :: Bisubstitution -> XtorSig pol -> XtorSig pol
-zonkXtorSig bisubst (MkXtorSig name (MkTypArgs prdArgs cnsArgs)) =
-    MkXtorSig name (MkTypArgs (zonk bisubst <$> prdArgs) (zonk bisubst <$> cnsArgs))
+zonkXtorSig bisubst (MkXtorSig name ctxt) =
+    MkXtorSig name (zonkLinearCtxt bisubst ctxt)
     

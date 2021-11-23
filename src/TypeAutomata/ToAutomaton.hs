@@ -17,16 +17,6 @@ import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
-    ( TypeScheme(..),
-      Typ(..),
-      XtorSig(..),
-      TypArgs(..),
-      DataCodata(..),
-      PolarityRep(..),
-      Polarity(..),
-      TVar(..),
-      polarityRepToPol,
-      getPolarity )
 import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),
@@ -156,15 +146,25 @@ lookupTVar NegRep tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
+giz :: LinearContext pol -> ([Typ pol], [Typ (FlipPol pol)])
+giz ctxt = giz' ctxt ([],[])
+  where
+    giz' :: LinearContext pol -> ([Typ pol], [Typ (FlipPol pol)]) -> ([Typ pol], [Typ (FlipPol pol)])
+    giz' [] x = x
+    giz' (PrdType ty:rest) (xs,ys) = giz' rest (ty:xs,ys)
+    giz' (CnsType ty:rest) (xs,ys) = giz' rest (xs,ty:ys)
 
 sigToLabel :: XtorSig pol -> XtorLabel
-sigToLabel (MkXtorSig name (MkTypArgs prds cnss)) = MkXtorLabel name (length prds) (length cnss)
+sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (length prds) (length cnss)
+  where
+    (prds,cnss) = giz ctxt
 
 insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TTA Node
 insertXtors dc pol xtors = do
   newNode <- newNodeM
   insertNode newNode (singleNodeLabel pol dc (S.fromList (sigToLabel <$> xtors)))
-  forM_ xtors $ \(MkXtorSig xt (MkTypArgs prdTypes cnsTypes)) -> do
+  forM_ xtors $ \(MkXtorSig xt ctxt) -> do
+    let (prdTypes, cnsTypes) = giz ctxt
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
       prdNode <- insertType prdType
       insertEdges [(newNode, prdNode, EdgeSymbol dc xt Prd i)]

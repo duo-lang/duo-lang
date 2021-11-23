@@ -13,7 +13,6 @@ import Pretty.Errors ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Program
-import Utils
 import TestUtils
 import TypeInference.Driver
 spec :: Spec
@@ -34,11 +33,11 @@ spec = do
     it "checkIfBound [] PrdRep (0,0) `shouldBe` False" $ do
       checkIfBound [] PrdRep (0,0) `shouldSatisfy` isLeft
     it "checkIfBound [Twice [] []] PrdRep (0,0) = False" $ do
-      checkIfBound [Twice [] []] PrdRep (0,0) `shouldSatisfy` isLeft
+      checkIfBound [[]] PrdRep (0,0) `shouldSatisfy` isLeft
     it "checkIfBound [Twice [()] []] PrdRep (0,0) = True" $ do
-      checkIfBound [Twice [()] []] PrdRep (0,0) `shouldSatisfy` isRight
+      checkIfBound [[(Prd,())]] PrdRep (0,0) `shouldSatisfy` isRight
     it "checkIfBound [Twice [] [()]] CnsRep (0,0) = True" $ do
-      checkIfBound [Twice [] [()]] CnsRep (0,0) `shouldSatisfy` isRight
+      checkIfBound [[(Cns,())]] CnsRep (0,0) `shouldSatisfy` isRight
     it "checkIfBound [Twice [()] []] CnsRep (0,0) = False" $ do
-      checkIfBound [Twice [()] []] CnsRep (0,0) `shouldSatisfy` isLeft
+      checkIfBound [[(Prd,())]] CnsRep (0,0) `shouldSatisfy` isLeft
 

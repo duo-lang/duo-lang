@@ -6,16 +6,21 @@ import Pretty.Pretty
 import Syntax.Terms
 import Syntax.CommonTerm
 
+
 ---------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (SCase ext) where
   prettyAnn MkSCase{..} =
-    prettyAnn scase_name <>
-    prettyTwice scase_args <+>
-    annSymbol "=>" <+>
-    prettyAnn scase_cmd
+    let
+      prds = [x | (Prd,x) <- scase_args]
+      cnss = [x | (Cns,x) <- scase_args]
+    in
+      prettyAnn scase_name <>
+      prettyTwice prds cnss <+>
+      annSymbol "=>" <+>
+      prettyAnn scase_cmd
 
 instance PrettyAnn (ACase ext) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =
@@ -24,12 +29,33 @@ instance PrettyAnn (ACase ext) where
     annSymbol "=>" <+>
     prettyAnn acase_term
 
-instance PrettyAnn (Substitution ext) where
-  prettyAnn (MkSubst prds cns) = prettyTwice' prds cns
+instance PrettyAnn (PrdCnsTerm ext) where
+  prettyAnn (PrdTerm tm) = prettyAnn tm
+  prettyAnn (CnsTerm tm) = prettyAnn tm
+
+split :: Substitution ext -> [(PrdCns, Substitution ext)]
+split [] = []
+split (PrdTerm tm :rest) = reverse $ split' Prd rest [PrdTerm tm] []
+split (CnsTerm tm :rest) = reverse $ split' Cns rest [CnsTerm tm] []
+
+split' :: PrdCns -> Substitution ext -> Substitution ext -> [(PrdCns, Substitution ext)] -> [(PrdCns, Substitution ext)]
+split' pc [] ctxt accum = (pc,ctxt):accum
+split' Prd (PrdTerm tm:rest) subst accum = split' Prd rest (PrdTerm tm:subst) accum
+split' Prd (CnsTerm tm:rest) subst accum = split' Cns rest [CnsTerm tm] ((Prd, reverse subst):accum)
+split' Cns (CnsTerm tm:rest) subst accum = split' Cns rest (CnsTerm tm:subst) accum
+split' Cns (PrdTerm tm:rest) subst accum = split' Prd rest [PrdTerm tm] ((Cns, reverse subst):accum)
+
+printSegment :: (PrdCns, Substitution ext) -> Doc Annotation
+printSegment (Prd, subst) = parens'   comma (prettyAnn <$> subst)
+printSegment (Cns, subst) = brackets' comma (prettyAnn <$> subst)
+
+
+instance {-# OVERLAPPING #-} PrettyAnn (Substitution ext) where
+  prettyAnn subst = mconcat (printSegment <$> split subst)
 
 isNumSTerm :: Term pc ext -> Maybe Int
-isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") (MkSubst [] [])) = Just 0
-isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "S") (MkSubst [n] [])) = case isNumSTerm n of
+isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") []) = Just 0
+isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "S") [PrdTerm n]) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
@@ -50,12 +76,12 @@ instance PrettyAnn (Term pc ext) where
     prettyAnn a <> "." <> parens (prettyAnn cmd)
   prettyAnn (Dtor _ xt t args) =
     parens ( prettyAnn t <> "." <> prettyAnn xt <> parens (intercalateComma (map prettyAnn args)))
-  prettyAnn (Match _ t cases) =
+  prettyAnn (Match _ _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+>
     annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (Comatch _ cocases) =
+  prettyAnn (Comatch _ _ cocases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
 
@@ -65,7 +91,7 @@ instance PrettyAnn (Command ext) where
   prettyAnn (Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
 
 instance PrettyAnn (NamedRep (Term pc ext)) where
-  prettyAnn (NamedRep tm) = prettyAnn (openSTermComplete tm)
+  prettyAnn (NamedRep tm) = prettyAnn (openTermComplete tm)
 
 instance PrettyAnn (NamedRep (Command ext)) where
   prettyAnn (NamedRep cmd) = prettyAnn (openCommandComplete cmd)

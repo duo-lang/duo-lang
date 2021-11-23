@@ -13,6 +13,26 @@ import Syntax.CommonTerm
 import Utils
 
 --------------------------------------------------------------------------------------------
+-- Substitutions
+--------------------------------------------------------------------------------------------
+
+prdSubstPart :: Parser (Substitution Parsed, SourcePos)
+prdSubstPart = parens   $ (PrdTerm . fst <$> termP PrdRep) `sepBy` comma
+
+cnsSubstPart :: Parser (Substitution Parsed, SourcePos)
+cnsSubstPart = brackets $ (CnsTerm . fst <$> termP CnsRep) `sepBy` comma
+
+
+-- | Parse two lists, the first in parentheses and the second in brackets.
+substitutionP :: Parser (Substitution Parsed, SourcePos)
+substitutionP = do
+  endPos <- getSourcePos
+  xs <- many (prdSubstPart <|> cnsSubstPart)
+  case xs of
+    [] -> return ([], endPos)
+    xs -> return (concat (fst <$> xs), snd (last xs))
+
+--------------------------------------------------------------------------------------------
 -- Free Variables, Literals and Xtors
 --------------------------------------------------------------------------------------------
 
@@ -31,67 +51,16 @@ numLitP ns PrdRep = do
   return (numToTerm (Loc startPos endPos) num, endPos)
   where
     numToTerm :: Loc -> Int -> Term Prd Parsed
-    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") (MkSubst [] [])
-    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") (MkSubst [numToTerm loc (n-1)] [])
-
--- | Parse two lists, the first in parentheses and the second in brackets.
-xtorArgsP :: Parser (Substitution Parsed, SourcePos)
-xtorArgsP = do
-  endPos <- getSourcePos
-  (xs, endPos) <- option ([],endPos) (parens   $ (fst <$> (termP PrdRep)) `sepBy` comma)
-  (ys, endPos) <- option ([],endPos) (brackets $ (fst <$> (termP CnsRep)) `sepBy` comma)
-  return (MkSubst xs ys, endPos)
+    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") []
+    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 xtorCall ns pc = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
-  (args, endPos) <- xtorArgsP
-  return (XtorCall (Loc startPos endPos) pc xt args, endPos)
+  (subst, endPos) <- substitutionP
+  return (XtorCall (Loc startPos endPos) pc xt subst, endPos)
 
---------------------------------------------------------------------------------------------
--- Pattern and copattern matches
---------------------------------------------------------------------------------------------
-
-singleCase :: NominalStructural -> Parser (SCase Parsed, SourcePos)
-singleCase ns = do
-  startPos <- getSourcePos
-  (xt, _pos) <- xtorName ns
-  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
-  _ <- rightarrow
-  (cmd, endPos) <- commandP
-  let pmcase = MkSCase { scase_ext = Loc startPos endPos
-                       , scase_name = xt
-                       , scase_args = fmap Just <$> args
-                       , scase_cmd = commandClosing args cmd -- de brujin transformation
-                       }
-  return (pmcase, endPos)
-
-
--- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
--- infer a structural type, not a nominal one.
-casesP :: Parser ([SCase Parsed], NominalStructural,SourcePos)
-casesP = try structuralCases <|> nominalCases
-  where
-    structuralCases = do
-      (cases, endPos) <- braces ((fst <$> singleCase Structural) `sepBy` comma)
-      return (cases, Structural, endPos)
-    nominalCases = do
-      (cases, endPos) <- braces ((fst <$> singleCase Nominal) `sepBy1` comma)
-      -- There must be at least one case for a nominal type to be inferred
-      return (cases, Nominal, endPos)
-
-patternMatch :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
-patternMatch PrdRep = do
-  startPos <- getSourcePos
-  _ <- comatchKwP
-  (cases,ns, endPos) <- casesP
-  return (XMatch (Loc startPos endPos) PrdRep ns cases, endPos)
-patternMatch CnsRep = do
-  startPos <- getSourcePos
-  _ <- matchKwP
-  (cases,ns,endPos) <- casesP
-  return (XMatch (Loc startPos endPos) CnsRep ns cases, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -104,14 +73,14 @@ muAbstraction PrdRep = do
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP
-  return (MuAbs (Loc startPos endPos) PrdRep (Just v) (commandClosingSingle CnsRep v cmd), endPos)
+  return (MuAbs (Loc startPos endPos) PrdRep (Just v) (commandClosing [(Cns,v)] cmd), endPos)
 muAbstraction CnsRep = do
   startPos <- getSourcePos
   _ <- muKwP
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- commandP
-  return (MuAbs (Loc startPos endPos) CnsRep (Just v) (commandClosingSingle PrdRep v cmd), endPos)
+  return (MuAbs (Loc startPos endPos) CnsRep (Just v) (commandClosing [(Prd,v)] cmd), endPos)
 
 --------------------------------------------------------------------------------------------
 -- Commands
@@ -186,21 +155,67 @@ commandP =
 -------------------------------------------------------------------------------------------
 -- Bottom Parser
 -------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+-- Pattern and copattern matches
+--------------------------------------------------------------------------------------------
 
-acaseP :: NominalStructural -> Parser (ACase Parsed)
+scaseP :: NominalStructural -> Parser (SCase Parsed, SourcePos)
+scaseP ns = do
+  startPos <- getSourcePos
+  (xt, _pos) <- xtorName ns
+  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  _ <- rightarrow
+  (cmd, endPos) <- commandP
+  let pmcase = MkSCase { scase_ext = Loc startPos endPos
+                       , scase_name = xt
+                       , scase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
+                       , scase_cmd = commandClosing args cmd -- de brujin transformation
+                       }
+  return (pmcase, endPos)
+
+acaseP :: NominalStructural -> Parser (ACase Parsed, SourcePos)
 acaseP ns = do
   startPos <- getSourcePos
-  (xt, _) <- xtorName ns
+  (xt, _pos) <- xtorName ns
   args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
-  return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing (Twice args []) res))
+  return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing ((\a -> (Prd,a)) <$> args) res), endPos)
 
-acasesP :: Parser ([ACase Parsed], SourcePos)
+-- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
+-- infer a structural type, not a nominal one.
+scasesP :: Parser ([SCase Parsed], NominalStructural,SourcePos)
+scasesP = try structuralCases <|> nominalCases
+  where
+    structuralCases = do
+      (cases, endPos) <- braces ((fst <$> scaseP Structural) `sepBy` comma)
+      return (cases, Structural, endPos)
+    nominalCases = do
+      (cases, endPos) <- braces ((fst <$> scaseP Nominal) `sepBy1` comma)
+      -- There must be at least one case for a nominal type to be inferred
+      return (cases, Nominal, endPos)
+
+acasesP :: Parser ([ACase Parsed], NominalStructural , SourcePos)
 acasesP = try structuralCases <|> nominalCases
   where
-    structuralCases = braces $ acaseP Structural `sepBy` comma
-    nominalCases = braces $ acaseP Nominal `sepBy` comma
+    structuralCases = do
+      (cases, endPos) <- braces ((fst <$> acaseP Structural) `sepBy` comma)
+      return (cases, Structural, endPos)
+    nominalCases = do
+      (cases,endPos) <- braces ((fst <$> acaseP Nominal) `sepBy` comma)
+      return (cases, Nominal, endPos)
+
+patternMatch :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
+patternMatch PrdRep = do
+  startPos <- getSourcePos
+  _ <- comatchKwP
+  (cases,ns, endPos) <- scasesP
+  return (XMatch (Loc startPos endPos) PrdRep ns cases, endPos)
+patternMatch CnsRep = do
+  startPos <- getSourcePos
+  _ <- matchKwP
+  (cases,ns,endPos) <- scasesP
+  return (XMatch (Loc startPos endPos) CnsRep ns cases, endPos)
 
 matchP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 matchP CnsRep = empty
@@ -209,20 +224,20 @@ matchP PrdRep = do
   _ <- caseKwP
   (arg, _pos) <- termP PrdRep
   _ <- ofKwP
-  (cases, endPos) <- acasesP
-  return (Match (Loc startPos endPos) arg cases, endPos)
+  (cases, ns, endPos) <- acasesP
+  return (Match (Loc startPos endPos) ns arg cases, endPos)
 
 comatchP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 comatchP CnsRep = empty
 comatchP PrdRep = do
   startPos <- getSourcePos
   _ <- cocaseKwP
-  (cocases, endPos) <- acasesP
-  return (Comatch (Loc startPos endPos) cocases, endPos)
+  (cocases, ns, endPos) <- acasesP
+  return (Comatch (Loc startPos endPos) ns cocases, endPos)
 
 -- | Create a lambda abstraction. 
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing (Twice [var] []) tm)]
+mkLambda loc var tm = Comatch loc Structural [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing [(Prd, var)] tm)]
 
 
 lambdaP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
@@ -231,7 +246,7 @@ lambdaP PrdRep = do
   startPos <- getSourcePos
   _ <- backslash
   bvar <- freeVarName
-  _ <- rightarrow 
+  _ <- rightarrow
   (tm, endPos) <- termTopP PrdRep
   let res = mkLambda (Loc startPos endPos) (fst bvar) tm
   return (res, endPos)
@@ -255,7 +270,7 @@ termBotP rep = freeVar rep <|>
   muAbstraction rep <|>
   parens (fst <$> termTopP rep) <|>
   lambdaP rep
-  
+
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser
@@ -274,7 +289,7 @@ mkApps startPos ((a1,_):(a2,endPos):as) =
     tm = mkApp (Loc startPos endPos) a1 a2
   in
     mkApps startPos ((tm,endPos):as)
-  
+
 
 applicationP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 applicationP CnsRep = termBotP CnsRep

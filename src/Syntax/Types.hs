@@ -65,30 +65,29 @@ deriving instance Eq (DataCodataRep pol)
 deriving instance Ord (DataCodataRep pol)
 
 ------------------------------------------------------------------------------
+-- LinearContexts
+------------------------------------------------------------------------------
+
+data PrdCnsType (pol :: Polarity) where
+  PrdType :: Typ pol -> PrdCnsType pol
+  CnsType :: Typ (FlipPol pol) -> PrdCnsType pol
+
+deriving instance Eq (PrdCnsType Pos)
+deriving instance Eq (PrdCnsType Neg)
+deriving instance Ord (PrdCnsType Pos)
+deriving instance Ord (PrdCnsType Neg)
+deriving instance Show (PrdCnsType Pos)
+deriving instance Show (PrdCnsType Neg)
+
+type LinearContext pol = [PrdCnsType pol]
+
+------------------------------------------------------------------------------
 -- Types
 ------------------------------------------------------------------------------
 
-data TypArgs (pol :: Polarity) = MkTypArgs
-  { prdTypes :: [Typ pol]
-  , cnsTypes :: [Typ (FlipPol pol)]
-  }
-
-deriving instance Eq (TypArgs Pos)
-deriving instance Eq (TypArgs Neg)
-deriving instance Ord (TypArgs Pos)
-deriving instance Ord (TypArgs Neg)
-deriving instance Show (TypArgs Pos)
-deriving instance Show (TypArgs Neg)
-
-instance Semigroup (TypArgs pol) where
-    (MkTypArgs ps cs) <> (MkTypArgs ps' cs') = MkTypArgs (ps <> ps') (cs <> cs')
-
-instance Monoid (TypArgs pol) where
-    mempty = MkTypArgs mempty mempty
-
 data XtorSig (pol :: Polarity) = MkXtorSig
   { sig_name :: XtorName
-  , sig_args :: TypArgs pol
+  , sig_args :: LinearContext pol
   }
 
 deriving instance Eq (XtorSig Pos)
@@ -163,9 +162,15 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyData _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
     freeTypeVars' (TyCodata _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
+    freeTypeVarsPC :: PrdCnsType pol -> [TVar]
+    freeTypeVarsPC (PrdType ty) = freeTypeVars' ty
+    freeTypeVarsPC (CnsType ty) = freeTypeVars' ty
+
+    freeTypeVarsCtxt :: LinearContext pol -> [TVar]
+    freeTypeVarsCtxt ctxt = concat (freeTypeVarsPC <$> ctxt)
+
     freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
-    freeTypeVarsXtorSig (MkXtorSig _ (MkTypArgs prdTypes cnsTypes)) =
-      concat (map freeTypeVars' prdTypes ++ map freeTypeVars' cnsTypes)
+    freeTypeVarsXtorSig (MkXtorSig _ ctxt) = freeTypeVarsCtxt ctxt
 
 
 -- | Generalize over all free type variables of a type.
@@ -199,11 +204,14 @@ substituteType m (TySet rep args) = TySet rep (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 
 substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
-substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteTypeArgs m sig_args)
+substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteContext m sig_args)
 
-substituteTypeArgs :: Map TVar (Typ Pos, Typ Neg) -> TypArgs pol -> TypArgs pol
-substituteTypeArgs m MkTypArgs { prdTypes, cnsTypes } =
-  MkTypArgs (substituteType m <$> prdTypes) (substituteType m <$> cnsTypes)
+substituteContext :: Map TVar (Typ Pos, Typ Neg) -> LinearContext pol -> LinearContext pol
+substituteContext m ctxt = substitutePCType m <$> ctxt
+
+substitutePCType :: Map TVar (Typ Pos, Typ Neg) -> PrdCnsType pol -> PrdCnsType pol
+substitutePCType m (PrdType ty)= PrdType $ substituteType m ty
+substitutePCType m (CnsType ty)= CnsType $ substituteType m ty
 
 
 

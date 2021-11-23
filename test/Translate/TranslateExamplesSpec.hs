@@ -1,11 +1,13 @@
 module Translate.TranslateExamplesSpec ( spec ) where
 
 import Test.Hspec
-import Data.Either (isRight)
 import Data.Text (Text)
 import Data.Text qualified as T
 
 import Parser.Parser
+import Pretty.Pretty
+import Pretty.Terms ()
+import Pretty.Errors ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Translate.Translate (compile)
@@ -16,13 +18,16 @@ compileExample termA termS = do
   it (T.unpack termA ++  " compiles to: " ++ T.unpack termS) $ do
       let Right (termS',_pos) = runInteractiveParser (termP PrdRep) termS
       let Right (termA',_pos) = runInteractiveParser (termP PrdRep) termA
-      removeNamesSTerm (compile termA') `shouldBe` removeNamesSTerm (compile termS')
+      removeNamesTerm (compile termA') `shouldBe` removeNamesTerm (compile termS')
 
 isClosed :: Text -> Spec
 isClosed termA = do
   it ("Compilation of " ++ T.unpack termA ++  " is a closed STerm.") $ do
       let Right (termA', _pos) = runInteractiveParser (termP PrdRep) termA
-      termLocallyClosed (compile termA') `shouldSatisfy` isRight
+      let compiledTerm = compile termA'
+      case termLocallyClosed compiledTerm of
+        Left err -> expectationFailure (ppPrintString err <> "\nIn the following term:\n" <> ppPrintString compiledTerm)
+        Right () -> return ()
 
 -- | Compiles ATerms to STerms.
 spec :: Spec

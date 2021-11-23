@@ -9,16 +9,16 @@ import Syntax.CommonTerm
       PrdCns(Cns, Prd),
       PrdCnsRep(..),
       XtorName,
-      Phase(..),
-      flipPrdCns )
+      Phase(..))
 import Syntax.Terms
     ( Command(..),
       Term(..),
       SCase(..),
-      Substitution(..),
-      commandClosingSingle,
-      shiftCmd)
+      Substitution,
+      commandClosing,
+      shiftCmd, PrdCnsTerm(..))
 import Syntax.Kinds ( CallingConvention(..) )
+
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -32,12 +32,13 @@ isValueTerm CBN PrdRep (MuAbs _ _ _ cmd) = isFocusedCmd CBN cmd -- CBN: so Mu is
 isValueTerm CBN CnsRep MuAbs {}          = False            -- CBN: So Mu~ is not a value.
 isValueTerm eo  _      tm                = isFocusedTerm eo tm
 
+isValuePCTerm :: CallingConvention -> PrdCnsTerm ext -> Bool
+isValuePCTerm eo (PrdTerm tm) = isValueTerm eo PrdRep tm
+isValuePCTerm eo (CnsTerm tm) = isValueTerm eo CnsRep tm
+
 -- | Check whether all arguments in the given argument list are substitutable.
 isValueArgs :: CallingConvention -> Substitution ext -> Bool
-isValueArgs eo MkSubst { prdArgs, cnsArgs } = and (valuePrds <> valueCnss)
-    where
-        valuePrds = isValueTerm eo PrdRep <$> prdArgs
-        valueCnss = isValueTerm eo CnsRep <$> cnsArgs
+isValueArgs eo = all (isValuePCTerm eo)
 
 -- | Check whether given term follows the focusing discipline.
 isFocusedTerm :: CallingConvention -> Term pc ext -> Bool
@@ -46,6 +47,7 @@ isFocusedTerm _  FreeVar {}            = True
 isFocusedTerm eo (XtorCall _ _ _ args) = isValueArgs eo args
 isFocusedTerm eo (XMatch _ _ _  cases) = and (isFocusedCase eo <$> cases)
 isFocusedTerm eo (MuAbs _ _ _ cmd)     = isFocusedCmd eo cmd
+isFocusedTerm _ _ = error "isFocusedTerm should only be called on core terms."
 
 isFocusedCase :: CallingConvention -> SCase ext -> Bool
 isFocusedCase eo MkSCase { scase_cmd } = isFocusedCmd eo scase_cmd
@@ -67,13 +69,13 @@ isFocusedCmd eo (Print _ prd)     = isFocusedTerm eo prd
 --
 -- We write [[t]] for the focusing translation of the term t.
 --
--- STerms:
+-- Terms:
 --
 -- [[x]]                               := x
--- [[(co-)match { X(xs)[ks] => cmd }]] := (co-)match { X(xs)[ks] => [[cmd]] }
+-- [[(co-)match { X Gamma => cmd }]]   := (co-)match { X Gamma => [[cmd]] }
 -- [[mu x. cmd]]                       := mu x. [[cmd]]
--- [[X(prds)[cnss]]]                   := X(prds)[cnss]                     (if "X(prds)[cnss]" is already focused)
--- [[X(prds)[cnss]]]                   := focusXtor Prd/Cns X prds cnss     (otherwise, see below)
+-- [[X subst]]                         := X subst                           (if "X subst" is already focused)
+-- [[X subst]]                         := focusXtor Prd/Cns X subst         (otherwise, see below)
 --
 -- Commands:
 --
@@ -84,41 +86,40 @@ isFocusedCmd eo (Print _ prd)     = isFocusedTerm eo prd
 -- The `focusXtor` and `focusXtor'` function work together to focus a
 -- xtor which has arguments which are not substitutable. We generate 1
 -- fresh variable "alpha" for the entire term, and one additional fresh
--- variable "beta_i" for every term in the argument list which is not a value.
+-- variable "beta_i" for every term in the substitution which is not a value.
 --
--- focusXtor Prd X prds cnss := mu  alpha. (focusXtor' Prd X prds cnss [] [])
--- focusXtor Cns X prds cnss := mu~ alpha. (focusXtor' Cns X prds cnss [] [])
+-- focusXtor Prd X subst := mu  alpha. (focusXtor' Prd X subst [])
+-- focusXtor Cns X subst := mu~ alpha. (focusXtor' Cns X subst [])
 --
--- writing "p" and "P" for unfocused and focused producers, and "c" and "C" for
--- unfocused consumers, the helper function `focusXtor'`  works like this:
+-- writing "t" and "T" for unfocused and focused terms, the helper function
+-- `focusXtor'`  works like this:
 -- 
 -- If we have transformed all arguments, we reconstruct the constructor application,
 -- and apply it to the generated alpha:
 --
--- focuxXtor' Prd X [] [] Ps Cs := X(Ps)[Cs] >> alpha
--- focusXtor' Cns X [] [] Ps Cs := alpha >> X(Ps)[Cs]
+-- focuxXtor' Prd X [] Ts := X Ts >> alpha
+-- focusXtor' Cns X [] Ts := alpha >> X Ts
 -- 
--- otherwise, we handle the next prd/cns from the argument list.
+-- otherwise, we handle the next term from the substitution.
 -- If the argument is already a value, we shuffle it to the RHS:
 --
--- focusXtor' _ _ (P:ps) cs     Ps Cs := focusXtor' _ _ ps cs (P:Ps) Cs
--- focusXtor' _ _ ps     (C:cs) Ps Cs := focusXtor' _ _ ps cs Ps     (C:Cs)
+-- focusXtor' _ _ (T:ts) Ts := focusXtor' _ _ ts (T:Ts)
 --
 -- If the argument is not a value, we have to lift it:
 --
--- focusXtor' _ _ (p:ps) cs     Ps Cs := [[p]] >> (mu~ beta_i. focusXtor' _ _ ps cs (beta_i:Ps) Cs)
--- focusXtor' _ _ ps     (c:cs) Ps Cs := (mu beta_i. focusXtor' _ _ ps cs Ps (beta_i:Cs)) >> [[c]]
+-- focusXtor' _ _ (p:ts) Ts := [[p]] >> (mu~ beta_i. focusXtor' _ _ ts (beta_i:Ts))
+-- focusXtor' _ _ (c:ts) Ts := (mu beta_i. focusXtor' _ _ ts (beta_i:Ts)) >> [[c]]
 ---------------------------------------------------------------------------------
 
 focusTerm :: CallingConvention  -> Term pc ext -> Term pc Compiled
 -- If the term is already focused, we don't want to do anything
-focusTerm eo tm | isFocusedTerm eo tm                                 = compile tm
-focusTerm _  (BoundVar _ rep var)                                     = BoundVar () rep var
-focusTerm _  (FreeVar _ rep var)                                      = FreeVar () rep var
-focusTerm eo (XtorCall _ pcrep name MkSubst { prdArgs, cnsArgs })     = focusXtor eo pcrep name prdArgs cnsArgs
-focusTerm eo (XMatch _ rep ns cases)                                  = XMatch () rep ns (focusSCase eo <$> cases)
-focusTerm eo (MuAbs _ rep _ cmd)                                      = MuAbs () rep Nothing (focusCmd eo cmd)
-
+focusTerm eo tm | isFocusedTerm eo tm      = compile tm
+focusTerm _  (BoundVar _ rep var)          = BoundVar () rep var
+focusTerm _  (FreeVar _ rep var)           = FreeVar () rep var
+focusTerm eo (XtorCall _ pcrep name subst) = focusXtor eo pcrep name subst
+focusTerm eo (XMatch _ rep ns cases)       = XMatch () rep ns (focusSCase eo <$> cases)
+focusTerm eo (MuAbs _ rep _ cmd)           = MuAbs () rep Nothing (focusCmd eo cmd)
+focusTerm _ _                              = error "focusTerm should only be called on Core terms"
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
@@ -132,34 +133,35 @@ betaVar i = "$beta" <> T.pack (show i)
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
-focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> [Term Prd ext] -> [Term Cns ext] -> Term pc Compiled
-focusXtor eo pcrep name prdArgs cnsArgs = MuAbs () pcrep Nothing cmd
-  where
-      cmd = commandClosingSingle (flipPrdCns pcrep) alphaVar (shiftCmd (focusXtor' eo pcrep name prdArgs cnsArgs [] []))
+focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> Substitution ext -> Term pc Compiled
+focusXtor eo PrdRep name subst = MuAbs () PrdRep Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd (focusXtor' eo PrdRep name subst [])))
+focusXtor eo CnsRep name subst = MuAbs () CnsRep Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd (focusXtor' eo CnsRep name subst [])))
 
 
-focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [Term Prd ext] -> [Term Cns ext] -> [Term Prd Compiled] -> [Term Cns Compiled] -> Command Compiled
-focusXtor' _  CnsRep name []         []         prd' cns' = Apply () (FreeVar () PrdRep alphaVar) (XtorCall () CnsRep name (MkSubst (reverse prd') (reverse cns')))
-focusXtor' _  PrdRep name []         []         prd' cns' = Apply () (XtorCall () PrdRep name (MkSubst (reverse prd') (reverse cns'))) (FreeVar () CnsRep alphaVar)
-focusXtor' eo pc     name (prd:prds) cns        prd' cns' | isValueTerm eo PrdRep prd = focusXtor' eo pc name prds cns (compile prd : prd') cns'
-                                                          | otherwise                   =
+focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [PrdCnsTerm ext] -> [PrdCnsTerm Compiled] -> Command Compiled
+focusXtor' _  CnsRep name [] pcterms' = Apply () (FreeVar () PrdRep alphaVar)
+                                                 (XtorCall () CnsRep name (reverse pcterms'))
+focusXtor' _  PrdRep name [] pcterms' = Apply () (XtorCall () PrdRep name (reverse pcterms'))
+                                                 (FreeVar () CnsRep alphaVar)
+focusXtor' eo pc     name (PrdTerm prd:pcterms) pcterms' | isValueTerm eo PrdRep prd = focusXtor' eo pc name pcterms (PrdTerm (compile prd) : pcterms')
+                                                         | otherwise                 =
                                                               let
-                                                                  var = betaVar (length (prd:prds) + length cns)
-                                                                  cmd = commandClosingSingle PrdRep var (shiftCmd (focusXtor' eo pc name prds cns (FreeVar () PrdRep var : prd') cns'))
+                                                                  var = betaVar (length pcterms') -- OK?
+                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
                                                               in
                                                                   Apply () (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
-focusXtor' eo pc     name []         (cns:cnss) prd' cns' | isValueTerm eo CnsRep cns = focusXtor' eo pc name [] cnss prd' (compile cns : cns')
-                                                          | otherwise                   =
+focusXtor' eo pc     name (CnsTerm cns:pcterms) pcterms' | isValueTerm eo CnsRep cns = focusXtor' eo pc name pcterms (CnsTerm (compile cns) : pcterms')
+                                                         | otherwise                 =
                                                               let
-                                                                  var = betaVar (length (cns:cnss))
-                                                                  cmd = commandClosingSingle CnsRep var (shiftCmd (focusXtor' eo pc name [] cnss prd' (FreeVar () CnsRep var: cns')))
+                                                                  var = betaVar (length pcterms') -- OK?
+                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
                                                               in Apply () (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 
 
 focusSCase :: CallingConvention -> SCase ext -> SCase Compiled
 focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
-    MkSCase () scase_name (fmap (const Nothing) <$> scase_args) (focusCmd eo scase_cmd)
+    MkSCase () scase_name ((\(pc,_) -> (pc, Nothing)) <$> scase_args) (focusCmd eo scase_cmd)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.

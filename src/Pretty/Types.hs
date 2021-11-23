@@ -5,6 +5,7 @@ import Prettyprinter
 import Pretty.Pretty
 import Syntax.Types
 import Syntax.Kinds
+import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -82,13 +83,28 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
   prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
 
-instance PrettyAnn (TypArgs a) where
-  prettyAnn (MkTypArgs [] []) = mempty
-  prettyAnn (MkTypArgs prdArgs []) = parens'   commaSym (prettyAnn <$> prdArgs)
-  prettyAnn (MkTypArgs [] cnsArgs) = brackets' commaSym (prettyAnn <$> cnsArgs)
-  prettyAnn (MkTypArgs prdArgs cnsArgs) = align $ sep [ (parens'   commaSym (prettyAnn <$> prdArgs))
-                                                      , (brackets' commaSym (prettyAnn <$> cnsArgs))
-                                                      ]
+instance PrettyAnn (PrdCnsType pol) where
+  prettyAnn (PrdType ty) = prettyAnn ty
+  prettyAnn (CnsType ty) = prettyAnn ty
+
+split :: LinearContext pol -> [(PrdCns, LinearContext pol)]
+split [] = []
+split (PrdType ty :rest) = reverse $ split' Prd rest [PrdType ty] []
+split (CnsType ty :rest) = reverse $ split' Cns rest [CnsType ty] []
+
+split' :: PrdCns -> LinearContext pol -> LinearContext pol -> [(PrdCns, LinearContext pol)] -> [(PrdCns, LinearContext pol)]
+split' pc [] ctxt accum = (pc,ctxt):accum
+split' Prd (PrdType ty:rest) ctxt accum = split' Prd rest (PrdType ty:ctxt) accum
+split' Prd (CnsType ty:rest) ctxt accum = split' Cns rest [CnsType ty] ((Prd, reverse ctxt):accum)
+split' Cns (CnsType ty:rest) ctxt accum = split' Cns rest (CnsType ty:ctxt) accum
+split' Cns (PrdType ty:rest) ctxt accum = split' Prd rest [PrdType ty] ((Cns, reverse ctxt):accum)
+
+printSegment :: (PrdCns, LinearContext pol) -> Doc Annotation
+printSegment (Prd, ctxt) = parens'   comma (prettyAnn <$> ctxt)
+printSegment (Cns, ctxt) = brackets' comma (prettyAnn <$> ctxt)
+
+instance {-# OVERLAPPING #-} PrettyAnn (LinearContext pol) where
+  prettyAnn ctxt = mconcat (printSegment <$> split ctxt)
 
 instance PrettyAnn (XtorSig a) where
   prettyAnn (MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
