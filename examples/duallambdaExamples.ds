@@ -1,0 +1,15 @@
+import Prelude;
+
+# Error type
+data Error : Type CBV { Error(Nat) };
+
+codata Par : Type CBN { MkPar[Error,Bool]};
+
+# Implementation is not important, since I only want to do typechecking.
+prd rec f : { 'Ap(Bool)[Par] } := f;
+prd rec g : { 'Ap(Bool)[Par] } := f;
+prd rec h : { 'Ap(Bool)[Par] } := f;
+
+prd compose := \x => cocase { MkPar[err] =>
+                                (h (g ((f x).MkPar[err]).MkPar[err])).MkPar[err]
+                            };
