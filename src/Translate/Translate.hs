@@ -32,7 +32,7 @@ compile (XMatch _ pc ns cases) = XMatch () pc ns (compileSCase <$> cases)
 -- Mu k.[(compile e) >> D (compile <$> args')[k] ]
 compile (Dtor _ xt t args) =
   let
-    cmd = Apply () (compile t) (XtorCall () CnsRep xt $ (PrdTerm . compile <$> args) ++ [CnsTerm $ FreeVar () CnsRep resVar])
+    cmd = Apply () (compile t) (XtorCall () CnsRep xt $ (compilePCTerm <$> args) ++ [CnsTerm $ FreeVar () CnsRep resVar])
   in
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 -- we want to compile match t { C (args) => e1 }
