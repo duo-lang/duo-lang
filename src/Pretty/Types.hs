@@ -1,5 +1,7 @@
 module Pretty.Types where
 
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Pretty
@@ -87,24 +89,21 @@ instance PrettyAnn (PrdCnsType pol) where
   prettyAnn (PrdType ty) = prettyAnn ty
   prettyAnn (CnsType ty) = prettyAnn ty
 
-split :: LinearContext pol -> [(PrdCns, LinearContext pol)]
-split [] = []
-split (PrdType ty :rest) = reverse $ split' Prd rest [PrdType ty] []
-split (CnsType ty :rest) = reverse $ split' Cns rest [CnsType ty] []
 
-split' :: PrdCns -> LinearContext pol -> LinearContext pol -> [(PrdCns, LinearContext pol)] -> [(PrdCns, LinearContext pol)]
-split' pc [] ctxt accum = (pc,ctxt):accum
-split' Prd (PrdType ty:rest) ctxt accum = split' Prd rest (PrdType ty:ctxt) accum
-split' Prd (CnsType ty:rest) ctxt accum = split' Cns rest [CnsType ty] ((Prd, reverse ctxt):accum)
-split' Cns (CnsType ty:rest) ctxt accum = split' Cns rest (CnsType ty:ctxt) accum
-split' Cns (PrdType ty:rest) ctxt accum = split' Prd rest [PrdType ty] ((Cns, reverse ctxt):accum)
+splitCtxt :: LinearContext pol -> [NonEmpty (PrdCnsType pol)]
+splitCtxt = NE.groupBy f
+  where
+    f :: PrdCnsType pol -> PrdCnsType pol -> Bool
+    f (PrdType _) (PrdType _) = True
+    f (CnsType _) (CnsType _) = True
+    f _ _ = False
 
-printSegment :: (PrdCns, LinearContext pol) -> Doc Annotation
-printSegment (Prd, ctxt) = parens'   comma (prettyAnn <$> ctxt)
-printSegment (Cns, ctxt) = brackets' comma (prettyAnn <$> ctxt)
+printSegment :: NonEmpty (PrdCnsType pol) -> Doc Annotation
+printSegment (PrdType ty :| rest) = parens'   comma (prettyAnn <$> PrdType ty : rest)
+printSegment (CnsType ty :| rest) = brackets' comma (prettyAnn <$> CnsType ty : rest)
 
 instance {-# OVERLAPPING #-} PrettyAnn (LinearContext pol) where
-  prettyAnn ctxt = mconcat (printSegment <$> split ctxt)
+  prettyAnn ctxt = mconcat (printSegment <$> splitCtxt ctxt)
 
 instance PrettyAnn (XtorSig a) where
   prettyAnn (MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
