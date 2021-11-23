@@ -71,7 +71,7 @@ type family CaseExt (ext :: Phase) :: Type where
 data ACase (ext :: Phase) = MkACase
   { acase_ext  :: CaseExt ext
   , acase_name :: XtorName
-  , acase_args :: [Maybe FreeVarName]
+  , acase_args :: [(PrdCns, Maybe FreeVarName)]
   , acase_term :: Term Prd ext
   }
 
@@ -369,7 +369,7 @@ openACase MkACase { acase_name, acase_args, acase_term } =
     MkACase { acase_ext = ()
             , acase_name = acase_name
             , acase_args = acase_args
-            , acase_term = termOpening ((\case {Just fv ->  PrdTerm $ FreeVar () PrdRep fv; Nothing -> error "Create Names first!"}) <$> acase_args) (openTermComplete acase_term)
+            , acase_term = termOpening (freeVarNamesToXtorArgs acase_args) (openTermComplete acase_term)
             }
 
 openSCase :: SCase ext -> SCase Compiled
@@ -476,7 +476,7 @@ createNamesSCase (MkSCase { scase_name, scase_args, scase_cmd }) = do
 createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
 createNamesACase (MkACase _ xt args e) = do
   e' <- createNamesSTerm' e
-  args' <- sequence $ (const (fresh PrdRep)) <$> args
+  args' <- sequence $ (\(pc,_) -> (fresh PrdRep >>= \v -> return (pc,v))) <$> args
   return $ MkACase defaultLoc xt args' e'
 
 
@@ -543,10 +543,10 @@ removeNamesTerm (Match ext ns e cases) = Match ext ns (removeNamesTerm e) (remov
 removeNamesTerm (Comatch ext ns cases) = Comatch ext ns (removeNamesACase <$> cases)
 
 removeNamesACase :: ACase ext -> ACase ext
-removeNamesACase (MkACase ext xt args e) = MkACase ext xt (const Nothing <$> args) (removeNamesTerm e)
+removeNamesACase (MkACase ext xt args e)   = MkACase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesTerm e)
 
 removeNamesSCase :: SCase ext -> SCase ext
-removeNamesSCase (MkSCase ext xt args cmd)= MkSCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesCmd cmd)
+removeNamesSCase (MkSCase ext xt args cmd) = MkSCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesCmd cmd)
 
 removeNamesCmd :: Command ext -> Command ext
 removeNamesCmd (Apply ext prd cns) = Apply ext (removeNamesTerm prd) (removeNamesTerm cns)

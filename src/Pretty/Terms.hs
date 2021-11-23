@@ -24,10 +24,14 @@ instance PrettyAnn (SCase ext) where
 
 instance PrettyAnn (ACase ext) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =
-    prettyAnn acase_name <>
-    parens (intercalateComma (prettyAnn <$> acase_args)) <+>
-    annSymbol "=>" <+>
-    prettyAnn acase_term
+    let
+      prds = [x | (Prd,x) <- acase_args]
+      cnss = [x | (Cns,x) <- acase_args]
+    in
+      prettyAnn acase_name <>
+      prettyTwice prds cnss <+>
+      annSymbol "=>" <+>
+      prettyAnn acase_term
 
 instance PrettyAnn (PrdCnsTerm ext) where
   prettyAnn (PrdTerm tm) = prettyAnn tm

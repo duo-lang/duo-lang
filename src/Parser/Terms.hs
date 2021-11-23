@@ -177,10 +177,16 @@ acaseP :: NominalStructural -> Parser (ACase Parsed, SourcePos)
 acaseP ns = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
-  args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
+  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
-  return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing ((\a -> (Prd,a)) <$> args) res), endPos)
+  let pmcase = MkACase { acase_ext = Loc startPos endPos
+                       , acase_name = xt
+                       , acase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
+                       , acase_term = termClosing args res
+                       }
+  return (pmcase, endPos)
+  
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
 -- infer a structural type, not a nominal one.
@@ -237,7 +243,7 @@ comatchP PrdRep = do
 
 -- | Create a lambda abstraction. 
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc Structural [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing [(Prd, var)] tm)]
+mkLambda loc var tm = Comatch loc Structural [MkACase loc (MkXtorName Structural "Ap") [(Prd, Just var)] (termClosing [(Prd, var)] tm)]
 
 
 lambdaP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)

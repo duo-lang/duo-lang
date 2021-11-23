@@ -288,7 +288,7 @@ genConstraintsTerm (Match loc Structural destructee cases) = do
   casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
     -- Generate positive and negative unification variables for all variables
     -- bound in the pattern.
-    (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args)
+    (argtsPos,argtsNeg) <- freshTVars acase_args
     -- Type case term using new unification variables
     acase_term' <- withContext argtsPos (genConstraintsTerm acase_term)
     -- The inferred term must be a subtype of the return type of the pattern match
@@ -345,7 +345,7 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
 
       casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args) 
+        (argtsPos,argtsNeg) <- freshTVars acase_args
         -- Typecheck case term using new type vars
         acase_term' <- withContext argtsPos (genConstraintsTerm acase_term)
         -- The term must have a subtype of the returnType
@@ -369,7 +369,7 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
 genConstraintsTerm (Comatch loc Structural cocases) = do
   cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
     -- Generate unification variables for each case arg
-    (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args)
+    (argtsPos,argtsNeg) <- freshTVars acase_args
     -- Typecheck the term in the context extended with the unification variables.
     acase_term'<- withContext argtsPos (genConstraintsTerm acase_term)
     return (MkACase acase_ext acase_name acase_args acase_term', MkXtorSig acase_name (argtsNeg ++ [CnsType $ getTypeTerm acase_term']))
@@ -407,7 +407,7 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) 
       tn@NominalDecl{..} <- lookupDataDecl xtn
       checkCorrectness (acase_name <$> cocases) tn
       cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
-        (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args)
+        (argtsPos,argtsNeg) <- freshTVars acase_args
         acase_termInferred<- withContext argtsPos (genConstraintsTerm acase_term)
 
         lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig acase_name PosRep)
