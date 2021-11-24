@@ -1,16 +1,16 @@
 module Translate.TranslateExamplesSpec ( spec ) where
 
+import Control.Monad
 import Test.Hspec
-import Data.Text (Text)
-import Data.Text qualified as T
 
-import Parser.Parser
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
-import Syntax.Terms
 import Syntax.CommonTerm
-import Translate.Translate (compile)
+import Syntax.Program
+import Translate.Translate 
+import TypeInference.Driver
+import TestUtils
 
 spec :: Spec
 spec = do

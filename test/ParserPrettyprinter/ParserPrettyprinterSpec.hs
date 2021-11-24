@@ -38,7 +38,7 @@ spec = do
         case decls of 
             Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
             Right decls -> case (runFileParser example programP (ppPrint decls)) of
-              Left err -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
+              Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
               Right decls -> do
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) decls
                 it "Can be parsed and typechecked again." $
