@@ -11,7 +11,7 @@ import Data.Graph.Inductive.Graph
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
 
-import Data.List (delete, find)
+import Data.List (delete)
 import Data.Tuple (swap)
 import Data.Maybe (isJust)
 import Data.Set qualified as S
@@ -68,8 +68,8 @@ sucWith gr i el = lookup el (map swap (lsuc gr i))
 
 subtypeData :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 subtypeData aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg (Just dat1) _ _ _) <- lab ta_gr i
-  (MkNodeLabel Pos (Just dat2) _ _ _) <- lab ta_gr j
+  (MkNodeLabel Neg (Just dat1) _ _ _ _) <- lab ta_gr i
+  (MkNodeLabel Pos (Just dat2) _ _ _ _) <- lab ta_gr j
   -- Check that all constructors in dat1 are also in dat2.
   forM_ (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
   -- Check arguments of each constructor of dat1.
@@ -83,8 +83,8 @@ subtypeData aut@TypeAutCore{ ta_gr } (i,j) = do
 
 subtypeCodata :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 subtypeCodata aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg _ (Just codat1) _ _) <- lab ta_gr i
-  (MkNodeLabel Pos _ (Just codat2) _ _) <- lab ta_gr j
+  (MkNodeLabel Neg _ (Just codat1) _ _ _) <- lab ta_gr i
+  (MkNodeLabel Pos _ (Just codat2) _ _ _) <- lab ta_gr j
   -- Check that all destructors of codat2 are also in codat1.
   forM_ (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
   -- Check arguments of all destructors of codat2.
@@ -98,33 +98,16 @@ subtypeCodata aut@TypeAutCore{ ta_gr } (i,j) = do
 
 subtypeNominal :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg _ _ nominal1 _) <- lab ta_gr i
-  (MkNodeLabel Pos _ _ nominal2 _) <- lab ta_gr j
+  (MkNodeLabel Neg _ _ nominal1 _ _) <- lab ta_gr i
+  (MkNodeLabel Pos _ _ nominal2 _ _) <- lab ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
-
--- Require at least one common type name in ref type set for which the two structural refinements fulfil
--- subtypeData/subtypeCodata
-subtypeRefined :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
-subtypeRefined aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg _ _ _ tyNames1) <- lab ta_gr i
-  (MkNodeLabel Pos _ _ _ tyNames2) <- lab ta_gr j
-  let (_,_,_,iOuts) = context ta_gr i
-  let (_,_,_,jOuts) = context ta_gr j
-  guard (not . S.null $ S.intersection tyNames1 tyNames2) -- Check for common type names
-  forM_ (S.intersection tyNames1 tyNames2) (\tn -> do -- For all common type names:
-    (_, ref1) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) iOuts
-    (_, ref2) <- find (\case (RefineEdge tn', _) -> tn'==tn; _ -> False) jOuts
-    admissableM aut (ref1,ref2)
-    -- Check subtyping relation between corresponding structural refinements
-    )
 
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
 admissableM aut@TypeAutCore{..} e =
   guard (e `elem` ta_flowEdges) <|>
     subtypeData aut e <|>
     subtypeCodata aut e <|>
-    subtypeNominal aut e <|>
-    subtypeRefined aut e
+    subtypeNominal aut e
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...

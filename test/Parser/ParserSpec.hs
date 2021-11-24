@@ -8,13 +8,10 @@ import Data.Text qualified as T
 import Parser.Parser
 import Parser.Types
 import Syntax.Types
-import Syntax.Terms
 import Syntax.CommonTerm
 import Pretty.Pretty (ppPrint, ppPrintString)
 import Pretty.Types ()
 import Pretty.Terms ()
-import Translate.Translate
-
 
 typeParseExample :: Text -> Typ pol -> Spec
 typeParseExample input ty = do
@@ -56,5 +53,5 @@ spec = do
     typeParseExample "{ 'A , 'B} \\/ { 'B }"
         $ TySet PosRep [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                        , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]]
-    
+    --
     typeParseCounterEx "{{ 'Ap() }" PosRep

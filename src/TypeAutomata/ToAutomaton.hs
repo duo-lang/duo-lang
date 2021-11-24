@@ -153,10 +153,10 @@ sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (length prds) (length cnss)
   where
     (prds,cnss) = giz ctxt
 
-insertXtors :: DataCodata -> Polarity -> [XtorSig pol] -> TTA Node
-insertXtors dc pol xtors = do
+insertXtors :: DataCodata -> Polarity -> Maybe TypeName -> [XtorSig pol] -> TTA Node
+insertXtors dc pol mtn xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     let (prdTypes, cnsTypes) = giz ctxt
     forM_ (enumerate prdTypes) $ \(i, prdType) -> do
@@ -184,16 +184,13 @@ insertType (TyRec rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
--- Insert refinement (co)data as structural (co)data for now
-insertType (TyData polrep _ xtors)   = insertXtors Data   (polarityRepToPol polrep) xtors
-insertType (TyCodata polrep _ xtors) = insertXtors Codata (polarityRepToPol polrep) xtors
+insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
+insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
 insertType (TyNominal rep tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
   return newNode
--- insertType ty@(TyData _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
--- insertType ty@(TyCodata _ (Just _) _) = throwAutomatonError ["Cannot insert refinement type " <> ppPrint ty]
 
 --------------------------------------------------------------------------
 --
