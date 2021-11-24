@@ -3,7 +3,7 @@ module TypeInference.FileExamplesSpec ( spec ) where
 import Test.Hspec
 import Control.Monad (forM_)
 
-import Data.Either( isRight)
+import Data.Either( isRight, isLeft )
 import TestUtils
 import TypeInference.Driver
 
@@ -17,3 +17,9 @@ spec = do
       it ("The file " ++ example ++ " typechecks.") $ do
         env `shouldSatisfy` isRight
 
+  describe "All the programs in the  \"test/counterexamples/\" folder don't typecheck." $ do
+    examples <- runIO getAvailableCounterExamples
+    forM_ examples $ \example -> do
+      describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
+        env <- runIO $ getEnvironment example defaultInferenceOptions
+        it "Doesn't typecheck" $  env `shouldSatisfy` isLeft
