@@ -124,28 +124,25 @@ nodeToOuts i = do
 computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a node.
                 -> DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorLabel -- ^ The Label of the constructor / destructor
-                -> Twice [Node] -- ^ The nodes which contain the arguments of the constructor / destructor
-computeArgNodes outs dc MkXtorLabel { labelName, labelPrdArity, labelCnsArity } =
-  let
-    prdFun n = [ node | ((EdgeSymbol dc' xt pc pos), node) <- outs, dc' == dc, xt == labelName, pc == Prd, pos == n]
-    prdArgs = prdFun <$> [0..(labelPrdArity - 1)]
-    cnsFun n = [ node | ((EdgeSymbol dc' xt pc pos), node) <- outs, dc' == dc, xt == labelName, pc == Cns, pos == n]
-    cnsArgs = cnsFun <$> [0..(labelCnsArity - 1)]
-  in
-    Twice prdArgs cnsArgs
+                -> [(PrdCns,[Node])] -- ^ The nodes which contain the arguments of the constructor / destructor
+computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
+  where
+    argFun (n,pc) = (pc, [ node | ((EdgeSymbol dc' xt pc' pos), node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
+    args = argFun <$> (enumerate labelArity)
+    
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: Twice [Node] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
-argNodesToArgTypes (Twice prdNodes cnsNodes) rep = do
-  prdTypes <- forM prdNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType rep n
-    return $ case typs of [t] -> t; _ -> TySet rep typs
-  cnsTypes <- forM cnsNodes $ \ns -> do
-    typs <- forM ns $ \n -> do
-      nodeToType (flipPolarityRep rep) n
-    return $ case typs of [t] -> t; _ -> TySet (flipPolarityRep rep) typs
-  return $ (PrdType <$>  prdTypes) ++ (CnsType <$> cnsTypes)
+argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
+argNodesToArgTypes argNodes rep = do
+  argTypes <- forM argNodes $ \ns -> do
+    case ns of
+      (Prd, ns) -> do
+         typs <- forM ns (nodeToType rep)
+         return $ case typs of [t] -> PrdType t; _ -> PrdType (TySet rep typs)
+      (Cns, ns) -> do
+         typs <- forM ns (nodeToType (flipPolarityRep rep))
+         return $ case typs of [t] -> CnsType t; _ -> CnsType (TySet (flipPolarityRep rep) typs)
+  return argTypes
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do

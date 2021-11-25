@@ -10,19 +10,6 @@ import Data.Text qualified as T
 import Text.Megaparsec.Pos
 
 ----------------------------------------------------------------------------------
--- Twice functor
-----------------------------------------------------------------------------------
-
--- oftenly used data structure, so extracting it and making it a functor is useful
-data Twice a = Twice [a] [a] deriving (Eq, Show, Ord)
-
-twiceMap :: (a -> b) -> (a -> b) -> Twice a -> Twice b
-twiceMap f g (Twice x y) = Twice (f <$> x) (g <$> y)
-
-instance Functor Twice where
-  fmap f = twiceMap f f
-
-----------------------------------------------------------------------------------
 -- Source code locations
 ----------------------------------------------------------------------------------
 
