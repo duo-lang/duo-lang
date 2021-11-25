@@ -30,7 +30,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
-import Translate.Desugar (compile, compileCmd)
+import Translate.Desugar (desugarTerm, desugarCmd)
 import Translate.Reparse
 
 ---------------------------------------------------------------------------------
@@ -61,16 +61,16 @@ generateCodeActions :: TextDocumentIdentifier -> Range -> Environment -> List (C
 generateCodeActions ident (Range {_start= start}) env = do
   -- Producer declarations
   let prds = M.toList $ prdEnv env
-  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBV (compile tm)), lookupPos start loc]
-  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBN (compile tm)), lookupPos start loc]
+  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Consumer declarations
   let cnss = M.toList $ cnsEnv env
-  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBV (compile tm)), lookupPos start loc]
-  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBN (compile tm)), lookupPos start loc]
+  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Command declarations
   let cmds = M.toList $ cmdEnv env
-  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBV (compileCmd command)), lookupPos start loc]
-  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBN (compileCmd command)), lookupPos start loc]
+  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBV (desugarCmd command)), lookupPos start loc]
+  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBN (desugarCmd command)), lookupPos start loc]
   List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd)
 
 ---------------------------------------------------------------------------------
@@ -98,8 +98,8 @@ generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl :: NamedRep (Declaration 'Parsed) = case pc of
-                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (reparseTerm (focusTerm eo (compile tm)))
-                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (compile tm)))
+                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
+                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -123,7 +123,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = NamedRep $ CmdDecl defaultLoc name (reparseCommand (focusCmd eo (compileCmd cmd)))
+    newDecl = NamedRep $ CmdDecl defaultLoc name (reparseCommand (focusCmd eo (desugarCmd cmd)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 

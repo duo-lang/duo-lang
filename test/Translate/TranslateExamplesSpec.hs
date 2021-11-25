@@ -30,7 +30,7 @@ spec = do
                 case inferredDecls of
                   Left err -> it "Could not typecheck example " $ expectationFailure (ppPrintString err)
                   Right (_,inferredDecls) -> do
-                    let desugaredDecls :: Program Parsed = reparseProgram $ compileProgram inferredDecls
+                    let desugaredDecls :: Program Parsed = reparseProgram $ desugarProgram inferredDecls
                     res <- runIO $ inferProgramIO driverState desugaredDecls
                     case res of
                         Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)

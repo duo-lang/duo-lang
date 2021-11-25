@@ -5,7 +5,7 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Pretty.Pretty ( ppPrint )
-import Translate.Desugar (compile)
+import Translate.Desugar (desugarTerm)
 import Syntax.Program 
 import Repl.Repl
 
@@ -17,7 +17,7 @@ compileCmd s = do
   case M.lookup s env of
     Nothing -> prettyText "Producer not declared in environment"
     Just (prd,_,_) -> do
-      let compiledPrd = compile prd
+      let compiledPrd = desugarTerm prd
       prettyText "Compiled Producer:"
       prettyText (ppPrint compiledPrd)
 

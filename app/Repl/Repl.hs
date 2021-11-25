@@ -106,7 +106,7 @@ cmdEval s = do
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ inferredCmd]) -> do
-      let com = compileCmd inferredCmd
+      let com = desugarCmd inferredCmd
       evalOrder <- gets evalOrder
       env <- gets replEnv
       steps <- gets steps

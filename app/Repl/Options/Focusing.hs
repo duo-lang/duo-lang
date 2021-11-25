@@ -18,7 +18,7 @@ focusingCmd s = do
     Nothing -> prettyText "Cmd not declared in environment"
     Just (cmd,_) -> do
       evalOrder <- gets evalOrder
-      let focusedCmd = focusCmd evalOrder (compileCmd cmd)
+      let focusedCmd = focusCmd evalOrder (desugarCmd cmd)
       prettyText "Focused command:"
       prettyText (ppPrint focusedCmd)
 
