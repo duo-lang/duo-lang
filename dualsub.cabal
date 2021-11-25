@@ -103,6 +103,7 @@ library
       Utils
       Translate.Desugar
       Translate.Focusing
+      Translate.Reparse
   other-modules:
       Paths_dualsub
   hs-source-dirs:

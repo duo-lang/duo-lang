@@ -9,6 +9,7 @@ import Pretty.Errors ()
 import Syntax.CommonTerm
 import Syntax.Program
 import Translate.Desugar
+import Translate.Reparse
 import TypeInference.Driver
 import TestUtils
 
@@ -29,7 +30,7 @@ spec = do
                 case inferredDecls of
                   Left err -> it "Could not typecheck example " $ expectationFailure (ppPrintString err)
                   Right (_,inferredDecls) -> do
-                    let desugaredDecls :: Program Parsed = reParse $ compileProgram inferredDecls
+                    let desugaredDecls :: Program Parsed = reparseProgram $ compileProgram inferredDecls
                     res <- runIO $ inferProgramIO driverState desugaredDecls
                     case res of
                         Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)

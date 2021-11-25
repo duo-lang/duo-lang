@@ -17,7 +17,7 @@ import Syntax.Program
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
-import Syntax.Terms ( createNamesSTerm, Term, createNamesCommand)
+import Syntax.Terms ( Term )
 import Syntax.Terms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
@@ -31,6 +31,7 @@ import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
 import Translate.Desugar (compile, compileCmd)
+import Translate.Reparse
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -97,8 +98,8 @@ generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl :: NamedRep (Declaration 'Parsed) = case pc of
-                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (createNamesSTerm (focusTerm eo (compile tm)))
-                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (createNamesSTerm (focusTerm eo (compile tm)))
+                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (reparseTerm (focusTerm eo (compile tm)))
+                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (compile tm)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -122,7 +123,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = NamedRep $ CmdDecl defaultLoc name (createNamesCommand (focusCmd eo (compileCmd cmd)))
+    newDecl = NamedRep $ CmdDecl defaultLoc name (reparseCommand (focusCmd eo (compileCmd cmd)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 

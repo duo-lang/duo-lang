@@ -11,6 +11,7 @@ import Syntax.CommonTerm
 import Syntax.Kinds
 import Syntax.Program
 import Translate.Focusing
+import Translate.Reparse
 
 
 driverState :: DriverState
@@ -31,7 +32,7 @@ spec = do
                 case inferredDecls of
                   Left err -> it "Could not typecheck example " $ expectationFailure (ppPrintString err)
                   Right (_,inferredDecls) -> do
-                    let focusedDecls :: Program Parsed = reParse $ focusProgram CBV (compileProgram inferredDecls)
+                    let focusedDecls :: Program Parsed = reparseProgram $ focusProgram CBV (compileProgram inferredDecls)
                     res <- runIO $ inferProgramIO driverState focusedDecls
                     case res of
                         Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
@@ -45,7 +46,7 @@ spec = do
                 case inferredDecls of
                   Left err -> it "Could not typecheck example " $ expectationFailure (ppPrintString err)
                   Right (_,inferredDecls) -> do
-                    let focusedDecls :: Program Parsed = reParse $ focusProgram CBN (compileProgram inferredDecls)
+                    let focusedDecls :: Program Parsed = reparseProgram $ focusProgram CBN (compileProgram inferredDecls)
                     res <- runIO $ inferProgramIO driverState focusedDecls
                     case res of
                         Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
