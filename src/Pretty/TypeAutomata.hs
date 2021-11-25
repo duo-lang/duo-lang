@@ -9,7 +9,7 @@ import Data.Map qualified as M
 import Data.Text.Lazy (pack)
 import Prettyprinter
 
-import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX)
+import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX, Annotation)
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import TypeAutomata.Definition
@@ -20,11 +20,13 @@ import Syntax.Types
 -- Prettyprinting of Type Automata
 ---------------------------------------------------------------------------------
 
+prettyArity :: [PrdCns] -> Doc Annotation
+prettyArity [] = mempty
+prettyArity (Prd:rest) = parens "-" <> prettyArity rest
+prettyArity (Cns:rest) = brackets "-" <> prettyArity rest
 instance PrettyAnn XtorLabel where
-  prettyAnn MkXtorLabel { labelName, labelPrdArity, labelCnsArity } =
-    prettyAnn labelName <>
-    parens (pretty labelPrdArity) <>
-    brackets (pretty labelCnsArity)
+  prettyAnn MkXtorLabel { labelName, labelArity } =
+    prettyAnn labelName <> prettyArity labelArity
 
 instance PrettyAnn NodeLabel where
   prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) = 
