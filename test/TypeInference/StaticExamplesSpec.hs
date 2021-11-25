@@ -18,6 +18,8 @@ import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
 import TypeAutomata.RemoveEpsilon
 import TypeAutomata.Simplify
+import TypeAutomata.Minimize
+import TypeAutomata.RemoveAdmissible
 import TypeAutomata.Subsume (typeAutEqual)
 import Utils
 
@@ -32,7 +34,7 @@ typecheckExample env termS typS = do
       inferenceResult <- execDriverM (DriverState defaultInferenceOptions env) inferenceAction
       let Right inferredTypeAut = trace_minTypeAut . trace_automata . fst <$> inferenceResult
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
-      let Right specTypeAut = (determinize . removeEpsilonEdges) <$> typeToAut specTypeScheme
+      let Right specTypeAut = (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
 prgExamples :: [(Text,Text)]
