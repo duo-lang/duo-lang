@@ -37,7 +37,7 @@ getEnvironment fp infopts = do
     Right decls -> do
       res <- inferProgramIO (DriverState infopts mempty) decls
       case res of
-        Right env -> return (Right env)
+        Right (env,_) -> return (Right env)
         Left (Located _ err) -> return (Left err)
     Left err -> return (Left err)
 

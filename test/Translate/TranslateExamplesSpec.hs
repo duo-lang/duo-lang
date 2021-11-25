@@ -8,9 +8,12 @@ import Pretty.Terms ()
 import Pretty.Errors ()
 import Syntax.CommonTerm
 import Syntax.Program
-import Translate.Translate 
+import Translate.Desugar
 import TypeInference.Driver
 import TestUtils
+
+driverState :: DriverState
+driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty
 
 spec :: Spec
 spec = do
@@ -22,9 +25,13 @@ spec = do
           case decls of
             Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                let desugaredDecls :: Program Parsed = reParse $ compileProgram decls
-                res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) desugaredDecls
-                case res of
-                    Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
-                    Right _env -> return ()
+                inferredDecls <- runIO $ inferProgramIO driverState decls
+                case inferredDecls of
+                  Left err -> it "Could not typecheck example " $ expectationFailure (ppPrintString err)
+                  Right (_,inferredDecls) -> do
+                    let desugaredDecls :: Program Parsed = reParse $ compileProgram inferredDecls
+                    res <- runIO $ inferProgramIO driverState desugaredDecls
+                    case res of
+                        Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
+                        Right _env -> return ()
 
