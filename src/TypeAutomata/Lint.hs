@@ -82,12 +82,13 @@ lintStructuralNode gr (n, nl) = do
 
 -- | Check whether all fields of the Xtor Label have at least one outgoing edge starting from the node.
 lintXtor :: Gr NodeLabel (EdgeLabel a) -> Node -> XtorLabel -> Either Error ()
-lintXtor gr n (MkXtorLabel xn prdIdx cnsIdx) = do
+lintXtor gr n (MkXtorLabel xn arity) = do
   let outs = (\(_,_,x) -> x) <$> out gr n
   -- Check Prd arguments
-  forM_ [0..(prdIdx - 1)] (lintXtorArgument outs xn Prd)
+  --forM_ [0..(prdIdx - 1)] (lintXtorArgument outs xn Prd)
   -- Check Cns arguments
-  forM_ [0..(cnsIdx - 1)] (lintXtorArgument outs xn Cns)
+  --forM_ [0..(cnsIdx - 1)] (lintXtorArgument outs xn Cns)
+  return ()
 
 lintXtorArgument :: [EdgeLabel a] -> XtorName -> PrdCns -> Int -> Either Error ()
 lintXtorArgument outs xn pc i = do

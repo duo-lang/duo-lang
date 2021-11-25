@@ -140,32 +140,29 @@ lookupTVar NegRep tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
-giz :: LinearContext pol -> ([Typ pol], [Typ (FlipPol pol)])
-giz ctxt = giz' ctxt ([],[])
+
+linearContextToArity :: LinearContext pol -> [PrdCns]
+linearContextToArity = map f
   where
-    giz' :: LinearContext pol -> ([Typ pol], [Typ (FlipPol pol)]) -> ([Typ pol], [Typ (FlipPol pol)])
-    giz' [] x = x
-    giz' (PrdType ty:rest) (xs,ys) = giz' rest (ty:xs,ys)
-    giz' (CnsType ty:rest) (xs,ys) = giz' rest (xs,ty:ys)
+    f (PrdType _) = Prd
+    f (CnsType _) = Cns
 
 sigToLabel :: XtorSig pol -> XtorLabel
-sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (length prds) (length cnss)
-  where
-    (prds,cnss) = giz ctxt
+sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
 insertXtors :: DataCodata -> Polarity -> Maybe TypeName -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn xtors = do
   newNode <- newNodeM
   insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
-    let (prdTypes, cnsTypes) = giz ctxt
-    forM_ (enumerate prdTypes) $ \(i, prdType) -> do
-      prdNode <- insertType prdType
-      insertEdges [(newNode, prdNode, EdgeSymbol dc xt Prd i)]
-    forM_ (enumerate cnsTypes) $ \(j, cnsType) -> do
-      cnsNode <- insertType cnsType
-      insertEdges [(newNode, cnsNode, EdgeSymbol dc xt Cns j)]
+    forM_ (enumerate ctxt) $ \(i, pcType) -> do
+      node <- insertPCType pcType
+      insertEdges [(newNode, node, EdgeSymbol dc xt (case pcType of (PrdType _)-> Prd; (CnsType _) -> Cns) i)]
   return newNode
+
+insertPCType :: PrdCnsType pol -> TTA Node
+insertPCType (PrdType ty) = insertType ty
+insertPCType (CnsType ty) = insertType ty
 
 insertType :: Typ pol -> TTA Node
 insertType (TyVar rep tv) = lookupTVar rep tv
