@@ -1,8 +1,5 @@
 module Syntax.Terms where
 
-import Control.Monad.State
-
-import Data.Bifunctor
 import Data.Kind (Type)
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
@@ -17,8 +14,7 @@ import Syntax.CommonTerm
       NominalStructural,
       PrdCnsRep(..),
       PrdCns(..),
-      Phase(..),
-      flipPrdCns )
+      Phase(..) )
 import Syntax.Types
 
 ---------------------------------------------------------------------------------
