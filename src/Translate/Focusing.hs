@@ -1,4 +1,10 @@
-module Translate.Focusing where
+module Translate.Focusing
+  ( focusProgram
+  , focusTerm
+  , focusCmd
+  , isFocusedTerm
+  , isFocusedCmd
+  ) where
 
 import Data.Text qualified as T
 
