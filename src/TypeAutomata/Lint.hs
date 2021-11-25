@@ -12,7 +12,7 @@ import Data.Text qualified as T
 import Syntax.CommonTerm (PrdCns(..))
 import Data.Set qualified
 import Syntax.CommonTerm (XtorName)
-
+import Utils
 
 -- | Check the invariants of the type automaton.
 lint :: TypeAut' (EdgeLabel a) f pol  -> Either Error ()
@@ -84,11 +84,7 @@ lintStructuralNode gr (n, nl) = do
 lintXtor :: Gr NodeLabel (EdgeLabel a) -> Node -> XtorLabel -> Either Error ()
 lintXtor gr n (MkXtorLabel xn arity) = do
   let outs = (\(_,_,x) -> x) <$> out gr n
-  -- Check Prd arguments
-  --forM_ [0..(prdIdx - 1)] (lintXtorArgument outs xn Prd)
-  -- Check Cns arguments
-  --forM_ [0..(cnsIdx - 1)] (lintXtorArgument outs xn Cns)
-  return ()
+  forM_ (enumerate arity) $ \(n,pc) -> lintXtorArgument outs xn pc n
 
 lintXtorArgument :: [EdgeLabel a] -> XtorName -> PrdCns -> Int -> Either Error ()
 lintXtorArgument outs xn pc i = do
