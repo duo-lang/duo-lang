@@ -19,11 +19,11 @@ import Parser.Parser
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
-import Syntax.Program ( Environment )
+import Syntax.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
 import TypeInference.Driver
-import Translate.Translate
-import Utils (trimStr)
+import Translate.Desugar
+import Utils (trimStr, defaultLoc)
 import Text.Megaparsec.Error (errorBundlePretty)
 
 ------------------------------------------------------------------------------
@@ -96,23 +96,29 @@ safeRead file =  do
 ------------------------------------------------------------------------------
 
 cmd :: String -> Repl ()
-cmd s = cmdSymmetric  (T.pack s)
+cmd s = cmdEval  (T.pack s)
 
-
-cmdSymmetric :: Text -> Repl ()
-cmdSymmetric s = do
+cmdEval :: Text -> Repl ()
+cmdEval s = do
   (comLoc,_) <- parseInteractive commandP s
-  let com = compileCmd comLoc
-  evalOrder <- gets evalOrder
-  env <- gets replEnv
-  steps <- gets steps
-  case steps of
-    NoSteps -> do
-      res <- fromRight $ runEval (eval com) evalOrder env
-      prettyRepl res
-    Steps -> do
-      res <- fromRight $ runEval (evalSteps com) evalOrder env
-      forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
+  oldEnv <- gets replEnv
+  opts <- gets typeInfOpts
+  inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]
+  case inferredCmd of
+    Right (_,[CmdDecl _ _ inferredCmd]) -> do
+      let com = compileCmd inferredCmd
+      evalOrder <- gets evalOrder
+      env <- gets replEnv
+      steps <- gets steps
+      case steps of
+        NoSteps -> do
+          res <- fromRight $ runEval (eval com) evalOrder env
+          prettyRepl res
+        Steps -> do
+          res <- fromRight $ runEval (evalSteps com) evalOrder env
+          forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
+    Right _ -> prettyText "Unreachable"
+    Left err -> prettyRepl err
 
 ------------------------------------------------------------------------------
 -- Options

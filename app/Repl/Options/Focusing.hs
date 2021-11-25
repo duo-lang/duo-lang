@@ -2,27 +2,25 @@ module Repl.Options.Focusing where
 
 import Control.Monad.State ( gets )
 import Data.Text (Text)
-import Text.Megaparsec ( errorBundlePretty )
+import Data.Map qualified as M
 
-import Parser.Definition ( runInteractiveParser )
-import Parser.Terms ( commandP )
 import Pretty.Pretty ( ppPrint )
-import Repl.Repl ( Option(..), Repl, prettyRepl, prettyText, evalOrder )
+import Repl.Repl 
 import Translate.Focusing ( focusCmd )
+import Translate.Desugar
+import Syntax.Program
 
 -- Static Focusing
 focusingCmd :: Text -> Repl ()
 focusingCmd s = do
-  evalOrder <- gets evalOrder
-  case runInteractiveParser commandP s of
-    Right (t, _pos) -> do
-      prettyText "Unfocused term:"
-      prettyText (ppPrint t)
-      prettyText "Focused term:"
-      prettyText (ppPrint (focusCmd evalOrder t))
-    Left err2 -> do
-      prettyText "Cannot parse as command:"
-      prettyRepl (errorBundlePretty err2)
+  env <- gets (cmdEnv . replEnv)
+  case M.lookup s env of
+    Nothing -> prettyText "Cmd not declared in environment"
+    Just (cmd,_) -> do
+      evalOrder <- gets evalOrder
+      let focusedCmd = focusCmd evalOrder (compileCmd cmd)
+      prettyText "Focused command:"
+      prettyText (ppPrint focusedCmd)
 
 focusOption :: Option
 focusOption = Option

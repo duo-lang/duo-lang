@@ -205,7 +205,7 @@ publishErrors uri = do
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
           -- sendError "Typeinference error!"
-        Right env -> do
+        Right (env,_) -> do
           updateHoverCache uri env
           sendInfo $ "No errors in " <> T.pack fp <> "!"
 

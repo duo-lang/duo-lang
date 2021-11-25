@@ -38,7 +38,7 @@ loadFile fp = do
   res <- liftIO $ inferProgramIO (DriverState opts mempty) decls
   case res of
     Left err -> printLocatedError err
-    Right newEnv -> do
+    Right (newEnv,_) -> do
       modifyEnvironment (newEnv <>)
       prettyRepl newEnv
       prettyRepl $ "Successfully loaded: " ++ fp
