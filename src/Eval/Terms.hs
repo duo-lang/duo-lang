@@ -14,7 +14,7 @@ import Pretty.Terms ()
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Kinds
-import Translate.Translate
+import Translate.Desugar
 
 ---------------------------------------------------------------------------------
 -- Symmetric Terms
@@ -47,10 +47,10 @@ evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Comman
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
-  return (Just (Apply () (compile prd) cns))
+  return (Just (Apply () (desugarTerm prd) cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupSTerm CnsRep fv
-  return (Just (Apply () prd (compile cns)))
+  return (Just (Apply () prd (desugarTerm cns)))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkSCase _ _ argTypes cmd') <- lookupMatchCase xt cases

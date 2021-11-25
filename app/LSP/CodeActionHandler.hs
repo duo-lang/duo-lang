@@ -5,7 +5,7 @@ import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
 import Data.Map qualified as M 
-import Data.Maybe ( fromMaybe )
+import Data.Maybe ( fromMaybe, isNothing )
 import System.Log.Logger ( debugM )
 import Data.HashMap.Strict qualified as Map
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
@@ -17,7 +17,7 @@ import Syntax.Program
 import Syntax.Types ( Polarity(..), TypeScheme)
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
-import Syntax.Terms ( createNamesSTerm, Term, createNamesCommand)
+import Syntax.Terms ( Term )
 import Syntax.Terms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
@@ -30,9 +30,8 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
--- import Translate.Translate ( compile )
-
-
+import Translate.Desugar (desugarTerm, desugarCmd)
+import Translate.Reparse
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -55,23 +54,23 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
       case res of
         Left _err -> do
           responder (Right (List []))
-        Right env -> do
+        Right (env,_) -> do
           responder (Right (generateCodeActions ident range env))
 
 generateCodeActions :: TextDocumentIdentifier -> Range -> Environment -> List (Command  |? CodeAction)
 generateCodeActions ident (Range {_start= start}) env = do
   -- Producer declarations
   let prds = M.toList $ prdEnv env
-  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, not (isFocusedTerm CBV tm), lookupPos start loc]
-  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, not (isFocusedTerm CBN tm), lookupPos start loc]
+  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Consumer declarations
   let cnss = M.toList $ cnsEnv env
-  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, not (isFocusedTerm CBV tm), lookupPos start loc]
-  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, not (isFocusedTerm CBN tm), lookupPos start loc]
+  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Command declarations
   let cmds = M.toList $ cmdEnv env
-  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, not (isFocusedCmd CBV command), lookupPos start loc]
-  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, not (isFocusedCmd CBN command), lookupPos start loc]
+  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBV (desugarCmd command)), lookupPos start loc]
+  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBN (desugarCmd command)), lookupPos start loc]
   List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd)
 
 ---------------------------------------------------------------------------------
@@ -99,8 +98,8 @@ generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl :: NamedRep (Declaration 'Parsed) = case pc of
-                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (createNamesSTerm (focusTerm eo tm))
-                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (createNamesSTerm (focusTerm eo tm))
+                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc PrdRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
+                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 
@@ -124,7 +123,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = NamedRep $ CmdDecl defaultLoc name (createNamesCommand (focusCmd eo cmd))
+    newDecl = NamedRep $ CmdDecl defaultLoc name (reparseCommand (focusCmd eo (desugarCmd cmd)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in 

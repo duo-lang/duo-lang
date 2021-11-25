@@ -57,7 +57,8 @@ common shared-build-depends
                      LambdaCase,
                      DeriveFunctor,
                      OverloadedStrings,
-                     ImportQualifiedPost
+                     ImportQualifiedPost,
+                     ViewPatterns
 
 library
   import: shared-build-depends
@@ -100,8 +101,9 @@ library
       TypeInference.Constraints
       TypeTranslation
       Utils
-      Translate.Translate
+      Translate.Desugar
       Translate.Focusing
+      Translate.Reparse
   other-modules:
       Paths_dualsub
   hs-source-dirs:

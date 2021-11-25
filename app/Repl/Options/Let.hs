@@ -22,7 +22,7 @@ letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (insertDecl decl)
+  newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (inferDecl decl)
   case newEnv of
     Left _ -> return ()
     Right (_,state) -> modifyEnvironment (const (driverEnv state))

@@ -10,9 +10,8 @@ import Errors
 import Parser.Parser
 import Syntax.CommonTerm
 import Syntax.Program
-import Syntax.Terms
 import TypeInference.Driver
-import Utils ( Located(Located), defaultLoc )
+import Utils ( Located(Located) )
 
 
 getAvailableCounterExamples :: IO [FilePath]
@@ -37,17 +36,6 @@ getEnvironment fp infopts = do
     Right decls -> do
       res <- inferProgramIO (DriverState infopts mempty) decls
       case res of
-        Right env -> return (Right env)
+        Right (env,_) -> return (Right env)
         Left (Located _ err) -> return (Left err)
     Left err -> return (Left err)
-
-reParseDecl :: Declaration ext -> Declaration Parsed
-reParseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl defaultLoc rep isRec fv ts (createNamesSTerm tm)
-reParseDecl (CmdDecl _ fv cmd) = CmdDecl defaultLoc fv (createNamesCommand cmd)
-reParseDecl (DataDecl _ decl) = DataDecl defaultLoc decl
-reParseDecl (ImportDecl _ mn) = ImportDecl defaultLoc mn
-reParseDecl (SetDecl _ txt) = SetDecl defaultLoc txt
-reParseDecl ParseErrorDecl = ParseErrorDecl
-
-reParse :: Program ext -> Program Parsed
-reParse = fmap reParseDecl
