@@ -18,12 +18,8 @@ import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,
-      Polarity(Pos),
       generalize,
-      Typ,
-      PolarityRep
     )
-      
 import Syntax.Program
     ( Program,
       Environment(..),
@@ -35,7 +31,7 @@ import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
 import TypeInference.Coalescing ( coalesce, zonk, Bisubstitution )
 import TypeInference.GenerateConstraints.Definition
-    ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
+    ( PrdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,

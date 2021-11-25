@@ -1,4 +1,8 @@
-module TypeInference.Coalescing where
+module TypeInference.Coalescing
+  ( Bisubstitution(..)
+  , coalesce
+  , zonk
+  ) where
 
 import Control.Monad.State
 import Control.Monad.Reader

@@ -21,11 +21,9 @@ import Repl.Repl
       prettyText,
       fromRight )
 import Syntax.Program ( IsRec(NonRecursive) )
-import Syntax.Types ( PolarityRep(PosRep), TypeScheme (TypeScheme) )
+import Syntax.Types ( PolarityRep(PosRep), TypeScheme )
 import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
-import TypeAutomata.RemoveEpsilon ( removeEpsilonEdges )
-import TypeAutomata.Determinize ( determinize )
 import TypeAutomata.Simplify
     ( simplify,
       SimplifyTrace(..)
