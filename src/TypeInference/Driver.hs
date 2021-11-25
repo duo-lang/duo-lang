@@ -25,7 +25,8 @@ import Syntax.Types
     )
       
 import Syntax.Program
-    ( Environment(..),
+    ( Program,
+      Environment(..),
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
@@ -200,12 +201,12 @@ checkCmd loc cmd = do
   return (constraints, solverResult, cmdInferred)
 
 ---------------------------------------------------------------------------------
--- Insert Declarations
+-- Infer Declarations
 ---------------------------------------------------------------------------------
 
-insertDecl :: Declaration Parsed
-           -> DriverM ()
-insertDecl (PrdCnsDecl loc pc isRec v annot loct) = do
+inferDecl :: Declaration Parsed
+           -> DriverM (Declaration Inferred)
+inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
   -- Infer a type
   (trace, tmInferred) <- inferSTermTraced isRec loc v pc loct
   guardVerbose $ do
@@ -222,10 +223,12 @@ insertDecl (PrdCnsDecl loc pc isRec v annot loct) = do
     PrdRep -> do
       let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
       setEnvironment newEnv
+      return (PrdCnsDecl loc pc isRec v annot tmInferred)
     CnsRep -> do
       let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-insertDecl (CmdDecl loc v loct) = do
+      return (PrdCnsDecl loc pc isRec v annot tmInferred)
+inferDecl (CmdDecl loc v loct) = do
   -- Check whether command is typeable
   (constraints, solverResult, cmdInferred) <- checkCmd loc loct
   guardVerbose $ do
@@ -235,26 +238,34 @@ insertDecl (CmdDecl loc v loct) = do
   env <- gets driverEnv
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
-insertDecl (DataDecl loc dcl) = do
+  return (CmdDecl loc v cmdInferred)
+inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
   -- TODO: Check data decls
   env <- gets driverEnv
   let newEnv = env { declEnv = (loc,dcl) : declEnv env}
   setEnvironment newEnv
-insertDecl (ImportDecl loc mod) = do
+  return (DataDecl loc dcl)
+inferDecl (ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
-  newEnv <- inferProgramFromDisk fp
+  newEnv <- fst <$> inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
-insertDecl (SetDecl loc txt) = case T.unpack txt of
-  "refined" -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
+  return (ImportDecl loc mod)
+inferDecl (SetDecl loc txt) = case T.unpack txt of
+  "refined" -> do
+    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
+    return (SetDecl loc txt)
   _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
-insertDecl ParseErrorDecl = do
+inferDecl ParseErrorDecl = do
     throwError (Located defaultLoc (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))
 
+---------------------------------------------------------------------------------
+-- Infer programs
+---------------------------------------------------------------------------------
 
 inferProgramFromDisk :: FilePath
-                     -> DriverM Environment
+                     -> DriverM (Environment, Program Inferred)
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file
@@ -268,16 +279,16 @@ inferProgramFromDisk fp = do
             Right env -> return env
 
 inferProgram :: [Declaration Parsed]
-             -> DriverM ()
-inferProgram decls = forM_ decls insertDecl
+             -> DriverM (Program Inferred)
+inferProgram decls = forM decls inferDecl
 
 
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [Declaration Parsed]
-                -> IO (Either LocatedError Environment)
+                -> IO (Either LocatedError (Environment, Program Inferred))
 inferProgramIO state decls = do
     x <- execDriverM state (inferProgram decls)
     case x of
         Left err -> return (Left err)
-        Right (_,x) -> return (Right (driverEnv x))
+        Right (res,x) -> return (Right ((driverEnv x), res))

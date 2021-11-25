@@ -211,26 +211,26 @@ genConstraintsTerm (MuAbs loc CnsRep bs cmd) = do
 --
 -- e.'D subst
 --
-genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } destructee args) = do
+genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } destructee subst) = do
   -- Infer the types of the arguments to the destructor.
-  argsInferred <- sequence (genConstraintsTerm <$> args)
+  substInferred <- genConstraintsSubst subst
   -- Infer the type of the destructee.
   destructeeInferred <- genConstraintsTerm destructee
   -- Generate a unification variable for the return type.
   (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
   -- The type at which the destructor call happens is constructed from the
   -- (inferred) return type and the inferred types from the argument list
-  let lctxt = (PrdType . getTypeTerm <$> argsInferred) ++ [CnsType retTypeNeg]
+  let lctxt = (getTypArgs substInferred) ++ [CnsType retTypeNeg]
   let codataType = TyCodata NegRep Nothing [MkXtorSig xt lctxt]
   -- The type of the destructee must be a subtype of the Destructor type just generated.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
-  return (Dtor (loc,retTypePos) xt destructeeInferred argsInferred)
+  return (Dtor (loc,retTypePos) xt destructeeInferred substInferred)
 --
 -- Nominal Destructor Application (Syntactic Sugar):
 --
 -- e.D subst
 --
-genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } destructee args) = do
+genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } destructee subst) = do
   im <- asks (inferMode . snd)
   case im of
     --
@@ -238,7 +238,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
     --
     InferNominal -> do
       -- Infer the types of the arguments to the destructor.
-      argsInferred <- sequence (genConstraintsTerm <$> args)
+      substInferred <- genConstraintsSubst subst
       -- Infer the type of the destructee.
       destructeeInferred <- genConstraintsTerm destructee
       -- Look up the data declaration and the xtorSig.
@@ -248,18 +248,18 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
       -- The argument types must be subtypes of the types declared in the xtorSig.
-      genConstraintsCtxts (PrdType . getTypeTerm <$> argsInferred) (init (sig_args xtorSig)) (DtorArgsConstraint loc)
+      genConstraintsCtxts (getTypArgs substInferred) (init (sig_args xtorSig)) (DtorArgsConstraint loc)
       -- The return type is the last element in the xtorSig, which must be a CnsType.
       let retType = case last (sig_args xtorSig) of
                      (CnsType ty) -> ty
                      (PrdType _)  -> error "BANG"
-      return (Dtor (loc,retType) xt destructeeInferred argsInferred)
+      return (Dtor (loc,retType) xt destructeeInferred substInferred)
     --
     -- Refinement Inference
     --
     InferRefined -> do
       -- Infer the types of the arguments to the destructor.
-      argsInferred <- sequence (genConstraintsTerm <$> args)
+      substInferred <- genConstraintsSubst subst
       -- Infer the type of the destructee.
       destructeeInferred <- genConstraintsTerm destructee
       -- Look up the data declaration and the xtorSig.
@@ -271,12 +271,12 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The type of the destructee must be a subtype of the translated nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) tyTranslated )
       -- The argument types must be subtypes of the translated types declared in the xtorSig.
-      genConstraintsCtxts (PrdType . getTypeTerm <$> argsInferred) (init (sig_args xtorSigTranslated)) (DtorArgsConstraint loc)
+      genConstraintsCtxts (getTypArgs substInferred) (init (sig_args xtorSigTranslated)) (DtorArgsConstraint loc)
       -- The return type is the last element in the xtorSig, which must be a CnsType.
       let retType = case last (sig_args xtorSigTranslated) of
                       (CnsType ty) -> ty
                       (PrdType _)  -> error "BANG"
-      return (Dtor (loc,retType) xt destructeeInferred argsInferred)
+      return (Dtor (loc,retType) xt destructeeInferred substInferred)
 --
 -- Structural Match (Syntactic Sugar):
 --
@@ -289,7 +289,7 @@ genConstraintsTerm (Match loc Structural destructee cases) = do
   casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
     -- Generate positive and negative unification variables for all variables
     -- bound in the pattern.
-    (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args)
+    (argtsPos,argtsNeg) <- freshTVars acase_args
     -- Type case term in context extended with new unification variables
     acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
     -- The inferred type of the term must be a subtype of the pattern match return type
@@ -347,7 +347,7 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
       (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
       casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args) 
+        (argtsPos,argtsNeg) <- freshTVars acase_args
         -- Typecheck case term using new unification vars
         acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
         -- The term must have a subtype of the pattern match return type
@@ -371,7 +371,7 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
 genConstraintsTerm (Comatch loc Structural cocases) = do
   cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
     -- Generate unification variables for each case arg
-    (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args)
+    (argtsPos,argtsNeg) <- freshTVars acase_args
     -- Typecheck the term in the context extended with the unification variables.
     acase_termInferred<- withContext argtsPos (genConstraintsTerm acase_term)
     return (MkACase acase_ext acase_name acase_args acase_termInferred, MkXtorSig acase_name (argtsNeg ++ [CnsType $ getTypeTerm acase_termInferred]))
@@ -419,7 +419,7 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) 
       checkCorrectness (acase_name <$> cocases) tn
       cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars ((\n -> (Prd,n)) <$> acase_args)
+        (argtsPos,argtsNeg) <- freshTVars acase_args
         -- Typecheck case term using new unification vars
         acase_termInferred<- withContext argtsPos (genConstraintsTerm acase_term)
         -- We have to bound the unification variables with the lower and upper bounds generated

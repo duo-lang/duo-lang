@@ -108,3 +108,14 @@ prd idS := comatch {
 prd succA := cocase { ApNN(n) => S(n) };
 
 prd succS := comatch { ApNN(n)[k] => S(n) >> k };
+
+prd rec natIdA := cocase { 'ApNN(n) => case n of {
+            Z    => Z,
+            S(m) => S(natIdA.'ApNN(m))
+}};
+
+prd rec isEvenA := cocase { 'ApNB(n) => case n of {
+  Z => True,
+  S(m) => case m of {
+    S(p) => isEvenA.'ApNB(p)
+}}};

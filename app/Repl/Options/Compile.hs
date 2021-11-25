@@ -1,24 +1,25 @@
 module Repl.Options.Compile (compileOption) where
 
+import Control.Monad.State ( gets )
+import Data.Map qualified as M
 import Data.Text (Text)
-import Text.Megaparsec ( errorBundlePretty )
 
-import Parser.Parser ( termP, runInteractiveParser )
 import Pretty.Pretty ( ppPrint )
-import Repl.Repl ( prettyText, prettyRepl, Repl, Option(..) )
-import Translate.Translate (compile)
-import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
+import Translate.Desugar (desugarTerm)
+import Syntax.Program 
+import Repl.Repl
 
 -- Compile
 
 compileCmd :: Text -> Repl ()
 compileCmd s = do
-  case runInteractiveParser (termP PrdRep) s of
-    Right (t, _pos) ->
-      prettyText (" compile " <> ppPrint t <> "\n = " <> ppPrint (compile t))
-    Left err2 -> do
-      prettyText "Cannot parse as aterm:"
-      prettyRepl (errorBundlePretty err2)
+  env <- gets (prdEnv . replEnv)
+  case M.lookup s env of
+    Nothing -> prettyText "Producer not declared in environment"
+    Just (prd,_,_) -> do
+      let compiledPrd = desugarTerm prd
+      prettyText "Compiled Producer:"
+      prettyText (ppPrint compiledPrd)
 
 compileOption :: Option
 compileOption = Option

@@ -99,33 +99,33 @@ foo (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange lo
 
 
 acaseToHoverMap :: ACase Inferred -> HoverMap 
-acaseToHoverMap (MkACase _ _ _ tm) = stermToHoverMap tm
+acaseToHoverMap (MkACase _ _ _ tm) = termToHoverMap tm
 
 bar :: (Loc, Typ pol) -> HoverMap
 bar (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
 
-stermToHoverMap :: Term pc Inferred -> HoverMap 
-stermToHoverMap (BoundVar ext PrdRep _)      = bar ext
-stermToHoverMap (BoundVar ext CnsRep _)      = bar ext
-stermToHoverMap (FreeVar ext PrdRep _)       = bar ext
-stermToHoverMap (FreeVar ext CnsRep _)       = bar ext
-stermToHoverMap (XtorCall ext PrdRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
-stermToHoverMap (XtorCall ext CnsRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
-stermToHoverMap (XMatch ext PrdRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
-stermToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
-stermToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
-stermToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
-stermToHoverMap (Dtor ext _ e args)   = M.unions $ [foo ext] <> (stermToHoverMap <$> (e:args))
-stermToHoverMap (Match ext _ e cases)   = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [stermToHoverMap e]
-stermToHoverMap (Comatch ext _ cocases) = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
+termToHoverMap :: Term pc Inferred -> HoverMap 
+termToHoverMap (BoundVar ext PrdRep _)      = bar ext
+termToHoverMap (BoundVar ext CnsRep _)      = bar ext
+termToHoverMap (FreeVar ext PrdRep _)       = bar ext
+termToHoverMap (FreeVar ext CnsRep _)       = bar ext
+termToHoverMap (XtorCall ext PrdRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
+termToHoverMap (XtorCall ext CnsRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
+termToHoverMap (XMatch ext PrdRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
+termToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
+termToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
+termToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
+termToHoverMap (Dtor ext _ e subst)         = M.unions $ [foo ext] <> (pctermToHoverMap <$> (PrdTerm e:subst))
+termToHoverMap (Match ext _ e cases)        = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [termToHoverMap e]
+termToHoverMap (Comatch ext _ cocases)      = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
 
 pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
-pctermToHoverMap (PrdTerm tm) = stermToHoverMap tm
-pctermToHoverMap (CnsTerm tm) = stermToHoverMap tm
+pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
+pctermToHoverMap (CnsTerm tm) = termToHoverMap tm
 
 commandToHoverMap :: Terms.Command Inferred -> HoverMap
-commandToHoverMap (Apply _ prd cns) = M.unions [stermToHoverMap prd, stermToHoverMap cns]
-commandToHoverMap (Print _ prd)     = stermToHoverMap prd
+commandToHoverMap (Apply _ prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns]
+commandToHoverMap (Print _ prd)     = termToHoverMap prd
 commandToHoverMap (Done _)          = M.empty 
 
 xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
@@ -148,7 +148,7 @@ prdEnvToHoverMap = M.unions . fmap f . M.toList
     f (_,(e,loc,ty)) = 
       let
         outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover = stermToHoverMap e
+        termHover = termToHoverMap e
       in
         M.union outerHover termHover
 
@@ -158,7 +158,7 @@ cnsEnvToHoverMap = M.unions . fmap f . M.toList
     f (_,(e,loc,ty)) =
       let
         outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover = stermToHoverMap e 
+        termHover = termToHoverMap e 
       in
         M.union outerHover termHover
   

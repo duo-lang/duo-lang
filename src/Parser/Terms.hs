@@ -177,10 +177,16 @@ acaseP :: NominalStructural -> Parser (ACase Parsed, SourcePos)
 acaseP ns = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
-  args <- option [] (fst <$> (parens $ (fst <$> freeVarName) `sepBy` comma))
+  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
-  return (MkACase (Loc startPos endPos) xt (Just <$> args) (termClosing ((\a -> (Prd,a)) <$> args) res), endPos)
+  let pmcase = MkACase { acase_ext = Loc startPos endPos
+                       , acase_name = xt
+                       , acase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
+                       , acase_term = termClosing args res
+                       }
+  return (pmcase, endPos)
+  
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
 -- infer a structural type, not a nominal one.
@@ -237,7 +243,7 @@ comatchP PrdRep = do
 
 -- | Create a lambda abstraction. 
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc Structural [MkACase loc (MkXtorName Structural "Ap") [Just var] (termClosing [(Prd, var)] tm)]
+mkLambda loc var tm = Comatch loc Structural [MkACase loc (MkXtorName Structural "Ap") [(Prd, Just var)] (termClosing [(Prd, var)] tm)]
 
 
 lambdaP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
@@ -279,7 +285,7 @@ termBotP rep = freeVar rep <|>
 
 -- | Create an application.
 mkApp :: Loc -> Term Prd Parsed -> Term Prd Parsed -> Term Prd Parsed
-mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [arg]
+mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun [PrdTerm arg]
 
 mkApps :: SourcePos -> [(Term Prd Parsed, SourcePos)] -> (Term Prd Parsed, SourcePos)
 mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
@@ -309,21 +315,21 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -------------------------------------------------------------------------------------------
 
 -- | Parses "D(t,...,t)"
-destructorP' :: NominalStructural -> Parser (XtorName,[Term Prd Parsed], SourcePos)
+destructorP' :: NominalStructural -> Parser (XtorName,Substitution Parsed, SourcePos)
 destructorP' ns = do
-  (xt, endPos) <- xtorName ns
-  (args, endPos) <- option ([], endPos) (parens $ (fst <$> termTopP PrdRep) `sepBy` comma)
-  return (xt, args, endPos)
+  (xt, _) <- xtorName ns
+  (subst, endPos) <- substitutionP
+  return (xt, subst, endPos)
 
-destructorP :: Parser (XtorName,[Term Prd Parsed], SourcePos)
+destructorP :: Parser (XtorName,Substitution Parsed, SourcePos)
 destructorP = destructorP' Structural <|> destructorP' Nominal
 
-destructorChainP :: Parser [(XtorName,[Term Prd Parsed], SourcePos)]
+destructorChainP :: Parser [(XtorName,Substitution Parsed, SourcePos)]
 destructorChainP = many (dot >> destructorP)
 
 mkDtorChain :: SourcePos
             -> (Term Prd Parsed, SourcePos)
-            -> [(XtorName,[Term Prd Parsed], SourcePos)]
+            -> [(XtorName,Substitution Parsed, SourcePos)]
             -> (Term Prd Parsed, SourcePos)
 mkDtorChain _ destructee [] = destructee
 mkDtorChain startPos (destructee,_)((xt,args,endPos):dts) =
