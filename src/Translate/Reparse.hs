@@ -24,12 +24,12 @@ names :: ([FreeVarName], [FreeVarName])
 names =  ((\y -> "x" <> T.pack (show y)) <$> [(1 :: Int)..]
          ,(\y -> "k" <> T.pack (show y)) <$> [(1 :: Int)..])
 
-fresh :: PrdCnsRep pc -> CreateNameM (Maybe FreeVarName)
-fresh PrdRep = do
+fresh :: PrdCns -> CreateNameM (Maybe FreeVarName)
+fresh Prd = do
   var <- gets (head . fst)
   modify (first tail)
   pure (Just var)
-fresh CnsRep = do
+fresh Cns = do
   var  <- gets (head . snd)
   modify (second tail)
   pure (Just var)
@@ -49,7 +49,7 @@ createNamesTerm (XMatch _ pc ns cases) = do
   return $ XMatch defaultLoc pc ns cases'
 createNamesTerm (MuAbs _ pc _ cmd) = do
   cmd' <- createNamesCommand cmd
-  var <- fresh (flipPrdCns pc)
+  var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
   return $ MuAbs defaultLoc pc var cmd'
 createNamesTerm (Dtor _ xt e args) = do
   e' <- createNamesTerm e
@@ -74,13 +74,13 @@ createNamesCommand (Print _ prd) = createNamesTerm prd >>= \prd' -> return (Prin
 createNamesSCase :: SCase ext -> CreateNameM (SCase Parsed)
 createNamesSCase (MkSCase { scase_name, scase_args, scase_cmd }) = do
   cmd' <- createNamesCommand scase_cmd
-  args <- sequence $ (\(pc,_) -> (fresh PrdRep >>= \v -> return (pc,v))) <$> scase_args
+  args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> scase_args
   return $ MkSCase defaultLoc scase_name args cmd'
 
 createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
 createNamesACase (MkACase _ xt args e) = do
   e' <- createNamesTerm e
-  args' <- sequence $ (\(pc,_) -> (fresh PrdRep >>= \v -> return (pc,v))) <$> args
+  args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
   return $ MkACase defaultLoc xt args' e'
 
 ---------------------------------------------------------------------------------
