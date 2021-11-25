@@ -35,7 +35,7 @@ runCoalesceM res m = evalState (runReaderT m (res,S.empty)) (0, M.empty)
 
 freshRecVar :: CoalesceM TVar
 freshRecVar = do
-    i <- get
+    (i,_) <- get
     modify (\(i,m) -> (i + 1, m))
     return (MkTVar (T.pack $ "rr" ++ show i)) -- Use "rr" so that they don't clash.
 
