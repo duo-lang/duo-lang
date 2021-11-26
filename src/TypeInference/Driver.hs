@@ -18,27 +18,20 @@ import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,
-      Typ,
-      PolarityRep
+      generalize,
     )
-      
 import Syntax.Program
     ( Program,
       Environment(..),
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
-import TypeAutomata.ToAutomaton ( solverStateToTypeAut )
-import TypeAutomata.Definition ( TypeAutDet, TypeAut )
-import TypeAutomata.Determinize ( determinize )
-import TypeAutomata.Lint (lint)
-import TypeAutomata.Minimize ( minimize )
-import TypeAutomata.FromAutomaton ( autToType )
-import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
+import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
+import TypeInference.Coalescing ( coalesce, zonk, Bisubstitution )
 import TypeInference.GenerateConstraints.Definition
-    ( PrdCnsToPol, prdCnsToPol, InferenceMode(..), runGenM )
+    ( PrdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -139,37 +132,11 @@ liftEitherErr loc x = case x of
 data TypeInferenceTrace pol = TypeInferenceTrace
   { trace_constraintSet :: ConstraintSet
   , trace_solvedConstraints :: SolverResult
-  , trace_typeAut :: TypeAut pol
-  , trace_typeAutDet :: TypeAutDet pol
-  , trace_typeAutDetAdms :: TypeAutDet pol
-  , trace_minTypeAut :: TypeAutDet pol
+  , trace_bisubst :: Bisubstitution 
+  , trace_resTypeOrig :: TypeScheme pol
+  , trace_automata :: SimplifyTrace pol
   , trace_resType :: TypeScheme pol
   }
-
-generateTypeInferenceTrace :: PolarityRep pol
-                           -> ConstraintSet
-                           -> SolverResult
-                           -> Typ pol
-                           -> Either Error (TypeInferenceTrace pol)
-generateTypeInferenceTrace rep constraintSet solverState typ = do
-  typeAut <- solverStateToTypeAut solverState rep typ
-  lint typeAut
-  let typeAutDet = determinize typeAut
-  lint typeAutDet
-  let typeAutDetAdms  = removeAdmissableFlowEdges typeAutDet
-  lint typeAutDetAdms
-  let minTypeAut = minimize typeAutDetAdms
-  lint minTypeAut
-  resType <- autToType minTypeAut
-  return TypeInferenceTrace
-    { trace_constraintSet = constraintSet
-    , trace_solvedConstraints = solverState
-    , trace_typeAut = typeAut
-    , trace_typeAutDet = typeAutDet
-    , trace_typeAutDetAdms = typeAutDetAdms
-    , trace_minTypeAut = minTypeAut
-    , trace_resType = resType
-    }
 
 ------------------------------------------------------------------------------
 -- Symmetric Terms and Commands
@@ -189,9 +156,22 @@ inferSTermTraced isRec loc fv rep tm = do
         NonRecursive -> genConstraintsTerm tm
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   -- Solve the constraints
-  solverState <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  -- Read of the type and generate the resulting type
+  let typ = zonk bisubst (getTypeTerm tmInferred)
+  -- Simplify the resulting type
+  (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
   -- Generate result type
-  trace <- liftEitherErr loc $ generateTypeInferenceTrace (prdCnsToPol rep) constraintSet solverState (getTypeTerm tmInferred)
+  let trace = TypeInferenceTrace 
+        { trace_constraintSet = constraintSet
+        , trace_solvedConstraints = solverResult
+        , trace_bisubst = bisubst
+        , trace_resTypeOrig = generalize typ
+        , trace_automata = simpTrace
+        , trace_resType = tys
+        }
   return (trace, tmInferred)
 
 
@@ -228,6 +208,8 @@ inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
+      ppPrintIO (trace_bisubst trace)
+      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc

@@ -21,16 +21,19 @@ import Repl.Repl
       prettyText,
       fromRight )
 import Syntax.Program ( IsRec(NonRecursive) )
+import Syntax.Types ( PolarityRep(PosRep), TypeScheme )
 import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
-import Syntax.Types ( PolarityRep(PosRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
-import TypeAutomata.ToAutomaton (typeToAut)
+import TypeAutomata.Simplify
+    ( simplify,
+      SimplifyTrace(..)
+    )
 import TypeInference.Driver
     ( execDriverM,
       DriverState(DriverState),
       inferSTermTraced,
-      TypeInferenceTrace(trace_typeAut, trace_typeAutDet,
-                         trace_typeAutDetAdms, trace_minTypeAut, trace_resType) )
+      TypeInferenceTrace(..)
+    )
 import Utils
 
 -- Save
@@ -41,24 +44,24 @@ saveCmd s = do
   opts <- gets typeInfOpts
   case runInteractiveParser (typeSchemeP PosRep) s of
     Right ty -> do
-      aut <- fromRight (typeToAut ty)
-      saveGraphFiles "gr" aut
+      (trace, tySimplified) <- fromRight (simplify ty)
+      saveFromTrace trace tySimplified
     Left err1 -> case runInteractiveParser (termP PrdRep) s of
       Right (tloc,loc) -> do
         let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
-          Right trace -> saveFromTrace trace
+          Right trace -> saveFromTrace (trace_automata trace) (trace_resType trace)
           Left err2 -> saveParseError (errorBundlePretty err1) err2 
       Left err2 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2)
 
-saveFromTrace :: TypeInferenceTrace pol -> Repl ()
-saveFromTrace trace = do
+saveFromTrace :: SimplifyTrace pol -> TypeScheme pol -> Repl ()
+saveFromTrace trace tys = do
   saveGraphFiles "0_typeAut" (trace_typeAut trace)
   saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
   saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
   saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-  prettyText (" :: " <> ppPrint (trace_resType trace))
+  prettyText (" :: " <> ppPrint tys)
 
 saveParseError :: PrettyAnn a => String -> a -> Repl ()
 saveParseError e1 e2 = do

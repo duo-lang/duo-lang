@@ -1,12 +1,16 @@
 module Syntax.Types where
 
+import Data.List (nub)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.List (nub)
 import Data.Text (Text)
 
 import Syntax.CommonTerm
-import Syntax.Kinds
+    ( XtorName(..),
+      NominalStructural(..),
+      PrdCnsRep(..),
+      PrdCns(..) )
+import Syntax.Kinds ( Kind )
 
 ------------------------------------------------------------------------------
 -- Type Variables and Names

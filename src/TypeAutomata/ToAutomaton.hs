@@ -1,29 +1,35 @@
-module TypeAutomata.ToAutomaton ( typeToAut, solverStateToTypeAut) where
+module TypeAutomata.ToAutomaton ( typeToAut ) where
 
+
+import Control.Monad ( forM_ )
+import Control.Monad.Except ( runExcept, Except )
+import Control.Monad.Reader
+    ( ReaderT(..), asks, MonadReader(..) )
+import Control.Monad.State
+    ( StateT(..), gets, modify )
+import Data.Graph.Inductive.Graph (Node)
+import Data.Graph.Inductive.Graph qualified as G
+import Data.Map (Map)
+import Data.Map qualified as M
+import Data.Set qualified as S
+
+import Errors ( Error, throwAutomatonError )
+import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
 import TypeAutomata.Definition
-import Pretty.Types()
-import Utils
-import Errors
-import TypeAutomata.Determinize (determinize)
-import TypeAutomata.Minimize (minimize)
-import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
-import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
-
-
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Monad.Except
-import Data.Set qualified as S
-
-import Data.Map (Map)
-import Data.Map qualified as M
-
-import Data.Graph.Inductive.Graph (Node)
-import Data.Graph.Inductive.Graph qualified as G
-import TypeAutomata.Lint (lint)
-import TypeInference.Constraints
+    ( TypeAutEps,
+      TypeAut'(..),
+      TypeGrEps,
+      TypeAutCore(..),
+      FlowEdge,
+      EdgeLabelEpsilon,
+      EdgeLabel(..),
+      NodeLabel(..),
+      XtorLabel(..),
+      emptyNodeLabel,
+      singleNodeLabel )
+import Utils ( enumerate )
 
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
@@ -195,31 +201,10 @@ insertType (TyNominal rep tn) = do
 
 
 -- turns a type into a type automaton with prescribed start polarity.
-typeToAut :: TypeScheme pol -> Either Error (TypeAutDet pol)
+typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
 typeToAut (TypeScheme tvars ty) = do
   (start, aut) <- runTypeAutTvars tvars (insertType ty)
-  let newaut = TypeAut { ta_pol = getPolarity ty
-                       , ta_starts = [start]
-                       , ta_core = aut
-                       }
-  pure $ (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) newaut
-
--- | Turns the output of the constraint solver into an automaton by using epsilon-edges to represent lower and upper bounds
-insertEpsilonEdges :: SolverResult -> TTA ()
-insertEpsilonEdges solverResult =
-  forM_ (M.toList solverResult) $ \(tv, vstate) -> do
-    i <- lookupTVar PosRep tv
-    j <- lookupTVar NegRep tv
-    forM_ (vst_lowerbounds vstate) $ \ty -> do
-      node <- insertType ty
-      insertEdges [(i, node, EpsilonEdge ())]
-    forM_ (vst_upperbounds vstate) $ \ty -> do
-      node <- insertType ty
-      insertEdges [(j, node, EpsilonEdge ())]
-
-solverStateToTypeAut :: SolverResult -> PolarityRep pol -> Typ pol -> Either Error (TypeAut pol)
-solverStateToTypeAut solverResult pol ty = do
-  (start,aut) <- runTypeAutTvars (M.keys solverResult) $ insertEpsilonEdges solverResult >> insertType ty
-  let newAut = TypeAut { ta_starts = [start], ta_pol = pol, ta_core = aut }
-  lint newAut
-  return $ removeEpsilonEdges newAut
+  return TypeAut { ta_pol = getPolarity ty
+                 , ta_starts = [start]
+                 , ta_core = aut
+                 }

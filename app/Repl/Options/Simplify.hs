@@ -10,9 +10,7 @@ import Pretty.Program ()
 import Repl.Repl ( prettyRepl, Repl, Option(..) )
 import Syntax.Types ( PolarityRep(..) )
 import Text.Megaparsec (eof, errorBundlePretty)
-import TypeAutomata.FromAutomaton (autToType)
-import TypeAutomata.ToAutomaton (typeToAut)
-
+import TypeAutomata.Simplify ( simplify )
 
 simplifyCmd :: Text -> Repl ()
 simplifyCmd s = case go PosRep of 
@@ -34,9 +32,8 @@ simplifyCmd s = case go PosRep of
     go :: forall p. PolarityRep p -> Either Error (Repl ())
     go rep = do
       ty <- (first (ParseError . T.pack . errorBundlePretty) (runInteractiveParser (typeSchemeP rep <* eof) s))
-      aut <- typeToAut ty
-      ty' <- autToType aut
-      return $ prettyRepl ty'
+      (_,tySimplified) <- simplify ty
+      return $ prettyRepl tySimplified
 
 simplifyOption :: Option
 simplifyOption = Option

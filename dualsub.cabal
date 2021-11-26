@@ -92,8 +92,10 @@ library
       TypeAutomata.Minimize
       TypeAutomata.RemoveEpsilon
       TypeAutomata.RemoveAdmissible
+      TypeAutomata.Simplify
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
+      TypeInference.Coalescing
       TypeInference.Driver
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.Terms

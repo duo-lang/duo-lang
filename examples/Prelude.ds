@@ -12,7 +12,7 @@ prd and := \b1 => \b2 => ifthenelse b1 b2 False;
 
 prd or := \b1 => \b2 => ifthenelse b1 True b2;
 
-# Peano natural numbers
+# # Peano natural numbers
 
 data Nat : Type CBV { Z, S(Nat) };
 
@@ -25,14 +25,14 @@ prd rec mul := \n => \m => case n of { Z => Z
 prd rec nateq := \n => \m => case n of { Z => case m of { Z => True, S(m) => False}
                                        , S(n) => case m of { Z => False, S(m) => nateq n m}};
 
-# Unit
+# # Unit
 
 data Unit : Type CBV { Unit };
 
 
-# Other functions
+# # Other functions
 
 prd id := \x => x;
 
-# Generic print consumer
+# # Generic print consumer
 cns print := mu x.Print(x);
