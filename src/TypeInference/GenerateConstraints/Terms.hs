@@ -220,7 +220,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural 
   (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
   -- The type at which the destructor call happens is constructed from the
   -- (inferred) return type and the inferred types from the argument list
-  let lctxt = (getTypArgs substInferred) ++ [CnsType retTypeNeg]
+  let lctxt = getTypArgs substInferred ++ [CnsType retTypeNeg]
   let codataType = TyCodata NegRep Nothing [MkXtorSig xt lctxt]
   -- The type of the destructee must be a subtype of the Destructor type just generated.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
@@ -265,18 +265,19 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- Look up the data declaration and the xtorSig.
       -- The type as well as the xtorSig have to be translated.
       decl <- lookupDataDecl xt
-      -- TODO: Construct type from argsInferred and fresh uvar
-      tyTranslated <- translateTypeUpper $ TyNominal NegRep (data_name decl)
-      xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
+      -- Generate a unification variable for the return type.
+      (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
+      -- The type at which the destructor call happens is constructed from the
+      -- (inferred) return type and the inferred types from the argument list
+      let lctxt = getTypArgs substInferred ++ [CnsType retTypeNeg]
+      let codataType = TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt lctxt]
       -- The type of the destructee must be a subtype of the translated nominal type.
-      addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) tyTranslated )
-      -- The argument types must be subtypes of the translated types declared in the xtorSig.
+      addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
+      -- The xtor sig has to be translated.
+      xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
+      -- The argument types must be subtypes of the greatest translation of the xtor sig.
       genConstraintsCtxts (getTypArgs substInferred) (init (sig_args xtorSigTranslated)) (DtorArgsConstraint loc)
-      -- The return type is the last element in the xtorSig, which must be a CnsType.
-      let retType = case last (sig_args xtorSigTranslated) of
-                      (CnsType ty) -> ty
-                      (PrdType _)  -> error "BANG"
-      return (Dtor (loc,retType) xt destructeeInferred substInferred)
+      return (Dtor (loc,retTypePos) xt destructeeInferred substInferred)
 --
 -- Structural Match (Syntactic Sugar):
 --
@@ -373,7 +374,7 @@ genConstraintsTerm (Comatch loc Structural cocases) = do
     -- Generate unification variables for each case arg
     (argtsPos,argtsNeg) <- freshTVars acase_args
     -- Typecheck the term in the context extended with the unification variables.
-    acase_termInferred<- withContext argtsPos (genConstraintsTerm acase_term)
+    acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
     return (MkACase acase_ext acase_name acase_args acase_termInferred, MkXtorSig acase_name (argtsNeg ++ [CnsType $ getTypeTerm acase_termInferred]))
   return (Comatch (loc,TyCodata PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
 --
