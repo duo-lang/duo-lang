@@ -228,7 +228,7 @@ inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
       ppPrintIO (trace_solvedConstraints trace)
       ppPrintIO (trace_bisubst trace)
       putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resType trace)
+      putStr "Inferred type (Simplified): " >> ppPrintIO (trace_resType trace)
   -- Check whether annotation matches inferred type
   ty <- checkAnnot (trace_resType trace) annot loc
   -- Insert into environment
