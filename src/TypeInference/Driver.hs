@@ -47,11 +47,17 @@ import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity :: Verbosity -- ^ Whether to print debug information to the terminal.
   , infOptsMode :: InferenceMode  -- ^ Whether to infer nominal or refinement types
+  , infOptsSimplify :: Bool       -- ^ Whether or not to simplify types.
   , infOptsLibPath :: [FilePath]  -- ^ Where to search for imported modules
   }
 
 defaultInferenceOptions :: InferenceOptions
-defaultInferenceOptions = InferenceOptions Silent InferNominal []
+defaultInferenceOptions = InferenceOptions
+  { infOptsVerbosity = Silent
+  , infOptsMode = InferNominal 
+  , infOptsSimplify = True 
+  , infOptsLibPath = []
+  }
 
 
 ---------------------------------------------------------------------------------
@@ -134,7 +140,7 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   , trace_solvedConstraints :: SolverResult
   , trace_bisubst :: Bisubstitution 
   , trace_resTypeOrig :: TypeScheme pol
-  , trace_automata :: SimplifyTrace pol
+  , trace_automata :: Maybe (SimplifyTrace pol)
   , trace_resType :: TypeScheme pol
   }
 
@@ -161,18 +167,30 @@ inferSTermTraced isRec loc fv rep tm = do
   let bisubst = coalesce solverResult
   -- Read of the type and generate the resulting type
   let typ = zonk bisubst (getTypeTerm tmInferred)
-  -- Simplify the resulting type
-  (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
-  -- Generate result type
-  let trace = TypeInferenceTrace 
-        { trace_constraintSet = constraintSet
-        , trace_solvedConstraints = solverResult
-        , trace_bisubst = bisubst
-        , trace_resTypeOrig = generalize typ
-        , trace_automata = simpTrace
-        , trace_resType = tys
-        }
-  return (trace, tmInferred)
+  case infOptsSimplify infopts of
+    True -> do
+      -- Simplify the resulting type
+      (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
+      -- Generate result type
+      let trace = TypeInferenceTrace 
+            { trace_constraintSet = constraintSet
+            , trace_solvedConstraints = solverResult
+            , trace_bisubst = bisubst
+            , trace_resTypeOrig = generalize typ
+            , trace_automata = Just simpTrace
+            , trace_resType = tys
+            }
+      return (trace, tmInferred)
+    False -> do
+      let trace = TypeInferenceTrace
+            { trace_constraintSet = constraintSet
+            , trace_solvedConstraints = solverResult
+            , trace_bisubst = bisubst
+            , trace_resTypeOrig = generalize typ
+            , trace_automata = Nothing 
+            , trace_resType = generalize typ
+            }
+      return (trace, tmInferred)
 
 
 inferSTerm :: IsRec

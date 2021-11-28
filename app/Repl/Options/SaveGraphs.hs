@@ -51,7 +51,9 @@ saveCmd s = do
         let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
-          Right trace -> saveFromTrace (trace_automata trace) (trace_resType trace)
+          Right trace -> case (trace_automata trace) of
+                             Just tr -> saveFromTrace tr (trace_resType trace)
+                             Nothing -> prettyRepl ("Enable simplification before trying to save graphs" :: String)
           Left err2 -> saveParseError (errorBundlePretty err1) err2 
       Left err2 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2)
 

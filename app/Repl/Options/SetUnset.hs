@@ -16,7 +16,7 @@ import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(evalOrder, typeInfOpts, steps, simplify, ReplState),
+      ReplState(evalOrder, typeInfOpts, steps, ReplState),
       EvalSteps(NoSteps, Steps),
       prettyRepl,
       mkWordCompleter )
@@ -30,7 +30,7 @@ setCmdVariants :: [(Text, Repl ())]
 setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
-                   , ("simplify", modify (\rs -> rs { simplify = True }))
+                   , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = True } }))
                    , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
                    , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
                    , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferRefined  } })) ]
@@ -66,7 +66,7 @@ setOption = Option
 
 unsetCmdVariants :: [(Text, Repl ())]
 unsetCmdVariants = [ ("steps", modify (\rs -> rs { steps = NoSteps }))
-                     ,  ("simplify", modify (\rs -> rs { simplify = False }))
+                     , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = False } }))
                      , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferNominal } }))]
 
 unsetCmd :: Text -> Repl ()
