@@ -36,6 +36,7 @@ data ReplState = ReplState
   { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
+  , simplify :: Bool
   , evalOrder :: CallingConvention
   , typeInfOpts :: InferenceOptions
   }
@@ -45,6 +46,7 @@ initialReplState :: ReplState
 initialReplState = ReplState { replEnv = mempty
                              , loadedFiles = []
                              , steps = NoSteps
+                             , simplify = True
                              , evalOrder = CBV
                              , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
                              }
