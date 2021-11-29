@@ -34,7 +34,7 @@ typecheckExample :: Environment -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
       let Right (term,loc) = runInteractiveParser (termP PrdRep) termS
-      let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep term
+      let inferenceAction = fst <$> inferTermTraced NonRecursive (Loc loc loc) "" PrdRep term
       inferenceResult <- execDriverM (DriverState defaultInferenceOptions env) inferenceAction
       let Right inferredTypeAut = trace_minTypeAut . unsafeFromMaybe . trace_automata . fst <$> inferenceResult
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS

@@ -1,4 +1,13 @@
-module TypeInference.Driver where
+module TypeInference.Driver
+( InferenceOptions(..)
+, defaultInferenceOptions
+, DriverState(..)
+, TypeInferenceTrace(..)
+, inferProgramIO
+, execDriverM
+, inferTermTraced
+, inferDecl
+) where
 
 import Control.Monad.State
 import Control.Monad.Except
@@ -149,12 +158,12 @@ data TypeInferenceTrace pol = TypeInferenceTrace
 -- Symmetric Terms and Commands
 ------------------------------------------------------------------------------
 
-inferSTermTraced :: IsRec
-                 -> Loc
-                 -> FreeVarName
-                 -> PrdCnsRep pc -> Term pc Parsed
-                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), Term pc Inferred)
-inferSTermTraced isRec loc fv rep tm = do
+inferTermTraced :: IsRec
+                -> Loc
+                -> FreeVarName
+                -> PrdCnsRep pc -> Term pc Parsed
+                -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), Term pc Inferred)
+inferTermTraced isRec loc fv rep tm = do
   infopts <- gets driverOpts
   env <- gets driverEnv
   -- Generate the constraints
@@ -194,28 +203,6 @@ inferSTermTraced isRec loc fv rep tm = do
       return (trace, zonkTerm bisubst tmInferred)
 
 
-inferSTerm :: IsRec
-           -> Loc
-           -> FreeVarName
-           -> PrdCnsRep pc -> Term pc Parsed
-           -> DriverM (TypeScheme (PrdCnsToPol pc), Term pc Inferred)
-inferSTerm isRec loc fv rep tm = do
-  (trace, tmInferred) <- inferSTermTraced isRec loc fv rep tm
-  return (trace_resType trace, tmInferred)
-
-checkCmd :: Loc
-         -> Command Parsed
-         -> DriverM (ConstraintSet, SolverResult, Command Inferred)
-checkCmd loc cmd = do
-  infopts <- gets driverOpts
-  env <- gets driverEnv
-  -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
-  -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
-  let bisubst = coalesce solverResult
-  return (constraints, solverResult, zonkCommand bisubst cmdInferred)
-
 ---------------------------------------------------------------------------------
 -- Infer Declarations
 ---------------------------------------------------------------------------------
@@ -224,7 +211,7 @@ inferDecl :: Declaration Parsed
            -> DriverM (Declaration Inferred)
 inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
   -- Infer a type
-  (trace, tmInferred) <- inferSTermTraced isRec loc v pc loct
+  (trace, tmInferred) <- inferTermTraced isRec loc v pc loct
   guardVerbose $ do
       ppPrintIO (trace_constraintSet trace)
       ppPrintIO (trace_solvedConstraints trace)
@@ -244,17 +231,28 @@ inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
       let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
       return (PrdCnsDecl loc pc isRec v annot tmInferred)
-inferDecl (CmdDecl loc v loct) = do
+inferDecl (CmdDecl loc v cmd) = do
   -- Check whether command is typeable
-  (constraints, solverResult, cmdInferred) <- checkCmd loc loct
+  infopts <- gets driverOpts
+  env <- gets driverEnv
+  -- Generate the constraints
+  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  -- Solve the constraints
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
+  -- Generate the bisubstitution
+  let bisubst = coalesce solverResult
+  -- Zonk the command
+  let cmdZonked = zonkCommand bisubst cmdInferred
+
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
+      ppPrintIO bisubst
   -- Insert into environment
   env <- gets driverEnv
-  let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
+  let newEnv = env { cmdEnv  = M.insert v (cmdZonked, loc) (cmdEnv env)}
   setEnvironment newEnv
-  return (CmdDecl loc v cmdInferred)
+  return (CmdDecl loc v cmdZonked)
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
   -- TODO: Check data decls

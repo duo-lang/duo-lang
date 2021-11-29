@@ -31,7 +31,7 @@ import TypeAutomata.Simplify
 import TypeInference.Driver
     ( execDriverM,
       DriverState(DriverState),
-      inferSTermTraced,
+      inferTermTraced,
       TypeInferenceTrace(..)
     )
 import Utils
@@ -48,7 +48,7 @@ saveCmd s = do
       saveFromTrace trace tySimplified
     Left err1 -> case runInteractiveParser (termP PrdRep) s of
       Right (tloc,loc) -> do
-        let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
+        let inferenceAction = fst <$> inferTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
           Right trace -> case (trace_automata trace) of
