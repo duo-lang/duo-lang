@@ -26,7 +26,7 @@ import Syntax.Program
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
-import Syntax.Zonking (Bisubstitution, zonk)
+import Syntax.Zonking (Bisubstitution, zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
@@ -167,7 +167,7 @@ inferSTermTraced isRec loc fv rep tm = do
   -- Coalesce the result
   let bisubst = coalesce solverResult
   -- Read of the type and generate the resulting type
-  let typ = zonk bisubst (getTypeTerm tmInferred)
+  let typ = zonkType bisubst (getTypeTerm tmInferred)
   case infOptsSimplify infopts of
     True -> do
       -- Simplify the resulting type

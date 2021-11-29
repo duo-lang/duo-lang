@@ -15,22 +15,22 @@ newtype Bisubstitution = MkBisubstitution { unBisubstitution :: Map TVar (Typ Po
 -- Zonking
 ---------------------------------------------------------------------------------
 
-zonk :: Bisubstitution -> Typ pol -> Typ pol
-zonk bisubst ty@(TyVar PosRep tv ) = case M.lookup tv (unBisubstitution bisubst) of
+zonkType :: Bisubstitution -> Typ pol -> Typ pol
+zonkType bisubst ty@(TyVar PosRep tv ) = case M.lookup tv (unBisubstitution bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (tyPos,_) -> tyPos
-zonk bisubst ty@(TyVar NegRep tv ) = case M.lookup tv (unBisubstitution bisubst) of
+zonkType bisubst ty@(TyVar NegRep tv ) = case M.lookup tv (unBisubstitution bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (_,tyNeg) -> tyNeg
-zonk bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)
-zonk bisubst (TyCodata rep tn xtors) = TyCodata rep tn (zonkXtorSig bisubst <$> xtors)
-zonk _       (TyNominal rep tn) = TyNominal rep tn
-zonk bisubst (TySet rep tys) = TySet rep (zonk bisubst <$> tys)
-zonk bisubst (TyRec rep tv ty) = TyRec rep tv (zonk bisubst ty)
+zonkType bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)
+zonkType bisubst (TyCodata rep tn xtors) = TyCodata rep tn (zonkXtorSig bisubst <$> xtors)
+zonkType _       (TyNominal rep tn) = TyNominal rep tn
+zonkType bisubst (TySet rep tys) = TySet rep (zonkType bisubst <$> tys)
+zonkType bisubst (TyRec rep tv ty) = TyRec rep tv (zonkType bisubst ty)
 
 zonkPrdCnsType :: Bisubstitution -> PrdCnsType pol -> PrdCnsType pol
-zonkPrdCnsType bisubst (PrdType ty) = PrdType (zonk bisubst ty)
-zonkPrdCnsType bisubst (CnsType ty) = CnsType (zonk bisubst ty)
+zonkPrdCnsType bisubst (PrdType ty) = PrdType (zonkType bisubst ty)
+zonkPrdCnsType bisubst (CnsType ty) = CnsType (zonkType bisubst ty)
 
 zonkLinearCtxt :: Bisubstitution -> LinearContext pol -> LinearContext pol
 zonkLinearCtxt bisubst = fmap (zonkPrdCnsType bisubst)
