@@ -26,7 +26,7 @@ import Syntax.Program
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
-import Syntax.Zonking (Bisubstitution, zonkType)
+import Syntax.Zonking (Bisubstitution, zonkType, zonkTerm, zonkCommand)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
@@ -181,7 +181,7 @@ inferSTermTraced isRec loc fv rep tm = do
             , trace_automata = Just simpTrace
             , trace_resType = tys
             }
-      return (trace, tmInferred)
+      return (trace, zonkTerm bisubst tmInferred)
     False -> do
       let trace = TypeInferenceTrace
             { trace_constraintSet = constraintSet
@@ -191,7 +191,7 @@ inferSTermTraced isRec loc fv rep tm = do
             , trace_automata = Nothing 
             , trace_resType = generalize typ
             }
-      return (trace, tmInferred)
+      return (trace, zonkTerm bisubst tmInferred)
 
 
 inferSTerm :: IsRec
@@ -213,7 +213,8 @@ checkCmd loc cmd = do
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
   -- Solve the constraints
   solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
-  return (constraints, solverResult, cmdInferred)
+  let bisubst = coalesce solverResult
+  return (constraints, solverResult, zonkCommand bisubst cmdInferred)
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
