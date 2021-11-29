@@ -61,21 +61,22 @@ generateCodeActions :: TextDocumentIdentifier -> Range -> Environment -> List (C
 generateCodeActions ident (Range {_start= start}) env = do
   -- Producer declarations
   let prds = M.toList $ prdEnv env
-  let desugarActionsPrd =  [ generateDesugarCodeAction PrdRep ident prd | prd@(_,(tm,loc,_)) <- prds, not (isDesugaredTerm tm), lookupPos start loc]
+  let desugarActionsPrd  = [ generateDesugarCodeAction PrdRep ident prd | prd@(_,(tm,loc,_)) <- prds, not (isDesugaredTerm tm), lookupPos start loc]
   let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
   let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isDesugaredTerm tm, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Consumer declarations
   let cnss = M.toList $ cnsEnv env
-  let desugarActionsCns =  [ generateDesugarCodeAction CnsRep ident cns | cns@(_,(tm,loc,_)) <- cnss, not (isDesugaredTerm tm), lookupPos start loc]
+  let desugarActionsCns  = [ generateDesugarCodeAction CnsRep ident cns | cns@(_,(tm,loc,_)) <- cnss, not (isDesugaredTerm tm), lookupPos start loc]
   let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
   let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isDesugaredTerm tm, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Command declarations
   let cmds = M.toList $ cmdEnv env
+  let desugarActionsCmd  = [ generateCmdDesugarCodeAction ident cmd | cmd@(_,(command, loc)) <- cmds , not (isDesugaredCommand command), lookupPos start loc]
   let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isDesugaredCommand command, isNothing (isFocusedCmd CBV (desugarCmd command)), lookupPos start loc]
   let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isDesugaredCommand command, isNothing (isFocusedCmd CBN (desugarCmd command)), lookupPos start loc]
   List $ mconcat [ desugarActionsPrd, cbvFocusActionsPrd, cbnFocusActionsPrd
                  , desugarActionsCns, cbvFocusActionsCns, cbnFocusActionsCns
-                 , cbvFocusActionsCmd,cbnFocusActionsCmd
+                 , desugarActionsCmd, cbvFocusActionsCmd, cbnFocusActionsCmd
                  ]
 
 ---------------------------------------------------------------------------------
@@ -156,3 +157,26 @@ generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
     WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
                   , _documentChanges=Nothing 
                   , _changeAnnotations=Nothing}
+
+generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
+generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> name
+                                                                   , _kind = Just CodeActionQuickFix
+                                                                   , _diagnostics = Nothing
+                                                                   , _isPreferred = Nothing
+                                                                   , _disabled = Nothing
+                                                                   , _edit = Just (generateCmdDesugarEdit ident arg)
+                                                                   , _command = Nothing
+                                                                   , _xdata = Nothing
+                                                                   }
+
+generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
+generateCmdDesugarEdit (TextDocumentIdentifier uri) (name, (cmd,loc)) =
+  let
+    newDecl = NamedRep $ reparseDecl $ CmdDecl () name (desugarCmd cmd)
+    replacement = ppPrint newDecl
+    edit = TextEdit {_range = locToRange loc, _newText= replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing
+                  }
