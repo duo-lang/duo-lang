@@ -26,10 +26,11 @@ import Syntax.Program
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
+import Syntax.Zonking (Bisubstitution, zonk)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
-import TypeInference.Coalescing ( coalesce, zonk, Bisubstitution )
+import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
     ( PrdCnsToPol, InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.Terms
