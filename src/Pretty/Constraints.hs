@@ -7,9 +7,9 @@ import Text.Megaparsec.Pos
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Types
+import Syntax.Zonking (Bisubstitution(..))
 import TypeInference.Constraints
 import Utils
-import TypeInference.Coalescing (Bisubstitution(..))
 
 
 ---------------------------------------------------------------------------------
