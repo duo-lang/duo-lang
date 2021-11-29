@@ -136,7 +136,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 ---------------------------------------------------------------------------------
 
 generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
-generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
+generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> name
                                                                     , _kind = Just CodeActionQuickFix 
                                                                     , _diagnostics = Nothing
                                                                     , _isPreferred = Nothing
