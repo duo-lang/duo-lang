@@ -14,7 +14,7 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Program
     ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
-import Syntax.Types ( Polarity(..), TypeScheme)
+import Syntax.Types ( TypeScheme, PrdCnsToPol )
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
 import Syntax.Terms ( Term )
@@ -30,7 +30,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
-import Translate.Desugar (desugarTerm, desugarCmd)
+import Translate.Desugar (desugarTerm, desugarCmd, isDesugaredTerm, isDesugaredCommand)
 import Translate.Reparse
 
 ---------------------------------------------------------------------------------
@@ -61,27 +61,30 @@ generateCodeActions :: TextDocumentIdentifier -> Range -> Environment -> List (C
 generateCodeActions ident (Range {_start= start}) env = do
   -- Producer declarations
   let prds = M.toList $ prdEnv env
-  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
-  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
+  let desugarActionsPrd  = [ generateDesugarCodeAction PrdRep ident prd | prd@(_,(tm,loc,_)) <- prds, not (isDesugaredTerm tm), lookupPos start loc]
+  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isDesugaredTerm tm, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Consumer declarations
   let cnss = M.toList $ cnsEnv env
-  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
-  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
+  let desugarActionsCns  = [ generateDesugarCodeAction CnsRep ident cns | cns@(_,(tm,loc,_)) <- cnss, not (isDesugaredTerm tm), lookupPos start loc]
+  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isDesugaredTerm tm, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
   -- Command declarations
   let cmds = M.toList $ cmdEnv env
-  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBV (desugarCmd command)), lookupPos start loc]
-  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isNothing (isFocusedCmd CBN (desugarCmd command)), lookupPos start loc]
-  List (cbvFocusActionsPrd <> cbnFocusActionsPrd <> cbvFocusActionsCns <> cbnFocusActionsCns <> cbvFocusActionsCmd <> cbnFocusActionsCmd)
+  let desugarActionsCmd  = [ generateCmdDesugarCodeAction ident cmd | cmd@(_,(command, loc)) <- cmds , not (isDesugaredCommand command), lookupPos start loc]
+  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isDesugaredCommand command, isNothing (isFocusedCmd CBV (desugarCmd command)), lookupPos start loc]
+  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isDesugaredCommand command, isNothing (isFocusedCmd CBN (desugarCmd command)), lookupPos start loc]
+  List $ mconcat [ desugarActionsPrd, cbvFocusActionsPrd, cbnFocusActionsPrd
+                 , desugarActionsCns, cbvFocusActionsCns, cbnFocusActionsCns
+                 , desugarActionsCmd, cbvFocusActionsCmd, cbnFocusActionsCmd
+                 ]
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions
 ---------------------------------------------------------------------------------
 
-type family Foo (pc :: PrdCns) :: Polarity where
-  Foo Prd = Pos 
-  Foo Cns = Neg
 
-generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Term pc Inferred, Loc, TypeScheme (Foo pc))) -> Command |? CodeAction
+generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
 generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
@@ -92,9 +95,7 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
                                                                   , _xdata = Nothing
                                                                   }
 
-                                      
-
-generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Term pc Inferred, Loc, TypeScheme (Foo pc))) -> WorkspaceEdit
+generateFocusEdit :: PrdCnsRep pc -> CallingConvention -> TextDocumentIdentifier ->  (FreeVarName, (Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl :: NamedRep (Declaration 'Parsed) = case pc of
@@ -107,7 +108,6 @@ generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
-
 
 generateCmdFocusCodeAction :: TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
 generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
@@ -131,28 +131,52 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
+
 ---------------------------------------------------------------------------------
--- Provide Translation Actions
+-- Provide Desugar Actions
 ---------------------------------------------------------------------------------
 
--- generateTranslateCodeAction :: TextDocumentIdentifier -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> Command |? CodeAction
--- generateTranslateCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Translate " <> name
---                                                                   , _kind = Just CodeActionQuickFix 
---                                                                   , _diagnostics = Nothing
---                                                                   , _isPreferred = Nothing
---                                                                   , _disabled = Nothing
---                                                                   , _edit = Just (generateTranslateEdit ident arg)
---                                                                   , _command = Nothing
---                                                                   , _xdata = Nothing
---                                                                   }
+generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
+generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> name
+                                                                    , _kind = Just CodeActionQuickFix 
+                                                                    , _diagnostics = Nothing
+                                                                    , _isPreferred = Nothing
+                                                                    , _disabled = Nothing
+                                                                    , _edit = Just (generateDesugarEdit rep ident arg)
+                                                                    , _command = Nothing
+                                                                    , _xdata = Nothing
+                                                                    }
 
--- generateTranslateEdit :: TextDocumentIdentifier  -> (FreeVarName,(STerm Prd Inferred, Loc, TypeScheme Pos)) -> WorkspaceEdit 
--- generateTranslateEdit (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
---   let
---     newDecl = NamedRep $ PrdCnsDecl () PrdRep Recursive name (Just ty) (createNamesSTerm (compile tm))
---     replacement = ppPrint newDecl
---     edit = TextEdit {_range=locToRange loc, _newText=replacement}
---   in
---     WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
---                   , _documentChanges=Nothing 
---                   , _changeAnnotations=Nothing}
+generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit 
+generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
+  let
+    newDecl = NamedRep $ reparseDecl $ PrdCnsDecl () rep Recursive name (Just ty) (desugarTerm tm)
+    replacement = ppPrint newDecl
+    edit = TextEdit {_range=locToRange loc, _newText=replacement}
+  in
+    WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
+                  , _documentChanges=Nothing 
+                  , _changeAnnotations=Nothing}
+
+generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
+generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> name
+                                                                   , _kind = Just CodeActionQuickFix
+                                                                   , _diagnostics = Nothing
+                                                                   , _isPreferred = Nothing
+                                                                   , _disabled = Nothing
+                                                                   , _edit = Just (generateCmdDesugarEdit ident arg)
+                                                                   , _command = Nothing
+                                                                   , _xdata = Nothing
+                                                                   }
+
+generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> WorkspaceEdit
+generateCmdDesugarEdit (TextDocumentIdentifier uri) (name, (cmd,loc)) =
+  let
+    newDecl = NamedRep $ reparseDecl $ CmdDecl () name (desugarCmd cmd)
+    replacement = ppPrint newDecl
+    edit = TextEdit {_range = locToRange loc, _newText= replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing
+                  }

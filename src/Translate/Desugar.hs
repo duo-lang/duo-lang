@@ -3,12 +3,39 @@ module Translate.Desugar
   , desugarPCTerm
   , desugarProgram
   , desugarCmd
+  , isDesugaredTerm
+  , isDesugaredCommand
   )
   where
 
 import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Program ( Declaration(..), Program )
+
+---------------------------------------------------------------------------------
+-- Check if term is desugared
+---------------------------------------------------------------------------------
+
+isDesugaredPCTerm :: PrdCnsTerm Inferred -> Bool
+isDesugaredPCTerm (PrdTerm tm) = isDesugaredTerm tm
+isDesugaredPCTerm (CnsTerm tm) = isDesugaredTerm tm
+
+isDesugaredTerm :: Term pc Inferred -> Bool
+-- Core terms
+isDesugaredTerm (BoundVar _ _ _) = True
+isDesugaredTerm (FreeVar _ _ _) = True
+isDesugaredTerm (XtorCall _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
+isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
+isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkSCase { scase_cmd } -> isDesugaredCommand scase_cmd ) <$> cases)
+-- Non-core terms
+isDesugaredTerm Dtor{} = False
+isDesugaredTerm Match {} = False
+isDesugaredTerm Comatch {} = False
+
+isDesugaredCommand :: Command Inferred -> Bool
+isDesugaredCommand (Apply _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
+isDesugaredCommand (Print _ prd) = isDesugaredTerm prd
+isDesugaredCommand (Done _) = True
 
 ---------------------------------------------------------------------------------
 -- Desugar Terms
