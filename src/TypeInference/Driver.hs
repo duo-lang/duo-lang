@@ -1,4 +1,13 @@
-module TypeInference.Driver where
+module TypeInference.Driver
+  ( InferenceOptions(..)
+  , defaultInferenceOptions
+  , DriverState(..)
+  , execDriverM
+  , inferProgramIO
+  , inferSTermTraced
+  , inferDecl
+  , TypeInferenceTrace(..)
+  ) where
 
 import Control.Monad.State
 import Control.Monad.Except
@@ -51,11 +60,11 @@ import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 ------------------------------------------------------------------------------
 
 data InferenceOptions = InferenceOptions
-  { infOptsVerbosity :: Verbosity -- ^ Whether to print debug information to the terminal.
-  , infOptsPrintGraphs :: Bool    -- ^ Whether to print graphs from type simplification.
-  , infOptsMode :: InferenceMode  -- ^ Whether to infer nominal or refinement types
-  , infOptsSimplify :: Bool       -- ^ Whether or not to simplify types.
-  , infOptsLibPath :: [FilePath]  -- ^ Where to search for imported modules
+  { infOptsVerbosity   :: Verbosity      -- ^ Whether to print debug information to the terminal.
+  , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
+  , infOptsMode        :: InferenceMode  -- ^ Whether to infer nominal or refinement types.
+  , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
+  , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
   }
 
 defaultInferenceOptions :: InferenceOptions
@@ -95,6 +104,11 @@ guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
     verbosity <- gets (infOptsVerbosity . driverOpts)
     when (verbosity == Verbose) (liftIO action)
+
+guardPrintGraphs :: IO () -> DriverM ()
+guardPrintGraphs action = do
+  printGraphs <- gets (infOptsPrintGraphs . driverOpts)
+  when printGraphs (liftIO action)
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
@@ -223,16 +237,6 @@ inferSTermTraced isRec loc fv rep tm = do
             , trace_resType = generalize typ
             }
       return (trace, tmInferred)
-
-
-inferSTerm :: IsRec
-           -> Loc
-           -> FreeVarName
-           -> PrdCnsRep pc -> Term pc Parsed
-           -> DriverM (TypeScheme (PrdCnsToPol pc), Term pc Inferred)
-inferSTerm isRec loc fv rep tm = do
-  (trace, tmInferred) <- inferSTermTraced isRec loc fv rep tm
-  return (trace_resType trace, tmInferred)
 
 checkCmd :: Loc
          -> Command Parsed
