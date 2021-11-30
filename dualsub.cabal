@@ -160,7 +160,6 @@ test-suite dualsub-test
   other-modules:
       Translate.TranslateExamplesSpec
     , Translate.FocusingSpec
-    , TypeInference.StaticExamplesSpec
     , TypeInference.ExamplesSpec
     , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec
