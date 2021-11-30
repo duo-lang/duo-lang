@@ -17,7 +17,6 @@ import TypeInference.Driver
 import TypeAutomata.ToAutomaton
 import TypeAutomata.Determinize
 import TypeAutomata.RemoveEpsilon
-import TypeAutomata.Simplify
 import TypeAutomata.Minimize
 import TypeAutomata.RemoveAdmissible
 import TypeAutomata.Subsume (typeAutEqual)
@@ -25,10 +24,6 @@ import Utils
 
 instance Show (TypeScheme pol) where
   show = ppPrintString
-
-unsafeFromMaybe :: Maybe a -> a
-unsafeFromMaybe (Just x) = x
-unsafeFromMaybe Nothing = error "Called unsafeFromMaybe on Nothing"
 
 typecheckExample :: Environment -> Text -> Text -> Spec
 typecheckExample env termS typS = do
