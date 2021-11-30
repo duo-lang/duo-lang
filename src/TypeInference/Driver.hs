@@ -238,18 +238,6 @@ inferSTermTraced isRec loc fv rep tm = do
             }
       return (trace, tmInferred)
 
-checkCmd :: Loc
-         -> Command Parsed
-         -> DriverM (ConstraintSet, SolverResult, Command Inferred)
-checkCmd loc cmd = do
-  infopts <- gets driverOpts
-  env <- gets driverEnv
-  -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
-  -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
-  return (constraints, solverResult, cmdInferred)
-
 ---------------------------------------------------------------------------------
 -- Infer Declarations
 ---------------------------------------------------------------------------------
@@ -278,9 +266,13 @@ inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
       let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
       return (PrdCnsDecl loc pc isRec v annot tmInferred)
-inferDecl (CmdDecl loc v loct) = do
-  -- Check whether command is typeable
-  (constraints, solverResult, cmdInferred) <- checkCmd loc loct
+inferDecl (CmdDecl loc v cmd) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
+  -- Generate the constraints
+  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  -- Solve the constraints
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
