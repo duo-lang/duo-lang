@@ -132,7 +132,6 @@ executable dualsub
       Repl.Options.Focusing
       Repl.Options.Let
       Repl.Options.LoadReload
-      Repl.Options.SaveGraphs
       Repl.Options.SetUnset
       Repl.Options.Show
       Repl.Options.Simplify

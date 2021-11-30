@@ -2,17 +2,21 @@ module TypeInference.Driver where
 
 import Control.Monad.State
 import Control.Monad.Except
+import Data.GraphViz
+    ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist )
+import System.Directory ( doesFileExist, createDirectoryIfMissing, getCurrentDirectory)
 import Text.Megaparsec hiding (Pos)
+
 
 import Errors ( LocatedError, Error(OtherError) )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
+import Pretty.TypeAutomata (typeAutToDot)
 import Pretty.Errors ( printLocatedError )
 import Syntax.Terms
 import Syntax.CommonTerm
@@ -27,6 +31,7 @@ import Syntax.Program
       IsRec(..),
       ModuleName(..) )
 import Syntax.Zonking (Bisubstitution, zonkType)
+import TypeAutomata.Definition
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Constraints
@@ -47,6 +52,7 @@ import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity :: Verbosity -- ^ Whether to print debug information to the terminal.
+  , infOptsPrintGraphs :: Bool    -- ^ Whether to print graphs from type simplification.
   , infOptsMode :: InferenceMode  -- ^ Whether to infer nominal or refinement types
   , infOptsSimplify :: Bool       -- ^ Whether or not to simplify types.
   , infOptsLibPath :: [FilePath]  -- ^ Where to search for imported modules
@@ -55,6 +61,7 @@ data InferenceOptions = InferenceOptions
 defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
+  , infOptsPrintGraphs = False
   , infOptsMode = InferNominal 
   , infOptsSimplify = True 
   , infOptsLibPath = []
@@ -144,6 +151,30 @@ data TypeInferenceTrace pol = TypeInferenceTrace
   , trace_automata :: Maybe (SimplifyTrace pol)
   , trace_resType :: TypeScheme pol
   }
+
+saveFromTrace :: String -> SimplifyTrace pol -> IO ()
+saveFromTrace str trace = do
+  saveGraph ("0_typeAut_"       <> str) (trace_typeAut        trace)
+  saveGraph ("1_typeAutDet"     <> str) (trace_typeAutDet     trace)
+  saveGraph ("2_typeAutDetAdms" <> str) (trace_typeAutDetAdms trace)
+  saveGraph ("3_minTypeAut"     <> str) (trace_minTypeAut     trace)
+
+saveGraph :: String -> TypeAut' EdgeLabelNormal f pol -> IO ()
+saveGraph fileName aut = do
+  let graphDir = "graphs"
+  let fileUri = "  file://"
+  let jpg = "jpg"
+  let xdot = "xdot"
+  dotInstalled <- isGraphvizInstalled
+  if dotInstalled
+    then do
+      createDirectoryIfMissing True graphDir
+      currentDir <- getCurrentDirectory
+      _ <- runGraphviz (typeAutToDot aut) Jpeg           (graphDir </> fileName <.> jpg)
+      _ <- runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
+      putStrLn (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
+    else do
+      putStrLn "Cannot generate graphs: graphviz executable not found in path."
 
 ------------------------------------------------------------------------------
 -- Symmetric Terms and Commands
