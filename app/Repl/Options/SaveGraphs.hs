@@ -9,7 +9,7 @@ import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
 import Text.Megaparsec ( errorBundlePretty )
-import Parser.Parser ( runInteractiveParser, termP, typeSchemeP )
+import Parser.Parser ( runInteractiveParser, termP )
 import Pretty.Pretty ( ppPrint, PrettyAnn )
 import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
@@ -18,14 +18,13 @@ import Repl.Repl
       Repl,
       ReplState(replEnv, typeInfOpts),
       prettyRepl,
-      prettyText,
-      fromRight )
+      prettyText)
 import Syntax.Program ( IsRec(NonRecursive) )
-import Syntax.Types ( PolarityRep(PosRep), TypeScheme )
+import Syntax.Types ( TypeScheme )
 import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
 import TypeAutomata.Simplify
-    ( simplify,
+    (
       SimplifyTrace(..)
     )
 import TypeInference.Driver
@@ -42,11 +41,7 @@ saveCmd :: Text -> Repl ()
 saveCmd s = do
   env <- gets replEnv
   opts <- gets typeInfOpts
-  case runInteractiveParser (typeSchemeP PosRep) s of
-    Right ty -> do
-      (trace, tySimplified) <- fromRight (simplify ty)
-      saveFromTrace trace tySimplified
-    Left err1 -> case runInteractiveParser (termP PrdRep) s of
+  case runInteractiveParser (termP PrdRep) s of
       Right (tloc,loc) -> do
         let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep tloc
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
@@ -54,8 +49,8 @@ saveCmd s = do
           Right trace -> case (trace_automata trace) of
                              Just tr -> saveFromTrace tr (trace_resType trace)
                              Nothing -> prettyRepl ("Enable simplification before trying to save graphs" :: String)
-          Left err2 -> saveParseError (errorBundlePretty err1) err2 
-      Left err2 -> saveParseError (errorBundlePretty err1) (errorBundlePretty err2)
+          Left err2 -> saveParseError err2
+      Left err2 -> saveParseError (errorBundlePretty err2)
 
 saveFromTrace :: SimplifyTrace pol -> TypeScheme pol -> Repl ()
 saveFromTrace trace tys = do
@@ -65,10 +60,9 @@ saveFromTrace trace tys = do
   saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
   prettyText (" :: " <> ppPrint tys)
 
-saveParseError :: PrettyAnn a => String -> a -> Repl ()
-saveParseError e1 e2 = do
-  prettyText (T.unlines [ "Type parsing error:", ppPrint e1
-                        , "STerm parsing error:", ppPrint e2 ])
+saveParseError :: PrettyAnn a =>  a -> Repl ()
+saveParseError e = do
+  prettyText (T.unlines [ "STerm parsing error:", ppPrint e ])
                      
 
 saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
