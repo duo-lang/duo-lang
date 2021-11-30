@@ -85,6 +85,6 @@ typeAutEqualM (gr1, n) (gr2, m) = do
 
 subsume :: TypeScheme pol -> TypeScheme pol -> Either Error Bool
 subsume ty1 ty2 = do
-  aut1 <- (determinize . removeEpsilonEdges) <$> typeToAut ty1
-  aut2 <- (determinize . removeEpsilonEdges) <$> typeToAut ty2
+  aut1 <- (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut ty1
+  aut2 <- (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut ty2
   return (isSubtype aut1 aut2)
