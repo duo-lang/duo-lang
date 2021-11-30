@@ -244,6 +244,9 @@ inferSTermTraced isRec loc fv rep tm = do
 
 inferDecl :: Declaration Parsed
            -> DriverM (Declaration Inferred)
+--
+-- PrdCnsDecl
+--
 inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
   -- Infer a type
   (trace, tmInferred) <- inferSTermTraced isRec loc v pc loct
@@ -261,11 +264,14 @@ inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
     PrdRep -> do
       let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec v annot tmInferred)
+      return (PrdCnsDecl loc pc isRec v (Just ty) tmInferred)
     CnsRep -> do
       let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec v annot tmInferred)
+      return (PrdCnsDecl loc pc isRec v (Just ty) tmInferred)
+--
+-- CmdDecl
+--
 inferDecl (CmdDecl loc v cmd) = do
   infopts <- gets driverOpts
   env <- gets driverEnv
@@ -281,6 +287,9 @@ inferDecl (CmdDecl loc v cmd) = do
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
   return (CmdDecl loc v cmdInferred)
+--
+-- DataDecl
+--
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
   -- TODO: Check data decls
@@ -288,17 +297,26 @@ inferDecl (DataDecl loc dcl) = do
   let newEnv = env { declEnv = (loc,dcl) : declEnv env}
   setEnvironment newEnv
   return (DataDecl loc dcl)
+--
+-- ImportDecl
+--
 inferDecl (ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
   newEnv <- fst <$> inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
   return (ImportDecl loc mod)
+--
+-- SetDecl
+--
 inferDecl (SetDecl loc txt) = case T.unpack txt of
   "refined" -> do
     modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
     return (SetDecl loc txt)
   _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
+--
+-- ParseErrorDecl
+--
 inferDecl ParseErrorDecl = do
     throwError (Located defaultLoc (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))
 

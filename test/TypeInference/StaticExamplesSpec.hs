@@ -33,12 +33,15 @@ unsafeFromMaybe Nothing = error "Called unsafeFromMaybe on Nothing"
 typecheckExample :: Environment -> Text -> Text -> Spec
 typecheckExample env termS typS = do
   it (T.unpack termS ++  " typechecks as: " ++ T.unpack typS) $ do
+      -- Infer the type of the term
       let Right (term,loc) = runInteractiveParser (termP PrdRep) termS
-      let inferenceAction = fst <$> inferSTermTraced NonRecursive (Loc loc loc) "" PrdRep term
-      inferenceResult <- execDriverM (DriverState defaultInferenceOptions env) inferenceAction
-      let Right inferredTypeAut = trace_minTypeAut . unsafeFromMaybe . trace_automata . fst <$> inferenceResult
+      let decl = PrdCnsDecl (Loc loc loc) PrdRep NonRecursive "" Nothing term
+      inferenceResult <- execDriverM (DriverState defaultInferenceOptions env) (inferDecl decl)
+      let Right ((PrdCnsDecl _ PrdRep _ _ (Just tyInferred) _),_) = inferenceResult
+      -- Compare to the specified type
       let Right specTypeScheme = runInteractiveParser (typeSchemeP PosRep) typS
-      let Right specTypeAut = (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut specTypeScheme
+      let Right inferredTypeAut = (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut tyInferred
+      let Right specTypeAut     = (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut specTypeScheme
       (inferredTypeAut `typeAutEqual` specTypeAut) `shouldBe` True
 
 prgExamples :: [(Text,Text)]
