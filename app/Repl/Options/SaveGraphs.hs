@@ -4,23 +4,17 @@ import Control.Monad.State ( MonadIO(liftIO), gets )
 import Data.GraphViz
     ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Text (Text)
-import Data.Text qualified as T
 import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>), (<.>))
 
-import Text.Megaparsec ( errorBundlePretty )
 import Parser.Parser ( runInteractiveParser, termP )
-import Pretty.Pretty ( ppPrint, PrettyAnn )
-import Pretty.Program ()
 import Pretty.TypeAutomata (typeAutToDot)
 import Repl.Repl
     ( Option(..),
       Repl,
       ReplState(replEnv, typeInfOpts),
-      prettyRepl,
-      prettyText)
+      prettyRepl)
 import Syntax.Program ( IsRec(NonRecursive) )
-import Syntax.Types ( TypeScheme )
 import Syntax.CommonTerm ( PrdCnsRep(PrdRep) )
 import TypeAutomata.Definition ( TypeAut', EdgeLabelNormal )
 import TypeAutomata.Simplify
@@ -47,40 +41,34 @@ saveCmd s = do
         traceEither <- liftIO $ execDriverM (DriverState opts env) inferenceAction
         case fst <$> traceEither of
           Right trace -> case (trace_automata trace) of
-                             Just tr -> saveFromTrace tr (trace_resType trace)
+                             Just tr -> liftIO $ saveFromTrace "" tr
                              Nothing -> prettyRepl ("Enable simplification before trying to save graphs" :: String)
-          Left err2 -> saveParseError err2
-      Left err2 -> saveParseError (errorBundlePretty err2)
+          Left _err -> return ()
+      Left _err -> return ()
 
-saveFromTrace :: SimplifyTrace pol -> TypeScheme pol -> Repl ()
-saveFromTrace trace tys = do
-  saveGraphFiles "0_typeAut" (trace_typeAut trace)
-  saveGraphFiles "1_typeAutDet" (trace_typeAutDet trace)
-  saveGraphFiles "2_typeAutDetAdms" (trace_typeAutDetAdms trace)
-  saveGraphFiles "3_minTypeAut" (trace_minTypeAut trace)
-  prettyText (" :: " <> ppPrint tys)
+saveFromTrace :: String -> SimplifyTrace pol -> IO ()
+saveFromTrace str trace = do
+  saveGraph ("0_typeAut_"       <> str) (trace_typeAut        trace)
+  saveGraph ("1_typeAutDet"     <> str) (trace_typeAutDet     trace)
+  saveGraph ("2_typeAutDetAdms" <> str) (trace_typeAutDetAdms trace)
+  saveGraph ("3_minTypeAut"     <> str) (trace_minTypeAut     trace)
 
-saveParseError :: PrettyAnn a =>  a -> Repl ()
-saveParseError e = do
-  prettyText (T.unlines [ "STerm parsing error:", ppPrint e ])
-                     
-
-saveGraphFiles :: String -> TypeAut' EdgeLabelNormal f pol -> Repl ()
-saveGraphFiles fileName aut = do
+saveGraph :: String -> TypeAut' EdgeLabelNormal f pol -> IO ()
+saveGraph fileName aut = do
   let graphDir = "graphs"
   let fileUri = "  file://"
   let jpg = "jpg"
   let xdot = "xdot"
-  dotInstalled <- liftIO $ isGraphvizInstalled
+  dotInstalled <- isGraphvizInstalled
   if dotInstalled
     then do
-      liftIO $ createDirectoryIfMissing True graphDir
-      currentDir <- liftIO $ getCurrentDirectory
-      _ <- liftIO $ runGraphviz (typeAutToDot aut) Jpeg (graphDir </> fileName <.> jpg)
-      _ <- liftIO $ runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
-      prettyRepl (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
+      createDirectoryIfMissing True graphDir
+      currentDir <- getCurrentDirectory
+      _ <- runGraphviz (typeAutToDot aut) Jpeg           (graphDir </> fileName <.> jpg)
+      _ <- runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
+      putStrLn (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
     else do
-      prettyText "Cannot execute command: graphviz executable not found in path."
+      putStrLn "Cannot generate graphs: graphviz executable not found in path."
 
 
 saveOption :: Option
