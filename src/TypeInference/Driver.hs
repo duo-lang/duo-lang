@@ -1,18 +1,29 @@
-module TypeInference.Driver where
+module TypeInference.Driver
+  ( InferenceOptions(..)
+  , defaultInferenceOptions
+  , DriverState(..)
+  , execDriverM
+  , inferProgramIO
+  , inferDecl
+  ) where
 
 import Control.Monad.State
 import Control.Monad.Except
+import Data.GraphViz
+    ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist )
+import System.Directory ( doesFileExist, createDirectoryIfMissing, getCurrentDirectory)
 import Text.Megaparsec hiding (Pos)
+
 
 import Errors ( LocatedError, Error(OtherError) )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
+import Pretty.TypeAutomata (typeAutToDot)
 import Pretty.Errors ( printLocatedError )
 import Syntax.Terms
 import Syntax.CommonTerm
@@ -26,13 +37,13 @@ import Syntax.Program
       Declaration(..),
       IsRec(..),
       ModuleName(..) )
-import Syntax.Zonking (Bisubstitution, zonkType)
+import Syntax.Zonking (zonkType)
+import TypeAutomata.Definition
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
-import TypeInference.Constraints
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( PrdCnsToPol, InferenceMode(..), runGenM )
+    ( InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -46,15 +57,17 @@ import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 ------------------------------------------------------------------------------
 
 data InferenceOptions = InferenceOptions
-  { infOptsVerbosity :: Verbosity -- ^ Whether to print debug information to the terminal.
-  , infOptsMode :: InferenceMode  -- ^ Whether to infer nominal or refinement types
-  , infOptsSimplify :: Bool       -- ^ Whether or not to simplify types.
-  , infOptsLibPath :: [FilePath]  -- ^ Where to search for imported modules
+  { infOptsVerbosity   :: Verbosity      -- ^ Whether to print debug information to the terminal.
+  , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
+  , infOptsMode        :: InferenceMode  -- ^ Whether to infer nominal or refinement types.
+  , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
+  , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
   }
 
 defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
+  , infOptsPrintGraphs = False
   , infOptsMode = InferNominal 
   , infOptsSimplify = True 
   , infOptsLibPath = []
@@ -88,6 +101,11 @@ guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
     verbosity <- gets (infOptsVerbosity . driverOpts)
     when (verbosity == Verbose) (liftIO action)
+
+guardPrintGraphs :: IO () -> DriverM ()
+guardPrintGraphs action = do
+  printGraphs <- gets (infOptsPrintGraphs . driverOpts)
+  when printGraphs (liftIO action)
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
@@ -133,87 +151,33 @@ liftEitherErr loc x = case x of
     Right res -> return res
 
 ------------------------------------------------------------------------------
--- TypeInference Trace
+-- Printing TypeAutomata
 ------------------------------------------------------------------------------
 
-data TypeInferenceTrace pol = TypeInferenceTrace
-  { trace_constraintSet :: ConstraintSet
-  , trace_solvedConstraints :: SolverResult
-  , trace_bisubst :: Bisubstitution 
-  , trace_resTypeOrig :: TypeScheme pol
-  , trace_automata :: Maybe (SimplifyTrace pol)
-  , trace_resType :: TypeScheme pol
-  }
+printTrace :: String -> SimplifyTrace pol -> IO ()
+printTrace str trace = do
+  printGraph ("0_typeAut_"       <> str) (trace_typeAut        trace)
+  printGraph ("1_typeAutDet"     <> str) (trace_typeAutDet     trace)
+  printGraph ("2_typeAutDetAdms" <> str) (trace_typeAutDetAdms trace)
+  printGraph ("3_minTypeAut"     <> str) (trace_minTypeAut     trace)
 
-------------------------------------------------------------------------------
--- Symmetric Terms and Commands
-------------------------------------------------------------------------------
+printGraph :: String -> TypeAut' EdgeLabelNormal f pol -> IO ()
+printGraph fileName aut = do
+  let graphDir = "graphs"
+  let fileUri = "  file://"
+  let jpg = "jpg"
+  let xdot = "xdot"
+  dotInstalled <- isGraphvizInstalled
+  if dotInstalled
+    then do
+      createDirectoryIfMissing True graphDir
+      currentDir <- getCurrentDirectory
+      _ <- runGraphviz (typeAutToDot aut) Jpeg           (graphDir </> fileName <.> jpg)
+      _ <- runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
+      putStrLn (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
+    else do
+      putStrLn "Cannot generate graphs: graphviz executable not found in path."
 
-inferSTermTraced :: IsRec
-                 -> Loc
-                 -> FreeVarName
-                 -> PrdCnsRep pc -> Term pc Parsed
-                 -> DriverM (TypeInferenceTrace (PrdCnsToPol pc), Term pc Inferred)
-inferSTermTraced isRec loc fv rep tm = do
-  infopts <- gets driverOpts
-  env <- gets driverEnv
-  -- Generate the constraints
-  let genFun = case isRec of
-        Recursive -> genConstraintsTermRecursive loc fv rep tm
-        NonRecursive -> genConstraintsTerm tm
-  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
-  -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
-  -- Coalesce the result
-  let bisubst = coalesce solverResult
-  -- Read of the type and generate the resulting type
-  let typ = zonkType bisubst (getTypeTerm tmInferred)
-  case infOptsSimplify infopts of
-    True -> do
-      -- Simplify the resulting type
-      (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
-      -- Generate result type
-      let trace = TypeInferenceTrace 
-            { trace_constraintSet = constraintSet
-            , trace_solvedConstraints = solverResult
-            , trace_bisubst = bisubst
-            , trace_resTypeOrig = generalize typ
-            , trace_automata = Just simpTrace
-            , trace_resType = tys
-            }
-      return (trace, tmInferred)
-    False -> do
-      let trace = TypeInferenceTrace
-            { trace_constraintSet = constraintSet
-            , trace_solvedConstraints = solverResult
-            , trace_bisubst = bisubst
-            , trace_resTypeOrig = generalize typ
-            , trace_automata = Nothing 
-            , trace_resType = generalize typ
-            }
-      return (trace, tmInferred)
-
-
-inferSTerm :: IsRec
-           -> Loc
-           -> FreeVarName
-           -> PrdCnsRep pc -> Term pc Parsed
-           -> DriverM (TypeScheme (PrdCnsToPol pc), Term pc Inferred)
-inferSTerm isRec loc fv rep tm = do
-  (trace, tmInferred) <- inferSTermTraced isRec loc fv rep tm
-  return (trace_resType trace, tmInferred)
-
-checkCmd :: Loc
-         -> Command Parsed
-         -> DriverM (ConstraintSet, SolverResult, Command Inferred)
-checkCmd loc cmd = do
-  infopts <- gets driverOpts
-  env <- gets driverEnv
-  -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
-  -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
-  return (constraints, solverResult, cmdInferred)
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
@@ -221,31 +185,58 @@ checkCmd loc cmd = do
 
 inferDecl :: Declaration Parsed
            -> DriverM (Declaration Inferred)
-inferDecl (PrdCnsDecl loc pc isRec v annot loct) = do
-  -- Infer a type
-  (trace, tmInferred) <- inferSTermTraced isRec loc v pc loct
-  guardVerbose $ do
-      ppPrintIO (trace_constraintSet trace)
-      ppPrintIO (trace_solvedConstraints trace)
-      ppPrintIO (trace_bisubst trace)
-      putStr "Inferred type: " >> ppPrintIO (trace_resTypeOrig trace)
-      putStr "Inferred type (Simplified): " >> ppPrintIO (trace_resType trace)
-  -- Check whether annotation matches inferred type
-  ty <- checkAnnot (trace_resType trace) annot loc
-  -- Insert into environment
+--
+-- PrdCnsDecl
+--
+inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
+  -- 1. Generate the constraints.
+  let genFun = case isRec of
+        Recursive -> genConstraintsTermRecursive loc fv pc term
+        NonRecursive -> genConstraintsTerm term
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  guardVerbose $ ppPrintIO constraintSet
+  -- 2. Solve the constraints.
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  guardVerbose $ ppPrintIO solverResult
+  -- 3. Coalesce the result
+  let bisubst = coalesce solverResult
+  guardVerbose $ ppPrintIO bisubst
+  -- 4. Read of the type and generate the resulting type
+  let typ = zonkType bisubst (getTypeTerm tmInferred)
+  guardVerbose $ putStr "Inferred type: " >> ppPrintIO typ
+  -- 5. Simplify
+  typSimplified <- case infOptsSimplify infopts of
+    True -> do
+      (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
+      guardPrintGraphs $ printTrace (T.unpack fv) simpTrace
+      guardVerbose $ putStr "Inferred type (Simplified): " >> ppPrintIO tys
+      return tys
+    False -> return (generalize typ)
+  -- 6. Check type annotation.
+  ty <- checkAnnot typSimplified annot loc
+  -- 7. Insert into environment
   env <- gets driverEnv
   case pc of
     PrdRep -> do
-      let newEnv = env { prdEnv  = M.insert v (tmInferred ,loc, ty) (prdEnv env) }
+      let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, ty) (prdEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec v annot tmInferred)
+      return (PrdCnsDecl loc pc isRec fv (Just ty) tmInferred)
     CnsRep -> do
-      let newEnv = env { cnsEnv  = M.insert v (tmInferred, loc, ty) (cnsEnv env) }
+      let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec v annot tmInferred)
-inferDecl (CmdDecl loc v loct) = do
-  -- Check whether command is typeable
-  (constraints, solverResult, cmdInferred) <- checkCmd loc loct
+      return (PrdCnsDecl loc pc isRec fv (Just ty) tmInferred)
+--
+-- CmdDecl
+--
+inferDecl (CmdDecl loc v cmd) = do
+  infopts <- gets driverOpts
+  env <- gets driverEnv
+  -- Generate the constraints
+  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  -- Solve the constraints
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -254,6 +245,9 @@ inferDecl (CmdDecl loc v loct) = do
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
   return (CmdDecl loc v cmdInferred)
+--
+-- DataDecl
+--
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
   -- TODO: Check data decls
@@ -261,17 +255,26 @@ inferDecl (DataDecl loc dcl) = do
   let newEnv = env { declEnv = (loc,dcl) : declEnv env}
   setEnvironment newEnv
   return (DataDecl loc dcl)
+--
+-- ImportDecl
+--
 inferDecl (ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
   newEnv <- fst <$> inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
   return (ImportDecl loc mod)
+--
+-- SetDecl
+--
 inferDecl (SetDecl loc txt) = case T.unpack txt of
   "refined" -> do
     modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
     return (SetDecl loc txt)
   _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
+--
+-- ParseErrorDecl
+--
 inferDecl ParseErrorDecl = do
     throwError (Located defaultLoc (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))
 
@@ -288,7 +291,7 @@ inferProgramFromDisk fp = do
     Left err -> throwError (Located defaultLoc (OtherError (T.pack (errorBundlePretty err))))
     Right decls -> do
         -- Use inference options of parent? Probably not?
-        x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions mempty) decls
+        x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
         case x of
             Left err -> throwError err
             Right env -> return env

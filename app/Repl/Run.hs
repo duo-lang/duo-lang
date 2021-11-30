@@ -24,7 +24,6 @@ import Repl.Options.Focusing ( focusOption )
 import Repl.Options.LoadReload (loadOption, reloadOption)
 import Repl.Options.Show (showOption, showTypeOption)      
 import Repl.Options.SetUnset (setOption, unsetOption)
-import Repl.Options.SaveGraphs (saveOption)
 import Repl.Repl
     ( Option(..),
       Repl,
@@ -49,7 +48,6 @@ allOptions =
   [ showOption
   , helpOption
   , letOption
-  , saveOption
   , setOption
   , unsetOption
   , subOption

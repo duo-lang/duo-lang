@@ -31,6 +31,7 @@ setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
                    , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
                    , ("steps", modify (\rs -> rs { steps = Steps }))
                    , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = True } }))
+                   , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = True } }))
                    , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
                    , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
                    , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferRefined  } })) ]
@@ -67,6 +68,7 @@ setOption = Option
 unsetCmdVariants :: [(Text, Repl ())]
 unsetCmdVariants = [ ("steps", modify (\rs -> rs { steps = NoSteps }))
                      , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = False } }))
+                     , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = False } }))
                      , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferNominal } }))]
 
 unsetCmd :: Text -> Repl ()

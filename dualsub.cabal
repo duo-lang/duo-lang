@@ -132,7 +132,6 @@ executable dualsub
       Repl.Options.Focusing
       Repl.Options.Let
       Repl.Options.LoadReload
-      Repl.Options.SaveGraphs
       Repl.Options.SetUnset
       Repl.Options.Show
       Repl.Options.Simplify
@@ -161,7 +160,6 @@ test-suite dualsub-test
   other-modules:
       Translate.TranslateExamplesSpec
     , Translate.FocusingSpec
-    , TypeInference.StaticExamplesSpec
     , TypeInference.ExamplesSpec
     , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec
