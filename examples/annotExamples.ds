@@ -16,10 +16,10 @@ prd idNominal : NatFun := comatch { Ap(x)[k] => x >> k };
 
 # Asymmetric system:
 
-prd idPoly : forall a. { 'Ap(a)[a] } := cocase { 'Ap(x) => x };
+prd idPoly : forall a. { 'Ap(a)[a] } := cocase { 'Ap(x)[*] => x };
 
-prd idPolyTwo : forall a b. { 'Ap(a /\ b)[a \/ b] } := cocase { 'Ap(x) => x };
+prd idPolyTwo : forall a b. { 'Ap(a /\ b)[a \/ b] } := cocase { 'Ap(x)[*] => x };
 
-prd id : { 'Ap(Nat)[Nat] } := cocase { 'Ap(x) => x };
+prd id : { 'Ap(Nat)[Nat] } := cocase { 'Ap(x)[*] => x };
 
-prd idNominal : NatFun := cocase { Ap(x) => x };
+prd idNominal : NatFun := cocase { Ap(x)[*] => x };

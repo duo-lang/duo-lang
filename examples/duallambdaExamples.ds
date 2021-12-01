@@ -14,7 +14,7 @@ prd rec f : { 'Ap(Bool)[Par] } := f;
 prd rec g : { 'Ap(Bool)[Par] } := f;
 prd rec h : { 'Ap(Bool)[Par] } := f;
 
-prd compose := \x => cocase { MkPar[err] =>
+prd compose := \x => cocase { MkPar[err][*] =>
                                 (h (g ((f x).MkPar[err]).MkPar[err])).MkPar[err]
                             };
 

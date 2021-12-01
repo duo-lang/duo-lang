@@ -197,6 +197,7 @@ termCaseIP ns = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  _ <- brackets implicitSym
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
   let pmcase = MkTermCaseI { tmcasei_ext = Loc startPos endPos
