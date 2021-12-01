@@ -407,40 +407,40 @@ openCommandComplete (Done _) = Done ()
 -- Used in program transformations like focusing.
 ---------------------------------------------------------------------------------
 
-shiftPCTerm :: Int -> PrdCnsTerm ext -> PrdCnsTerm ext
-shiftPCTerm n (PrdTerm tm) = PrdTerm $ shiftTerm' n tm
-shiftPCTerm n (CnsTerm tm) = CnsTerm $ shiftTerm' n tm
+shiftPCTermRec :: Int -> PrdCnsTerm ext -> PrdCnsTerm ext
+shiftPCTermRec n (PrdTerm tm) = PrdTerm $ shiftTermRec n tm
+shiftPCTermRec n (CnsTerm tm) = CnsTerm $ shiftTermRec n tm
 
-shiftTerm' :: Int -> Term pc ext -> Term pc ext
-shiftTerm' _ var@FreeVar {} = var
-shiftTerm' n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
-                                         | otherwise = BoundVar ext pcrep (i    , j)
-shiftTerm' n (XtorCall ext pcrep name subst) =
-    XtorCall ext pcrep name (shiftPCTerm n <$> subst)
-shiftTerm' n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftCmdCase (n + 1) <$> cases)
-shiftTerm' n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmd' (n + 1) cmd)
-shiftTerm' n (Dtor ext xt e args) = Dtor ext xt (shiftTerm' n e) (shiftPCTerm n <$> args)
-shiftTerm' n (Match ext ns e cases) = Match ext ns (shiftTerm' n e) (shiftACase n <$> cases)
-shiftTerm' n (Comatch ext ns cases) = Comatch ext ns (shiftACase n <$> cases)
+shiftTermRec :: Int -> Term pc ext -> Term pc ext
+shiftTermRec _ var@FreeVar {} = var
+shiftTermRec n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
+                                          | otherwise = BoundVar ext pcrep (i    , j)
+shiftTermRec n (XtorCall ext pcrep name subst) =
+    XtorCall ext pcrep name (shiftPCTermRec n <$> subst)
+shiftTermRec n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
+shiftTermRec n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmdRec (n + 1) cmd)
+shiftTermRec n (Dtor ext xt e args) = Dtor ext xt (shiftTermRec n e) (shiftPCTermRec n <$> args)
+shiftTermRec n (Match ext ns e cases) = Match ext ns (shiftTermRec n e) (shiftACaseRec n <$> cases)
+shiftTermRec n (Comatch ext ns cases) = Comatch ext ns (shiftACaseRec n <$> cases)
 
-shiftACase :: Int -> ACase ext -> ACase ext
-shiftACase n (MkACase ext xt args e) = MkACase ext xt args (shiftTerm' n e)
+shiftACaseRec :: Int -> ACase ext -> ACase ext
+shiftACaseRec n (MkACase ext xt args e) = MkACase ext xt args (shiftTermRec n e)
 
-shiftCmdCase :: Int -> CmdCase ext-> CmdCase ext
-shiftCmdCase n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmd' n cmd)
+shiftCmdCaseRec :: Int -> CmdCase ext-> CmdCase ext
+shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
 
-shiftCmd' :: Int -> Command ext -> Command ext
-shiftCmd' n (Apply ext prd cns) = Apply ext (shiftTerm' n prd) (shiftTerm' n cns)
-shiftCmd' _ (Done ext) = Done ext
-shiftCmd' n (Print ext prd) = Print ext (shiftTerm' n prd)
+shiftCmdRec :: Int -> Command ext -> Command ext
+shiftCmdRec n (Apply ext prd cns) = Apply ext (shiftTermRec n prd) (shiftTermRec n cns)
+shiftCmdRec _ (Done ext) = Done ext
+shiftCmdRec n (Print ext prd) = Print ext (shiftTermRec n prd)
 
 -- | Shift all unbound BoundVars up by one.
 shiftTerm :: Term pc ext -> Term pc ext
-shiftTerm = shiftTerm' 0
+shiftTerm = shiftTermRec 0
 
 -- | Shift all unbound BoundVars up by one.
 shiftCmd :: Command ext -> Command ext
-shiftCmd = shiftCmd' 0
+shiftCmd = shiftCmdRec 0
 
 ---------------------------------------------------------------------------------
 -- Remove Names
