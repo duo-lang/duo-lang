@@ -14,27 +14,38 @@ import Syntax.CommonTerm
 -- Terms
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (SCase ext) where
-  prettyAnn MkSCase{..} =
+instance PrettyAnn (CmdCase ext) where
+  prettyAnn MkCmdCase{..} =
     let
-      prds = [x | (Prd,x) <- scase_args]
-      cnss = [x | (Cns,x) <- scase_args]
+      prds = [x | (Prd,x) <- cmdcase_args]
+      cnss = [x | (Cns,x) <- cmdcase_args]
     in
-      prettyAnn scase_name <>
+      prettyAnn cmdcase_name <>
       prettyTwice prds cnss <+>
       annSymbol "=>" <+>
-      prettyAnn scase_cmd
+      prettyAnn cmdcase_cmd
 
-instance PrettyAnn (ACase ext) where
-  prettyAnn MkACase{ acase_name, acase_args, acase_term } =
+instance PrettyAnn (TermCase ext) where
+  prettyAnn MkTermCase{ tmcase_name, tmcase_args, tmcase_term } =
     let
-      prds = [x | (Prd,x) <- acase_args]
-      cnss = [x | (Cns,x) <- acase_args]
+      prds = [x | (Prd,x) <- tmcase_args]
+      cnss = [x | (Cns,x) <- tmcase_args]
     in
-      prettyAnn acase_name <>
+      prettyAnn tmcase_name <>
       prettyTwice prds cnss <+>
       annSymbol "=>" <+>
-      prettyAnn acase_term
+      prettyAnn tmcase_term
+
+instance PrettyAnn (TermCaseI ext) where
+  prettyAnn MkTermCaseI { tmcasei_name, tmcasei_args, tmcasei_term } =
+    let
+      prds = [x | (Prd,x) <- tmcasei_args]
+      cnss = [x | (Cns,x) <- tmcasei_args]
+    in
+      prettyAnn tmcasei_name <>
+      prettyTwice prds cnss <+>
+      annSymbol "=>" <+>
+      prettyAnn tmcasei_term
 
 instance PrettyAnn (PrdCnsTerm ext) where
   prettyAnn (PrdTerm tm) = prettyAnn tm

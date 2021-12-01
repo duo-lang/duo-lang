@@ -125,14 +125,14 @@ genConstraintsTerm (XtorCall loc rep xt@MkXtorName { xtorNominalStructural = Nom
 -- Structural pattern and copattern matches:
 --
 genConstraintsTerm (XMatch loc rep Structural cases) = do
-  inferredCases <- forM cases (\MkSCase{scase_args, scase_name, scase_ext, scase_cmd} -> do
+  inferredCases <- forM cases (\MkCmdCase{cmdcase_args, cmdcase_name, cmdcase_ext, cmdcase_cmd} -> do
                       -- Generate positive and negative unification variables for all variables
                       -- bound in the pattern.
-                      (uvarsPos, uvarsNeg) <- freshTVars scase_args
+                      (uvarsPos, uvarsNeg) <- freshTVars cmdcase_args
                       -- Check the command in the context extended with the positive unification variables
-                      cmdInferred <- withContext uvarsPos (genConstraintsCommand scase_cmd)
+                      cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
                       -- Return the negative unification variables in the returned type.
-                      return (MkSCase scase_ext scase_name scase_args cmdInferred, MkXtorSig scase_name uvarsNeg))
+                      return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
     PrdRep -> return $ XMatch (loc, TyCodata PosRep Nothing (snd <$> inferredCases)) rep Structural (fst <$> inferredCases)
@@ -152,19 +152,19 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
     -- 
     InferNominal -> do
       -- We lookup the data declaration based on the first pattern match case.
-      decl <- lookupDataDecl (scase_name pmcase)
+      decl <- lookupDataDecl (cmdcase_name pmcase)
       -- We check that all cases in the pattern match belong to the type declaration.
-      checkCorrectness (scase_name <$> cases) decl
+      checkCorrectness (cmdcase_name <$> cases) decl
       -- We check that all xtors in the type declaration are matched against.
-      checkExhaustiveness (scase_name <$> cases) decl
-      inferredCases <- forM cases (\MkSCase {..} -> do
+      checkExhaustiveness (cmdcase_name <$> cases) decl
+      inferredCases <- forM cases (\MkCmdCase {..} -> do
                       -- We lookup the types belonging to the xtor in the type declaration.
-                       posTypes <- sig_args <$> lookupXtorSig scase_name PosRep
-                       negTypes <- sig_args <$> lookupXtorSig scase_name NegRep
+                       posTypes <- sig_args <$> lookupXtorSig cmdcase_name PosRep
+                       negTypes <- sig_args <$> lookupXtorSig cmdcase_name NegRep
                        -- We generate constraints for the command in the context extended
                        -- with the types from the signature.
-                       cmdInferred <- withContext posTypes (genConstraintsCommand scase_cmd)
-                       return (MkSCase scase_ext scase_name scase_args cmdInferred, MkXtorSig scase_name negTypes))
+                       cmdInferred <- withContext posTypes (genConstraintsCommand cmdcase_cmd)
+                       return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name negTypes))
       case rep of
         PrdRep -> return $ XMatch (loc, TyNominal PosRep (data_name decl)) rep Nominal (fst <$> inferredCases)
         CnsRep -> return $ XMatch (loc, TyNominal NegRep (data_name decl)) rep Nominal (fst <$> inferredCases)
@@ -173,25 +173,25 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
     -- 
     InferRefined -> do
       -- We lookup the data declaration based on the first pattern match case.
-      decl <- lookupDataDecl (scase_name pmcase)
+      decl <- lookupDataDecl (cmdcase_name pmcase)
       -- We check that all cases in the pattern match belong to the type declaration.
-      checkCorrectness (scase_name <$> cases) decl
-      inferredCases <- forM cases (\MkSCase {..} -> do
+      checkCorrectness (cmdcase_name <$> cases) decl
+      inferredCases <- forM cases (\MkCmdCase {..} -> do
                            -- Generate positive and negative unification variables for all variables
                            -- bound in the pattern.
-                           (uvarsPos, uvarsNeg) <- freshTVars scase_args
+                           (uvarsPos, uvarsNeg) <- freshTVars cmdcase_args
                            -- Check the command in the context extended with the positive unification variables
-                           cmdInferred <- withContext uvarsPos (genConstraintsCommand scase_cmd)
+                           cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
                            -- We have to bound the unification variables with the lower and upper bounds generated
                            -- from the information in the type declaration. These lower and upper bounds correspond
                            -- to the least and greatest type translation.
-                           lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig scase_name PosRep)
-                           upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig scase_name NegRep)
+                           lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig cmdcase_name PosRep)
+                           upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig cmdcase_name NegRep)
                            genConstraintsCtxts lowerBound uvarsNeg (PatternMatchConstraint loc)
                            genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
                            -- For the type, we return the unification variables which are now bounded by the least 
                            -- and greatest type translation.
-                           return (MkSCase scase_ext scase_name scase_args cmdInferred, MkXtorSig scase_name uvarsNeg))
+                           return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
       case rep of
         PrdRep -> return $ XMatch (loc, TyCodata PosRep (Just (data_name decl)) (snd <$> inferredCases)) rep Nominal (fst <$> inferredCases)
         CnsRep -> return $ XMatch (loc, TyData   NegRep (Just (data_name decl)) (snd <$> inferredCases)) rep Nominal (fst <$> inferredCases)
@@ -287,15 +287,15 @@ genConstraintsTerm (Match loc Structural destructee cases) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Generate a unification variable for the return type of the pattern match
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
-  casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
+  casesInferred <- forM cases $ \MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } -> do
     -- Generate positive and negative unification variables for all variables
     -- bound in the pattern.
-    (argtsPos,argtsNeg) <- freshTVars acase_args
+    (argtsPos,argtsNeg) <- freshTVars tmcase_args
     -- Type case term in context extended with new unification variables
-    acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
+    tmcase_termInferred <- withContext argtsPos (genConstraintsTerm tmcase_term)
     -- The inferred type of the term must be a subtype of the pattern match return type
-    addConstraint (SubType (CaseConstraint acase_ext) (getTypeTerm acase_termInferred) retTypeNeg) 
-    return (MkACase acase_ext acase_name acase_args acase_termInferred, MkXtorSig acase_name argtsNeg)
+    addConstraint (SubType (CaseConstraint tmcase_ext) (getTypeTerm tmcase_termInferred) retTypeNeg) 
+    return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred, MkXtorSig tmcase_name argtsNeg)
   -- The type of the pattern match destructee must be a subtype of the type generated by the match.
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyData NegRep Nothing (snd <$> casesInferred)))
   return (Match (loc, retTypePos) Structural destructeeInferred (fst <$> casesInferred))
@@ -308,7 +308,7 @@ genConstraintsTerm (Match _ Nominal _ []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
-genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = xtn }:_)) = do
+genConstraintsTerm (Match loc Nominal destructee cases@(MkTermCase { tmcase_name = xtn }:_)) = do
   im <- asks (inferMode . snd)
   case im of
     --
@@ -319,21 +319,21 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
       -- Lookup the type declaration in the context.
       tn@NominalDecl{..} <- lookupDataDecl xtn
       -- We check that all cases in the pattern match belong to the type declaration.
-      checkCorrectness (acase_name <$> cases) tn
+      checkCorrectness (tmcase_name <$> cases) tn
       -- We check that all xtors in the type declaration are matched against.
-      checkExhaustiveness (acase_name <$> cases) tn
+      checkExhaustiveness (tmcase_name <$> cases) tn
       -- We check that the destructee is a subtype of the Nominal Type.
       addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyNominal NegRep data_name))
       -- We generate a unification variable for the return type.
       (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
-      casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
+      casesInferred <- forM cases $ \MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } -> do
         -- We look up the argument types of the xtor
-        posTypes <- sig_args <$> lookupXtorSig acase_name PosRep
+        posTypes <- sig_args <$> lookupXtorSig tmcase_name PosRep
         -- Type case term using new type vars
-        acase_termInferred <- withContext posTypes (genConstraintsTerm acase_term) 
+        tmcase_termInferred <- withContext posTypes (genConstraintsTerm tmcase_term) 
         -- The term must have a subtype of the pattern match return type
-        addConstraint (SubType (CaseConstraint acase_ext) (getTypeTerm acase_termInferred) retTypeNeg)
-        return (MkACase acase_ext acase_name acase_args acase_termInferred)
+        addConstraint (SubType (CaseConstraint tmcase_ext) (getTypeTerm tmcase_termInferred) retTypeNeg)
+        return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred)
       return (Match (loc,retTypePos) Nominal destructeeInferred casesInferred)
     --
     -- Refinement Inference
@@ -343,24 +343,24 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
       -- Lookup the type declaration in the context.
       tn@NominalDecl{..} <- lookupDataDecl xtn
       -- We check that all cases in the pattern match belong to the type declaration.
-      checkCorrectness (acase_name <$> cases) tn
+      checkCorrectness (tmcase_name <$> cases) tn
       -- We generate a unification variable for the return type.
       (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
-      casesInferred <- forM cases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
+      casesInferred <- forM cases $ \MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars acase_args
+        (argtsPos,argtsNeg) <- freshTVars tmcase_args
         -- Typecheck case term using new unification vars
-        acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
+        tmcase_termInferred <- withContext argtsPos (genConstraintsTerm tmcase_term)
         -- The term must have a subtype of the pattern match return type
-        addConstraint (SubType (CaseConstraint acase_ext) (getTypeTerm acase_termInferred) retTypeNeg)
+        addConstraint (SubType (CaseConstraint tmcase_ext) (getTypeTerm tmcase_termInferred) retTypeNeg)
         -- We have to bound the unification variables with the lower and upper bounds generated
         -- from the information in the type declaration. These lower and upper bounds correspond
         -- to the least and greatest type translation.
-        lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig acase_name PosRep)
-        upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig acase_name NegRep)
+        lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig tmcase_name PosRep)
+        upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig tmcase_name NegRep)
         genConstraintsCtxts lowerBound argtsNeg (PatternMatchConstraint loc)
         genConstraintsCtxts argtsPos upperBound (PatternMatchConstraint loc)
-        return (MkACase acase_ext acase_name acase_args acase_termInferred, MkXtorSig acase_name argtsNeg)
+        return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred, MkXtorSig tmcase_name argtsNeg)
       --  The destructee must have a subtype of the refinement type constructed from the cases.
       addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyData NegRep (Just data_name) (snd <$> casesInferred)))
       return (Match (loc,retTypePos) Nominal destructeeInferred (fst <$> casesInferred))
@@ -370,12 +370,12 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkACase { acase_name = x
 -- cocase { 'X(xs) => e' }
 --
 genConstraintsTerm (Comatch loc Structural cocases) = do
-  cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
+  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
     -- Generate unification variables for each case arg
-    (argtsPos,argtsNeg) <- freshTVars acase_args
+    (argtsPos,argtsNeg) <- freshTVars tmcasei_args
     -- Typecheck the term in the context extended with the unification variables.
-    acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
-    return (MkACase acase_ext acase_name acase_args acase_termInferred, MkXtorSig acase_name (argtsNeg ++ [CnsType $ getTypeTerm acase_termInferred]))
+    tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
+    return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
   return (Comatch (loc,TyCodata PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
 --
 -- Nominal Comatch (Syntactic Sugar):
@@ -384,7 +384,7 @@ genConstraintsTerm (Comatch loc Structural cocases) = do
 --
 genConstraintsTerm (Comatch _ Nominal []) =
   throwGenError ["Unreachable: A nominal comatch needs to have at least one case."]
-genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) = do
+genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}:_)) = do
   im <- asks (inferMode . snd)
   case im of
     --
@@ -394,21 +394,21 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) 
       -- Lookup the type declaration in the context.
       tn@NominalDecl{..} <- lookupDataDecl xtn
       -- We check that all cases in the copattern match belong to the type declaration.
-      checkCorrectness (acase_name <$> cocases) tn
+      checkCorrectness (tmcasei_name <$> cocases) tn
       -- We check that all xtors in the type declaration are matched against.
-      checkExhaustiveness (acase_name <$> cocases) tn
-      cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
+      checkExhaustiveness (tmcasei_name <$> cocases) tn
+      cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
         -- We look up the argument types of the xtor
-        posTypes <- sig_args <$> lookupXtorSig acase_name PosRep
+        posTypes <- sig_args <$> lookupXtorSig tmcasei_name PosRep
         -- Type case term using new type vars
-        acase_termInferred <- withContext (init posTypes) (genConstraintsTerm acase_term)
+        tmcasei_termInferred <- withContext (init posTypes) (genConstraintsTerm tmcasei_term)
         -- The return type is the last element in the xtorSig, which must be a CnsType.
         let retType = case last posTypes of
                        (PrdType _)  -> error "Boom"
                        (CnsType ty) -> ty
         -- The term must have a subtype of the copattern match return type
-        addConstraint (SubType (CaseConstraint loc) (getTypeTerm acase_termInferred) retType)
-        return (MkACase acase_ext acase_name acase_args acase_termInferred)
+        addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
+        return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred)
       return (Comatch (loc, TyNominal PosRep data_name) Nominal cocasesInferred)
     --
     -- Refinement Inference
@@ -417,17 +417,17 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) 
       -- Lookup the type declaration in the context.
       tn@NominalDecl{..} <- lookupDataDecl xtn
       -- We check that all cases in the pattern match belong to the type declaration.
-      checkCorrectness (acase_name <$> cocases) tn
-      cocasesInferred <- forM cocases $ \MkACase { acase_ext, acase_name, acase_args, acase_term } -> do
+      checkCorrectness (tmcasei_name <$> cocases) tn
+      cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars acase_args
+        (argtsPos,argtsNeg) <- freshTVars tmcasei_args
         -- Typecheck case term using new unification vars
-        acase_termInferred <- withContext argtsPos (genConstraintsTerm acase_term)
+        tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
         -- We have to bound the unification variables with the lower and upper bounds generated
         -- from the information in the type declaration. These lower and upper bounds correspond
         -- to the least and greatest type translation.
-        lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig acase_name PosRep)
-        upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig acase_name NegRep)
+        lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig tmcasei_name PosRep)
+        upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig tmcasei_name NegRep)
         genConstraintsCtxts (init lowerBound) argtsNeg (PatternMatchConstraint loc)
         genConstraintsCtxts argtsPos (init upperBound) (PatternMatchConstraint loc)
         -- Get return type from least translation of xtor sig
@@ -435,8 +435,8 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkACase {acase_name = xtn}:_)) 
                        (PrdType _)  -> error "Boom"
                        (CnsType ty) -> ty
         -- The term must have a subtype of the copattern match return type
-        addConstraint (SubType (CaseConstraint loc) (getTypeTerm acase_termInferred) retType)
-        return (MkACase acase_ext acase_name acase_args acase_termInferred, MkXtorSig acase_name (argtsNeg ++ [CnsType $ getTypeTerm acase_termInferred]))
+        addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
+        return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
       return (Comatch (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Nominal (fst <$> cocasesInferred))
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)

@@ -24,24 +24,40 @@ import Syntax.Kinds
 -- Parsing of Kinds
 ---------------------------------------------------------------------------------
 
-evalOrderP :: Parser CallingConvention 
-evalOrderP = cbvKwP *> return CBV <|> cbnKwP *> return CBN
+-- | Parses one of the keywords "CBV" or "CBN"
+callingConventionP :: Parser CallingConvention 
+callingConventionP = cbvKwP *> return CBV <|> cbnKwP *> return CBN
 
+-- | Parses a MonoKind, either "Type CBV" or "Type CBN"
 kindP :: Parser Kind
 kindP = do
   _ <- typeKwP
-  eo <- evalOrderP
-  return $ MonoKind eo
-
+  cc <- callingConventionP
+  return $ MonoKind cc
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
 ---------------------------------------------------------------------------------
-typArgListP :: PolarityRep pol -> Parser (LinearContext pol)
-typArgListP rep = do
-  prdArgs <- option [] (fst <$> parens   (typP rep `sepBy` comma))
-  cnsArgs <- option [] (fst <$> brackets (typP (flipPolarityRep rep) `sepBy` comma))
-  return ((PrdType <$> prdArgs) ++ (CnsType <$> cnsArgs))
+
+-- | Parse a parenthesized list of producer types.
+-- E.g.: "(Nat, Bool, { 'Ap(Nat)[Bool] })"
+prdCtxtPartP :: PolarityRep pol -> Parser (LinearContext pol)
+prdCtxtPartP rep = do
+  (res,_) <- parens $ (PrdType <$> typP rep) `sepBy` comma
+  return res
+
+-- | Parse a bracketed list of consumer types.
+-- E.g.: "[Nat, Bool, { 'Ap(Nat)[Bool] }]"
+cnsCtxtPartP :: PolarityRep pol -> Parser (LinearContext pol)
+cnsCtxtPartP rep = do
+  (res,_) <- brackets $ (CnsType <$> typP (flipPolarityRep rep)) `sepBy` comma
+  return res
+
+-- | Parse a linear context.
+-- E.g.: "(Nat,Bool)[Int](Int)[Bool,Float]"
+linearContextP :: PolarityRep pol -> Parser (LinearContext pol)
+linearContextP rep = concat <$> (many (prdCtxtPartP rep <|> cnsCtxtPartP rep))
+
 
 ---------------------------------------------------------------------------------
 -- Parsing of Simple and Target types
@@ -63,12 +79,12 @@ dataTypeP CodataRep polrep = fst <$> braces (do
 xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
 xtorSignatureP PosRep = do
   (xt, _pos) <- xtorName Structural <|> xtorName Nominal
-  args <- typArgListP PosRep
-  return (MkXtorSig xt args)
+  lctxt <- linearContextP PosRep
+  return (MkXtorSig xt lctxt)
 xtorSignatureP NegRep = do
   (xt, _pos) <- xtorName Structural <|> xtorName Nominal
-  args <- typArgListP NegRep
-  return (MkXtorSig xt args)
+  lctxt <- linearContextP NegRep
+  return (MkXtorSig xt lctxt)
 
 typeVariable :: PolarityRep pol -> Parser (Typ pol)
 typeVariable rep = do
