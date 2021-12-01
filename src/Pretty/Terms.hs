@@ -90,7 +90,7 @@ instance PrettyAnn (Term pc ext) where
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
   prettyAnn (Dtor _ xt t subst) =
-    parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn subst)
+    parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn subst <> pretty ("[*]" :: String))
   prettyAnn (Match _ _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+>

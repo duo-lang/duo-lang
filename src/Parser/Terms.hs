@@ -32,7 +32,7 @@ cnsSubstPart = brackets $ (CnsTerm . fst <$> termP CnsRep) `sepBy` comma
 substitutionP :: Parser (Substitution Parsed, SourcePos)
 substitutionP = do
   endPos <- getSourcePos
-  xs <- many (prdSubstPart <|> cnsSubstPart)
+  xs <- many (prdSubstPart <|> try cnsSubstPart)
   case xs of
     [] -> return ([], endPos)
     xs -> return (concat (fst <$> xs), snd (last xs))
@@ -348,6 +348,7 @@ destructorP' :: NominalStructural -> Parser (XtorName,Substitution Parsed, Sourc
 destructorP' ns = do
   (xt, _) <- xtorName ns
   (subst, endPos) <- substitutionP
+  _ <- brackets implicitSym
   return (xt, subst, endPos)
 
 destructorP :: Parser (XtorName,Substitution Parsed, SourcePos)
