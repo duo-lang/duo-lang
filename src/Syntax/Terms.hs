@@ -60,9 +60,9 @@ type family CaseExt (ext :: Phase) :: Type where
 --        X(x_1,...,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
 --        |      |          |
---        |  acase_args  acase_term
+--        |  tmcase_args  tmcase_term
 --        |
---    acase_name
+--    tmcase_name
 --
 data TermCase (ext :: Phase) = MkTermCase
   { tmcase_ext  :: CaseExt ext
@@ -79,14 +79,15 @@ deriving instance (Show (TermCase Inferred))
 deriving instance (Show (TermCase Compiled))
 
 -- | Represents one case in a pattern match or copattern match.
+-- Does bind an implicit argument (in contrast to TermCase).
 -- The `ext` field is used to save additional information, such as source code locations.
 --
---        X(x_1,...,x_n) => e
+--        X(x_1, * ,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
 --        |      |          |
---        |  acase_args  acase_term
+--        |  tmcasei_args  tmcasei_term
 --        |
---    acase_name
+--    tmcasei_name
 --
 data TermCaseI (ext :: Phase) = MkTermCaseI
   { tmcasei_ext  :: CaseExt ext
