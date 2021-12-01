@@ -53,7 +53,7 @@ zonkTerm bisubst (FreeVar  (loc,ty) rep nm)  =
 zonkTerm bisubst (XtorCall (loc,ty) rep xn subst) =
     XtorCall (loc, zonkType bisubst ty) rep xn (zonkPCTerm bisubst <$> subst)
 zonkTerm bisubst (XMatch (loc,ty) rep ns cases) =
-    XMatch (loc, zonkType bisubst ty) rep ns (zonkSCase bisubst <$> cases)
+    XMatch (loc, zonkType bisubst ty) rep ns (zonkCmdCase bisubst <$> cases)
 zonkTerm bisubst (MuAbs (loc,ty) rep fv cmd) =
     MuAbs (loc, zonkType bisubst ty) rep fv (zonkCommand bisubst cmd)
 zonkTerm bisubst (Dtor (loc,ty) xt prd subst) =
@@ -67,8 +67,8 @@ zonkPCTerm :: Bisubstitution -> PrdCnsTerm Inferred -> PrdCnsTerm Inferred
 zonkPCTerm bisubst (PrdTerm tm) = PrdTerm (zonkTerm bisubst tm)
 zonkPCTerm bisubst (CnsTerm tm) = CnsTerm (zonkTerm bisubst tm)
 
-zonkSCase :: Bisubstitution -> SCase Inferred -> SCase Inferred
-zonkSCase bisubst (MkSCase loc nm args cmd) = MkSCase loc nm args (zonkCommand bisubst cmd)
+zonkCmdCase :: Bisubstitution -> CmdCase Inferred -> CmdCase Inferred
+zonkCmdCase bisubst (MkCmdCase loc nm args cmd) = MkCmdCase loc nm args (zonkCommand bisubst cmd)
 
 zonkACase :: Bisubstitution -> ACase Inferred -> ACase  Inferred
 zonkACase bisubst (MkACase loc nm args tm) = MkACase loc nm args (zonkTerm bisubst tm)

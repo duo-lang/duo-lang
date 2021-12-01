@@ -18,7 +18,7 @@ import Syntax.CommonTerm
 import Syntax.Terms
     ( Command(..),
       Term(..),
-      SCase(..),
+      CmdCase(..),
       Substitution,
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
@@ -54,12 +54,12 @@ isFocusedTerm :: CallingConvention -> Term pc Compiled -> Maybe (Term pc Compile
 isFocusedTerm _  bv@BoundVar {}           = Just bv
 isFocusedTerm _  fv@FreeVar {}            = Just fv
 isFocusedTerm eo (XtorCall _ pc xt subst) = XtorCall () pc xt <$> isValueSubst eo subst
-isFocusedTerm eo (XMatch _ x y  cases)    = XMatch () x y <$> (sequence (isFocusedCase eo <$> cases))
+isFocusedTerm eo (XMatch _ x y  cases)    = XMatch () x y <$> (sequence (isFocusedCmdCase eo <$> cases))
 isFocusedTerm eo (MuAbs _ pc v cmd)        = MuAbs () pc v <$> isFocusedCmd eo cmd
 isFocusedTerm _ _ = error "isFocusedTerm should only be called on core terms."
 
-isFocusedCase :: CallingConvention -> SCase Compiled -> Maybe (SCase Compiled)
-isFocusedCase eo (MkSCase _ xt args cmd) = MkSCase () xt args <$> isFocusedCmd eo cmd
+isFocusedCmdCase :: CallingConvention -> CmdCase Compiled -> Maybe (CmdCase Compiled)
+isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocusedCmd eo cmd
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: CallingConvention -> Command Compiled -> Maybe (Command Compiled)
@@ -126,7 +126,7 @@ focusTerm eo (isFocusedTerm eo -> Just tm) = tm
 focusTerm _  (BoundVar _ rep var)          = BoundVar () rep var
 focusTerm _  (FreeVar _ rep var)           = FreeVar () rep var
 focusTerm eo (XtorCall _ pcrep name subst) = focusXtor eo pcrep name subst
-focusTerm eo (XMatch _ rep ns cases)       = XMatch () rep ns (focusSCase eo <$> cases)
+focusTerm eo (XMatch _ rep ns cases)       = XMatch () rep ns (focusCmdCase eo <$> cases)
 focusTerm eo (MuAbs _ rep _ cmd)           = MuAbs () rep Nothing (focusCmd eo cmd)
 focusTerm _ _                              = error "focusTerm should only be called on Core terms"
 
@@ -168,9 +168,9 @@ focusXtor' eo pc     name (CnsTerm                                 cns:pcterms) 
 
 
 
-focusSCase :: CallingConvention -> SCase Compiled -> SCase Compiled
-focusSCase eo MkSCase { scase_name, scase_args, scase_cmd } =
-    MkSCase () scase_name ((\(pc,_) -> (pc, Nothing)) <$> scase_args) (focusCmd eo scase_cmd)
+focusCmdCase :: CallingConvention -> CmdCase Compiled -> CmdCase Compiled
+focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
+    MkCmdCase () cmdcase_name ((\(pc,_) -> (pc, Nothing)) <$> cmdcase_args) (focusCmd eo cmdcase_cmd)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.

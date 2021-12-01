@@ -45,7 +45,7 @@ createNamesTerm (XtorCall _ pc xt subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
   return $ XtorCall defaultLoc pc xt subst'
 createNamesTerm (XMatch _ pc ns cases) = do
-  cases' <- sequence $ createNamesSCase <$> cases
+  cases' <- sequence $ createNamesCmdCase <$> cases
   return $ XMatch defaultLoc pc ns cases'
 createNamesTerm (MuAbs _ pc _ cmd) = do
   cmd' <- createNamesCommand cmd
@@ -71,11 +71,11 @@ createNamesCommand (Apply _ prd cns) = do
   return (Apply defaultLoc prd' cns')
 createNamesCommand (Print _ prd) = createNamesTerm prd >>= \prd' -> return (Print defaultLoc prd')
 
-createNamesSCase :: SCase ext -> CreateNameM (SCase Parsed)
-createNamesSCase (MkSCase { scase_name, scase_args, scase_cmd }) = do
-  cmd' <- createNamesCommand scase_cmd
-  args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> scase_args
-  return $ MkSCase defaultLoc scase_name args cmd'
+createNamesCmdCase :: CmdCase ext -> CreateNameM (CmdCase Parsed)
+createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
+  cmd' <- createNamesCommand cmdcase_cmd
+  args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
+  return $ MkCmdCase defaultLoc cmdcase_name args cmd'
 
 createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
 createNamesACase (MkACase _ xt args e) = do

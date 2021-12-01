@@ -20,8 +20,8 @@ import Translate.Desugar
 -- Symmetric Terms
 ---------------------------------------------------------------------------------
 
-lookupMatchCase :: XtorName -> [SCase Compiled] -> EvalM (SCase Compiled)
-lookupMatchCase xt cases = case find (\MkSCase { scase_name } -> xt == scase_name) cases of
+lookupMatchCase :: XtorName -> [CmdCase Compiled] -> EvalM (CmdCase Compiled)
+lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_name } -> xt == cmdcase_name) cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError ["Error during evaluation. The xtor: "
                             , unXtorName xt
@@ -53,11 +53,11 @@ evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   return (Just (Apply () prd (desugarTerm cns)))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
-  (MkSCase _ _ argTypes cmd') <- lookupMatchCase xt cases
+  (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
-  (MkSCase _ _ argTypes cmd') <- lookupMatchCase xt cases
+  (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.

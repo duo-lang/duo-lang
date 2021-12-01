@@ -111,8 +111,8 @@ termToHoverMap (FreeVar ext PrdRep _)       = bar ext
 termToHoverMap (FreeVar ext CnsRep _)       = bar ext
 termToHoverMap (XtorCall ext PrdRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
 termToHoverMap (XtorCall ext CnsRep _ args) = M.unions [bar ext, xtorArgsToHoverMap args]
-termToHoverMap (XMatch ext PrdRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
-termToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (scaseToHoverMap <$> cases)
+termToHoverMap (XMatch ext PrdRep _ cases)  = M.unions $ bar ext : (cmdcaseToHoverMap <$> cases)
+termToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (cmdcaseToHoverMap <$> cases)
 termToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 termToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 termToHoverMap (Dtor ext _ e subst)         = M.unions $ [foo ext] <> (pctermToHoverMap <$> (PrdTerm e:subst))
@@ -131,8 +131,8 @@ commandToHoverMap (Done _)          = M.empty
 xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
 xtorArgsToHoverMap subst = M.unions (pctermToHoverMap <$> subst)
 
-scaseToHoverMap :: SCase Inferred -> HoverMap
-scaseToHoverMap (MkSCase {scase_cmd}) = commandToHoverMap scase_cmd
+cmdcaseToHoverMap :: CmdCase Inferred -> HoverMap
+cmdcaseToHoverMap (MkCmdCase {cmdcase_cmd}) = commandToHoverMap cmdcase_cmd
 
 
 ---------------------------------------------------------------------------------

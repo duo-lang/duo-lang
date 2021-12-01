@@ -14,16 +14,16 @@ import Syntax.CommonTerm
 -- Terms
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (SCase ext) where
-  prettyAnn MkSCase{..} =
+instance PrettyAnn (CmdCase ext) where
+  prettyAnn MkCmdCase{..} =
     let
-      prds = [x | (Prd,x) <- scase_args]
-      cnss = [x | (Cns,x) <- scase_args]
+      prds = [x | (Prd,x) <- cmdcase_args]
+      cnss = [x | (Cns,x) <- cmdcase_args]
     in
-      prettyAnn scase_name <>
+      prettyAnn cmdcase_name <>
       prettyTwice prds cnss <+>
       annSymbol "=>" <+>
-      prettyAnn scase_cmd
+      prettyAnn cmdcase_cmd
 
 instance PrettyAnn (ACase ext) where
   prettyAnn MkACase{ acase_name, acase_args, acase_term } =

@@ -164,18 +164,18 @@ commandP =
 -- Pattern and copattern matches
 --------------------------------------------------------------------------------------------
 
-scaseP :: NominalStructural -> Parser (SCase Parsed, SourcePos)
-scaseP ns = do
+cmdcaseP :: NominalStructural -> Parser (CmdCase Parsed, SourcePos)
+cmdcaseP ns = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (cmd, endPos) <- commandP
-  let pmcase = MkSCase { scase_ext = Loc startPos endPos
-                       , scase_name = xt
-                       , scase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
-                       , scase_cmd = commandClosing args cmd -- de brujin transformation
-                       }
+  let pmcase = MkCmdCase { cmdcase_ext = Loc startPos endPos
+                         , cmdcase_name = xt
+                         , cmdcase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
+                         , cmdcase_cmd = commandClosing args cmd -- de brujin transformation
+                         }
   return (pmcase, endPos)
 
 acaseP :: NominalStructural -> Parser (ACase Parsed, SourcePos)
@@ -195,14 +195,14 @@ acaseP ns = do
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
 -- infer a structural type, not a nominal one.
-scasesP :: Parser ([SCase Parsed], NominalStructural,SourcePos)
-scasesP = try structuralCases <|> nominalCases
+cmdcasesP :: Parser ([CmdCase Parsed], NominalStructural,SourcePos)
+cmdcasesP = try structuralCases <|> nominalCases
   where
     structuralCases = do
-      (cases, endPos) <- braces ((fst <$> scaseP Structural) `sepBy` comma)
+      (cases, endPos) <- braces ((fst <$> cmdcaseP Structural) `sepBy` comma)
       return (cases, Structural, endPos)
     nominalCases = do
-      (cases, endPos) <- braces ((fst <$> scaseP Nominal) `sepBy1` comma)
+      (cases, endPos) <- braces ((fst <$> cmdcaseP Nominal) `sepBy1` comma)
       -- There must be at least one case for a nominal type to be inferred
       return (cases, Nominal, endPos)
 
@@ -220,12 +220,12 @@ patternMatch :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 patternMatch PrdRep = do
   startPos <- getSourcePos
   _ <- comatchKwP
-  (cases,ns, endPos) <- scasesP
+  (cases,ns, endPos) <- cmdcasesP
   return (XMatch (Loc startPos endPos) PrdRep ns cases, endPos)
 patternMatch CnsRep = do
   startPos <- getSourcePos
   _ <- matchKwP
-  (cases,ns,endPos) <- scasesP
+  (cases,ns,endPos) <- cmdcasesP
   return (XMatch (Loc startPos endPos) CnsRep ns cases, endPos)
 
 matchP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
