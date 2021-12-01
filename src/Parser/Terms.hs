@@ -178,20 +178,33 @@ cmdcaseP ns = do
                          }
   return (pmcase, endPos)
 
-acaseP :: NominalStructural -> Parser (ACase Parsed, SourcePos)
-acaseP ns = do
+termCaseP :: NominalStructural -> Parser (TermCase Parsed, SourcePos)
+termCaseP ns = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
-  let pmcase = MkACase { acase_ext = Loc startPos endPos
-                       , acase_name = xt
-                       , acase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
-                       , acase_term = termClosing args res
-                       }
+  let pmcase = MkTermCase { tmcase_ext = Loc startPos endPos
+                          , tmcase_name = xt
+                          , tmcase_args = (\(pc,fv) -> (pc, Just fv)) <$> args
+                          , tmcase_term = termClosing args res
+                          }
   return (pmcase, endPos)
   
+termCaseIP :: NominalStructural -> Parser (TermCaseI Parsed, SourcePos)
+termCaseIP ns = do
+  startPos <- getSourcePos
+  (xt, _pos) <- xtorName ns
+  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  _ <- rightarrow
+  (res, endPos) <- termTopP PrdRep
+  let pmcase = MkTermCaseI { tmcasei_ext = Loc startPos endPos
+                           , tmcasei_name = xt
+                           , tmcasei_args = (\(pc,fv) -> (pc, Just fv)) <$> args
+                           , tmcasei_term = termClosing args res
+                           }
+  return (pmcase, endPos)
 
 -- We put the structural pattern match parser before the nominal one, since in the case of an empty match/comatch we want to
 -- infer a structural type, not a nominal one.
@@ -206,14 +219,24 @@ cmdcasesP = try structuralCases <|> nominalCases
       -- There must be at least one case for a nominal type to be inferred
       return (cases, Nominal, endPos)
 
-acasesP :: Parser ([ACase Parsed], NominalStructural , SourcePos)
-acasesP = try structuralCases <|> nominalCases
+termCasesP :: Parser ([TermCase Parsed], NominalStructural , SourcePos)
+termCasesP = try structuralCases <|> nominalCases
   where
     structuralCases = do
-      (cases, endPos) <- braces ((fst <$> acaseP Structural) `sepBy` comma)
+      (cases, endPos) <- braces ((fst <$> termCaseP Structural) `sepBy` comma)
       return (cases, Structural, endPos)
     nominalCases = do
-      (cases,endPos) <- braces ((fst <$> acaseP Nominal) `sepBy` comma)
+      (cases,endPos) <- braces ((fst <$> termCaseP Nominal) `sepBy` comma)
+      return (cases, Nominal, endPos)
+
+termCasesIP :: Parser ([TermCaseI Parsed], NominalStructural , SourcePos)
+termCasesIP = try structuralCases <|> nominalCases
+  where
+    structuralCases = do
+      (cases, endPos) <- braces ((fst <$> termCaseIP Structural) `sepBy` comma)
+      return (cases, Structural, endPos)
+    nominalCases = do
+      (cases,endPos) <- braces ((fst <$> termCaseIP Nominal) `sepBy` comma)
       return (cases, Nominal, endPos)
 
 patternMatch :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
@@ -235,7 +258,7 @@ matchP PrdRep = do
   _ <- caseKwP
   (arg, _pos) <- termP PrdRep
   _ <- ofKwP
-  (cases, ns, endPos) <- acasesP
+  (cases, ns, endPos) <- termCasesP
   return (Match (Loc startPos endPos) ns arg cases, endPos)
 
 comatchP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
@@ -243,12 +266,12 @@ comatchP CnsRep = empty
 comatchP PrdRep = do
   startPos <- getSourcePos
   _ <- cocaseKwP
-  (cocases, ns, endPos) <- acasesP
+  (cocases, ns, endPos) <- termCasesIP
   return (Comatch (Loc startPos endPos) ns cocases, endPos)
 
 -- | Create a lambda abstraction. 
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc Structural [MkACase loc (MkXtorName Structural "Ap") [(Prd, Just var)] (termClosing [(Prd, var)] tm)]
+mkLambda loc var tm = Comatch loc Structural [MkTermCaseI loc (MkXtorName Structural "Ap") [(Prd, Just var)] (termClosing [(Prd, var)] tm)]
 
 
 lambdaP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)

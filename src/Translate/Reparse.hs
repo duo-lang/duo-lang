@@ -57,10 +57,10 @@ createNamesTerm (Dtor _ xt e args) = do
   return $ Dtor defaultLoc xt e' args'
 createNamesTerm (Match _ ns e cases) = do
   e' <- createNamesTerm e
-  cases' <- sequence (createNamesACase <$> cases)
+  cases' <- sequence (createNamesTermCase <$> cases)
   return $ Match defaultLoc ns e' cases'
 createNamesTerm (Comatch _ ns cases) = do
-  cases' <- sequence (createNamesACase <$> cases)
+  cases' <- sequence (createNamesTermCaseI <$> cases)
   return $ Comatch defaultLoc ns cases'
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
@@ -77,11 +77,17 @@ createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
   return $ MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesACase :: ACase ext -> CreateNameM (ACase Parsed)
-createNamesACase (MkACase _ xt args e) = do
+createNamesTermCase :: TermCase ext -> CreateNameM (TermCase Parsed)
+createNamesTermCase (MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
-  return $ MkACase defaultLoc xt args' e'
+  return $ MkTermCase defaultLoc xt args' e'
+
+createNamesTermCaseI :: TermCaseI ext -> CreateNameM (TermCaseI Parsed)
+createNamesTermCaseI (MkTermCaseI _ xt args e) = do
+  e' <- createNamesTerm e
+  args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
+  return $ MkTermCaseI defaultLoc xt args' e'
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad

@@ -59,9 +59,9 @@ zonkTerm bisubst (MuAbs (loc,ty) rep fv cmd) =
 zonkTerm bisubst (Dtor (loc,ty) xt prd subst) =
     Dtor (loc, zonkType bisubst ty) xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst)
 zonkTerm bisubst (Match (loc,ty) ns prd cases) =
-    Match (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkACase bisubst <$> cases)
+    Match (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
 zonkTerm bisubst (Comatch (loc,ty) ns cases) =
-    Comatch (loc, zonkType bisubst ty) ns (zonkACase bisubst <$> cases)
+    Comatch (loc, zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
 
 zonkPCTerm :: Bisubstitution -> PrdCnsTerm Inferred -> PrdCnsTerm Inferred
 zonkPCTerm bisubst (PrdTerm tm) = PrdTerm (zonkTerm bisubst tm)
@@ -70,8 +70,11 @@ zonkPCTerm bisubst (CnsTerm tm) = CnsTerm (zonkTerm bisubst tm)
 zonkCmdCase :: Bisubstitution -> CmdCase Inferred -> CmdCase Inferred
 zonkCmdCase bisubst (MkCmdCase loc nm args cmd) = MkCmdCase loc nm args (zonkCommand bisubst cmd)
 
-zonkACase :: Bisubstitution -> ACase Inferred -> ACase  Inferred
-zonkACase bisubst (MkACase loc nm args tm) = MkACase loc nm args (zonkTerm bisubst tm)
+zonkTermCase :: Bisubstitution -> TermCase Inferred -> TermCase  Inferred
+zonkTermCase bisubst (MkTermCase loc nm args tm) = MkTermCase loc nm args (zonkTerm bisubst tm)
+
+zonkTermCaseI :: Bisubstitution -> TermCaseI Inferred -> TermCaseI  Inferred
+zonkTermCaseI bisubst (MkTermCaseI loc nm args tm) = MkTermCaseI loc nm args (zonkTerm bisubst tm)
 
 zonkCommand :: Bisubstitution -> Command Inferred -> Command Inferred
 zonkCommand bisubst (Apply ext prd cns) = Apply ext (zonkTerm bisubst prd) (zonkTerm bisubst cns)

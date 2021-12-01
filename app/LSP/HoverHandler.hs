@@ -98,8 +98,11 @@ foo (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange lo
 
 
 
-acaseToHoverMap :: ACase Inferred -> HoverMap 
-acaseToHoverMap (MkACase _ _ _ tm) = termToHoverMap tm
+termCaseToHoverMap :: TermCase Inferred -> HoverMap 
+termCaseToHoverMap (MkTermCase _ _ _ tm) = termToHoverMap tm
+
+termCaseIToHoverMap :: TermCaseI Inferred -> HoverMap 
+termCaseIToHoverMap (MkTermCaseI _ _ _ tm) = termToHoverMap tm
 
 bar :: (Loc, Typ pol) -> HoverMap
 bar (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
@@ -116,8 +119,8 @@ termToHoverMap (XMatch ext CnsRep _ cases)  = M.unions $ bar ext : (cmdcaseToHov
 termToHoverMap (MuAbs ext PrdRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 termToHoverMap (MuAbs ext CnsRep _ cmd)     = M.unions [bar ext, commandToHoverMap cmd]
 termToHoverMap (Dtor ext _ e subst)         = M.unions $ [foo ext] <> (pctermToHoverMap <$> (PrdTerm e:subst))
-termToHoverMap (Match ext _ e cases)        = M.unions $ [foo ext] <> (acaseToHoverMap <$> cases) <> [termToHoverMap e]
-termToHoverMap (Comatch ext _ cocases)      = M.unions $ [foo ext] <> (acaseToHoverMap <$> cocases)
+termToHoverMap (Match ext _ e cases)        = M.unions $ [foo ext] <> (termCaseToHoverMap <$> cases) <> [termToHoverMap e]
+termToHoverMap (Comatch ext _ cocases)      = M.unions $ [foo ext] <> (termCaseIToHoverMap <$> cocases)
 
 pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
 pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
