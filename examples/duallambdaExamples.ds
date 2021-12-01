@@ -22,20 +22,20 @@ prd rec filterHelper := \p => \l => case l of {
     Nil => comatch {
         MkPar2[k1,k2] => Unit >> k2
     },
-    Cons(x,xs) => case p.Ap(x)[*] of {
+    Cons(x,xs) => case p x of {
         True => 
             comatch {
                 MkPar2[k1,k2] =>
-                    filterHelper.'Ap(p)[*].'Ap(xs)[*] >> MkPar2[mu ys. Cons(x,ys) >> k1, k2]
+                    filterHelper p xs >> MkPar2[mu ys. Cons(x,ys) >> k1, k2]
             },
         False => 
             comatch {
                 MkPar2[k1,k2] =>
-                    filterHelper.'Ap(p)[*].'Ap(xs)[*] >> MkPar2[k1, mu y. xs >> k1]
+                    filterHelper p xs >> MkPar2[k1, mu y. xs >> k1]
             }
     }
 };
 
-prd filter := \p => \l => mu k. filterHelper.'Ap(p)[*].'Ap(l)[*] >> MkPar2[k, mu y. l >> k];
-prd filter2 := \p => \l => mu k. filterHelper.'Ap(p)[*].'Ap(l)[*].MkPar2[k][*] >> mu y. l >> k;
+prd filter  := \p => \l => mu k. filterHelper p l >> MkPar2[k, mu y. l >> k];
+prd filter2 := \p => \l => mu k. (filterHelper p l).MkPar2[k][*] >> mu y. l >> k;
 
