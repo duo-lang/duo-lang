@@ -94,10 +94,18 @@ instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
 
 instance PrettyAnn Environment where
   prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, declEnv } =
-    vsep [ppPrds, "", ppCns, "", ppCmds, "", ppDecls, ""]
+    vsep [ppPrds,ppCns,ppCmds, ppDecls ]
     where
-      ppPrds = vsep $ intersperse "" $ "Producers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList prdEnv))
-      ppCns  = vsep $ intersperse "" $ "Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> (M.toList cnsEnv))
-      ppCmds = vsep $ intersperse "" $ "Commands" : ( (\(v,_) -> pretty v) <$> (M.toList cmdEnv))
-      ppDecls = vsep $ intersperse "" $ "Type declarations:" : (prettyAnn . snd <$> declEnv)
+      ppPrds = case M.toList prdEnv of
+        [] -> mempty
+        env -> vsep $ intersperse "" $ ("Producers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> env)) ++ [""]
+      ppCns  = case M.toList cnsEnv of
+        [] -> mempty
+        env -> vsep $ intersperse "" $ ("Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> env)) ++ [""]
+      ppCmds = case M.toList cmdEnv of
+        [] -> mempty
+        env -> vsep $ intersperse "" $ ("Commands" : ( (\(v,_) -> pretty v) <$> env)) ++ [""]
+      ppDecls = case declEnv of
+        [] -> mempty
+        env -> vsep $ intersperse "" $ ("Type declarations:" : (prettyAnn . snd <$> env)) ++ [""]
 
