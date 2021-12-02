@@ -65,7 +65,7 @@ isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocus
 isFocusedCmd :: CallingConvention -> Command Compiled -> Maybe (Command Compiled)
 isFocusedCmd eo (Apply _ prd cns) = Apply () <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (Done _)          = Just (Done ())
-isFocusedCmd eo (Print _ prd)     = Print () <$> isFocusedTerm eo prd
+isFocusedCmd eo (Print _ prd)     = Print () <$> isValueTerm eo PrdRep prd
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -177,8 +177,8 @@ focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
 focusCmd :: CallingConvention -> Command Compiled -> Command Compiled
 focusCmd eo (Apply _ prd cns) = Apply () (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (Done _) = Done ()
--- TODO: Treatment of Print still a bit unclear. Treat similarly to Ctors?
-focusCmd eo (Print _ prd) = Print () (focusTerm eo prd)
+focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd)) = Print () prd
+focusCmd eo (Print _ prd) = Apply () (focusTerm eo prd) (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0))))
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
