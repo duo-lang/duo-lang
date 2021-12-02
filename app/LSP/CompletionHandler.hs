@@ -1,21 +1,27 @@
 module LSP.CompletionHandler (completionHandler) where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)
 import Language.LSP.Types
 import Language.LSP.Server
+import System.Log.Logger ( debugM )
 
-import Syntax.Program
 import LSP.Definition
 
 completionHandler :: Handlers LSPMonad
 completionHandler = requestHandler STextDocumentCompletion $ \req responder -> do
-    let completionItems = [ mkOperatorCompletion "Par" "⅋"
-                          , mkOperatorCompletion "With" "&"
-                          , mkOperatorCompletion "Times" "⊗"
-                          , mkOperatorCompletion "Plus" "⊕"
-                          ]
+    let (RequestMessage _ _ _ (CompletionParams (TextDocumentIdentifier uri) _ _ _ ctxt)) = req
+    liftIO $ debugM "lspserver.completionHandler" ("Received completion request: " <> show uri)
+    completionItems <- getCompletionItems ctxt
     responder (Right (InL (List completionItems)))
 
+getCompletionItems :: Maybe CompletionContext -> LSPMonad [CompletionItem]
+getCompletionItems _ctx = return [ mkOperatorCompletion "Par" "⅋"
+                                 , mkOperatorCompletion "With" "&"
+                                 , mkOperatorCompletion "Times" "⊗"
+                                 , mkOperatorCompletion "Plus" "⊕"
+                                 , mkOperatorCompletion "Fun" "→"
+                                 ] 
 
 mkOperatorCompletion :: Text -> Text -> CompletionItem
 mkOperatorCompletion name symbol = CompletionItem
@@ -37,12 +43,3 @@ mkOperatorCompletion name symbol = CompletionItem
                             , _command = Nothing
                             , _xdata = Nothing
                             }
--- hoverHandler :: Handlers LSPMonad
--- hoverHandler = 
---   let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
---   liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri)
---   MkLSPConfig ref <- getConfig 
---   cache <- liftIO $ readIORef ref
---   case M.lookup uri cache of
---     Nothing -> responder (Right Nothing)
---     Just cache -> responder (Right (lookupInHoverMap pos cache)
