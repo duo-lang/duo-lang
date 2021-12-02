@@ -10,7 +10,7 @@ module Parser.Types
   ) where
 
 import Control.Monad.State
-import Control.Monad.Reader
+import Control.Monad.Reader ( asks, MonadReader(local) )
 import Data.Set qualified as S
 import Text.Megaparsec hiding (State)
 
@@ -146,19 +146,48 @@ topBotP NegRep = topKwP *> return (TySet NegRep Nothing [])
 -- - "ty1 /\ ty2 /\ ty3"
 -- - "ty1 \/ ty2 \/ ty3"
 unionInterP :: PolarityRep pol -> Parser (Typ pol)
-unionInterP PosRep = TySet PosRep Nothing <$> (typP' PosRep) `sepBy2` unionSym
-unionInterP NegRep = TySet NegRep Nothing <$> (typP' NegRep) `sepBy2` intersectionSym
+unionInterP PosRep = TySet PosRep Nothing <$> (typP2 PosRep) `sepBy2` unionSym
+unionInterP NegRep = TySet NegRep Nothing <$> (typP2 NegRep) `sepBy2` intersectionSym
 
 setTypeP :: PolarityRep pol -> Parser (Typ pol)
 setTypeP rep = topBotP rep <|> unionInterP rep
+
+-- | Syntax sugar for function arrows
+arrowTypeSugar :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol -> Typ pol
+arrowTypeSugar PosRep tl tr =
+  TyCodata PosRep Nothing [
+    MkXtorSig (MkXtorName Structural "Ap")
+    [PrdType tl, CnsType tr]]
+arrowTypeSugar NegRep tl tr =
+  TyCodata NegRep Nothing [
+    MkXtorSig (MkXtorName Structural "Ap")
+    [PrdType tl, CnsType tr]]
+
+-- | chainr for arrows (specialized as it need to flip polarities)
+arrowChain :: PolarityRep rep
+  -> Parser (Typ (FlipPol pol))
+  -> Parser (Typ pol)
+  -> (Typ (FlipPol pol) -> Typ pol -> Typ pol)
+  -> Parser (Typ pol)
+arrowChain rep p0 pn arr = do
+  t1 <- try (p0 <* thinRightarrow)
+  t2 <- arrowChain rep p0 pn arr <|> pn
+  pure (arr t1 t2)
+
+arrowTyp' :: PolarityRep pol -> Parser (Typ (FlipPol pol)) -> Parser (Typ pol) -> Parser (Typ pol)
+arrowTyp' PosRep p0 pn = arrowChain PosRep p0 pn (arrowTypeSugar PosRep)
+arrowTyp' NegRep p0 pn = arrowChain NegRep p0 pn (arrowTypeSugar NegRep)
+
+arrowTyp :: PolarityRep pol -> Parser (Typ pol)
+arrowTyp rep = arrowTyp' rep (typP1 (flipPolarityRep rep)) (typP1 rep)
 
 ---------------------------------------------------------------------------------
 -- Type Parser
 ---------------------------------------------------------------------------------
 
--- Without joins and meets
-typP' :: PolarityRep pol -> Parser (Typ pol)
-typP' rep = try (fst <$> parens (typP rep)) <|>
+-- | Level 2 nonterminal: atomic types (i.e. no arrow or set operators)
+typP2 :: PolarityRep pol -> Parser (Typ pol)
+typP2 rep = try (fst <$> parens (typP rep)) <|>
   nominalTypeP rep <|>
   refinementTypeP rep <|>
   xdataTypeP DataRep rep <|>
@@ -166,8 +195,13 @@ typP' rep = try (fst <$> parens (typP rep)) <|>
   recTypeP rep <|>
   typeVariableP rep
 
+-- | Level 1 nonterminal (set operators)
+typP1 :: PolarityRep pol -> Parser (Typ pol)
+typP1 rep = try (setTypeP rep) <|> typP2 rep
+
+-- | Level 0 (outermost) nonterminal (arrow syntax sugar)
 typP :: PolarityRep pol -> Parser (Typ pol)
-typP rep = try (setTypeP rep) <|> typP' rep
+typP rep = (arrowTyp rep) <|> typP1 rep
 
 ---------------------------------------------------------------------------------
 -- Parsing of invariant Types (HACKY!)
@@ -192,7 +226,7 @@ switchCtxt = undefined
 
 invariantP :: Parser Invariant
 invariantP = do
-  typ <- typP' PosRep
+  typ <- typP2 PosRep
   pure $ MkInvariant $ \rep -> case rep of PosRep -> typ ; NegRep -> switchPol typ
 
 

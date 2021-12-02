@@ -24,7 +24,7 @@ isRecP = option NonRecursive (try recKwP >> pure Recursive)
 annotP :: PolarityRep pol -> Parser (Maybe (TypeScheme pol))
 annotP rep = optional annotP'
   where
-    annotP' = try (colon >> typeSchemeP rep)
+    annotP' = try (notFollowedBy coloneq *> colon) >> typeSchemeP rep
 
 prdCnsDeclarationP :: PrdCnsRep pc -> Parser (Declaration Parsed)
 prdCnsDeclarationP PrdRep = do
@@ -76,7 +76,7 @@ setDeclP = do
   (txt,_) <- optionP
   endPos <- semi
   return (SetDecl (Loc startPos endPos) txt)
-  
+
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
