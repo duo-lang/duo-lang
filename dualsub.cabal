@@ -124,6 +124,7 @@ executable dualsub
       LSP.LSP
       LSP.Definition
       LSP.CodeActionHandler
+      LSP.CompletionHandler
       LSP.HoverHandler
       LSP.MegaparsecToLSP
       Repl.Repl
