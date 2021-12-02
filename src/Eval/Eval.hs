@@ -36,9 +36,7 @@ runEval e evalorder env = runExcept (runReaderT (unEvalM e) (env,evalorder))
 lookupEvalOrder :: EvalM CallingConvention 
 lookupEvalOrder = asks snd
 
----------------------------------------------------------------------------------
--- Symmetric Terms
----------------------------------------------------------------------------------
+
 
 lookupMatchCase :: XtorName -> [CmdCase Compiled] -> EvalM (CmdCase Compiled)
 lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_name } -> xt == cmdcase_name) cases of
@@ -57,6 +55,10 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
                                    , "Argument lengths don't coincide."
                                    ]
 
+---------------------------------------------------------------------------------
+-- Terms
+---------------------------------------------------------------------------------
+
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
 evalTermOnce (Done _) = return Nothing
@@ -67,10 +69,12 @@ evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Comman
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
-  return (Just (Apply () (desugarTerm prd) cns))
+  eo <- lookupEvalOrder
+  return (Just (Apply () (focusTerm eo (desugarTerm prd)) cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupSTerm CnsRep fv
-  return (Just (Apply () prd (desugarTerm cns)))
+  eo <- lookupEvalOrder
+  return (Just (Apply () prd (focusTerm eo (desugarTerm cns))))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
@@ -121,7 +125,7 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 ---------------------------------------------------------------------------------
 
 eval :: Command Compiled -> CallingConvention -> Environment -> Either Error (Command Compiled)
-eval cmd cc env = runEval (evalM  cmd) cc env
+eval cmd cc env = runEval (evalM  (focusCmd cc cmd)) cc env
 
 evalSteps :: Command Compiled -> CallingConvention -> Environment -> Either Error [Command Compiled]
-evalSteps cmd cc env = runEval (evalStepsM cmd) cc env
+evalSteps cmd cc env = runEval (evalStepsM (focusCmd cc cmd)) cc env
