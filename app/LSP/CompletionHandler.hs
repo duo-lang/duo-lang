@@ -9,17 +9,26 @@ import LSP.Definition
 
 completionHandler :: Handlers LSPMonad
 completionHandler = requestHandler STextDocumentCompletion $ \req responder -> do
-    let completionItem :: CompletionItem = CompletionItem
-                            { _label = "tastytesty"
-                            , _kind = Just CiText
+    let completionItems = [ mkOperatorCompletion "Par" "⅋"
+                          , mkOperatorCompletion "With" "&"
+                          , mkOperatorCompletion "Times" "⊗"
+                          , mkOperatorCompletion "Plus" "⊕"
+                          ]
+    responder (Right (InL (List completionItems)))
+
+
+mkOperatorCompletion :: Text -> Text -> CompletionItem
+mkOperatorCompletion name symbol = CompletionItem
+                            { _label = name
+                            , _kind = Just CiOperator
                             , _tags = Nothing
-                            , _detail = Nothing
+                            , _detail = Just ("Type operator " <> symbol)
                             , _documentation = Nothing
                             , _deprecated = Just False
                             , _preselect = Nothing
                             , _sortText = Nothing
                             , _filterText = Nothing
-                            , _insertText = Nothing
+                            , _insertText = Just symbol
                             , _insertTextFormat = Nothing
                             , _insertTextMode = Nothing
                             , _textEdit = Nothing
@@ -28,9 +37,6 @@ completionHandler = requestHandler STextDocumentCompletion $ \req responder -> d
                             , _command = Nothing
                             , _xdata = Nothing
                             }
-    responder (Right (InL (List [completionItem])))
-
-
 -- hoverHandler :: Handlers LSPMonad
 -- hoverHandler = 
 --   let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
