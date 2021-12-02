@@ -12,8 +12,7 @@ import System.Console.Repline ( HaskelineT, abort )
 import System.IO.Error (tryIOError)
 
 import Errors ()
-import Eval.Eval ( runEval )
-import Eval.Terms ( eval, evalSteps )
+import Eval.Eval ( eval, evalSteps )
 import Parser.Parser
     ( Parser, runFileParser, runInteractiveParser, commandP )
 import Pretty.Errors ()
@@ -112,10 +111,10 @@ cmdEval s = do
       steps <- gets steps
       case steps of
         NoSteps -> do
-          res <- fromRight $ runEval (eval com) evalOrder env
+          res <- fromRight $ eval com evalOrder env
           prettyRepl res
         Steps -> do
-          res <- fromRight $ runEval (evalSteps com) evalOrder env
+          res <- fromRight $ evalSteps com evalOrder env
           forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
     Right _ -> prettyText "Unreachable"
     Left err -> prettyRepl err
