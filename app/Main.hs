@@ -1,6 +1,8 @@
 module Main where
 
 import System.Environment (getArgs)
+
+import Compile (runCompile)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
 
@@ -11,5 +13,7 @@ main = do
 
 dispatch :: [String] -> IO ()
 dispatch ["lsp"] = runLSP
-dispatch _       = runRepl
+dispatch []      = runRepl
+dispatch [fp]    = runCompile fp
+dispatch _       = putStrLn "DualSub: Unrecognized arguments."
 

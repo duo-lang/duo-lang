@@ -1,3 +1,4 @@
+import Prelude;
 prd rec addS := comatch { 'Ap(x,y)[k] =>
                        x
                        >>
@@ -6,7 +7,9 @@ prd rec addS := comatch { 'Ap(x,y)[k] =>
                              }
                    };
 
-prd rec addA := cocase { 'Ap(x,y)[*] => case x of { 'Z => y
-                                               , 'S(z) => addA.'Ap(z, 'S(y))[*]
-					      }
-		     };
+prd rec addA := \x => \y => case x of { Z => y
+                                      , S(z) => addA z S(y)
+					        };
+		     
+
+cmd main := Print(addA 2 3);
