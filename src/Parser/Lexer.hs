@@ -44,6 +44,7 @@ module Parser.Lexer
   , intersectionSym
   , subtypeSym
   , refineSym
+  , implicitSym
     -- Parens
   , angles
   , parens
@@ -284,6 +285,9 @@ subtypeSym = symbol "<:"
 refineSym :: Parser SourcePos
 refineSym = symbol ":>>"
 
+implicitSym :: Parser SourcePos
+implicitSym = symbol "*"
+
 -------------------------------------------------------------------------------------------
 -- Parens
 -------------------------------------------------------------------------------------------
@@ -307,7 +311,7 @@ argListP ::  Parser a -> Parser a ->  Parser ([(PrdCns,a)], SourcePos)
 argListP p q = do
   endPos <- getSourcePos
   (xs, endPos) <- option ([], endPos) (parens   $ p `sepBy` comma)
-  (ys, endPos) <- option ([], endPos) (brackets $ q `sepBy` comma)
+  (ys, endPos) <- option ([], endPos) (try (brackets $ q `sepBy` comma))
   return (((\x -> (Prd,x)) <$> xs) ++ ((\y -> (Cns,y)) <$> ys), endPos)
 
 -------------------------------------------------------------------------------------------
