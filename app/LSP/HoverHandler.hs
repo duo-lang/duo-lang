@@ -127,7 +127,7 @@ pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
 pctermToHoverMap (CnsTerm tm) = termToHoverMap tm
 
 commandToHoverMap :: Terms.Command Inferred -> HoverMap
-commandToHoverMap (Apply _ prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns]
+commandToHoverMap (Apply _ _ prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns]
 commandToHoverMap (Print _ prd)     = termToHoverMap prd
 commandToHoverMap (Done _)          = M.empty 
 

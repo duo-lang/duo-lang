@@ -97,7 +97,7 @@ applyCmdP = do
   (prd, _pos) <- termP PrdRep
   _ <- commandSym
   (cns, endPos) <- termP CnsRep
-  return (Apply (Loc startPos endPos) prd cns, endPos)
+  return (Apply (Loc startPos endPos) Nothing prd cns, endPos)
 
 doneCmdP :: Parser (Command Parsed, SourcePos)
 doneCmdP = do

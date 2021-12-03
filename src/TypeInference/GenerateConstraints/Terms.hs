@@ -444,11 +444,11 @@ genConstraintsCommand (Done loc) = return (Done loc)
 genConstraintsCommand (Print loc t) = do
   t' <- genConstraintsTerm t
   return (Print loc t')
-genConstraintsCommand (Apply loc t1 t2) = do
+genConstraintsCommand (Apply loc kind t1 t2) = do
   t1' <- genConstraintsTerm t1
   t2' <- genConstraintsTerm t2
   addConstraint (SubType (CommandConstraint loc) (getTypeTerm t1') (getTypeTerm t2'))
-  return (Apply loc t1' t2')
+  return (Apply loc kind t1' t2')
 
 ---------------------------------------------------------------------------------------------
 -- Checking recursive terms

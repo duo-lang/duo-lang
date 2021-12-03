@@ -77,6 +77,6 @@ zonkTermCaseI :: Bisubstitution -> TermCaseI Inferred -> TermCaseI  Inferred
 zonkTermCaseI bisubst (MkTermCaseI loc nm args tm) = MkTermCaseI loc nm args (zonkTerm bisubst tm)
 
 zonkCommand :: Bisubstitution -> Command Inferred -> Command Inferred
-zonkCommand bisubst (Apply ext prd cns) = Apply ext (zonkTerm bisubst prd) (zonkTerm bisubst cns)
+zonkCommand bisubst (Apply ext kind prd cns) = Apply ext kind (zonkTerm bisubst prd) (zonkTerm bisubst cns)
 zonkCommand bisubst (Print ext prd) = Print ext (zonkTerm bisubst prd)
 zonkCommand _       (Done ext) = Done ext
