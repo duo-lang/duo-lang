@@ -19,8 +19,6 @@ import System.Console.Repline
 import Repl.Options.Let (letOption)
 import Repl.Options.Simplify (simplifyOption)
 import Repl.Options.Subsume (subOption)
-import Repl.Options.Compile (compileOption)
-import Repl.Options.Focusing ( focusOption )
 import Repl.Options.LoadReload (loadOption, reloadOption)
 import Repl.Options.Show (showOption, showTypeOption)      
 import Repl.Options.SetUnset (setOption, unsetOption)
@@ -52,11 +50,9 @@ allOptions =
   , unsetOption
   , subOption
   , simplifyOption
-  , compileOption
   , loadOption
   , reloadOption
   , showTypeOption
-  , focusOption
   ]
 
 -- Help

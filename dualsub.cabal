@@ -127,8 +127,6 @@ executable dualsub
       LSP.HoverHandler
       LSP.MegaparsecToLSP
       Repl.Repl
-      Repl.Options.Compile
-      Repl.Options.Focusing
       Repl.Options.Let
       Repl.Options.LoadReload
       Repl.Options.SetUnset
