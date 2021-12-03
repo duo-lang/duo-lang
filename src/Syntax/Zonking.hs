@@ -6,22 +6,25 @@ import Data.Map qualified as M
 import Syntax.CommonTerm
 import Syntax.Terms
 import Syntax.Types
+import Syntax.Kinds
 
 --------------------------------------------------------------------------------
 -- Bisubstitution
 ---------------------------------------------------------------------------------
 
-newtype Bisubstitution = MkBisubstitution { unBisubstitution :: Map TVar (Typ Pos, Typ Neg) }
+data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg) 
+                                       , kvarSubst :: Map KVar Kind
+                                       }
 
 ---------------------------------------------------------------------------------
 -- Zonking of Types
 ---------------------------------------------------------------------------------
 
 zonkType :: Bisubstitution -> Typ pol -> Typ pol
-zonkType bisubst ty@(TyVar PosRep _ tv) = case M.lookup tv (unBisubstitution bisubst) of
+zonkType bisubst ty@(TyVar PosRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (tyPos,_) -> tyPos
-zonkType bisubst ty@(TyVar NegRep _ tv) = case M.lookup tv (unBisubstitution bisubst) of
+zonkType bisubst ty@(TyVar NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (_,tyNeg) -> tyNeg
 zonkType bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)

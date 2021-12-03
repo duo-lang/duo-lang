@@ -53,7 +53,7 @@ getRecVar ptv = do
       Just tv -> return tv
  
 coalesce :: SolverResult -> Bisubstitution
-coalesce result = MkBisubstitution $ M.fromList xs
+coalesce result = MkBisubstitution (M.fromList xs) mempty
     where
         res = M.keys result
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep Nothing tvar

@@ -8,6 +8,7 @@ import Text.Megaparsec.Pos
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Types
+import Syntax.Kinds
 import Syntax.Zonking (Bisubstitution(..))
 import TypeInference.Constraints
 import Utils
@@ -130,13 +131,17 @@ prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
                                                     ]
                                              ]
 
+prettyKvsubst :: (KVar, Kind) -> Doc Annotation
+prettyKvsubst (kv, kind) = prettyAnn kv <+> "|->" <+> prettyAnn kind
+
 instance PrettyAnn Bisubstitution where
-  prettyAnn (MkBisubstitution bisubst) = vsep
+  prettyAnn (MkBisubstitution uvsubst kvsubst) = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList bisubst)
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList uvsubst)
     , ""
+    , nest 3 $ vsep ["Kind variables:", vsep (prettyKvsubst <$> M.toList kvsubst)]
     , "---------------------------------------------------------"
     ]
