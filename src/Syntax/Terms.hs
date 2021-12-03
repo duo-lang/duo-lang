@@ -16,6 +16,7 @@ import Syntax.CommonTerm
       PrdCns(..),
       Phase(..) )
 import Syntax.Types
+import Syntax.Kinds
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -218,7 +219,7 @@ data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply :: CommandExt ext -> Term Prd ext -> Term Cns ext -> Command ext
+  Apply :: CommandExt ext -> Maybe Kind -> Term Prd ext -> Term Cns ext -> Command ext
   Print :: CommandExt ext -> Term Prd ext -> Command ext
   Done  :: CommandExt ext -> Command ext
 
@@ -264,7 +265,7 @@ termOpeningRec k args (Comatch _ ns cocases) =
 commandOpeningRec :: Int -> Substitution Compiled -> Command Compiled -> Command Compiled
 commandOpeningRec _ _ (Done _) = Done ()
 commandOpeningRec k args (Print _ t) = Print () (termOpeningRec k args t)
-commandOpeningRec k args (Apply _ t1 t2) = Apply () (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec k args (Apply _ kind t1 t2) = Apply () kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 commandOpening :: Substitution Compiled -> Command Compiled -> Command Compiled
 commandOpening = commandOpeningRec 0
@@ -303,7 +304,7 @@ termClosingRec k args (Comatch ext ns cocases) =
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosingRec _ _ (Done ext) = Done ext
 commandClosingRec k args (Print ext t) = Print ext (termClosingRec k args t)
-commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (Apply ext kind t1 t2) = Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
 
 termClosing :: [(PrdCns, FreeVarName)] -> Term pc ext -> Term pc ext
 termClosing = termClosingRec 0
@@ -366,7 +367,7 @@ termCaseILocallyClosedRec env (MkTermCaseI _ _ args e) = do
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t) = termLocallyClosedRec env t
-commandLocallyClosedRec env (Apply _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
 termLocallyClosed :: Term pc ext -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -433,7 +434,7 @@ openTermComplete (Match _ ns t cases) = Match () ns (openTermComplete t) (openTe
 openTermComplete (Comatch _ ns cocases) = Comatch () ns (openTermCaseI <$> cocases)
 
 openCommandComplete :: Command ext -> Command Compiled
-openCommandComplete (Apply _ t1 t2) = Apply () (openTermComplete t1) (openTermComplete t2)
+openCommandComplete (Apply _ kind t1 t2) = Apply () kind (openTermComplete t1) (openTermComplete t2)
 openCommandComplete (Print _ t) = Print () (openTermComplete t)
 openCommandComplete (Done _) = Done ()
 
@@ -470,7 +471,7 @@ shiftCmdCaseRec :: Int -> CmdCase ext-> CmdCase ext
 shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
 
 shiftCmdRec :: Int -> Command ext -> Command ext
-shiftCmdRec n (Apply ext prd cns) = Apply ext (shiftTermRec n prd) (shiftTermRec n cns)
+shiftCmdRec n (Apply ext kind prd cns) = Apply ext kind (shiftTermRec n prd) (shiftTermRec n cns)
 shiftCmdRec _ (Done ext) = Done ext
 shiftCmdRec n (Print ext prd) = Print ext (shiftTermRec n prd)
 
@@ -512,6 +513,6 @@ removeNamesCmdCase :: CmdCase ext -> CmdCase ext
 removeNamesCmdCase (MkCmdCase ext xt args cmd) = MkCmdCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesCmd cmd)
 
 removeNamesCmd :: Command ext -> Command ext
-removeNamesCmd (Apply ext prd cns) = Apply ext (removeNamesTerm prd) (removeNamesTerm cns)
+removeNamesCmd (Apply ext kind prd cns) = Apply ext kind (removeNamesTerm prd) (removeNamesTerm cns)
 removeNamesCmd (Print ext prd) = Print ext (removeNamesTerm prd)
 removeNamesCmd (Done ext) = Done ext

@@ -125,17 +125,17 @@ executable dualsub
       LSP.LSP
       LSP.Definition
       LSP.CodeActionHandler
+      LSP.CompletionHandler
       LSP.HoverHandler
       LSP.MegaparsecToLSP
       Repl.Repl
-      Repl.Options.Compile
-      Repl.Options.Focusing
       Repl.Options.Let
       Repl.Options.LoadReload
       Repl.Options.SetUnset
       Repl.Options.Show
       Repl.Options.Simplify
       Repl.Options.Subsume
+      Repl.Options.Quit
       Repl.Run
       Paths_dualsub
   hs-source-dirs:

@@ -39,6 +39,7 @@ import Utils ( Located(..))
 import LSP.Definition
 import LSP.HoverHandler ( hoverHandler, updateHoverCache )
 import LSP.CodeActionHandler ( codeActionHandler )
+import LSP.CompletionHandler ( completionHandler )
 
 ---------------------------------------------------------------------------------
 -- Static configuration of the LSP Server
@@ -112,6 +113,7 @@ handlers = mconcat [ initializedHandler
                    , hoverHandler
                    , cancelRequestHandler
                    , codeActionHandler
+                   , completionHandler
                    ]
 
 -- Initialization Handlers

@@ -71,12 +71,12 @@ codata Fun : Type CBN { Ap(Nat)[Bool] };
 # We can use a copattern match (or "comatch" for short) to construct a term of this codata type.
 # For example, we can define the functions which return constant True or False:
 
-prd constTrue := cocase { Ap(x) => True };
-prd constFalse := cocase { Ap(x) => False };
+prd constTrue := cocase { Ap(x)[*] => True };
+prd constFalse := cocase { Ap(x)[*] => False };
 
 # or, we can combine a copattern match with a pattern match to implement the `isZ` function:
 
-prd isZ := cocase { Ap(x) => case x of { Z => True, S(x) => False } };
+prd isZ := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
 
 # We can call a function which is declared in this way by using its destructor on it.
 # For example, in order to check whether 5 is zero, we can write:

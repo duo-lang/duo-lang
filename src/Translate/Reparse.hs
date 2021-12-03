@@ -65,10 +65,10 @@ createNamesTerm (Comatch _ ns cases) = do
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand (Done _) = return $ Done defaultLoc
-createNamesCommand (Apply _ prd cns) = do
+createNamesCommand (Apply _ kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
-  return (Apply defaultLoc prd' cns')
+  return (Apply defaultLoc kind prd' cns')
 createNamesCommand (Print _ prd) = createNamesTerm prd >>= \prd' -> return (Print defaultLoc prd')
 
 createNamesCmdCase :: CmdCase ext -> CreateNameM (CmdCase Parsed)

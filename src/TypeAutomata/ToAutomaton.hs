@@ -171,8 +171,8 @@ insertPCType (PrdType ty) = insertType ty
 insertPCType (CnsType ty) = insertType ty
 
 insertType :: Typ pol -> TTA Node
-insertType (TyVar rep tv) = lookupTVar rep tv
-insertType (TySet rep tys) = do
+insertType (TyVar rep _ tv) = lookupTVar rep tv
+insertType (TySet rep _ tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
   ns <- mapM insertType tys
@@ -189,7 +189,7 @@ insertType (TyRec rep rv ty) = do
   return newNode
 insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep tn) = do
+insertType (TyNominal rep _ tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })

@@ -112,7 +112,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar rep <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  return (TyVar rep Nothing <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -138,10 +138,10 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         return $ case typs of [t] -> PrdType t; _ -> PrdType (TySet rep typs)
+         return $ case typs of [t] -> PrdType t; _ -> PrdType (TySet rep Nothing typs)
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         return $ case typs of [t] -> CnsType t; _ -> CnsType (TySet (flipPolarityRep rep) typs)
+         return $ case typs of [t] -> CnsType t; _ -> CnsType (TySet (flipPolarityRep rep) Nothing typs)
   return argTypes
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
@@ -150,7 +150,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TyVar rep (MkTVar ("r" <> T.pack (show i)))
+    True -> return $ TyVar rep Nothing (MkTVar ("r" <> T.pack (show i)))
     False -> nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
@@ -200,10 +200,10 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
-    let nominals = TyNominal rep <$> S.toList tns
+    let nominals = TyNominal rep Nothing <$> S.toList tns
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
-    return $ case typs of [t] -> t; _ -> TySet rep typs
+    return $ case typs of [t] -> t; _ -> TySet rep Nothing typs
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr

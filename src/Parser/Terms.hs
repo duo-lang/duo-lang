@@ -32,7 +32,7 @@ cnsSubstPart = brackets $ (CnsTerm . fst <$> termP CnsRep) `sepBy` comma
 substitutionP :: Parser (Substitution Parsed, SourcePos)
 substitutionP = do
   endPos <- getSourcePos
-  xs <- many (prdSubstPart <|> cnsSubstPart)
+  xs <- many (prdSubstPart <|> try cnsSubstPart)
   case xs of
     [] -> return ([], endPos)
     xs -> return (concat (fst <$> xs), snd (last xs))
@@ -97,7 +97,7 @@ applyCmdP = do
   (prd, _pos) <- termP PrdRep
   _ <- commandSym
   (cns, endPos) <- termP CnsRep
-  return (Apply (Loc startPos endPos) prd cns, endPos)
+  return (Apply (Loc startPos endPos) Nothing prd cns, endPos)
 
 doneCmdP :: Parser (Command Parsed, SourcePos)
 doneCmdP = do
@@ -197,6 +197,7 @@ termCaseIP ns = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  _ <- brackets implicitSym
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
   let pmcase = MkTermCaseI { tmcasei_ext = Loc startPos endPos
@@ -347,6 +348,7 @@ destructorP' :: NominalStructural -> Parser (XtorName,Substitution Parsed, Sourc
 destructorP' ns = do
   (xt, _) <- xtorName ns
   (subst, endPos) <- substitutionP
+  _ <- brackets implicitSym
   return (xt, subst, endPos)
 
 destructorP :: Parser (XtorName,Substitution Parsed, SourcePos)
