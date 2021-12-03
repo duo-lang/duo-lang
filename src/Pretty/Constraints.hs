@@ -112,6 +112,8 @@ instance PrettyAnn SolverResult where
     , ""
     , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
     , ""
+    , nest 3 $ vsep ["Kind variables:", vsep (prettyKvsubst <$> M.toList kvarSolution)]
+    , ""
     ]
     where
       solvedConstraintsToDoc :: (TVar,VariableState) -> Doc Annotation
