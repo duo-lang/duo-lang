@@ -22,6 +22,7 @@ import Repl.Options.Subsume (subOption)
 import Repl.Options.LoadReload (loadOption, reloadOption)
 import Repl.Options.Show (showOption, showTypeOption)      
 import Repl.Options.SetUnset (setOption, unsetOption)
+import Repl.Options.Quit (quitOption)
 import Repl.Repl
     ( Option(..),
       Repl,
@@ -53,7 +54,12 @@ allOptions =
   , loadOption
   , reloadOption
   , showTypeOption
+  , quitOption
   ]
+
+transformOption :: Option -> (String, String -> Repl ())
+transformOption opt@(Option { option_name = "quit" }) = ( T.unpack (option_name opt), \s ->            (option_cmd opt) (T.pack s))
+transformOption opt                                   = ( T.unpack (option_name opt), \s -> dontCrash ((option_cmd opt) (T.pack s)))
 
 -- Help
 helpCmd :: Text -> Repl ()
@@ -98,7 +104,7 @@ opts :: ReplOpts ReplInner
 opts = ReplOpts
   { banner           = replBanner
   , command          = cmd
-  , options          = (\opt -> (T.unpack (option_name opt), \s -> dontCrash ((option_cmd opt) (T.pack s)))) <$> allOptions
+  , options          = transformOption <$> allOptions
   , prefix           = Just ':'
   , multilineCommand = Nothing
   , tabComplete      = newCompleter

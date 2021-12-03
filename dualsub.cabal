@@ -133,6 +133,7 @@ executable dualsub
       Repl.Options.Show
       Repl.Options.Simplify
       Repl.Options.Subsume
+      Repl.Options.Quit
       Repl.Run
       Paths_dualsub
   hs-source-dirs:
