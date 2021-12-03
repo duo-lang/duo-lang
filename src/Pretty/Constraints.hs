@@ -1,6 +1,7 @@
 module Pretty.Constraints () where
 
 import Prettyprinter
+import Data.List (intersperse)
 import Data.Map qualified as M
 import Text.Megaparsec.Pos
 
@@ -13,7 +14,7 @@ import Utils
 
 
 ---------------------------------------------------------------------------------
--- Prettyprinting of constraints, constraint sets and solved constraints.
+-- Locations
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn Pos where
@@ -22,6 +23,10 @@ instance PrettyAnn Pos where
 instance PrettyAnn Loc where
   prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
     pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
+
+---------------------------------------------------------------------------------
+-- Generated Constraints
+---------------------------------------------------------------------------------
 
 instance PrettyAnn ConstraintInfo where
   -- Primary Constraints
@@ -58,49 +63,61 @@ printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
     [ "---------------------------------------------------------"
-    , "                    ConstraintSet"
+    , "                    Generated Constraints"
     , "---------------------------------------------------------"
+    , ""
     , "Generated unification variables:"
     , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
     , ""
     , "Generated constraints:"
     , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
     , ""
-    , "---------------------------------------------------------"
     ]
 
+---------------------------------------------------------------------------------
+-- Solved Constraints
+---------------------------------------------------------------------------------
 
 printLowerBounds :: [Typ 'Pos] -> Doc Annotation
 printLowerBounds [] = mempty
 printLowerBounds lowerbounds =
-  vsep [ "Lower bounds:"
-       , nest 3 (line' <> vsep (prettyAnn <$> lowerbounds) <> line') ]
+  nest 3 $ vsep [ "Lower bounds:"
+                ,  vsep (prettyAnn <$> lowerbounds)
+                ]
 
 printUpperBounds :: [Typ 'Neg] -> Doc Annotation
 printUpperBounds [] = mempty
 printUpperBounds upperbounds =
-  vsep [ "Upper bounds:"
-       , nest 3 (line' <> vsep (prettyAnn <$> upperbounds) <> line') ]
+  nest 3 $ vsep [ "Upper bounds:"
+                , vsep (prettyAnn <$> upperbounds)
+                ]
 
 instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds , vst_upperbounds } =
-    vsep [ printLowerBounds vst_lowerbounds
-         , printUpperBounds vst_upperbounds
-         ]
+  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  } = mempty
+  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  } = printLowerBounds lbs
+  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs } = printUpperBounds ubs
+  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs } =
+    (printLowerBounds lbs) <> line <> (printUpperBounds ubs)
 
 instance PrettyAnn SolverResult where
   prettyAnn solverResult = vsep
     [ "---------------------------------------------------------"
     , "                   Solved Constraints"
     , "---------------------------------------------------------"
-    , vsep (solvedConstraintsToDoc <$> M.toList solverResult)
-    , "---------------------------------------------------------"
+    , ""
+    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList solverResult)
+    , ""
     ]
     where
       solvedConstraintsToDoc :: (TVar,VariableState) -> Doc Annotation
-      solvedConstraintsToDoc (v, vs) = vsep ["Type variable:" <+> prettyAnn v
-                                            , nest 3 (line' <> prettyAnn vs)]
+      solvedConstraintsToDoc (v, vs) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
+                                                     , prettyAnn vs
+                                                     ]
 
+
+---------------------------------------------------------------------------------
+-- Bisubstitutions
+---------------------------------------------------------------------------------
 
 prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
 prettyBisubst (v, (typ,tyn)) = vsep ["Type variable:" <+> prettyAnn v
@@ -113,6 +130,8 @@ instance PrettyAnn Bisubstitution where
     [ "---------------------------------------------------------"
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
+    , ""
     , vsep (prettyBisubst <$> M.toList bisubst)
+    , ""
     , "---------------------------------------------------------"
     ]
