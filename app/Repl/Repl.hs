@@ -95,11 +95,8 @@ safeRead file =  do
 ------------------------------------------------------------------------------
 
 cmd :: String -> Repl ()
-cmd s = cmdEval  (T.pack s)
-
-cmdEval :: Text -> Repl ()
-cmdEval s = do
-  (comLoc,_) <- parseInteractive commandP s
+cmd s = do
+  (comLoc,_) <- parseInteractive commandP (T.pack s)
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]

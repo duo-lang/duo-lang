@@ -23,11 +23,7 @@ simplifyCmd s = case go PosRep of
                         prettyRepl err
                         prettyRepl ("Negative parsing error:" :: String)
                         prettyRepl err'
-                        --  @prettyRepl String "Parsing type failed" 
-                        --  @prettyRepl String "Positive parsing error:"
-                        --  prettyRepl err
-                        --  @prettyRepl String "Negative parsing error:"
-                        --  prettyRepl err'
+
   where
     go :: forall p. PolarityRep p -> Either Error (Repl ())
     go rep = do
