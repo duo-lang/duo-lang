@@ -30,9 +30,9 @@ data SolverState = SolverState
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
-                                                       , sst_cache = S.empty 
-                                                       , sst_inferMode = im }
+createInitState (ConstraintSet _ uvs _) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+                                                         , sst_cache = S.empty 
+                                                         , sst_inferMode = im }
 
 type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
 
@@ -291,14 +291,16 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _ _)) =
                    , "<:"
                    , ppPrint ty2
                    ]
-
+subConstraints (KindEq _ _ _) = 
+  throwSolverError ["Unification of kinds not yet implemented."]
+  
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) env im = do
+solveConstraints constraintSet@(ConstraintSet css _ _) env im = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   return (sst_bounds solverState)
 

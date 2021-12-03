@@ -56,12 +56,14 @@ instance PrettyAnn UVarProvenance where
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
+  prettyAnn (KindEq ann k1 k2) = 
+    prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
 
 printUVar :: (TVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
-  prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
+  prettyAnn ConstraintSet { cs_constraints, cs_uvars , cs_kuvars } = vsep
     [ "---------------------------------------------------------"
     , "                    Generated Constraints"
     , "---------------------------------------------------------"
@@ -69,6 +71,8 @@ instance PrettyAnn ConstraintSet where
     , "Generated unification variables:"
     , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
     , ""
+    , "Generated kind variables:"
+    , nest 3 (line' <> vsep (prettyAnn <$> cs_kuvars))
     , "Generated constraints:"
     , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
     , ""
