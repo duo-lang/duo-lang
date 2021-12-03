@@ -20,7 +20,8 @@ import Syntax.Program
 import Syntax.CommonTerm
 import Syntax.Terms hiding (Command)
 import Syntax.Terms qualified as Terms
-import Syntax.Types 
+import Syntax.Types
+import Syntax.Kinds
 import TypeTranslation 
 
 import Data.Either (fromRight)
@@ -126,8 +127,12 @@ pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
 pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
 pctermToHoverMap (CnsTerm tm) = termToHoverMap tm
 
+applyToHoverMap :: Range -> Maybe Kind -> HoverMap
+applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
+applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
+
 commandToHoverMap :: Terms.Command Inferred -> HoverMap
-commandToHoverMap (Apply _ _ prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns]
+commandToHoverMap (Apply loc kind prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns, applyToHoverMap (locToRange loc) kind]
 commandToHoverMap (Print _ prd)     = termToHoverMap prd
 commandToHoverMap (Done _)          = M.empty 
 
