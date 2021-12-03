@@ -7,18 +7,18 @@ import Data.Text qualified as T
 import Parser.Parser
 import Parser.Types
 import Pretty.Errors ()
-import Pretty.Pretty
+import Pretty.Terms ()
+import Pretty.Types ()
 import Syntax.Types
 import Syntax.CommonTerm
-import Pretty.Types ()
-import Pretty.Terms ()
+
 
 parseExample :: (Show a, Eq a) => Parser a -> Text -> a -> Spec
 parseExample parser input expected = do
   it ("Parsing of " ++ T.unpack input ++ " works") $ do
     let parseResult = runInteractiveParser parser input
     case parseResult of
-      Left err -> expectationFailure "Could not parse example"
+      Left _err -> expectationFailure "Could not parse example"
       Right result -> result `shouldBe` expected
 
 spec :: Spec
