@@ -48,7 +48,7 @@ import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints)
+import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
 
 
@@ -198,7 +198,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -236,7 +236,7 @@ inferDecl (CmdDecl loc v cmd) = do
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts)
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) ErrorUnresolved
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
