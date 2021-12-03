@@ -121,6 +121,7 @@ executable dualsub
   import: shared-build-depends
   main-is: Main.hs
   other-modules:
+      Compile
       LSP.LSP
       LSP.Definition
       LSP.CodeActionHandler
