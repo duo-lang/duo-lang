@@ -56,50 +56,50 @@ coalesce :: SolverResult -> Bisubstitution
 coalesce result = MkBisubstitution $ M.fromList xs
     where
         res = M.keys result
-        f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep tvar
-                        , runCoalesceM result $ coalesceType $ TyVar NegRep tvar))
+        f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep Nothing tvar
+                        , runCoalesceM result $ coalesceType $ TyVar NegRep Nothing tvar))
         xs = f <$> res
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TyVar PosRep tv) = do
+coalesceType (TyVar PosRep _ tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
         then do
             recVar <- getRecVar (tv, Pos)
-            return (TyVar PosRep recVar)
+            return (TyVar PosRep Nothing recVar)
         else do
             VariableState { vst_lowerbounds } <- getVariableState tv
             let f (i,m) = ( i, S.insert (tv, Pos) m)
             lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
             recVarMap <- gets snd
             case M.lookup (tv, Pos) recVarMap of
-                Nothing     -> return $                      TySet PosRep (TyVar PosRep tv:lbs')
-                Just recVar -> return $ TyRec PosRep recVar (TySet PosRep (TyVar PosRep tv:lbs'))
-coalesceType (TyVar NegRep tv) = do
+                Nothing     -> return $                      TySet PosRep Nothing (TyVar PosRep Nothing tv:lbs')
+                Just recVar -> return $ TyRec PosRep recVar (TySet PosRep Nothing (TyVar PosRep Nothing tv:lbs'))
+coalesceType (TyVar NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
         then do
             recVar <- getRecVar (tv, Neg)
-            return (TyVar NegRep recVar)
+            return (TyVar NegRep Nothing recVar)
         else do
             VariableState { vst_upperbounds } <- getVariableState tv
             let f (i,m) = ( i, S.insert (tv, Neg) m)
             ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
             recVarMap <- gets snd
             case M.lookup (tv, Neg) recVarMap of
-                Nothing     -> return $                      TySet NegRep (TyVar NegRep tv:ubs')
-                Just recVar -> return $ TyRec NegRep recVar (TySet NegRep (TyVar NegRep tv:ubs'))
+                Nothing     -> return $                      TySet NegRep Nothing (TyVar NegRep Nothing tv:ubs')
+                Just recVar -> return $ TyRec NegRep recVar (TySet NegRep Nothing (TyVar NegRep Nothing tv:ubs'))
 coalesceType (TyData rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData rep tn xtors')
 coalesceType (TyCodata rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata rep tn xtors')
-coalesceType (TyNominal rep tn) =
-    return $ TyNominal rep tn
-coalesceType (TySet rep tys) = do
+coalesceType (TyNominal rep kind tn) =
+    return $ TyNominal rep kind tn
+coalesceType (TySet rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
-    return (TySet rep tys')
+    return (TySet rep kind tys')
 coalesceType (TyRec PosRep tv ty) = do
     modify (\(i,m) -> (i, M.insert (tv, Pos) tv m))
     let f = (\(x,s) -> (x, S.insert (tv,Pos) s))

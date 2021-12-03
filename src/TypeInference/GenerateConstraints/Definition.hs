@@ -105,7 +105,7 @@ freshTVar uvp = do
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TyVar PosRep tvar, TyVar NegRep tvar)
+  return (TyVar PosRep Nothing tvar, TyVar NegRep Nothing tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])

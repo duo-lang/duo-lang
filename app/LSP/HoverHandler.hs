@@ -180,8 +180,8 @@ declEnvToHoverMap env ls =
   where
     printTranslation :: DataDecl -> Text
     printTranslation NominalDecl{..} = case data_polarity of
-      Data   -> ppPrint $ fromRight (error "boom") $ translateTypeUpper env (TyNominal NegRep data_name)
-      Codata -> ppPrint $ fromRight (error "boom") $ translateTypeLower env (TyNominal PosRep data_name)
+      Data   -> ppPrint $ fromRight (error "boom") $ translateTypeUpper env (TyNominal NegRep Nothing data_name)
+      Codata -> ppPrint $ fromRight (error "boom") $ translateTypeLower env (TyNominal PosRep Nothing data_name)
 
 lookupHoverEnv :: Environment -> HoverMap
 lookupHoverEnv env@Environment { prdEnv, cnsEnv, cmdEnv, declEnv } = 
