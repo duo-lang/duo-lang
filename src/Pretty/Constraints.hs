@@ -120,10 +120,11 @@ instance PrettyAnn SolverResult where
 ---------------------------------------------------------------------------------
 
 prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = vsep ["Type variable:" <+> prettyAnn v
-                                    , nest 3 (line' <> vsep ["+ |->" <+> prettyAnn typ
-                                                            , "- |->" <+> prettyAnn tyn])
-                                    ]
+prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
+                                             , vsep [ "+ |->" <+> prettyAnn typ
+                                                    , "- |->" <+> prettyAnn tyn
+                                                    ]
+                                             ]
 
 instance PrettyAnn Bisubstitution where
   prettyAnn (MkBisubstitution bisubst) = vsep
@@ -131,7 +132,7 @@ instance PrettyAnn Bisubstitution where
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
     , ""
-    , vsep (prettyBisubst <$> M.toList bisubst)
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList bisubst)
     , ""
     , "---------------------------------------------------------"
     ]

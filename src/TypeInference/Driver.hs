@@ -205,13 +205,13 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
   let typ = zonkType bisubst (getTypeTerm tmInferred)
-  guardVerbose $ putStr "Inferred type: " >> ppPrintIO typ
+  guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
       (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
       guardPrintGraphs $ printTrace (T.unpack fv) simpTrace
-      guardVerbose $ putStr "Inferred type (Simplified): " >> ppPrintIO tys
+      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
     False -> return (generalize typ)
   -- 6. Check type annotation.
