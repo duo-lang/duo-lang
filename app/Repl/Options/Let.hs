@@ -15,8 +15,6 @@ import Repl.Repl
       modifyEnvironment )
 import TypeInference.Driver
 
--- Define
-
 letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
