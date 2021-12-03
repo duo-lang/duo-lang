@@ -105,12 +105,12 @@ instance PrettyAnn VariableState where
     (printLowerBounds lbs) <> line <> (printUpperBounds ubs)
 
 instance PrettyAnn SolverResult where
-  prettyAnn solverResult = vsep
+  prettyAnn MkSolverResult { tvarSolution, kvarSolution } = vsep
     [ "---------------------------------------------------------"
     , "                   Solved Constraints"
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList solverResult)
+    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
     , ""
     ]
     where

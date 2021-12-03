@@ -6,6 +6,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (find)
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -14,6 +15,7 @@ import Errors
 import Syntax.Types
 import Syntax.CommonTerm (XtorName)
 import Syntax.Program (Environment)
+import Syntax.Kinds
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
@@ -25,12 +27,12 @@ import TypeInference.Constraints
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: SolverResult
+  { sst_bounds :: Map TVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs _) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState) | uv <- uvs]
+createInitState (ConstraintSet _ uvs _) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
                                                          , sst_cache = S.empty 
                                                          , sst_inferMode = im }
 
@@ -67,14 +69,14 @@ getBounds uv = do
 
 addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs) -> VariableState (ty:ubs) lbs)uv
+  modifyBounds (\(VariableState ubs lbs kind) -> VariableState (ty:ubs) lbs kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs) -> VariableState ubs (ty:lbs)) uv
+  modifyBounds (\(VariableState ubs lbs kind) -> VariableState ubs (ty:lbs) kind) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
@@ -302,5 +304,5 @@ subConstraints (KindEq _ _ _) =
 solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env im = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
-  return (sst_bounds solverState)
+  return $ MkSolverResult (sst_bounds solverState) mempty
 

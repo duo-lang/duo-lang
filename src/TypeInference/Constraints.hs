@@ -57,9 +57,14 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInf
 
 data VariableState = VariableState
   { vst_upperbounds :: [Typ Neg]
-  , vst_lowerbounds :: [Typ Pos] }
+  , vst_lowerbounds :: [Typ Pos]
+  , vst_kind        :: Kind
+  }
 
-emptyVarState :: VariableState
-emptyVarState = VariableState [] []
+emptyVarState :: Kind -> VariableState
+emptyVarState kind = VariableState [] [] kind
 
-type SolverResult = Map TVar VariableState
+data SolverResult = MkSolverResult
+  { tvarSolution :: Map TVar VariableState
+  , kvarSolution :: Map KVar Kind
+  }
