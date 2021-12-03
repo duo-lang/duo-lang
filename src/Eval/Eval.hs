@@ -63,26 +63,26 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
 evalTermOnce (Done _) = return Nothing
 evalTermOnce (Print _ _) = return Nothing
-evalTermOnce (Apply _ prd cns) = evalApplyOnce prd cns
+evalTermOnce (Apply _ _ prd cns) = evalApplyOnce prd cns
 
 evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupSTerm PrdRep fv
   eo <- lookupEvalOrder
-  return (Just (Apply () (focusTerm eo (desugarTerm prd)) cns))
+  return (Just (Apply () Nothing (focusTerm eo (desugarTerm prd)) cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupSTerm CnsRep fv
   eo <- lookupEvalOrder
-  return (Just (Apply () prd (focusTerm eo (desugarTerm cns))))
+  return (Just (Apply () Nothing prd (focusTerm eo (desugarTerm cns))))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply () prd cns) argTypes args
+  checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply () prd cns) argTypes args
+  checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce prd@(MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ cmd') = do

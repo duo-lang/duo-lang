@@ -48,17 +48,17 @@ spec = do
                            [MkXtorSig (MkXtorName Nominal "A") [CnsType $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Nominal "B") []] ]])
     parseExample (typP NegRep)
                  "< 'A | 'B > /\\ < 'B >"
-                 (TySet NegRep [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                               , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet NegRep Nothing [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                       , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
     parseExample (typP PosRep)
                  "< 'A | 'B > \\/ < 'B >"
-                 (TySet PosRep [ TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                               , TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet PosRep Nothing [ TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                       , TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
     parseExample (typP NegRep)
                  "{ 'A , 'B } /\\ { 'B }"
-                 (TySet NegRep [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                               , TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet NegRep Nothing [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                       , TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
     parseExample (typP PosRep)
                  "{ 'A , 'B} \\/ { 'B }"
-                 (TySet PosRep [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                               , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet PosRep Nothing [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
+                                       , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])

@@ -92,10 +92,10 @@ solve (cs:css) = do
     False -> do
       addToCache cs
       case cs of
-        (SubType _ (TyVar PosRep uv) ub) -> do
+        (SubType _ (TyVar PosRep _ uv) ub) -> do
           newCss <- addUpperBound uv ub
           solve (newCss ++ css)
-        (SubType _ lb (TyVar NegRep uv)) -> do
+        (SubType _ lb (TyVar NegRep _ uv)) -> do
           newCss <- addLowerBound uv lb
           solve (newCss ++ css)
         _ -> do
@@ -145,9 +145,9 @@ subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInf
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ (TySet PosRep tys) ty) =
+subConstraints (SubType _ (TySet PosRep _ tys) ty) =
   return [SubType IntersectionUnionSubConstraint ty' ty | ty' <- tys]
-subConstraints (SubType _ ty (TySet NegRep tys)) =
+subConstraints (SubType _ ty (TySet NegRep _ tys)) =
   return [SubType IntersectionUnionSubConstraint ty ty' | ty' <- tys]
 -- Recursive constraints:
 --
@@ -236,7 +236,7 @@ subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Ju
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ tn1) (TyNominal _ tn2)) =
+subConstraints (SubType _ (TyNominal _ _ tn1) (TyNominal _ _ tn2)) =
   if tn1 == tn2 then pure [] else
     throwSolverError ["The following nominal types are incompatible:"
                      , "    " <> ppPrint tn1
@@ -279,13 +279,13 @@ subConstraints (SubType _ t1@TyNominal{} t2@TyCodata{}) =
 -- dealt with in the function `solve`. Calling the function `subConstraints` with an
 -- atomic constraint is an implementation bug.
 --
-subConstraints (SubType _ ty1@(TyVar _ _) ty2) =
+subConstraints (SubType _ ty1@(TyVar _ _ _ ) ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"
                    , ppPrint ty2
                    ]
-subConstraints (SubType _ ty1 ty2@(TyVar _ _)) =
+subConstraints (SubType _ ty1 ty2@(TyVar _ _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"

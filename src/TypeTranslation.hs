@@ -87,13 +87,13 @@ translateXtorSigUpper' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
-translateTypeUpper' (TyNominal pr tn) = do
+translateTypeUpper' (TyNominal pr _ tn) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar pr tv
+    return $ TyVar pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -128,13 +128,13 @@ translateXtorSigLower' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
-translateTypeLower' (TyNominal pr tn) = do
+translateTypeLower' (TyNominal pr _ tn) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar pr tv
+    return $ TyVar pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
