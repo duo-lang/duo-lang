@@ -2,7 +2,7 @@
 
 # Bool
 
-data Bool : Type CBN { True, False };
+data Bool : Type CBV { True, False };
 
 prd not := \b => case b of { True => False, False => True};
 

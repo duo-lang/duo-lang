@@ -60,8 +60,8 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (KindEq ann k1 k2) = 
     prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
 
-printUVar :: (TVar, UVarProvenance) -> Doc Annotation
-printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
+printUVar :: (TVar, Kind, UVarProvenance) -> Doc Annotation
+printUVar (tv,kind,prov) = parens (prettyAnn tv <+> ":" <+> prettyAnn kind) <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars , cs_kuvars } = vsep

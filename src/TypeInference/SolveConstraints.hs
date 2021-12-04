@@ -36,10 +36,11 @@ data SolverState = SolverState
   , sst_inferMode :: InferenceMode }
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
-                                                         , sst_cache = S.empty
-                                                         , sst_kvars = [([kv], Nothing) | kv <- kuvs]
-                                                         , sst_inferMode = im }
+createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(uv,emptyVarState kind) | (uv,kind,_) <- uvs]
+                                                            , sst_cache = S.empty
+                                                            , sst_kvars = [([kv], Nothing) | kv <- kuvs]
+                                                            , sst_inferMode = im
+                                                            }
 
 type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
 
