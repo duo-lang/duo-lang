@@ -37,7 +37,7 @@ inProcess ptv = do
 
 getVariableState :: TVar -> CoalesceM VariableState
 getVariableState tv = do
-    mp <- asks fst
+    mp <- asks (tvarSolution . fst)
     case M.lookup tv mp of
       Nothing -> error ("Not in variable states: " ++ show (tvar_name tv))
       Just vs -> return vs
@@ -53,9 +53,9 @@ getRecVar ptv = do
       Just tv -> return tv
  
 coalesce :: SolverResult -> Bisubstitution
-coalesce result = MkBisubstitution $ M.fromList xs
+coalesce result@(MkSolverResult { tvarSolution }) = MkBisubstitution (M.fromList xs) mempty
     where
-        res = M.keys result
+        res = M.keys tvarSolution
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep Nothing tvar
                         , runCoalesceM result $ coalesceType $ TyVar NegRep Nothing tvar))
         xs = f <$> res

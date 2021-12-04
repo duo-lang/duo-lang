@@ -4,6 +4,7 @@ import Data.Map (Map)
 
 import Syntax.CommonTerm ( FreeVarName )
 import Syntax.Types ( Polarity(..), Typ, TVar )
+import Syntax.Kinds
 import Utils ( Loc )
 
 
@@ -30,7 +31,9 @@ data ConstraintInfo
   deriving (Show)
 
 
-data Constraint a = SubType a (Typ Pos) (Typ Neg)
+data Constraint a where
+  SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
+  KindEq  :: a -> Kind -> Kind -> Constraint a
   deriving (Eq, Ord, Functor)
 
 -- | Information about the provenance of a unification variable.
@@ -45,6 +48,7 @@ data UVarProvenance
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
                                    , cs_uvars :: [(TVar, UVarProvenance)]
+                                   , cs_kuvars :: [KVar]
                                    }
 
 ------------------------------------------------------------------------------
@@ -53,9 +57,14 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInf
 
 data VariableState = VariableState
   { vst_upperbounds :: [Typ Neg]
-  , vst_lowerbounds :: [Typ Pos] }
+  , vst_lowerbounds :: [Typ Pos]
+  , vst_kind        :: Kind
+  }
 
-emptyVarState :: VariableState
-emptyVarState = VariableState [] []
+emptyVarState :: Kind -> VariableState
+emptyVarState kind = VariableState [] [] kind
 
-type SolverResult = Map TVar VariableState
+data SolverResult = MkSolverResult
+  { tvarSolution :: Map TVar VariableState
+  , kvarSolution :: Map KVar Kind
+  }

@@ -8,6 +8,7 @@ import Text.Megaparsec.Pos
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Types
+import Syntax.Kinds
 import Syntax.Zonking (Bisubstitution(..))
 import TypeInference.Constraints
 import Utils
@@ -56,12 +57,14 @@ instance PrettyAnn UVarProvenance where
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
+  prettyAnn (KindEq ann k1 k2) = 
+    prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
 
 printUVar :: (TVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
-  prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
+  prettyAnn ConstraintSet { cs_constraints, cs_uvars , cs_kuvars } = vsep
     [ "---------------------------------------------------------"
     , "                    Generated Constraints"
     , "---------------------------------------------------------"
@@ -69,6 +72,8 @@ instance PrettyAnn ConstraintSet where
     , "Generated unification variables:"
     , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
     , ""
+    , "Generated kind variables:"
+    , nest 3 (line' <> vsep (prettyAnn <$> cs_kuvars))
     , "Generated constraints:"
     , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
     , ""
@@ -100,12 +105,14 @@ instance PrettyAnn VariableState where
     (printLowerBounds lbs) <> line <> (printUpperBounds ubs)
 
 instance PrettyAnn SolverResult where
-  prettyAnn solverResult = vsep
+  prettyAnn MkSolverResult { tvarSolution, kvarSolution } = vsep
     [ "---------------------------------------------------------"
     , "                   Solved Constraints"
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList solverResult)
+    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
+    , ""
+    , nest 3 $ vsep ["Kind variables:", vsep (prettyKvsubst <$> M.toList kvarSolution)]
     , ""
     ]
     where
@@ -126,13 +133,17 @@ prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
                                                     ]
                                              ]
 
+prettyKvsubst :: (KVar, Kind) -> Doc Annotation
+prettyKvsubst (kv, kind) = prettyAnn kv <+> "|->" <+> prettyAnn kind
+
 instance PrettyAnn Bisubstitution where
-  prettyAnn (MkBisubstitution bisubst) = vsep
+  prettyAnn (MkBisubstitution uvsubst kvsubst) = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList bisubst)
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList uvsubst)
     , ""
+    , nest 3 $ vsep ["Kind variables:", vsep (prettyKvsubst <$> M.toList kvsubst)]
     , "---------------------------------------------------------"
     ]
