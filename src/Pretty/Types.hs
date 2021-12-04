@@ -103,6 +103,9 @@ printSegment :: NonEmpty (PrdCnsType pol) -> Doc Annotation
 printSegment (PrdType ty :| rest) = parens'   comma (prettyAnn <$> PrdType ty : rest)
 printSegment (CnsType ty :| rest) = brackets' comma (prettyAnn <$> CnsType ty : rest)
 
+prettyTvarKind :: (TVar, Kind) -> Doc Annotation
+prettyTvarKind (tv,kind) = parens (prettyAnn tv <+> ":" <+> prettyAnn kind)
+
 instance {-# OVERLAPPING #-} PrettyAnn (LinearContext pol) where
   prettyAnn ctxt = mconcat (printSegment <$> splitCtxt ctxt)
 
@@ -113,7 +116,7 @@ instance PrettyAnn (TypeScheme pol) where
   prettyAnn (TypeScheme [] ty) =
     prettyAnn ty
   prettyAnn (TypeScheme tvs ty) =
-    forallSym <+> sep (prettyAnn <$> tvs) <> "." <+> prettyAnn ty
+    forallSym <+> sep (prettyTvarKind <$> tvs) <> "." <+> prettyAnn ty
 
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)

@@ -167,11 +167,15 @@ invariantP = do
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
+tvarKindP :: Parser (TVar, Kind)
+tvarKindP = do
+  tvar <- MkTVar . fst <$> freeVarName
+  return (tvar, undefined)
+
 typeSchemeP :: PolarityRep pol -> Parser (TypeScheme pol)
 typeSchemeP polrep = do
-  tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
+  tvars' <- S.fromList . fmap fst <$> option [] (forallKwP >> some tvarKindP <* dot)
   monotype <- local (\s -> s { tvars = tvars' }) (typP polrep)
-  if S.fromList (freeTypeVars monotype) `S.isSubsetOf` tvars'
-    then return (TypeScheme (S.toList tvars') monotype)
-    else fail "Forall annotation in type scheme is incorrect"
+  return $ generalize monotype
+    
 

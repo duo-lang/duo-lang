@@ -119,6 +119,17 @@ freshTVar uvp = do
             gs { constraintSet = cs { cs_kuvars = cs_kuvars ++ [kvar] } })
   return (TyVar PosRep (Just $ KindVar kvar) tvar, TyVar NegRep (Just $ KindVar kvar) tvar)
 
+freshTVarWithKind :: UVarProvenance -> Kind -> GenM (Typ Pos, Typ Neg)
+freshTVarWithKind uvp kind = do
+  tvarC <- gets tvarCount
+  let tvar = MkTVar ("u" <> T.pack (show tvarC))
+  -- We need to increment the counter:
+  modify (\gs@GenerateState{} -> gs { tvarCount = tvarC + 1 })
+  -- We also need to add the uvar to the constraintset.
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
+  return (TyVar PosRep (Just kind) tvar, TyVar NegRep (Just kind) tvar)
+
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
 freshTVars ((Prd,fv):rest) = do
@@ -163,7 +174,7 @@ lookupContext rep (i,j) = do
 
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\(tv,kind) -> freshTVarWithKind (TypeSchemeInstance fv loc) kind >>= \ty -> return (tv, ty))
   return $ substituteType (M.fromList freshVars) ts_monotype
 
 ---------------------------------------------------------------------------------------------

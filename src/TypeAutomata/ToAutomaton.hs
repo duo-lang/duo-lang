@@ -206,7 +206,7 @@ insertType (TyNominal _ Nothing _) = throwAutomatonError ["Tried to insert TyNom
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
 typeToAut (TypeScheme tvars ty) = do
-  (start, aut) <- runTypeAutTvars ((\tv -> (tv, undefined)) <$> tvars) (insertType ty) --  TODO Change definition of TypeScheme
+  (start, aut) <- runTypeAutTvars tvars (insertType ty) --  TODO Change definition of TypeScheme
   return TypeAut { ta_pol = getPolarity ty
                  , ta_starts = [start]
                  , ta_core = aut

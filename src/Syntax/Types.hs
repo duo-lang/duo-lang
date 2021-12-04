@@ -151,7 +151,7 @@ prdCnsToPol CnsRep = NegRep
 ------------------------------------------------------------------------------
 
 data TypeScheme (pol :: Polarity) = TypeScheme
-  { ts_vars :: [TVar]
+  { ts_vars :: [(TVar, Kind)]
   , ts_monotype :: Typ pol
   }
 
@@ -160,25 +160,26 @@ deriving instance Eq (TypeScheme Neg)
 deriving instance Ord (TypeScheme Pos)
 deriving instance Ord (TypeScheme Neg)
 
-freeTypeVars :: Typ pol -> [TVar]
+freeTypeVars :: Typ pol -> [(TVar, Kind)]
 freeTypeVars = nub . freeTypeVars'
   where
-    freeTypeVars' :: Typ pol -> [TVar]
-    freeTypeVars' (TyVar _ _ tv) = [tv]
+    freeTypeVars' :: Typ pol -> [(TVar,Kind)]
+    freeTypeVars' (TyVar _ (Just kind) tv) = [(tv,kind)]
+    freeTypeVars' (TyVar _ Nothing _) = error "Called \"freeTypeVars\" on type with unannotated TypeVars"
     freeTypeVars' (TySet _ _ ts) = concat $ map freeTypeVars' ts
-    freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
+    freeTypeVars' (TyRec _ v t)  = filter (\(v',_) -> v' /= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _ _) = []
     freeTypeVars' (TyData _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
     freeTypeVars' (TyCodata _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
-    freeTypeVarsPC :: PrdCnsType pol -> [TVar]
+    freeTypeVarsPC :: PrdCnsType pol -> [(TVar,Kind)]
     freeTypeVarsPC (PrdType ty) = freeTypeVars' ty
     freeTypeVarsPC (CnsType ty) = freeTypeVars' ty
 
-    freeTypeVarsCtxt :: LinearContext pol -> [TVar]
+    freeTypeVarsCtxt :: LinearContext pol -> [(TVar,Kind)]
     freeTypeVarsCtxt ctxt = concat (freeTypeVarsPC <$> ctxt)
 
-    freeTypeVarsXtorSig :: XtorSig pol -> [TVar]
+    freeTypeVarsXtorSig :: XtorSig pol -> [(TVar,Kind)]
     freeTypeVarsXtorSig (MkXtorSig _ ctxt) = freeTypeVarsCtxt ctxt
 
 
