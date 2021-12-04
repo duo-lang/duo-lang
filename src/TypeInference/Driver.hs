@@ -61,6 +61,7 @@ data InferenceOptions = InferenceOptions
   , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
   , infOptsMode        :: InferenceMode  -- ^ Whether to infer nominal or refinement types.
   , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
+  , infOptsPolicy      :: KindPolicy
   , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
   }
 
@@ -70,6 +71,7 @@ defaultInferenceOptions = InferenceOptions
   , infOptsPrintGraphs = False
   , infOptsMode = InferNominal 
   , infOptsSimplify = True 
+  , infOptsPolicy = DefaultCBV
   , infOptsLibPath = []
   }
 
@@ -198,7 +200,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) (infOptsPolicy infopts)
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -236,7 +238,7 @@ inferDecl (CmdDecl loc v cmd) = do
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) (infOptsPolicy infopts)
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -270,6 +272,15 @@ inferDecl (ImportDecl loc mod) = do
 inferDecl (SetDecl loc txt) = case T.unpack txt of
   "refined" -> do
     modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
+    return (SetDecl loc txt)
+  "CBV" -> do
+    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsPolicy = DefaultCBV }driverEnv)
+    return (SetDecl loc txt)
+  "CBN" -> do
+    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsPolicy = DefaultCBN }driverEnv)
+    return (SetDecl loc txt)
+  "nodefault" -> do
+    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsPolicy = ErrorUnresolved }driverEnv)
     return (SetDecl loc txt)
   _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
 --
