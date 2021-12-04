@@ -205,7 +205,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
   let typ = zonkType bisubst (getTypeTerm tmInferred)
-  guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
+  guardVerbose $ putStr "\nInferred type: " >> ppPrintIO (generalize typ) >> putStrLn ""
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
