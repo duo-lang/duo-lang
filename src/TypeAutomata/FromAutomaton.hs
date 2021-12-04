@@ -206,7 +206,7 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
-    let nominals = TyNominal rep Nothing <$> S.toList tns
+    let nominals = TyNominal rep (Just kind) <$> S.toList tns
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
     return $ case typs of [t] -> t; _ -> TySet rep (Just kind) typs
