@@ -6,6 +6,7 @@ module Lookup
   , lookupTypeName
   , lookupXtorSig
   , withSTerm
+  , annotateKind
     ) where
 
 import Control.Monad.Except
@@ -29,6 +30,41 @@ import Utils
 ---------------------------------------------------------------------------------
 
 type EnvReader bs a m = (MonadError Error m, MonadReader (Environment, a) m)
+
+---------------------------------------------------------------------------------------------
+-- Compute the Kind of a Type.
+---------------------------------------------------------------------------------------------
+
+-- | Annotate the nominal kinds
+annotateKind :: EnvReader bs a m
+             => Typ pol -> m (Typ pol)
+annotateKind ty@TyVar {} = return ty
+annotateKind (TyData rep ref xtors) = do
+  xtors' <- sequence $ annotateXtors <$> xtors
+  return $ TyData rep ref xtors'
+annotateKind (TyCodata rep ref xtors) = do
+  xtors' <- sequence $ annotateXtors <$> xtors
+  return $ TyCodata rep ref xtors'
+annotateKind (TyNominal rep _ tn) = do
+  decl <- lookupTypeName tn
+  return $ TyNominal rep (Just (data_kind decl)) tn
+annotateKind (TySet rep kind tys) = do
+  tys' <- sequence $ annotateKind <$> tys
+  return (TySet rep kind tys')
+annotateKind (TyRec rep tv ty)    = do
+  ty' <- annotateKind ty
+  return $ TyRec rep tv ty'
+
+annotatePCKind :: EnvReader bs a m
+    => PrdCnsType pol -> m (PrdCnsType pol)
+annotatePCKind (PrdType ty) = PrdType <$> annotateKind ty
+annotatePCKind (CnsType ty) = CnsType <$> annotateKind ty
+
+annotateXtors :: EnvReader bs a m
+              => XtorSig pol -> m (XtorSig pol)
+annotateXtors (MkXtorSig xt lctxt) = do
+  lctxt' <- sequence $ annotatePCKind <$> lctxt
+  return $ MkXtorSig xt lctxt'
 
 ---------------------------------------------------------------------------------
 -- Lookup Terms

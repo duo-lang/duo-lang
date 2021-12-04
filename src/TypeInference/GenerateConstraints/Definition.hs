@@ -16,6 +16,7 @@ module TypeInference.GenerateConstraints.Definition
   , instantiateTypeScheme
     -- Adding a constraint
   , addConstraint
+  , addKindEqualityConstraint
     -- Other
   , InferenceMode(..)
   , PrdCnsToPol
@@ -43,6 +44,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
+import Syntax.Kinds
 import Syntax.CommonTerm
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
@@ -56,15 +58,19 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState
-  { varCount :: Int
+  { tvarCount :: Int
+  , kvarCount :: Int
   , constraintSet :: ConstraintSet
   }
 
 initialConstraintSet :: ConstraintSet
-initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [], cs_kuvars = [] }
+initialConstraintSet = ConstraintSet { cs_constraints = []
+                                     , cs_uvars = []
+                                     , cs_kuvars = []
+                                     }
 
 initialState :: GenerateState
-initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
+initialState = GenerateState { tvarCount = 0, kvarCount = 0, constraintSet = initialConstraintSet }
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -96,16 +102,22 @@ runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialRe
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
+
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
-  var <- gets varCount
-  let tvar = MkTVar ("u" <> T.pack (show var))
+  tvarC <- gets tvarCount
+  kvarC <- gets kvarCount
+  let tvar = MkTVar ("u" <> T.pack (show tvarC))
+  let kvar = MkKVar ("k" <> T.pack (show kvarC))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
+  modify (\gs@GenerateState{} -> gs { tvarCount = tvarC + 1 })
+  modify (\gs@GenerateState{} -> gs { kvarCount = kvarC + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TyVar PosRep Nothing tvar, TyVar NegRep Nothing tvar)
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kuvars } } ->
+            gs { constraintSet = cs { cs_kuvars = cs_kuvars ++ [kvar] } })
+  return (TyVar PosRep (Just $ KindVar kvar) tvar, TyVar NegRep (Just $ KindVar kvar) tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
@@ -160,10 +172,25 @@ instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
 
 -- | Add a constraint to the state.
 addConstraint :: Constraint ConstraintInfo -> GenM ()
-addConstraint c = modify foo
+addConstraint c@(KindEq _ _ _) = addConstraint' c
+addConstraint c@(SubType info ty1 ty2) = do
+  addConstraint' c
+  addKindEqualityConstraint info ty1 ty2
+
+
+addConstraint' :: Constraint ConstraintInfo -> GenM ()
+addConstraint' c = do
+  modify foo
   where
     foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
     bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
+
+addKindEqualityConstraint :: ConstraintInfo -> Typ pol -> Typ pol' -> GenM ()
+addKindEqualityConstraint info ty1 ty2 = do
+  kind1 <- getKind <$> annotateKind ty1
+  kind2 <- getKind <$> annotateKind ty2
+  addConstraint (KindEq info kind1 kind2)
+  
 
 ---------------------------------------------------------------------------------------------
 -- Translate nominal types to structural refinement types
