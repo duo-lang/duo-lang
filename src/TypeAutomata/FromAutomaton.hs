@@ -80,7 +80,7 @@ initializeFromAutomaton TypeAut{..} =
   in
     AutToTypeState { tvMap = flowAnalysis
                    , graph = ta_gr ta_core
-                   , cache = S.empty
+                   , cache = M.empty
                    , tvars = S.toList $ S.unions (fst <$> (M.elems flowAnalysis))
                    }
 
@@ -90,7 +90,7 @@ initializeFromAutomaton TypeAut{..} =
 
 data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar, Kind)
                                      , graph :: TypeGr
-                                     , cache :: Set Node
+                                     , cache :: Map Node Kind
                                      , tvars :: [TVar]
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
@@ -107,12 +107,12 @@ autToType aut@TypeAut{..} = do
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
   aut { graph = delEdges [(i,n) | n <- suc graph i, i `elem` dfs [n] graph] graph
-      , cache = S.insert i cache }
+      , cache = M.insert i undefined cache }
 
-checkCache :: Node -> AutToTypeM Bool
+checkCache :: Node -> AutToTypeM (Maybe Kind)
 checkCache i = do
   cache <- asks cache
-  return (i `S.member` cache)
+  return (M.lookup i cache)
 
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
@@ -156,8 +156,8 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   case inCache of
-    True -> return $ TyVar rep Nothing (MkTVar ("r" <> T.pack (show i)))
-    False -> nodeToTypeNoCache rep i
+    (Just kind) -> return $ TyVar rep (Just kind) (MkTVar ("r" <> T.pack (show i)))
+    Nothing -> nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
