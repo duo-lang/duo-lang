@@ -2,6 +2,7 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.CommonTerm
 import Syntax.Types
+import Syntax.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import Utils
@@ -30,11 +31,11 @@ import Data.Graph.Inductive.Query.DFS (dfs)
 -- Flow analysis
 -------------------------------------------------------------------------------------
 
-type FlowGraph = Gr () ()
+type FlowGraph = Gr Kind ()
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
-genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
+genFlowGraph TypeAutCore{..} = mkGraph [(n,nl_kind lab) | (n,lab) <- labNodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
 
 flowComponent :: FlowGraph -> Node -> [Node]
 flowComponent flgr i =
@@ -51,21 +52,25 @@ freshTVar = do
   modify (+1)
   return (MkTVar ("t" <> T.pack (show n)))
 
-flowAnalysisState :: FlowGraph -> State Int (Map Node (Set TVar))
+foldFs :: [a -> a] -> a -> a
+foldFs = foldr (.) id
+
+flowAnalysisState :: FlowGraph -> State Int (Map Node (Set TVar, Kind))
 flowAnalysisState flgr =
     let
       nextNode = maximumBy (comparing (length . flowComponent flgr)) (nodes flgr)
-      comp = flowComponent flgr nextNode
+      comp :: [Node] = flowComponent flgr nextNode
       newGr = delEdges [(x,y) | (x,y) <- edges flgr, x `elem` comp, y `elem` comp] flgr
     in
       if length comp < 2
-        then return (M.fromList [(n,S.empty) | n <- nodes flgr])
+        then return (M.fromList [(n,(S.empty, kind)) | (n,kind) <- labNodes flgr])
         else do
           tv <- freshTVar
-          rest <- flowAnalysisState newGr
-          return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
+          rest :: Map Node (Set TVar, Kind) <- flowAnalysisState newGr
+          let f = (\(set,kind) -> (S.insert tv set, kind))
+          return $ foldFs (map (M.adjust f) comp) rest
 
-getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar)
+getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar, Kind)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
 
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
@@ -76,14 +81,14 @@ initializeFromAutomaton TypeAut{..} =
     AutToTypeState { tvMap = flowAnalysis
                    , graph = ta_gr ta_core
                    , cache = S.empty
-                   , tvars = S.toList $ S.unions (M.elems flowAnalysis)
+                   , tvars = S.toList $ S.unions (fst <$> (M.elems flowAnalysis))
                    }
 
 --------------------------------------------------------------------------
 -- Type automata -> Types
 --------------------------------------------------------------------------
 
-data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
+data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar, Kind)
                                      , graph :: TypeGr
                                      , cache :: Set Node
                                      , tvars :: [TVar]
@@ -112,7 +117,8 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar rep Nothing <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  let (set,kind) = fromJust $ M.lookup i tvMap
+  return (TyVar rep (Just kind) <$> (S.toList $ set))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
