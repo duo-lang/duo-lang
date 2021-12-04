@@ -10,8 +10,11 @@ import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
-import Syntax.Types
+
+import Syntax.Kinds
 import Syntax.CommonTerm
+import Syntax.Types
+
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -148,6 +151,7 @@ data XtorLabel = MkXtorLabel
 
 data NodeLabel = MkNodeLabel
   { nl_pol :: Polarity
+  , nl_kind :: Kind
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
   , nl_nominal :: Set TypeName
@@ -155,14 +159,14 @@ data NodeLabel = MkNodeLabel
   , nl_ref_codata :: Map TypeName (Set XtorLabel)
   } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> NodeLabel
-emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
+emptyNodeLabel :: Polarity -> Kind ->  NodeLabel
+emptyNodeLabel pol kind = MkNodeLabel pol kind Nothing Nothing S.empty M.empty M.empty
 
-singleNodeLabel :: Polarity -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
-singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty
-singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty
-singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
-singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors)
+singleNodeLabel :: Polarity -> Kind -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
+singleNodeLabel pol kind Data Nothing xtors     = MkNodeLabel pol kind (Just xtors) Nothing S.empty M.empty M.empty
+singleNodeLabel pol kind Codata Nothing xtors   = MkNodeLabel pol kind Nothing (Just xtors) S.empty M.empty M.empty
+singleNodeLabel pol kind Data (Just tn) xtors   = MkNodeLabel pol kind Nothing Nothing S.empty (M.singleton tn xtors) M.empty
+singleNodeLabel pol kind Codata (Just tn) xtors = MkNodeLabel pol kind Nothing Nothing S.empty M.empty (M.singleton tn xtors)
 
 --------------------------------------------------------------------------------
 -- Edge labels for type automata

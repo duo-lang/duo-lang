@@ -17,6 +17,7 @@ import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import Syntax.Types
+import Syntax.Kinds
 import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),
@@ -57,17 +58,17 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes :: [(TVar,Kind)] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
 createNodes tvars = createNode <$> (createPairs tvars)
   where
-    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
+    createNode :: (TVar, Kind, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode (tv, kind, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos kind), (negNode, emptyNodeLabel Neg kind), (negNode, posNode))
 
-    createPairs :: [TVar] -> [(TVar,Node,Node)]
-    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
+    createPairs :: [(TVar,Kind)] -> [(TVar,Kind, Node,Node)]
+    createPairs tvs = (\i -> (fst $ tvs !! i, snd $ tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [(TVar,Kind)] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -81,7 +82,7 @@ initialize tvars =
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
-runTypeAutTvars :: [TVar]
+runTypeAutTvars :: [(TVar,Kind)]
                 -> TTA a
                 -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
@@ -159,7 +160,7 @@ sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 insertXtors :: DataCodata -> Polarity -> Maybe TypeName -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol (case dc of Data -> MonoKind CBV; Codata -> MonoKind CBN) dc mtn (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -172,16 +173,17 @@ insertPCType (CnsType ty) = insertType ty
 
 insertType :: Typ pol -> TTA Node
 insertType (TyVar rep _ tv) = lookupTVar rep tv
-insertType (TySet rep _ tys) = do
+insertType (TySet rep (Just kind) tys) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
+  insertNode newNode (emptyNodeLabel (polarityRepToPol rep) kind)
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
+insertType (TySet _ Nothing _) = throwAutomatonError ["Tried to insert TySet which was not kind-annotated"]
 insertType (TyRec rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel pol)
+  insertNode newNode (emptyNodeLabel pol (getKind ty))
   let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
       extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
   n <- local (extendEnv rep) (insertType ty)
@@ -189,11 +191,12 @@ insertType (TyRec rep rv ty) = do
   return newNode
 insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep _ tn) = do
+insertType (TyNominal rep (Just kind) tn) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
+  insertNode newNode ((emptyNodeLabel pol kind) { nl_nominal = S.singleton tn })
   return newNode
+insertType (TyNominal _ Nothing _) = throwAutomatonError ["Tried to insert TyNominal which was not kind-annotated"]
 
 --------------------------------------------------------------------------
 --
@@ -203,7 +206,7 @@ insertType (TyNominal rep _ tn) = do
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
 typeToAut (TypeScheme tvars ty) = do
-  (start, aut) <- runTypeAutTvars tvars (insertType ty)
+  (start, aut) <- runTypeAutTvars ((\tv -> (tv, undefined)) <$> tvars) (insertType ty) --  TODO Change definition of TypeScheme
   return TypeAut { ta_pol = getPolarity ty
                  , ta_starts = [start]
                  , ta_core = aut

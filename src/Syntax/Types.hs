@@ -10,7 +10,7 @@ import Syntax.CommonTerm
       NominalStructural(..),
       PrdCnsRep(..),
       PrdCns(..) )
-import Syntax.Kinds ( Kind )
+import Syntax.Kinds
 
 ------------------------------------------------------------------------------
 -- Type Variables and Names
@@ -122,6 +122,15 @@ getPolarity (TyCodata rep _ _)    = rep
 getPolarity (TyNominal rep _ _)   = rep
 getPolarity (TySet rep _ _)       = rep
 getPolarity (TyRec rep _ _)       = rep
+
+getKind :: Typ pol -> Kind
+getKind (TyVar _ (Just kind) _) = kind
+getKind TyData {} = MonoKind CBV
+getKind TyCodata {} = MonoKind CBN
+getKind (TyNominal _ (Just kind) _ ) = kind
+getKind (TySet _ (Just kind) _) = kind
+getKind (TyRec _ _ ty) = getKind ty
+getKind _              = error "getKind failed: Only apply to fully kind-inferred types!" 
 
 -- | Make the XtorName of an XtorSig structural
 xtorSigMakeStructural :: XtorSig pol -> XtorSig pol

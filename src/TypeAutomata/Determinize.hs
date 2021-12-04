@@ -80,19 +80,21 @@ getNewNodeLabel :: Gr NodeLabel b -> Set Node -> NodeLabel
 getNewNodeLabel gr ns = combineNodeLabels $ mapMaybe (lab gr) (S.toList ns)
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
-combineNodeLabels nls
-  = if not . allEq $ map nl_pol nls
-      then error "Tried to combine node labels of different polarity!"
-      else MkNodeLabel {
+combineNodeLabels nls | not . allEq $ map nl_pol  nls = error "Tried to combine node labels of different polarity!"
+                      | not . allEq $ map nl_kind nls = error "Tried to combine node labels of different kinds!"
+                      | otherwise =
+      MkNodeLabel {
         nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ _ <- nls],
-        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ <- nls],
-        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs <- nls]
+        nl_kind = kind,
+        nl_data = mrgDat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ _ (Just xtors) _ _ _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ _ tn _ _ <- nls],
+        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ _ refs _ <- nls],
+        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ _ refs <- nls]
         }
   where
     pol = nl_pol (head nls)
+    kind = nl_kind (head nls)
     mrgDat [] = Nothing
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing

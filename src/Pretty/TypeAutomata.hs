@@ -24,12 +24,13 @@ prettyArity :: [PrdCns] -> Doc Annotation
 prettyArity [] = mempty
 prettyArity (Prd:rest) = parens "-" <> prettyArity rest
 prettyArity (Cns:rest) = brackets "-" <> prettyArity rest
+
 instance PrettyAnn XtorLabel where
   prettyAnn MkXtorLabel { labelName, labelArity } =
     prettyAnn labelName <> prettyArity labelArity
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) = 
+  prettyAnn (MkNodeLabel _ _ maybeDat maybeCodat tns refDat refCodat) = 
     intercalateX ";" (catMaybes [printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
                                 , printNominal tns
