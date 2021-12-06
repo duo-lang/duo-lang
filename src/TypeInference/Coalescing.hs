@@ -13,45 +13,63 @@ import Syntax.Zonking ( Bisubstitution(..), zonkType)
 import TypeInference.Constraints
 
 ---------------------------------------------------------------------------------
--- Coalescing
+-- Coalescing Monad
 ---------------------------------------------------------------------------------
 
-type CoalesceState  = (Int, Map (TVar, Polarity) TVar)
-type CoalesceReader = (SolverResult, Set (TVar, Polarity))
+data CoalesceState  = MkCoalesceState
+  { varGen :: Int
+  , recursiveMap ::  Map (TVar, Polarity) TVar
+  }
+
+initialCoalesceState :: CoalesceState
+initialCoalesceState = MkCoalesceState 0 M.empty
+
+data CoalesceReader = MkCoalesceReader
+  { solverResult :: SolverResult
+  , inProcessSet :: Set (TVar, Polarity)
+  }
 
 type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 
 runCoalesceM :: SolverResult ->  CoalesceM a -> a
-runCoalesceM res m = evalState (runReaderT m (res,S.empty)) (0, M.empty)
+runCoalesceM res m = evalState (runReaderT m (MkCoalesceReader res S.empty)) initialCoalesceState
+
+---------------------------------------------------------------------------------
+-- Helper Functions
+---------------------------------------------------------------------------------
 
 freshRecVar :: CoalesceM TVar
 freshRecVar = do
-    (i,_) <- get
-    modify (\(i,m) -> (i + 1, m))
+    i <- gets varGen
+    modify (\s@MkCoalesceState { varGen } -> s { varGen = varGen + 1 })
     return (MkTVar (T.pack $ "rr" ++ show i)) -- Use "rr" so that they don't clash.
 
 inProcess :: (TVar, Polarity) -> CoalesceM Bool
 inProcess ptv = do
-    inp <- asks snd
+    inp <- asks inProcessSet
     return $ ptv `S.member` inp
 
 getVariableState :: TVar -> CoalesceM VariableState
 getVariableState tv = do
-    mp <- asks (tvarSolution . fst)
+    mp <- asks (tvarSolution . solverResult)
     case M.lookup tv mp of
       Nothing -> error ("Not in variable states: " ++ show (tvar_name tv))
       Just vs -> return vs
 
 getRecVar :: (TVar, Polarity) -> CoalesceM TVar
 getRecVar ptv = do
-    mp <- gets snd
+    mp <- gets recursiveMap
     case M.lookup ptv mp of
       Nothing -> do
           recVar <- freshRecVar
-          modify (\(i,m) -> (i,M.insert ptv recVar m))
+          modify (\s@MkCoalesceState { recursiveMap } -> s { recursiveMap = M.insert ptv recVar recursiveMap })
           return recVar
       Just tv -> return tv
  
+---------------------------------------------------------------------------------
+-- Coalescing
+---------------------------------------------------------------------------------
+
 coalesce :: SolverResult -> Bisubstitution
 coalesce result@(MkSolverResult { tvarSolution, kvarSolution }) = MkBisubstitution (M.fromList xs) kvarSolution
     where
@@ -69,9 +87,9 @@ coalesceType (TyVar PosRep _ tv) = do
             return (TyVar PosRep Nothing recVar)
         else do
             VariableState { vst_lowerbounds, vst_kind } <- getVariableState tv
-            let f (i,m) = ( i, S.insert (tv, Pos) m)
+            let f r@MkCoalesceReader { inProcessSet } = r { inProcessSet = S.insert (tv, Pos) inProcessSet }
             lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
-            recVarMap <- gets snd
+            recVarMap <- gets recursiveMap
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> return $                      TySet PosRep (Just vst_kind) (TyVar PosRep (Just vst_kind) tv:lbs')
                 Just recVar -> return $ TyRec PosRep recVar (TySet PosRep (Just vst_kind) (TyVar PosRep (Just vst_kind) tv:lbs'))
@@ -83,9 +101,9 @@ coalesceType (TyVar NegRep _ tv) = do
             return (TyVar NegRep Nothing recVar)
         else do
             VariableState { vst_upperbounds, vst_kind } <- getVariableState tv
-            let f (i,m) = ( i, S.insert (tv, Neg) m)
+            let f r@MkCoalesceReader { inProcessSet } = r { inProcessSet = S.insert (tv, Neg) inProcessSet }
             ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
-            recVarMap <- gets snd
+            recVarMap <- gets recursiveMap
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> return $                      TySet NegRep (Just vst_kind) (TyVar NegRep (Just vst_kind) tv:ubs')
                 Just recVar -> return $ TyRec NegRep recVar (TySet NegRep (Just vst_kind) (TyVar NegRep (Just vst_kind) tv:ubs'))
@@ -101,13 +119,13 @@ coalesceType (TySet rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet rep kind tys')
 coalesceType (TyRec PosRep tv ty) = do
-    modify (\(i,m) -> (i, M.insert (tv, Pos) tv m))
-    let f = (\(x,s) -> (x, S.insert (tv,Pos) s))
+    modify (\s@MkCoalesceState { recursiveMap } -> s { recursiveMap =  M.insert (tv, Pos) tv recursiveMap })
+    let f r@MkCoalesceReader { inProcessSet } = r { inProcessSet = S.insert (tv, Pos) inProcessSet }
     ty' <- local f $ coalesceType ty
     return $ TyRec PosRep tv ty'
 coalesceType (TyRec NegRep tv ty) = do
-    modify (\(i,m) -> (i, M.insert (tv, Neg) tv m))
-    let f = (\(x,s) -> (x, S.insert (tv,Neg) s))
+    modify (\s@MkCoalesceState { recursiveMap } -> s { recursiveMap =  M.insert (tv, Neg) tv recursiveMap })
+    let f r@MkCoalesceReader { inProcessSet } = r { inProcessSet = S.insert (tv, Neg) inProcessSet }
     ty' <- local f $ coalesceType ty
     return $ TyRec NegRep tv ty'
 
