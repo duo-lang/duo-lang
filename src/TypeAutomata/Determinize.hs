@@ -81,7 +81,7 @@ getNewNodeLabel gr ns = combineNodeLabels $ mapMaybe (lab gr) (S.toList ns)
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
 combineNodeLabels nls | not . allEq $ map nl_pol  nls = error "Tried to combine node labels of different polarity!"
-                      | not . allEq $ map nl_kind nls = error "Tried to combine node labels of different kinds!"
+                      | not . allEq $ map nl_kind nls = error $ "Tried to combine node labels of different kinds!\n Node Labels:\n" ++ unlines (show <$> nls)
                       | otherwise =
       MkNodeLabel {
         nl_pol = pol,

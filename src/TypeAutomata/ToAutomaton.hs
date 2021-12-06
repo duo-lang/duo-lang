@@ -11,6 +11,7 @@ import Data.Graph.Inductive.Graph (Node)
 import Data.Graph.Inductive.Graph qualified as G
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Text qualified as T
 import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
@@ -196,7 +197,7 @@ insertType (TyNominal rep (Just kind) tn) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol kind) { nl_nominal = S.singleton tn })
   return newNode
-insertType (TyNominal _ Nothing _) = throwAutomatonError ["Tried to insert TyNominal which was not kind-annotated"]
+insertType (TyNominal _ Nothing nm) = throwAutomatonError ["Tried to insert TyNominal " <> T.pack (show nm)  <> " which was not kind-annotated"]
 
 --------------------------------------------------------------------------
 --
