@@ -165,7 +165,7 @@ freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: Typ pol -> [(TVar,Kind)]
     freeTypeVars' (TyVar _ (Just kind) tv) = [(tv,kind)]
-    freeTypeVars' (TyVar _ Nothing _) = error "Called \"freeTypeVars\" on type with unannotated TypeVars"
+    freeTypeVars' (TyVar _ Nothing tv) = error $ "Called \"freeTypeVars\" on type variable " ++ show tv ++ " with unannotated TypeVars"
     freeTypeVars' (TySet _ _ ts) = concat $ map freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (\(v',_) -> v' /= v) (freeTypeVars' t)
     freeTypeVars' (TyNominal _ _ _) = []
