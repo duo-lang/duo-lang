@@ -7,6 +7,7 @@ module Lookup
   , lookupXtorSig
   , withSTerm
   , annotateKind
+  , annotateXtors
     ) where
 
 import Control.Monad.Except

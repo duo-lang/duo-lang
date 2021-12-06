@@ -7,6 +7,7 @@ module TypeInference.Driver
   , inferDecl
   ) where
 
+import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
 import Data.GraphViz
@@ -29,6 +30,10 @@ import Syntax.Terms
 import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,
+      DataDecl(..),
+      XtorSig(..),
+      PolarityRep(..),
+      Polarity(..),
       generalize,
     )
 import Syntax.Program
@@ -50,6 +55,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
 import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
+import Lookup (annotateXtors)
 
 
 ------------------------------------------------------------------------------
@@ -185,6 +191,30 @@ printGraph fileName aut = do
 -- Infer Declarations
 ---------------------------------------------------------------------------------
 
+foo :: forall pol. DataDecl -> XtorSig pol -> DriverM (XtorSig pol)
+foo decl xtorsig = do
+  env <- gets driverEnv
+  let newEnv = env { declEnv = (defaultLoc,decl) : declEnv env}
+  let x :: ReaderT (Environment, ()) (Except Error)(XtorSig pol) = annotateXtors xtorsig
+  case runExcept (runReaderT x (newEnv,())) of
+    Left err -> throwError (Located defaultLoc err)
+    Right xtorSig -> return xtorSig
+
+bar :: [XtorSig Pos] -> [XtorSig Neg] -> (forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol])
+bar xtorsPos _ PosRep = xtorsPos
+bar _ xtorsNeg NegRep = xtorsNeg
+
+annotateTypeDecl :: DataDecl -> DriverM DataDecl
+annotateTypeDecl decl@NominalDecl { data_name, data_polarity, data_kind, data_xtors } = do
+  (xtorsPos :: [XtorSig Pos]) <- sequence $ foo decl <$> (data_xtors PosRep)
+  (xtorsNeg :: [XtorSig Neg]) <- sequence $ foo decl <$> (data_xtors NegRep)
+  return NominalDecl
+    { data_name = data_name
+    , data_polarity = data_polarity
+    , data_kind = data_kind
+    , data_xtors = bar xtorsPos xtorsNeg
+    }
+
 inferDecl :: Declaration Parsed
            -> DriverM (Declaration Inferred)
 --
@@ -250,13 +280,13 @@ inferDecl (CmdDecl loc v cmd) = do
 --
 -- DataDecl
 --
-inferDecl (DataDecl loc dcl) = do
+inferDecl (DataDecl loc decl) = do
   -- Insert into environment
-  -- TODO: Check data decls
+  decl' <- annotateTypeDecl decl
   env <- gets driverEnv
-  let newEnv = env { declEnv = (loc,dcl) : declEnv env}
+  let newEnv = env { declEnv = (loc,decl') : declEnv env}
   setEnvironment newEnv
-  return (DataDecl loc dcl)
+  return (DataDecl loc decl')
 --
 -- ImportDecl
 --
