@@ -79,6 +79,8 @@ library
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
+      Syntax.CST.Lowering
+      Syntax.CST.Types
       Syntax.CommonTerm
       Syntax.Kinds
       Syntax.Types
