@@ -9,13 +9,11 @@ module TypeInference.Driver
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.GraphViz
-    ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist, createDirectoryIfMissing, getCurrentDirectory)
+import System.Directory ( doesFileExist )
 import Text.Megaparsec hiding (Pos)
 
 
@@ -23,7 +21,6 @@ import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
-import Pretty.TypeAutomata (typeAutToDot)
 import Pretty.Errors ( printLocatedError )
 import Syntax.Terms
 import Syntax.CommonTerm
@@ -38,7 +35,6 @@ import Syntax.Program
       IsRec(..),
       ModuleName(..) )
 import Syntax.Zonking (zonkType)
-import TypeAutomata.Definition
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
@@ -102,11 +98,6 @@ guardVerbose action = do
     verbosity <- gets (infOptsVerbosity . driverOpts)
     when (verbosity == Verbose) (liftIO action)
 
-guardPrintGraphs :: IO () -> DriverM ()
-guardPrintGraphs action = do
-  printGraphs <- gets (infOptsPrintGraphs . driverOpts)
-  when printGraphs (liftIO action)
-
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
@@ -118,7 +109,7 @@ findModule (ModuleName mod) loc = do
     exists <- liftIO $ doesFileExist fp
     if exists then return [fp] else return []
   case concat fps of
-    [] -> throwOtherError ["Could not locate library: " <> mod]
+    [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
     (fp:_) -> return fp
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
@@ -129,13 +120,13 @@ checkAnnot tyInferred Nothing _ = return tyInferred
 checkAnnot tyInferred (Just tyAnnotated) loc = do
   let isSubsumed = subsume tyInferred tyAnnotated
   case isSubsumed of
-      (Left err) -> throwError err
+      (Left err) -> throwError (attachLoc loc err)
       (Right True) -> return tyAnnotated
       (Right False) -> do
-        let err = OtherError Nothing $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                                 , " Annotated type: " <> ppPrint tyAnnotated
-                                                 , " Inferred type:  " <> ppPrint tyInferred
-                                                 ]
+        let err = OtherError (Just loc) $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                    , " Annotated type: " <> ppPrint tyAnnotated
+                                                    , " Inferred type:  " <> ppPrint tyInferred
+                                                    ]
         guardVerbose $ ppPrintIO err
         throwError err
 
@@ -149,34 +140,6 @@ liftEitherErr :: Loc -> Either Error a -> DriverM a
 liftEitherErr loc x = case x of
     Left err -> liftErr loc err
     Right res -> return res
-
-------------------------------------------------------------------------------
--- Printing TypeAutomata
-------------------------------------------------------------------------------
-
-printTrace :: String -> SimplifyTrace pol -> IO ()
-printTrace str trace = do
-  printGraph ("0_typeAut_"       <> str) (trace_typeAut        trace)
-  printGraph ("1_typeAutDet"     <> str) (trace_typeAutDet     trace)
-  printGraph ("2_typeAutDetAdms" <> str) (trace_typeAutDetAdms trace)
-  printGraph ("3_minTypeAut"     <> str) (trace_minTypeAut     trace)
-
-printGraph :: String -> TypeAut' EdgeLabelNormal f pol -> IO ()
-printGraph fileName aut = do
-  let graphDir = "graphs"
-  let fileUri = "  file://"
-  let jpg = "jpg"
-  let xdot = "xdot"
-  dotInstalled <- isGraphvizInstalled
-  if dotInstalled
-    then do
-      createDirectoryIfMissing True graphDir
-      currentDir <- getCurrentDirectory
-      _ <- runGraphviz (typeAutToDot aut) Jpeg           (graphDir </> fileName <.> jpg)
-      _ <- runGraphviz (typeAutToDot aut) (XDot Nothing) (graphDir </> fileName <.> xdot)
-      putStrLn (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
-    else do
-      putStrLn "Cannot generate graphs: graphviz executable not found in path."
 
 
 ---------------------------------------------------------------------------------
@@ -209,8 +172,8 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
-      (simpTrace, tys) <- simplify (generalize typ) True
-      guardPrintGraphs $ printTrace (T.unpack fv) simpTrace
+      printGraphs <- gets (infOptsPrintGraphs . driverOpts)
+      tys <- simplify (generalize typ) printGraphs (T.unpack fv)
       guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
     False -> return (generalize typ)
