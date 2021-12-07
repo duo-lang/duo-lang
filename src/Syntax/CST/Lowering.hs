@@ -20,8 +20,6 @@ data LoweringError where
     BotInNegPolarity :: LoweringError
     IntersectionInPosPolarity :: LoweringError
     UnionInNegPolarity :: LoweringError
-    ExpectedPosGotNegPolarity :: LoweringError
-    ExpectedNegGotPosPolarity :: LoweringError
     -- Operator errors
     UnknownOperator :: Text -> LoweringError
 
@@ -31,8 +29,6 @@ instance Show LoweringError where
     show BotInNegPolarity = "Cannot use of `Bot` in negative polarity"
     show IntersectionInPosPolarity = "Cannot use `/\\` in positive polarity"
     show UnionInNegPolarity = "Cannot use `\\/` in negative polarity"
-    show ExpectedPosGotNegPolarity = "Expected type of positive polarity, got type of negative polarity"
-    show ExpectedNegGotPosPolarity = "Expected type of negative polarity, got type of positive polarity"
     show (UnknownOperator op) = "Undefined type operator `" ++ show op ++ "`"
 
 lowerTypeScheme :: PolarityRep pol -> TypeScheme -> Either LoweringError (AST.TypeScheme pol)
