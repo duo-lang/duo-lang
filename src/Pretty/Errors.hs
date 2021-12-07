@@ -15,27 +15,30 @@ import Errors
 -- Prettyprinting of Errors
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn Error where
-  prettyAnn (ParseError err) = "Parsing error:" <+> pretty err
-  prettyAnn (EvalError err) = "Evaluation error:" <+> pretty err
-  prettyAnn (GenConstraintsError err) = "Constraint generation error:" <+> pretty err
-  prettyAnn (SolveConstraintsError err) = "Constraint solving error:" <+> pretty err
-  prettyAnn (TypeAutomatonError err) = "Type simplification error:" <+> pretty err
-  prettyAnn (OtherError err) = "Other Error:" <+> pretty err
+prettyMaybeLoc :: Maybe Loc -> Doc Annotation
+prettyMaybeLoc Nothing = mempty
+prettyMaybeLoc (Just loc) = prettyAnn loc <> ": "
 
-instance PrettyAnn LocatedError where
-  prettyAnn (Located _ err) = prettyAnn err
+instance PrettyAnn Error where
+  prettyAnn (ParseError loc err)            = prettyMaybeLoc loc <> "Parsing error:" <+> pretty err
+  prettyAnn (EvalError loc err)             = prettyMaybeLoc loc <>"Evaluation error:" <+> pretty err
+  prettyAnn (GenConstraintsError loc err)   = prettyMaybeLoc loc <> "Constraint generation error:" <+> pretty err
+  prettyAnn (SolveConstraintsError loc err) = prettyMaybeLoc loc <> "Constraint solving error:" <+> pretty err
+  prettyAnn (TypeAutomatonError loc err)    = prettyMaybeLoc loc <> "Type simplification error:" <+> pretty err
+  prettyAnn (OtherError loc err)            = prettyMaybeLoc loc <> "Other Error:" <+> pretty err
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------
 
-printLocatedError :: MonadIO m => LocatedError -> m ()
-printLocatedError (Located loc err) = liftIO $ do
+printLocatedError :: MonadIO m => Error -> m ()
+printLocatedError err@(getLoc -> Nothing) = liftIO $ T.putStrLn (ppPrint err)
+printLocatedError err@(getLoc -> Just loc) = liftIO $ do
   T.putStrLn ("Error at: " <> ppPrint loc)
   printRegion loc
   T.putStrLn ""
   T.putStrLn (ppPrint err)
+printLocatedError _ = error "unreachable: Satisfy the pattern match checker :/"
 
 printRegion :: Loc -> IO ()
 printRegion (Loc (SourcePos "<interactive>" _ _) (SourcePos _ _ _)) = return ()

@@ -1,5 +1,8 @@
 module TypeAutomata.Simplify where
 
+import Control.Monad.Except
+import Control.Monad.IO.Class
+
 import Errors ( Error )    
 import Syntax.Types ( TypeScheme )
 import TypeAutomata.Definition ( TypeAutDet, TypeAut )
@@ -20,12 +23,18 @@ data SimplifyTrace pol = MkSimplifyTrace
  }
 
 
+mapError :: (MonadError e1 m1, MonadError e2 m2)
+         => (e1 -> e2)
+         -> m1 a -> m2 a
+mapError = undefined
 
-simplify :: TypeScheme pol
-         -> Either Error (SimplifyTrace pol, TypeScheme pol)
-simplify tys = do
+simplify :: (MonadIO m, MonadError Error m)
+         => TypeScheme pol
+         -> Bool
+         -> m (SimplifyTrace pol, TypeScheme pol)
+simplify tys b = do
     -- Read typescheme into automaton
-    typeAut <- typeToAut tys
+    typeAut <- liftEither $ typeToAut tys
     lint typeAut
     -- Remove epsilon edges
     let typeAutDet = removeEpsilonEdges typeAut
@@ -40,5 +49,5 @@ simplify tys = do
     let typeAutMin = minimize typeAutDetAdms
     lint typeAutMin
     -- Read back to type
-    tysSimplified <- autToType typeAutMin
+    tysSimplified <- liftEither $ autToType typeAutMin
     return (MkSimplifyTrace typeAutDet typeAutDet' typeAutDetAdms typeAutMin , tysSimplified)

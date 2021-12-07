@@ -19,7 +19,7 @@ import System.Directory ( doesFileExist, createDirectoryIfMissing, getCurrentDir
 import Text.Megaparsec hiding (Pos)
 
 
-import Errors ( LocatedError, Error(OtherError) )
+import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
@@ -49,7 +49,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsCommand,
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
-import Utils ( Verbosity(..), Located(Located), Loc, defaultLoc )
+import Utils ( Verbosity(..), Loc )
 
 
 ------------------------------------------------------------------------------
@@ -83,10 +83,10 @@ data DriverState = DriverState
   , driverEnv :: Environment
   }
 
-newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT LocatedError IO) a }
-  deriving (Functor, Applicative, Monad, MonadError LocatedError, MonadState DriverState, MonadIO)
+newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO)
 
-execDriverM :: DriverState ->  DriverM a -> IO (Either LocatedError (a,DriverState))
+execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
 execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 
 ---------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ findModule (ModuleName mod) loc = do
     exists <- liftIO $ doesFileExist fp
     if exists then return [fp] else return []
   case concat fps of
-    [] -> throwError (Located loc (OtherError ("Could not locate library: " <> mod)))
+    [] -> throwOtherError ["Could not locate library: " <> mod]
     (fp:_) -> return fp
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
@@ -129,19 +129,19 @@ checkAnnot tyInferred Nothing _ = return tyInferred
 checkAnnot tyInferred (Just tyAnnotated) loc = do
   let isSubsumed = subsume tyInferred tyAnnotated
   case isSubsumed of
-      (Left err) -> throwError (Located loc err)
+      (Left err) -> throwError err
       (Right True) -> return tyAnnotated
       (Right False) -> do
-        let err = OtherError $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                         , " Annotated type: " <> ppPrint tyAnnotated
-                                         , " Inferred type:  " <> ppPrint tyInferred
-                                         ]
+        let err = OtherError Nothing $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                 , " Annotated type: " <> ppPrint tyAnnotated
+                                                 , " Inferred type:  " <> ppPrint tyInferred
+                                                 ]
         guardVerbose $ ppPrintIO err
-        throwError (Located loc err)
+        throwError err
 
 liftErr :: Loc -> Error -> DriverM a
 liftErr loc err = do
-    let locerr = Located loc err
+    let locerr = attachLoc loc err
     guardVerbose $ printLocatedError locerr
     throwError locerr
 
@@ -209,7 +209,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
-      (simpTrace, tys) <- liftEitherErr loc $ simplify (generalize typ)
+      (simpTrace, tys) <- simplify (generalize typ) True
       guardPrintGraphs $ printTrace (T.unpack fv) simpTrace
       guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
@@ -271,12 +271,12 @@ inferDecl (SetDecl loc txt) = case T.unpack txt of
   "refined" -> do
     modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
     return (SetDecl loc txt)
-  _ -> throwError (Located loc (OtherError ("Unknown option: " <> txt)))
+  _ -> throwOtherError ["Unknown option: " <> txt]
 --
 -- ParseErrorDecl
 --
 inferDecl ParseErrorDecl = do
-    throwError (Located defaultLoc (OtherError "Should not occur: Tried to insert ParseErrorDecl into Environment"))
+    throwOtherError ["Should not occur: Tried to insert ParseErrorDecl into Environment"]
 
 ---------------------------------------------------------------------------------
 -- Infer programs
@@ -288,7 +288,7 @@ inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file
   case parsed of
-    Left err -> throwError (Located defaultLoc (OtherError (T.pack (errorBundlePretty err))))
+    Left err -> throwOtherError [T.pack (errorBundlePretty err)]
     Right decls -> do
         -- Use inference options of parent? Probably not?
         x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
@@ -304,7 +304,7 @@ inferProgram decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [Declaration Parsed]
-                -> IO (Either LocatedError (Environment, Program Inferred))
+                -> IO (Either Error (Environment, Program Inferred))
 inferProgramIO state decls = do
     x <- execDriverM state (inferProgram decls)
     case x of
