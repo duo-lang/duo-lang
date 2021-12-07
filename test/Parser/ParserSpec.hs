@@ -27,8 +27,8 @@ parseIdentical parser input1 input2 = do
     let result1 = runInteractiveParser parser input1
     let result2 = runInteractiveParser parser input2
     case (result1, result2) of
-      (Left err, _) -> expectationFailure "Could not parse left example"
-      (_, Left err) -> expectationFailure "Could not parse right example"
+      (Left _err, _) -> expectationFailure "Could not parse left example"
+      (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> r1 `shouldBe` r2
 
 spec :: Spec
