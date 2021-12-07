@@ -2,6 +2,7 @@ module Syntax.CST.Lowering where
 
 import Data.Set qualified as S
 import Data.Text
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CommonTerm
 import qualified Syntax.Types as AST
@@ -69,7 +70,7 @@ lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> Either LoweringError (AST.PrdC
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdType <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.CnsType <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> [(Text, Typ)] -> Either LoweringError (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(Text, Typ) -> Either LoweringError (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -123,19 +124,18 @@ lookupOp = lookupHelper 0
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> [(Text, Typ)] -> Either LoweringError Typ
-associateOps lhs [] = pure lhs
-associateOps lhs [(s, rhs)] = pure $ TyBinOp lhs s rhs
-associateOps lhs ((s1, rhs1) : next@(s2, _rhs2) : rest) = do
+associateOps :: Typ -> NonEmpty (Text, Typ) -> Either LoweringError Typ
+associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
+associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     (op1, prio1) <- lookupOp ops s1
     (_op2, prio2) <- lookupOp ops s2
     if prio2 > prio1 || (assoc op1 == RightAssoc)
     then do
-        rhs <- associateOps rhs1 (next : rest)
+        rhs <- associateOps rhs1 (next :| rest)
         pure $ TyBinOp lhs s1 rhs
     else if assoc op1 == LeftAssoc
     then do
-        associateOps (TyBinOp lhs s1 rhs1) (next : rest)
+        associateOps (TyBinOp lhs s1 rhs1) (next :| rest)
     else
         error "Unhandled case reached. This is a bug the operator precedence parser"
 

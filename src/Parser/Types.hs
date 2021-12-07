@@ -13,6 +13,7 @@ import Control.Monad.State
 import Control.Monad.Reader ( asks, MonadReader(local) )
 import Data.Set qualified as S
 import Text.Megaparsec hiding (State)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Definition
 import Parser.Lexer
@@ -152,11 +153,11 @@ opsChainP' p op = do
   let rest = opsChainP' p op
   ((:) <$> fst <*> rest) <|> pure []
 
-opsChainP :: Parser a -> Parser b -> Parser (a, [(b, a)])
+opsChainP :: Parser a -> Parser b -> Parser (a, NonEmpty (b, a))
 opsChainP p op = do
   (fst, (o, snd)) <- try (((,) <$> p) <*> (((,) <$> op) <*> p))
   rest <- opsChainP' p op
-  pure (fst, (o, snd) : rest)
+  pure (fst, (o, snd) :| rest)
 
 -- | Parse a chain of type operators
 typOpsP :: Parser Typ
