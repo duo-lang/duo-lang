@@ -25,8 +25,8 @@ data LoweringError where
 
 instance Show LoweringError where
     show MissingVarsInTypeScheme = "Missing declaration of type variable"
-    show TopInPosPolarity = "Cannot use of `Top` in positive polarity"
-    show BotInNegPolarity = "Cannot use of `Bot` in negative polarity"
+    show TopInPosPolarity = "Cannot use `Top` in positive polarity"
+    show BotInNegPolarity = "Cannot use `Bot` in negative polarity"
     show IntersectionInPosPolarity = "Cannot use `/\\` in positive polarity"
     show UnionInNegPolarity = "Cannot use `\\/` in negative polarity"
     show (UnknownOperator op) = "Undefined type operator `" ++ show op ++ "`"
