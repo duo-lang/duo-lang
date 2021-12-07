@@ -181,7 +181,6 @@ typP rep = do
 
 newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> AST.Typ pol }
 
--- TODO: Implement this
 invariantP :: Parser Invariant
 invariantP = do
   typ <- typAtomP
