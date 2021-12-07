@@ -10,30 +10,33 @@ module Parser.Types
   ) where
 
 import Control.Monad.State
-import Control.Monad.Reader
+import Control.Monad.Reader ( asks, MonadReader(local) )
 import Data.Set qualified as S
 import Text.Megaparsec hiding (State)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
-import Syntax.Types
 import Syntax.Kinds
+import qualified Syntax.Types as AST
+import Syntax.Types (DataCodata (Data, Codata), PolarityRep, TVar (MkTVar))
+import Syntax.CST.Types
+import Syntax.CST.Lowering (lowerTyp, lowerTypeScheme)
 
 ---------------------------------------------------------------------------------
 -- Parsing of Kinds
 ---------------------------------------------------------------------------------
 
 -- | Parses one of the keywords "CBV" or "CBN"
-callingConventionP :: Parser CallingConvention 
-callingConventionP = cbvKwP *> return CBV <|> cbnKwP *> return CBN
+callingConventionP :: Parser CallingConvention
+callingConventionP = CBV <$ cbvKwP <|> CBN <$ cbnKwP
 
 -- | Parses a MonoKind, either "Type CBV" or "Type CBN"
 kindP :: Parser Kind
 kindP = do
   _ <- typeKwP
-  cc <- callingConventionP
-  return $ MonoKind cc
+  MonoKind <$> callingConventionP
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
@@ -41,131 +44,155 @@ kindP = do
 
 -- | Parse a parenthesized list of producer types.
 -- E.g.: "(Nat, Bool, { 'Ap(Nat)[Bool] })"
-prdCtxtPartP :: PolarityRep pol -> Parser (LinearContext pol)
-prdCtxtPartP rep = do
-  (res,_) <- parens $ (PrdType <$> typP rep) `sepBy` comma
+prdCtxtPartP :: Parser LinearContext
+prdCtxtPartP = do
+  (res, _) <- parens $ (PrdType <$> typP') `sepBy` comma
   return res
 
 -- | Parse a bracketed list of consumer types.
 -- E.g.: "[Nat, Bool, { 'Ap(Nat)[Bool] }]"
-cnsCtxtPartP :: PolarityRep pol -> Parser (LinearContext pol)
-cnsCtxtPartP rep = do
-  (res,_) <- brackets $ (CnsType <$> typP (flipPolarityRep rep)) `sepBy` comma
+cnsCtxtPartP :: Parser LinearContext
+cnsCtxtPartP = do
+  (res,_) <- brackets $ (CnsType <$> typP' ) `sepBy` comma
   return res
 
 -- | Parse a linear context.
 -- E.g.: "(Nat,Bool)[Int](Int)[Bool,Float]"
-linearContextP :: PolarityRep pol -> Parser (LinearContext pol)
-linearContextP rep = concat <$> (many (prdCtxtPartP rep <|> cnsCtxtPartP rep))
-
+linearContextP :: Parser LinearContext
+linearContextP = Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
 
 ---------------------------------------------------------------------------------
--- Parsing of Simple and Target types
+-- Nominal and Structural Types
 ---------------------------------------------------------------------------------
 
-nominalTypeP :: PolarityRep pol -> Parser (Typ pol)
-nominalTypeP rep = do
+-- | Parse a nominal type.
+-- E.g. "Nat"
+nominalTypeP :: Parser Typ
+nominalTypeP = do
   (name, _pos) <- typeNameP
-  pure $ TyNominal rep Nothing name
+  pure $ TyNominal name
 
-dataTypeP :: DataCodataRep dc -> PolarityRep pol -> Parser (Typ pol)
-dataTypeP DataRep polrep = fst <$> angles (do
-  xtorSigs <- xtorSignatureP polrep `sepBy` pipe
-  return (TyData polrep Nothing xtorSigs))
-dataTypeP CodataRep polrep = fst <$> braces (do
-  xtorSigs <- xtorSignatureP (flipPolarityRep polrep) `sepBy` comma
-  return (TyCodata polrep Nothing xtorSigs))
+-- | Parse a data or codata type. E.g.:
+-- - "< ctor1 | ctor2 | ctor3 >"
+-- - "{ dtor1 , dtor2 , dtor3 }"
+xdataTypeP :: DataCodata -> Parser Typ
+xdataTypeP Data = fst <$> angles (do
+  xtorSigs <- xtorSignatureP `sepBy` pipe
+  return (TyXData Data Nothing xtorSigs))
+xdataTypeP Codata = fst <$> braces (do
+  xtorSigs <- xtorSignatureP `sepBy` comma
+  return (TyXData Codata Nothing xtorSigs))
 
-xtorSignatureP :: PolarityRep pol -> Parser (XtorSig pol)
-xtorSignatureP PosRep = do
+-- | Parse a Constructor or destructor signature. E.g.
+-- - "Cons(Nat,List)"
+-- - "'Head[Nat]"
+xtorSignatureP :: Parser XtorSig
+xtorSignatureP = do
   (xt, _pos) <- xtorName Structural <|> xtorName Nominal
-  lctxt <- linearContextP PosRep
-  return (MkXtorSig xt lctxt)
-xtorSignatureP NegRep = do
-  (xt, _pos) <- xtorName Structural <|> xtorName Nominal
-  lctxt <- linearContextP NegRep
-  return (MkXtorSig xt lctxt)
+  MkXtorSig xt <$> linearContextP
 
-typeVariable :: PolarityRep pol -> Parser (Typ pol)
-typeVariable rep = do
+---------------------------------------------------------------------------------
+-- Type variables and recursive types
+---------------------------------------------------------------------------------
+
+-- | Parses a typevariable, and checks whether the typevariable is bound.
+typeVariableP :: Parser Typ
+typeVariableP = do
   tvs <- asks tvars
   tv <- MkTVar . fst <$> freeVarName
   guard (tv `S.member` tvs)
-  return $ TyVar rep Nothing tv
+  return $ TyVar tv
 
-sepBy2 :: Parser a -> Parser sep -> Parser [a]
-sepBy2 p sep = do
-  fst <- p
-  _ <- sep
-  rest <- sepBy1 p sep
-  return (fst : rest)
-
-setType :: PolarityRep pol -> Parser (Typ pol)
-setType PosRep = botKwP *> return (TySet PosRep Nothing []) <|> TySet PosRep Nothing <$> (typP' PosRep) `sepBy2` unionSym
-setType NegRep = topKwP *> return (TySet NegRep Nothing []) <|> TySet NegRep Nothing <$> (typP' NegRep) `sepBy2` intersectionSym
-
-recType :: PolarityRep pol -> Parser (Typ pol)
-recType rep = do
+recTypeP :: Parser Typ
+recTypeP = do
   _ <- recKwP
   rv <- MkTVar . fst <$> freeVarName
   _ <- dot
-  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) (typP rep)
-  return $ TyRec rep rv ty
+  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP'
+  return $ TyRec rv ty
 
-refTypeP :: PolarityRep pol -> Parser (Typ pol)
-refTypeP rep = fst <$> dbraces (do
+---------------------------------------------------------------------------------
+-- Refinement types
+---------------------------------------------------------------------------------
+
+refinementTypeP :: Parser Typ
+refinementTypeP = fst <$> dbraces (do
   (tn,_) <- typeNameP
   _ <- refineSym
-  ty <- typP rep
+  ty <- typP'
   case ty of
-    TyData _ Nothing ctors -> return $ TyData rep (Just tn) ctors
-    TyCodata _ Nothing dtors -> return $ TyCodata rep (Just tn) dtors
+    TyXData dc Nothing ctors -> return $ TyXData dc (Just tn) ctors
     _ -> error "Second component of refinement type must be data or codata type"
   )
 
--- Without joins and meets
-typP' :: PolarityRep pol -> Parser (Typ pol)
-typP' rep = try (fst <$> parens (typP rep)) <|>
-  nominalTypeP rep <|>
-  refTypeP rep <|>
-  dataTypeP DataRep rep <|>
-  dataTypeP CodataRep rep <|>
-  recType rep <|>
-  typeVariable rep
+---------------------------------------------------------------------------------
+-- Type Parser
+---------------------------------------------------------------------------------
 
-typP :: PolarityRep pol -> Parser (Typ pol)
-typP rep = try (setType rep) <|> typP' rep
+-- | Parse atomic types
+typAtomP :: Parser Typ
+typAtomP = (TyParens . fst <$> parens typP')
+  <|> nominalTypeP
+  <|> refinementTypeP
+  <|> xdataTypeP Data
+  <|> xdataTypeP Codata
+  <|> recTypeP
+  <|> TyTop <$ topKwP
+  <|> TyBot <$ botKwP
+  <|> typeVariableP
+
+tyOpP :: Parser BinOp
+tyOpP = FunOp <$ thinRightarrow
+    <|> InterOp <$ intersectionSym
+    <|> UnionOp <$ unionSym
+
+opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
+opsChainP' p op = do
+  let fst = try ((,) <$> op <*> p)
+  let rest = opsChainP' p op
+  ((:) <$> fst <*> rest) <|> pure []
+
+opsChainP :: Parser a -> Parser b -> Parser (a, NonEmpty (b, a))
+opsChainP p op = do
+  (fst, (o, snd)) <- try (((,) <$> p) <*> (((,) <$> op) <*> p))
+  rest <- opsChainP' p op
+  pure (fst, (o, snd) :| rest)
+
+-- | Parse a chain of type operators
+typOpsP :: Parser Typ
+typOpsP = uncurry TyBinOpChain <$> opsChainP typAtomP tyOpP
+
+-- | Parse a type
+typP' :: Parser Typ
+typP' = typOpsP <|> typAtomP
+
+-- | Parse a type and lower it
+typP :: PolarityRep pol -> Parser (AST.Typ pol)
+typP rep = do
+  t <- typP'
+  case lowerTyp rep t of
+    Right t -> pure t
+    Left err -> fail (show err)
 
 ---------------------------------------------------------------------------------
 -- Parsing of invariant Types (HACKY!)
 ---------------------------------------------------------------------------------
 
-newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> Typ pol }
-
--- DO NOT EXPORT! Hacky workaround.
-switchPol :: Typ pol -> Typ (FlipPol pol)
-switchPol (TyVar rep kind tv) = TyVar (flipPolarityRep rep) kind tv
-switchPol (TyData rep mtn xtors) = TyData (flipPolarityRep rep) mtn (switchSig <$> xtors)
-switchPol (TyCodata rep mtn xtors) = TyCodata (flipPolarityRep rep) mtn (switchSig <$> xtors)
-switchPol (TyNominal rep kind tn) = TyNominal (flipPolarityRep rep) kind tn
-switchPol (TySet rep kind typs) = TySet (flipPolarityRep rep) kind (switchPol <$> typs)
-switchPol (TyRec rep tv typ) = TyRec (flipPolarityRep rep) tv (switchPol typ)
-
-switchSig :: XtorSig pol -> XtorSig (FlipPol pol)
-switchSig (MkXtorSig xt ctxt) = MkXtorSig xt (switchCtxt ctxt)
-
-switchCtxt :: LinearContext pol -> LinearContext (FlipPol pol)
-switchCtxt = undefined 
+newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> AST.Typ pol }
 
 invariantP :: Parser Invariant
 invariantP = do
-  typ <- typP' PosRep
-  pure $ MkInvariant $ \rep -> case rep of PosRep -> typ ; NegRep -> switchPol typ
-
+  typ <- typAtomP
+  pure $ MkInvariant $ \rep ->
+    case lowerTyp rep typ of
+      Right typ -> typ
+      -- FIXME: Adjust AST such that it can handle lazy lowering/polarization properly
+      Left err -> error (show err)
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
+
 
 tvarKindP :: Parser ((TVar, Kind), SourcePos)
 tvarKindP = parens $ do
@@ -174,10 +201,18 @@ tvarKindP = parens $ do
   kind <- kindP
   return (tvar, kind)
 
-typeSchemeP :: PolarityRep pol -> Parser (TypeScheme pol)
-typeSchemeP polrep = do
-  tvars' <- S.fromList . fmap fst <$> option [] (forallKwP >> some (fst <$> tvarKindP) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) (typP polrep)
-  return $ generalize monotype
-    
+-- | Parse a type scheme
+typeSchemeP' :: Parser TypeScheme
+typeSchemeP' = do
+  tvars' <- option [] (forallKwP >> some (fst <$> tvarKindP) <* dot)
+  monotype <- local (\s -> s { tvars = S.fromList (fst <$> tvars') }) typP'
+  pure (TypeScheme tvars' monotype)
+
+-- | Parse a type scheme and lower it
+typeSchemeP :: PolarityRep pol -> Parser (AST.TypeScheme pol)
+typeSchemeP rep = do
+  s <- typeSchemeP'
+  case lowerTypeScheme rep s of
+    Right s -> pure s
+    Left err -> fail (show err)
 

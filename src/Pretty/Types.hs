@@ -7,6 +7,7 @@ import Prettyprinter
 import Pretty.Pretty
 import Syntax.Types
 import Syntax.Kinds
+import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -38,6 +39,9 @@ pipeSym = prettyAnn ("|" :: String)
 
 commaSym :: Doc Annotation
 commaSym = prettyAnn ("," :: String)
+
+arrowSym :: Doc Annotation
+arrowSym = annKeyword "->"
 
 
 ---------------------------------------------------------------------------------
@@ -79,6 +83,8 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyRec _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
   prettyAnn (TyNominal _ _ tn)   = prettyAnn tn
+  -- Function syntax sugar
+  prettyAnn (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdType tl, CnsType tr]]) = parens (prettyAnn tl <+> arrowSym <+> prettyAnn tr)
   -- Structural data and codata types
   prettyAnn (TyData _ Nothing xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)

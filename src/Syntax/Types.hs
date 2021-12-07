@@ -31,6 +31,7 @@ data Polarity = Pos | Neg deriving (Eq, Ord, Show)
 data PolarityRep pol where
   PosRep :: PolarityRep Pos
   NegRep :: PolarityRep Neg
+
 deriving instance Show (PolarityRep pol)
 deriving instance Eq (PolarityRep pol)
 deriving instance Ord (PolarityRep pol)
@@ -159,6 +160,8 @@ deriving instance Eq (TypeScheme Pos)
 deriving instance Eq (TypeScheme Neg)
 deriving instance Ord (TypeScheme Pos)
 deriving instance Ord (TypeScheme Neg)
+deriving instance Show (TypeScheme Pos)
+deriving instance Show (TypeScheme Neg)
 
 freeTypeVars :: Typ pol -> [(TVar, Kind)]
 freeTypeVars = nub . freeTypeVars'

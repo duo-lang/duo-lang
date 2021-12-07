@@ -39,6 +39,7 @@ module Parser.Lexer
   , backslash
   , coloneq
   , rightarrow
+  , thinRightarrow
   , commandSym
   , unionSym
   , intersectionSym
@@ -176,7 +177,7 @@ checkReserved str | str `elem` keywords = fail . T.unpack $ "Keyword " <> str <>
 matchKwP :: Parser SourcePos
 matchKwP = keywordP "match"
 
-caseKwP :: Parser SourcePos 
+caseKwP :: Parser SourcePos
 caseKwP = keywordP "case"
 
 comatchKwP :: Parser SourcePos
@@ -218,16 +219,16 @@ recKwP = keywordP "rec"
 muKwP :: Parser SourcePos
 muKwP = keywordP "mu"
 
-importKwP :: Parser SourcePos 
+importKwP :: Parser SourcePos
 importKwP = keywordP "import"
 
-setKwP :: Parser SourcePos 
+setKwP :: Parser SourcePos
 setKwP = keywordP "set"
 
-topKwP :: Parser SourcePos 
+topKwP :: Parser SourcePos
 topKwP = keywordP "Top"
 
-botKwP :: Parser SourcePos 
+botKwP :: Parser SourcePos
 botKwP = keywordP "Bot"
 
 cbvKwP :: Parser SourcePos
@@ -269,6 +270,9 @@ coloneq = symbol ":="
 
 rightarrow :: Parser SourcePos
 rightarrow = symbol "=>"
+
+thinRightarrow :: Parser SourcePos
+thinRightarrow = symbol "->"
 
 commandSym :: Parser SourcePos
 commandSym = symbol ">>"

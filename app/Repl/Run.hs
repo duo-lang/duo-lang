@@ -20,7 +20,7 @@ import Repl.Options.Let (letOption)
 import Repl.Options.Simplify (simplifyOption)
 import Repl.Options.Subsume (subOption)
 import Repl.Options.LoadReload (loadOption, reloadOption)
-import Repl.Options.Show (showOption, showTypeOption)      
+import Repl.Options.Show (showOption, showTypeOption)
 import Repl.Options.SetUnset (setOption, unsetOption)
 import Repl.Options.Quit (quitOption)
 import Repl.Repl
@@ -98,7 +98,7 @@ final = prettyText "Goodbye!" >> return Exit
 replBanner :: a -> Repl String
 replBanner _ = do
   loadedFiles <- gets loadedFiles
-  pure (unwords loadedFiles ++ ">")
+  pure (unwords loadedFiles ++ "> ")
 
 opts :: ReplOpts ReplInner
 opts = ReplOpts
