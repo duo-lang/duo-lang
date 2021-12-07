@@ -5,6 +5,7 @@ import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Pretty
+import Syntax.CST.Types (BinOp(..))
 import Syntax.Types
 import Syntax.Kinds
 import Syntax.CommonTerm
@@ -62,6 +63,17 @@ instance PrettyAnn Kind where
 -- Prettyprinting of types
 ---------------------------------------------------------------------------------
 
+instance PrettyAnn BinOp where
+  prettyAnn FunOp = pretty ("->" :: String)
+  prettyAnn ParOp = pretty ("⅋" :: String)
+  prettyAnn UnionOp = pretty ("\\/" :: String)
+  prettyAnn InterOp = pretty ("/\\" :: String)
+
+resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdType tl, CnsType tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [CnsType tl, CnsType tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
+resugarType _ = Nothing
+
 instance PrettyAnn Polarity where
   prettyAnn Pos = "Pos"
   prettyAnn Neg = "Neg"
@@ -70,6 +82,8 @@ instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv
 
 instance PrettyAnn (Typ pol) where
+  -- Sugared types
+  prettyAnn (resugarType -> Just (ty1, binOp, ty2)) = parens (ty1 <+> prettyAnn binOp <+> ty2)
   -- Lattice types
   prettyAnn (TySet PosRep _ [])  = botSym
   prettyAnn (TySet PosRep _ [t]) = prettyAnn t
@@ -83,15 +97,13 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyRec _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
   prettyAnn (TyNominal _ _ tn)   = prettyAnn tn
-  -- Function syntax sugar
-  prettyAnn (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdType tl, CnsType tr]]) = parens (prettyAnn tl <+> arrowSym <+> prettyAnn tr)
   -- Structural data and codata types
   prettyAnn (TyData _ Nothing xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
   prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
   prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
-
+  
 instance PrettyAnn (PrdCnsType pol) where
   prettyAnn (PrdType ty) = prettyAnn ty
   prettyAnn (CnsType ty) = prettyAnn ty
