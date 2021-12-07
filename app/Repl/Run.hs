@@ -17,7 +17,6 @@ import System.Console.Repline
       ReplOpts(..) )
 
 import Repl.Options.Let (letOption)
-import Repl.Options.Simplify (simplifyOption)
 import Repl.Options.Subsume (subOption)
 import Repl.Options.LoadReload (loadOption, reloadOption)
 import Repl.Options.Show (showOption, showTypeOption)
@@ -50,7 +49,6 @@ allOptions =
   , setOption
   , unsetOption
   , subOption
-  , simplifyOption
   , loadOption
   , reloadOption
   , showTypeOption

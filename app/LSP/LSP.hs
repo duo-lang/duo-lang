@@ -28,14 +28,14 @@ import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
-import Errors ( LocatedError )
+import Errors
 import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import TypeInference.Driver
-import Utils ( Located(..))
+import Utils
 import LSP.Definition
 import LSP.HoverHandler ( hoverHandler, updateHoverCache )
 import LSP.CodeActionHandler ( codeActionHandler )
@@ -163,9 +163,10 @@ didCloseHandler = notificationHandler STextDocumentDidClose $ \notif -> do
 
 -- Publish diagnostics for File
 
-errorToDiag :: LocatedError -> Diagnostic
-errorToDiag (Located loc err) =
+errorToDiag :: Error -> Diagnostic
+errorToDiag err =
   let
+    loc = maybe defaultLoc id (getLoc err)
     msg = ppPrint err
     range = locToRange loc
   in
@@ -183,7 +184,7 @@ sendParsingError uri err = do
   let diag = parseErrorBundleToDiag err
   publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList diag)]))
 
-sendLocatedError :: NormalizedUri -> LocatedError -> LSPMonad ()
+sendLocatedError :: NormalizedUri -> Error -> LSPMonad ()
 sendLocatedError uri le = do
   let diag = errorToDiag le
   publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList [diag])]))

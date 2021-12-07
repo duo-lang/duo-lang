@@ -2,7 +2,6 @@ module ParserPrettyprinter.ParserPrettyprinterSpec (spec) where
 
 import Control.Monad (forM_)
 import Data.Either (isRight)
-import Data.Bifunctor (first)
 import Test.Hspec
 
 import Parser.Parser
@@ -11,7 +10,6 @@ import Pretty.Errors ()
 import Pretty.Program ()
 import TestUtils
 import TypeInference.Driver
-import Utils
 
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed
@@ -42,7 +40,7 @@ spec = do
               Right decls -> do
                 res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) decls
                 it "Can be parsed and typechecked again." $
-                    (first (\(Located _ x) -> x) res) `shouldSatisfy` isRight
+                    res `shouldSatisfy` isRight
 
 
 

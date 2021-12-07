@@ -135,7 +135,6 @@ executable dualsub
       Repl.Options.LoadReload
       Repl.Options.SetUnset
       Repl.Options.Show
-      Repl.Options.Simplify
       Repl.Options.Subsume
       Repl.Options.Quit
       Repl.Run
