@@ -44,6 +44,8 @@ commaSym = prettyAnn ("," :: String)
 arrowSym :: Doc Annotation
 arrowSym = annKeyword "->"
 
+parSym :: Doc Annotation
+parSym = annKeyword "⅋"
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Kinds
@@ -55,6 +57,7 @@ instance PrettyAnn CallingConvention  where
 
 instance PrettyAnn KVar where
   prettyAnn kv = pretty (unKVar kv)
+
 instance PrettyAnn Kind where
   prettyAnn (MonoKind eo) = "Type" <+> prettyAnn eo
   prettyAnn (KindVar var) = prettyAnn var
@@ -64,10 +67,10 @@ instance PrettyAnn Kind where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn BinOp where
-  prettyAnn FunOp = pretty ("->" :: String)
-  prettyAnn ParOp = pretty ("⅋" :: String)
-  prettyAnn UnionOp = pretty ("\\/" :: String)
-  prettyAnn InterOp = pretty ("/\\" :: String)
+  prettyAnn FunOp = arrowSym
+  prettyAnn ParOp = parSym
+  prettyAnn UnionOp = unionSym
+  prettyAnn InterOp = interSym
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
 resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdType tl, CnsType tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
