@@ -196,8 +196,8 @@ invariantP = do
 -- | Parse a type scheme
 typeSchemeP' :: Parser TypeScheme
 typeSchemeP' = do
-  tvars' <- S.fromList <$> option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = tvars' }) typP'
+  tvars' <- option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
+  monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP'
   pure (TypeScheme tvars' monotype)
 
 -- | Parse a type scheme and lower it

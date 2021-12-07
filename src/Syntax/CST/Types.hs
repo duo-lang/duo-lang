@@ -1,7 +1,5 @@
 module Syntax.CST.Types where
 
-import qualified Data.Set as S
-
 import qualified Syntax.Types as AST
 import Syntax.CommonTerm
 import Data.List.NonEmpty (NonEmpty)
@@ -47,7 +45,7 @@ data PrdCnsTyp where
   deriving Show
 
 data TypeScheme = TypeScheme
-  { ts_vars :: S.Set AST.TVar
+  { ts_vars :: [AST.TVar]
   , ts_monotype :: Typ
   }
   deriving Show

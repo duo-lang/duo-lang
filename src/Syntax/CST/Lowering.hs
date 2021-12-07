@@ -34,8 +34,8 @@ instance Show LoweringError where
 lowerTypeScheme :: PolarityRep pol -> TypeScheme -> Either LoweringError (AST.TypeScheme pol)
 lowerTypeScheme rep (TypeScheme tvars monotype) = do
     monotype <- lowerTyp rep monotype
-    if S.fromList (freeTypeVars monotype) `S.isSubsetOf` tvars
-        then pure (AST.TypeScheme (S.toList tvars) monotype)
+    if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList tvars)
+        then pure (AST.TypeScheme tvars monotype)
         else Left MissingVarsInTypeScheme
 
 lowerTyp :: PolarityRep pol -> Typ -> Either LoweringError (AST.Typ pol)
