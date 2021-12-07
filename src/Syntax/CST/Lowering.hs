@@ -1,7 +1,6 @@
 module Syntax.CST.Lowering where
 
 import Data.Set qualified as S
-import Data.Text
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CommonTerm
@@ -22,7 +21,7 @@ data LoweringError where
     IntersectionInPosPolarity :: LoweringError
     UnionInNegPolarity :: LoweringError
     -- Operator errors
-    UnknownOperator :: Text -> LoweringError
+    UnknownOperator :: BinOp -> LoweringError
 
 instance Show LoweringError where
     show MissingVarsInTypeScheme = "Missing declaration of type variable"
@@ -70,7 +69,7 @@ lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> Either LoweringError (AST.PrdC
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdType <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.CnsType <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(Text, Typ) -> Either LoweringError (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> Either LoweringError (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -81,7 +80,7 @@ lowerBinOpChain rep fst rest = do
 
 data Op = Op
     {
-        symbol :: Text,
+        symbol :: BinOp,
         assoc :: Assoc,
         desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
     }
@@ -94,15 +93,15 @@ type Prio = Int
 
 ops :: Ops
 ops = [
-        Op "->" RightAssoc desugarArrowType,
-        Op "\\/" LeftAssoc desugarUnionType,
-        Op "/\\" LeftAssoc desugarIntersectionType
+        Op FunOp RightAssoc desugarArrowType,
+        Op UnionOp LeftAssoc desugarUnionType,
+        Op InterOp LeftAssoc desugarIntersectionType
     ]
 
-lookupOp :: Ops -> Text -> Either LoweringError (Op, Prio)
+lookupOp :: Ops -> BinOp -> Either LoweringError (Op, Prio)
 lookupOp = lookupHelper 0
     where
-        lookupHelper :: Prio -> Ops -> Text -> Either LoweringError (Op, Prio)
+        lookupHelper :: Prio -> Ops -> BinOp -> Either LoweringError (Op, Prio)
         lookupHelper _ [] s = Left (UnknownOperator s)
         lookupHelper p (op@(Op s' _ _) : _) s | s == s' = Right (op, p)
         lookupHelper p (_ : ops) s = lookupHelper (p + 1) ops s
@@ -124,7 +123,7 @@ lookupOp = lookupHelper 0
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> NonEmpty (Text, Typ) -> Either LoweringError Typ
+associateOps :: Typ -> NonEmpty (BinOp, Typ) -> Either LoweringError Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     (op1, prio1) <- lookupOp ops s1
@@ -139,7 +138,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     else
         error "Unhandled case reached. This is a bug the operator precedence parser"
 
-lowerBinOp :: PolarityRep pol -> Typ -> Text -> Typ -> Either LoweringError (AST.Typ pol)
+lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> Either LoweringError (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
     (op, _) <- lookupOp ops s
     desugar op rep lhs rhs

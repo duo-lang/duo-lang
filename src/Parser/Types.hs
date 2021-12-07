@@ -22,7 +22,6 @@ import Syntax.Kinds
 import qualified Syntax.Types as AST
 import Syntax.Types (DataCodata (Data, Codata), PolarityRep, TVar (MkTVar))
 import Syntax.CST.Types
-import Data.Text
 import Syntax.CST.Lowering (lowerTyp, lowerTypeScheme)
 
 ---------------------------------------------------------------------------------
@@ -142,10 +141,10 @@ typAtomP = (TyParens . fst <$> parens typP')
   <|> TyBot <$ botKwP
   <|> typeVariableP
 
-tyOpP :: Parser Text
-tyOpP = "->" <$ thinRightarrow
-    <|> "/\\" <$ intersectionSym
-    <|> "\\/" <$ unionSym
+tyOpP :: Parser BinOp
+tyOpP = FunOp <$ thinRightarrow
+    <|> InterOp <$ intersectionSym
+    <|> UnionOp <$ unionSym
 
 opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
 opsChainP' p op = do
