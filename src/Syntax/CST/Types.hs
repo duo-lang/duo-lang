@@ -12,9 +12,7 @@ import Data.Text
 
 data Typ where
   TyVar :: AST.TVar -> Typ
-  -- TODO: Merge Data/Codata here
-  TyData :: Maybe AST.TypeName -> [XtorSig] -> Typ
-  TyCodata :: Maybe AST.TypeName -> [XtorSig] -> Typ
+  TyXData :: AST.DataCodata -> Maybe AST.TypeName -> [XtorSig] -> Typ
   TyNominal :: AST.TypeName -> Typ
   TyRec :: AST.TVar -> Typ -> Typ
   TyTop :: Typ

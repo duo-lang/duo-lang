@@ -40,10 +40,10 @@ lowerTypeScheme rep (TypeScheme tvars monotype) = do
 
 lowerTyp :: PolarityRep pol -> Typ -> Either LoweringError (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
-lowerTyp rep (TyData name sigs) = do
+lowerTyp rep (TyXData AST.Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
     pure $ AST.TyData rep name sigs
-lowerTyp rep (TyCodata name sigs) = do
+lowerTyp rep (TyXData AST.Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ AST.TyCodata rep name sigs
 lowerTyp rep (TyNominal name) = pure $ AST.TyNominal rep Nothing name

@@ -78,10 +78,10 @@ nominalTypeP = do
 xdataTypeP :: DataCodata -> Parser Typ
 xdataTypeP Data = fst <$> angles (do
   xtorSigs <- xtorSignatureP `sepBy` pipe
-  return (TyData Nothing xtorSigs))
+  return (TyXData Data Nothing xtorSigs))
 xdataTypeP Codata = fst <$> braces (do
   xtorSigs <- xtorSignatureP `sepBy` comma
-  return (TyCodata Nothing xtorSigs))
+  return (TyXData Codata Nothing xtorSigs))
 
 -- | Parse a Constructor or destructor signature. E.g.
 -- - "Cons(Nat,List)"
@@ -121,8 +121,7 @@ refinementTypeP = fst <$> dbraces (do
   _ <- refineSym
   ty <- typP'
   case ty of
-    TyData Nothing ctors -> return $ TyData (Just tn) ctors
-    TyCodata Nothing dtors -> return $ TyCodata (Just tn) dtors
+    TyXData dc Nothing ctors -> return $ TyXData dc (Just tn) ctors
     _ -> error "Second component of refinement type must be data or codata type"
   )
 
