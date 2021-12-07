@@ -9,6 +9,7 @@ import Data.List.NonEmpty (NonEmpty)
 ---------------------------------------------------------------------------------
 data BinOp where
   FunOp    :: BinOp
+  ParOp    :: BinOp
   UnionOp  :: BinOp
   InterOp  :: BinOp
   deriving (Show, Eq)

@@ -95,7 +95,8 @@ ops :: Ops
 ops = [
         Op FunOp RightAssoc desugarArrowType,
         Op UnionOp LeftAssoc desugarUnionType,
-        Op InterOp LeftAssoc desugarIntersectionType
+        Op InterOp LeftAssoc desugarIntersectionType,
+        Op ParOp LeftAssoc desugarParType
     ]
 
 lookupOp :: Ops -> BinOp -> Either LoweringError (Op, Prio)
@@ -185,3 +186,13 @@ desugarArrowType NegRep tl tr = do
     pure $ AST.TyCodata NegRep Nothing
         [ AST.MkXtorSig (MkXtorName Structural "Ap")
           [AST.PrdType tl, AST.CnsType tr]]
+
+desugarParType :: PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+desugarParType PosRep tl tr = do
+    tl <- lowerTyp PosRep tl
+    tr <- lowerTyp PosRep tr
+    pure $ AST.TyCodata PosRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.CnsType tl, AST.CnsType tr]]
+desugarParType NegRep tl tr = do
+    tl <- lowerTyp NegRep tl
+    tr <- lowerTyp NegRep tr
+    pure $ AST.TyCodata NegRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.CnsType tl, AST.CnsType tr]]
