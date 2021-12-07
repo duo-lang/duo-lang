@@ -146,17 +146,21 @@ unifyKinds (MonoKind cc1) (KindVar kv) = do
     Just cc2 -> if cc1 == cc2
                 then return () -- We have not learned new information!
                 else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
-unifyKinds (KindVar kv) (KindVar kv')  = do
+unifyKinds (KindVar kv) (KindVar kv')  | kv == kv' = return ()
+                                       | otherwise = do
   -- Union the two sets.
   sets <- getKVars
   let ([(kvset, cc1)] , rest)  = partition (\x -> kv `elem` fst x) sets
-  let ([(kv'set, cc2)], rest') = partition (\x -> kv' `elem` fst x) rest
-  let newSet = kvset ++ kv'set
-  case (cc1, cc2) of
-    (cc1, Nothing) -> putKVars $ (newSet, cc1):rest'
-    (Nothing, cc2) -> putKVars $ (newSet, cc2):rest'
-    (Just cc1, Just cc2) | cc1 == cc2 -> putKVars $ (newSet, Just cc1):rest'
-                         | otherwise  -> throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+  if (kv' `elem` kvset)
+    then return ()
+    else do
+      let ([(kv'set, cc2)], rest') = partition (\x -> kv' `elem` fst x) rest
+      let newSet = kvset ++ kv'set
+      case (cc1, cc2) of
+        (cc1, Nothing) -> putKVars $ (newSet, cc1):rest'
+        (Nothing, cc2) -> putKVars $ (newSet, cc2):rest'
+        (Just cc1, Just cc2) | cc1 == cc2 -> putKVars $ (newSet, Just cc1):rest'
+                             | otherwise  -> throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
 
 computeKVarSolution :: KindPolicy -> [([KVar],Maybe CallingConvention)] -> Either Error (Map KVar Kind)
 computeKVarSolution DefaultCBV      sets = return $ computeKVarSolution' ((\(xs,cc) -> case cc of Nothing -> (xs, CBV); Just cc' -> (xs,cc')) <$> sets)
@@ -198,10 +202,10 @@ checkContexts :: LinearContext Pos -> LinearContext Neg -> SolverM [Constraint C
 checkContexts [] [] = return []
 checkContexts (PrdType ty1:rest1) (PrdType ty2:rest2) = do
   xs <- checkContexts rest1 rest2
-  return (SubType XtorSubConstraint ty1 ty2:xs)
+  return (SubType XtorSubConstraint ty1 ty2 : KindEq XtorSubConstraint (getKind ty1) (getKind ty2) : xs)
 checkContexts (CnsType ty1:rest1) (CnsType ty2:rest2) = do
   xs <- checkContexts rest1 rest2
-  return (SubType XtorSubConstraint ty2 ty1:xs)
+  return (SubType XtorSubConstraint ty2 ty1 : KindEq XtorSubConstraint (getKind ty2) (getKind ty1) : xs)
 checkContexts (PrdType _:_) (CnsType _:_) = throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
 checkContexts (CnsType _:_) (PrdType _:_) = throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
 checkContexts []    (_:_) = throwSolverError ["checkContexts: Linear contexts have unequal length."]
