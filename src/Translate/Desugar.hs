@@ -68,7 +68,7 @@ desugarTerm (Dtor _ xt t args) =
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
 desugarTerm (Match _ ns t cases)   =
   let
-    desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase () xt [(Prd, Nothing) | _ <- args]  $ Apply () Nothing (desugarTerm t) (FreeVar () CnsRep resVar)
+    desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase () xt args  $ Apply () Nothing (desugarTerm t) (FreeVar () CnsRep resVar)
     cmd = Apply () Nothing (desugarTerm t) (XMatch () CnsRep ns  (desugarMatchCase <$> cases))
   in
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
@@ -76,7 +76,7 @@ desugarTerm (Match _ ns t cases)   =
 -- comatch { D(args)[k] => (desugar e) >> k }
 desugarTerm (Comatch _ ns cocases) =
   let
-    desugarComatchCase (MkTermCaseI _ xt args t) = MkCmdCase () xt ([(Prd, Nothing) | _ <- args] ++ [(Cns,Nothing)]) $ Apply () Nothing (desugarTerm t) (BoundVar () CnsRep (0,length args))
+    desugarComatchCase (MkTermCaseI _ xt args t) = MkCmdCase () xt (args ++ [(Cns,Nothing)]) $ Apply () Nothing (desugarTerm t) (BoundVar () CnsRep (0,length args))
   in
     XMatch () PrdRep ns $ desugarComatchCase <$> cocases
 
