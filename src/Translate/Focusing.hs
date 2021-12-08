@@ -23,7 +23,7 @@ import Syntax.Terms
       Substitution,
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
-import Syntax.Kinds ( CallingConvention(..) )
+import Syntax.Kinds ( CallingConvention(..), Kind(..) )
 
 
 ---------------------------------------------------------------------------------
@@ -149,23 +149,23 @@ focusXtor eo CnsRep name subst = MuAbs () CnsRep Nothing (commandClosing [(Prd, 
 
 
 focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
-focusXtor' _  CnsRep name [] pcterms' = Apply () Nothing (FreeVar () PrdRep alphaVar)
-                                                         (XtorCall () CnsRep name (reverse pcterms'))
-focusXtor' _  PrdRep name [] pcterms' = Apply () Nothing (XtorCall () PrdRep name (reverse pcterms'))
-                                                         (FreeVar () CnsRep alphaVar)
+focusXtor' eo CnsRep name [] pcterms' = Apply () (Just (MonoKind eo)) (FreeVar () PrdRep alphaVar)
+                                                                      (XtorCall () CnsRep name (reverse pcterms'))
+focusXtor' eo PrdRep name [] pcterms' = Apply () (Just (MonoKind eo)) (XtorCall () PrdRep name (reverse pcterms'))
+                                                                      (FreeVar () CnsRep alphaVar)
 focusXtor' eo pc     name (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc name pcterms (PrdTerm prd : pcterms')
 focusXtor' eo pc     name (PrdTerm                                 prd:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   cmd = commandClosing [(Prd,var)]  (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
                                                               in
-                                                                  Apply () Nothing (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
+                                                                  Apply () (Just (MonoKind eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
 focusXtor' eo pc     name (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc name pcterms (CnsTerm cns : pcterms')
 focusXtor' eo pc     name (CnsTerm                                 cns:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   cmd = commandClosing [(Cns,var)] (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
-                                                              in Apply () Nothing (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
+                                                              in Apply () (Just (MonoKind eo)) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 
 
@@ -176,10 +176,10 @@ focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: CallingConvention -> Command Compiled -> Command Compiled
-focusCmd eo (Apply _ kind prd cns) = Apply () kind (focusTerm eo prd) (focusTerm eo cns)
+focusCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (Done _) = Done ()
 focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd)) = Print () prd
-focusCmd eo (Print _ prd) = Apply () Nothing (focusTerm eo prd) (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0))))
+focusCmd eo (Print _ prd) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0))))
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
