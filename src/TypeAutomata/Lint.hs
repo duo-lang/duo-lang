@@ -2,20 +2,24 @@ module TypeAutomata.Lint
   ( lint
   ) where
 
-import Syntax.Types
-import Errors
-import TypeAutomata.Definition
 import Control.Monad (forM_)
+import Control.Monad.Except (MonadError)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive (Gr)
+import Data.Set qualified as S
 import Data.Text qualified as T
-import Syntax.CommonTerm (PrdCns(..))
-import Data.Set qualified
-import Syntax.CommonTerm (XtorName)
+
+
+import Errors
+import Syntax.CommonTerm (PrdCns(..), XtorName)
+import Syntax.Types
+import TypeAutomata.Definition
 import Utils
 
 -- | Check the invariants of the type automaton.
-lint :: TypeAut' (EdgeLabel a) f pol  -> Either Error ()
+lint :: MonadError Error m
+     => TypeAut' (EdgeLabel a) f pol
+     -> m ()
 lint aut = do
   lintFlowEdges aut
   lintEpsilonEdges aut
@@ -23,72 +27,80 @@ lint aut = do
   lintStructuralNodes aut
 
 
-getNodeLabel :: Gr NodeLabel a -> Node -> Either Error NodeLabel
+getNodeLabel :: MonadError Error m
+             => Gr NodeLabel a -> Node -> m NodeLabel
 getNodeLabel gr n = case lab gr n of
-  Nothing -> Left (TypeAutomatonError $ "TypeAutomata Linter: The node " <> T.pack (show n) <> " is not contained in graph")
+  Nothing -> throwAutomatonError ["TypeAutomata Linter: The node " <> T.pack (show n) <> " is not contained in graph"]
   Just label -> pure label
 
 -- | Check for every flow edge of a type automaton that:
 -- 1.) Both nodes are contained in the corresponding graph.
 -- 2.) The left node of the flowedge is negative and the right node is positive.
-lintFlowEdges :: TypeAut' a f pol  -> Either Error ()
+lintFlowEdges :: MonadError Error m
+              => TypeAut' a f pol  -> m ()
 lintFlowEdges TypeAut { ta_core = TypeAutCore { ta_gr, ta_flowEdges } } = do
   forM_ ta_flowEdges $ \(left,right) -> do
     leftPol <- nl_pol <$> getNodeLabel ta_gr left
     rightPol <- nl_pol <$> getNodeLabel ta_gr right
     case leftPol of
-      Pos -> Left (TypeAutomatonError "TypeAutomata Linter: Left endpoint of flowedge is positive")
+      Pos -> throwAutomatonError ["TypeAutomata Linter: Left endpoint of flowedge is positive"]
       Neg -> pure ()
     case rightPol of
       Pos -> pure ()
-      Neg -> Left (TypeAutomatonError "TypeAutomata Linter: Right endpoint of flowedge is negative")
+      Neg -> throwAutomatonError ["TypeAutomata Linter: Right endpoint of flowedge is negative"]
 
 
 -- | Check that epsilon edges connect nodes of the same polarity.
-lintEpsilonEdges :: TypeAut' (EdgeLabel a) f pol -> Either Error ()
+lintEpsilonEdges :: MonadError Error m
+                 => TypeAut' (EdgeLabel a) f pol -> m ()
 lintEpsilonEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
   let edges = [(i,j) | (i,j,EpsilonEdge _) <- labEdges ta_gr]
   forM_ edges $ \(i,j) -> do
     iPolarity <- nl_pol <$> getNodeLabel ta_gr i
     jPolarity <- nl_pol <$> getNodeLabel ta_gr j
     if iPolarity /= jPolarity
-      then Left (TypeAutomatonError "TypeAutomata Linter: Epsilon Edge connects nodes with different polarity.")
+      then throwAutomatonError ["TypeAutomata Linter: Epsilon Edge connects nodes with different polarity."]
       else pure ()
 
 -- | Check that symbol edges connect nodes of the correct polarity.
-lintSymbolEdges :: TypeAut' (EdgeLabel a) f pol -> Either Error ()
+lintSymbolEdges :: MonadError Error m
+                => TypeAut' (EdgeLabel a) f pol -> m ()
 lintSymbolEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
   let edges = [(i,j,dataCodata,prdCns) | (i,j,EdgeSymbol dataCodata _ prdCns _) <- labEdges ta_gr]
   forM_ edges $ \(i,j, dataCodata, prdCns) -> do
     iPolarity <- nl_pol <$> getNodeLabel ta_gr i
     jPolarity <- nl_pol <$> getNodeLabel ta_gr j
-    let err = TypeAutomatonError "TypeAutomata Linter: Incorrect Symbol Edge"
+    let err = "TypeAutomata Linter: Incorrect Symbol Edge"
     case (dataCodata, prdCns) of
-      (Data, Prd)   -> if iPolarity == jPolarity then pure () else Left err
-      (Data, Cns)   -> if iPolarity /= jPolarity then pure () else Left err
-      (Codata, Prd) -> if iPolarity /= jPolarity then pure () else Left err
-      (Codata, Cns) -> if iPolarity == jPolarity then pure () else Left err
+      (Data, Prd)   -> if iPolarity == jPolarity then pure () else throwAutomatonError [err]
+      (Data, Cns)   -> if iPolarity /= jPolarity then pure () else throwAutomatonError [err]
+      (Codata, Prd) -> if iPolarity /= jPolarity then pure () else throwAutomatonError [err]
+      (Codata, Cns) -> if iPolarity == jPolarity then pure () else throwAutomatonError [err]
 
 -- | Check that every structural Xtor has at least one outgoing Symbol Edge for every argument of the Xtor.
-lintStructuralNodes :: TypeAut' (EdgeLabel a) f pol -> Either Error ()
+lintStructuralNodes :: MonadError Error m
+                    => TypeAut' (EdgeLabel a) f pol -> m ()
 lintStructuralNodes TypeAut { ta_core = TypeAutCore { ta_gr }} = forM_ (labNodes ta_gr) (lintStructuralNode ta_gr)
 
 -- | Collect all the xtors labels of a node and check them.
-lintStructuralNode :: Gr NodeLabel (EdgeLabel a) -> LNode NodeLabel -> Either Error ()
+lintStructuralNode :: MonadError Error m
+                   => Gr NodeLabel (EdgeLabel a) -> LNode NodeLabel -> m ()
 lintStructuralNode gr (n, nl) = do
-  let toList = maybe [] Data.Set.toList
+  let toList = maybe [] S.toList
   let xtors = toList (nl_data nl) ++ toList (nl_codata nl)
   forM_ xtors (lintXtor gr n)
 
 -- | Check whether all fields of the Xtor Label have at least one outgoing edge starting from the node.
-lintXtor :: Gr NodeLabel (EdgeLabel a) -> Node -> XtorLabel -> Either Error ()
+lintXtor :: MonadError Error m
+         => Gr NodeLabel (EdgeLabel a) -> Node -> XtorLabel -> m ()
 lintXtor gr n (MkXtorLabel xn arity) = do
   let outs = (\(_,_,x) -> x) <$> out gr n
   forM_ (enumerate arity) $ \(n,pc) -> lintXtorArgument outs xn pc n
 
-lintXtorArgument :: [EdgeLabel a] -> XtorName -> PrdCns -> Int -> Either Error ()
+lintXtorArgument :: MonadError Error m
+                 => [EdgeLabel a] -> XtorName -> PrdCns -> Int -> m ()
 lintXtorArgument outs xn pc i = do
   let filtered = [ () | EdgeSymbol _ xn' pc' i' <- outs, xn == xn', pc == pc', i == i']
   if null filtered
-    then Left (TypeAutomatonError ("TypeAutomata Linter: The Xtor " <> T.pack (show xn) <> " has missing outgoing edge"))
+    then throwAutomatonError ["TypeAutomata Linter: The Xtor " <> T.pack (show xn) <> " has missing outgoing edge"]
     else pure ()

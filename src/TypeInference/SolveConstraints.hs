@@ -167,7 +167,7 @@ computeKVarSolution DefaultCBV      sets = return $ computeKVarSolution' ((\(xs,
 computeKVarSolution DefaultCBN      sets = return $ computeKVarSolution' ((\(xs,cc) -> case cc of Nothing -> (xs, CBN); Just cc' -> (xs,cc')) <$> sets)
 computeKVarSolution ErrorUnresolved sets = if all (\(_,cc) -> isJust cc) sets
                                            then return $ computeKVarSolution' (map (\(xs,mcc) -> (xs, fromJust mcc)) sets)
-                                           else Left $ SolveConstraintsError "Not all kind variables could be resolved"
+                                           else Left $ SolveConstraintsError Nothing "Not all kind variables could be resolved"
 
 computeKVarSolution' :: [([KVar], CallingConvention)] -> Map KVar Kind
 computeKVarSolution' sets = M.fromList (concat (f <$> sets))
