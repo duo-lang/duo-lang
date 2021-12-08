@@ -30,8 +30,9 @@ instance PrettyAnn XtorLabel where
     prettyAnn labelName <> prettyArity labelArity
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ _ maybeDat maybeCodat tns refDat refCodat) = 
-    intercalateX ";" (catMaybes [printDat <$> maybeDat
+  prettyAnn (MkNodeLabel _ kind maybeDat maybeCodat tns refDat refCodat) =
+    prettyAnn kind <> ":" <+>
+    intercalateX ";" (catMaybes [ printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
                                 , printNominal tns
                                 , printRefDat refDat
