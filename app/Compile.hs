@@ -1,5 +1,6 @@
 module Compile (runCompile) where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 import System.IO.Error (tryIOError)
@@ -42,7 +43,7 @@ runCompile fp = do
                       Nothing -> putStrLn "Program does not contain a \"main\" function."
                       Just (cmd,_) -> do
                         let compiledCmd = focusCmd CBV (desugarCmd cmd)
-                        let evalCmd = eval compiledCmd CBV env
+                        evalCmd <- liftIO $ eval compiledCmd CBV env
                         case evalCmd of
                           Left err -> ppPrintIO err
                           Right res -> ppPrintIO res

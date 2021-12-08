@@ -108,10 +108,12 @@ cmd s = do
       steps <- gets steps
       case steps of
         NoSteps -> do
-          res <- fromRight $ eval com evalOrder env
+          resE <- liftIO $ eval com evalOrder env
+          res <- fromRight resE
           prettyRepl res
         Steps -> do
-          res <- fromRight $ evalSteps com evalOrder env
+          resE <- liftIO $ evalSteps com evalOrder env
+          res <- fromRight  resE
           forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
     Right _ -> prettyText "Unreachable"
     Left err -> prettyRepl err

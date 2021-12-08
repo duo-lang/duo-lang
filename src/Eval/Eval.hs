@@ -23,11 +23,11 @@ import Translate.Focusing
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment, CallingConvention) (Except Error) a }
+newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment, CallingConvention) (ExceptT Error IO) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment, CallingConvention))
 
-runEval :: EvalM a -> CallingConvention -> Environment -> Either Error a
-runEval e evalorder env = runExcept (runReaderT (unEvalM e) (env,evalorder))
+runEval :: EvalM a -> CallingConvention -> Environment -> IO (Either Error a)
+runEval e evalorder env = runExceptT (runReaderT (unEvalM e) (env,evalorder))
 
 ---------------------------------------------------------------------------------
 -- Helper functions
@@ -124,8 +124,8 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-eval :: Command Compiled -> CallingConvention -> Environment -> Either Error (Command Compiled)
+eval :: Command Compiled -> CallingConvention -> Environment -> IO (Either Error (Command Compiled))
 eval cmd cc env = runEval (evalM  (focusCmd cc cmd)) cc env
 
-evalSteps :: Command Compiled -> CallingConvention -> Environment -> Either Error [Command Compiled]
+evalSteps :: Command Compiled -> CallingConvention -> Environment -> IO (Either Error [Command Compiled])
 evalSteps cmd cc env = runEval (evalStepsM (focusCmd cc cmd)) cc env
