@@ -145,6 +145,7 @@ tyOpP :: Parser BinOp
 tyOpP = FunOp <$ thinRightarrow
     <|> InterOp <$ intersectionSym
     <|> UnionOp <$ unionSym
+    <|> ParOp <$ parSym
 
 opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
 opsChainP' p op = do

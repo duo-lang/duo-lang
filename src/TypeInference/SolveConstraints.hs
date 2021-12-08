@@ -136,15 +136,7 @@ unifyKinds (KindVar kv) (MonoKind cc1) = do
     Just cc2 -> if cc1 == cc2
                 then return () -- We have not learned new information!
                 else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
-unifyKinds (MonoKind cc1) (KindVar kv) = do
-  -- Add the MonoKind to the set containing kv
-  sets <- getKVars
-  let ([(kvset, cc2)] , rest)  = partition (\x -> kv `elem` fst x) sets
-  case cc2 of
-    Nothing -> putKVars $ (kvset, Just cc1):rest
-    Just cc2 -> if cc1 == cc2
-                then return () -- We have not learned new information!
-                else throwSolverError [ "Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+unifyKinds k1@(MonoKind _) k2@(KindVar _) = unifyKinds k2 k1
 unifyKinds (KindVar kv) (KindVar kv')  = do
   -- Union the two sets.
   sets <- getKVars
