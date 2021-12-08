@@ -1,18 +1,15 @@
 module TypeAutomata.Simplify where
 
-import Errors ( Error(..) )    
-import Syntax.Types
-import Syntax.Kinds
-import TypeAutomata.Definition ( TypeAutDet, TypeAut )
 import Control.Monad.Except
-import System.FilePath ( (</>), (<.>))
-import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
 import Data.GraphViz
     ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
-import Pretty.TypeAutomata (typeAutToDot)
+import System.FilePath ( (</>), (<.>))
+import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
 
-import Errors ( throwOtherError)    
-import Syntax.Types ( TypeScheme )
+import Errors ( Error(..), throwOtherError )    
+import Pretty.TypeAutomata (typeAutToDot)
+import Syntax.Types
+import Syntax.Kinds
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton ( typeToAut )
 import TypeAutomata.FromAutomaton ( autToType )
