@@ -77,17 +77,17 @@ data GenerateReader = GenerateReader { context :: [LinearContext Pos]
                                      , inferMode :: InferenceMode
                                      }
 
-initialReader :: Environment -> InferenceMode -> (Environment, GenerateReader)
+initialReader :: Environment Inferred -> InferenceMode -> (Environment Inferred, GenerateReader)
 initialReader env im = (env, GenerateReader { context = [], inferMode = im })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Environment, GenerateReader) (StateT GenerateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment, GenerateReader), MonadError Error)
+newtype GenM a = GenM { getGenM :: ReaderT (Environment Inferred, GenerateReader) (StateT GenerateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment Inferred, GenerateReader), MonadError Error)
 
-runGenM :: Environment -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
+runGenM :: Environment Inferred -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)

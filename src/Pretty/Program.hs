@@ -92,8 +92,8 @@ instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
 -- Prettyprinting of Environments
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn Environment where
-  prettyAnn Environment { prdEnv, cnsEnv, cmdEnv, declEnv } =
+instance PrettyAnn (Environment ph) where
+  prettyAnn MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv } =
     vsep [ppPrds,ppCns,ppCmds, ppDecls ]
     where
       ppPrds = case M.toList prdEnv of

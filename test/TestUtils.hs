@@ -27,7 +27,7 @@ getParsedDeclarations fp = do
   s <- T.readFile fp
   return (first (ParseError Nothing . T.pack . errorBundlePretty) (runFileParser fp programP s))
 
-getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error Environment)
+getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment Inferred))
 getEnvironment fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of

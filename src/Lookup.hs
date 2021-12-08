@@ -28,7 +28,7 @@ import Utils
 -- (2) MonadReader (Environment bs, a)
 ---------------------------------------------------------------------------------
 
-type EnvReader bs a m = (MonadError Error m, MonadReader (Environment, a) m)
+type EnvReader bs a m = (MonadError Error m, MonadReader (Environment Inferred, a) m)
 
 ---------------------------------------------------------------------------------
 -- Lookup Terms
@@ -92,11 +92,11 @@ withSTerm :: EnvReader bs a m
           => PrdCnsRep pc -> FreeVarName -> Term pc Inferred -> Loc -> TypeScheme (PrdCnsToPol pc)
           -> (m b -> m b)
 withSTerm PrdRep fv tm loc tys m = do
-  let modifyEnv (env@Environment { prdEnv }, rest) =
+  let modifyEnv (env@MkEnvironment { prdEnv }, rest) =
         (env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }, rest)
   local modifyEnv m
 withSTerm CnsRep fv tm loc tys m = do
-  let modifyEnv (env@Environment { cnsEnv }, rest) =
+  let modifyEnv (env@MkEnvironment { cnsEnv }, rest) =
         (env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }, rest)
   local modifyEnv m
 

@@ -20,6 +20,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
+import Syntax.CommonTerm (Phase(..))
 import TypeInference.Driver
 import Translate.Desugar
 import Utils (trimStr, defaultLoc)
@@ -32,7 +33,7 @@ import Text.Megaparsec.Error (errorBundlePretty)
 data EvalSteps = Steps | NoSteps
 
 data ReplState = ReplState
-  { replEnv :: Environment
+  { replEnv :: Environment Inferred
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: CallingConvention
@@ -55,7 +56,7 @@ initialReplState = ReplState { replEnv = mempty
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment -> Environment) -> Repl ()
+modifyEnvironment :: (Environment Inferred -> Environment Inferred) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()

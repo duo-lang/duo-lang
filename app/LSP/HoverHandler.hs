@@ -45,7 +45,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Just cache -> responder (Right (lookupInHoverMap pos cache))
  
 
-updateHoverCache :: Uri -> Environment -> LSPMonad ()
+updateHoverCache :: Uri -> Environment Inferred -> LSPMonad ()
 updateHoverCache uri env = do
   MkLSPConfig ref <- getConfig
   liftIO $ modifyIORef ref (M.insert uri (lookupHoverEnv env))
@@ -176,7 +176,7 @@ cmdEnvToHoverMap = M.unions. fmap f . M.toList
   where
     f (_, (cmd,_)) = commandToHoverMap cmd
 
-declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
+declEnvToHoverMap :: Environment Inferred -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =
   let
     ls' = (\(loc,decl) -> (locToRange loc, mkHover (printTranslation decl) (locToRange loc))) <$> ls
@@ -188,8 +188,8 @@ declEnvToHoverMap env ls =
       Data   -> ppPrint $ fromRight (error "boom") $ translateTypeUpper env (TyNominal NegRep Nothing data_name)
       Codata -> ppPrint $ fromRight (error "boom") $ translateTypeLower env (TyNominal PosRep Nothing data_name)
 
-lookupHoverEnv :: Environment -> HoverMap
-lookupHoverEnv env@Environment { prdEnv, cnsEnv, cmdEnv, declEnv } = 
+lookupHoverEnv :: Environment Inferred -> HoverMap
+lookupHoverEnv env@MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv } = 
   M.unions [ prdEnvToHoverMap prdEnv
            , cnsEnvToHoverMap cnsEnv
            , cmdEnvToHoverMap cmdEnv
