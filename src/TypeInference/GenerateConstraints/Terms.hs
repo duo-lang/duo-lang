@@ -70,7 +70,7 @@ genConstraintsTerm (BoundVar loc rep idx) = do
 -- scheme has to be instantiated with fresh unification variables.
 --
 genConstraintsTerm (FreeVar loc rep v) = do
-  tys <- snd <$> lookupSTerm rep v
+  tys <- snd <$> lookupTerm rep v
   ty <- instantiateTypeScheme v loc tys
   return (FreeVar (loc, ty) rep v)
 --
@@ -460,12 +460,12 @@ genConstraintsTermRecursive :: Loc
                             -> GenM (Term pc Inferred)
 genConstraintsTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withSTerm PrdRep fv (FreeVar (loc, x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsTerm tm)
+  tm <- withTerm PrdRep fv (FreeVar (loc, x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint (getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withSTerm CnsRep fv (FreeVar (loc,y) CnsRep fv) loc (TypeScheme [] y) (genConstraintsTerm tm)
+  tm <- withTerm CnsRep fv (FreeVar (loc,y) CnsRep fv) loc (TypeScheme [] y) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint x (getTypeTerm tm))
   return tm
 

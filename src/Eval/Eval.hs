@@ -68,11 +68,11 @@ evalTermOnce (Apply _ _ prd cns) = evalApplyOnce prd cns
 evalApplyOnce :: Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce (FreeVar _ PrdRep fv) cns = do
-  (prd,_) <- lookupSTerm PrdRep fv
+  (prd,_) <- lookupTerm PrdRep fv
   eo <- lookupEvalOrder
   return (Just (Apply () Nothing (focusTerm eo (desugarTerm prd)) cns))
 evalApplyOnce prd (FreeVar _ CnsRep fv) = do
-  (cns,_) <- lookupSTerm CnsRep fv
+  (cns,_) <- lookupTerm CnsRep fv
   eo <- lookupEvalOrder
   return (Just (Apply () Nothing prd (focusTerm eo (desugarTerm cns))))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.

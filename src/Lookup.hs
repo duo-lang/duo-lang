@@ -1,11 +1,11 @@
 module Lookup
   ( PrdCnsToPol
   , prdCnsToPol
-  , lookupSTerm
+  , lookupTerm
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
-  , withSTerm
+  , withTerm
     ) where
 
 import Control.Monad.Except
@@ -25,7 +25,7 @@ import Utils
 ---------------------------------------------------------------------------------
 -- We define functions which work for every Monad which implements:
 -- (1) MonadError Error
--- (2) MonadReader (Environment bs, a)
+-- (2) MonadReader (Environment ph, a)
 ---------------------------------------------------------------------------------
 
 type EnvReader ph a m = (MonadError Error m, MonadReader (Environment ph, a) m)
@@ -34,15 +34,15 @@ type EnvReader ph a m = (MonadError Error m, MonadReader (Environment ph, a) m)
 -- Lookup Terms
 ---------------------------------------------------------------------------------
 
--- | Lookup the term and the type of a symmetric term bound in the environment.
-lookupSTerm :: EnvReader ph a m
-            => PrdCnsRep pc -> FreeVarName -> m (Term pc ph, TypeScheme (PrdCnsToPol pc))
-lookupSTerm PrdRep fv = do
+-- | Lookup the term and the type of a term bound in the environment.
+lookupTerm :: EnvReader ph a m
+           => PrdCnsRep pc -> FreeVarName -> m (Term pc ph, TypeScheme (PrdCnsToPol pc))
+lookupTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in environment."]
     Just (res1,_,res2) -> return (res1,res2)
-lookupSTerm CnsRep fv = do
+lookupTerm CnsRep fv = do
   env <- asks fst
   case M.lookup fv (cnsEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in the environment."]
@@ -88,14 +88,14 @@ lookupXtorSig xtn pol = do
 -- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
 
-withSTerm :: EnvReader ph a m
-          => PrdCnsRep pc -> FreeVarName -> Term pc ph -> Loc -> TypeScheme (PrdCnsToPol pc)
-          -> (m b -> m b)
-withSTerm PrdRep fv tm loc tys m = do
+withTerm :: EnvReader ph a m
+         => PrdCnsRep pc -> FreeVarName -> Term pc ph -> Loc -> TypeScheme (PrdCnsToPol pc)
+         -> (m b -> m b)
+withTerm PrdRep fv tm loc tys m = do
   let modifyEnv (env@MkEnvironment { prdEnv }, rest) =
         (env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }, rest)
   local modifyEnv m
-withSTerm CnsRep fv tm loc tys m = do
+withTerm CnsRep fv tm loc tys m = do
   let modifyEnv (env@MkEnvironment { cnsEnv }, rest) =
         (env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }, rest)
   local modifyEnv m
