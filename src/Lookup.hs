@@ -28,15 +28,15 @@ import Utils
 -- (2) MonadReader (Environment bs, a)
 ---------------------------------------------------------------------------------
 
-type EnvReader bs a m = (MonadError Error m, MonadReader (Environment Inferred, a) m)
+type EnvReader ph a m = (MonadError Error m, MonadReader (Environment ph, a) m)
 
 ---------------------------------------------------------------------------------
 -- Lookup Terms
 ---------------------------------------------------------------------------------
 
 -- | Lookup the term and the type of a symmetric term bound in the environment.
-lookupSTerm :: EnvReader bs a m
-            => PrdCnsRep pc -> FreeVarName -> m (Term pc Inferred, TypeScheme (PrdCnsToPol pc))
+lookupSTerm :: EnvReader ph a m
+            => PrdCnsRep pc -> FreeVarName -> m (Term pc ph, TypeScheme (PrdCnsToPol pc))
 lookupSTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
@@ -53,7 +53,7 @@ lookupSTerm CnsRep fv = do
 ---------------------------------------------------------------------------------
 
 -- | Find the type declaration belonging to a given Xtor Name.
-lookupDataDecl :: EnvReader bs a m
+lookupDataDecl :: EnvReader ph a m
                => XtorName -> m DataDecl
 lookupDataDecl xt = do
   let containsXtor :: XtorSig Pos -> Bool
@@ -67,7 +67,7 @@ lookupDataDecl xt = do
     Just decl -> return decl
 
 -- | Find the type declaration belonging to a given TypeName.
-lookupTypeName :: EnvReader bs a m
+lookupTypeName :: EnvReader ph a m
                => TypeName -> m DataDecl
 lookupTypeName tn = do
   env <- asks $ fmap snd . declEnv . fst
@@ -76,7 +76,7 @@ lookupTypeName tn = do
     Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
 
 -- | Find the XtorSig belonging to a given XtorName.
-lookupXtorSig :: EnvReader bs a m
+lookupXtorSig :: EnvReader ph a m
               => XtorName -> PolarityRep pol -> m (XtorSig pol)
 lookupXtorSig xtn pol = do
   decl <- lookupDataDecl xtn
@@ -88,8 +88,8 @@ lookupXtorSig xtn pol = do
 -- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
 
-withSTerm :: EnvReader bs a m
-          => PrdCnsRep pc -> FreeVarName -> Term pc Inferred -> Loc -> TypeScheme (PrdCnsToPol pc)
+withSTerm :: EnvReader ph a m
+          => PrdCnsRep pc -> FreeVarName -> Term pc ph -> Loc -> TypeScheme (PrdCnsToPol pc)
           -> (m b -> m b)
 withSTerm PrdRep fv tm loc tys m = do
   let modifyEnv (env@MkEnvironment { prdEnv }, rest) =
