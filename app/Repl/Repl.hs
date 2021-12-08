@@ -23,6 +23,7 @@ import Syntax.Kinds ( CallingConvention(CBV) )
 import Syntax.CommonTerm (Phase(..))
 import TypeInference.Driver
 import Translate.Desugar
+import Translate.Focusing
 import Utils (trimStr, defaultLoc)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -103,17 +104,18 @@ cmd s = do
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ inferredCmd]) -> do
-      let com = desugarCmd inferredCmd
       evalOrder <- gets evalOrder
       env <- gets replEnv
       steps <- gets steps
+      let compiledCmd = focusCmd evalOrder (desugarCmd inferredCmd)
+      let compiledEnv = focusEnvironment evalOrder (desugarEnvironment env)
       case steps of
         NoSteps -> do
-          resE <- liftIO $ eval com evalOrder env
+          resE <- liftIO $ eval compiledCmd compiledEnv
           res <- fromRight resE
           prettyRepl res
         Steps -> do
-          resE <- liftIO $ evalSteps com evalOrder env
+          resE <- liftIO $ evalSteps compiledCmd compiledEnv
           res <- fromRight  resE
           forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
     Right _ -> prettyText "Unreachable"

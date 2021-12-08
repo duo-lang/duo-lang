@@ -10,11 +10,12 @@ import Eval.Eval (eval)
 import Parser.Parser (runFileParser)
 import Parser.Program (programP)
 import Pretty.Pretty (ppPrintIO)
-import Translate.Desugar (desugarCmd)
-import Translate.Focusing (focusCmd)
+import Translate.Desugar (desugarCmd, desugarEnvironment)
+import Translate.Focusing (focusCmd, focusEnvironment)
 import TypeInference.Driver (inferProgramIO, DriverState(..), InferenceOptions(..), defaultInferenceOptions)
 import Syntax.Program (Environment(..))
 import Syntax.Kinds (CallingConvention(..))
+import Syntax.CommonTerm (Phase(..))
 
 
 driverState :: DriverState
@@ -43,7 +44,8 @@ runCompile fp = do
                       Nothing -> putStrLn "Program does not contain a \"main\" function."
                       Just (cmd,_) -> do
                         let compiledCmd = focusCmd CBV (desugarCmd cmd)
-                        evalCmd <- liftIO $ eval compiledCmd CBV env
+                        let compiledEnv :: Environment Compiled = focusEnvironment CBV (desugarEnvironment env)
+                        evalCmd <- liftIO $ eval compiledCmd compiledEnv
                         case evalCmd of
                           Left err -> ppPrintIO err
                           Right res -> ppPrintIO res
