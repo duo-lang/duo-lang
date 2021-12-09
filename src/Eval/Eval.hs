@@ -22,7 +22,7 @@ import Syntax.Terms
 ---------------------------------------------------------------------------------
 
 newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment Compiled, ()) (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment Compiled, ()))
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment Compiled, ()), MonadIO)
 
 runEval :: EvalM a -> Environment Compiled -> IO (Either Error a)
 runEval e env = runExceptT (runReaderT (unEvalM e) (env, ()))
@@ -55,19 +55,21 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
 evalTermOnce (Done _) = return Nothing
-evalTermOnce (Print _ _ _) = return Nothing
-evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated"]
-evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated"]
+evalTermOnce (Print _ prd cmd) = do
+  liftIO $ ppPrintIO prd
+  return (Just cmd)
+evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
+evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (KindVar)"]
 evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
 
 evalApplyOnce :: CallingConvention -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
-evalApplyOnce _ (FreeVar _ PrdRep fv) cns = do
+evalApplyOnce eo (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupTerm PrdRep fv
-  return (Just (Apply () Nothing prd cns))
-evalApplyOnce _ prd (FreeVar _ CnsRep fv) = do
+  return (Just (Apply () (Just (MonoKind eo)) prd cns))
+evalApplyOnce eo prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupTerm CnsRep fv
-  return (Just (Apply () Nothing prd cns))
+  return (Just (Apply () (Just (MonoKind eo)) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases

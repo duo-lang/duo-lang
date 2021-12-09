@@ -64,7 +64,7 @@ isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocus
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: CallingConvention -> Command Compiled -> Maybe (Command Compiled)
-isFocusedCmd eo (Apply _ kind prd cns) = Apply () kind <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
+isFocusedCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (Done _)               = Just (Done ())
 isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 
