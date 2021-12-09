@@ -7,6 +7,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List (find)
 import Data.Text qualified as T
+import Text.Read (readMaybe)
 
 import Errors
 import Lookup
@@ -48,6 +49,21 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
                                    , "Argument lengths don't coincide."
                                    ]
 
+
+convertInt :: Int -> Term Prd Compiled
+convertInt 0 = XtorCall () PrdRep (MkXtorName Nominal "Z") []
+convertInt n = XtorCall () PrdRep (MkXtorName Nominal "S") [PrdTerm $ convertInt (n-1)]
+
+
+readInt :: IO (Term Prd Compiled)
+readInt = do
+  input <- getLine
+  case readMaybe input of
+    Nothing -> putStrLn "Incorrect input" >> readInt
+    Just i -> pure (convertInt i)
+
+
+
 ---------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------
@@ -58,6 +74,9 @@ evalTermOnce (Done _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
   liftIO $ ppPrintIO prd
   return (Just cmd)
+evalTermOnce (Read _ cns) = do
+  tm <- liftIO $ readInt
+  return (Just (Apply () (Just (MonoKind CBV)) tm cns))
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (KindVar)"]
 evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
