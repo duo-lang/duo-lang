@@ -32,6 +32,10 @@ import Syntax.Kinds ( CallingConvention(..), Kind(..) )
 
 -- | Check whether given sterms is substitutable.
 isValueTerm :: CallingConvention -> PrdCnsRep pc -> Term pc Compiled -> Maybe (Term pc Compiled)
+isValueTerm CBV PrdRep FreeVar {}        = Nothing
+isValueTerm CBN PrdRep fv@(FreeVar {})   = Just fv
+isValueTerm CBV CnsRep fv@(FreeVar {})   = Just fv
+isValueTerm CBN CnsRep (FreeVar {})      = Nothing
 isValueTerm CBV PrdRep MuAbs {}          = Nothing              -- CBV: so Mu is not a value.
 isValueTerm CBV CnsRep (MuAbs _ pc v cmd) = do
     cmd' <- isFocusedCmd CBV cmd -- CBV: so Mu~ is always a Value.
