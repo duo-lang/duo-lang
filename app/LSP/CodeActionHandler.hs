@@ -57,7 +57,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
         Right (env,_) -> do
           responder (Right (generateCodeActions ident range env))
 
-generateCodeActions :: TextDocumentIdentifier -> Range -> Environment -> List (Command  |? CodeAction)
+generateCodeActions :: TextDocumentIdentifier -> Range -> Environment Inferred -> List (Command  |? CodeAction)
 generateCodeActions ident (Range {_start= start}) env = do
   -- Producer declarations
   let prds = M.toList $ prdEnv env

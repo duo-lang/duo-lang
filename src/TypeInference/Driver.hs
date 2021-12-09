@@ -83,7 +83,7 @@ defaultInferenceOptions = InferenceOptions
 
 data DriverState = DriverState
   { driverOpts :: InferenceOptions
-  , driverEnv :: Environment
+  , driverEnv :: Environment Inferred
   }
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
@@ -96,7 +96,7 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 -- Utility functions
 ---------------------------------------------------------------------------------
 
-setEnvironment :: Environment -> DriverM ()
+setEnvironment :: Environment Inferred -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
 
 -- | Only execute an action if verbosity is set to Verbose.
@@ -157,7 +157,7 @@ foo :: forall pol. DataDecl -> XtorSig pol -> DriverM (XtorSig pol)
 foo decl xtorsig = do
   env <- gets driverEnv
   let newEnv = env { declEnv = (defaultLoc,decl) : declEnv env}
-  let x :: ReaderT (Environment, ()) (Except Error)(XtorSig pol) = annotateXtors xtorsig
+  let x :: ReaderT (Environment Inferred, ()) (Except Error)(XtorSig pol) = annotateXtors xtorsig
   case runExcept (runReaderT x (newEnv,())) of
     Left err -> throwError err
     Right xtorSig -> return xtorSig
@@ -286,7 +286,7 @@ inferDecl ParseErrorDecl = do
 ---------------------------------------------------------------------------------
 
 inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment, Program Inferred)
+                     -> DriverM (Environment Inferred, Program Inferred)
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file
@@ -307,7 +307,7 @@ inferProgram decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [Declaration Parsed]
-                -> IO (Either Error (Environment, Program Inferred))
+                -> IO (Either Error (Environment Inferred, Program Inferred))
 inferProgramIO state decls = do
     x <- execDriverM state (inferProgram decls)
     case x of
