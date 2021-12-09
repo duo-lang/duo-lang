@@ -28,7 +28,7 @@ prd oneA := S(Z);
 prd threeA := S(S(S(Z)));
 
 # Incomplete pattern and copattern matches
-cns foo := match { True => Print('T) };
+cns foo := match { True => Print('T); Done };
 
 prd isSuccA := cocase { ApNB(n)[*] => case n of { 
                  S(m) => True

@@ -65,8 +65,8 @@ isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocus
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: CallingConvention -> Command Compiled -> Maybe (Command Compiled)
 isFocusedCmd eo (Apply _ kind prd cns) = Apply () kind <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
-isFocusedCmd _  (Done _)          = Just (Done ())
-isFocusedCmd eo (Print _ prd)     = Print () <$> isValueTerm eo PrdRep prd
+isFocusedCmd _  (Done _)               = Just (Done ())
+isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -178,8 +178,8 @@ focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
 focusCmd :: CallingConvention -> Command Compiled -> Command Compiled
 focusCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (Done _) = Done ()
-focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd)) = Print () prd
-focusCmd eo (Print _ prd) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0))))
+focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd) cmd) = Print () prd (focusCmd eo cmd)
+focusCmd eo (Print _ prd cmd) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs

@@ -491,7 +491,7 @@ prd mltNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] =>
 prd expNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
 prd subSafeNominal := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
 
-cmd exampleCommand1 := Print('2);
-cmd exampleCommand2 := mu x.Print('2) >> mu y. Print('4);
+cmd exampleCommand1 := Print('2); Done;
+cmd exampleCommand2 := mu x.Print('2); Done >> mu y. Print('4); Done ;
 
 prd newStylePredTwo := (cocase { 'Ap(x)[*] => case x of { 'Z() => 'Z(), 'S(x) => x }}.'Ap('S('S('S('Z()))))[*]);

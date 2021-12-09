@@ -55,7 +55,7 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
 -- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
 evalTermOnce (Done _) = return Nothing
-evalTermOnce (Print _ _) = return Nothing
+evalTermOnce (Print _ _ _) = return Nothing
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated"]
 evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated"]
 evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns

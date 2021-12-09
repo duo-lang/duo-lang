@@ -69,7 +69,10 @@ createNamesCommand (Apply _ kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
   return (Apply defaultLoc kind prd' cns')
-createNamesCommand (Print _ prd) = createNamesTerm prd >>= \prd' -> return (Print defaultLoc prd')
+createNamesCommand (Print _ prd cmd) = do
+  prd' <- createNamesTerm prd
+  cmd' <- createNamesCommand cmd
+  return (Print defaultLoc prd' cmd')
 
 createNamesCmdCase :: CmdCase ext -> CreateNameM (CmdCase Parsed)
 createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
