@@ -12,4 +12,4 @@ prd rec addA := \x => \y => case x of { Z => y
 					        };
 		     
 
-cmd main := Print(addA 2 3); Done;
+cmd main := Print(addA 2 3); Print(addA 4 5); Done;
