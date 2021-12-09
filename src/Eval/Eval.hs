@@ -57,10 +57,12 @@ convertInt n = XtorCall () PrdRep (MkXtorName Nominal "S") [PrdTerm $ convertInt
 
 readInt :: IO (Term Prd Compiled)
 readInt = do
+  putStrLn "Enter a positive integer:"
   input <- getLine
   case readMaybe input of
-    Nothing -> putStrLn "Incorrect input" >> readInt
-    Just i -> pure (convertInt i)
+    Nothing        -> putStrLn "Incorrect input." >> readInt
+    Just i | i < 0 -> putStrLn "Incorrect input." >> readInt
+    Just i         -> pure (convertInt i)
 
 
 
