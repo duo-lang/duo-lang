@@ -35,7 +35,7 @@ isDesugaredTerm Comatch {} = False
 
 isDesugaredCommand :: Command Inferred -> Bool
 isDesugaredCommand (Apply _ _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
-isDesugaredCommand (Print _ prd) = isDesugaredTerm prd
+isDesugaredCommand (Print _ prd cmd) = isDesugaredTerm prd && isDesugaredCommand cmd
 isDesugaredCommand (Done _) = True
 
 ---------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ desugarCmdCase (MkCmdCase _ xt args cmd) = MkCmdCase () xt args (desugarCmd cmd)
 
 desugarCmd :: Command Inferred -> Command Compiled
 desugarCmd (Apply _ kind prd cns) = Apply () kind (desugarTerm prd) (desugarTerm cns)
-desugarCmd (Print _ prd) = Print () (desugarTerm prd)
+desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (Done _) = Done ()
 
 ---------------------------------------------------------------------------------

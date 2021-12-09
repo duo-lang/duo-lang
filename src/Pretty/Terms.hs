@@ -102,7 +102,7 @@ instance PrettyAnn (Term pc ext) where
 
 instance PrettyAnn (Command ext) where
   prettyAnn (Done _)= annKeyword "Done"
-  prettyAnn (Print _ t) = annKeyword "Print" <> parens (prettyAnn t)
+  prettyAnn (Print _ t cmd) = annKeyword "Print" <> parens (prettyAnn t) <> semi <> prettyAnn cmd
   prettyAnn (Apply _ _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
 
 instance PrettyAnn (NamedRep (Term pc ext)) where
