@@ -20,8 +20,10 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
+import Syntax.CommonTerm (Phase(..))
 import TypeInference.Driver
 import Translate.Desugar
+import Translate.Focusing
 import Utils (trimStr, defaultLoc)
 import Text.Megaparsec.Error (errorBundlePretty)
 
@@ -32,7 +34,7 @@ import Text.Megaparsec.Error (errorBundlePretty)
 data EvalSteps = Steps | NoSteps
 
 data ReplState = ReplState
-  { replEnv :: Environment
+  { replEnv :: Environment Inferred
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: CallingConvention
@@ -55,7 +57,7 @@ initialReplState = ReplState { replEnv = mempty
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment -> Environment) -> Repl ()
+modifyEnvironment :: (Environment Inferred -> Environment Inferred) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
@@ -102,16 +104,19 @@ cmd s = do
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ inferredCmd]) -> do
-      let com = desugarCmd inferredCmd
       evalOrder <- gets evalOrder
       env <- gets replEnv
       steps <- gets steps
+      let compiledCmd = focusCmd evalOrder (desugarCmd inferredCmd)
+      let compiledEnv = focusEnvironment evalOrder (desugarEnvironment env)
       case steps of
         NoSteps -> do
-          res <- fromRight $ eval com evalOrder env
+          resE <- liftIO $ eval compiledCmd compiledEnv
+          res <- fromRight resE
           prettyRepl res
         Steps -> do
-          res <- fromRight $ evalSteps com evalOrder env
+          resE <- liftIO $ evalSteps compiledCmd compiledEnv
+          res <- fromRight  resE
           forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
     Right _ -> prettyText "Unreachable"
     Left err -> prettyRepl err

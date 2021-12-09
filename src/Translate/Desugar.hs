@@ -3,6 +3,7 @@ module Translate.Desugar
   , desugarPCTerm
   , desugarProgram
   , desugarCmd
+  , desugarEnvironment
   , isDesugaredTerm
   , isDesugaredCommand
   )
@@ -10,7 +11,7 @@ module Translate.Desugar
 
 import Syntax.Terms
 import Syntax.CommonTerm
-import Syntax.Program ( Declaration(..), Program )
+import Syntax.Program ( Declaration(..), Program, Environment(..) )
 
 ---------------------------------------------------------------------------------
 -- Check if term is desugared
@@ -104,3 +105,11 @@ desugarDecl ParseErrorDecl                      = ParseErrorDecl
 desugarProgram :: Program Inferred -> Program Compiled
 desugarProgram ps = desugarDecl <$> ps
 
+desugarEnvironment :: Environment Inferred -> Environment Compiled
+desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) =
+    MkEnvironment
+      { prdEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> prdEnv
+      , cnsEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> cnsEnv
+      , cmdEnv = (\(cmd,loc) -> (desugarCmd cmd,loc)) <$> cmdEnv
+      , declEnv = declEnv
+      }

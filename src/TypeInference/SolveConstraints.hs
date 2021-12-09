@@ -15,7 +15,7 @@ import Data.Set qualified as S
 
 import Errors
 import Syntax.Types
-import Syntax.CommonTerm (XtorName)
+import Syntax.CommonTerm (XtorName, Phase(..))
 import Syntax.Program (Environment)
 import Syntax.Kinds
 import Syntax.Zonking
@@ -41,9 +41,9 @@ createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fro
                                                          , sst_kvars = [([kv], Nothing) | kv <- kuvs]
                                                          , sst_inferMode = im }
 
-type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
+type SolverM a = (ReaderT (Environment Inferred, ()) (StateT SolverState (Except Error))) a
 
-runSolverM :: SolverM a -> Environment -> SolverState -> Either Error (a, SolverState)
+runSolverM :: SolverM a -> Environment Inferred -> SolverState -> Either Error (a, SolverState)
 runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 ------------------------------------------------------------------------------
@@ -376,7 +376,7 @@ zonkVariableState m (VariableState lbs ubs k) =
     VariableState (zonkType bisubst <$> lbs) (zonkType bisubst <$> ubs) (zonkKind bisubst k)
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment -> InferenceMode -> KindPolicy -> Either Error SolverResult
+solveConstraints :: ConstraintSet -> Environment Inferred -> InferenceMode -> KindPolicy -> Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env im policy = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   kvarSolution <- computeKVarSolution policy (sst_kvars solverState)
