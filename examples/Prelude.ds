@@ -35,4 +35,4 @@ data Unit : Type CBV { Unit };
 prd id := \x => x;
 
 # # Generic print consumer
-cns print := mu x.Print(x);
+cns print := mu x.Print(x); Done;

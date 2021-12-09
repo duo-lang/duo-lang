@@ -441,9 +441,10 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)
-genConstraintsCommand (Print loc t) = do
-  t' <- genConstraintsTerm t
-  return (Print loc t')
+genConstraintsCommand (Print loc prd cmd) = do
+  prd' <- genConstraintsTerm prd
+  cmd' <- genConstraintsCommand cmd
+  return (Print loc prd' cmd')
 genConstraintsCommand (Apply loc kind t1 t2) = do
   t1' <- genConstraintsTerm t1
   t2' <- genConstraintsTerm t2

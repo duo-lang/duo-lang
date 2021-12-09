@@ -109,8 +109,10 @@ printCmdP :: Parser (Command Parsed, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
   _ <- printKwP
-  (arg,endPos) <- parens (fst <$> termP PrdRep)
-  return (Print (Loc startPos endPos) arg, endPos)
+  (arg,_) <- parens (fst <$> termP PrdRep)
+  _ <- semi
+  (cmd, endPos) <- commandP
+  return (Print (Loc startPos endPos) arg cmd, endPos)
 
 commandP :: Parser (Command Parsed, SourcePos)
 commandP =

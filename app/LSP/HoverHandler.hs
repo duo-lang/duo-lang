@@ -133,8 +133,8 @@ applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 commandToHoverMap :: Terms.Command Inferred -> HoverMap
 commandToHoverMap (Apply loc kind prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns, applyToHoverMap (locToRange loc) kind]
-commandToHoverMap (Print _ prd)     = termToHoverMap prd
-commandToHoverMap (Done _)          = M.empty 
+commandToHoverMap (Print _ prd cmd)        = M.unions [termToHoverMap prd, commandToHoverMap cmd]
+commandToHoverMap (Done _)                 = M.empty 
 
 xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
 xtorArgsToHoverMap subst = M.unions (pctermToHoverMap <$> subst)
