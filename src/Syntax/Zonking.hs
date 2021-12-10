@@ -12,7 +12,7 @@ import Syntax.Kinds
 -- Bisubstitution
 ---------------------------------------------------------------------------------
 
-data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg) 
+data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg)
                                        , kvarSubst :: Map KVar Kind
                                        }
 
@@ -89,4 +89,5 @@ zonkCommand :: Bisubstitution -> Command Inferred -> Command Inferred
 zonkCommand bisubst (Apply ext kind prd cns) = Apply ext (zonkKind bisubst <$> kind) (zonkTerm bisubst prd) (zonkTerm bisubst cns)
 zonkCommand bisubst (Print ext prd cmd) = Print ext (zonkTerm bisubst prd) (zonkCommand bisubst cmd)
 zonkCommand bisubst (Read ext cns) = Read ext (zonkTerm bisubst cns)
+zonkCommand _       (Call ext fv) = Call ext fv
 zonkCommand _       (Done ext) = Done ext

@@ -65,6 +65,7 @@ createNamesTerm (Comatch _ ns cases) = do
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand (Done _) = return $ Done defaultLoc
+createNamesCommand (Call _ fv) = return $ Call defaultLoc fv
 createNamesCommand (Apply _ kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns

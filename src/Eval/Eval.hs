@@ -70,7 +70,7 @@ readInt = do
 -- Terms
 ---------------------------------------------------------------------------------
 
--- | Returns Notihng if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
+-- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
 evalTermOnce (Done _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
@@ -79,6 +79,9 @@ evalTermOnce (Print _ prd cmd) = do
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
   return (Just (Apply () (Just (MonoKind CBV)) tm cns))
+evalTermOnce (Call _ fv) = do
+  cmd <- lookupCommand fv
+  return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (KindVar)"]
 evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
@@ -101,9 +104,9 @@ evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = 
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
-evalApplyOnce CBV (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) = 
+evalApplyOnce CBV (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce CBN prd@(MuAbs _ PrdRep _ _) (MuAbs _ CnsRep _ cmd) = 
+evalApplyOnce CBN prd@(MuAbs _ PrdRep _ _) (MuAbs _ CnsRep _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))
 evalApplyOnce _ (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpening [CnsTerm cns] cmd))
 evalApplyOnce _ prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpening [PrdTerm prd] cmd))

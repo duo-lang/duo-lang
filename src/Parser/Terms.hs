@@ -94,8 +94,7 @@ muAbstraction CnsRep = do
 applyCmdP :: Parser (Command Parsed, SourcePos)
 applyCmdP = do
   startPos <- getSourcePos
-  (prd, _pos) <- termP PrdRep
-  _ <- commandSym
+  (prd, _pos) <- try (termP PrdRep <* commandSym)
   (cns, endPos) <- termP CnsRep
   return (Apply (Loc startPos endPos) Nothing prd cns, endPos)
 
@@ -121,15 +120,20 @@ readCmdP = do
   (arg,endPos) <- brackets (fst <$> termP CnsRep)
   return (Read (Loc startPos endPos) arg, endPos)
 
+commandVar :: Parser (Command Parsed, SourcePos)
+commandVar = do
+  startPos <- getSourcePos
+  (nm, endPos) <- freeVarName
+  return (Call (Loc startPos endPos) nm, endPos)
+
 commandP :: Parser (Command Parsed, SourcePos)
 commandP =
-  try (fst <$> (parens commandP)) <|>
-  doneCmdP <|>
-  printCmdP <|>
-  readCmdP <|>
-  applyCmdP
-
-
+  try (fst <$> (parens commandP))
+  <|> doneCmdP
+  <|> printCmdP
+  <|> readCmdP
+  <|> applyCmdP
+  <|> commandVar
 
 -------------------------------------------------------------------------------------------
 -- BNF Grammar
@@ -201,7 +205,7 @@ termCaseP ns = do
                           , tmcase_term = termClosing args res
                           }
   return (pmcase, endPos)
-  
+
 termCaseIP :: NominalStructural -> Parser (TermCaseI Parsed, SourcePos)
 termCaseIP ns = do
   startPos <- getSourcePos
@@ -280,7 +284,7 @@ comatchP PrdRep = do
   (cocases, ns, endPos) <- termCasesIP
   return (Comatch (Loc startPos endPos) ns cocases, endPos)
 
--- | Create a lambda abstraction. 
+-- | Create a lambda abstraction.
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
 mkLambda loc var tm = Comatch loc Structural [MkTermCaseI loc (MkXtorName Structural "Ap") [(Prd, Just var)] (termClosing [(Prd, var)] tm)]
 

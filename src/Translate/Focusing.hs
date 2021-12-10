@@ -68,8 +68,9 @@ isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocus
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: CallingConvention -> Command Compiled -> Maybe (Command Compiled)
-isFocusedCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
+isFocusedCmd eo (Apply _ _ prd cns)    = Apply () (Just (MonoKind eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (Done _)               = Just (Done ())
+isFocusedCmd _  (Call _ fv)            = Just (Call () fv)
 isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read _ cns)           = Read () <$> isValueTerm eo CnsRep cns
 
@@ -108,13 +109,13 @@ isFocusedCmd eo (Read _ cns)           = Read () <$> isValueTerm eo CnsRep cns
 --
 -- writing "t" and "T" for unfocused and focused terms, the helper function
 -- `focusXtor'`  works like this:
--- 
+--
 -- If we have transformed all arguments, we reconstruct the constructor application,
 -- and apply it to the generated alpha:
 --
 -- focuxXtor' Prd X [] Ts := X Ts >> alpha
 -- focusXtor' Cns X [] Ts := alpha >> X Ts
--- 
+--
 -- otherwise, we handle the next term from the substitution.
 -- If the argument is already a value, we shuffle it to the RHS:
 --
@@ -183,6 +184,7 @@ focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
 focusCmd :: CallingConvention -> Command Compiled -> Command Compiled
 focusCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (Done _) = Done ()
+focusCmd _  (Call _ fv) = Call () fv
 focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd) cmd) = Print () prd (focusCmd eo cmd)
 focusCmd eo (Print _ prd cmd) = Apply () (Just (MonoKind eo)) (focusTerm eo prd)
                                                               (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))
