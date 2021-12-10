@@ -2,6 +2,7 @@ module Lookup
   ( PrdCnsToPol
   , prdCnsToPol
   , lookupTerm
+  , lookupCommand
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
@@ -47,6 +48,18 @@ lookupTerm CnsRep fv = do
   case M.lookup fv (cnsEnv env) of
     Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in the environment."]
     Just (res1,_,res2) -> return (res1,res2)
+
+---------------------------------------------------------------------------------
+-- Lookup Commands
+---------------------------------------------------------------------------------
+
+-- | Lookup a command in the environment.
+lookupCommand :: EnvReader ph a m => FreeVarName -> m (Command ph)
+lookupCommand fv = do
+  env <- asks fst
+  case M.lookup fv (cmdEnv env) of
+    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in environment."]
+    Just (res, _) -> return res
 
 ---------------------------------------------------------------------------------
 -- Lookup information about type declarations
