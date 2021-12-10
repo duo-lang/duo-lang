@@ -18,6 +18,7 @@ module Parser.Lexer
   , cmdKwP
   , doneKwP
   , printKwP
+  , readKwP
   , forallKwP
   , dataKwP
   , codataKwP
@@ -167,7 +168,7 @@ moduleNameP = try $ do
 
 keywords :: [Text]
 keywords = ["match", "comatch", "case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
-           , "Done", "Print", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN"]
+           , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -204,6 +205,9 @@ doneKwP = keywordP "Done"
 
 printKwP :: Parser SourcePos
 printKwP = keywordP "Print"
+
+readKwP :: Parser SourcePos
+readKwP = keywordP "Read"
 
 forallKwP :: Parser SourcePos
 forallKwP = keywordP "forall"

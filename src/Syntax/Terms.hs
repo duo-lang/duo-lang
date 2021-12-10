@@ -221,6 +221,7 @@ data Command (ext :: Phase) where
   --   p >> c
   Apply :: CommandExt ext -> Maybe Kind -> Term Prd ext -> Term Cns ext -> Command ext
   Print :: CommandExt ext -> Term Prd ext -> Command ext -> Command ext
+  Read  :: CommandExt ext -> Term Cns ext -> Command ext
   Done  :: CommandExt ext -> Command ext
 
 deriving instance (Eq (Command Parsed))
@@ -265,6 +266,7 @@ termOpeningRec k args (Comatch _ ns cocases) =
 commandOpeningRec :: Int -> Substitution Compiled -> Command Compiled -> Command Compiled
 commandOpeningRec _ _ (Done _) = Done ()
 commandOpeningRec k args (Print _ t cmd) = Print () (termOpeningRec k args t) (commandOpeningRec k args cmd)
+commandOpeningRec k args (Read _ cns) = Read () (termOpeningRec k args cns)
 commandOpeningRec k args (Apply _ kind t1 t2) = Apply () kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 
 commandOpening :: Substitution Compiled -> Command Compiled -> Command Compiled
@@ -304,6 +306,7 @@ termClosingRec k args (Comatch ext ns cocases) =
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosingRec _ _ (Done ext) = Done ext
 commandClosingRec k args (Print ext t cmd) = Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
+commandClosingRec k args (Read ext cns) = Read ext (termClosingRec k args cns)
 commandClosingRec k args (Apply ext kind t1 t2) = Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
 
 termClosing :: [(PrdCns, FreeVarName)] -> Term pc ext -> Term pc ext
@@ -367,6 +370,7 @@ termCaseILocallyClosedRec env (MkTermCaseI _ _ args e) = do
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
+commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 
 termLocallyClosed :: Term pc ext -> Either Error ()
@@ -436,6 +440,7 @@ openTermComplete (Comatch _ ns cocases) = Comatch () ns (openTermCaseI <$> cocas
 openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ kind t1 t2) = Apply () kind (openTermComplete t1) (openTermComplete t2)
 openCommandComplete (Print _ t cmd) = Print () (openTermComplete t) (openCommandComplete cmd)
+openCommandComplete (Read _ cns) = Read () (openTermComplete cns)
 openCommandComplete (Done _) = Done ()
 
 
@@ -474,6 +479,7 @@ shiftCmdRec :: Int -> Command ext -> Command ext
 shiftCmdRec n (Apply ext kind prd cns) = Apply ext kind (shiftTermRec n prd) (shiftTermRec n cns)
 shiftCmdRec _ (Done ext) = Done ext
 shiftCmdRec n (Print ext prd cmd) = Print ext (shiftTermRec n prd) (shiftCmdRec n cmd)
+shiftCmdRec n (Read ext cns) = Read ext (shiftTermRec n cns)
 
 -- | Shift all unbound BoundVars up by one.
 shiftTerm :: Term pc ext -> Term pc ext
@@ -515,4 +521,5 @@ removeNamesCmdCase (MkCmdCase ext xt args cmd) = MkCmdCase ext xt ((\(pc,_) -> (
 removeNamesCmd :: Command ext -> Command ext
 removeNamesCmd (Apply ext kind prd cns) = Apply ext kind (removeNamesTerm prd) (removeNamesTerm cns)
 removeNamesCmd (Print ext prd cmd) = Print ext (removeNamesTerm prd) (removeNamesCmd cmd)
+removeNamesCmd (Read ext cns) = Read ext (removeNamesTerm cns)
 removeNamesCmd (Done ext) = Done ext

@@ -114,11 +114,19 @@ printCmdP = do
   (cmd, endPos) <- commandP
   return (Print (Loc startPos endPos) arg cmd, endPos)
 
+readCmdP :: Parser (Command Parsed, SourcePos)
+readCmdP = do
+  startPos <- getSourcePos
+  _ <- readKwP
+  (arg,endPos) <- brackets (fst <$> termP CnsRep)
+  return (Read (Loc startPos endPos) arg, endPos)
+
 commandP :: Parser (Command Parsed, SourcePos)
 commandP =
   try (fst <$> (parens commandP)) <|>
   doneCmdP <|>
   printCmdP <|>
+  readCmdP <|>
   applyCmdP
 
 

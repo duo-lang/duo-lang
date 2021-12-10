@@ -32,6 +32,10 @@ import Syntax.Kinds ( CallingConvention(..), Kind(..) )
 
 -- | Check whether given sterms is substitutable.
 isValueTerm :: CallingConvention -> PrdCnsRep pc -> Term pc Compiled -> Maybe (Term pc Compiled)
+isValueTerm CBV PrdRep FreeVar {}        = Nothing
+isValueTerm CBN PrdRep fv@(FreeVar {})   = Just fv
+isValueTerm CBV CnsRep fv@(FreeVar {})   = Just fv
+isValueTerm CBN CnsRep (FreeVar {})      = Nothing
 isValueTerm CBV PrdRep MuAbs {}          = Nothing              -- CBV: so Mu is not a value.
 isValueTerm CBV CnsRep (MuAbs _ pc v cmd) = do
     cmd' <- isFocusedCmd CBV cmd -- CBV: so Mu~ is always a Value.
@@ -67,6 +71,7 @@ isFocusedCmd :: CallingConvention -> Command Compiled -> Maybe (Command Compiled
 isFocusedCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (Done _)               = Just (Done ())
 isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
+isFocusedCmd eo (Read _ cns)           = Read () <$> isValueTerm eo CnsRep cns
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -179,7 +184,11 @@ focusCmd :: CallingConvention -> Command Compiled -> Command Compiled
 focusCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (Done _) = Done ()
 focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd) cmd) = Print () prd (focusCmd eo cmd)
-focusCmd eo (Print _ prd cmd) = Apply () (Just (MonoKind eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))
+focusCmd eo (Print _ prd cmd) = Apply () (Just (MonoKind eo)) (focusTerm eo prd)
+                                                              (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))
+focusCmd eo (Read _ (isValueTerm eo CnsRep -> Just cns)) = Read () cns
+focusCmd eo (Read _ cns) = Apply () (Just (MonoKind eo)) (MuAbs () PrdRep Nothing (Read () (BoundVar () CnsRep (0,0))))
+                                                         (focusTerm eo cns)
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs

@@ -445,6 +445,10 @@ genConstraintsCommand (Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd
   return (Print loc prd' cmd')
+genConstraintsCommand (Read loc cns) = do
+  cns' <- genConstraintsTerm cns
+  addConstraint (SubType (ReadConstraint loc)  (TyNominal PosRep Nothing (MkTypeName "Nat")) (getTypeTerm cns'))
+  return (Read loc cns')
 genConstraintsCommand (Apply loc kind t1 t2) = do
   t1' <- genConstraintsTerm t1
   t2' <- genConstraintsTerm t2
