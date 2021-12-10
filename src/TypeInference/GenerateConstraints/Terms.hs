@@ -441,7 +441,10 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)
-genConstraintsCommand (Call loc fv) = return (Call loc fv)
+genConstraintsCommand (Call loc fv) = do
+  -- Ensure that the referenced command is in scope
+  _ <- lookupCommand fv
+  return (Call loc fv)
 genConstraintsCommand (Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd
