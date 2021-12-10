@@ -1,19 +1,21 @@
 module Main where
 
-import System.Environment (getArgs)
+import Data.Version (showVersion)
+import Options.Applicative
 
+import Options
 import Compile (runCompile)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
+import Paths_dualsub (version)
 
 main :: IO ()
 main = do
-    args <- getArgs
-    dispatch args
+    opts <- execParser optParserInfo
+    dispatch opts
 
-dispatch :: [String] -> IO ()
-dispatch ["lsp"] = runLSP
-dispatch []      = runRepl
-dispatch [fp]    = runCompile fp
-dispatch _       = putStrLn "DualSub: Unrecognized arguments."
-
+dispatch :: Options -> IO ()
+dispatch OptRepl         = runRepl
+dispatch OptLSP          = runLSP
+dispatch (OptCompile fp) = runCompile fp
+dispatch OptVersion      = putStrLn (showVersion version)
