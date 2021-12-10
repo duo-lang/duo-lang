@@ -65,6 +65,7 @@ createNamesTerm (Comatch _ ns cases) = do
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand (Done _) = return $ Done defaultLoc
+createNamesCommand (Call _ fv) = return $ Call defaultLoc fv
 createNamesCommand (Apply _ kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
@@ -73,6 +74,9 @@ createNamesCommand (Print _ prd cmd) = do
   prd' <- createNamesTerm prd
   cmd' <- createNamesCommand cmd
   return (Print defaultLoc prd' cmd')
+createNamesCommand (Read _ cns) = do
+  cns' <- createNamesTerm cns
+  return (Read defaultLoc cns')
 
 createNamesCmdCase :: CmdCase ext -> CreateNameM (CmdCase Parsed)
 createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do

@@ -36,6 +36,8 @@ isDesugaredTerm Comatch {} = False
 isDesugaredCommand :: Command Inferred -> Bool
 isDesugaredCommand (Apply _ _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
 isDesugaredCommand (Print _ prd cmd) = isDesugaredTerm prd && isDesugaredCommand cmd
+isDesugaredCommand (Read _ cns) = isDesugaredTerm cns
+isDesugaredCommand (Call _ _) = True
 isDesugaredCommand (Done _) = True
 
 ---------------------------------------------------------------------------------
@@ -88,6 +90,8 @@ desugarCmdCase (MkCmdCase _ xt args cmd) = MkCmdCase () xt args (desugarCmd cmd)
 desugarCmd :: Command Inferred -> Command Compiled
 desugarCmd (Apply _ kind prd cns) = Apply () kind (desugarTerm prd) (desugarTerm cns)
 desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
+desugarCmd (Read _ cns) = Read () (desugarTerm cns)
+desugarCmd (Call _ fv) = Call () fv
 desugarCmd (Done _) = Done ()
 
 ---------------------------------------------------------------------------------
@@ -100,7 +104,7 @@ desugarDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (desugarCmd cmd)
 desugarDecl (DataDecl _ decl)                   = DataDecl () decl
 desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
-desugarDecl ParseErrorDecl                      = ParseErrorDecl   
+desugarDecl ParseErrorDecl                      = ParseErrorDecl
 
 desugarProgram :: Program Inferred -> Program Compiled
 desugarProgram ps = desugarDecl <$> ps

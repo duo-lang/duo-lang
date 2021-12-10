@@ -37,6 +37,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (PatternMatchConstraint loc) = parens ("Pattern match constraint at" <+> prettyAnn loc)
   prettyAnn (DtorApConstraint loc) = parens ("DtorAp constraint at" <+> prettyAnn loc)
   prettyAnn (CommandConstraint loc) = parens ("Constraint from logical command at" <+> prettyAnn loc)
+  prettyAnn (ReadConstraint loc)    = parens ("Constraint from Read command at" <+> prettyAnn loc)
   prettyAnn RecursionConstraint = parens "Recursive"
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"

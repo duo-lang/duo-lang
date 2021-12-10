@@ -12,4 +12,5 @@ prd rec addA := \x => \y => case x of { Z => y
 					        };
 		     
 
-cmd main := Print(addA 2 3); Print(addA 4 5); Done;
+
+cmd main := Read[ mu x. Read[mu y. Print(addA x y);Done]];

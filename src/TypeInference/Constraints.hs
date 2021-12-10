@@ -20,7 +20,8 @@ data ConstraintInfo
   | CaseConstraint Loc         -- ^ Constraint for checking that a pattern-match case has correct return type.
   | PatternMatchConstraint Loc -- ^ Constraint for checking that destructee of pattern match has correct type.
   | DtorApConstraint Loc       -- ^ Constraint for checking that destructee of destructor application has correct type.
-  | CommandConstraint Loc      -- ^ Constraint was generated from a command `prd >> cns`. (STerms)
+  | CommandConstraint Loc      -- ^ Constraint was generated from a command `prd >> cns`.
+  | ReadConstraint Loc         -- ^ Constraint was generated from a `Read[cns]` command
   | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
   -- Derived constraints generated during constraing solving
   | UpperBoundConstraint
