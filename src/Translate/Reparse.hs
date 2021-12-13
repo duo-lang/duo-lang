@@ -51,10 +51,11 @@ createNamesTerm (MuAbs _ pc _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
   return $ MuAbs defaultLoc pc var cmd'
-createNamesTerm (Dtor _ xt e args) = do
+createNamesTerm (Dtor _ xt e (args1,_,args2)) = do
   e' <- createNamesTerm e
-  args' <- sequence (createNamesPCTerm <$> args)
-  return $ Dtor defaultLoc xt e' args'
+  args1' <- sequence (createNamesPCTerm <$> args1)
+  args2' <- sequence (createNamesPCTerm <$> args2)
+  return $ Dtor defaultLoc xt e' (args1',(),args2')
 createNamesTerm (Match _ ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
