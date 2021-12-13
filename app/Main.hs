@@ -1,7 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Main where
 
 import Data.Version (showVersion)
-import Options.Applicative
+import Development.GitRev (gitHash, gitBranch)
 
 import Options (Options(..), parseOptions)
 import Compile (runCompile)
@@ -18,4 +19,10 @@ dispatch :: Options -> IO ()
 dispatch OptRepl         = runRepl
 dispatch OptLSP          = runLSP
 dispatch (OptCompile fp) = runCompile fp
-dispatch OptVersion      = putStrLn (showVersion version)
+dispatch OptVersion      = printVersion
+
+printVersion :: IO ()
+printVersion = do
+    putStrLn $ "DualSub Version: " <> showVersion version
+    putStrLn $ "Git Commit: " <> $(gitHash)
+    putStrLn $ "Git Branch: " <> $(gitBranch)
