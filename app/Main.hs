@@ -3,7 +3,7 @@ module Main where
 import Data.Version (showVersion)
 import Options.Applicative
 
-import Options
+import Options (Options(..), parseOptions)
 import Compile (runCompile)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
@@ -11,7 +11,7 @@ import Paths_dualsub (version)
 
 main :: IO ()
 main = do
-    opts <- execParser optParserInfo
+    opts <- parseOptions
     dispatch opts
 
 dispatch :: Options -> IO ()
