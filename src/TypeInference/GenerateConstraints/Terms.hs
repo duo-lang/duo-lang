@@ -249,8 +249,8 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       xtorSig <- lookupXtorSig xt NegRep
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
-      -- Split the argument list into the explicit and implicit arguments.
-      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of -- Check computation if "length" is correct!
+      -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
+      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of 
                                        (_,[]) -> error "Too short."
                                        (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
                                        (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
@@ -274,14 +274,14 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
       -- The type at which the destructor call happens is constructed from the
       -- (inferred) return type and the inferred types from the argument list
-      let lctxt = getTypArgs subst1Inferred ++ [CnsType retTypeNeg] ++ getTypArgs subst1Inferred
+      let lctxt = getTypArgs subst1Inferred ++ [CnsType retTypeNeg] ++ getTypArgs subst2Inferred
       let codataType = TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt lctxt]
       -- The type of the destructee must be a subtype of the translated nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
       -- The xtor sig has to be translated.
       xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
-      -- Split the argument list into the explicit and implicit arguments.
-      let (tys1,_retType, tys2) = case splitAt (length subst1) (sig_args xtorSigTranslated) of -- Check computation if "length" is correct!
+      -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
+      let (tys1,_retType, tys2) = case splitAt (length subst1) (sig_args xtorSigTranslated) of
                                        (_,[]) -> error "Too short."
                                        (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
                                        (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
