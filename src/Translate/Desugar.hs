@@ -62,9 +62,11 @@ desugarTerm (MuAbs _ pc bs cmd) = MuAbs () pc bs (desugarCmd cmd)
 desugarTerm (XMatch _ pc ns cases) = XMatch () pc ns (desugarCmdCase <$> cases)
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
-desugarTerm (Dtor _ xt t args) =
+desugarTerm (Dtor _ xt t (args1,_,args2)) =
   let
-    cmd = Apply () Nothing (desugarTerm t) (XtorCall () CnsRep xt $ (desugarPCTerm <$> args) ++ [CnsTerm $ FreeVar () CnsRep resVar])
+    args = (desugarPCTerm <$> args1) ++ [CnsTerm $ FreeVar () CnsRep resVar] ++ (desugarPCTerm <$> args2)
+    cmd = Apply () Nothing (desugarTerm t)
+                           (XtorCall () CnsRep xt args)
   in
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
