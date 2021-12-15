@@ -303,6 +303,64 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The argument types must be subtypes of the greatest translation of the xtor sig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
       return (Dtor (loc,retTypePos) xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
+genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } destructee (subst1,CnsRep,subst2)) = do
+  im <- asks (inferMode . snd)
+  case im of
+    --
+    -- Nominal Inference
+    --
+    InferNominal -> do
+      -- Infer the types of the arguments to the destructor.
+      subst1Inferred <- genConstraintsSubst subst1
+      subst2Inferred <- genConstraintsSubst subst2
+      -- Infer the type of the destructee.
+      destructeeInferred <- genConstraintsTerm destructee
+      -- Look up the data declaration and the xtorSig.
+      decl <- lookupDataDecl xt
+      let ty = TyNominal NegRep Nothing (data_name decl)
+      xtorSig <- lookupXtorSig xt NegRep
+      -- The type of the destructee must be a subtype of the nominal type.
+      addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
+      -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
+      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of 
+                                       (_,[]) -> error "Too short."
+                                       (_,CnsType _:_) -> error "Found CnsType, expected PrdType."
+                                       (tys1,PrdType ty:tys2) -> (tys1, ty,tys2)
+      -- The argument types must be subtypes of the types declared in the xtorSig.
+      genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
+      -- The return type is the last element in the xtorSig, which must be a CnsType.
+      return (Dtor (loc,retType) xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
+    --
+    -- Refinement Inference
+    --
+    InferRefined -> do
+      -- Infer the types of the arguments to the destructor.
+      subst1Inferred <- genConstraintsSubst subst1
+      subst2Inferred <- genConstraintsSubst subst2
+      -- Infer the type of the destructee.
+      destructeeInferred <- genConstraintsTerm destructee
+      -- Look up the data declaration and the xtorSig.
+      -- The type as well as the xtorSig have to be translated.
+      decl <- lookupDataDecl xt
+      -- Generate a unification variable for the return type.
+      (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
+      -- The type at which the destructor call happens is constructed from the
+      -- (inferred) return type and the inferred types from the argument list
+      let lctxt = getTypArgs subst1Inferred ++ [PrdType retTypePos] ++ getTypArgs subst2Inferred
+      let codataType = TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt lctxt]
+      -- The type of the destructee must be a subtype of the translated nominal type.
+      addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
+      -- The xtor sig has to be translated.
+      xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
+      -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
+      let (tys1,_retType, tys2) = case splitAt (length subst1) (sig_args xtorSigTranslated) of
+                                       (_,[]) -> error "Too short."
+                                       (_,CnsType _:_) -> error "Found CnsType, expected PrdType."
+                                       (tys1,PrdType ty:tys2) -> (tys1, ty,tys2)
+      -- The argument types must be subtypes of the greatest translation of the xtor sig.
+      genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
+      return (Dtor (loc,retTypeNeg) xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
+--
 --
 -- Structural Match (Syntactic Sugar):
 --
