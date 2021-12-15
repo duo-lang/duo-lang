@@ -10,7 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	console.log('Congratulations, your extension "dualsub-client" is now active!');
     
-	let config = vscode.workspace.getConfiguration("dualsub");
+	let config = vscode.workspace.getConfiguration("dualsub-client");
 
 	let defaultCmd = "dualsub";
 	let dualsubCmd = config.get<string>("executable") || defaultCmd;
@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
     args.push("lsp");
 
     let logconfig = config.get<string>("logfile");
-    if (!(logconfig === undefined || logconfig === null || logconfig === "")) {
+    if (!(logconfig === undefined || logconfig.length === 0)) {
         args.push("--logfile");
         args.push(logconfig);
     }
