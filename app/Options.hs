@@ -38,6 +38,7 @@ lspParser = OptLSP <$> (optional $ strOption mods)
     mods = fold [ long "logfile"
                 , short 'l'
                 , metavar "FILE"
+                , help "Specify the FILE that the LSP server will use for printing logs. If a logfile is not specified, output is directed to stderr."
                 ]
 
 
