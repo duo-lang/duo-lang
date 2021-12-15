@@ -11,7 +11,7 @@ import Syntax.CommonTerm
 
 
 ---------------------------------------------------------------------------------
--- Terms
+-- Pattern match cases and cocases
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (CmdCase ext) where
@@ -48,6 +48,10 @@ instance PrettyAnn (TermCaseI ext) where
       annSymbol "=>" <+>
       prettyAnn tmcasei_term
 
+---------------------------------------------------------------------------------
+-- Substitutions
+---------------------------------------------------------------------------------
+
 instance PrettyAnn (PrdCnsTerm ext) where
   prettyAnn (PrdTerm tm) = prettyAnn tm
   prettyAnn (CnsTerm tm) = prettyAnn tm
@@ -67,6 +71,14 @@ printSegment (CnsTerm e :| rest) = brackets' comma (prettyAnn <$> CnsTerm e : re
 
 instance {-# OVERLAPPING #-} PrettyAnn (Substitution ext) where
   prettyAnn subst = mconcat (printSegment <$> splitSubst subst)
+
+instance PrettyAnn (SubstitutionI ext pc) where
+  prettyAnn (subst1, PrdRep, subst2) = prettyAnn subst1 <> pretty ("[*]" :: String) <> prettyAnn subst2
+  prettyAnn (subst1, CnsRep, subst2) = prettyAnn subst1 <> pretty ("(*)" :: String) <> prettyAnn subst2
+
+---------------------------------------------------------------------------------
+-- Terms
+---------------------------------------------------------------------------------
 
 isNumSTerm :: Term pc ext -> Maybe Int
 isNumSTerm (XtorCall _ PrdRep (MkXtorName Nominal "Z") []) = Just 0
@@ -89,12 +101,8 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
-  prettyAnn (Dtor _ xt t (subst1,pcrep,subst2)) =
-    let
-      implicitsym :: String = case pcrep of PrdRep -> "[*]"; CnsRep -> "(*)"
-      psubst = prettyAnn subst1 <> pretty implicitsym <> prettyAnn subst2
-    in
-      parens ( prettyAnn t <> "." <> prettyAnn xt <> psubst )
+  prettyAnn (Dtor _ xt t substi) =
+      parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
   prettyAnn (Match _ _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+>

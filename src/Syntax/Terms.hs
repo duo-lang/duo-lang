@@ -28,7 +28,7 @@ import Syntax.Kinds
 ---------------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------------
--- Substitution
+-- Substitutions and Substitutions with implicit argument.
 --
 -- A substitution is a list of producer and consumer terms.
 ---------------------------------------------------------------------------------
@@ -44,7 +44,15 @@ deriving instance (Show (PrdCnsTerm Parsed))
 deriving instance (Show (PrdCnsTerm Inferred))
 deriving instance (Show (PrdCnsTerm Compiled))
 
-type Substitution ext = [PrdCnsTerm ext]
+type Substitution (ext :: Phase) = [PrdCnsTerm ext]
+
+-- | A SubstitutionI is like a substitution where one of the arguments has been
+-- replaced by an implicit argument. The following convention for the use of the
+-- `pc` parameter is used:
+--
+-- SubstitutionI ext Prd = ... [*] ...
+-- SubstitutionI ext Cns = ... (*) ...
+type SubstitutionI (ext :: Phase) (pc :: PrdCns) = (Substitution ext, PrdCnsRep pc, Substitution ext)
 
 ---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
@@ -155,7 +163,7 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   --
   -- Syntactic Sugar
   --
-  Dtor :: TermExt pc ext -> XtorName -> Term Prd ext -> (Substitution ext,PrdCnsRep pc,Substitution ext) -> Term pc ext
+  Dtor :: TermExt pc ext -> XtorName -> Term Prd ext -> SubstitutionI ext pc -> Term pc ext
   -- | A pattern match:
   --
   -- case e of { ... }
@@ -166,8 +174,6 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   -- cocase { ... }
   --
   Comatch :: TermExt Prd ext -> NominalStructural -> [TermCaseI ext] -> Term Prd ext
-
-
 
 deriving instance (Eq (Term pc Parsed))
 deriving instance (Eq (Term Prd Inferred))
