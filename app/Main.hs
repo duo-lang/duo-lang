@@ -1,19 +1,28 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Main where
 
-import System.Environment (getArgs)
+import Data.Version (showVersion)
+import Development.GitRev (gitHash, gitBranch)
 
+import Options (Options(..), parseOptions)
 import Compile (runCompile)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
+import Paths_dualsub (version)
 
 main :: IO ()
 main = do
-    args <- getArgs
-    dispatch args
+    opts <- parseOptions
+    dispatch opts
 
-dispatch :: [String] -> IO ()
-dispatch ["lsp"] = runLSP
-dispatch []      = runRepl
-dispatch [fp]    = runCompile fp
-dispatch _       = putStrLn "DualSub: Unrecognized arguments."
+dispatch :: Options -> IO ()
+dispatch OptRepl         = runRepl
+dispatch OptLSP          = runLSP
+dispatch (OptCompile fp) = runCompile fp
+dispatch OptVersion      = printVersion
 
+printVersion :: IO ()
+printVersion = do
+    putStrLn $ "DualSub Version: " <> showVersion version
+    putStrLn $ "Git Commit: " <> $(gitHash)
+    putStrLn $ "Git Branch: " <> $(gitBranch)

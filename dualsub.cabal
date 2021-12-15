@@ -130,6 +130,7 @@ executable dualsub
       LSP.CompletionHandler
       LSP.HoverHandler
       LSP.MegaparsecToLSP
+      Options
       Repl.Repl
       Repl.Options.Let
       Repl.Options.LoadReload
@@ -152,7 +153,9 @@ executable dualsub
     -fno-warn-unticked-promoted-constructors
   build-depends:
       dualsub,
-      lsp
+      optparse-applicative,
+      lsp,
+      gitrev
 
 test-suite dualsub-test
   import: shared-build-depends
