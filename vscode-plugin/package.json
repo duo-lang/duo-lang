@@ -41,7 +41,14 @@
 			"properties": {
 				"dualsub-client.executable": {
 					"type": "string",
+					"default": "dualsub",
 					"description": "Path to the DualSub LSP executable"
+				},
+				"dualsub-client.logfile": {
+					"type": ["string", null],
+					"default": null,
+					"description": "fii"
+
 				}
 			}
 		}
