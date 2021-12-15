@@ -116,7 +116,7 @@ termToHoverMap (XMatch ext PrdRep _ cases)       = M.unions $ typeAnnotToHoverMa
 termToHoverMap (XMatch ext CnsRep _ cases)       = M.unions $ typeAnnotToHoverMap ext : (cmdcaseToHoverMap <$> cases)
 termToHoverMap (MuAbs ext PrdRep _ cmd)          = M.unions [typeAnnotToHoverMap ext, commandToHoverMap cmd]
 termToHoverMap (MuAbs ext CnsRep _ cmd)          = M.unions [typeAnnotToHoverMap ext, commandToHoverMap cmd]
-termToHoverMap (Dtor ext _ e (subst1,_,subst2)) = M.unions $ [typeAnnotToHoverMap ext] <> (pctermToHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
+termToHoverMap (Dtor ext _ e (subst1,_,subst2))  = M.unions $ [typeAnnotToHoverMap ext] <> (pctermToHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
 termToHoverMap (Match ext _ e cases)             = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseToHoverMap <$> cases) <> [termToHoverMap e]
 termToHoverMap (Comatch ext _ cocases)           = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseIToHoverMap <$> cocases)
 
