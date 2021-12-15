@@ -49,8 +49,8 @@
 					"description": "Path to the DualSub LSP executable"
 				},
 				"dualsub-client.logfile": {
-					"type": ["string", null],
-					"default": null,
+					"type": ["string"],
+					"default": "",
 					"description": "Specify the file that the LSP server will use for printing logs. If a logfile is not specified, output is directed to stderr."
 
 				}

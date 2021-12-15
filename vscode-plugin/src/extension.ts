@@ -15,7 +15,8 @@ export function activate(context: vscode.ExtensionContext) {
 	let defaultCmd = "dualsub";
 	let dualsubCmd = config.get<string>("executable") || defaultCmd;
 
-    let logfile: string = config.get<string>("logfile") ? "--logfile " + config.get<string>("logfile") : "";
+    let logconfig = config.get<string>("logfile");
+    let logfile: string = (logconfig == "") ? "" : "--logfile " + logconfig;
 	
     let args: string[] = ["lsp"];
     args.push(logfile);
