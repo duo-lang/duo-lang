@@ -65,8 +65,8 @@ zonkTerm bisubst (XMatch (loc,ty) rep ns cases) =
     XMatch (loc, zonkType bisubst ty) rep ns (zonkCmdCase bisubst <$> cases)
 zonkTerm bisubst (MuAbs (loc,ty) rep fv cmd) =
     MuAbs (loc, zonkType bisubst ty) rep fv (zonkCommand bisubst cmd)
-zonkTerm bisubst (Dtor (loc,ty) xt prd (subst1,_,subst2)) =
-    Dtor (loc, zonkType bisubst ty) xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,(),zonkPCTerm bisubst <$> subst2)
+zonkTerm bisubst (Dtor (loc,ty) xt prd (subst1,pcrep,subst2)) =
+    Dtor (loc, zonkType bisubst ty) xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
 zonkTerm bisubst (Match (loc,ty) ns prd cases) =
     Match (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
 zonkTerm bisubst (Comatch (loc,ty) ns cases) =

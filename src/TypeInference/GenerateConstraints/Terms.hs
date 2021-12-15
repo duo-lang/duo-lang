@@ -211,7 +211,7 @@ genConstraintsTerm (MuAbs loc CnsRep bs cmd) = do
 --
 -- e.'D subst
 --
-genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } destructee (subst1,_,subst2)) = do
+genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } destructee (subst1,PrdRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -225,13 +225,28 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural 
   let codataType = TyCodata NegRep Nothing [MkXtorSig xt lctxt]
   -- The type of the destructee must be a subtype of the Destructor type just generated.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
-  return (Dtor (loc,retTypePos) xt destructeeInferred (subst1Inferred,(),subst2Inferred))
+  return (Dtor (loc,retTypePos) xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
+genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Structural } destructee (subst1,CnsRep,subst2)) = do
+  -- Infer the types of the arguments to the destructor.
+  subst1Inferred <- genConstraintsSubst subst1
+  subst2Inferred <- genConstraintsSubst subst2
+  -- Infer the type of the destructee.
+  destructeeInferred <- genConstraintsTerm destructee
+  -- Generate a unification variable for the return type.
+  (retTypePos, retTypeNeg) <- freshTVar (DtorAp loc)
+  -- The type at which the destructor call happens is constructed from the
+  -- (inferred) return type and the inferred types from the argument list
+  let lctxt = getTypArgs subst1Inferred ++ [PrdType retTypePos] ++ getTypArgs subst2Inferred
+  let codataType = TyCodata NegRep Nothing [MkXtorSig xt lctxt]
+  -- The type of the destructee must be a subtype of the Destructor type just generated.
+  addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
+  return (Dtor (loc,retTypeNeg) xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
 --
 -- Nominal Destructor Application (Syntactic Sugar):
 --
 -- e.D subst
 --
-genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } destructee (subst1,_,subst2)) = do
+genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } destructee (subst1,PrdRep,subst2)) = do
   im <- asks (inferMode . snd)
   case im of
     --
@@ -257,7 +272,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The argument types must be subtypes of the types declared in the xtorSig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
       -- The return type is the last element in the xtorSig, which must be a CnsType.
-      return (Dtor (loc,retType) xt destructeeInferred (subst1Inferred,(),subst2Inferred))
+      return (Dtor (loc,retType) xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
     --
     -- Refinement Inference
     --
@@ -287,7 +302,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
                                        (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
       -- The argument types must be subtypes of the greatest translation of the xtor sig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-      return (Dtor (loc,retTypePos) xt destructeeInferred (subst1Inferred,(),subst2Inferred))
+      return (Dtor (loc,retTypePos) xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
 --
 -- Structural Match (Syntactic Sugar):
 --

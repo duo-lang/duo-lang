@@ -155,7 +155,7 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   --
   -- Syntactic Sugar
   --
-  Dtor :: TermExt Prd ext -> XtorName -> Term Prd ext -> (Substitution ext,(),Substitution ext) -> Term Prd ext
+  Dtor :: TermExt pc ext -> XtorName -> Term Prd ext -> (Substitution ext,PrdCnsRep pc,Substitution ext) -> Term pc ext
   -- | A pattern match:
   --
   -- case e of { ... }
@@ -255,12 +255,12 @@ termOpeningRec k args (XMatch _ pc sn cases) =
 termOpeningRec k args (MuAbs _ pc a cmd) =
   MuAbs () pc a (commandOpeningRec (k+1) args cmd)
 -- ATerms
-termOpeningRec k args (Dtor _ xt t (args1,_,args2)) =
+termOpeningRec k args (Dtor _ xt t (args1,pcrep,args2)) =
   let
     args1' = pctermOpeningRec k args <$> args1
     args2' = pctermOpeningRec k args <$> args2
   in
-    Dtor () xt (termOpeningRec k args t) (args1', (), args2')
+    Dtor () xt (termOpeningRec k args t) (args1', pcrep, args2')
 termOpeningRec k args (Match _ ns t cases) =
   Match () ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
 termOpeningRec k args (Comatch _ ns cocases) =
@@ -302,12 +302,12 @@ termClosingRec k vars (XMatch ext pc sn cases) =
 termClosingRec k vars (MuAbs ext pc a cmd) =
   MuAbs ext pc a (commandClosingRec (k+1) vars cmd)
 -- ATerms
-termClosingRec k args (Dtor ext xt t (args1,_,args2)) =
+termClosingRec k args (Dtor ext xt t (args1,pcrep,args2)) =
   let
     args1' = pctermClosingRec k args <$> args1
     args2' = pctermClosingRec k args <$> args2
   in
-    Dtor ext xt (termClosingRec k args t) (args1', (), args2')
+    Dtor ext xt (termClosingRec k args t) (args1', pcrep, args2')
 termClosingRec k args (Match ext ns t cases) =
   Match ext ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
 termClosingRec k args (Comatch ext ns cocases) =
@@ -446,8 +446,8 @@ openTermComplete (MuAbs _ PrdRep Nothing _) = error "Create names first!"
 openTermComplete (MuAbs _ CnsRep (Just fv) cmd) =
   MuAbs () CnsRep (Just fv) (commandOpening [PrdTerm (FreeVar () PrdRep fv)] (openCommandComplete cmd))
 openTermComplete (MuAbs _ CnsRep Nothing _) = error "Create names first!"
-openTermComplete (Dtor _ name t (args1,_,args2)) =
-  Dtor () name (openTermComplete t) (openPCTermComplete <$> args1,(), openPCTermComplete <$> args2)
+openTermComplete (Dtor _ name t (args1,pcrep,args2)) =
+  Dtor () name (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
 openTermComplete (Match _ ns t cases) = Match () ns (openTermComplete t) (openTermCase <$> cases)
 openTermComplete (Comatch _ ns cocases) = Comatch () ns (openTermCaseI <$> cocases)
 
@@ -477,8 +477,8 @@ shiftTermRec n (XtorCall ext pcrep name subst) =
     XtorCall ext pcrep name (shiftPCTermRec n <$> subst)
 shiftTermRec n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
 shiftTermRec n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmdRec (n + 1) cmd)
-shiftTermRec n (Dtor ext xt e (args1,_,args2)) =
-  Dtor ext xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,(),shiftPCTermRec n <$> args2)
+shiftTermRec n (Dtor ext xt e (args1,pcrep,args2)) =
+  Dtor ext xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep,shiftPCTermRec n <$> args2)
 shiftTermRec n (Match ext ns e cases) = Match ext ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
 shiftTermRec n (Comatch ext ns cases) = Comatch ext ns (shiftTermCaseIRec n <$> cases)
 
@@ -522,8 +522,8 @@ removeNamesTerm f@BoundVar{} = f
 removeNamesTerm (XtorCall ext pc xt args) = XtorCall ext pc xt (removeNamesPrdCnsTerm <$> args)
 removeNamesTerm (MuAbs ext pc _ cmd) = MuAbs ext pc Nothing (removeNamesCmd cmd)
 removeNamesTerm (XMatch ext pc ns cases) = XMatch ext pc ns (removeNamesCmdCase <$> cases)
-removeNamesTerm (Dtor ext xt e (args1,_,args2)) =
-  Dtor ext xt (removeNamesTerm e) (removeNamesPrdCnsTerm <$> args1,(),removeNamesPrdCnsTerm <$> args2)
+removeNamesTerm (Dtor ext xt e (args1,pcrep,args2)) =
+  Dtor ext xt (removeNamesTerm e) (removeNamesPrdCnsTerm <$> args1,pcrep,removeNamesPrdCnsTerm <$> args2)
 removeNamesTerm (Match ext ns e cases) = Match ext ns (removeNamesTerm e) (removeNamesTermCase <$> cases)
 removeNamesTerm (Comatch ext ns cases) = Comatch ext ns (removeNamesTermCaseI <$> cases)
 
