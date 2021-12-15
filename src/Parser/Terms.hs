@@ -357,8 +357,8 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -- Top Parser
 -------------------------------------------------------------------------------------------
 
--- | Parses "D(t,...,t)"
-destructorP' :: NominalStructural -> Parser (XtorName,(Substitution Parsed,PrdCnsRep Prd,Substitution Parsed), SourcePos)
+-- | Parses "D(t,..*.,t)"
+destructorP' :: NominalStructural -> Parser (XtorName, SubstitutionI Parsed Prd, SourcePos)
 destructorP' ns = do
   (xt, _) <- xtorName ns
   (subst1, _) <- substitutionP
@@ -366,15 +366,15 @@ destructorP' ns = do
   (subst2, endPos) <- substitutionP
   return (xt, (subst1,PrdRep,subst2), endPos)
 
-destructorP :: Parser (XtorName,(Substitution Parsed,PrdCnsRep Prd,Substitution Parsed), SourcePos)
+destructorP :: Parser (XtorName, SubstitutionI Parsed Prd, SourcePos)
 destructorP = destructorP' Structural <|> destructorP' Nominal
 
-destructorChainP :: Parser [(XtorName, (Substitution Parsed,PrdCnsRep Prd,Substitution Parsed), SourcePos)]
+destructorChainP :: Parser [(XtorName, SubstitutionI Parsed Prd, SourcePos)]
 destructorChainP = many (dot >> destructorP)
 
 mkDtorChain :: SourcePos
             -> (Term Prd Parsed, SourcePos)
-            -> [(XtorName,(Substitution Parsed,PrdCnsRep Prd,Substitution Parsed), SourcePos)]
+            -> [(XtorName, SubstitutionI Parsed Prd, SourcePos)]
             -> (Term Prd Parsed, SourcePos)
 mkDtorChain _ destructee [] = destructee
 mkDtorChain startPos (destructee,_)((xt,args,endPos):dts) =
