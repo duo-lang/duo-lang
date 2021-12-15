@@ -4,6 +4,10 @@
 	"description": "LSP Client for the DualSub Language",
 	"version": "0.0.1",
 	"publisher": "dualsub",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ps-tuebingen/algebraic-subtyping-implementation"
+	},
 	"engines": {
 		"vscode": "^1.60.0"
 	},
@@ -47,7 +51,7 @@
 				"dualsub-client.logfile": {
 					"type": ["string", null],
 					"default": null,
-					"description": "fii"
+					"description": "Specify the file that the LSP server will use for printing logs. If a logfile is not specified, output is directed to stderr."
 
 				}
 			}
