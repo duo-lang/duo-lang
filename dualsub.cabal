@@ -80,7 +80,9 @@ library
       Pretty.Errors
       Pretty.TypeAutomata
       Syntax.CST.Lowering
+      Syntax.CST.LoweringTerms
       Syntax.CST.Types
+      Syntax.CST.Terms
       Syntax.CommonTerm
       Syntax.Kinds
       Syntax.Types
