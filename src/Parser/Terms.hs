@@ -241,6 +241,9 @@ termCaseIP ns = do
   let pmcase = MkTermCaseI { tmcasei_ext = Loc startPos endPos
                            , tmcasei_name = xt
                            , tmcasei_args = (second Just <$> as1, (), second Just <$> as2)
+                           -- HACK: We want to ensure that the implicit argument gets the intuitive De-Bruijn index.
+                           -- termClosing doesn't support implicit arguments yet. We can emulate it for now by passing
+                           -- a string that cannot be parsed as a variable (e.g. *).
                            , tmcasei_term = termClosing (as1 ++ [(Cns, "*")] ++ as2) res
                            }
   return (pmcase, endPos)
