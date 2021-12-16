@@ -1,5 +1,8 @@
 module Syntax.CST.Terms where
 
+import Data.List.NonEmpty (NonEmpty(..))
+import Text.Megaparsec.Pos (SourcePos)
+
 import Syntax.CommonTerm
 import Utils
 
@@ -27,6 +30,7 @@ data Term where
     Case :: Loc -> Term -> [TermCase] -> Term
     Cocase :: Loc -> [TermCaseI] -> Term
     -- Sugar Nodes
+    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term

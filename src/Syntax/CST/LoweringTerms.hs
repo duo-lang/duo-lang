@@ -1,6 +1,8 @@
 module Syntax.CST.LoweringTerms where
 
 import Data.Bifunctor ( second )
+import Data.List.NonEmpty (NonEmpty(..))
+import Text.Megaparsec.Pos (SourcePos)
 
 import Syntax.CST.Terms qualified as CST
 import Syntax.Terms qualified as AST
@@ -69,10 +71,16 @@ lowerTerm CnsRep (CST.Cocase _loc _cases)      = error "Cannot lower Comatch to 
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
 lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = error "Cannot lower NatLit to a consumer."
 lowerTerm rep    (CST.TermParens _loc tm)      = lowerTerm rep tm
+lowerTerm rep    (CST.DtorChain pos tm dtors)  = lowerTerm rep (lowerDtorChain pos tm dtors)
 lowerTerm PrdRep (CST.FunApp loc fun arg)      = lowerApp loc fun arg
 lowerTerm CnsRep (CST.FunApp _loc _fun _arg)   = error "Cannot lower FunApp to a consumer."
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
 lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = error "Cannot lower Lambda to a consumer."
+
+
+lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> CST.Term
+lowerDtorChain startPos tm ((xtor, subst, endPos) :| [])   = CST.Dtor (Loc startPos endPos) xtor tm subst
+lowerDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = lowerDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
 -- | Lower a lambda abstraction.
 lowerLambda :: Loc -> FreeVarName -> CST.Term -> AST.Term Prd Parsed
