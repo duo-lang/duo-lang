@@ -358,7 +358,7 @@ termBotP rep = freeVar rep <|>
 
 -- | Create an application.
 mkApp :: Loc -> Term Prd Parsed -> Term Prd Parsed -> Term Prd Parsed
-mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun ([PrdTerm arg],(),[])
+mkApp loc fun arg = Dtor loc (MkXtorName Structural "Ap") fun ([PrdTerm arg],PrdRep,[])
 
 mkApps :: SourcePos -> [(Term Prd Parsed, SourcePos)] -> (Term Prd Parsed, SourcePos)
 mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
@@ -387,24 +387,24 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -- Top Parser
 -------------------------------------------------------------------------------------------
 
--- | Parses "D(t,...,t)"
-destructorP' :: NominalStructural -> Parser (XtorName,(Substitution Parsed,(),Substitution Parsed), SourcePos)
+-- | Parses "D(t,..*.,t)"
+destructorP' :: NominalStructural -> Parser (XtorName, SubstitutionI Parsed Prd, SourcePos)
 destructorP' ns = do
   (xt, _) <- xtorName ns
   (subst1, _) <- substitutionP
   _ <- brackets implicitSym
   (subst2, endPos) <- substitutionP
-  return (xt, (subst1,(),subst2), endPos)
+  return (xt, (subst1,PrdRep,subst2), endPos)
 
-destructorP :: Parser (XtorName,(Substitution Parsed, (),Substitution Parsed), SourcePos)
+destructorP :: Parser (XtorName, SubstitutionI Parsed Prd, SourcePos)
 destructorP = destructorP' Structural <|> destructorP' Nominal
 
-destructorChainP :: Parser [(XtorName, (Substitution Parsed,(),Substitution Parsed), SourcePos)]
+destructorChainP :: Parser [(XtorName, SubstitutionI Parsed Prd, SourcePos)]
 destructorChainP = many (dot >> destructorP)
 
 mkDtorChain :: SourcePos
             -> (Term Prd Parsed, SourcePos)
-            -> [(XtorName,(Substitution Parsed,(),Substitution Parsed), SourcePos)]
+            -> [(XtorName, SubstitutionI Parsed Prd, SourcePos)]
             -> (Term Prd Parsed, SourcePos)
 mkDtorChain _ destructee [] = destructee
 mkDtorChain startPos (destructee,_)((xt,args,endPos):dts) =

@@ -66,8 +66,8 @@ lowerLinearContext :: PolarityRep pol -> LinearContext -> Either LoweringError (
 lowerLinearContext rep ctx = sequence $ lowerPrdCnsTyp rep <$> ctx
 
 lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> Either LoweringError (AST.PrdCnsType pol)
-lowerPrdCnsTyp rep (PrdType typ) = AST.PrdType <$> lowerTyp rep typ
-lowerPrdCnsTyp rep (CnsType typ) = AST.CnsType <$> lowerTyp (flipPolarityRep rep) typ
+lowerPrdCnsTyp rep (PrdType typ) = AST.PrdCnsType PrdRep <$> lowerTyp rep typ
+lowerPrdCnsTyp rep (CnsType typ) = AST.PrdCnsType CnsRep <$> lowerTyp (flipPolarityRep rep) typ
 
 lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> Either LoweringError (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
@@ -179,20 +179,20 @@ desugarArrowType PosRep tl tr = do
     tr <- lowerTyp PosRep tr
     pure $ AST.TyCodata PosRep Nothing
         [ AST.MkXtorSig (MkXtorName Structural "Ap")
-          [AST.PrdType tl, AST.CnsType tr]]
+          [AST.PrdCnsType PrdRep tl, AST.PrdCnsType CnsRep tr]]
 desugarArrowType NegRep tl tr = do
     tl <- lowerTyp (flipPolarityRep NegRep) tl
     tr <- lowerTyp NegRep tr
     pure $ AST.TyCodata NegRep Nothing
         [ AST.MkXtorSig (MkXtorName Structural "Ap")
-          [AST.PrdType tl, AST.CnsType tr]]
+          [AST.PrdCnsType PrdRep tl, AST.PrdCnsType CnsRep tr]]
 
 desugarParType :: PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
 desugarParType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
-    pure $ AST.TyCodata PosRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.CnsType tl, AST.CnsType tr]]
+    pure $ AST.TyCodata PosRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
 desugarParType NegRep tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
-    pure $ AST.TyCodata NegRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.CnsType tl, AST.CnsType tr]]
+    pure $ AST.TyCodata NegRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]

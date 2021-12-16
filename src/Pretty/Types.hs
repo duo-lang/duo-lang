@@ -73,8 +73,8 @@ instance PrettyAnn BinOp where
   prettyAnn InterOp = interSym
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdType tl, CnsType tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [CnsType tl, CnsType tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
 resugarType _ = Nothing
 
 instance PrettyAnn Polarity where
@@ -108,21 +108,19 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
   
 instance PrettyAnn (PrdCnsType pol) where
-  prettyAnn (PrdType ty) = prettyAnn ty
-  prettyAnn (CnsType ty) = prettyAnn ty
-
+  prettyAnn (PrdCnsType _ ty) = prettyAnn ty
 
 splitCtxt :: LinearContext pol -> [NonEmpty (PrdCnsType pol)]
 splitCtxt = NE.groupBy f
   where
     f :: PrdCnsType pol -> PrdCnsType pol -> Bool
-    f (PrdType _) (PrdType _) = True
-    f (CnsType _) (CnsType _) = True
-    f _ _ = False
+    f (PrdCnsType PrdRep _) (PrdCnsType PrdRep _) = True
+    f (PrdCnsType CnsRep _) (PrdCnsType CnsRep _) = True
+    f (PrdCnsType _ _) (PrdCnsType _ _) = False
 
 printSegment :: NonEmpty (PrdCnsType pol) -> Doc Annotation
-printSegment (PrdType ty :| rest) = parens'   comma (prettyAnn <$> PrdType ty : rest)
-printSegment (CnsType ty :| rest) = brackets' comma (prettyAnn <$> CnsType ty : rest)
+printSegment (PrdCnsType PrdRep ty :| rest) = parens'   comma (prettyAnn <$> PrdCnsType PrdRep ty : rest)
+printSegment (PrdCnsType CnsRep ty :| rest) = brackets' comma (prettyAnn <$> PrdCnsType CnsRep ty : rest)
 
 instance {-# OVERLAPPING #-} PrettyAnn (LinearContext pol) where
   prettyAnn ctxt = mconcat (printSegment <$> splitCtxt ctxt)

@@ -91,8 +91,8 @@ xtorDeclP = do
 combineXtors :: [(XtorName, [Invariant], [Invariant])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
 combineXtors [] = \_rep -> []
 combineXtors ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
-  xt (((\x -> PrdType $ (unInvariant x) rep) <$> prdArgs) ++
-       ((\x -> CnsType $ (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : combineXtors rest rep
+  xt (((\x -> PrdCnsType PrdRep $ (unInvariant x) rep) <$> prdArgs) ++
+       ((\x -> PrdCnsType CnsRep $ (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : combineXtors rest rep
 
 
 dataDeclP :: Parser (Declaration Parsed)
