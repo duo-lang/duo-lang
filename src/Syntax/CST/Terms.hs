@@ -31,8 +31,11 @@ data Term where
 
 
 data Command where
+  -- AST Nodes
   Apply :: Loc -> Term -> Term -> Command
   Print :: Loc -> Term -> Command -> Command
   Read  :: Loc -> Term -> Command
   Call  :: Loc -> FreeVarName -> Command
   Done  :: Loc -> Command
+  -- Sugar Nodes
+  CommandParens :: Loc -> Command -> Command
