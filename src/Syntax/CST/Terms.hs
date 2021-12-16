@@ -24,7 +24,7 @@ data Term where
     Match :: Loc -> Term -> [TermCase] -> Term
     Comatch :: Loc -> [TermCaseI] -> Term
     -- Sugar Nodes
-    NatLit :: Loc -> Int -> Term
+    NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
