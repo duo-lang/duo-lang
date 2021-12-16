@@ -424,7 +424,7 @@ openTermCaseI MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei
   MkTermCaseI { tmcasei_ext = ()
               , tmcasei_name = tmcasei_name
               , tmcasei_args = (as1, (), as2)
-              , tmcasei_term = termOpening (freeVarNamesToXtorArgs (as1 ++ as2)) (openTermComplete tmcasei_term)
+              , tmcasei_term = termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
               }
 
 openCmdCase :: CmdCase ext -> CmdCase Compiled
