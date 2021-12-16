@@ -47,6 +47,24 @@ genConstraintsCtxts (CnsType _:_) (PrdType _:_) info = throwGenError ["genConstr
 genConstraintsCtxts [] (_:_) info = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
 genConstraintsCtxts (_:_) [] info = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
 
+
+type family PrdCnsFlip (pc :: PrdCns) (pol :: Polarity) :: Polarity where
+  PrdCnsFlip Prd pol = pol
+  PrdCnsFlip Cns pol = FlipPol pol
+
+splitContext :: Int -- ^ The offset of the projected type
+             -> PrdCnsRep pc -- ^ The expected mode of the type
+             -> LinearContext pol -- ^ The context to be split
+             -> (LinearContext pol, Typ (PrdCnsFlip pc pol), LinearContext pol)
+splitContext n PrdRep sig = case splitAt n sig of 
+                              (_, []) -> error "splitContext: Too short."
+                              (_, CnsType _:_) -> error "splitContext: Found CnsType, expected PrdType."
+                              (tys1, PrdType ty:tys2) -> (tys1, ty, tys2)
+splitContext n CnsRep sig = case splitAt n sig of
+                              (_, []) -> error "splitContext: Too short."
+                              (_, PrdType _:_) -> error "splitContext: Found PrdType, expected CnsType."
+                              (tys1, CnsType ty:tys2) -> (tys1, ty, tys2)
+
 ---------------------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------------------
@@ -265,10 +283,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
       -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of 
-                                       (_,[]) -> error "Too short."
-                                       (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
-                                       (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
+      let (tys1,retType, tys2) = splitContext (length subst1) CnsRep (sig_args xtorSig)
       -- The argument types must be subtypes of the types declared in the xtorSig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
       -- The return type is the last element in the xtorSig, which must be a CnsType.
@@ -296,10 +311,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The xtor sig has to be translated.
       xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
       -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-      let (tys1,_retType, tys2) = case splitAt (length subst1) (sig_args xtorSigTranslated) of
-                                       (_,[]) -> error "Too short."
-                                       (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
-                                       (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
+      let (tys1,_retType, tys2) = splitContext (length subst1) CnsRep (sig_args xtorSigTranslated)
       -- The argument types must be subtypes of the greatest translation of the xtor sig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
       return (Dtor (loc,retTypePos) xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
@@ -322,10 +334,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
       -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of 
-                                       (_,[]) -> error "Too short."
-                                       (_,CnsType _:_) -> error "Found CnsType, expected PrdType."
-                                       (tys1,PrdType ty:tys2) -> (tys1, ty,tys2)
+      let (tys1,retType, tys2) = splitContext (length subst1) PrdRep (sig_args xtorSig)
       -- The argument types must be subtypes of the types declared in the xtorSig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
       -- The return type is the last element in the xtorSig, which must be a CnsType.
@@ -353,10 +362,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The xtor sig has to be translated.
       xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
       -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-      let (tys1,_retType, tys2) = case splitAt (length subst1) (sig_args xtorSigTranslated) of
-                                       (_,[]) -> error "Too short."
-                                       (_,CnsType _:_) -> error "Found CnsType, expected PrdType."
-                                       (tys1,PrdType ty:tys2) -> (tys1, ty,tys2)
+      let (tys1,_retType, tys2) = splitContext (length subst1) PrdRep (sig_args xtorSigTranslated)
       -- The argument types must be subtypes of the greatest translation of the xtor sig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
       return (Dtor (loc,retTypeNeg) xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
