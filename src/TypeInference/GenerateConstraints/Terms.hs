@@ -282,11 +282,11 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       xtorSig <- lookupXtorSig xt NegRep
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
-      -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
+      -- Split the argument list into the explicit arguments and the implicit argument.
+      -- The return type is the implicit element in the xtorSig, which must be a CnsType.
       let (tys1,retType, tys2) = splitContext (length subst1) CnsRep (sig_args xtorSig)
       -- The argument types must be subtypes of the types declared in the xtorSig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-      -- The return type is the last element in the xtorSig, which must be a CnsType.
       return (Dtor (loc,retType) xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
     --
     -- Refinement Inference
@@ -334,10 +334,10 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
       -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
+      -- The return type is the implicit element in the xtorSig, which must be a PrdType.
       let (tys1,retType, tys2) = splitContext (length subst1) PrdRep (sig_args xtorSig)
       -- The argument types must be subtypes of the types declared in the xtorSig.
       genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-      -- The return type is the last element in the xtorSig, which must be a CnsType.
       return (Dtor (loc,retType) xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
     --
     -- Refinement Inference
