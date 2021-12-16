@@ -30,8 +30,8 @@ isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
 -- Non-core terms
 isDesugaredTerm Dtor{} = False
-isDesugaredTerm Match {} = False
-isDesugaredTerm Comatch {} = False
+isDesugaredTerm Case {} = False
+isDesugaredTerm Cocase {} = False
 
 isDesugaredCommand :: Command Inferred -> Bool
 isDesugaredCommand (Apply _ _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
@@ -78,7 +78,7 @@ desugarTerm (Dtor _ xt t (args1,CnsRep,args2)) =
     MuAbs () CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
-desugarTerm (Match _ ns t cases)   =
+desugarTerm (Case _ ns t cases)   =
   let
     desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase () xt args  $ Apply () Nothing (desugarTerm t) (FreeVar () CnsRep resVar)
     cmd = Apply () Nothing (desugarTerm t) (XMatch () CnsRep ns  (desugarMatchCase <$> cases))
@@ -86,7 +86,7 @@ desugarTerm (Match _ ns t cases)   =
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 -- we want to desugar comatch { D(args) => e }
 -- comatch { D(args)[k] => (desugar e) >> k }
-desugarTerm (Comatch _ ns cocases) =
+desugarTerm (Cocase _ ns cocases) =
   let
     desugarComatchCase (MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in

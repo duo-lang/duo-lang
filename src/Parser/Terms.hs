@@ -301,7 +301,7 @@ matchP PrdRep = do
   (arg, _pos) <- termP PrdRep
   _ <- ofKwP
   (cases, ns, endPos) <- termCasesP
-  return (Match (Loc startPos endPos) ns arg cases, endPos)
+  return (Case (Loc startPos endPos) ns arg cases, endPos)
 
 comatchP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 comatchP CnsRep = empty
@@ -309,11 +309,11 @@ comatchP PrdRep = do
   startPos <- getSourcePos
   _ <- cocaseKwP
   (cocases, ns, endPos) <- termCasesIP
-  return (Comatch (Loc startPos endPos) ns cocases, endPos)
+  return (Cocase (Loc startPos endPos) ns cocases, endPos)
 
 -- | Create a lambda abstraction.
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc Structural
+mkLambda loc var tm = Cocase loc Structural
   [
     MkTermCaseI loc (MkXtorName Structural "Ap")
                 ([(Prd, Just var)], (), [])

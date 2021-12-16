@@ -56,13 +56,13 @@ createNamesTerm (Dtor _ xt e (args1,pcrep,args2)) = do
   args1' <- sequence (createNamesPCTerm <$> args1)
   args2' <- sequence (createNamesPCTerm <$> args2)
   return $ Dtor defaultLoc xt e' (args1',pcrep,args2')
-createNamesTerm (Match _ ns e cases) = do
+createNamesTerm (Case _ ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
-  return $ Match defaultLoc ns e' cases'
-createNamesTerm (Comatch _ ns cases) = do
+  return $ Case defaultLoc ns e' cases'
+createNamesTerm (Cocase _ ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
-  return $ Comatch defaultLoc ns cases'
+  return $ Cocase defaultLoc ns cases'
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand (Done _) = return $ Done defaultLoc

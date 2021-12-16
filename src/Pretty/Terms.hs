@@ -120,12 +120,12 @@ instance PrettyAnn (Term pc ext) where
     prettyAnn a <> "." <> parens (prettyAnn cmd)
   prettyAnn (Dtor _ xt t substi) =
       parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
-  prettyAnn (Match _ _ t cases) =
+  prettyAnn (Case _ _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+>
     annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (Comatch _ _ cocases) =
+  prettyAnn (Cocase _ _ cocases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
 

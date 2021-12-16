@@ -62,9 +62,9 @@ lowerTerm PrdRep (CST.MuAbs loc fv cmd)        = AST.MuAbs loc PrdRep (Just fv) 
 lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] (lowerCommand cmd))
 lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = AST.Dtor loc xtor (lowerTerm PrdRep tm) (lowerSubstitutionI subst)
 lowerTerm CnsRep (CST.Dtor _loc _xtor _tm _s)  = error "Cannot lower Dtor to a consumer (TODO)."
-lowerTerm PrdRep (CST.Case loc tm cases)       = AST.Match loc (termCasesToNS cases) (lowerTerm PrdRep tm) (lowerTermCase <$> cases)
+lowerTerm PrdRep (CST.Case loc tm cases)       = AST.Case loc (termCasesToNS cases) (lowerTerm PrdRep tm) (lowerTermCase <$> cases)
 lowerTerm CnsRep (CST.Case _loc _tm _cases)    = error "Cannot lower Match to a consumer (TODO)"
-lowerTerm PrdRep (CST.Cocase loc cases)        = AST.Comatch loc (termCasesIToNS cases) (lowerTermCaseI <$> cases)
+lowerTerm PrdRep (CST.Cocase loc cases)        = AST.Cocase loc (termCasesIToNS cases) (lowerTermCaseI <$> cases)
 lowerTerm CnsRep (CST.Cocase _loc _cases)      = error "Cannot lower Comatch to a consumer (TODO)"
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
 lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = error "Cannot lower NatLit to a consumer."
@@ -76,7 +76,7 @@ lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = error "Cannot lower Lambda to a
 
 -- | Lower a lambda abstraction.
 lowerLambda :: Loc -> FreeVarName -> CST.Term -> AST.Term Prd Parsed
-lowerLambda loc var tm = AST.Comatch loc Structural
+lowerLambda loc var tm = AST.Cocase loc Structural
   [
     AST.MkTermCaseI loc (MkXtorName Structural "Ap")
                         ([(Prd, Just var)], (), [])
