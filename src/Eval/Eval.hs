@@ -51,8 +51,8 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
 
 
 convertInt :: Int -> Term Prd Compiled
-convertInt 0 = XtorCall () PrdRep (MkXtorName Nominal "Z") []
-convertInt n = XtorCall () PrdRep (MkXtorName Nominal "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor () PrdRep (MkXtorName Nominal "Z") []
+convertInt n = Xtor () PrdRep (MkXtorName Nominal "S") [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd Compiled)
@@ -95,11 +95,11 @@ evalApplyOnce eo prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupTerm CnsRep fv
   return (Just (Apply () (Just (MonoKind eo)) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
-evalApplyOnce _ prd@(XtorCall _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
+evalApplyOnce _ prd@(Xtor _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(XtorCall _ CnsRep xt args) = do
+evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(Xtor _ CnsRep xt args) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
@@ -115,7 +115,7 @@ evalApplyOnce _ (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable 
 evalApplyOnce _ _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
 -- Match applied to Match, or Xtor to Xtor can't evaluate
 evalApplyOnce _ XMatch{} XMatch{} = throwEvalError ["Cannot evaluate match applied to match"]
-evalApplyOnce _ XtorCall{} XtorCall{} = throwEvalError ["Cannot evaluate constructor applied to destructor"]
+evalApplyOnce _ Xtor{} Xtor{} = throwEvalError ["Cannot evaluate constructor applied to destructor"]
 evalApplyOnce _ _ _ = throwEvalError ["Cannot evaluate, probably an asymmetric term..."]
 
 

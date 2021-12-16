@@ -58,8 +58,8 @@ zonkTerm bisubst (BoundVar (loc,ty) rep idx) =
     BoundVar (loc, zonkType bisubst ty) rep idx
 zonkTerm bisubst (FreeVar  (loc,ty) rep nm)  =
     FreeVar  (loc, zonkType bisubst ty) rep nm
-zonkTerm bisubst (XtorCall (loc,ty) rep xn subst) =
-    XtorCall (loc, zonkType bisubst ty) rep xn (zonkPCTerm bisubst <$> subst)
+zonkTerm bisubst (Xtor (loc,ty) rep xn subst) =
+    Xtor (loc, zonkType bisubst ty) rep xn (zonkPCTerm bisubst <$> subst)
 zonkTerm bisubst (XMatch (loc,ty) rep ns cases) =
     XMatch (loc, zonkType bisubst ty) rep ns (zonkCmdCase bisubst <$> cases)
 zonkTerm bisubst (MuAbs (loc,ty) rep fv cmd) =

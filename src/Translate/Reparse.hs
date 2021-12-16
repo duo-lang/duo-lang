@@ -41,9 +41,9 @@ createNamesPCTerm (CnsTerm tm) = CnsTerm <$> createNamesTerm tm
 createNamesTerm :: Term pc ext -> CreateNameM (Term pc Parsed)
 createNamesTerm (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
 createNamesTerm (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
-createNamesTerm (XtorCall _ pc xt subst) = do
+createNamesTerm (Xtor _ pc xt subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  return $ XtorCall defaultLoc pc xt subst'
+  return $ Xtor defaultLoc pc xt subst'
 createNamesTerm (XMatch _ pc ns cases) = do
   cases' <- sequence $ createNamesCmdCase <$> cases
   return $ XMatch defaultLoc pc ns cases'

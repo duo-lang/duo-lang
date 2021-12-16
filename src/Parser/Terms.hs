@@ -57,15 +57,15 @@ numLitP ns PrdRep = do
   return (numToTerm (Loc startPos endPos) num, endPos)
   where
     numToTerm :: Loc -> Int -> Term Prd Parsed
-    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") []
-    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
+    numToTerm loc 0 = Xtor loc PrdRep (MkXtorName ns "Z") []
+    numToTerm loc n = Xtor loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 xtorCall ns pc = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (subst, endPos) <- substitutionP
-  return (XtorCall (Loc startPos endPos) pc xt subst, endPos)
+  return (Xtor (Loc startPos endPos) pc xt subst, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Argument lists

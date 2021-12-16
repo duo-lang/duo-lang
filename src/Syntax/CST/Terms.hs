@@ -20,12 +20,12 @@ type CommandCase = (Loc, XtorName, [(PrdCns, FreeVarName)],                    C
 data Term where
     -- AST Nodes
     Var :: Loc -> FreeVarName -> Term
-    XtorCall :: Loc -> XtorName -> Substitution -> Term
+    Xtor :: Loc -> XtorName -> Substitution -> Term
     XMatch :: Loc -> [CommandCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Command -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
-    Match :: Loc -> Term -> [TermCase] -> Term
-    Comatch :: Loc -> [TermCaseI] -> Term
+    Case :: Loc -> Term -> [TermCase] -> Term
+    Cocase :: Loc -> [TermCaseI] -> Term
     -- Sugar Nodes
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term

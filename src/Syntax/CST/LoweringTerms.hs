@@ -56,16 +56,16 @@ commandCasesToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
 
 lowerTerm :: PrdCnsRep pc -> CST.Term -> AST.Term pc Parsed
 lowerTerm rep    (CST.Var loc v)               = AST.FreeVar loc rep v
-lowerTerm rep    (CST.XtorCall loc xtor subst) = AST.XtorCall loc rep xtor (lowerSubstitution subst)
+lowerTerm rep    (CST.Xtor loc xtor subst)     = AST.Xtor loc rep xtor (lowerSubstitution subst)
 lowerTerm rep    (CST.XMatch loc cases)        = AST.XMatch loc rep (commandCasesToNS cases) (lowerCommandCase <$> cases)
 lowerTerm PrdRep (CST.MuAbs loc fv cmd)        = AST.MuAbs loc PrdRep (Just fv) (AST.commandClosing [(Cns,fv)] (lowerCommand cmd))
 lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] (lowerCommand cmd))
 lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = AST.Dtor loc xtor (lowerTerm PrdRep tm) (lowerSubstitutionI subst)
 lowerTerm CnsRep (CST.Dtor _loc _xtor _tm _s)  = error "Cannot lower Dtor to a consumer (TODO)."
-lowerTerm PrdRep (CST.Match loc tm cases)      = AST.Match loc (termCasesToNS cases) (lowerTerm PrdRep tm) (lowerTermCase <$> cases)
-lowerTerm CnsRep (CST.Match _loc _tm _cases)   = error "Cannot lower Match to a consumer (TODO)"
-lowerTerm PrdRep (CST.Comatch loc cases)       = AST.Comatch loc (termCasesIToNS cases) (lowerTermCaseI <$> cases)
-lowerTerm CnsRep (CST.Comatch _loc _cases)     = error "Cannot lower Comatch to a consumer (TODO)"
+lowerTerm PrdRep (CST.Case loc tm cases)       = AST.Match loc (termCasesToNS cases) (lowerTerm PrdRep tm) (lowerTermCase <$> cases)
+lowerTerm CnsRep (CST.Case _loc _tm _cases)    = error "Cannot lower Match to a consumer (TODO)"
+lowerTerm PrdRep (CST.Cocase loc cases)        = AST.Comatch loc (termCasesIToNS cases) (lowerTermCaseI <$> cases)
+lowerTerm CnsRep (CST.Cocase _loc _cases)      = error "Cannot lower Comatch to a consumer (TODO)"
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
 lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = error "Cannot lower NatLit to a consumer."
 lowerTerm rep    (CST.TermParens _loc tm)      = lowerTerm rep tm
@@ -85,8 +85,8 @@ lowerLambda loc var tm = AST.Comatch loc Structural
 
 -- | Lower a natural number literal.
 lowerNatLit :: Loc -> NominalStructural -> Int -> AST.Term Prd Parsed
-lowerNatLit loc ns 0 = AST.XtorCall loc PrdRep (MkXtorName ns "Z") []
-lowerNatLit loc ns n = AST.XtorCall loc PrdRep (MkXtorName ns "S") [AST.PrdTerm $ lowerNatLit loc ns (n-1)]
+lowerNatLit loc ns 0 = AST.Xtor loc PrdRep (MkXtorName ns "Z") []
+lowerNatLit loc ns n = AST.Xtor loc PrdRep (MkXtorName ns "S") [AST.PrdTerm $ lowerNatLit loc ns (n-1)]
 
 -- | Lower an application.
 lowerApp :: Loc -> CST.Term -> CST.Term -> AST.Term Prd Parsed

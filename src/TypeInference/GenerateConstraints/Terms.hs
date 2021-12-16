@@ -94,16 +94,16 @@ genConstraintsTerm (FreeVar loc rep v) = do
 --
 -- Structural Xtors:
 --
-genConstraintsTerm (XtorCall loc rep xt@MkXtorName { xtorNominalStructural = Structural } subst) = do
+genConstraintsTerm (Xtor loc rep xt@MkXtorName { xtorNominalStructural = Structural } subst) = do
   inferredSubst <- genConstraintsSubst subst
   let substTypes = getTypArgs inferredSubst
   case rep of
-    PrdRep -> return $ XtorCall (loc, TyData   PosRep Nothing [MkXtorSig xt substTypes]) rep xt inferredSubst
-    CnsRep -> return $ XtorCall (loc, TyCodata NegRep Nothing [MkXtorSig xt substTypes]) rep xt inferredSubst
+    PrdRep -> return $ Xtor (loc, TyData   PosRep Nothing [MkXtorSig xt substTypes]) rep xt inferredSubst
+    CnsRep -> return $ Xtor (loc, TyCodata NegRep Nothing [MkXtorSig xt substTypes]) rep xt inferredSubst
 --
 -- Nominal Xtors:
 --
-genConstraintsTerm (XtorCall loc rep xt@MkXtorName { xtorNominalStructural = Nominal } subst) = do
+genConstraintsTerm (Xtor loc rep xt@MkXtorName { xtorNominalStructural = Nominal } subst) = do
   im <- asks (inferMode . snd)
   case im of
     --
@@ -120,8 +120,8 @@ genConstraintsTerm (XtorCall loc rep xt@MkXtorName { xtorNominalStructural = Nom
       -- and the types we looked up, i.e. the types declared in the XtorSig.
       genConstraintsCtxts substTypes (sig_args xtorSig) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
       case rep of
-        PrdRep -> return (XtorCall (loc, TyNominal PosRep Nothing (data_name decl)) rep xt substInferred)
-        CnsRep -> return (XtorCall (loc, TyNominal NegRep Nothing (data_name decl)) rep xt substInferred)
+        PrdRep -> return (Xtor (loc, TyNominal PosRep Nothing (data_name decl)) rep xt substInferred)
+        CnsRep -> return (Xtor (loc, TyNominal NegRep Nothing (data_name decl)) rep xt substInferred)
     --
     -- Refinement inference
     --
@@ -137,8 +137,8 @@ genConstraintsTerm (XtorCall loc rep xt@MkXtorName { xtorNominalStructural = Nom
       -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
       genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
       case rep of
-        PrdRep -> return (XtorCall (loc, TyData   PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep xt substInferred)
-        CnsRep -> return (XtorCall (loc, TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep xt substInferred)
+        PrdRep -> return (Xtor (loc, TyData   PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep xt substInferred)
+        CnsRep -> return (Xtor (loc, TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
