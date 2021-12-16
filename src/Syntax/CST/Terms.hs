@@ -7,18 +7,21 @@ data PrdCnsTerm where
     PrdTerm :: Term -> PrdCnsTerm
     CnsTerm :: Term -> PrdCnsTerm
 
+deriving instance Show PrdCnsTerm
+deriving instance Eq PrdCnsTerm
+
 type Substitution = [PrdCnsTerm]
 type SubstitutionI = ([PrdCnsTerm],PrdCns,[PrdCnsTerm])
 
-type TermCase = (XtorName, [(PrdCns,FreeVarName)], Term)
-type TermCaseI = (XtorName, ([(PrdCns, FreeVarName)],(),[FreeVarName]), Term)
-type CommandCase = (XtorName, [(PrdCns, FreeVarName)], Command)
+type TermCase    = (Loc, XtorName, [(PrdCns,FreeVarName)],                     Term)
+type TermCaseI   = (Loc, XtorName, ([(PrdCns, FreeVarName)],(),[(PrdCns,FreeVarName)]), Term)
+type CommandCase = (Loc, XtorName, [(PrdCns, FreeVarName)],                    Command)
 
 data Term where
     -- AST Nodes
     Var :: Loc -> FreeVarName -> Term
     XtorCall :: Loc -> XtorName -> Substitution -> Term
-    XMatch :: Loc -> [()] -> Term
+    XMatch :: Loc -> [CommandCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Command -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     Match :: Loc -> Term -> [TermCase] -> Term
@@ -29,6 +32,8 @@ data Term where
     FunApp :: Loc -> Term -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
 
+deriving instance Show Term
+deriving instance Eq Term
 
 data Command where
   -- AST Nodes
@@ -39,3 +44,6 @@ data Command where
   Done  :: Loc -> Command
   -- Sugar Nodes
   CommandParens :: Loc -> Command -> Command
+
+deriving instance Show Command
+deriving instance Eq Command
