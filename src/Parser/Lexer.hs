@@ -55,7 +55,6 @@ module Parser.Lexer
   , braces
   , dbraces
   , argListP
-
   , checkTick
   , parseUntilKeywP
   ) where

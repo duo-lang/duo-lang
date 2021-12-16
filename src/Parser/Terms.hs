@@ -3,8 +3,9 @@ module Parser.Terms
   , commandP
   )where
 
-import Text.Megaparsec hiding (State)
+import Data.Bifunctor
 
+import Text.Megaparsec hiding (State)
 
 import Parser.Definition
 import Parser.Lexer
@@ -66,6 +67,28 @@ xtorCall ns pc = do
   (subst, endPos) <- substitutionP
   return (XtorCall (Loc startPos endPos) pc xt subst, endPos)
 
+--------------------------------------------------------------------------------------------
+-- Argument lists
+--------------------------------------------------------------------------------------------
+
+-- | Parse a non-empty list of producer arguments in parentheses.
+-- E.g. "(prd,prd,prd)""
+prdArgList :: Parser a -> Parser ([(PrdCns, a)], SourcePos)
+prdArgList p = parens  $ ((,) Prd <$> p) `sepBy` comma
+
+-- | Parse a non-empty list of consumer arguments in brackets.
+-- E.g. "[cns,cns,cns]"
+cnsArgList :: Parser a -> Parser ([(PrdCns,a)], SourcePos)
+cnsArgList p = brackets $ ((,) Cns <$> p) `sepBy` comma
+
+-- | Parse a sequence of produer/consumer argument lists
+argListsP ::  Parser a -> Parser a ->  Parser ([(PrdCns,a)], SourcePos)
+argListsP p q = do
+  endPos <- getSourcePos
+  xs <- many (prdArgList p <|> try (cnsArgList q))
+  case xs of
+    [] -> return ([], endPos)
+    xs -> return (concat (fst <$> xs), snd (last xs))
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -209,15 +232,16 @@ termCaseP ns = do
 termCaseIP :: NominalStructural -> Parser (TermCaseI Parsed, SourcePos)
 termCaseIP ns = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName ns
-  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  (xt, _) <- xtorName ns
+  (as1, _) <- argListsP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- brackets implicitSym
+  (as2, _) <- argListsP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (res, endPos) <- termTopP PrdRep
   let pmcase = MkTermCaseI { tmcasei_ext = Loc startPos endPos
                            , tmcasei_name = xt
-                           , tmcasei_args = (\(pc,fv) -> (pc, Just fv)) <$> args
-                           , tmcasei_term = termClosing args res
+                           , tmcasei_args = (second Just <$> as1, (), second Just <$> as2)
+                           , tmcasei_term = termClosing (as1 ++ [(Cns, "*")] ++ as2) res
                            }
   return (pmcase, endPos)
 
@@ -286,8 +310,12 @@ comatchP PrdRep = do
 
 -- | Create a lambda abstraction.
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc Structural [MkTermCaseI loc (MkXtorName Structural "Ap") [(Prd, Just var)] (termClosing [(Prd, var)] tm)]
-
+mkLambda loc var tm = Comatch loc Structural
+  [
+    MkTermCaseI loc (MkXtorName Structural "Ap")
+                ([(Prd, Just var)], (), [])
+                (termClosing [(Prd, var)] tm)
+  ]
 
 lambdaP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 lambdaP CnsRep = empty
@@ -319,7 +347,6 @@ termBotP rep = freeVar rep <|>
   muAbstraction rep <|>
   parens (fst <$> termTopP rep) <|>
   lambdaP rep
-
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser

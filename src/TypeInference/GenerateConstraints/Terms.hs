@@ -380,12 +380,13 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkTermCase { tmcase_name
 -- cocase { 'X(xs) => e' }
 --
 genConstraintsTerm (Comatch loc Structural cocases) = do
-  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
+  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
     -- Generate unification variables for each case arg
-    (argtsPos,argtsNeg) <- freshTVars tmcasei_args
+    (argtsPos1,argtsNeg1) <- freshTVars as1
+    (argtsPos2,argtsNeg2) <- freshTVars as2
     -- Typecheck the term in the context extended with the unification variables.
-    tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
-    return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
+    tmcasei_termInferred <- withContext (argtsPos1 ++ argtsPos2) (genConstraintsTerm tmcasei_term)
+    return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg1 ++ [CnsType $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
   return (Comatch (loc,TyCodata PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
 --
 -- Nominal Comatch (Syntactic Sugar):
@@ -428,9 +429,9 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
       tn@NominalDecl{..} <- lookupDataDecl xtn
       -- We check that all cases in the pattern match belong to the type declaration.
       checkCorrectness (tmcasei_name <$> cocases) tn
-      cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
+      cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars tmcasei_args
+        (argtsPos,argtsNeg) <- freshTVars (as1 ++ as2)
         -- Typecheck case term using new unification vars
         tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
         -- We have to bound the unification variables with the lower and upper bounds generated
@@ -446,7 +447,7 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
                        (CnsType ty) -> ty
         -- The term must have a subtype of the copattern match return type
         addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
-        return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
+        return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
       return (Comatch (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Nominal (fst <$> cocasesInferred))
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
