@@ -24,6 +24,10 @@ lowerTermCase (loc, xtor, bs, tm) = AST.MkTermCase { tmcase_ext = loc
                                                    , tmcase_term = AST.termClosing bs (lowerTerm PrdRep tm)
                                                    }
 
+termCasesToNS :: [CST.TermCase] -> NominalStructural
+termCasesToNS [] = Structural
+termCasesToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
+
 lowerTermCaseI :: CST.TermCaseI -> AST.TermCaseI Parsed
 lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = AST.MkTermCaseI { tmcasei_ext = loc
                                                                , tmcasei_name = xtor
@@ -34,7 +38,9 @@ lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = AST.MkTermCaseI { tmcasei_ext = l
                                                                , tmcasei_term = AST.termClosing (bs1 ++ [(Cns, "*")] ++ bs2) (lowerTerm PrdRep tm)
                                                                }
 
-
+termCasesIToNS :: [CST.TermCaseI] -> NominalStructural
+termCasesIToNS [] = Structural
+termCasesIToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
 
 lowerCommandCase :: CST.CommandCase -> AST.CmdCase Parsed
 lowerCommandCase (loc, xtor, bs, cmd) = AST.MkCmdCase { cmdcase_ext = loc
@@ -43,17 +49,22 @@ lowerCommandCase (loc, xtor, bs, cmd) = AST.MkCmdCase { cmdcase_ext = loc
                                                       , cmdcase_cmd = AST.commandClosing bs (lowerCommand cmd)
                                                       }
 
+-- TODO: Check that all command cases use the same nominal/structural variant.
+commandCasesToNS :: [CST.CommandCase] -> NominalStructural
+commandCasesToNS [] = Structural
+commandCasesToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
+
 lowerTerm :: PrdCnsRep pc -> CST.Term -> AST.Term pc Parsed
 lowerTerm rep    (CST.Var loc v)               = AST.FreeVar loc rep v
 lowerTerm rep    (CST.XtorCall loc xtor subst) = AST.XtorCall loc rep xtor (lowerSubstitution subst)
-lowerTerm rep    (CST.XMatch loc cases)        = AST.XMatch loc rep undefined (lowerCommandCase <$> cases)
+lowerTerm rep    (CST.XMatch loc cases)        = AST.XMatch loc rep (commandCasesToNS cases) (lowerCommandCase <$> cases)
 lowerTerm PrdRep (CST.MuAbs loc fv cmd)        = AST.MuAbs loc PrdRep (Just fv) (AST.commandClosing [(Cns,fv)] (lowerCommand cmd))
 lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] (lowerCommand cmd))
 lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = AST.Dtor loc xtor (lowerTerm PrdRep tm) (lowerSubstitutionI subst)
 lowerTerm CnsRep (CST.Dtor _loc _xtor _tm _s)  = error "Cannot lower Dtor to a consumer (TODO)."
-lowerTerm PrdRep (CST.Match loc tm cases)      = AST.Match loc undefined (lowerTerm PrdRep tm) (lowerTermCase <$> cases)
+lowerTerm PrdRep (CST.Match loc tm cases)      = AST.Match loc (termCasesToNS cases) (lowerTerm PrdRep tm) (lowerTermCase <$> cases)
 lowerTerm CnsRep (CST.Match _loc _tm _cases)   = error "Cannot lower Match to a consumer (TODO)"
-lowerTerm PrdRep (CST.Comatch loc cases)       = AST.Comatch loc undefined (lowerTermCaseI <$> cases)
+lowerTerm PrdRep (CST.Comatch loc cases)       = AST.Comatch loc (termCasesIToNS cases) (lowerTermCaseI <$> cases)
 lowerTerm CnsRep (CST.Comatch _loc _cases)     = error "Cannot lower Comatch to a consumer (TODO)"
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
 lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = error "Cannot lower NatLit to a consumer."
