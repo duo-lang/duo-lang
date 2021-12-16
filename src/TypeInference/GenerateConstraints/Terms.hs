@@ -388,8 +388,7 @@ genConstraintsTerm (Comatch loc Structural cocases) = do
     -- HACK: `tmcasei_term` needs to be checked in the proper context, i.e. we need to include the implicit variable even though
     -- its type is the type we are actually inferring in this call. Since the variable is implicit, it can never be referenced explicitly.
     -- Hence, the "*" type variable just serves as a placeholder to ensure that the arguments have the correct De-Bruijn indices.
-    (_, negImplicitPlaceholder) <- freshTVar (ProgramVariable "*")
-    tmcasei_termInferred <- withContext (argtsPos1 ++ [CnsType negImplicitPlaceholder] ++ argtsPos2) (genConstraintsTerm tmcasei_term)
+    tmcasei_termInferred <- withContext (argtsPos1 ++ [CnsType (TyVar NegRep Nothing (MkTVar "*"))] ++ argtsPos2) (genConstraintsTerm tmcasei_term)
     return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg1 ++ [CnsType $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
   return (Comatch (loc,TyCodata PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
 --
@@ -441,8 +440,7 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
         -- HACK: `tmcasei_term` needs to be checked in the proper context, i.e. we need to include the implicit variable even though
         -- its type is the type we are actually inferring in this call. Since the variable is implicit, it can never be referenced explicitly.
         -- Hence, the "*" type variable just serves as a placeholder to ensure that the arguments have the correct De-Bruijn indices.
-        (_, negImplicitPlaceholder) <- freshTVar (ProgramVariable "*")
-        let argtsPos = argtsPos1 ++ [CnsType negImplicitPlaceholder] ++ argtsPos2
+        let argtsPos = argtsPos1 ++ [CnsType (TyVar NegRep Nothing (MkTVar "*"))] ++ argtsPos2
 
         -- Typecheck case term using new unification vars
         tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
