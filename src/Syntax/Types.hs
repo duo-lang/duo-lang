@@ -69,16 +69,38 @@ deriving instance Ord (DataCodataRep pol)
 -- LinearContexts
 ------------------------------------------------------------------------------
 
-data PrdCnsType (pol :: Polarity) where
-  PrdType :: Typ pol -> PrdCnsType pol
-  CnsType :: Typ (FlipPol pol) -> PrdCnsType pol
+type family PrdCnsFlip (pc :: PrdCns) (pol :: Polarity) :: Polarity where
+  PrdCnsFlip Prd pol = pol
+  PrdCnsFlip Cns pol = FlipPol pol
 
-deriving instance Eq (PrdCnsType Pos)
-deriving instance Eq (PrdCnsType Neg)
-deriving instance Ord (PrdCnsType Pos)
-deriving instance Ord (PrdCnsType Neg)
-deriving instance Show (PrdCnsType Pos)
-deriving instance Show (PrdCnsType Neg)
+data PrdCnsType (pol :: Polarity) where
+  PrdCnsType :: PrdCnsRep pc -> Typ (PrdCnsFlip pc pol) -> PrdCnsType pol
+
+instance Eq (PrdCnsType Pos) where
+  (PrdCnsType PrdRep ty1) == (PrdCnsType PrdRep ty2) = ty1 == ty2
+  (PrdCnsType CnsRep ty1) == (PrdCnsType CnsRep ty2) = ty1 == ty2
+  _ == _ = False
+instance Eq (PrdCnsType Neg) where
+  (PrdCnsType PrdRep ty1) == (PrdCnsType PrdRep ty2) = ty1 == ty2
+  (PrdCnsType CnsRep ty1) == (PrdCnsType CnsRep ty2) = ty1 == ty2
+  _ == _ = False
+-- For Ord: PrdType < CnsType  
+instance Ord (PrdCnsType Pos) where
+  (PrdCnsType PrdRep ty1) `compare` (PrdCnsType PrdRep ty2) = ty1 `compare` ty2
+  (PrdCnsType CnsRep ty1) `compare` (PrdCnsType CnsRep ty2) = ty1 `compare` ty2
+  (PrdCnsType PrdRep _)   `compare` (PrdCnsType CnsRep _)   = LT
+  (PrdCnsType CnsRep _)   `compare` (PrdCnsType PrdRep _)   = GT
+instance Ord (PrdCnsType Neg) where
+  (PrdCnsType PrdRep ty1) `compare` (PrdCnsType PrdRep ty2) = ty1 `compare` ty2
+  (PrdCnsType CnsRep ty1) `compare` (PrdCnsType CnsRep ty2) = ty1 `compare` ty2
+  (PrdCnsType PrdRep _)   `compare` (PrdCnsType CnsRep _)   = LT
+  (PrdCnsType CnsRep _)   `compare` (PrdCnsType PrdRep _)   = GT
+instance Show (PrdCnsType Pos) where
+  show (PrdCnsType PrdRep ty) = "PrdType " <> show ty
+  show (PrdCnsType CnsRep ty) = "CnsType " <> show ty
+instance Show (PrdCnsType Neg) where
+  show (PrdCnsType PrdRep ty) = "PrdType " <> show ty
+  show (PrdCnsType CnsRep ty) = "CnsType " <> show ty
 
 type LinearContext pol = [PrdCnsType pol]
 
@@ -166,9 +188,8 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyCodata _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
 
     freeTypeVarsPC :: PrdCnsType pol -> [TVar]
-    freeTypeVarsPC (PrdType ty) = freeTypeVars' ty
-    freeTypeVarsPC (CnsType ty) = freeTypeVars' ty
-
+    freeTypeVarsPC (PrdCnsType _ ty) = freeTypeVars' ty
+    
     freeTypeVarsCtxt :: LinearContext pol -> [TVar]
     freeTypeVarsCtxt ctxt = concat (freeTypeVarsPC <$> ctxt)
 
@@ -213,10 +234,7 @@ substituteContext :: Map TVar (Typ Pos, Typ Neg) -> LinearContext pol -> LinearC
 substituteContext m ctxt = substitutePCType m <$> ctxt
 
 substitutePCType :: Map TVar (Typ Pos, Typ Neg) -> PrdCnsType pol -> PrdCnsType pol
-substitutePCType m (PrdType ty)= PrdType $ substituteType m ty
-substitutePCType m (CnsType ty)= CnsType $ substituteType m ty
-
-
+substitutePCType m (PrdCnsType pc ty)= PrdCnsType pc $ substituteType m ty
 
 ------------------------------------------------------------------------------
 -- Data Type declarations

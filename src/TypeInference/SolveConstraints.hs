@@ -15,7 +15,7 @@ import Data.Set qualified as S
 
 import Errors
 import Syntax.Types
-import Syntax.CommonTerm (XtorName, Phase(..))
+import Syntax.CommonTerm (XtorName, Phase(..), PrdCnsRep(..))
 import Syntax.Program (Environment)
 import Syntax.Kinds
 import Syntax.Zonking
@@ -187,14 +187,14 @@ checkXtor xtors2 (MkXtorSig xtName subst1) = do
 
 checkContexts :: LinearContext Pos -> LinearContext Neg -> SolverM [Constraint ConstraintInfo]
 checkContexts [] [] = return []
-checkContexts (PrdType ty1:rest1) (PrdType ty2:rest2) = do
+checkContexts (PrdCnsType PrdRep ty1:rest1) (PrdCnsType PrdRep ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty1 ty2:xs)
-checkContexts (CnsType ty1:rest1) (CnsType ty2:rest2) = do
+checkContexts (PrdCnsType CnsRep ty1:rest1) (PrdCnsType CnsRep ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty2 ty1:xs)
-checkContexts (PrdType _:_) (CnsType _:_) = throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
-checkContexts (CnsType _:_) (PrdType _:_) = throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
+checkContexts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) = throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
+checkContexts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) = throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
 checkContexts []    (_:_) = throwSolverError ["checkContexts: Linear contexts have unequal length."]
 checkContexts (_:_) []    = throwSolverError ["checkContexts: Linear contexts have unequal length."]
 

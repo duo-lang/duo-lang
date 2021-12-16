@@ -40,8 +40,7 @@ zonkKind bisubst kind@(KindVar kv) = case M.lookup kv (kvarSubst bisubst) of
     Just kind' -> kind'
 
 zonkPrdCnsType :: Bisubstitution -> PrdCnsType pol -> PrdCnsType pol
-zonkPrdCnsType bisubst (PrdType ty) = PrdType (zonkType bisubst ty)
-zonkPrdCnsType bisubst (CnsType ty) = CnsType (zonkType bisubst ty)
+zonkPrdCnsType bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonkType bisubst ty)
 
 zonkLinearCtxt :: Bisubstitution -> LinearContext pol -> LinearContext pol
 zonkLinearCtxt bisubst = fmap (zonkPrdCnsType bisubst)

@@ -207,8 +207,8 @@ getTypeTerm (Comatch (_,ty) _ _)  = ty
 getTypArgs :: Substitution Inferred -> LinearContext Pos
 getTypArgs subst = getTypArgs' <$> subst
   where
-    getTypArgs' (PrdTerm tm) = PrdType $ getTypeTerm tm
-    getTypArgs' (CnsTerm tm) = CnsType $ getTypeTerm tm
+    getTypArgs' (PrdTerm tm) = PrdCnsType PrdRep $ getTypeTerm tm
+    getTypArgs' (CnsTerm tm) = PrdCnsType CnsRep $ getTypeTerm tm
 
 
 ---------------------------------------------------------------------------------
