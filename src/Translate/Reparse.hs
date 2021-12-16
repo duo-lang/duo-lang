@@ -92,10 +92,12 @@ createNamesTermCase (MkTermCase _ xt args e) = do
   return $ MkTermCase defaultLoc xt args' e'
 
 createNamesTermCaseI :: TermCaseI ext -> CreateNameM (TermCaseI Parsed)
-createNamesTermCaseI (MkTermCaseI _ xt args e) = do
+createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
-  args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
-  return $ MkTermCaseI defaultLoc xt args' e'
+  let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
+  as1' <- sequence $ f <$> as1
+  as2' <- sequence $ f <$> as2
+  return $ MkTermCaseI defaultLoc xt (as1', (), as2') e'
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad

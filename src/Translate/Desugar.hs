@@ -88,10 +88,11 @@ desugarTerm (Match _ ns t cases)   =
 -- comatch { D(args)[k] => (desugar e) >> k }
 desugarTerm (Comatch _ ns cocases) =
   let
-    desugarComatchCase (MkTermCaseI _ xt args t) = MkCmdCase () xt (args ++ [(Cns,Nothing)]) $ Apply () Nothing (desugarTerm t) (BoundVar () CnsRep (0,length args))
+    desugarComatchCase (MkTermCaseI _ xt (as1, (), as2) t) =
+      let args = as1 ++ [(Cns,Nothing)] ++ as2 in
+      MkCmdCase () xt args $ Apply () Nothing (desugarTerm t) (BoundVar () CnsRep (0,length as1))
   in
     XMatch () PrdRep ns $ desugarComatchCase <$> cocases
-
 
 desugarCmdCase :: CmdCase Inferred -> CmdCase Compiled
 desugarCmdCase (MkCmdCase _ xt args cmd) = MkCmdCase () xt args (desugarCmd cmd)

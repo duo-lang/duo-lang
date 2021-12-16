@@ -7,6 +7,7 @@ import Prettyprinter
 import Pretty.Pretty
 import Syntax.Terms
 import Syntax.CommonTerm
+import Data.Bifunctor
 
 
 
@@ -37,16 +38,32 @@ instance PrettyAnn (TermCase ext) where
       prettyAnn tmcase_term
 
 instance PrettyAnn (TermCaseI ext) where
-  prettyAnn MkTermCaseI { tmcasei_name, tmcasei_args, tmcasei_term } =
-    let
-      prds = [x | (Prd,x) <- tmcasei_args]
-      cnss = [x | (Cns,x) <- tmcasei_args]
-    in
-      prettyAnn tmcasei_name <>
-      prettyTwice prds cnss <>
-      pretty ("[*]" :: String) <+>
-      annSymbol "=>" <+>
-      prettyAnn tmcasei_term
+  prettyAnn MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
+    prettyAnn tmcasei_name <>
+    printCasesArgs as1 <>
+    pretty ("[*]" :: String) <>
+    printCasesArgs as2 <+>
+    annSymbol "=>" <+>
+    prettyAnn tmcasei_term
+
+printCasesArgs :: [(PrdCns, Maybe FreeVarName)] -> Doc Annotation
+printCasesArgs cs = printCasesArgs' (second (map snd) <$> splitOnChange fst cs)
+
+printCasesArgs' :: [(PrdCns, [Maybe FreeVarName])] -> Doc Annotation
+printCasesArgs' [] = mempty
+printCasesArgs' ((Prd, vs) : cs) = parens (intercalateComma (map prettyAnn vs)) <> printCasesArgs' cs
+printCasesArgs' ((Cns, vs) : cs) = brackets (intercalateComma (map prettyAnn vs)) <> printCasesArgs' cs
+
+splitOnChange :: Eq b => (a -> b) -> [a] -> [(b, [a])]
+splitOnChange _ [] = []
+splitOnChange f (a : as) = helper f (f a) as [a] []
+  where
+    helper :: Eq b => (a -> b) -> b -> [a] -> [a] -> [(b, [a])] -> [(b, [a])]
+    helper _ _ [] [] res = res
+    helper _ prev [] curr res = res ++ [(prev, curr)]
+    helper f prev (a : as) curr res | f a == prev = helper f prev as (curr ++ [a]) res
+    helper f prev (a : as) curr res =
+      helper f (f a) as [a] (res ++ [(prev, curr)])
 
 ---------------------------------------------------------------------------------
 -- Substitutions

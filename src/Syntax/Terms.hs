@@ -101,7 +101,9 @@ deriving instance (Show (TermCase Compiled))
 data TermCaseI (ext :: Phase) = MkTermCaseI
   { tmcasei_ext  :: CaseExt ext
   , tmcasei_name :: XtorName
-  , tmcasei_args :: [(PrdCns, Maybe FreeVarName)]
+  -- | The pattern arguments
+  -- The empty tuple stands for the implicit argument (*)
+  , tmcasei_args :: ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)])
   , tmcasei_term :: Term Prd ext
   }
 
@@ -379,11 +381,12 @@ termLocallyClosedRec env (Comatch _ _ cases) =
 
 termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase ext -> Either Error ()
 termCaseLocallyClosedRec env (MkTermCase _ _ args e) = do
-  termLocallyClosedRec ((((\(x,_) -> (x,())) <$> args)):env) e
+  termLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) e
 
 termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI ext -> Either Error ()
-termCaseILocallyClosedRec env (MkTermCaseI _ _ args e) = do
-  termLocallyClosedRec ((((\(x,_) -> (x,())) <$> args)):env) e
+termCaseILocallyClosedRec env (MkTermCaseI _ _ (as1, (), as2) e) =
+  let newArgs = (\(x,_) -> (x,())) <$> as1 ++ [(Cns, Nothing)] ++ as2 in
+  termLocallyClosedRec (newArgs:env) e
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command ext -> Either Error ()
 commandLocallyClosedRec _ (Done _) = Right ()
@@ -422,12 +425,13 @@ openTermCase MkTermCase { tmcase_name, tmcase_args, tmcase_term } =
                }
 
 openTermCaseI :: TermCaseI ext -> TermCaseI Compiled
-openTermCaseI MkTermCaseI { tmcasei_name, tmcasei_args, tmcasei_term } =
-    MkTermCaseI { tmcasei_ext = ()
-                , tmcasei_name = tmcasei_name
-                , tmcasei_args = tmcasei_args
-                , tmcasei_term = termOpening (freeVarNamesToXtorArgs tmcasei_args) (openTermComplete tmcasei_term)
-                }
+openTermCaseI MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
+
+  MkTermCaseI { tmcasei_ext = ()
+              , tmcasei_name = tmcasei_name
+              , tmcasei_args = (as1, (), as2)
+              , tmcasei_term = termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
+              }
 
 openCmdCase :: CmdCase ext -> CmdCase Compiled
 openCmdCase MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
@@ -537,7 +541,9 @@ removeNamesTermCase :: TermCase ext -> TermCase ext
 removeNamesTermCase (MkTermCase ext xt args e)   = MkTermCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesTerm e)
 
 removeNamesTermCaseI :: TermCaseI ext -> TermCaseI ext
-removeNamesTermCaseI (MkTermCaseI ext xt args e)   = MkTermCaseI ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesTerm e)
+removeNamesTermCaseI (MkTermCaseI ext xt (as1, (), as2) e) =
+  let r = \(pc,_) -> (pc, Nothing) in
+  MkTermCaseI ext xt (r <$> as1, (), r <$> as2) (removeNamesTerm e)
 
 removeNamesCmdCase :: CmdCase ext -> CmdCase ext
 removeNamesCmdCase (MkCmdCase ext xt args cmd) = MkCmdCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesCmd cmd)
