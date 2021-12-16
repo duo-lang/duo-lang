@@ -17,7 +17,7 @@ main = do
 
 dispatch :: Options -> IO ()
 dispatch OptRepl         = runRepl
-dispatch OptLSP          = runLSP
+dispatch (OptLSP log)    = runLSP log
 dispatch (OptCompile fp) = runCompile fp
 dispatch OptVersion      = printVersion
 
