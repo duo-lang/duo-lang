@@ -8,7 +8,7 @@ import Options.Applicative
 
 data Options where
     OptRepl :: Options
-    OptLSP :: Options
+    OptLSP :: Maybe FilePath -> Options
     OptCompile :: FilePath -> Options
     OptVersion :: Options
 
@@ -33,7 +33,14 @@ replParserInfo = info (helper <*> replParser) mods
 ---------------------------------------------------------------------------------
 
 lspParser :: Parser Options
-lspParser = pure OptLSP
+lspParser = OptLSP <$> (optional $ strOption mods)
+  where
+    mods = fold [ long "logfile"
+                , short 'l'
+                , metavar "FILE"
+                , help "Specify the FILE that the LSP server will use for printing logs. If a logfile is not specified, output is directed to stderr."
+                ]
+
 
 lspParserInfo :: ParserInfo Options
 lspParserInfo = info (helper <*> lspParser) mods

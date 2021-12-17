@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
-module LSP.LSP where
+module LSP.LSP ( runLSP ) where
 
 import Data.IORef
 import Control.Monad.IO.Class (liftIO)
@@ -18,7 +18,6 @@ import Language.LSP.Server
       runLspT,
       type (<~>)(Iso, forward, backward),
       Handlers,
-      LanguageContextEnv,
       Options(..),
       ServerDefinition(..),
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
@@ -77,18 +76,13 @@ definition = do
     , options = serverOptions
     }
 
-initialize :: LanguageContextEnv LSPConfig
-           -> Message Initialize
-           -> IO (Either ResponseError ())
-initialize _ _ = return $ Right ()
-
 ---------------------------------------------------------------------------------
 -- Running the LSP Server
 ---------------------------------------------------------------------------------
 
-runLSP :: IO ()
-runLSP = do
-  setupLogger (Just "lsplog.txt") ["lspserver"] DEBUG
+runLSP :: Maybe FilePath -> IO ()
+runLSP mLogPath = do
+  setupLogger mLogPath ["lspserver"] DEBUG
   debugM "lspserver" $ "Starting LSP Server"
   initialDefinition <- definition
   errCode <- runServer initialDefinition
