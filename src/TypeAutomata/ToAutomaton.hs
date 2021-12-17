@@ -16,7 +16,7 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.CommonTerm (PrdCns(..))
+import Syntax.CommonTerm (PrdCns(..), PrdCnsRep(..))
 import Syntax.Types
 import Syntax.Kinds
 import TypeAutomata.Definition
@@ -152,8 +152,9 @@ lookupTVar NegRep tv = do
 linearContextToArity :: LinearContext pol -> [PrdCns]
 linearContextToArity = map f
   where
-    f (PrdType _) = Prd
-    f (CnsType _) = Cns
+    f :: PrdCnsType pol -> PrdCns
+    f (PrdCnsType PrdRep _) = Prd
+    f (PrdCnsType CnsRep _) = Cns
 
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
@@ -165,12 +166,11 @@ insertXtors dc pol mtn xtors = do
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
-      insertEdges [(newNode, node, EdgeSymbol dc xt (case pcType of (PrdType _)-> Prd; (CnsType _) -> Cns) i)]
+      insertEdges [(newNode, node, EdgeSymbol dc xt (case pcType of (PrdCnsType PrdRep _)-> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
   return newNode
 
 insertPCType :: PrdCnsType pol -> TTA Node
-insertPCType (PrdType ty) = insertType ty
-insertPCType (CnsType ty) = insertType ty
+insertPCType (PrdCnsType _ ty) = insertType ty
 
 insertType :: Typ pol -> TTA Node
 insertType (TyVar rep _ tv) = lookupTVar rep tv

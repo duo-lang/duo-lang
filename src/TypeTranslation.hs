@@ -21,7 +21,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Program
 import Syntax.Types
-import Syntax.CommonTerm (Phase(Inferred))
+import Syntax.CommonTerm (Phase(Inferred),PrdCnsRep(..))
 
 ---------------------------------------------------------------------------------------------
 -- TranslationState:
@@ -73,8 +73,8 @@ freshTVar = do
 ---------------------------------------------------------------------------------------------
 
 translatePCTypeUpper :: PrdCnsType Neg -> TranslateM (PrdCnsType Neg)
-translatePCTypeUpper (PrdType ty) = PrdType <$> translateTypeUpper' ty
-translatePCTypeUpper (CnsType ty) = CnsType <$> translateTypeLower' ty
+translatePCTypeUpper (PrdCnsType PrdRep ty) = PrdCnsType PrdRep <$> translateTypeUpper' ty
+translatePCTypeUpper (PrdCnsType CnsRep ty) = PrdCnsType CnsRep <$> translateTypeLower' ty
 
 translateCtxtUpper :: LinearContext Neg -> TranslateM (LinearContext Neg)
 translateCtxtUpper ctxt = sequence (translatePCTypeUpper <$> ctxt)
@@ -114,8 +114,8 @@ translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty
 ---------------------------------------------------------------------------------------------
 
 translatePCTypeLower :: PrdCnsType Pos -> TranslateM (PrdCnsType Pos)
-translatePCTypeLower (PrdType ty) = PrdType <$> translateTypeLower' ty
-translatePCTypeLower (CnsType ty) = CnsType <$> translateTypeUpper' ty
+translatePCTypeLower (PrdCnsType PrdRep ty) = PrdCnsType PrdRep <$> translateTypeLower' ty
+translatePCTypeLower (PrdCnsType CnsRep ty) = PrdCnsType CnsRep <$> translateTypeUpper' ty
 
 translateCtxtLower :: LinearContext Pos -> TranslateM (LinearContext Pos)
 translateCtxtLower ctxt = sequence (translatePCTypeLower <$> ctxt)
@@ -155,8 +155,7 @@ translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty
 ---------------------------------------------------------------------------------------------
 
 cleanUpPCType :: PrdCnsType pol -> TranslateM (PrdCnsType pol)
-cleanUpPCType (PrdType ty) = PrdType <$> cleanUpType ty
-cleanUpPCType (CnsType ty) = CnsType <$> cleanUpType ty
+cleanUpPCType (PrdCnsType rep ty) = PrdCnsType rep <$> cleanUpType ty
 
 cleanUpCtxt :: LinearContext pol -> TranslateM (LinearContext pol)
 cleanUpCtxt ctxt = sequence (cleanUpPCType <$> ctxt)

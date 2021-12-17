@@ -102,8 +102,7 @@ kindCheckType env (TyRec _ tv ty) = kindCheckType ((tv, getKind ty) : env) ty
     
 kindCheckPrdCnsType :: MonadError Error m
                     =>  [(TVar, Kind)] -> PrdCnsType pol -> m ()
-kindCheckPrdCnsType env (PrdType ty) = kindCheckType env ty
-kindCheckPrdCnsType env (CnsType ty) = kindCheckType env ty
+kindCheckPrdCnsType env (PrdCnsType _ ty) = kindCheckType env ty
 
 kindCheckXtors :: MonadError Error m 
                => [(TVar, Kind)] -> XtorSig pol -> m ()

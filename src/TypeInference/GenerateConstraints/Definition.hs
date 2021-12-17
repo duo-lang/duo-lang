@@ -135,11 +135,11 @@ freshTVars [] = return ([],[])
 freshTVars ((Prd,fv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
-  return (PrdType tp:lctxtP, PrdType tn:lctxtN)
+  return (PrdCnsType PrdRep tp:lctxtP, PrdCnsType PrdRep tn:lctxtN)
 freshTVars ((Cns,fv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
-  return (CnsType tn:lctxtP, CnsType tp:lctxtN)
+  return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -162,10 +162,10 @@ lookupContext rep (i,j) = do
     Just (lctxt) -> case indexMaybe lctxt j of
       Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
       Just ty -> case (rep, ty) of
-        (PrdRep, PrdType ty) -> return ty
-        (CnsRep, CnsType ty) -> return ty
-        (PrdRep, CnsType _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
-        (CnsRep, PrdType _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
+        (PrdRep, PrdCnsType PrdRep ty) -> return ty
+        (CnsRep, PrdCnsType CnsRep ty) -> return ty
+        (PrdRep, PrdCnsType CnsRep _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
+        (CnsRep, PrdCnsType PrdRep _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
 
 
 ---------------------------------------------------------------------------------------------

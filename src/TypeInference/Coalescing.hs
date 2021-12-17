@@ -139,8 +139,7 @@ coalesceType (TyRec NegRep tv ty) = do
     return $ TyRec NegRep tv ty'
 
 coalescePrdCnsType :: PrdCnsType pol -> CoalesceM (PrdCnsType pol)
-coalescePrdCnsType (PrdType ty) = PrdType <$> coalesceType ty
-coalescePrdCnsType (CnsType ty) = CnsType <$> coalesceType ty
+coalescePrdCnsType (PrdCnsType rep ty) = PrdCnsType rep <$> coalesceType ty
 
 coalesceCtxt :: LinearContext pol -> CoalesceM (LinearContext pol)
 coalesceCtxt = mapM coalescePrdCnsType

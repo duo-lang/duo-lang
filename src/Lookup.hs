@@ -59,8 +59,8 @@ annotateKind (TyRec rep tv ty)    = do
 
 annotatePCKind :: EnvReader bs a m
     => PrdCnsType pol -> m (PrdCnsType pol)
-annotatePCKind (PrdType ty) = PrdType <$> annotateKind ty
-annotatePCKind (CnsType ty) = CnsType <$> annotateKind ty
+annotatePCKind (PrdCnsType PrdRep ty) = PrdCnsType PrdRep <$> annotateKind ty
+annotatePCKind (PrdCnsType CnsRep ty) = PrdCnsType CnsRep <$> annotateKind ty
 
 annotateXtors :: EnvReader bs a m
               => XtorSig pol -> m (XtorSig pol)

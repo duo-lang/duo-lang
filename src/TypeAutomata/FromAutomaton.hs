@@ -144,10 +144,10 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         return $ case typs of [t] -> PrdType t; _ -> PrdType (TySet rep Nothing typs)
+         return $ case typs of [t] -> PrdCnsType PrdRep t; _ -> PrdCnsType PrdRep (TySet rep Nothing typs)
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         return $ case typs of [t] -> CnsType t; _ -> CnsType (TySet (flipPolarityRep rep) Nothing typs)
+         return $ case typs of [t] -> PrdCnsType CnsRep t; _ -> PrdCnsType CnsRep (TySet (flipPolarityRep rep) Nothing typs)
   return argTypes
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
