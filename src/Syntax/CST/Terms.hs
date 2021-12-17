@@ -34,6 +34,7 @@ data Term where
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
+    MultiLambda :: Loc -> [FreeVarName] -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
 
 deriving instance Show Term
