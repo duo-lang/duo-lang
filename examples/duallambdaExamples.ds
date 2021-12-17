@@ -18,7 +18,7 @@ prd compose := \x => cocase { MkPar[err][*] =>
                                 (h (g ((f x).MkPar[err][*]).MkPar[err][*])).MkPar[err][*]
                             };
 
-prd rec filterHelper := \p => \l => case l of { 
+prd rec filterHelper := \p l => case l of { 
     Nil => comatch {
         MkPar2[k1,k2] => Unit >> k2
     },
@@ -36,6 +36,6 @@ prd rec filterHelper := \p => \l => case l of {
     }
 };
 
-prd filter  := \p => \l => mu k. filterHelper p l >> MkPar2[k, mu y. l >> k];
-prd filter2 := \p => \l => mu k. (filterHelper p l).MkPar2[k][*] >> mu y. l >> k;
+prd filter  := \p l => mu k. filterHelper p l >> MkPar2[k, mu y. l >> k];
+prd filter2 := \p l => mu k. (filterHelper p l).MkPar2[k][*] >> mu y. l >> k;
 

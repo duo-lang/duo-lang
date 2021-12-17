@@ -270,10 +270,10 @@ lambdaP :: Parser (CST.Term, SourcePos)
 lambdaP = do
   startPos <- getSourcePos
   _ <- backslash
-  bvar <- fst <$> freeVarName
+  bvars <- some $ fst <$> freeVarName
   _ <- rightarrow
   (tm, endPos) <- termTopP
-  return (CST.Lambda (Loc startPos endPos) bvar tm, endPos)
+  return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)
 
 termParensP :: Parser (CST.Term, SourcePos)
 termParensP = do
