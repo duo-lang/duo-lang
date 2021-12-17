@@ -31,9 +31,10 @@ parensListP p = parens  $ ((,) Prd <$> p) `sepBy` comma
 -- E.g. "(a,*,a)"
 parensListIP :: Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
 parensListIP p = parens $ do
-  fsts <- ((\x -> (Prd, x)) <$> p) `sepBy` comma -- Zero or more
+  let p' =(\x -> (Prd, x)) <$> p
+  fsts <- (p' `sepBy` (try (comma <* notFollowedBy implicitSym)) <* comma) <|> pure [] -- Zero or more
   _ <- implicitSym
-  snds <- (comma >> (((\x -> (Prd, x)) <$> p) `sepBy` comma)) <|> pure [] -- Zero or more
+  snds <- (comma >> (p' `sepBy` comma)) <|> pure [] -- Zero or more
   return (fsts, snds)
 
 -- | Parse a non-empty list of elements in brackets.
@@ -45,10 +46,10 @@ bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` comma
 -- E.g. "[a,*,a]"
 bracketsListIP :: Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
 bracketsListIP p = brackets $ do
-  fsts <- ((\x -> (Cns, x)) <$> p) `sepBy` comma -- Zero or more
-  _ <- case fsts of [] -> pure (); (_:_) -> const () <$> comma
+  let p' =(\x -> (Cns, x)) <$> p
+  fsts <- (p' `sepBy` (try (comma <* notFollowedBy implicitSym)) <* comma) <|> pure [] -- Zero or more
   _ <- implicitSym
-  snds <- (comma >> (((\x -> (Cns, x)) <$> p) `sepBy` comma)) <|> pure [] -- Zero or more
+  snds <- (comma >> (p' `sepBy` comma)) <|> pure [] -- Zero or more
   return (fsts, snds)
 
 -- | Parse a sequence of produer/consumer argument lists
@@ -63,7 +64,7 @@ argListsP p = do
 argListsIP :: Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
 argListsIP p = do
   (fsts,_) <- argListsP p
-  ((middle1, middle2),_) <- try $ bracketsListIP p
+  ((middle1, middle2),_) <- bracketsListIP p
   (lasts,endPos) <- argListsP p
   return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
 

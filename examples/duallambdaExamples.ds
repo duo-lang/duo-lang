@@ -7,9 +7,9 @@ data List : Type CBV { Nil, Cons(Nat,List) };
 data Pred : Type CBV { Ap(Nat)[Bool] };
 
 # Implementation is not important, since I only want to do typechecking.
-prd rec f : Bool -> Par := f;
-prd rec g : Bool -> Par := g;
-prd rec h : Bool -> Par := h;
+prd rec f : Unit -> Par := f;
+prd rec g : Unit -> Par := g;
+prd rec h : Unit -> Par := h;
 
 prd compose := \x => cocase { MkPar[err,*] =>
                                 (h (g ((f x).MkPar[err,*]).MkPar[err,*])).MkPar[err,*]
