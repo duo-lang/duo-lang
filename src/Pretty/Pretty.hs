@@ -121,12 +121,6 @@ intercalateX  x xs = cat (punctuate x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
-prettyTwice :: (PrettyAnn a, PrettyAnn b) => [a] -> [b] -> Doc Annotation
-prettyTwice xs ys = xs' <> ys'
-  where
-    xs' = if null xs then mempty else parens   (intercalateComma (map prettyAnn xs))
-    ys' = if null ys then mempty else brackets (intercalateComma (map prettyAnn ys))
-
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName Structural xt) = annXtorName $ "'" <> prettyAnn xt
   prettyAnn (MkXtorName Nominal    xt) = annXtorName $ prettyAnn xt

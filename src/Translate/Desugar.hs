@@ -25,13 +25,13 @@ isDesugaredTerm :: Term pc Inferred -> Bool
 -- Core terms
 isDesugaredTerm (BoundVar _ _ _) = True
 isDesugaredTerm (FreeVar _ _ _) = True
-isDesugaredTerm (XtorCall _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
+isDesugaredTerm (Xtor _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
 -- Non-core terms
 isDesugaredTerm Dtor{} = False
-isDesugaredTerm Match {} = False
-isDesugaredTerm Comatch {} = False
+isDesugaredTerm Case {} = False
+isDesugaredTerm Cocase {} = False
 
 isDesugaredCommand :: Command Inferred -> Bool
 isDesugaredCommand (Apply _ _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
@@ -57,7 +57,7 @@ desugarPCTerm (CnsTerm tm) = CnsTerm $ desugarTerm tm
 desugarTerm :: Term pc Inferred -> Term pc Compiled
 desugarTerm (BoundVar _ pc idx) = BoundVar () pc idx
 desugarTerm (FreeVar _ pc fv) = FreeVar () pc fv
-desugarTerm (XtorCall _ pc xt args) = XtorCall () pc xt (desugarPCTerm <$> args)
+desugarTerm (Xtor _ pc xt args) = Xtor () pc xt (desugarPCTerm <$> args)
 desugarTerm (MuAbs _ pc bs cmd) = MuAbs () pc bs (desugarCmd cmd)
 desugarTerm (XMatch _ pc ns cases) = XMatch () pc ns (desugarCmdCase <$> cases)
 -- we want to desugar e.D(args')
@@ -66,19 +66,19 @@ desugarTerm (Dtor _ xt t (args1,PrdRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [CnsTerm $ FreeVar () CnsRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Apply () Nothing (desugarTerm t)
-                           (XtorCall () CnsRep xt args)
+                           (Xtor () CnsRep xt args)
   in
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 desugarTerm (Dtor _ xt t (args1,CnsRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [PrdTerm $ FreeVar () PrdRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Apply () Nothing (desugarTerm t)
-                           (XtorCall () CnsRep xt args)
+                           (Xtor () CnsRep xt args)
   in
     MuAbs () CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
-desugarTerm (Match _ ns t cases)   =
+desugarTerm (Case _ ns t cases)   =
   let
     desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase () xt args  $ Apply () Nothing (desugarTerm t) (FreeVar () CnsRep resVar)
     cmd = Apply () Nothing (desugarTerm t) (XMatch () CnsRep ns  (desugarMatchCase <$> cases))
@@ -86,7 +86,7 @@ desugarTerm (Match _ ns t cases)   =
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 -- we want to desugar comatch { D(args) => e }
 -- comatch { D(args)[k] => (desugar e) >> k }
-desugarTerm (Comatch _ ns cocases) =
+desugarTerm (Cocase _ ns cocases) =
   let
     desugarComatchCase (MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in

@@ -1,4 +1,4 @@
-module Syntax.CST.Lowering where
+module Syntax.CST.LoweringTypes where
 
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))

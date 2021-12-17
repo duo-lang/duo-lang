@@ -22,7 +22,7 @@ import Syntax.Kinds
 import qualified Syntax.Types as AST
 import Syntax.Types (DataCodata (Data, Codata), PolarityRep, TVar (MkTVar))
 import Syntax.CST.Types
-import Syntax.CST.Lowering (lowerTyp, lowerTypeScheme)
+import Syntax.CST.LoweringTypes (lowerTyp, lowerTypeScheme)
 
 ---------------------------------------------------------------------------------
 -- Parsing of Kinds

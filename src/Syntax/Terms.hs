@@ -153,7 +153,7 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   FreeVar :: TermExt pc ext -> PrdCnsRep pc -> FreeVarName -> Term pc ext
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  XtorCall :: TermExt pc ext -> PrdCnsRep pc -> XtorName -> Substitution ext -> Term pc ext
+  Xtor :: TermExt pc ext -> PrdCnsRep pc -> XtorName -> Substitution ext -> Term pc ext
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
   XMatch :: TermExt pc ext -> PrdCnsRep pc -> NominalStructural -> [CmdCase ext] -> Term pc ext
@@ -170,12 +170,12 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   --
   -- case e of { ... }
   --
-  Match :: TermExt Prd ext -> NominalStructural -> Term Prd ext -> [TermCase ext] -> Term Prd ext
+  Case :: TermExt Prd ext -> NominalStructural -> Term Prd ext -> [TermCase ext] -> Term Prd ext
   -- | A copattern match:
   --
   -- cocase { ... }
   --
-  Comatch :: TermExt Prd ext -> NominalStructural -> [TermCaseI ext] -> Term Prd ext
+  Cocase :: TermExt Prd ext -> NominalStructural -> [TermCaseI ext] -> Term Prd ext
 
 deriving instance (Eq (Term pc Parsed))
 deriving instance (Eq (Term Prd Inferred))
@@ -193,7 +193,7 @@ getTypeTerm (BoundVar ext rep _)  = case rep of
 getTypeTerm (FreeVar  ext rep _)  = case rep of
   PrdRep -> case ext of (_,ty) -> ty
   CnsRep -> case ext of (_,ty) -> ty
-getTypeTerm (XtorCall ext rep _ _)  = case rep of
+getTypeTerm (Xtor ext rep _ _)  = case rep of
   PrdRep -> case ext of (_,ty) -> ty
   CnsRep -> case ext of (_,ty) -> ty
 getTypeTerm (XMatch   ext rep _ _)  = case rep of
@@ -203,8 +203,8 @@ getTypeTerm (MuAbs    ext rep _ _)  = case rep of
   PrdRep -> case ext of (_,ty) -> ty
   CnsRep -> case ext of (_,ty) -> ty
 getTypeTerm (Dtor (_,ty) _ _ _) = ty
-getTypeTerm (Match (_,ty) _ _ _)  = ty
-getTypeTerm (Comatch (_,ty) _ _)  = ty
+getTypeTerm (Case (_,ty) _ _ _)  = ty
+getTypeTerm (Cocase (_,ty) _ _)  = ty
 
 getTypArgs :: Substitution Inferred -> LinearContext Pos
 getTypArgs subst = getTypArgs' <$> subst
@@ -256,8 +256,8 @@ termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, su
                                                                       _                    -> error "termOpeningRec BOOM"
                                                    | otherwise = bv
 termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
-termOpeningRec k args (XtorCall _ s xt subst) =
-  XtorCall () s xt (pctermOpeningRec k args <$> subst)
+termOpeningRec k args (Xtor _ s xt subst) =
+  Xtor () s xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XMatch _ pc sn cases) =
   XMatch () pc sn $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs _ pc a cmd) =
@@ -269,10 +269,10 @@ termOpeningRec k args (Dtor _ xt t (args1,pcrep,args2)) =
     args2' = pctermOpeningRec k args <$> args2
   in
     Dtor () xt (termOpeningRec k args t) (args1', pcrep, args2')
-termOpeningRec k args (Match _ ns t cases) =
-  Match () ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
-termOpeningRec k args (Comatch _ ns cocases) =
-  Comatch () ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+termOpeningRec k args (Case _ ns t cases) =
+  Case () ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
+termOpeningRec k args (Cocase _ ns cocases) =
+  Cocase () ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
 
 
 
@@ -303,8 +303,8 @@ termClosingRec k vars (FreeVar ext PrdRep v) | isJust ((Prd,v) `elemIndex` vars)
                                              | otherwise = FreeVar ext PrdRep v
 termClosingRec k vars (FreeVar ext CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar ext CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
                                              | otherwise = FreeVar ext CnsRep v
-termClosingRec k vars (XtorCall ext s xt subst) =
-  XtorCall ext s xt (pctermClosingRec k vars <$> subst)
+termClosingRec k vars (Xtor ext s xt subst) =
+  Xtor ext s xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XMatch ext pc sn cases) =
   XMatch ext pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs ext pc a cmd) =
@@ -316,10 +316,10 @@ termClosingRec k args (Dtor ext xt t (args1,pcrep,args2)) =
     args2' = pctermClosingRec k args <$> args2
   in
     Dtor ext xt (termClosingRec k args t) (args1', pcrep, args2')
-termClosingRec k args (Match ext ns t cases) =
-  Match ext ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
-termClosingRec k args (Comatch ext ns cocases) =
-  Comatch ext ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+termClosingRec k args (Case ext ns t cases) =
+  Case ext ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
+termClosingRec k args (Cocase ext ns cocases) =
+  Cocase ext ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosingRec _ _ (Done ext) = Done ext
@@ -363,7 +363,7 @@ pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc ext -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _) = Right ()
-termLocallyClosedRec env (XtorCall _ _ _ subst) = do
+termLocallyClosedRec env (Xtor _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XMatch _ _ _ cases) = do
   sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> cmdcase_args) : env) cmdcase_cmd) <$> cases)
@@ -373,10 +373,10 @@ termLocallyClosedRec env (Dtor _ _ e (args1,_,args2)) = do
   termLocallyClosedRec env e
   sequence_ (pctermLocallyClosedRec env <$> args1)
   sequence_ (pctermLocallyClosedRec env <$> args2)
-termLocallyClosedRec env (Match _ _ e cases) = do
+termLocallyClosedRec env (Case _ _ e cases) = do
   termLocallyClosedRec env e
   sequence_ (termCaseLocallyClosedRec env <$> cases)
-termLocallyClosedRec env (Comatch _ _ cases) =
+termLocallyClosedRec env (Cocase _ _ cases) =
   sequence_ (termCaseILocallyClosedRec env <$> cases)
 
 termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase ext -> Either Error ()
@@ -448,7 +448,7 @@ openPCTermComplete (CnsTerm tm) = CnsTerm $ openTermComplete tm
 openTermComplete :: Term pc ext -> Term pc Compiled
 openTermComplete (BoundVar _ pc idx) = BoundVar () pc idx
 openTermComplete (FreeVar _ pc v) = FreeVar () pc v
-openTermComplete (XtorCall _ pc name args) = XtorCall () pc name (openPCTermComplete <$> args)
+openTermComplete (Xtor _ pc name args) = Xtor () pc name (openPCTermComplete <$> args)
 openTermComplete (XMatch _ pc ns cases) = XMatch () pc ns (openCmdCase <$> cases)
 openTermComplete (MuAbs _ PrdRep (Just fv) cmd) =
   MuAbs () PrdRep (Just fv) (commandOpening [CnsTerm (FreeVar () CnsRep fv)] (openCommandComplete cmd))
@@ -458,8 +458,8 @@ openTermComplete (MuAbs _ CnsRep (Just fv) cmd) =
 openTermComplete (MuAbs _ CnsRep Nothing _) = error "Create names first!"
 openTermComplete (Dtor _ name t (args1,pcrep,args2)) =
   Dtor () name (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
-openTermComplete (Match _ ns t cases) = Match () ns (openTermComplete t) (openTermCase <$> cases)
-openTermComplete (Comatch _ ns cocases) = Comatch () ns (openTermCaseI <$> cocases)
+openTermComplete (Case _ ns t cases) = Case () ns (openTermComplete t) (openTermCase <$> cases)
+openTermComplete (Cocase _ ns cocases) = Cocase () ns (openTermCaseI <$> cocases)
 
 openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ kind t1 t2) = Apply () kind (openTermComplete t1) (openTermComplete t2)
@@ -483,14 +483,14 @@ shiftTermRec :: Int -> Term pc ext -> Term pc ext
 shiftTermRec _ var@FreeVar {} = var
 shiftTermRec n (BoundVar ext pcrep (i,j)) | n <= i    = BoundVar ext pcrep (i + 1, j)
                                           | otherwise = BoundVar ext pcrep (i    , j)
-shiftTermRec n (XtorCall ext pcrep name subst) =
-    XtorCall ext pcrep name (shiftPCTermRec n <$> subst)
+shiftTermRec n (Xtor ext pcrep name subst) =
+    Xtor ext pcrep name (shiftPCTermRec n <$> subst)
 shiftTermRec n (XMatch ext pcrep ns cases) = XMatch ext pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
 shiftTermRec n (MuAbs ext pcrep bs cmd) = MuAbs ext pcrep bs (shiftCmdRec (n + 1) cmd)
 shiftTermRec n (Dtor ext xt e (args1,pcrep,args2)) =
   Dtor ext xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep,shiftPCTermRec n <$> args2)
-shiftTermRec n (Match ext ns e cases) = Match ext ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
-shiftTermRec n (Comatch ext ns cases) = Comatch ext ns (shiftTermCaseIRec n <$> cases)
+shiftTermRec n (Case ext ns e cases) = Case ext ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
+shiftTermRec n (Cocase ext ns cases) = Cocase ext ns (shiftTermCaseIRec n <$> cases)
 
 shiftTermCaseRec :: Int -> TermCase ext -> TermCase ext
 shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)
@@ -529,13 +529,13 @@ removeNamesPrdCnsTerm (CnsTerm tm) = CnsTerm $ removeNamesTerm tm
 removeNamesTerm :: Term pc  ext -> Term pc ext
 removeNamesTerm f@FreeVar{} = f
 removeNamesTerm f@BoundVar{} = f
-removeNamesTerm (XtorCall ext pc xt args) = XtorCall ext pc xt (removeNamesPrdCnsTerm <$> args)
+removeNamesTerm (Xtor ext pc xt args) = Xtor ext pc xt (removeNamesPrdCnsTerm <$> args)
 removeNamesTerm (MuAbs ext pc _ cmd) = MuAbs ext pc Nothing (removeNamesCmd cmd)
 removeNamesTerm (XMatch ext pc ns cases) = XMatch ext pc ns (removeNamesCmdCase <$> cases)
 removeNamesTerm (Dtor ext xt e (args1,pcrep,args2)) =
   Dtor ext xt (removeNamesTerm e) (removeNamesPrdCnsTerm <$> args1,pcrep,removeNamesPrdCnsTerm <$> args2)
-removeNamesTerm (Match ext ns e cases) = Match ext ns (removeNamesTerm e) (removeNamesTermCase <$> cases)
-removeNamesTerm (Comatch ext ns cases) = Comatch ext ns (removeNamesTermCaseI <$> cases)
+removeNamesTerm (Case ext ns e cases) = Case ext ns (removeNamesTerm e) (removeNamesTermCase <$> cases)
+removeNamesTerm (Cocase ext ns cases) = Cocase ext ns (removeNamesTermCaseI <$> cases)
 
 removeNamesTermCase :: TermCase ext -> TermCase ext
 removeNamesTermCase (MkTermCase ext xt args e)   = MkTermCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesTerm e)
