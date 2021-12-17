@@ -3,6 +3,7 @@ module Parser.Terms
   , commandP
   )where
 
+import Data.Bifunctor (first)
 import Data.List.NonEmpty (NonEmpty(..))
 import Text.Megaparsec hiding (State)
 
@@ -14,33 +15,85 @@ import Syntax.CST.LoweringTerms
 import Syntax.CommonTerm
 import Utils
 
+--------------------------------------------------------------------------------------------
+-- Helper functions
+--------------------------------------------------------------------------------------------
+
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = xtorName Nominal <|> xtorName Structural
 
+-- | Parse a non-empty list of elements in parens.
+-- E.g. "(a,a,a)"
+parensListP :: Parser a -> Parser ([(PrdCns, a)], SourcePos)
+parensListP p = parens  $ ((,) Prd <$> p) `sepBy` comma
+
+-- | Parse a non-empty list of elements in parens, with exactly one asterisk.
+-- E.g. "(a,*,a)"
+parensListIP :: Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
+parensListIP p = parens $ do
+  fsts <- ((\x -> (Prd, x)) <$> p) `sepBy` comma -- Zero or more
+  _ <- implicitSym
+  snds <- (comma >> (((\x -> (Prd, x)) <$> p) `sepBy` comma)) <|> pure [] -- Zero or more
+  return (fsts, snds)
+
+-- | Parse a non-empty list of elements in brackets.
+-- E.g. "[a,a,a]"
+bracketsListP :: Parser a -> Parser ([(PrdCns,a)], SourcePos)
+bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` comma
+
+-- | Parse a non-empty list of elements in parens, with exactly one asterisk.
+-- E.g. "[a,*,a]"
+bracketsListIP :: Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
+bracketsListIP p = brackets $ do
+  fsts <- ((\x -> (Cns, x)) <$> p) `sepBy` comma -- Zero or more
+  _ <- case fsts of [] -> pure (); (_:_) -> const () <$> comma
+  _ <- implicitSym
+  snds <- (comma >> (((\x -> (Cns, x)) <$> p) `sepBy` comma)) <|> pure [] -- Zero or more
+  return (fsts, snds)
+
+-- | Parse a sequence of produer/consumer argument lists
+argListsP ::  Parser a -> Parser ([(PrdCns,a)], SourcePos)
+argListsP p = do
+  endPos <- getSourcePos
+  xs <- many (try (parensListP p) <|> try (bracketsListP p))
+  case xs of
+    [] -> return ([], endPos)
+    xs -> return (concat (fst <$> xs), snd (last xs))
+
+argListsIP :: Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
+argListsIP p = do
+  (fsts,_) <- argListsP p
+  ((middle1, middle2),_) <- try $ bracketsListIP p
+  (lasts,endPos) <- argListsP p
+  return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
+
 --------------------------------------------------------------------------------------------
--- Substitutions
+-- Substitutions and implicit substitutions
 --------------------------------------------------------------------------------------------
 
--- | Parse a non-empty list of producers in parentheses.
--- E.g. "(prd,prd,prd)""
-prdSubstPart :: Parser (CST.Substitution, SourcePos)
-prdSubstPart = parens $ (CST.PrdTerm . fst <$> termTopP) `sepBy` comma
-
--- | Parse a non-empty list of consumers in brackets.
--- E.g. "[cns,cns,cns]"
-cnsSubstPart :: Parser (CST.Substitution, SourcePos)
-cnsSubstPart = brackets $ (CST.CnsTerm . fst <$> termTopP) `sepBy` comma
-
+mkTerm :: (PrdCns, CST.Term) -> CST.PrdCnsTerm
+mkTerm (Prd, tm) = CST.PrdTerm tm
+mkTerm (Cns, tm) = CST.CnsTerm tm
 
 -- | Parse a substitution, consisting of lists of producers and consumers.
 -- E.g.: "[cns,cns](prd)[cns](prd,prd)"
 substitutionP :: Parser (CST.Substitution, SourcePos)
-substitutionP = do
-  endPos <- getSourcePos
-  xs <- many (prdSubstPart <|> try cnsSubstPart)
-  case xs of
-    [] -> return ([], endPos)
-    xs -> return (concat (fst <$> xs), snd (last xs))
+substitutionP = first (fmap mkTerm) <$> argListsP (fst <$> termTopP)
+  
+substitutionIP :: Parser (CST.SubstitutionI, SourcePos)
+substitutionIP = do
+  ((subst1,(),subst2), endPos) <- argListsIP (fst <$> termTopP)
+  return ((mkTerm <$> subst1, Prd, mkTerm <$> subst2), endPos)
+
+--------------------------------------------------------------------------------------------
+-- Binding sites and implicit binding sites
+--------------------------------------------------------------------------------------------
+
+bindingSiteP :: Parser (CST.BindingSite, SourcePos)
+bindingSiteP = argListsP (fst <$> freeVarName)
+
+bindingSiteIP :: Parser (CST.BindingSiteI, SourcePos)
+bindingSiteIP = argListsIP (fst <$> freeVarName)
 
 --------------------------------------------------------------------------------------------
 -- Free Variables, Literals and Xtors
@@ -65,29 +118,6 @@ xtorP = do
   (xt, _pos) <- xtorNameP
   (subst, endPos) <- substitutionP
   return (CST.Xtor (Loc startPos endPos) xt subst, endPos)
-
---------------------------------------------------------------------------------------------
--- Argument lists
---------------------------------------------------------------------------------------------
-
--- | Parse a non-empty list of producer arguments in parentheses.
--- E.g. "(prd,prd,prd)""
-prdArgList :: Parser a -> Parser ([(PrdCns, a)], SourcePos)
-prdArgList p = parens  $ ((,) Prd <$> p) `sepBy` comma
-
--- | Parse a non-empty list of consumer arguments in brackets.
--- E.g. "[cns,cns,cns]"
-cnsArgList :: Parser a -> Parser ([(PrdCns,a)], SourcePos)
-cnsArgList p = brackets $ ((,) Cns <$> p) `sepBy` comma
-
--- | Parse a sequence of produer/consumer argument lists
-argListsP ::  Parser a -> Parser a ->  Parser ([(PrdCns,a)], SourcePos)
-argListsP p q = do
-  endPos <- getSourcePos
-  xs <- many (prdArgList p <|> try (cnsArgList q))
-  case xs of
-    [] -> return ([], endPos)
-    xs -> return (concat (fst <$> xs), snd (last xs))
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -203,7 +233,7 @@ cmdcaseP :: Parser (CST.CommandCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
-  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  (args,_) <- bindingSiteP
   _ <- rightarrow
   (cmd, endPos) <- cstcommandP
   let pmcase = (Loc startPos endPos, xt, args, cmd)
@@ -224,7 +254,7 @@ termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
-  (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
+  (args,_) <- bindingSiteP
   _ <- rightarrow
   (res, endPos) <- termTopP
   let pmcase = (Loc startPos endPos, xt, args, res)
@@ -247,13 +277,10 @@ termCaseIP :: Parser (CST.TermCaseI, SourcePos)
 termCaseIP = do
   startPos <- getSourcePos
   (xt, _) <- xtorNameP
-  (as1, _) <- argListsP (fst <$> freeVarName) (fst <$> freeVarName)
-  _ <- brackets implicitSym
-  (as2, _) <- argListsP (fst <$> freeVarName) (fst <$> freeVarName)
+  (bs, _) <- bindingSiteIP
   _ <- rightarrow
   (res, endPos) <- termTopP
-  let pmcase = (Loc startPos endPos, xt, (as1, (), as2), res)
-  return (pmcase, endPos)
+  return ((Loc startPos endPos, xt, bs, res), endPos)
 
 cocaseP :: Parser (CST.Term, SourcePos)
 cocaseP = do
@@ -333,10 +360,8 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 destructorP :: Parser (XtorName, CST.SubstitutionI, SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
-  (subst1, _) <- substitutionP
-  _ <- brackets implicitSym
-  (subst2, endPos) <- substitutionP
-  return (xt, (subst1,Prd,subst2), endPos)
+  (substi, endPos) <- substitutionIP
+  return (xt, substi, endPos)
 
 destructorChainP :: Parser [(XtorName, CST.SubstitutionI, SourcePos)]
 destructorChainP = many (dot >> destructorP)
