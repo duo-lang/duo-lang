@@ -250,7 +250,7 @@ genConstraintsTerm (Dtor loc xt@MkXtorName { xtorNominalStructural = Nominal } d
       -- The type of the destructee must be a subtype of the nominal type.
       addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
       -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of 
+      let (tys1,retType, tys2) = case splitAt (length subst1) (sig_args xtorSig) of
                                        (_,[]) -> error "Too short."
                                        (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
                                        (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
@@ -380,12 +380,16 @@ genConstraintsTerm (Match loc Nominal destructee cases@(MkTermCase { tmcase_name
 -- cocase { 'X(xs) => e' }
 --
 genConstraintsTerm (Comatch loc Structural cocases) = do
-  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
+  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
     -- Generate unification variables for each case arg
-    (argtsPos,argtsNeg) <- freshTVars tmcasei_args
+    (argtsPos1,argtsNeg1) <- freshTVars as1
+    (argtsPos2,argtsNeg2) <- freshTVars as2
     -- Typecheck the term in the context extended with the unification variables.
-    tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
-    return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
+    -- HACK: `tmcasei_term` needs to be checked in the proper context, i.e. we need to include the implicit variable even though
+    -- its type is the type we are actually inferring in this call. Since the variable is implicit, it can never be referenced explicitly.
+    -- Hence, the "*" type variable just serves as a placeholder to ensure that the arguments have the correct De-Bruijn indices.
+    tmcasei_termInferred <- withContext (argtsPos1 ++ [CnsType (TyVar NegRep Nothing (MkTVar "*"))] ++ argtsPos2) (genConstraintsTerm tmcasei_term)
+    return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg1 ++ [CnsType $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
   return (Comatch (loc,TyCodata PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
 --
 -- Nominal Comatch (Syntactic Sugar):
@@ -428,9 +432,16 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
       tn@NominalDecl{..} <- lookupDataDecl xtn
       -- We check that all cases in the pattern match belong to the type declaration.
       checkCorrectness (tmcasei_name <$> cocases) tn
-      cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
+      cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
         -- Generate unification variables for each case arg
-        (argtsPos,argtsNeg) <- freshTVars tmcasei_args
+        (argtsPos1, argtsNeg1) <- freshTVars as1
+        (argtsPos2, argtsNeg2) <- freshTVars as2
+
+        -- HACK: `tmcasei_term` needs to be checked in the proper context, i.e. we need to include the implicit variable even though
+        -- its type is the type we are actually inferring in this call. Since the variable is implicit, it can never be referenced explicitly.
+        -- Hence, the "*" type variable just serves as a placeholder to ensure that the arguments have the correct De-Bruijn indices.
+        let argtsPos = argtsPos1 ++ [CnsType (TyVar NegRep Nothing (MkTVar "*"))] ++ argtsPos2
+
         -- Typecheck case term using new unification vars
         tmcasei_termInferred <- withContext argtsPos (genConstraintsTerm tmcasei_term)
         -- We have to bound the unification variables with the lower and upper bounds generated
@@ -438,15 +449,26 @@ genConstraintsTerm (Comatch loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn
         -- to the least and greatest type translation.
         lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig tmcasei_name PosRep)
         upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig tmcasei_name NegRep)
-        genConstraintsCtxts (init lowerBound) argtsNeg (PatternMatchConstraint loc)
-        genConstraintsCtxts argtsPos (init upperBound) (PatternMatchConstraint loc)
-        -- Get return type from least translation of xtor sig
-        let retType = case last lowerBound of
-                       (PrdType _)  -> error "Boom"
-                       (CnsType ty) -> ty
+
+        -- HACK: Split the argument list into the explicit (lb1, lb2) and implicit arguments (_lbi). (Implicit argument in the middle)
+        let (lb1, retType, lb2) = case splitAt (length as1) lowerBound of
+              (_,[]) -> error "Too short."
+              (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
+              (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
+
+        -- HACK: Split the argument list into the explicit (ub1, ub2) and implicit arguments (_ubi). (Implicit argument in the middle)
+        let (ub1, _ubi, ub2) = case splitAt (length as1) upperBound of
+              (_,[]) -> error "Too short."
+              (_,PrdType _:_) -> error "Found PrdType, expected CnsType."
+              (tys1,CnsType ty:tys2) -> (tys1, ty,tys2)
+
+        genConstraintsCtxts (lb1 ++ lb2) (argtsNeg1 ++ argtsNeg2) (PatternMatchConstraint loc)
+        genConstraintsCtxts (argtsPos1 ++ argtsPos2) (ub1 ++ ub2) (PatternMatchConstraint loc)
+
         -- The term must have a subtype of the copattern match return type
         addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
-        return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg ++ [CnsType $ getTypeTerm tmcasei_termInferred]))
+        return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred,
+          MkXtorSig tmcasei_name (argtsNeg1 ++ [CnsType $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
       return (Comatch (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Nominal (fst <$> cocasesInferred))
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
