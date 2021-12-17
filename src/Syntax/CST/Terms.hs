@@ -6,6 +6,10 @@ import Text.Megaparsec.Pos (SourcePos)
 import Syntax.CommonTerm
 import Utils
 
+--------------------------------------------------------------------------------------------
+-- Substitutions and Binding Sites
+--------------------------------------------------------------------------------------------
+
 data PrdCnsTerm where
     PrdTerm :: Term -> PrdCnsTerm
     CnsTerm :: Term -> PrdCnsTerm
@@ -14,11 +18,22 @@ deriving instance Show PrdCnsTerm
 deriving instance Eq PrdCnsTerm
 
 type Substitution = [PrdCnsTerm]
-type SubstitutionI = ([PrdCnsTerm],PrdCns,[PrdCnsTerm])
+type SubstitutionI = (Substitution,PrdCns,Substitution)
 
-type TermCase    = (Loc, XtorName, [(PrdCns,FreeVarName)],                     Term)
-type TermCaseI   = (Loc, XtorName, ([(PrdCns, FreeVarName)],(),[(PrdCns,FreeVarName)]), Term)
-type CommandCase = (Loc, XtorName, [(PrdCns, FreeVarName)],                    Command)
+type BindingSite = [(PrdCns,FreeVarName)]
+type BindingSiteI = (BindingSite, (), BindingSite)
+
+--------------------------------------------------------------------------------------------
+-- Cases/Cocases
+--------------------------------------------------------------------------------------------
+
+type CommandCase = (Loc, XtorName, BindingSite,  Command)
+type TermCase    = (Loc, XtorName, BindingSite,  Term)
+type TermCaseI   = (Loc, XtorName, BindingSiteI, Term)
+
+--------------------------------------------------------------------------------------------
+-- Terms
+--------------------------------------------------------------------------------------------
 
 data Term where
     -- AST Nodes
@@ -39,6 +54,10 @@ data Term where
 
 deriving instance Show Term
 deriving instance Eq Term
+
+--------------------------------------------------------------------------------------------
+-- Commands
+--------------------------------------------------------------------------------------------
 
 data Command where
   -- AST Nodes
