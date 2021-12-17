@@ -32,9 +32,9 @@ parensListP p = parens  $ ((,) Prd <$> p) `sepBy` comma
 parensListIP :: Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
 parensListIP p = parens $ do
   let p' =(\x -> (Prd, x)) <$> p
-  fsts <- (p' `sepBy` (try (comma <* notFollowedBy implicitSym)) <* comma) <|> pure [] -- Zero or more
+  fsts <- option [] (try ((p' `sepBy` try (comma <* notFollowedBy implicitSym)) <* comma))
   _ <- implicitSym
-  snds <- (comma >> (p' `sepBy` comma)) <|> pure [] -- Zero or more
+  snds <- option [] (try (comma *> p' `sepBy` comma))
   return (fsts, snds)
 
 -- | Parse a non-empty list of elements in brackets.
@@ -47,9 +47,9 @@ bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` comma
 bracketsListIP :: Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
 bracketsListIP p = brackets $ do
   let p' =(\x -> (Cns, x)) <$> p
-  fsts <- (p' `sepBy` (try (comma <* notFollowedBy implicitSym)) <* comma) <|> pure [] -- Zero or more
+  fsts <- option [] (try ((p' `sepBy` try (comma <* notFollowedBy implicitSym)) <* comma))
   _ <- implicitSym
-  snds <- (comma >> (p' `sepBy` comma)) <|> pure [] -- Zero or more
+  snds <- option [] (try (comma *> p' `sepBy` comma))
   return (fsts, snds)
 
 -- | Parse a sequence of produer/consumer argument lists
@@ -80,7 +80,7 @@ mkTerm (Cns, tm) = CST.CnsTerm tm
 -- E.g.: "[cns,cns](prd)[cns](prd,prd)"
 substitutionP :: Parser (CST.Substitution, SourcePos)
 substitutionP = first (fmap mkTerm) <$> argListsP (fst <$> termTopP)
-  
+
 substitutionIP :: Parser (CST.SubstitutionI, SourcePos)
 substitutionIP = do
   ((subst1,(),subst2), endPos) <- argListsIP (fst <$> termTopP)
@@ -243,7 +243,7 @@ cmdcaseP = do
 xmatchP :: Parser (CST.Term, SourcePos)
 xmatchP = do
   startPos <- getSourcePos
-  _ <- matchKwP <|> comatchKwP 
+  _ <- matchKwP <|> comatchKwP
   (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
   return (CST.XMatch (Loc startPos endPos) cases, endPos)
 
@@ -387,7 +387,7 @@ termTopP = dtorP -- dtorP handles the case with an empty dtor chain.
 -------------------------------------------------------------------------------------------
 
 termP :: PrdCnsRep pc -> Parser (AST.Term pc Parsed, SourcePos)
-termP pc = do 
+termP pc = do
   (tm, endPos) <- termTopP
   case lowerTerm pc tm of
     Left err -> fail (show err)
