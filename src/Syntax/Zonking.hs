@@ -58,18 +58,18 @@ zonkTerm bisubst (BoundVar (loc,ty) rep idx) =
     BoundVar (loc, zonkType bisubst ty) rep idx
 zonkTerm bisubst (FreeVar  (loc,ty) rep nm)  =
     FreeVar  (loc, zonkType bisubst ty) rep nm
-zonkTerm bisubst (XtorCall (loc,ty) rep xn subst) =
-    XtorCall (loc, zonkType bisubst ty) rep xn (zonkPCTerm bisubst <$> subst)
+zonkTerm bisubst (Xtor (loc,ty) rep xn subst) =
+    Xtor (loc, zonkType bisubst ty) rep xn (zonkPCTerm bisubst <$> subst)
 zonkTerm bisubst (XMatch (loc,ty) rep ns cases) =
     XMatch (loc, zonkType bisubst ty) rep ns (zonkCmdCase bisubst <$> cases)
 zonkTerm bisubst (MuAbs (loc,ty) rep fv cmd) =
     MuAbs (loc, zonkType bisubst ty) rep fv (zonkCommand bisubst cmd)
 zonkTerm bisubst (Dtor (loc,ty) xt prd (subst1,pcrep,subst2)) =
     Dtor (loc, zonkType bisubst ty) xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
-zonkTerm bisubst (Match (loc,ty) ns prd cases) =
-    Match (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
-zonkTerm bisubst (Comatch (loc,ty) ns cases) =
-    Comatch (loc, zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
+zonkTerm bisubst (Case (loc,ty) ns prd cases) =
+    Case (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
+zonkTerm bisubst (Cocase (loc,ty) ns cases) =
+    Cocase (loc, zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
 
 zonkPCTerm :: Bisubstitution -> PrdCnsTerm Inferred -> PrdCnsTerm Inferred
 zonkPCTerm bisubst (PrdTerm tm) = PrdTerm (zonkTerm bisubst tm)

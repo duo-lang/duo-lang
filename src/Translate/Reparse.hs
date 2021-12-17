@@ -41,9 +41,9 @@ createNamesPCTerm (CnsTerm tm) = CnsTerm <$> createNamesTerm tm
 createNamesTerm :: Term pc ext -> CreateNameM (Term pc Parsed)
 createNamesTerm (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
 createNamesTerm (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
-createNamesTerm (XtorCall _ pc xt subst) = do
+createNamesTerm (Xtor _ pc xt subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  return $ XtorCall defaultLoc pc xt subst'
+  return $ Xtor defaultLoc pc xt subst'
 createNamesTerm (XMatch _ pc ns cases) = do
   cases' <- sequence $ createNamesCmdCase <$> cases
   return $ XMatch defaultLoc pc ns cases'
@@ -56,13 +56,13 @@ createNamesTerm (Dtor _ xt e (args1,pcrep,args2)) = do
   args1' <- sequence (createNamesPCTerm <$> args1)
   args2' <- sequence (createNamesPCTerm <$> args2)
   return $ Dtor defaultLoc xt e' (args1',pcrep,args2')
-createNamesTerm (Match _ ns e cases) = do
+createNamesTerm (Case _ ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
-  return $ Match defaultLoc ns e' cases'
-createNamesTerm (Comatch _ ns cases) = do
+  return $ Case defaultLoc ns e' cases'
+createNamesTerm (Cocase _ ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
-  return $ Comatch defaultLoc ns cases'
+  return $ Cocase defaultLoc ns cases'
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand (Done _) = return $ Done defaultLoc

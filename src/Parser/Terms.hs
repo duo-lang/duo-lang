@@ -57,15 +57,15 @@ numLitP ns PrdRep = do
   return (numToTerm (Loc startPos endPos) num, endPos)
   where
     numToTerm :: Loc -> Int -> Term Prd Parsed
-    numToTerm loc 0 = XtorCall loc PrdRep (MkXtorName ns "Z") []
-    numToTerm loc n = XtorCall loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
+    numToTerm loc 0 = Xtor loc PrdRep (MkXtorName ns "Z") []
+    numToTerm loc n = Xtor loc PrdRep (MkXtorName ns "S") [PrdTerm $ numToTerm loc (n-1)]
 
 xtorCall :: NominalStructural -> PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 xtorCall ns pc = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName ns
   (subst, endPos) <- substitutionP
-  return (XtorCall (Loc startPos endPos) pc xt subst, endPos)
+  return (Xtor (Loc startPos endPos) pc xt subst, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Argument lists
@@ -301,7 +301,7 @@ matchP PrdRep = do
   (arg, _pos) <- termP PrdRep
   _ <- ofKwP
   (cases, ns, endPos) <- termCasesP
-  return (Match (Loc startPos endPos) ns arg cases, endPos)
+  return (Case (Loc startPos endPos) ns arg cases, endPos)
 
 comatchP :: PrdCnsRep pc -> Parser (Term pc Parsed, SourcePos)
 comatchP CnsRep = empty
@@ -309,11 +309,11 @@ comatchP PrdRep = do
   startPos <- getSourcePos
   _ <- cocaseKwP
   (cocases, ns, endPos) <- termCasesIP
-  return (Comatch (Loc startPos endPos) ns cocases, endPos)
+  return (Cocase (Loc startPos endPos) ns cocases, endPos)
 
 -- | Create a lambda abstraction.
 mkLambda :: Loc -> FreeVarName -> Term Prd Parsed -> Term Prd Parsed
-mkLambda loc var tm = Comatch loc Structural
+mkLambda loc var tm = Cocase loc Structural
   [
     MkTermCaseI loc (MkXtorName Structural "Ap")
                 ([(Prd, Just var)], (), [])

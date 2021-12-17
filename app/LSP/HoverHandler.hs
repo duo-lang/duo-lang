@@ -110,15 +110,15 @@ termToHoverMap (BoundVar ext PrdRep _)           = typeAnnotToHoverMap ext
 termToHoverMap (BoundVar ext CnsRep _)           = typeAnnotToHoverMap ext
 termToHoverMap (FreeVar ext PrdRep _)            = typeAnnotToHoverMap ext
 termToHoverMap (FreeVar ext CnsRep _)            = typeAnnotToHoverMap ext
-termToHoverMap (XtorCall ext PrdRep _ args)      = M.unions [typeAnnotToHoverMap ext, xtorArgsToHoverMap args]
-termToHoverMap (XtorCall ext CnsRep _ args)      = M.unions [typeAnnotToHoverMap ext, xtorArgsToHoverMap args]
+termToHoverMap (Xtor ext PrdRep _ args)          = M.unions [typeAnnotToHoverMap ext, xtorArgsToHoverMap args]
+termToHoverMap (Xtor ext CnsRep _ args)          = M.unions [typeAnnotToHoverMap ext, xtorArgsToHoverMap args]
 termToHoverMap (XMatch ext PrdRep _ cases)       = M.unions $ typeAnnotToHoverMap ext : (cmdcaseToHoverMap <$> cases)
 termToHoverMap (XMatch ext CnsRep _ cases)       = M.unions $ typeAnnotToHoverMap ext : (cmdcaseToHoverMap <$> cases)
 termToHoverMap (MuAbs ext PrdRep _ cmd)          = M.unions [typeAnnotToHoverMap ext, commandToHoverMap cmd]
 termToHoverMap (MuAbs ext CnsRep _ cmd)          = M.unions [typeAnnotToHoverMap ext, commandToHoverMap cmd]
 termToHoverMap (Dtor ext _ e (subst1,_,subst2))  = M.unions $ [typeAnnotToHoverMap ext] <> (pctermToHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
-termToHoverMap (Match ext _ e cases)             = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseToHoverMap <$> cases) <> [termToHoverMap e]
-termToHoverMap (Comatch ext _ cocases)           = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseIToHoverMap <$> cocases)
+termToHoverMap (Case ext _ e cases)             = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseToHoverMap <$> cases) <> [termToHoverMap e]
+termToHoverMap (Cocase ext _ cocases)           = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseIToHoverMap <$> cocases)
 
 pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
 pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
