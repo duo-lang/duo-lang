@@ -291,7 +291,7 @@ termParensP = do
 termBotP :: Parser (CST.Term, SourcePos)
 termBotP = freeVar <|>
   try (natLitP Structural) <|>
-  try (natLitP Nominal) <|>
+  natLitP Nominal <|>
   xtorP <|>
   xmatchP <|>
   caseofP  <|>
