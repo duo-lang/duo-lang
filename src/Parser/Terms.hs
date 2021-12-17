@@ -14,6 +14,9 @@ import Syntax.CST.LoweringTerms
 import Syntax.CommonTerm
 import Utils
 
+xtorNameP :: Parser (XtorName, SourcePos)
+xtorNameP = xtorName Nominal <|> xtorName Structural
+
 --------------------------------------------------------------------------------------------
 -- Substitutions
 --------------------------------------------------------------------------------------------
@@ -49,17 +52,17 @@ freeVar = do
   (v, endPos) <- freeVarName
   return (CST.Var (Loc startPos endPos) v, endPos)
 
-numLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
-numLitP ns = do
+natLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
+natLitP ns = do
   startPos <- getSourcePos
   () <- checkTick ns
   (num, endPos) <- numP
   return (CST.NatLit (Loc startPos endPos) ns num, endPos)
 
-xtorCall :: Parser (CST.Term, SourcePos)
-xtorCall = do
+xtorP :: Parser (CST.Term, SourcePos)
+xtorP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName Nominal <|> xtorName Structural
+  (xt, _pos) <- xtorNameP
   (subst, endPos) <- substitutionP
   return (CST.Xtor (Loc startPos endPos) xt subst, endPos)
 
@@ -193,33 +196,57 @@ cstcommandP =
 -- Bottom Parser
 -------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------
--- Pattern and copattern matches
+-- XMatches
 --------------------------------------------------------------------------------------------
 
 cmdcaseP :: Parser (CST.CommandCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName Nominal <|> xtorName Structural
+  (xt, _pos) <- xtorNameP
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (cmd, endPos) <- cstcommandP
   let pmcase = (Loc startPos endPos, xt, args, cmd)
   return (pmcase, endPos)
 
+xmatchP :: Parser (CST.Term, SourcePos)
+xmatchP = do
+  startPos <- getSourcePos
+  _ <- matchKwP <|> comatchKwP 
+  (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
+  return (CST.XMatch (Loc startPos endPos) cases, endPos)
+
+--------------------------------------------------------------------------------------------
+-- Case-of
+--------------------------------------------------------------------------------------------
+
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName Nominal <|> xtorName Structural
+  (xt, _pos) <- xtorNameP
   (args,_) <- argListP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- rightarrow
   (res, endPos) <- termTopP
   let pmcase = (Loc startPos endPos, xt, args, res)
   return (pmcase, endPos)
 
+caseofP :: Parser (CST.Term, SourcePos)
+caseofP = do
+  startPos <- getSourcePos
+  _ <- caseKwP
+  (arg, _pos) <- termTopP
+  _ <- ofKwP
+  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` comma)
+  return (CST.Case (Loc startPos endPos) arg cases, endPos)
+
+--------------------------------------------------------------------------------------------
+-- Cocase
+--------------------------------------------------------------------------------------------
+
 termCaseIP :: Parser (CST.TermCaseI, SourcePos)
 termCaseIP = do
   startPos <- getSourcePos
-  (xt, _) <- xtorName Nominal <|> xtorName Structural
+  (xt, _) <- xtorNameP
   (as1, _) <- argListsP (fst <$> freeVarName) (fst <$> freeVarName)
   _ <- brackets implicitSym
   (as2, _) <- argListsP (fst <$> freeVarName) (fst <$> freeVarName)
@@ -228,44 +255,16 @@ termCaseIP = do
   let pmcase = (Loc startPos endPos, xt, (as1, (), as2), res)
   return (pmcase, endPos)
 
-
-cmdcasesP :: Parser ([CST.CommandCase], SourcePos)
-cmdcasesP = do
-  (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
-  return (cases, endPos)
-
-termCasesP :: Parser ([CST.TermCase], SourcePos)
-termCasesP = do
-  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` comma)
-  return (cases, endPos)
-
-termCasesIP :: Parser ([CST.TermCaseI], SourcePos)
-termCasesIP = do
-  (cases, endPos) <- braces ((fst <$> termCaseIP) `sepBy` comma)
-  return (cases, endPos)
-
-patternMatch :: Parser (CST.Term, SourcePos)
-patternMatch = do
-  startPos <- getSourcePos
-  _ <- matchKwP <|> comatchKwP 
-  (cases, endPos) <- cmdcasesP
-  return (CST.XMatch (Loc startPos endPos) cases, endPos)
-
-matchP :: Parser (CST.Term, SourcePos)
-matchP = do
-  startPos <- getSourcePos
-  _ <- caseKwP
-  (arg, _pos) <- termTopP
-  _ <- ofKwP
-  (cases, endPos) <- termCasesP
-  return (CST.Case (Loc startPos endPos) arg cases, endPos)
-
-comatchP :: Parser (CST.Term, SourcePos)
-comatchP = do
+cocaseP :: Parser (CST.Term, SourcePos)
+cocaseP = do
   startPos <- getSourcePos
   _ <- cocaseKwP
-  (cocases, endPos) <- termCasesIP
+  (cocases, endPos) <- braces ((fst <$> termCaseIP) `sepBy` comma)
   return (CST.Cocase (Loc startPos endPos) cocases, endPos)
+
+--------------------------------------------------------------------------------------------
+-- CST-Sugar
+--------------------------------------------------------------------------------------------
 
 lambdaP :: Parser (CST.Term, SourcePos)
 lambdaP = do
@@ -291,12 +290,12 @@ termParensP = do
 --      | \x => t
 termBotP :: Parser (CST.Term, SourcePos)
 termBotP = freeVar <|>
-  try (numLitP Structural) <|>
-  try (numLitP Nominal) <|>
-  xtorCall <|>
-  patternMatch <|>
-  matchP  <|>
-  comatchP  <|>
+  try (natLitP Structural) <|>
+  try (natLitP Nominal) <|>
+  xtorP <|>
+  xmatchP <|>
+  caseofP  <|>
+  cocaseP  <|>
   muAbstraction  <|>
   termParensP <|>
   lambdaP
@@ -333,7 +332,7 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -- | Parses "D(t,..*.,t)"
 destructorP :: Parser (XtorName, CST.SubstitutionI, SourcePos)
 destructorP = do
-  (xt, _) <- xtorName Nominal <|> xtorName Structural
+  (xt, _) <- xtorNameP
   (subst1, _) <- substitutionP
   _ <- brackets implicitSym
   (subst2, endPos) <- substitutionP
