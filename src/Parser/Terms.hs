@@ -61,10 +61,10 @@ argListsP p = do
     [] -> return ([], endPos)
     xs -> return (concat (fst <$> xs), snd (last xs))
 
-argListsIP :: Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
-argListsIP p = do
+argListsIP :: PrdCns -> Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
+argListsIP mode p = do
   (fsts,_) <- argListsP p
-  ((middle1, middle2),_) <- bracketsListIP p
+  ((middle1, middle2),_) <- (if mode == Prd then parensListIP else bracketsListIP) p
   (lasts,endPos) <- argListsP p
   return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
 
@@ -83,7 +83,7 @@ substitutionP = first (fmap mkTerm) <$> argListsP (fst <$> termTopP)
 
 substitutionIP :: Parser (CST.SubstitutionI, SourcePos)
 substitutionIP = do
-  ((subst1,(),subst2), endPos) <- argListsIP (fst <$> termTopP)
+  ((subst1,(),subst2), endPos) <- argListsIP Cns (fst <$> termTopP)
   return ((mkTerm <$> subst1, Prd, mkTerm <$> subst2), endPos)
 
 --------------------------------------------------------------------------------------------
@@ -94,7 +94,7 @@ bindingSiteP :: Parser (CST.BindingSite, SourcePos)
 bindingSiteP = argListsP (fst <$> freeVarName)
 
 bindingSiteIP :: Parser (CST.BindingSiteI, SourcePos)
-bindingSiteIP = argListsIP (fst <$> freeVarName)
+bindingSiteIP = argListsIP Cns (fst <$> freeVarName)
 
 --------------------------------------------------------------------------------------------
 -- Free Variables, Literals and Xtors
