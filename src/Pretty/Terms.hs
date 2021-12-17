@@ -16,24 +16,16 @@ import Data.Bifunctor
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (CmdCase ext) where
-  prettyAnn MkCmdCase{..} =
-    let
-      prds = [x | (Prd,x) <- cmdcase_args]
-      cnss = [x | (Cns,x) <- cmdcase_args]
-    in
+  prettyAnn MkCmdCase{ cmdcase_name, cmdcase_args, cmdcase_cmd } =
       prettyAnn cmdcase_name <>
-      prettyTwice prds cnss <+>
+      printCasesArgs cmdcase_args <+>
       annSymbol "=>" <+>
       prettyAnn cmdcase_cmd
 
 instance PrettyAnn (TermCase ext) where
   prettyAnn MkTermCase{ tmcase_name, tmcase_args, tmcase_term } =
-    let
-      prds = [x | (Prd,x) <- tmcase_args]
-      cnss = [x | (Cns,x) <- tmcase_args]
-    in
       prettyAnn tmcase_name <>
-      prettyTwice prds cnss <+>
+      printCasesArgs tmcase_args <+>
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
