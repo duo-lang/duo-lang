@@ -363,10 +363,14 @@ termTopP = dtorP -- dtorP handles the case with an empty dtor chain.
 termP :: PrdCnsRep pc -> Parser (AST.Term pc Parsed, SourcePos)
 termP pc = do 
   (tm, endPos) <- termTopP
-  return (lowerTerm pc tm, endPos)
+  case lowerTerm pc tm of
+    Left err -> fail (show err)
+    Right res -> pure (res, endPos)
 
 
 commandP :: Parser (AST.Command Parsed, SourcePos)
 commandP = do
   (cmd,endPos) <- cstcommandP
-  return (lowerCommand cmd, endPos)
+  case lowerCommand cmd of
+    Left err -> fail (show err)
+    Right res -> pure (res, endPos)
