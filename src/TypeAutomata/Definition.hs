@@ -6,7 +6,6 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
@@ -171,26 +170,19 @@ singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.e
 data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
-  | RefineEdge TypeName
+  | FlowEdge
   deriving (Eq,Show, Ord)
 
 type EdgeLabelNormal  = EdgeLabel Void
 type EdgeLabelEpsilon = EdgeLabel ()
 
 --------------------------------------------------------------------------------
--- Flow edges
---------------------------------------------------------------------------------
-
-type FlowEdge = (Node, Node)
-
---------------------------------------------------------------------------------
 -- Type Automata
 --------------------------------------------------------------------------------
 
-data TypeAutCore a = TypeAutCore
-  { ta_gr :: Gr NodeLabel a
-  , ta_flowEdges :: [FlowEdge]
-  }
+{-# DEPRECATED TypeAutCore "TODO: Remove indirection" #-}
+data TypeAutCore a = TypeAutCore { ta_gr :: Gr NodeLabel a }
+
 deriving instance Show (TypeAutCore EdgeLabelNormal)
 deriving instance Show (TypeAutCore EdgeLabelEpsilon)
 
@@ -225,10 +217,9 @@ instance Nubable [] where
 
 
 mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
-mapTypeAutCore f TypeAutCore { ta_gr, ta_flowEdges } = TypeAutCore
+mapTypeAutCore f TypeAutCore { ta_gr } = TypeAutCore
   { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
             (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
   }
 
 -- Maps a function on nodes over a type automaton
