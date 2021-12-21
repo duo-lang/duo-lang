@@ -11,7 +11,6 @@ import Data.Graph.Inductive.Graph
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
 
-import Data.List (delete)
 import Data.Tuple (swap)
 import Data.Maybe (isJust)
 import Data.Set qualified as S
@@ -103,8 +102,8 @@ subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
-admissableM aut@TypeAutCore{..} e =
-  guard (e `elem` ta_flowEdges) <|>
+admissableM aut@TypeAutCore{ ta_gr } e =
+  guard (e `elem` (getFlowEdges ta_gr)) <|>
     subtypeData aut e <|>
     subtypeCodata aut e <|>
     subtypeNominal aut e
@@ -112,8 +111,13 @@ admissableM aut@TypeAutCore{..} e =
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
 admissable :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Bool
-admissable aut@TypeAutCore {..} e = isJust $ admissableM (aut { ta_flowEdges = delete e ta_flowEdges }) e
+admissable aut@TypeAutCore { ta_gr } (left,right) = isJust $ admissableM (aut { ta_gr = delLEdge (left, right, FlowEdge) ta_gr }) (left, right)
+
 
 removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
-removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore {..}} =
-  aut { ta_core = tac { ta_flowEdges = filter (not . admissable tac) ta_flowEdges }}
+removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore { ta_gr }} =
+  let
+    flowEdges = getFlowEdges ta_gr
+    toRemove :: [LEdge EdgeLabelNormal] = (\(left,right) -> (left,right,FlowEdge)) <$> filter ( not . admissable tac ) flowEdges
+  in
+    aut { ta_core = TypeAutCore { ta_gr = delAllLEdges toRemove ta_gr}}

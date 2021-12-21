@@ -11,7 +11,7 @@ import TypeAutomata.Definition
 unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
 unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
 unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
-unsafeEmbedEdgeLabel (RefineEdge tn) = RefineEdge tn
+unsafeEmbedEdgeLabel FlowEdge = FlowEdge
 
 -- | Remove all epsilon edges starting from the node n.
 -- I.e. replace this configuration:
@@ -56,7 +56,7 @@ fromEpsGr gr = gmap mapfun gr
     mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
 removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
-removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowEdges, ta_gr } } =
+removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr } } =
   let
     (gr', starts') = foldr (.) id (map removeEpsilonEdgesFromNode (nodes ta_gr)) (ta_gr, ta_starts)
   in
@@ -64,6 +64,5 @@ removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowE
            , ta_starts = starts'
            , ta_core = TypeAutCore
              { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
-             , ta_flowEdges = ta_flowEdges
              }
            }

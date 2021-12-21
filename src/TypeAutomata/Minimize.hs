@@ -31,9 +31,10 @@ myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
+-- | 
 flowNeighbors :: TypeAutCore EdgeLabelNormal -> Node -> Set Node
-flowNeighbors TypeAutCore { ta_flowEdges } i =
-  S.fromList $ [n | (j,n) <- ta_flowEdges, i == j] ++ [n | (n,j) <- ta_flowEdges, i == j]
+flowNeighbors TypeAutCore { ta_gr } i =
+  S.fromList $ [right | (left,right, FlowEdge) <- labEdges ta_gr , i == left] ++ [left | (left,right,FlowEdge) <- labEdges ta_gr, i == right]
 
 equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
 equalNodes aut@TypeAutCore{ ta_gr } i j =

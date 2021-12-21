@@ -180,7 +180,7 @@ type EdgeLabelEpsilon = EdgeLabel ()
 -- Type Automata
 --------------------------------------------------------------------------------
 
-{-# DEPRECATED TypeAutCore "TODO: Remove indirection" #-}
+--TODO: Remove
 data TypeAutCore a = TypeAutCore { ta_gr :: Gr NodeLabel a }
 
 deriving instance Show (TypeAutCore EdgeLabelNormal)
@@ -241,3 +241,8 @@ removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundan
 
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es
+
+type FlowEdge = (Node, Node)
+
+getFlowEdges :: TypeGr -> [FlowEdge]
+getFlowEdges = undefined
