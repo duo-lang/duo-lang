@@ -1,4 +1,4 @@
-module TypeAutomata.ToAutomaton ( typeToAut ) where
+module TypeAutomata.ToAutomaton ( typeToAut, solverResultToAut ) where
 
 
 import Control.Monad ( forM_ )
@@ -29,6 +29,7 @@ import TypeAutomata.Definition
       XtorLabel(..),
       emptyNodeLabel,
       singleNodeLabel )
+import TypeInference.Constraints
 import Utils ( enumerate )
 
 --------------------------------------------------------------------------
@@ -196,14 +197,36 @@ insertType (TyNominal rep _ tn) = do
   return newNode
 
 --------------------------------------------------------------------------
---
+-- Exported Functions
 --------------------------------------------------------------------------
 
+insertVariableState :: (TVar, VariableState) -> TTA ()
+insertVariableState (tv, VariableState { vst_lowerbounds, vst_upperbounds }) = do
+  posNode <- lookupTVar PosRep tv
+  negNode <- lookupTVar NegRep tv
+  forM_ vst_lowerbounds $ \lb -> do
+    lbn <- insertType lb
+    insertEdges [(lbn, posNode, EpsilonEdge ())]
+  forM_ vst_upperbounds $ \ub -> do
+    ubn <- insertType ub
+    insertEdges [(ubn, negNode, EpsilonEdge ())]
 
--- turns a type into a type automaton with prescribed start polarity.
+insertVariableStates :: SolverResult -> TTA ()
+insertVariableStates sr = sequence_ (insertVariableState <$> M.toList (tvarSolution sr))
+
+-- The function `typeToAut` turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
 typeToAut (TypeScheme tvars ty) = do
   (start, aut) <- runTypeAutTvars tvars (insertType ty)
+  return TypeAut { ta_pol = getPolarity ty
+                 , ta_starts = [start]
+                 , ta_core = aut
+                 }
+
+-- The function `solverResultToAut` turns a solverResult into a type automaton.
+solverResultToAut :: Typ Pos -> SolverResult -> Either Error (TypeAutEps Pos)
+solverResultToAut ty sr = do
+  (start, aut) <- runTypeAutTvars (M.keys $ tvarSolution sr) (insertType ty <* insertVariableStates sr)
   return TypeAut { ta_pol = getPolarity ty
                  , ta_starts = [start]
                  , ta_core = aut
