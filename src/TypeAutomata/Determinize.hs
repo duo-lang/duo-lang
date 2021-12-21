@@ -19,7 +19,7 @@ import TypeAutomata.Definition
       Nubable(nub),
       TypeAut,
       TypeAut'(TypeAut, ta_pol, ta_starts, ta_core),
-      TypeAutCore(TypeAutCore, ta_gr, ta_flowEdges),
+      TypeAutCore(TypeAutCore, ta_gr),
       TypeAutDet )
 import Utils ( allEq, intersections )
 import Data.Maybe (mapMaybe)
@@ -116,29 +116,18 @@ newTypeGraph transFun gr =
   in mkGraph nodes edges
 
 ------------------------------------------------------------------------------
--- Compute new flowEdges
-------------------------------------------------------------------------------
-
-flowEdges :: TransFunReindexed
-                 -> [(Node,Node)] -- ^ Old flowedges
-                 -> [(Node,Node)] -- ^ New flowedges
-flowEdges transFun flowedges =
-  [(i,j) | (i,ns,_) <- transFun, (j,ms,_) <- transFun, not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` flowedges]]
-
-------------------------------------------------------------------------------
 -- Lift the determinization algorithm to type graphs.
 ------------------------------------------------------------------------------
 
 determinize :: TypeAut pol -> TypeAutDet pol
-determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
+determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr }} =
   let
     starts = S.fromList ta_starts
     newstart = M.findIndex starts newTransFun
     newTransFun = transFun ta_gr starts
     newTransFunReind = reIndexTransFun newTransFun
-    newFlowEdges = flowEdges newTransFunReind ta_flowEdges
     newgr = newTypeGraph newTransFunReind ta_gr
-    newCore = TypeAutCore { ta_gr = newgr, ta_flowEdges = newFlowEdges }
+    newCore = TypeAutCore { ta_gr = newgr  }
   in
     TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_core = newCore }
 
