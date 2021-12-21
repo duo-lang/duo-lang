@@ -81,18 +81,18 @@ setDeclP = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
-xtorDeclP :: Parser (XtorName, [Invariant], [Invariant])
+xtorDeclP :: Parser (XtorName, [(PrdCns, Invariant)])
 xtorDeclP = do
   (xt, _pos) <- xtorName Nominal
-  prdArgs <- option [] (fst <$> (parens   $ invariantP `sepBy` comma))
-  cnsArgs <- option [] (fst <$> (brackets $ invariantP `sepBy` comma))
-  return (xt,prdArgs, cnsArgs)
+  (args,_) <- argListsP invariantP
+  return (xt, args )
 
-combineXtors :: [(XtorName, [Invariant], [Invariant])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
+combineXtors :: [(XtorName, [(PrdCns, Invariant)])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
 combineXtors [] = \_rep -> []
-combineXtors ((xt, prdArgs, cnsArgs):rest) = \rep -> MkXtorSig
-  xt (((\x -> PrdCnsType PrdRep $ (unInvariant x) rep) <$> prdArgs) ++
-       ((\x -> PrdCnsType CnsRep $ (unInvariant x) (flipPolarityRep rep)) <$> cnsArgs )) : combineXtors rest rep
+combineXtors ((xt, args):rest) = \rep -> (MkXtorSig xt (f rep <$> args)) : combineXtors rest rep
+  where
+    f rep (Prd, x) = PrdCnsType PrdRep $ unInvariant x rep
+    f rep (Cns, x) = PrdCnsType CnsRep $ unInvariant x (flipPolarityRep rep)
 
 
 dataDeclP :: Parser (Declaration Parsed)

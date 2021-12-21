@@ -54,6 +54,13 @@ module Parser.Lexer
   , brackets
   , braces
   , dbraces
+  , parensListP
+  , parensListIP
+  , bracketsListP
+  , bracketsListIP
+  , argListsP
+  , argListsIP
+    -- Other
   , checkTick
   , parseUntilKeywP
   ) where
@@ -315,6 +322,52 @@ braces    = betweenP (symbol "{")  (symbol "}")
 brackets  = betweenP (symbol "[")  (symbol "]")
 angles    = betweenP (symbol "<")  (symbol ">")
 dbraces   = betweenP (symbol "{{") (symbol "}}")
+
+-- | Parse a non-empty list of elements in parens.
+-- E.g. "(a,a,a)"
+parensListP :: Parser a -> Parser ([(PrdCns, a)], SourcePos)
+parensListP p = parens  $ ((,) Prd <$> p) `sepBy` comma
+
+-- | Parse a non-empty list of elements in parens, with exactly one asterisk.
+-- E.g. "(a,*,a)"
+parensListIP :: Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
+parensListIP p = parens $ do
+  let p' =(\x -> (Prd, x)) <$> p
+  fsts <- option [] (try ((p' `sepBy` try (comma <* notFollowedBy implicitSym)) <* comma))
+  _ <- implicitSym
+  snds <- option [] (try (comma *> p' `sepBy` comma))
+  return (fsts, snds)
+
+-- | Parse a non-empty list of elements in brackets.
+-- E.g. "[a,a,a]"
+bracketsListP :: Parser a -> Parser ([(PrdCns,a)], SourcePos)
+bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` comma
+
+-- | Parse a non-empty list of elements in parens, with exactly one asterisk.
+-- E.g. "[a,*,a]"
+bracketsListIP :: Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
+bracketsListIP p = brackets $ do
+  let p' =(\x -> (Cns, x)) <$> p
+  fsts <- option [] (try ((p' `sepBy` try (comma <* notFollowedBy implicitSym)) <* comma))
+  _ <- implicitSym
+  snds <- option [] (try (comma *> p' `sepBy` comma))
+  return (fsts, snds)
+
+-- | Parse a sequence of produer/consumer argument lists
+argListsP ::  Parser a -> Parser ([(PrdCns,a)], SourcePos)
+argListsP p = do
+  endPos <- getSourcePos
+  xs <- many (try (parensListP p) <|> try (bracketsListP p))
+  case xs of
+    [] -> return ([], endPos)
+    xs -> return (concat (fst <$> xs), snd (last xs))
+
+argListsIP :: PrdCns -> Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
+argListsIP mode p = do
+  (fsts,_) <- argListsP p
+  ((middle1, middle2),_) <- (if mode == Prd then parensListIP else bracketsListIP) p
+  (lasts,endPos) <- argListsP p
+  return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
 
 -------------------------------------------------------------------------------------------
 -- Recovery parser
