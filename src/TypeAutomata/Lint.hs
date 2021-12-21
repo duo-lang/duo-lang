@@ -37,9 +37,9 @@ getNodeLabel gr n = case lab gr n of
 -- 1.) Both nodes are contained in the corresponding graph.
 -- 2.) The left node of the flowedge is negative and the right node is positive.
 lintFlowEdges :: MonadError Error m
-              => TypeAut' a f pol  -> m ()
-lintFlowEdges TypeAut { ta_core = TypeAutCore { ta_gr, ta_flowEdges } } = do
-  forM_ ta_flowEdges $ \(left,right) -> do
+              => TypeAut' (EdgeLabel a) f pol  -> m ()
+lintFlowEdges TypeAut { ta_core = TypeAutCore { ta_gr } } = do
+  forM_ (getFlowEdges ta_gr) $ \(left,right) -> do
     leftPol <- nl_pol <$> getNodeLabel ta_gr left
     rightPol <- nl_pol <$> getNodeLabel ta_gr right
     case leftPol of

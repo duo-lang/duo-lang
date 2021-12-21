@@ -244,5 +244,5 @@ delAllLEdges es gr = foldr delAllLEdge gr es
 
 type FlowEdge = (Node, Node)
 
-getFlowEdges :: TypeGr -> [FlowEdge]
-getFlowEdges = undefined
+getFlowEdges :: Gr NodeLabel (EdgeLabel a) -> [FlowEdge]
+getFlowEdges ta_gr = [(left,right) | (left,right,FlowEdge) <- labEdges ta_gr]

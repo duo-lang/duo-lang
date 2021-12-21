@@ -72,8 +72,7 @@ initialize tvars =
   let
     nodes = createNodes tvars
     initAut = TypeAutCore
-              { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
-              , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
+              { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) [ (left, right, FlowEdge) | (_,_,_,(left,right)) <- nodes]
               }
     lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           }

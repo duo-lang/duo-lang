@@ -33,8 +33,8 @@ import Data.Graph.Inductive.Query.DFS (dfs)
 type FlowGraph = Gr () ()
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
-genFlowGraph :: TypeAutCore a -> FlowGraph
-genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
+genFlowGraph :: TypeAutCore (EdgeLabel a) -> FlowGraph
+genFlowGraph TypeAutCore{ ta_gr } = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j,FlowEdge) <- labEdges ta_gr]
 
 flowComponent :: FlowGraph -> Node -> [Node]
 flowComponent flgr i =
