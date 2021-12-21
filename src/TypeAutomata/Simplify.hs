@@ -13,7 +13,7 @@ import Syntax.CommonTerm
 import Syntax.Types
 import Syntax.Zonking
 import TypeAutomata.Definition
-import TypeAutomata.ToAutomaton ( typeToAut )
+import TypeAutomata.ToAutomaton ( typeToAut, solverResultToAut )
 import TypeAutomata.FromAutomaton ( autToType )
 import TypeAutomata.RemoveEpsilon ( removeEpsilonEdges )
 import TypeAutomata.Determinize (determinize)
@@ -110,8 +110,30 @@ readBisubstitution' tvars ctxt = M.fromList (zipWith3 (\v p n -> (v, (p,n))) tva
 
 computeBisubstitution :: (MonadIO m, MonadError Error m)
                       => SolverResult
+                      -> String
+                      -> Bool
                       -> m (Bisubstitution)
-computeBisubstitution sr = do
+computeBisubstitution sr str print = do
+  -- Read SolverResult into automaton
   let ty = createBSType sr
-  ty' <- undefined sr ty
+  typeAut <- liftEither $ solverResultToAut ty sr
+  lint typeAut
+  -- Remove epsilon edges
+  let typeAutDet = removeEpsilonEdges typeAut
+  lint typeAutDet
+  printGraph print ("0_typeAut" <> "_" <> str) typeAutDet
+  -- Determinize the automaton
+  let typeAutDet' = determinize typeAutDet
+  lint typeAutDet'
+  printGraph print ("1_typeAutDet" <> "_"  <> str) typeAutDet'
+  -- Remove admissable flow edges
+  let typeAutDetAdms = removeAdmissableFlowEdges typeAutDet'
+  lint typeAutDetAdms
+  printGraph print ("2_typeAutDetAdms" <> "_"  <> str) typeAutDetAdms
+  -- Minimize automaton
+  let typeAutMin = minimize typeAutDetAdms
+  lint typeAutMin
+  printGraph print ("3_minTypeAut" <> "_"  <> str) typeAutMin
+  (TypeScheme _ ty') <- liftEither $ autToType typeAutMin
+
   return $ readBisubstitution sr ty'
