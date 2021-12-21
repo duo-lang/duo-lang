@@ -5,10 +5,13 @@ import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
 import Data.GraphViz
     ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
+import Data.Map qualified as M
 import Pretty.TypeAutomata (typeAutToDot)
 
-import Errors ( Error )    
-import Syntax.Types ( TypeScheme )
+import Errors ( Error )
+import Syntax.CommonTerm
+import Syntax.Types
+import Syntax.Zonking
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton ( typeToAut )
 import TypeAutomata.FromAutomaton ( autToType )
@@ -17,6 +20,7 @@ import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
 import TypeAutomata.Minimize ( minimize )
 import TypeAutomata.Lint ( lint )
+import TypeInference.Constraints
 
 ------------------------------------------------------------------------------
 -- Printing TypeAutomata
@@ -71,3 +75,43 @@ simplify tys print str = do
     printGraph print ("3_minTypeAut" <> "_"  <> str) typeAutMin
     -- Read back to type
     liftEither $ autToType typeAutMin
+
+------------------------------------------------------------------------------
+-- Compute a Bisubstitution from a SolverResult
+------------------------------------------------------------------------------
+
+-- | Create a type `< '$BS(u1,...,un)[u1,...,un] >` from the unification variables
+-- of the domain of the SolverResult.
+createBSType :: SolverResult -> Typ Pos
+createBSType MkSolverResult { tvarSolution } = TyData PosRep Nothing [bs_xtor]
+  where
+    bs_xtor = MkXtorSig (MkXtorName Structural "$BS") (prdArgs ++ cnsArgs)
+    prdArgs = (\tv -> PrdCnsType PrdRep (TyVar PosRep Nothing tv)) <$> M.keys tvarSolution
+    cnsArgs = (\tv -> PrdCnsType CnsRep (TyVar NegRep Nothing tv)) <$> M.keys tvarSolution
+
+-- | Takes a type `< '$BS(u1,...,un)[u1,...,un] >`, which was constructed using
+-- the `createBSType` function, simplified using the typeautomata, and turns it into
+-- a Bisubstitution.
+readBisubstitution :: SolverResult -> Typ Pos -> Bisubstitution
+readBisubstitution sr (TyData PosRep _ [MkXtorSig (MkXtorName Structural "$BS") args ]) =
+  MkBisubstitution (readBisubstitution' (M.keys $ tvarSolution sr) args) (kvarSolution sr)
+readBisubstitution _ ty = error ("readBisubstitution: Unexpected type: " <> show ty)
+
+readBisubstitution' :: [TVar] -> LinearContext Pos -> M.Map TVar (Typ Pos, Typ Neg)
+readBisubstitution' tvars ctxt = M.fromList (zipWith3 (\v p n -> (v, (p,n))) tvars (concatMap posF ctxt) (concatMap negF ctxt))
+  where
+    posF :: PrdCnsType Pos -> [Typ Pos]
+    posF (PrdCnsType PrdRep ty) = [ty]
+    posF _ = []
+
+    negF :: PrdCnsType Pos -> [Typ Neg]
+    negF (PrdCnsType CnsRep ty) = [ty]
+    negF _ = []
+
+computeBisubstitution :: (MonadIO m, MonadError Error m)
+                      => SolverResult
+                      -> m (Bisubstitution)
+computeBisubstitution sr = do
+  let ty = createBSType sr
+  ty' <- undefined sr ty
+  return $ readBisubstitution sr ty'
