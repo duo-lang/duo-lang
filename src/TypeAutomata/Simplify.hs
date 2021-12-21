@@ -86,8 +86,8 @@ createBSType :: SolverResult -> Typ Pos
 createBSType MkSolverResult { tvarSolution } = TyData PosRep Nothing [bs_xtor]
   where
     bs_xtor = MkXtorSig (MkXtorName Structural "$BS") (prdArgs ++ cnsArgs)
-    prdArgs = (\tv -> PrdCnsType PrdRep (TyVar PosRep Nothing tv)) <$> M.keys tvarSolution
-    cnsArgs = (\tv -> PrdCnsType CnsRep (TyVar NegRep Nothing tv)) <$> M.keys tvarSolution
+    prdArgs = PrdCnsType PrdRep . TySet PosRep Nothing . vst_lowerbounds <$> M.elems tvarSolution
+    cnsArgs = PrdCnsType CnsRep . TySet NegRep Nothing . vst_upperbounds <$> M.elems tvarSolution
 
 -- | Takes a type `< '$BS(u1,...,un)[u1,...,un] >`, which was constructed using
 -- the `createBSType` function, simplified using the typeautomata, and turns it into
