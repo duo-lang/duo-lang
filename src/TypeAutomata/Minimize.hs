@@ -33,24 +33,24 @@ myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p
 
 -- | 
 flowNeighbors :: TypeAutCore EdgeLabelNormal -> Node -> Set Node
-flowNeighbors TypeAutCore { ta_gr } i =
+flowNeighbors ta_gr i =
   S.fromList $ [right | (left,right, FlowEdge) <- labEdges ta_gr , i == left] ++ [left | (left,right,FlowEdge) <- labEdges ta_gr, i == right]
 
 equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
-equalNodes aut@TypeAutCore{ ta_gr } i j =
-  (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
+equalNodes ta_gr i j =
+  (lab ta_gr i == lab ta_gr j) && flowNeighbors ta_gr i == flowNeighbors ta_gr j
 
 genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
-genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
+genMinimizeFun ta_gr = getNewNode
   where
-    distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
+    distGroups = myGroupBy (equalNodes ta_gr) (nodes ta_gr)
     nodeSets = minimize' ta_gr distGroups distGroups
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
 minimize aut@TypeAut {ta_core} = removeRedundantEdgesAut aut'
   where
-    ta_core' = removeRedundantEdgesCore ta_core
+    ta_core' = removeRedundantEdges ta_core
     fun = genMinimizeFun ta_core'
     aut' = mapTypeAut fun aut
 

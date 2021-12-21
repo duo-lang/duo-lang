@@ -6,7 +6,7 @@ import Control.Monad.Except ( runExcept, Except )
 import Control.Monad.Reader
     ( ReaderT(..), asks, MonadReader(..) )
 import Control.Monad.State
-    ( StateT(..), gets, modify )
+    ( StateT(..), modify, get)
 import Data.Graph.Inductive.Graph (Node)
 import Data.Graph.Inductive.Graph qualified as G
 import Data.Map (Map)
@@ -21,7 +21,7 @@ import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),
       TypeGrEps,
-      TypeAutCore(..),
+      TypeAutCore,
       FlowEdge,
       EdgeLabelEpsilon,
       EdgeLabel(..),
@@ -71,11 +71,8 @@ initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
-    initAut = TypeAutCore
-              { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) [ (left, right, FlowEdge) | (_,_,_,(left,right)) <- nodes]
-              }
-    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
-                          }
+    initAut = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) [ (left, right, FlowEdge) | (_,_,_,(left,right)) <- nodes]
+    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes] }
   in
     (initAut, lookupEnv)
 
@@ -92,9 +89,7 @@ runTypeAutTvars tvars m = do
 --------------------------------------------------------------------------
 
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
-modifyGraph f = modify go
-  where
-    go aut@TypeAutCore { ta_gr } = aut { ta_gr = f ta_gr }
+modifyGraph f = modify f
 
 insertNode :: Node -> NodeLabel -> TTA ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
@@ -104,7 +99,7 @@ insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TTA Node
 newNodeM = do
-  graph <- gets ta_gr
+  graph <- get
   pure $ (head . G.newNodes 1) graph
 
 lookupTVar :: PolarityRep pol -> TVar -> TTA Node

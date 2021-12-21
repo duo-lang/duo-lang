@@ -56,13 +56,11 @@ fromEpsGr gr = gmap mapfun gr
     mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
 removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
-removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr } } =
+removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core } =
   let
-    (gr', starts') = foldr (.) id (map removeEpsilonEdgesFromNode (nodes ta_gr)) (ta_gr, ta_starts)
+    (gr', starts') = foldr (.) id (map removeEpsilonEdgesFromNode (nodes ta_core)) (ta_core, ta_starts)
   in
    TypeAut { ta_pol = ta_pol
            , ta_starts = starts'
-           , ta_core = TypeAutCore
-             { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
-             }
+           , ta_core = (removeRedundantEdges . fromEpsGr) gr'
            }

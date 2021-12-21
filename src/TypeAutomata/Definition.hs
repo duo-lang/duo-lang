@@ -181,10 +181,7 @@ type EdgeLabelEpsilon = EdgeLabel ()
 --------------------------------------------------------------------------------
 
 --TODO: Remove
-data TypeAutCore a = TypeAutCore { ta_gr :: Gr NodeLabel a }
-
-deriving instance Show (TypeAutCore EdgeLabelNormal)
-deriving instance Show (TypeAutCore EdgeLabelEpsilon)
+type TypeAutCore a = Gr NodeLabel a 
 
 type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
@@ -217,10 +214,8 @@ instance Nubable [] where
 
 
 mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
-mapTypeAutCore f TypeAutCore { ta_gr } = TypeAutCore
-  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
-            (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  }
+mapTypeAutCore f graph = mkGraph (nub [(f i, a) | (i,a) <- labNodes graph])
+                                 (nub [(f i , f j, b) | (i,j,b) <- labEdges graph])
 
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
@@ -233,11 +228,8 @@ mapTypeAut f TypeAut { ta_pol, ta_starts, ta_core } = TypeAut
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeRedundantEdgesCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
-removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdges ta_gr }
-
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
-removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }
+removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdges ta_core }
 
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es

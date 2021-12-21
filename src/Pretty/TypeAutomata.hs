@@ -60,7 +60,7 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn FlowEdge = "f"
 
 typeAutToDot :: TypeAut' (EdgeLabel a) f pol -> DotGraph Node
-typeAutToDot TypeAut {ta_core = TypeAutCore{..}} = graphToDot typeAutParams ta_gr
+typeAutToDot TypeAut {ta_core } = graphToDot typeAutParams ta_core
 
 typeAutParams :: GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabel
 typeAutParams = defaultParams
