@@ -35,9 +35,8 @@ import Syntax.Program
       IsRec(..),
       ModuleName(..) )
 import Syntax.Zonking (zonkType)
-import TypeAutomata.Simplify
+import TypeAutomata.Simplify (computeBisubstitution, simplify)
 import TypeAutomata.Subsume (subsume)
-import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
     ( InferenceMode(..), runGenM )
 import TypeInference.GenerateConstraints.Terms
@@ -164,7 +163,8 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
-  let bisubst = coalesce solverResult
+  printGraphs <- gets (infOptsPrintGraphs . driverOpts)
+  bisubst <- computeBisubstitution solverResult (T.unpack fv) printGraphs
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
   let typ = zonkType bisubst (getTypeTerm tmInferred)
@@ -172,7 +172,6 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
-      printGraphs <- gets (infOptsPrintGraphs . driverOpts)
       tys <- simplify (generalize typ) printGraphs (T.unpack fv)
       guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
