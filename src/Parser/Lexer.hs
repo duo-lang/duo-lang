@@ -54,7 +54,6 @@ module Parser.Lexer
   , brackets
   , braces
   , dbraces
-  , argListP
   , checkTick
   , parseUntilKeywP
   ) where
@@ -316,14 +315,6 @@ braces    = betweenP (symbol "{")  (symbol "}")
 brackets  = betweenP (symbol "[")  (symbol "]")
 angles    = betweenP (symbol "<")  (symbol ">")
 dbraces   = betweenP (symbol "{{") (symbol "}}")
-
--- | Parse two lists, the first in parentheses and the second in brackets.
-argListP ::  Parser a -> Parser a ->  Parser ([(PrdCns,a)], SourcePos)
-argListP p q = do
-  endPos <- getSourcePos
-  (xs, endPos) <- option ([], endPos) (parens   $ p `sepBy` comma)
-  (ys, endPos) <- option ([], endPos) (try (brackets $ q `sepBy` comma))
-  return (((\x -> (Prd,x)) <$> xs) ++ ((\y -> (Cns,y)) <$> ys), endPos)
 
 -------------------------------------------------------------------------------------------
 -- Recovery parser

@@ -97,6 +97,7 @@ lowerTerm rep    (CST.TermParens _loc tm)      = lowerTerm rep tm
 lowerTerm rep    (CST.DtorChain pos tm dtors)  = lowerDtorChain pos tm dtors >>= lowerTerm rep
 lowerTerm PrdRep (CST.FunApp loc fun arg)      = lowerApp loc fun arg
 lowerTerm CnsRep (CST.FunApp _loc _fun _arg)   = Left "Cannot lower FunApp to a consumer."
+lowerTerm rep    (CST.MultiLambda loc fvs tm)  = lowerMultiLambda loc fvs tm >>= lowerTerm rep
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
 lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = Left "Cannot lower Lambda to a consumer."
 
@@ -104,6 +105,12 @@ lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = Left "Cannot lower Lambda to a 
 lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> LowerM CST.Term
 lowerDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
 lowerDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = lowerDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
+
+
+-- | Lower a multi-lambda abstraction
+lowerMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> LowerM (CST.Term)
+lowerMultiLambda _ [] tm = pure tm
+lowerMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> lowerMultiLambda loc fvs tm
 
 -- | Lower a lambda abstraction.
 lowerLambda :: Loc -> FreeVarName -> CST.Term -> LowerM (AST.Term Prd Parsed)
