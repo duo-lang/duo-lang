@@ -65,7 +65,7 @@ import Data.Set qualified as S
 sucWith :: TypeGr -> Node -> EdgeLabelNormal -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
-subtypeData :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeData :: TypeGr -> FlowEdge -> Maybe ()
 subtypeData ta_gr (i,j) = do
   (MkNodeLabel Neg (Just dat1) _ _ _ _) <- lab ta_gr i
   (MkNodeLabel Pos (Just dat2) _ _ _ _) <- lab ta_gr j
@@ -80,7 +80,7 @@ subtypeData ta_gr (i,j) = do
       m <- sucWith ta_gr j el
       admissableM ta_gr (m,n)
 
-subtypeCodata :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeCodata :: TypeGr -> FlowEdge -> Maybe ()
 subtypeCodata ta_gr (i,j) = do
   (MkNodeLabel Neg _ (Just codat1) _ _ _) <- lab ta_gr i
   (MkNodeLabel Pos _ (Just codat2) _ _ _) <- lab ta_gr j
@@ -95,13 +95,13 @@ subtypeCodata ta_gr (i,j) = do
       m <- sucWith ta_gr j el
       admissableM ta_gr (n,m)
 
-subtypeNominal :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+subtypeNominal :: TypeGr-> FlowEdge -> Maybe ()
 subtypeNominal ta_gr (i,j) = do
   (MkNodeLabel Neg _ _ nominal1 _ _) <- lab ta_gr i
   (MkNodeLabel Pos _ _ nominal2 _ _) <- lab ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
-admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Maybe ()
+admissableM :: TypeGr -> FlowEdge -> Maybe ()
 admissableM ta_gr e =
   guard (e `elem` (getFlowEdges ta_gr)) <|>
     subtypeData ta_gr e <|>
@@ -110,14 +110,14 @@ admissableM ta_gr e =
 
 -- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
 -- needs to be seperated for technical reasons...
-admissable :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Bool
+admissable :: TypeGr -> FlowEdge -> Bool
 admissable ta_gr (left,right) = isJust $ admissableM (delLEdge (left, right, FlowEdge) ta_gr) (left, right)
 
 
 removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
-removeAdmissableFlowEdges aut@TypeAut{ ta_core } =
+removeAdmissableFlowEdges aut@TypeAut{ ta_graph } =
   let
-    flowEdges = getFlowEdges ta_core
-    toRemove :: [LEdge EdgeLabelNormal] = (\(left,right) -> (left,right,FlowEdge)) <$> filter ( not . admissable ta_core ) flowEdges
+    flowEdges = getFlowEdges ta_graph
+    toRemove :: [LEdge EdgeLabelNormal] = (\(left,right) -> (left,right,FlowEdge)) <$> filter ( not . admissable ta_graph ) flowEdges
   in
-    aut { ta_core = delAllLEdges toRemove ta_core}
+    aut { ta_graph = delAllLEdges toRemove ta_graph}

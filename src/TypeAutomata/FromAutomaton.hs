@@ -33,7 +33,7 @@ import Data.Graph.Inductive.Query.DFS (dfs)
 type FlowGraph = Gr () ()
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
-genFlowGraph :: TypeAutCore (EdgeLabel a) -> FlowGraph
+genFlowGraph :: TypeGr -> FlowGraph
 genFlowGraph ta_gr = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j,FlowEdge) <- labEdges ta_gr]
 
 flowComponent :: FlowGraph -> Node -> [Node]
@@ -65,16 +65,16 @@ flowAnalysisState flgr =
           rest <- flowAnalysisState newGr
           return $ foldr (.) id (map (M.adjust (S.insert tv)) comp) rest
 
-getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar)
+getFlowAnalysisMap :: TypeGr -> Map Node (Set TVar)
 getFlowAnalysisMap aut = fst $ runState (flowAnalysisState (genFlowGraph aut)) 0
 
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
 initializeFromAutomaton TypeAut{..} =
   let
-    flowAnalysis = getFlowAnalysisMap ta_core
+    flowAnalysis = getFlowAnalysisMap ta_graph
   in
     AutToTypeState { tvMap = flowAnalysis
-                   , graph = ta_core
+                   , graph = ta_graph
                    , cache = S.empty
                    , tvars = S.toList $ S.unions (M.elems flowAnalysis)
                    }

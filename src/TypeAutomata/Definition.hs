@@ -9,6 +9,7 @@ import Data.Map qualified as M
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
+import Data.Kind (Type)
 import Syntax.Types
 import Syntax.CommonTerm
 
@@ -180,16 +181,13 @@ type EdgeLabelEpsilon = EdgeLabel ()
 -- Type Automata
 --------------------------------------------------------------------------------
 
---TODO: Remove
-type TypeAutCore a = Gr NodeLabel a 
-
 type TypeGr = Gr NodeLabel EdgeLabelNormal
 type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
 data TypeAut' a f (pol :: Polarity) = TypeAut
   { ta_pol :: PolarityRep pol
   , ta_starts :: f Node
-  , ta_core :: TypeAutCore a
+  , ta_graph :: Gr NodeLabel a
   }
 deriving instance Show (TypeAut pol)
 deriving instance Show (TypeAutDet pol)
@@ -201,40 +199,42 @@ type TypeAutDet pol    = TypeAut' EdgeLabelNormal  Identity pol
 type TypeAutEps pol    = TypeAut' EdgeLabelEpsilon [] pol
 type TypeAutEpsDet pol = TypeAut' EdgeLabelEpsilon Identity pol
 
+type FlowEdge = (Node, Node)
+
+getFlowEdges :: Gr NodeLabel (EdgeLabel a) -> [FlowEdge]
+getFlowEdges ta_gr = [(left,right) | (left,right,FlowEdge) <- labEdges ta_gr]
+
 --------------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------------
 
-class Nubable f where
+class Nubable (f :: Type -> Type) where
   nub :: Ord a => f a -> f a
+
 instance Nubable Identity where
   nub = id
+
 instance Nubable [] where
   nub = nubOrd
 
 
-mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
-mapTypeAutCore f graph = mkGraph (nub [(f i, a) | (i,a) <- labNodes graph])
-                                 (nub [(f i , f j, b) | (i,j,b) <- labEdges graph])
+mapTypeGraph :: (Ord a, Ord b) => (Node -> Node) -> Gr a b -> Gr a b
+mapTypeGraph f graph = mkGraph (nub [(f i, a) | (i,a) <- labNodes graph])
+                               (nub [(f i , f j, b) | (i,j,b) <- labEdges graph])
 
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
-mapTypeAut f TypeAut { ta_pol, ta_starts, ta_core } = TypeAut
+mapTypeAut f TypeAut { ta_pol, ta_starts, ta_graph } = TypeAut
   { ta_pol = ta_pol
   , ta_starts = nub (f <$> ta_starts)
-  , ta_core = mapTypeAutCore f ta_core
+  , ta_graph = mapTypeGraph f ta_graph
   }
 
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
-removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdges ta_core }
+removeRedundantEdgesAut aut@TypeAut { ta_graph } = aut { ta_graph = removeRedundantEdges ta_graph }
 
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es
-
-type FlowEdge = (Node, Node)
-
-getFlowEdges :: Gr NodeLabel (EdgeLabel a) -> [FlowEdge]
-getFlowEdges ta_gr = [(left,right) | (left,right,FlowEdge) <- labEdges ta_gr]

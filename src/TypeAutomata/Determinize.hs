@@ -18,8 +18,7 @@ import TypeAutomata.Definition
       NodeLabel(..),
       Nubable(nub),
       TypeAut,
-      TypeAut'(TypeAut, ta_pol, ta_starts, ta_core),
-      TypeAutCore,
+      TypeAut'(..),
       TypeAutDet )
 import Utils ( allEq, intersections )
 import Data.Maybe (mapMaybe)
@@ -120,14 +119,14 @@ newTypeGraph transFun gr =
 ------------------------------------------------------------------------------
 
 determinize :: TypeAut pol -> TypeAutDet pol
-determinize TypeAut{ ta_pol, ta_starts, ta_core } =
+determinize TypeAut{ ta_pol, ta_starts, ta_graph } =
   let
     starts = S.fromList ta_starts
     newstart = M.findIndex starts newTransFun
-    newTransFun = transFun ta_core starts
+    newTransFun = transFun ta_graph starts
     newTransFunReind = reIndexTransFun newTransFun
-    newgr = newTypeGraph newTransFunReind ta_core
+    newgr = newTypeGraph newTransFunReind ta_graph
   in
-    TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_core = newgr }
+    TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_graph = newgr }
 
 

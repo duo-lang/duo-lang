@@ -21,7 +21,6 @@ import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),
       TypeGrEps,
-      TypeAutCore,
       FlowEdge,
       EdgeLabelEpsilon,
       EdgeLabel(..),
@@ -44,15 +43,15 @@ import Utils ( enumerate )
 -- mapped to a pair `(Just n, Just m)`
 data LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 
-type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
+type TTA a = StateT TypeGrEps (ReaderT LookupEnv (Except Error)) a
 
-runTypeAut :: TypeAutCore EdgeLabelEpsilon
+runTypeAut :: TypeGrEps
            -- ^ The initial TypeAutomaton to start the computation.
            -> LookupEnv
            -- ^ The initial lookup environment.
            -> TTA a
            -- ^ The computation to run.
-           -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+           -> Either Error (a, TypeGrEps)
 runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
 
 
@@ -67,7 +66,7 @@ createNodes tvars = createNode <$> (createPairs tvars)
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [TVar] -> (TypeGrEps, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -79,7 +78,7 @@ initialize tvars =
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
 runTypeAutTvars :: [TVar]
                 -> TTA a
-                -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+                -> Either Error (a, TypeGrEps)
 runTypeAutTvars tvars m = do
   let (aut, env) = initialize tvars
   runTypeAut aut env m
@@ -200,5 +199,5 @@ typeToAut (TypeScheme tvars ty) = do
   (start, aut) <- runTypeAutTvars tvars (insertType ty)
   return TypeAut { ta_pol = getPolarity ty
                  , ta_starts = [start]
-                 , ta_core = aut
+                 , ta_graph = aut
                  }
