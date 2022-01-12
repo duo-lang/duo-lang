@@ -25,14 +25,10 @@ import Data.Graph.Inductive.Query.DFS (dfs)
 genFlowGraph :: TypeAutCore a -> FlowGraph
 genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
 
-
-getFlowAnalysisMap :: TypeAutCore EdgeLabelNormal -> Map Node (Set TVar)
-getFlowAnalysisMap aut = foo (genFlowGraph aut)
-
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
 initializeFromAutomaton TypeAut{..} =
   let
-    flowAnalysis = getFlowAnalysisMap ta_core
+    flowAnalysis = computeFlowMap (genFlowGraph ta_core )
   in
     AutToTypeState { tvMap = flowAnalysis
                    , graph = ta_gr ta_core
