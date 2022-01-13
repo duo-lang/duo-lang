@@ -89,6 +89,7 @@ library
       Syntax.Program
       Syntax.Terms
       Syntax.Zonking
+      TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
