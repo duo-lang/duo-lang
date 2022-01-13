@@ -59,7 +59,7 @@ computeBicliqueDecomposition flgr = go flgr []
               case bicliques of
                   [] -> acc
                   bicliques@(_:_) ->
-                      let 
+                      let
                           maximumBiclique :: Biclique = maximum bicliques
                           newGraph :: FlowGraph = deleteBiclique flgr maximumBiclique
                       in
@@ -80,7 +80,7 @@ decompositionToFlowMap nodes bicliques = go bicliqueTvars (M.fromList [(n, S.emp
       bicliqueTvars = zip bicliques [MkTVar ("t" <> T.pack (show n)) | n <- [0 :: Int ..] ]
 
       insertBicliqueIntoMap :: (Biclique, TVar) -> Map Node (Set TVar) -> Map Node (Set TVar)
-      insertBicliqueIntoMap (MkBiclique biclique, tv) m = foldr (.) id (map (M.adjust (S.insert tv)) biclique) m
+      insertBicliqueIntoMap (MkBiclique biclique, tv) m = foldr (M.adjust (S.insert tv)) m biclique
 
 
 
