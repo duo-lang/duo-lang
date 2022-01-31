@@ -10,6 +10,7 @@ import Parser.Definition
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types
+import Syntax.CST.LoweringTerms
 import Syntax.Program
 import Syntax.Types
 import Syntax.CommonTerm
@@ -35,9 +36,11 @@ prdCnsDeclarationP PrdRep = do
     (v, _pos) <- freeVarName
     annot <- annotP PosRep
     _ <- coloneq
-    (t,_) <- termP PrdRep
+    (tm,_) <- termP
     endPos <- semi
-    return (PrdCnsDecl (Loc startPos endPos) PrdRep isRec v annot t)
+    case lowerTerm PrdRep tm of
+      Left err -> fail (show err)
+      Right res -> return (PrdCnsDecl (Loc startPos endPos) PrdRep isRec v annot res)
 prdCnsDeclarationP CnsRep = do
   startPos <- getSourcePos
   try (void cnsKwP)
@@ -46,9 +49,11 @@ prdCnsDeclarationP CnsRep = do
     (v, _pos) <- freeVarName
     annot <- annotP NegRep
     _ <- coloneq
-    (t,_) <- termP CnsRep
+    (tm,_) <- termP
     endPos <- semi
-    return (PrdCnsDecl (Loc startPos endPos) CnsRep isRec v annot t)
+    case lowerTerm CnsRep tm of
+      Left err -> fail (show err)
+      Right res -> return (PrdCnsDecl (Loc startPos endPos) CnsRep isRec v annot res)
 
 cmdDeclarationP :: Parser (Declaration Parsed)
 cmdDeclarationP = do
@@ -57,9 +62,11 @@ cmdDeclarationP = do
   recoverDeclaration $ do
     (v, _pos) <- freeVarName
     _ <- coloneq
-    (t,_) <- commandP
+    (cmd,_) <- commandP
     endPos <- semi
-    return (CmdDecl (Loc startPos endPos) v t)
+    case lowerCommand cmd of
+      Left err -> fail (show err)
+      Right res -> return (CmdDecl (Loc startPos endPos) v res)
 
 importDeclP :: Parser (Declaration Parsed)
 importDeclP = do
