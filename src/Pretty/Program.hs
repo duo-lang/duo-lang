@@ -28,7 +28,7 @@ instance PrettyAnn DataDecl where
     prettyAnn tn <+>
     colon <+>
     prettyAnn knd <+>
-    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
+    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
 
 instance PrettyAnn ModuleName where

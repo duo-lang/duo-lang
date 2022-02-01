@@ -88,24 +88,24 @@ translateXtorSigUpper' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
-translateTypeUpper' (TyNominal pr _ tn) = do
+translateTypeUpper' (TyNominal NegRep _ tn) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar pr Nothing tv
+    return $ TyVar NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
     case data_polarity of
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ data_xtors pr
-        return $ TyRec pr tv $ TyData pr (Just tn) xtss
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
+        return $ TyRec NegRep tv $ TyData NegRep (Just tn) xtss
       Codata -> do
         -- Upper bound translation of codata is empty
-        return $ TyRec pr tv $ TyCodata pr (Just tn) []
+        return $ TyRec NegRep tv $ TyCodata NegRep (Just tn) []
 translateTypeUpper' tv@TyVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -145,7 +145,7 @@ translateTypeLower' (TyNominal pr _ tn) = do
         return $ TyRec pr tv $ TyData pr (Just tn) []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ data_xtors $ flipPolarityRep pr
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors 
         return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
 translateTypeLower' tv@TyVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]

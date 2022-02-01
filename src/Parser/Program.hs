@@ -12,10 +12,8 @@ import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.Lowering.Types
 import Syntax.CommonTerm
-import Syntax.AST.Types (PolarityRep, DataDecl(..), DataCodata(..))
-import Syntax.AST.Types qualified as AST
+import Syntax.AST.Types (DataCodata(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
@@ -71,39 +69,29 @@ setDeclP = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
----------------------------------------------------------------------------------
--- Parsing of invariant Types (HACKY!)
----------------------------------------------------------------------------------
-
-newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> AST.Typ pol }
-
-invariantP :: Parser Invariant
-invariantP = do
-  typ <- typAtomP
-  pure $ MkInvariant $ \rep ->
-    case lowerTyp rep typ of
-      Right typ -> typ
-      -- FIXME: Adjust AST such that it can handle lazy lowering/polarization properly
-      Left err -> error (show err)
-
-xtorDeclP :: Parser (XtorName, [(PrdCns, Invariant)])
+xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorName Nominal
-  (args,_) <- argListsP invariantP
+  (args,_) <- argListsP typP
   return (xt, args )
 
-combineXtors :: [(XtorName, [(PrdCns, Invariant)])] -> (forall pol. PolarityRep pol -> [AST.XtorSig pol])
-combineXtors [] = \_rep -> []
-combineXtors ((xt, args):rest) = \rep -> (AST.MkXtorSig xt (f rep <$> args)) : combineXtors rest rep
-  where
-    f rep (Prd, x) = AST.PrdCnsType PrdRep $ unInvariant x rep
-    f rep (Cns, x) = AST.PrdCnsType CnsRep $ unInvariant x (AST.flipPolarityRep rep)
 
+argListToLctxt :: [(PrdCns, Typ)] -> LinearContext
+argListToLctxt = fmap convert
+  where
+    convert (Prd, ty) = PrdType ty
+    convert (Cns, ty) = CnsType ty
+
+combineXtor :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
+combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
+
+combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
+combineXtors = fmap combineXtor
 
 dataDeclP :: Parser Declaration
 dataDeclP = do
   startPos <- getSourcePos
-  dataCodata <- dataCodataDeclP
+  dataCodata <- (dataKwP >> return Data) <|> (codataKwP >> return Codata)
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
     _ <- colon
@@ -116,12 +104,7 @@ dataDeclP = do
           , data_kind = knd
           , data_xtors = combineXtors xtors
           }
-    return (DataDecl (Loc startPos endPos) decl)
-    where
-      dataCodataDeclP :: Parser DataCodata
-      dataCodataDeclP = (dataKwP >> return Data) <|> (codataKwP >> return Codata)
-
-
+    pure (DataDecl (Loc startPos endPos) decl)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program

@@ -72,7 +72,7 @@ lookupDataDecl xt = do
   let containsXtor :: XtorSig Pos -> Bool
       containsXtor sig = sig_name sig == xt
   let typeContainsXtor :: DataDecl -> Bool
-      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> data_xtors PosRep) = True
+      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> (fst data_xtors)) = True
                                                   | otherwise = False
   env <- asks (((fmap snd) . declEnv) . fst)
   case find typeContainsXtor env of
@@ -91,9 +91,14 @@ lookupTypeName tn = do
 -- | Find the XtorSig belonging to a given XtorName.
 lookupXtorSig :: EnvReader ph a m
               => XtorName -> PolarityRep pol -> m (XtorSig pol)
-lookupXtorSig xtn pol = do
+lookupXtorSig xtn PosRep = do
   decl <- lookupDataDecl xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (data_xtors decl pol) of
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (data_xtors decl)) of
+    Just xts -> return xts
+    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
+lookupXtorSig xtn NegRep = do
+  decl <- lookupDataDecl xtn
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
     Just xts -> return xts
     Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
 
