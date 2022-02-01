@@ -22,7 +22,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
-import Syntax.Terms
+import Syntax.AST.Terms
 import Syntax.CommonTerm
 import Syntax.Types
     ( TypeScheme,

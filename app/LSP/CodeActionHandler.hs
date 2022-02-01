@@ -17,8 +17,8 @@ import Syntax.Program
 import Syntax.Types ( TypeScheme, PrdCnsToPol )
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
-import Syntax.Terms ( Term )
-import Syntax.Terms qualified as Syntax
+import Syntax.AST.Terms ( Term )
+import Syntax.AST.Terms qualified as Syntax
 import TypeInference.Driver
     ( defaultInferenceOptions,
       inferProgramIO,

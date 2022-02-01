@@ -11,7 +11,7 @@ import Data.Text qualified as T
 
 import Syntax.CommonTerm
 import Syntax.Program
-import Syntax.Terms
+import Syntax.AST.Terms
 import Utils
 
 ---------------------------------------------------------------------------------

@@ -16,7 +16,7 @@ import Syntax.CommonTerm
       PrdCnsRep(..),
       XtorName,
       Phase(..))
-import Syntax.Terms
+import Syntax.AST.Terms
     ( Command(..),
       Term(..),
       CmdCase(..),

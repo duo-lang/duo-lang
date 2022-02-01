@@ -18,7 +18,7 @@ import Data.Map qualified as M
 import Errors
 import Pretty.Pretty
 import Syntax.CommonTerm
-import Syntax.Terms
+import Syntax.AST.Terms
 import Syntax.Types
 import Syntax.Program
 import Utils

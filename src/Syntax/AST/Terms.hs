@@ -1,4 +1,4 @@
-module Syntax.Terms where
+module Syntax.AST.Terms where
 
 import Data.Kind (Type)
 import Data.List (elemIndex)

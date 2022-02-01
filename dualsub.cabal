@@ -89,7 +89,7 @@ library
       Syntax.Kinds
       Syntax.Types
       Syntax.Program
-      Syntax.Terms
+      Syntax.AST.Terms
       Syntax.Zonking
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
