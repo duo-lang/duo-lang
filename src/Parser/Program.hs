@@ -25,9 +25,14 @@ isRecP :: Parser IsRec
 isRecP = option NonRecursive (try recKwP >> pure Recursive)
 
 annotP :: PolarityRep pol -> Parser (Maybe (TypeScheme pol))
-annotP rep = optional annotP'
-  where
-    annotP' = try (notFollowedBy coloneq *> colon) >> typeSchemeP rep
+annotP rep = do
+  maybeAnnot <- optional (try (notFollowedBy coloneq *> colon) >> typeSchemeP)
+  case maybeAnnot of
+    Nothing -> pure Nothing
+    Just annot -> case lowerTypeScheme rep annot of
+      Left err -> fail (show err)
+      Right res -> pure (Just res)
+  
 
 prdCnsDeclarationP :: PrdCnsRep pc -> Parser (Declaration Parsed)
 prdCnsDeclarationP PrdRep = do

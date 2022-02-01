@@ -17,10 +17,8 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CommonTerm
 import Syntax.Kinds
-import qualified Syntax.Types as AST
-import Syntax.Types (DataCodata (Data, Codata), PolarityRep, TVar (MkTVar))
+import Syntax.Types (DataCodata (Data, Codata), TVar (MkTVar))
 import Syntax.CST.Types
-import Syntax.CST.LoweringTypes (lowerTyp, lowerTypeScheme)
 
 ---------------------------------------------------------------------------------
 -- Parsing of Kinds
@@ -44,14 +42,14 @@ kindP = do
 -- E.g.: "(Nat, Bool, { 'Ap(Nat)[Bool] })"
 prdCtxtPartP :: Parser LinearContext
 prdCtxtPartP = do
-  (res, _) <- parens $ (PrdType <$> typP') `sepBy` comma
+  (res, _) <- parens $ (PrdType <$> typP) `sepBy` comma
   return res
 
 -- | Parse a bracketed list of consumer types.
 -- E.g.: "[Nat, Bool, { 'Ap(Nat)[Bool] }]"
 cnsCtxtPartP :: Parser LinearContext
 cnsCtxtPartP = do
-  (res,_) <- brackets $ (CnsType <$> typP' ) `sepBy` comma
+  (res,_) <- brackets $ (CnsType <$> typP) `sepBy` comma
   return res
 
 -- | Parse a linear context.
@@ -106,7 +104,7 @@ recTypeP = do
   _ <- recKwP
   rv <- MkTVar . fst <$> freeVarName
   _ <- dot
-  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP'
+  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP
   return $ TyRec rv ty
 
 ---------------------------------------------------------------------------------
@@ -117,7 +115,7 @@ refinementTypeP :: Parser Typ
 refinementTypeP = fst <$> dbraces (do
   (tn,_) <- typeNameP
   _ <- refineSym
-  ty <- typP'
+  ty <- typP
   case ty of
     TyXData dc Nothing ctors -> return $ TyXData dc (Just tn) ctors
     _ -> error "Second component of refinement type must be data or codata type"
@@ -129,7 +127,7 @@ refinementTypeP = fst <$> dbraces (do
 
 -- | Parse atomic types
 typAtomP :: Parser Typ
-typAtomP = (TyParens . fst <$> parens typP')
+typAtomP = (TyParens . fst <$> parens typP)
   <|> nominalTypeP
   <|> refinementTypeP
   <|> xdataTypeP Data
@@ -162,32 +160,17 @@ typOpsP :: Parser Typ
 typOpsP = uncurry TyBinOpChain <$> opsChainP typAtomP tyOpP
 
 -- | Parse a type
-typP' :: Parser Typ
-typP' = typOpsP <|> typAtomP
+typP :: Parser Typ
+typP = typOpsP <|> typAtomP
 
--- | Parse a type and lower it
-typP :: PolarityRep pol -> Parser (AST.Typ pol)
-typP rep = do
-  t <- typP'
-  case lowerTyp rep t of
-    Right t -> pure t
-    Left err -> fail (show err)
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
 -- | Parse a type scheme
-typeSchemeP' :: Parser TypeScheme
-typeSchemeP' = do
+typeSchemeP :: Parser TypeScheme
+typeSchemeP = do
   tvars' <- option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
-  monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP'
+  monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP
   pure (TypeScheme tvars' monotype)
-
--- | Parse a type scheme and lower it
-typeSchemeP :: PolarityRep pol -> Parser (AST.TypeScheme pol)
-typeSchemeP rep = do
-  s <- typeSchemeP'
-  case lowerTypeScheme rep s of
-    Right s -> pure s
-    Left err -> fail (show err)

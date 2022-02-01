@@ -4,6 +4,7 @@ import Test.Hspec
 import Data.Text (Text)
 import Data.Text qualified as T
 
+
 import Parser.Parser
 import Parser.Types
 import Pretty.Errors ()
@@ -11,7 +12,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Types
 import Syntax.CommonTerm
-
+import TestUtils
 
 parseExample :: (Show a, Eq a) => Parser a -> Text -> a -> Spec
 parseExample parser input expected = do
@@ -34,65 +35,65 @@ parseIdentical parser input1 input2 = do
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{{ Nat :>> < > }}"
                  (TyData PosRep (Just $ MkTypeName "Nat") [])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{ 'A() }"
                  (TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") []])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{ 'A[{ 'B }] }"
                  (TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") []] ]])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{{Fun :>> {} }}"
                  (TyCodata PosRep (Just $ MkTypeName "Fun") [])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "< 'X({{ Nat :>> < > }}) >"
                  (TyData PosRep Nothing [MkXtorSig (MkXtorName Structural "X") [ PrdCnsType PrdRep $ TyData PosRep (Just $ MkTypeName "Nat") [] ]])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{{ Nat :>> < S > }}"
                  (TyData PosRep (Just $ MkTypeName "Nat") [MkXtorSig (MkXtorName Nominal "S") []])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{{ Foo :>> { A[{ B }] } }}"
                  (TyCodata PosRep (Just $ MkTypeName "Foo")
                            [MkXtorSig (MkXtorName Nominal "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Nominal "B") []] ]])
-    parseExample (typP NegRep)
+    parseExample (typPLowering NegRep)
                  "< 'A | 'B > /\\ < 'B >"
                  (TySet NegRep Nothing [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                                        , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "< 'A | 'B > \\/ < 'B >"
                  (TySet PosRep Nothing [ TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                                        , TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
-    parseExample (typP NegRep)
+    parseExample (typPLowering NegRep)
                  "{ 'A , 'B } /\\ { 'B }"
                  (TySet NegRep Nothing [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                                        , TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "{ 'A , 'B} \\/ { 'B }"
                  (TySet PosRep Nothing [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
                                        , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "Nat -> Nat"
                  (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
                     [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal PosRep Nothing $ MkTypeName "Nat")] ])
-    parseExample (typP NegRep)
+    parseExample (typPLowering NegRep)
                  "Nat -> Nat"
                  (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
                     [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal NegRep Nothing $ MkTypeName "Nat")] ])
-    parseExample (typP PosRep)
+    parseExample (typPLowering PosRep)
                  "Nat -> Nat -> Nat"
                  (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
                     [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
                     [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal PosRep Nothing $ MkTypeName "Nat")] ])] ])
-    parseExample (typP NegRep)
+    parseExample (typPLowering NegRep)
                  "Nat -> Nat -> Nat"
                  (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
                     [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
                     [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal NegRep Nothing $ MkTypeName "Nat")] ])] ])
-    parseIdentical (typP PosRep) "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
-    parseIdentical (typP NegRep) "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
-    parseIdentical (typeSchemeP PosRep) "forall a b c d e f. a /\\ b -> c /\\ d -> e \\/ f" "forall a b c d e f. (a /\\ b) -> ((c /\\ d) -> (e \\/ f))"
-    parseIdentical (typeSchemeP NegRep) "forall a b c d e f. a \\/ b -> c \\/ d -> e /\\ f" "forall a b c d e f. (a \\/ b) -> ((c \\/ d) -> (e /\\ f))"
-    parseIdentical (typeSchemeP PosRep) "forall a b c. a \\/ b \\/ c" "forall a b c. (a \\/ b) \\/ c"
-    parseIdentical (typeSchemeP NegRep) "forall a b c. a /\\ b /\\ c" "forall a b c. (a /\\ b) /\\ c"
+    parseIdentical (typPLowering PosRep) "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
+    parseIdentical (typPLowering NegRep) "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
+    parseIdentical (typeSchemePLowering PosRep) "forall a b c d e f. a /\\ b -> c /\\ d -> e \\/ f" "forall a b c d e f. (a /\\ b) -> ((c /\\ d) -> (e \\/ f))"
+    parseIdentical (typeSchemePLowering NegRep) "forall a b c d e f. a \\/ b -> c \\/ d -> e /\\ f" "forall a b c d e f. (a \\/ b) -> ((c \\/ d) -> (e /\\ f))"
+    parseIdentical (typeSchemePLowering PosRep) "forall a b c. a \\/ b \\/ c" "forall a b c. (a \\/ b) \\/ c"
+    parseIdentical (typeSchemePLowering NegRep) "forall a b c. a /\\ b /\\ c" "forall a b c. (a /\\ b) /\\ c"

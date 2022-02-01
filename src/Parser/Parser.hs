@@ -16,6 +16,7 @@ import Parser.Program
 import Parser.Terms
 import Parser.Types
 import Syntax.Types
+import Syntax.CST.LoweringTypes
 
 ---------------------------------------------------------------------------------
 -- Parsing for Repl
@@ -23,8 +24,11 @@ import Syntax.Types
 
 subtypingProblemP :: Parser (TypeScheme Pos, TypeScheme Pos)
 subtypingProblemP = do
-  t1 <- typeSchemeP PosRep
+  t1 <- typeSchemeP
   _ <- subtypeSym
-  t2 <- typeSchemeP PosRep
-  return (t1, t2)
+  t2 <- typeSchemeP
+  case (lowerTypeScheme PosRep t1, lowerTypeScheme PosRep t2) of
+    (Right res1, Right res2) -> pure (res1, res2)
+    (_,_) -> fail "SubtypingProblemP: Cannot lower types."
+
 

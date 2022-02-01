@@ -2,6 +2,7 @@ module TypeInference.SubsumptionSpec ( spec ) where
 
 import Data.Text (Text)
 import Test.Hspec
+import TestUtils
 
 import TypeAutomata.Subsume (subsume)
 import Parser.Parser
@@ -17,8 +18,8 @@ subsumptionCheck ts1 ts2 bspec = do
 
 subsumptionCheckPos :: Bool -> Text -> Text -> Spec
 subsumptionCheckPos b s1 s2 = do
-  let Right ty1 = runInteractiveParser (typeSchemeP PosRep) s1
-  let Right ty2 = runInteractiveParser (typeSchemeP PosRep) s2
+  let Right ty1 = runInteractiveParser (typeSchemePLowering PosRep) s1
+  let Right ty2 = runInteractiveParser (typeSchemePLowering PosRep) s2
   subsumptionCheck ty1 ty2 b
 
 
