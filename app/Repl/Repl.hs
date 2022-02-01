@@ -18,8 +18,8 @@ import Parser.Parser
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
-import Syntax.CST.LoweringTerms (lowerCommand)
-import Syntax.Program ( Environment, Declaration(..) )
+import Syntax.Lowering.Terms (lowerCommand)
+import Syntax.AST.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
 import Syntax.CommonTerm (Phase(..))
 import TypeInference.Driver

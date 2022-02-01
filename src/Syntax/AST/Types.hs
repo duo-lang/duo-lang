@@ -1,4 +1,4 @@
-module Syntax.Types where
+module Syntax.AST.Types where
 
 import Data.List (nub)
 import Data.Map (Map)

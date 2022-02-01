@@ -1,11 +1,11 @@
-module Syntax.CST.LoweringTypes (lowerTyp, lowerTypeScheme) where
+module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme) where
 
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CommonTerm
-import qualified Syntax.Types as AST
-import Syntax.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
+import qualified Syntax.AST.Types as AST
+import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
 import Syntax.CST.Types
 
 ---------------------------------------------------------------------------------

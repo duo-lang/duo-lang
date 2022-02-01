@@ -41,8 +41,8 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.Program
-import Syntax.Types
+import Syntax.AST.Program
+import Syntax.AST.Types
 import Syntax.CommonTerm
 import TypeInference.Constraints
 import TypeTranslation qualified as TT

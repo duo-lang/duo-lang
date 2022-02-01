@@ -12,7 +12,7 @@ import Data.Text qualified as T
 
 import Errors
 import Syntax.CommonTerm (PrdCns(..), XtorName)
-import Syntax.Types
+import Syntax.AST.Types
 import TypeAutomata.Definition
 import Utils
 

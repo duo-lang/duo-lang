@@ -19,8 +19,8 @@ import Errors
 import Pretty.Pretty
 import Syntax.CommonTerm
 import Syntax.AST.Terms
-import Syntax.Types
-import Syntax.Program
+import Syntax.AST.Types
+import Syntax.AST.Program
 import Utils
 
 ---------------------------------------------------------------------------------

@@ -1,14 +1,14 @@
-module Syntax.CST.LoweringProgram where
+module Syntax.Lowering.Program where
 
 import Data.Text (Text)    
 
-import Syntax.CST.LoweringTerms (lowerTerm, lowerCommand)
+import Syntax.Lowering.Terms (lowerTerm, lowerCommand)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Terms qualified as CST
-import Syntax.Program qualified as AST
+import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
-import Syntax.Types qualified as AST
+import Syntax.AST.Types qualified as AST
 import Syntax.CommonTerm
 
 -- TODO: Deprecate and unify

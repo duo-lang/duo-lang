@@ -11,7 +11,7 @@ module Translate.Desugar
 
 import Syntax.AST.Terms
 import Syntax.CommonTerm
-import Syntax.Program ( Declaration(..), Program, Environment(..) )
+import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
 
 ---------------------------------------------------------------------------------
 -- Check if term is desugared

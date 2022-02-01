@@ -17,7 +17,7 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Errors
-import Syntax.Types
+import Syntax.AST.Types
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)

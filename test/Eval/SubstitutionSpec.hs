@@ -7,8 +7,8 @@ import Test.Hspec
 
 import Pretty.Pretty
 import Pretty.Errors ()
-import Syntax.Terms
-import Syntax.Program
+import Syntax.AST.Terms
+import Syntax.AST.Program
 import TestUtils
 import TypeInference.Driver
 

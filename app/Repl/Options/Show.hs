@@ -19,9 +19,9 @@ import Repl.Repl
       Option(..),
       ReplState(loadedFiles, replEnv),
       Repl )
-import Syntax.Program
+import Syntax.AST.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.Types ( TypeName(MkTypeName), DataDecl(data_name) )
+import Syntax.AST.Types ( TypeName(MkTypeName), DataDecl(data_name) )
 import Utils (trim)
 
 -- Show

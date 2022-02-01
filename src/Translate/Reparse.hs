@@ -10,7 +10,7 @@ import Data.Bifunctor
 import Data.Text qualified as T
 
 import Syntax.CommonTerm
-import Syntax.Program
+import Syntax.AST.Program
 import Syntax.AST.Terms
 import Utils
 

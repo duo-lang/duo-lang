@@ -24,11 +24,11 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Terms
 import Syntax.CommonTerm
-import Syntax.Types
+import Syntax.AST.Types
     ( TypeScheme,
       generalize,
     )
-import Syntax.Program
+import Syntax.AST.Program
     ( Program,
       Environment(..),
       Declaration(..),

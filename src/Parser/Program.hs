@@ -10,11 +10,11 @@ import Parser.Definition
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types
-import Syntax.CST.LoweringTerms
-import Syntax.CST.LoweringTypes
-import Syntax.Program
-import Syntax.Types
-import Syntax.Types qualified as AST
+import Syntax.Lowering.Terms
+import Syntax.Lowering.Types
+import Syntax.AST.Program
+import Syntax.AST.Types
+import Syntax.AST.Types qualified as AST
 import Syntax.CommonTerm
 import Utils (Loc(..))
 

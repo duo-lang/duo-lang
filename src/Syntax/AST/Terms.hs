@@ -15,7 +15,7 @@ import Syntax.CommonTerm
       PrdCnsRep(..),
       PrdCns(..),
       Phase(..) )
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.Kinds
 
 ---------------------------------------------------------------------------------

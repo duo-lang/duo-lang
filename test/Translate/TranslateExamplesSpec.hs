@@ -7,7 +7,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
 import Syntax.CommonTerm
-import Syntax.Program
+import Syntax.AST.Program
 import Translate.Desugar
 import Translate.Reparse
 import TypeInference.Driver

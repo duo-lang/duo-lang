@@ -14,9 +14,9 @@ import Data.Set (Set)
 import Data.Set qualified as S
 
 import Errors
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.CommonTerm (XtorName, Phase(..), PrdCnsRep(..))
-import Syntax.Program (Environment)
+import Syntax.AST.Program (Environment)
 import Syntax.Kinds
 import Syntax.Zonking
 import Pretty.Pretty

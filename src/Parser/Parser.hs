@@ -15,8 +15,8 @@ import Parser.Lexer
 import Parser.Program
 import Parser.Terms
 import Parser.Types
-import Syntax.Types
-import Syntax.CST.LoweringTypes
+import Syntax.AST.Types
+import Syntax.Lowering.Types
 
 ---------------------------------------------------------------------------------
 -- Parsing for Repl

@@ -19,8 +19,8 @@ import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.Types ()
-import Syntax.Program
-import Syntax.Types
+import Syntax.AST.Program
+import Syntax.AST.Types
 import Syntax.CommonTerm (Phase(Inferred),PrdCnsRep(..))
 
 ---------------------------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-module Syntax.CST.LoweringTerms (lowerTerm, lowerCommand) where
+module Syntax.Lowering.Terms (lowerTerm, lowerCommand) where
 
 import Data.Text
 import Data.Bifunctor ( second )

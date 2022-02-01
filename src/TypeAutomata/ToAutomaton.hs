@@ -16,7 +16,7 @@ import Data.Set qualified as S
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..), PrdCnsRep(..))
-import Syntax.Types
+import Syntax.AST.Types
 import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),

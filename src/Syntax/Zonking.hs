@@ -5,7 +5,7 @@ import Data.Map qualified as M
 
 import Syntax.CommonTerm
 import Syntax.AST.Terms
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.Kinds
 
 --------------------------------------------------------------------------------

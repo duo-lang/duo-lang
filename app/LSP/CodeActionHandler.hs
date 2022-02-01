@@ -12,9 +12,9 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
-import Syntax.Program
+import Syntax.AST.Program
     ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv), IsRec(Recursive) )
-import Syntax.Types ( TypeScheme, PrdCnsToPol )
+import Syntax.AST.Types ( TypeScheme, PrdCnsToPol )
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
 import Syntax.AST.Terms ( Term )

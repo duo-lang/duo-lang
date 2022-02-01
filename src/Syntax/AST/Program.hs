@@ -1,4 +1,4 @@
-module Syntax.Program where
+module Syntax.AST.Program where
 
 import Data.Kind (Type)  
 import Data.Map (Map)
@@ -8,7 +8,7 @@ import Data.Text (Text)
 import Syntax.CommonTerm
     ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep )
 import Syntax.AST.Terms( Command, Term )
-import Syntax.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
+import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 module Syntax.CST.Types where
 
-import qualified Syntax.Types as AST
+import qualified Syntax.AST.Types as AST
 import Syntax.CommonTerm
 import Data.List.NonEmpty (NonEmpty)
 

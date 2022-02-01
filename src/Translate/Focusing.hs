@@ -9,7 +9,7 @@ module Translate.Focusing
 
 import Data.Text qualified as T
 
-import Syntax.Program ( Declaration(..), Program, Environment(..) )
+import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
 import Syntax.CommonTerm
     ( FreeVarName,
       PrdCns(Cns, Prd),

@@ -8,7 +8,7 @@ import TypeAutomata.Subsume (subsume)
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
-import Syntax.Types
+import Syntax.AST.Types
 
 subsumptionCheck :: TypeScheme pol -> TypeScheme pol -> Bool -> Spec
 subsumptionCheck ts1 ts2 bspec = do

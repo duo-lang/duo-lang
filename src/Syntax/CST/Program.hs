@@ -4,7 +4,7 @@ import Data.Text (Text)
 
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.CommonTerm
 import Utils
 ---------------------------------------------------------------------------------

@@ -9,11 +9,11 @@ import Text.Megaparsec (errorBundlePretty)
 import Errors
 import Parser.Parser
 import Parser.Types (typP)
-import Syntax.Types (PolarityRep)
-import Syntax.Types qualified as AST
-import Syntax.CST.LoweringTypes
+import Syntax.AST.Types (PolarityRep)
+import Syntax.AST.Types qualified as AST
+import Syntax.Lowering.Types
 import Syntax.CommonTerm
-import Syntax.Program
+import Syntax.AST.Program
 import TypeInference.Driver
 
 getAvailableCounterExamples :: IO [FilePath]

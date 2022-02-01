@@ -13,7 +13,7 @@ import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX, Annotation)
 import Pretty.Types ()
 import Syntax.CommonTerm (PrdCns(..))
 import TypeAutomata.Definition
-import Syntax.Types
+import Syntax.AST.Types
 
 
 ---------------------------------------------------------------------------------

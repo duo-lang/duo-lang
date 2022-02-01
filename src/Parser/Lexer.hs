@@ -73,8 +73,8 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 import Parser.Definition
 import Syntax.CommonTerm
-import Syntax.Program
-import Syntax.Types
+import Syntax.AST.Program
+import Syntax.AST.Types
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:

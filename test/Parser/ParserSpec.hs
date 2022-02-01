@@ -6,11 +6,10 @@ import Data.Text qualified as T
 
 
 import Parser.Parser
-import Parser.Types
 import Pretty.Errors ()
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.CommonTerm
 import TestUtils
 
