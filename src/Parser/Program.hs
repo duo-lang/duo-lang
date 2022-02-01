@@ -11,8 +11,10 @@ import Parser.Lexer
 import Parser.Terms
 import Parser.Types
 import Syntax.CST.LoweringTerms
+import Syntax.CST.LoweringTypes
 import Syntax.Program
 import Syntax.Types
+import Syntax.Types qualified as AST
 import Syntax.CommonTerm
 import Utils (Loc(..))
 
@@ -87,6 +89,21 @@ setDeclP = do
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------
+-- Parsing of invariant Types (HACKY!)
+---------------------------------------------------------------------------------
+
+newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> AST.Typ pol }
+
+invariantP :: Parser Invariant
+invariantP = do
+  typ <- typAtomP
+  pure $ MkInvariant $ \rep ->
+    case lowerTyp rep typ of
+      Right typ -> typ
+      -- FIXME: Adjust AST such that it can handle lazy lowering/polarization properly
+      Left err -> error (show err)
 
 xtorDeclP :: Parser (XtorName, [(PrdCns, Invariant)])
 xtorDeclP = do

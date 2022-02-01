@@ -4,9 +4,7 @@ module Parser.Types
     -- Type Parsers
   , typeSchemeP
   , typP
-    -- Invariant Types
-  , Invariant(..)
-  , invariantP
+  , typAtomP
   ) where
 
 import Control.Monad.State
@@ -174,21 +172,6 @@ typP rep = do
   case lowerTyp rep t of
     Right t -> pure t
     Left err -> fail (show err)
-
----------------------------------------------------------------------------------
--- Parsing of invariant Types (HACKY!)
----------------------------------------------------------------------------------
-
-newtype Invariant = MkInvariant { unInvariant :: forall pol. PolarityRep pol -> AST.Typ pol }
-
-invariantP :: Parser Invariant
-invariantP = do
-  typ <- typAtomP
-  pure $ MkInvariant $ \rep ->
-    case lowerTyp rep typ of
-      Right typ -> typ
-      -- FIXME: Adjust AST such that it can handle lazy lowering/polarization properly
-      Left err -> error (show err)
 
 ---------------------------------------------------------------------------------
 -- Parsing of type schemes.
