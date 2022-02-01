@@ -23,4 +23,7 @@ data Declaration where
   SetDecl        :: Loc -> Text                                                              -> Declaration
   ParseErrorDecl ::                                                                             Declaration
 
+instance Show Declaration where
+  show _ = "<Show for Declaration not implemented>"
+
 type Program = [Declaration]

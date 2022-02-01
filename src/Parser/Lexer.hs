@@ -73,7 +73,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 import Parser.Definition
 import Syntax.CommonTerm
-import Syntax.AST.Program
+import Syntax.CST.Program
 import Syntax.AST.Types
 
 -------------------------------------------------------------------------------------------

@@ -24,6 +24,7 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Terms
 import Syntax.CommonTerm
+import Syntax.Lowering.Program
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
@@ -253,9 +254,12 @@ inferProgramFromDisk fp = do
   case parsed of
     Left err -> throwOtherError [T.pack (errorBundlePretty err)]
     Right decls -> do
-        -- Use inference options of parent? Probably not?
-        x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
-        case x of
+      case lowerProgram decls of
+        Left err -> throwError (OtherError Nothing err)
+        Right decls -> do
+          -- Use inference options of parent? Probably not?
+          x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
+          case x of
             Left err -> throwError err
             Right env -> return env
 

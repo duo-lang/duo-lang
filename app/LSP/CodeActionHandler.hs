@@ -19,6 +19,7 @@ import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax
+import Syntax.Lowering.Program
 import TypeInference.Driver
     ( defaultInferenceOptions,
       inferProgramIO,
@@ -50,12 +51,15 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
-      case res of
-        Left _err -> do
-          responder (Right (List []))
-        Right (env,_) -> do
-          responder (Right (generateCodeActions ident range env))
+      case lowerProgram decls of 
+        Left _err -> responder (Right (List []))
+        Right decls -> do
+          res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
+          case res of
+            Left _err -> do
+              responder (Right (List []))
+            Right (env,_) -> do
+              responder (Right (generateCodeActions ident range env))
 
 generateCodeActions :: TextDocumentIdentifier -> Range -> Environment Inferred -> List (Command  |? CodeAction)
 generateCodeActions ident (Range {_start= start}) env = do

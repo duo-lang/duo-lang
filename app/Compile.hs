@@ -16,6 +16,7 @@ import TypeInference.Driver (inferProgramIO, DriverState(..), InferenceOptions(.
 import Syntax.AST.Program (Environment(..))
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm (Phase(..))
+import Syntax.Lowering.Program
 
 
 driverState :: DriverState
@@ -34,19 +35,22 @@ runCompile fp = do
         case parsedFile of
             (Left err) -> ppPrintIO (errorBundlePretty err)
             (Right prog) -> do
+              case lowerProgram prog of
+                Left err -> ppPrintIO err
+                Right prog -> do
                 -- Infer program
-                inferredProg <- inferProgramIO driverState prog
-                case inferredProg of
-                  (Left err) -> ppPrintIO err
-                  (Right (env,_inferredProg)) -> do
-                    -- Run program
-                    case M.lookup "main" (cmdEnv env) of
-                      Nothing -> putStrLn "Program does not contain a \"main\" function."
-                      Just (cmd,_) -> do
-                        let compiledCmd = focusCmd CBV (desugarCmd cmd)
-                        let compiledEnv :: Environment Compiled = focusEnvironment CBV (desugarEnvironment env)
-                        evalCmd <- liftIO $ eval compiledCmd compiledEnv
-                        case evalCmd of
-                          Left err -> ppPrintIO err
-                          Right res -> ppPrintIO res
+                  inferredProg <- inferProgramIO driverState prog
+                  case inferredProg of
+                    (Left err) -> ppPrintIO err
+                    (Right (env,_inferredProg)) -> do
+                      -- Run program
+                      case M.lookup "main" (cmdEnv env) of
+                        Nothing -> putStrLn "Program does not contain a \"main\" function."
+                        Just (cmd,_) -> do
+                          let compiledCmd = focusCmd CBV (desugarCmd cmd)
+                          let compiledEnv :: Environment Compiled = focusEnvironment CBV (desugarEnvironment env)
+                          evalCmd <- liftIO $ eval compiledCmd compiledEnv
+                          case evalCmd of
+                            Left err -> ppPrintIO err
+                            Right res -> ppPrintIO res
 

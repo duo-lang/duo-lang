@@ -28,6 +28,7 @@ import Paths_dualsub (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import Errors
+import Syntax.Lowering.Program
 import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
@@ -197,12 +198,15 @@ publishErrors uri = do
       -- sendError "Parsing error!"
       sendParsingError (toNormalizedUri uri) err
     Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
-      case res of
-        Left err -> do
-          sendLocatedError (toNormalizedUri uri) err
-          -- sendError "Typeinference error!"
-        Right (env,_) -> do
-          updateHoverCache uri env
-          sendInfo $ "No errors in " <> T.pack fp <> "!"
+      case lowerProgram decls of
+        Left err -> sendLocatedError (toNormalizedUri uri) (OtherError Nothing err)
+        Right decls -> do
+          res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
+          case res of
+            Left err -> do
+              sendLocatedError (toNormalizedUri uri) err
+              -- sendError "Typeinference error!"
+            Right (env,_) -> do
+              updateHoverCache uri env
+              sendInfo $ "No errors in " <> T.pack fp <> "!"
 

@@ -10,20 +10,25 @@ import Parser.Parser ( runInteractiveParser, declarationP )
 import Repl.Repl
     ( ReplState(replEnv, typeInfOpts),
       Repl,
+      prettyText,
       Option(..),
       fromRight,
       modifyEnvironment )
+import Syntax.Lowering.Program
 import TypeInference.Driver
 
 letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
-  oldEnv <- gets replEnv
-  opts <- gets typeInfOpts
-  newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (inferDecl decl)
-  case newEnv of
-    Left _ -> return ()
-    Right (_,state) -> modifyEnvironment (const (driverEnv state))
+  case lowerDecl decl of
+    Left err -> prettyText err
+    Right decl -> do
+      oldEnv <- gets replEnv
+      opts <- gets typeInfOpts
+      newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (inferDecl decl)
+      case newEnv of
+        Left _ -> return ()
+        Right (_,state) -> modifyEnvironment (const (driverEnv state))
 
 letOption :: Option
 letOption = Option

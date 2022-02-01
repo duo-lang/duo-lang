@@ -1,6 +1,5 @@
 module TestUtils where
 
-import Data.Bifunctor (first)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
@@ -12,6 +11,7 @@ import Parser.Types (typP)
 import Syntax.AST.Types (PolarityRep)
 import Syntax.AST.Types qualified as AST
 import Syntax.Lowering.Types
+import Syntax.Lowering.Program
 import Syntax.CommonTerm
 import Syntax.AST.Program
 import TypeInference.Driver
@@ -29,7 +29,13 @@ getAvailableExamples fp = do
 getParsedDeclarations :: FilePath -> IO (Either Error [Declaration Parsed])
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  return (first (ParseError Nothing . T.pack . errorBundlePretty) (runFileParser fp programP s))
+  case runFileParser fp programP s of
+    Left err -> pure (Left (ParseError Nothing (T.pack (errorBundlePretty err))))
+    Right prog -> do
+      case lowerProgram prog of
+        Left err -> pure (Left (OtherError Nothing err))
+        Right prog -> pure (pure prog)
+  
 
 getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment Inferred))
 getEnvironment fp infopts = do

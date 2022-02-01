@@ -10,59 +10,37 @@ import Parser.Definition
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types
-import Syntax.Lowering.Terms
+import Syntax.CST.Program
+import Syntax.CST.Types
 import Syntax.Lowering.Types
-import Syntax.AST.Program
-import Syntax.AST.Types
-import Syntax.AST.Types qualified as AST
 import Syntax.CommonTerm
-import Utils (Loc(..))
+import Syntax.AST.Types (PolarityRep, DataDecl(..), DataCodata(..))
+import Syntax.AST.Types qualified as AST
+import Utils
 
-recoverDeclaration :: Parser (Declaration Parsed) -> Parser (Declaration Parsed)
+recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
 
 isRecP :: Parser IsRec
 isRecP = option NonRecursive (try recKwP >> pure Recursive)
 
-annotP :: PolarityRep pol -> Parser (Maybe (TypeScheme pol))
-annotP rep = do
-  maybeAnnot <- optional (try (notFollowedBy coloneq *> colon) >> typeSchemeP)
-  case maybeAnnot of
-    Nothing -> pure Nothing
-    Just annot -> case lowerTypeScheme rep annot of
-      Left err -> fail (show err)
-      Right res -> pure (Just res)
-  
+annotP :: Parser (Maybe TypeScheme)
+annotP = optional (try (notFollowedBy coloneq *> colon) >> typeSchemeP)
 
-prdCnsDeclarationP :: PrdCnsRep pc -> Parser (Declaration Parsed)
-prdCnsDeclarationP PrdRep = do
+prdCnsDeclarationP :: PrdCns -> Parser Declaration
+prdCnsDeclarationP pc = do
   startPos <- getSourcePos
-  try (void prdKwP)
+  try (void (case pc of Prd -> prdKwP; Cns -> cnsKwP))
   recoverDeclaration $ do
     isRec <- isRecP
     (v, _pos) <- freeVarName
-    annot <- annotP PosRep
+    annot <- annotP
     _ <- coloneq
     (tm,_) <- termP
     endPos <- semi
-    case lowerTerm PrdRep tm of
-      Left err -> fail (show err)
-      Right res -> return (PrdCnsDecl (Loc startPos endPos) PrdRep isRec v annot res)
-prdCnsDeclarationP CnsRep = do
-  startPos <- getSourcePos
-  try (void cnsKwP)
-  recoverDeclaration $ do
-    isRec <- isRecP
-    (v, _pos) <- freeVarName
-    annot <- annotP NegRep
-    _ <- coloneq
-    (tm,_) <- termP
-    endPos <- semi
-    case lowerTerm CnsRep tm of
-      Left err -> fail (show err)
-      Right res -> return (PrdCnsDecl (Loc startPos endPos) CnsRep isRec v annot res)
+    pure (PrdCnsDecl (Loc startPos endPos) pc isRec v annot tm)
 
-cmdDeclarationP :: Parser (Declaration Parsed)
+cmdDeclarationP :: Parser Declaration
 cmdDeclarationP = do
   startPos <- getSourcePos
   try (void cmdKwP)
@@ -71,11 +49,9 @@ cmdDeclarationP = do
     _ <- coloneq
     (cmd,_) <- commandP
     endPos <- semi
-    case lowerCommand cmd of
-      Left err -> fail (show err)
-      Right res -> return (CmdDecl (Loc startPos endPos) v res)
+    pure (CmdDecl (Loc startPos endPos) v cmd)
 
-importDeclP :: Parser (Declaration Parsed)
+importDeclP :: Parser Declaration
 importDeclP = do
   startPos <- getSourcePos
   try (void importKwP)
@@ -83,7 +59,7 @@ importDeclP = do
   endPos <- semi
   return (ImportDecl (Loc startPos endPos) mn)
 
-setDeclP :: Parser (Declaration Parsed)
+setDeclP :: Parser Declaration
 setDeclP = do
   startPos <- getSourcePos
   try (void setKwP)
@@ -116,15 +92,15 @@ xtorDeclP = do
   (args,_) <- argListsP invariantP
   return (xt, args )
 
-combineXtors :: [(XtorName, [(PrdCns, Invariant)])] -> (forall pol. PolarityRep pol -> [XtorSig pol])
+combineXtors :: [(XtorName, [(PrdCns, Invariant)])] -> (forall pol. PolarityRep pol -> [AST.XtorSig pol])
 combineXtors [] = \_rep -> []
-combineXtors ((xt, args):rest) = \rep -> (MkXtorSig xt (f rep <$> args)) : combineXtors rest rep
+combineXtors ((xt, args):rest) = \rep -> (AST.MkXtorSig xt (f rep <$> args)) : combineXtors rest rep
   where
-    f rep (Prd, x) = PrdCnsType PrdRep $ unInvariant x rep
-    f rep (Cns, x) = PrdCnsType CnsRep $ unInvariant x (flipPolarityRep rep)
+    f rep (Prd, x) = AST.PrdCnsType PrdRep $ unInvariant x rep
+    f rep (Cns, x) = AST.PrdCnsType CnsRep $ unInvariant x (AST.flipPolarityRep rep)
 
 
-dataDeclP :: Parser (Declaration Parsed)
+dataDeclP :: Parser Declaration
 dataDeclP = do
   startPos <- getSourcePos
   dataCodata <- dataCodataDeclP
@@ -151,16 +127,16 @@ dataDeclP = do
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
-declarationP :: Parser (Declaration Parsed)
+declarationP :: Parser Declaration
 declarationP =
-  prdCnsDeclarationP PrdRep <|>
-  prdCnsDeclarationP CnsRep <|>
+  prdCnsDeclarationP Prd <|>
+  prdCnsDeclarationP Cns <|>
   cmdDeclarationP <|>
   importDeclP <|>
   setDeclP <|>
   dataDeclP
 
-programP :: Parser [Declaration Parsed]
+programP :: Parser Program
 programP = do
   sc
   decls <- many declarationP
