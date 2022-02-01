@@ -8,6 +8,7 @@ import Data.List (intersperse)
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
+import Syntax.CST.Program (IsRec(..))
 import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms

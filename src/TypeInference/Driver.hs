@@ -32,9 +32,9 @@ import Syntax.AST.Types
 import Syntax.AST.Program
     ( Program,
       Environment(..),
-      Declaration(..),
-      IsRec(..),
-      ModuleName(..) )
+      Declaration(..)
+    )
+import Syntax.CST.Program (IsRec(..))
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
