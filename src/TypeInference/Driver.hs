@@ -236,11 +236,6 @@ inferDecl (SetDecl loc txt) = case T.unpack txt of
     modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
     return (SetDecl loc txt)
   _ -> throwOtherError ["Unknown option: " <> txt]
---
--- ParseErrorDecl
---
-inferDecl ParseErrorDecl = do
-    throwOtherError ["Should not occur: Tried to insert ParseErrorDecl into Environment"]
 
 ---------------------------------------------------------------------------------
 -- Infer programs

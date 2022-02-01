@@ -27,8 +27,7 @@ data Declaration (ext :: Phase) where
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
-  ParseErrorDecl ::                                                                                   Declaration ext
-
+  
 
 instance Show (Declaration ext) where
   show _ = "<Show for Declaration not implemented>"

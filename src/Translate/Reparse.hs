@@ -115,7 +115,6 @@ reparseDecl (CmdDecl _ fv cmd) = CmdDecl defaultLoc fv (reparseCommand cmd)
 reparseDecl (DataDecl _ decl) = DataDecl defaultLoc decl
 reparseDecl (ImportDecl _ mn) = ImportDecl defaultLoc mn
 reparseDecl (SetDecl _ txt) = SetDecl defaultLoc txt
-reparseDecl ParseErrorDecl = ParseErrorDecl
 
 reparseProgram :: Program ext -> Program Parsed
 reparseProgram = fmap reparseDecl
