@@ -1,4 +1,4 @@
-module Syntax.CST.LoweringTerms where
+module Syntax.Lowering.Terms (lowerTerm, lowerCommand) where
 
 import Data.Text
 import Data.Bifunctor ( second )
@@ -6,7 +6,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Text.Megaparsec.Pos (SourcePos)
 
 import Syntax.CST.Terms qualified as CST
-import Syntax.Terms qualified as AST
+import Syntax.AST.Terms qualified as AST
 import Syntax.CommonTerm
 import Utils
 

@@ -4,8 +4,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 
 import Syntax.CommonTerm
-import Syntax.Terms
-import Syntax.Types
+import Syntax.AST.Terms
+import Syntax.AST.Types
 import Syntax.Kinds
 
 --------------------------------------------------------------------------------

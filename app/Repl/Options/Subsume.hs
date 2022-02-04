@@ -6,14 +6,22 @@ import Parser.Parser ( subtypingProblemP )
 import Repl.Repl
     ( prettyRepl, Repl, Option(..), fromRight, parseInteractive )
 import TypeAutomata.Subsume (subsume)
+import Syntax.Lowering.Types
+import Syntax.AST.Types
 
 -- Subsume
 
 subCmd :: Text -> Repl ()
 subCmd s = do
   (t1,t2) <- parseInteractive subtypingProblemP s
-  res <- fromRight (subsume t1 t2)
-  prettyRepl res
+  case (lowerTypeScheme PosRep t1, lowerTypeScheme PosRep t2) of
+     (Right res1, Right res2) -> do
+       res <- fromRight (subsume res1 res2)
+       prettyRepl res
+       
+     (_,_) -> fail "SubtypingProblemP: Cannot lower types."
+
+  
 
 
 subOption :: Option

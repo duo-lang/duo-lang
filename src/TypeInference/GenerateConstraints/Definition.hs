@@ -41,8 +41,8 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.Program
-import Syntax.Types
+import Syntax.AST.Program
+import Syntax.AST.Types
 import Syntax.CommonTerm
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
@@ -223,7 +223,7 @@ checkCorrectness :: [XtorName]
                  -> DataDecl
                  -> GenM ()
 checkCorrectness matched decl = do
-  let declared = sig_name <$> data_xtors decl PosRep
+  let declared = sig_name <$> fst (data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared) 
     (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
 
@@ -233,7 +233,7 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness matched decl = do
-  let declared = sig_name <$> data_xtors decl PosRep
+  let declared = sig_name <$> fst (data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
     (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
                      ppPrint (data_name decl) <> " is not matched against." ])

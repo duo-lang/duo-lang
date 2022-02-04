@@ -1,4 +1,4 @@
-module Syntax.Types where
+module Syntax.AST.Types where
 
 import Data.List (nub)
 import Data.Map (Map)
@@ -244,5 +244,5 @@ data DataDecl = NominalDecl
   { data_name :: TypeName
   , data_polarity :: DataCodata
   , data_kind :: Kind
-  , data_xtors :: forall (pol :: Polarity). PolarityRep pol -> [XtorSig pol]
+  , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
   }

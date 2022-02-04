@@ -32,9 +32,9 @@ import Repl.Repl
       prettyRepl,
       prettyText,
       cmd )
-import Syntax.Program
+import Syntax.AST.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.Types ( DataDecl(data_name), TypeName(unTypeName) )
+import Syntax.AST.Types ( DataDecl(data_name), TypeName(unTypeName) )
 
 ------------------------------------------------------------------------------
 -- Options

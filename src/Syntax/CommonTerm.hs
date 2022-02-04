@@ -41,6 +41,8 @@ flipPrdCns CnsRep = PrdRep
 -- Names
 ---------------------------------------------------------------------------------
 
+newtype ModuleName = ModuleName { unModuleName :: Text }
+
 data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.

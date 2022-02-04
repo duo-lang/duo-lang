@@ -9,14 +9,14 @@ module Translate.Focusing
 
 import Data.Text qualified as T
 
-import Syntax.Program ( Declaration(..), Program, Environment(..) )
+import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
 import Syntax.CommonTerm
     ( FreeVarName,
       PrdCns(Cns, Prd),
       PrdCnsRep(..),
       XtorName,
       Phase(..))
-import Syntax.Terms
+import Syntax.AST.Terms
     ( Command(..),
       Term(..),
       CmdCase(..),
@@ -202,7 +202,6 @@ focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd
 focusDecl _  decl@(DataDecl _ _)              = decl
 focusDecl _  decl@(ImportDecl _ _)            = decl
 focusDecl _  decl@(SetDecl _ _)               = decl
-focusDecl _  decl@ParseErrorDecl              = decl
 
 focusProgram :: CallingConvention -> Program Compiled -> Program Compiled
 focusProgram eo = fmap (focusDecl eo)

@@ -6,7 +6,7 @@ import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.CST.Types (BinOp(..))
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.Kinds
 import Syntax.CommonTerm
 

@@ -16,11 +16,11 @@ import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
 import LSP.MegaparsecToLSP
 
 
-import Syntax.Program
+import Syntax.AST.Program
 import Syntax.CommonTerm
-import Syntax.Terms hiding (Command)
-import Syntax.Terms qualified as Terms
-import Syntax.Types
+import Syntax.AST.Terms hiding (Command)
+import Syntax.AST.Terms qualified as Terms
+import Syntax.AST.Types
 import Syntax.Kinds
 import TypeTranslation
 

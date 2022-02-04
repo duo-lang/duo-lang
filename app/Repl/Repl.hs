@@ -18,7 +18,8 @@ import Parser.Parser
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
-import Syntax.Program ( Environment, Declaration(..) )
+import Syntax.Lowering.Terms (lowerCommand)
+import Syntax.AST.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
 import Syntax.CommonTerm (Phase(..))
 import TypeInference.Driver
@@ -99,6 +100,7 @@ safeRead file =  do
 cmd :: String -> Repl ()
 cmd s = do
   (comLoc,_) <- parseInteractive commandP (T.pack s)
+  comLoc <- fromRight (lowerCommand comLoc)
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]

@@ -79,15 +79,17 @@ library
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
-      Syntax.CST.LoweringTypes
-      Syntax.CST.LoweringTerms
-      Syntax.CST.Types
-      Syntax.CST.Terms
+      Syntax.AST.Program
+      Syntax.AST.Terms
+      Syntax.AST.Types
       Syntax.CommonTerm
+      Syntax.CST.Program
+      Syntax.CST.Terms
+      Syntax.CST.Types
       Syntax.Kinds
-      Syntax.Types
-      Syntax.Program
-      Syntax.Terms
+      Syntax.Lowering.Program
+      Syntax.Lowering.Terms
+      Syntax.Lowering.Types
       Syntax.Zonking
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition

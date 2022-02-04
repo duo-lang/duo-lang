@@ -8,9 +8,10 @@ import Data.List (intersperse)
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.Program
-import Syntax.Types
-import Syntax.Terms
+import Syntax.CST.Program (IsRec(..))
+import Syntax.AST.Program
+import Syntax.AST.Types
+import Syntax.AST.Terms
 import Syntax.CommonTerm
 
 ---------------------------------------------------------------------------------
@@ -27,7 +28,7 @@ instance PrettyAnn DataDecl where
     prettyAnn tn <+>
     colon <+>
     prettyAnn knd <+>
-    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors PosRep)) <+> mempty) <>
+    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
 
 instance PrettyAnn ModuleName where
@@ -63,9 +64,6 @@ instance PrettyAnn (Declaration ext) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn ParseErrorDecl =
-    "<ParseError>"
-
 
 instance PrettyAnn (NamedRep (Declaration ext)) where
   prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
@@ -78,9 +76,6 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (NamedRep ParseErrorDecl) =
-    "<ParseError>"
-
 
 instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)

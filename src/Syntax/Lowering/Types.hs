@@ -1,11 +1,11 @@
-module Syntax.CST.LoweringTypes where
+module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CommonTerm
-import qualified Syntax.Types as AST
-import Syntax.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
+import qualified Syntax.AST.Types as AST
+import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
 import Syntax.CST.Types
 
 ---------------------------------------------------------------------------------
@@ -91,13 +91,20 @@ data Assoc = LeftAssoc | RightAssoc
 type Ops = [Op]
 type Prio = Int
 
+funOp :: Op
+funOp = Op { symbol = FunOp, assoc = RightAssoc, desugar = desugarArrowType }
+
+unionOp :: Op
+unionOp = Op { symbol = UnionOp, assoc = LeftAssoc, desugar =  desugarUnionType }
+
+interOp :: Op
+interOp = Op { symbol = InterOp, assoc = LeftAssoc, desugar = desugarIntersectionType }
+
+parOp :: Op
+parOp = Op { symbol = ParOp, assoc = LeftAssoc, desugar = desugarParType }
+
 ops :: Ops
-ops = [
-        Op FunOp RightAssoc desugarArrowType,
-        Op UnionOp LeftAssoc desugarUnionType,
-        Op InterOp LeftAssoc desugarIntersectionType,
-        Op ParOp LeftAssoc desugarParType
-    ]
+ops = [ funOp, unionOp, interOp, parOp ]
 
 lookupOp :: Ops -> BinOp -> Either LoweringError (Op, Prio)
 lookupOp = lookupHelper 0

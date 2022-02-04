@@ -5,7 +5,7 @@ import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.Terms
+import Syntax.AST.Terms
 import Syntax.CommonTerm
 import Data.Bifunctor
 

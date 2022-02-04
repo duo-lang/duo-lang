@@ -9,7 +9,7 @@ import TypeInference.Driver
 import Translate.Desugar
 import Syntax.CommonTerm
 import Syntax.Kinds
-import Syntax.Program
+import Syntax.AST.Program
 import Translate.Focusing
 import Translate.Reparse
 

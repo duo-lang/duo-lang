@@ -19,9 +19,10 @@ import Repl.Repl
       Option(..),
       ReplState(loadedFiles, replEnv),
       Repl )
-import Syntax.Program
+import Syntax.AST.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.Types ( TypeName(MkTypeName), DataDecl(data_name) )
+import Syntax.AST.Types ( TypeName(MkTypeName), DataDecl(data_name) )
+import Syntax.Lowering.Program
 import Utils (trim)
 
 -- Show
@@ -31,7 +32,9 @@ showCmd "" = do
   loadedFiles <- gets loadedFiles
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
-    prettyRepl decls
+    case lowerProgram decls of
+      Left err -> prettyText err
+      Right decls -> prettyRepl decls
 showCmd str = do
   let s = trim str
   env <- gets replEnv

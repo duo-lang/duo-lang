@@ -9,9 +9,7 @@ import Text.Megaparsec hiding (State)
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Terms qualified as AST
 import Syntax.CST.Terms qualified as CST
-import Syntax.CST.LoweringTerms
 import Syntax.CommonTerm
 import Utils
 
@@ -340,17 +338,8 @@ termTopP = dtorP -- dtorP handles the case with an empty dtor chain.
 -- Exported Parsers
 -------------------------------------------------------------------------------------------
 
-termP :: PrdCnsRep pc -> Parser (AST.Term pc Parsed, SourcePos)
-termP pc = do
-  (tm, endPos) <- termTopP
-  case lowerTerm pc tm of
-    Left err -> fail (show err)
-    Right res -> pure (res, endPos)
+termP :: Parser (CST.Term, SourcePos)
+termP = termTopP
 
-
-commandP :: Parser (AST.Command Parsed, SourcePos)
-commandP = do
-  (cmd,endPos) <- cstcommandP
-  case lowerCommand cmd of
-    Left err -> fail (show err)
-    Right res -> pure (res, endPos)
+commandP :: Parser (CST.Command, SourcePos)
+commandP = cstcommandP

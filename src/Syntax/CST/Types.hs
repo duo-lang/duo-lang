@@ -1,7 +1,8 @@
 module Syntax.CST.Types where
 
-import qualified Syntax.Types as AST
+import qualified Syntax.AST.Types as AST
 import Syntax.CommonTerm
+import Syntax.Kinds
 import Data.List.NonEmpty (NonEmpty)
 
 ---------------------------------------------------------------------------------
@@ -50,3 +51,14 @@ data TypeScheme = TypeScheme
   , ts_monotype :: Typ
   }
   deriving Show
+
+------------------------------------------------------------------------------
+-- Data Type declarations
+------------------------------------------------------------------------------
+
+data DataDecl = NominalDecl
+  { data_name :: AST.TypeName
+  , data_polarity :: AST.DataCodata
+  , data_kind :: Kind
+  , data_xtors :: [XtorSig]
+  }

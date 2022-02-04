@@ -1,4 +1,4 @@
-module Syntax.Terms where
+module Syntax.AST.Terms where
 
 import Data.Kind (Type)
 import Data.List (elemIndex)
@@ -15,7 +15,7 @@ import Syntax.CommonTerm
       PrdCnsRep(..),
       PrdCns(..),
       Phase(..) )
-import Syntax.Types
+import Syntax.AST.Types
 import Syntax.Kinds
 
 ---------------------------------------------------------------------------------

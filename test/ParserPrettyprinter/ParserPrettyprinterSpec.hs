@@ -10,6 +10,7 @@ import Pretty.Errors ()
 import Pretty.Program ()
 import TestUtils
 import TypeInference.Driver
+import Syntax.Lowering.Program
 
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed
@@ -38,9 +39,12 @@ spec = do
             Right decls -> case (runFileParser example programP (ppPrint decls)) of
               Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
               Right decls -> do
-                res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) decls
-                it "Can be parsed and typechecked again." $
-                    res `shouldSatisfy` isRight
+                case lowerProgram decls of
+                  Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be lowered"
+                  Right decls -> do
+                    res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) decls
+                    it "Can be parsed and typechecked again." $
+                        res `shouldSatisfy` isRight
 
 
 

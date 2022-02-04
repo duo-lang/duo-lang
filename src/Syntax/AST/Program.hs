@@ -1,4 +1,4 @@
-module Syntax.Program where
+module Syntax.AST.Program where
 
 import Data.Kind (Type)  
 import Data.Map (Map)
@@ -6,9 +6,10 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.CommonTerm
-    ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep )
-import Syntax.Terms( Command, Term )
-import Syntax.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
+    ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName )
+import Syntax.AST.Terms( Command, Term )
+import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
+import Syntax.CST.Program qualified as CST
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -20,17 +21,13 @@ type family DeclExt (ext :: Phase) :: Type where
   DeclExt Inferred = Loc
   DeclExt Compiled = ()
 
-newtype ModuleName = ModuleName { unModuleName :: Text }
-data IsRec = Recursive | NonRecursive
-
 data Declaration (ext :: Phase) where
-  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
+  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
-  ParseErrorDecl ::                                                                                   Declaration ext
-
+  
 
 instance Show (Declaration ext) where
   show _ = "<Show for Declaration not implemented>"
