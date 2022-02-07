@@ -13,8 +13,6 @@ import Utils
 -- Declarations
 ---------------------------------------------------------------------------------
 
-data IsRec = Recursive | NonRecursive
-
 data Declaration where
   PrdCnsDecl     :: Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term             -> Declaration
   CmdDecl        :: Loc -> FreeVarName -> Command                                                -> Declaration

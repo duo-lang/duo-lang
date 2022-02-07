@@ -6,10 +6,9 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.Common
-    ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName )
+    ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName, IsRec )
 import Syntax.AST.Terms( Command, Term )
 import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol, TVar)
-import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.Lowering.Types (Assoc, Precedence, Variance)
 import Utils ( Loc )
@@ -24,7 +23,7 @@ type family DeclExt (ext :: Phase) :: Type where
   DeclExt Compiled = ()
 
 data Declaration (ext :: Phase) where
-  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
+  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
