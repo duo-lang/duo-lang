@@ -5,7 +5,7 @@ import Data.Text (Text)
 import Syntax.AST.Types (TVar)
 import Syntax.CST.Terms
 import Syntax.CST.Types
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Lowering.Types (Assoc, Precedence, Variance)
 import Utils
 

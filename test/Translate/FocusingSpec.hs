@@ -7,7 +7,7 @@ import Pretty.Pretty
 
 import TypeInference.Driver
 import Translate.Desugar
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Kinds
 import Syntax.AST.Program
 import Translate.Focusing

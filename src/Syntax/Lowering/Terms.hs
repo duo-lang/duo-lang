@@ -7,7 +7,7 @@ import Text.Megaparsec.Pos (SourcePos)
 
 import Syntax.CST.Terms qualified as CST
 import Syntax.AST.Terms qualified as AST
-import Syntax.CommonTerm
+import Syntax.Common
 import Utils
 
 type LowerM a = Either Text a

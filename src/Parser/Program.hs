@@ -14,7 +14,7 @@ import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Types (DataCodata(..),TVar(..))
 import Syntax.Lowering.Types (Assoc(..),Precedence(..), Variance(..))
 import Utils

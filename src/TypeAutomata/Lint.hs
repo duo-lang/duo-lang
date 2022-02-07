@@ -11,7 +11,7 @@ import Data.Text qualified as T
 
 
 import Errors
-import Syntax.CommonTerm (PrdCns(..), XtorName)
+import Syntax.Common (PrdCns(..), XtorName)
 import Syntax.AST.Types
 import TypeAutomata.Definition
 import Utils

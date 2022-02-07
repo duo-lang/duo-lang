@@ -82,7 +82,7 @@ library
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.AST.Types
-      Syntax.CommonTerm
+      Syntax.Common
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types

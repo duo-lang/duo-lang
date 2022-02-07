@@ -6,7 +6,7 @@ import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Data.Bifunctor
 
 

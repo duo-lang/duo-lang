@@ -3,7 +3,7 @@ module Syntax.Zonking where
 import Data.Map (Map)
 import Data.Map qualified as M
 
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Terms
 import Syntax.AST.Types
 import Syntax.Kinds

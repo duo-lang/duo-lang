@@ -10,7 +10,7 @@ import Pretty.Types ()
 import Pretty.Constraints ()
 import Pretty.Pretty ( ppPrint )
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Types
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints

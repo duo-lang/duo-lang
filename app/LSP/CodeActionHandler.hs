@@ -17,7 +17,7 @@ import Syntax.AST.Program
 import Syntax.CST.Program (IsRec(..))    
 import Syntax.AST.Types ( TypeScheme, PrdCnsToPol )
 import Syntax.Kinds (CallingConvention(..))
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax
 import Syntax.Lowering.Program

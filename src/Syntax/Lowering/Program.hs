@@ -10,7 +10,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
-import Syntax.CommonTerm
+import Syntax.Common
 
 
 

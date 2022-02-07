@@ -7,7 +7,7 @@ import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
 
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Lowering.Types (Precedence(..))
 
 ---------------------------------------------------------------------------------

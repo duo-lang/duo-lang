@@ -5,7 +5,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 
-import Syntax.CommonTerm
+import Syntax.Common
     ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName )
 import Syntax.AST.Terms( Command, Term )
 import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol, TVar)

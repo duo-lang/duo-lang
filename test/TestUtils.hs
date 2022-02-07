@@ -12,7 +12,7 @@ import Syntax.AST.Types (PolarityRep)
 import Syntax.AST.Types qualified as AST
 import Syntax.Lowering.Types
 import Syntax.Lowering.Program
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program
 import TypeInference.Driver
 

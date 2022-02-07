@@ -16,7 +16,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Kinds
 import Syntax.AST.Types (DataCodata (Data, Codata), TVar (MkTVar))
 import Syntax.CST.Types

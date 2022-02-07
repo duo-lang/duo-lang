@@ -15,7 +15,7 @@ import Translate.Focusing (focusCmd, focusEnvironment)
 import TypeInference.Driver (inferProgramIO, DriverState(..), InferenceOptions(..), defaultInferenceOptions)
 import Syntax.AST.Program (Environment(..))
 import Syntax.Kinds (CallingConvention(..))
-import Syntax.CommonTerm (Phase(..))
+import Syntax.Common (Phase(..))
 import Syntax.Lowering.Program
 
 

@@ -5,7 +5,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Text (Text)
 
-import Syntax.CommonTerm
+import Syntax.Common
     ( XtorName(..),
       NominalStructural(..),
       PrdCnsRep(..),

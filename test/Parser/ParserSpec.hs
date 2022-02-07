@@ -10,7 +10,7 @@ import Pretty.Errors ()
 import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.AST.Types
-import Syntax.CommonTerm
+import Syntax.Common
 import TestUtils
 
 parseExample :: (Show a, Eq a) => Parser a -> Text -> a -> Spec

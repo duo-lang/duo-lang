@@ -15,7 +15,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.AST.Program (Environment)
 import Syntax.Kinds (CallingConvention(..), Kind(..))
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Terms
 
 ---------------------------------------------------------------------------------

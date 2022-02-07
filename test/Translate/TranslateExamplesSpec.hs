@@ -6,7 +6,7 @@ import Test.Hspec
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program
 import Translate.Desugar
 import Translate.Reparse

@@ -9,7 +9,7 @@ import Syntax.CST.Types (BinOp(..))
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Types
 import Syntax.Kinds
-import Syntax.CommonTerm
+import Syntax.Common
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
