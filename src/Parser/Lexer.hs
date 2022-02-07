@@ -34,6 +34,7 @@ module Parser.Lexer
   , cbnKwP
   , typeKwP
     -- Symbols
+  , varianceP
   , dot
   , pipe
   , comma
@@ -76,6 +77,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Parser.Definition
 import Syntax.CommonTerm
 import Syntax.AST.Types
+import Syntax.Lowering.Types (Variance(..))
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -261,6 +263,8 @@ typeKwP = keywordP "Type"
 -- Symbols
 -------------------------------------------------------------------------------------------
 
+varianceP :: Parser Variance
+varianceP = (string "+" >> pure Covariant) <|> (string "-" >> pure Contravariant)
 comma :: Parser SourcePos
 comma = symbol ","
 

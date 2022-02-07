@@ -6,7 +6,7 @@ import Syntax.AST.Types (TVar)
 import Syntax.CST.Terms
 import Syntax.CST.Types
 import Syntax.CommonTerm
-import Syntax.Lowering.Types (Assoc(..), Precedence)
+import Syntax.Lowering.Types (Assoc, Precedence, Variance)
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ data Declaration where
   DataDecl       :: Loc -> DataDecl                                                              -> Declaration
   ImportDecl     :: Loc -> ModuleName                                                            -> Declaration
   SetDecl        :: Loc -> Text                                                                  -> Declaration
-  FixityDecl     :: Loc -> Assoc -> Precedence -> (TVar, BinOp, TVar) -> Typ                     -> Declaration
+  FixityDecl     :: Loc -> Assoc -> Precedence -> ((Variance,TVar), BinOp, (Variance,TVar)) -> Typ                     -> Declaration
   ParseErrorDecl ::                                                                                 Declaration
 
 instance Show Declaration where

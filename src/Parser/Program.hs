@@ -16,7 +16,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CommonTerm
 import Syntax.AST.Types (DataCodata(..),TVar(..))
-import Syntax.Lowering.Types (Assoc(..),Precedence(..))
+import Syntax.Lowering.Types (Assoc(..),Precedence(..), Variance(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
@@ -81,16 +81,23 @@ precedenceP = do
   (p,_) <- numP
   pure $ MkPrecedence p
 
+
+varianceVarP :: Parser (Variance, TVar)
+varianceVarP = do
+  var <- varianceP
+  (tv,_) <- freeVarName
+  pure (var, MkTVar tv)
+
 fixityDeclP :: Parser Declaration
 fixityDeclP = do
   startPos <- getSourcePos
   (assoc, _) <- assocP
   prec <- precedenceP
-  tv1 <- MkTVar . fst <$> freeVarName
+  tv1 <- varianceVarP
   binop <- tyOpP
-  tv2 <- MkTVar . fst <$> freeVarName
+  tv2 <- varianceVarP
   _ <- coloneq
-  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert tv2 (S.insert tv1 tvars) }) typP
+  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert (snd tv2) (S.insert (snd tv1) tvars) }) typP
   endPos <- semi
   pure $ FixityDecl (Loc startPos endPos) assoc prec (tv1, binop, tv2) ty
 

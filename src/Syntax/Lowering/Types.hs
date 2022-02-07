@@ -1,11 +1,21 @@
-module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig, Precedence(..), Assoc(..)) where
+module Syntax.Lowering.Types
+  ( lowerTyp
+  , lowerTypeScheme
+  , lowerXTorSig
+  , Precedence(..)
+  , Assoc(..)
+  , Variance(..)
+  ) where
 
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CommonTerm
 import qualified Syntax.AST.Types as AST
-import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
+import Syntax.AST.Types ( PolarityRep (PosRep, NegRep)
+                        , flipPolarityRep
+                        , Polarity (Neg, Pos)
+                        , freeTypeVars)
 import Syntax.CST.Types
 
 ---------------------------------------------------------------------------------
@@ -77,6 +87,9 @@ lowerBinOpChain rep fst rest = do
 ---------------------------------------------------------------------------------
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
+
+data Variance = Covariant | Contravariant
+  deriving (Show, Eq, Ord)
 
 newtype Precedence = MkPrecedence { unPrecedence :: Int }
   deriving (Show, Eq, Ord)

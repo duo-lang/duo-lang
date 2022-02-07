@@ -13,7 +13,7 @@ import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.CommonTerm
-import Syntax.Lowering.Types (Assoc(..), Precedence(..))
+import Syntax.Lowering.Types (Assoc(..), Precedence(..), Variance(..))
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
@@ -55,6 +55,10 @@ prettyCmdDecl fv pcmd =
 instance PrettyAnn Precedence where
   prettyAnn (MkPrecedence p) = pretty p
 
+prettyVarianceVar :: (Variance, TVar) -> Doc Annotation
+prettyVarianceVar (Covariant, tv) = "+" <> prettyAnn tv
+prettyVarianceVar (Contravariant, tv) = "-" <> prettyAnn tv
+
 instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
@@ -66,11 +70,11 @@ instance PrettyAnn (Declaration ext) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (FixityDecl _ LeftAssoc prec (tv1, op, tv2) typ) =
     annKeyword "infixl" <+> prettyAnn prec <+>
-    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+> 
+    prettyVarianceVar tv1 <+> prettyAnn op <+> prettyVarianceVar tv2 <+> 
     annSymbol ":=" <+> prettyAnn typ <> semi
   prettyAnn (FixityDecl _ RightAssoc prec (tv1, op, tv2) typ) =
     annKeyword "infixr" <+> prettyAnn prec <+> 
-    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+>
+    prettyVarianceVar tv1 <+> prettyAnn op <+> prettyVarianceVar tv2 <+>
     annSymbol ":=" <+> prettyAnn typ <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
@@ -86,11 +90,11 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (NamedRep (FixityDecl _ LeftAssoc prec (tv1, op, tv2) typ)) =
     annKeyword "infixl" <+> prettyAnn prec <+>
-    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+> 
+    prettyVarianceVar tv1 <+> prettyAnn op <+> prettyVarianceVar tv2 <+> 
     annSymbol ":=" <+> prettyAnn typ <> semi
   prettyAnn (NamedRep (FixityDecl _ RightAssoc prec (tv1, op, tv2) typ)) =
     annKeyword "infixr" <+> prettyAnn prec <+> 
-    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+>
+    prettyVarianceVar tv1 <+> prettyAnn op <+> prettyVarianceVar tv2 <+>
     annSymbol ":=" <+> prettyAnn typ <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi

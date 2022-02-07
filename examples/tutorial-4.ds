@@ -1,2 +1,2 @@
-infixl 2 a -> b := { 'Ap(a)[b] };
-infixr 4 a ⅋ b := { 'Par[a,b] };
+infixl 2 -a -> +b := { 'Ap(a)[b] };
+infixr 4 +a ⅋ +b  := { 'Par[a,b] };
