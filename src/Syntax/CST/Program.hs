@@ -6,7 +6,6 @@ import Syntax.AST.Types (TVar)
 import Syntax.CST.Terms
 import Syntax.CST.Types
 import Syntax.Common
-import Syntax.Lowering.Types (Assoc, Precedence, Variance)
 import Utils
 
 ---------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.Common
-import Syntax.Lowering.Types (Assoc(..), Precedence(..), Variance(..))
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------

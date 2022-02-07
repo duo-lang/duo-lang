@@ -16,7 +16,6 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Syntax.AST.Types (DataCodata(..),TVar(..))
-import Syntax.Lowering.Types (Assoc(..),Precedence(..), Variance(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration

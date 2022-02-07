@@ -89,15 +89,6 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-data Variance = Covariant | Contravariant
-  deriving (Show, Eq, Ord)
-
-newtype Precedence = MkPrecedence { unPrecedence :: Int }
-  deriving (Show, Eq, Ord)
-
-data Assoc = LeftAssoc | RightAssoc
-    deriving Eq
-
 type DesugarFun = forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
 
 

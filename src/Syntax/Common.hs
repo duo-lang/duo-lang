@@ -54,3 +54,16 @@ type FreeVarName = Text
 
 -- | Two-level de Bruijn indices.
 type Index = (Int, Int)
+
+---------------------------------------------------------------------------------
+-- Operators
+---------------------------------------------------------------------------------
+
+data Variance = Covariant | Contravariant
+  deriving (Show, Eq, Ord)
+
+newtype Precedence = MkPrecedence { unPrecedence :: Int }
+  deriving (Show, Eq, Ord)
+
+data Assoc = LeftAssoc | RightAssoc
+    deriving (Show, Eq, Ord)

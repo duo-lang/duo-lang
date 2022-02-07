@@ -8,7 +8,6 @@ import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
 
 import Syntax.Common
-import Syntax.Lowering.Types (Precedence(..))
 
 ---------------------------------------------------------------------------------
 -- Annotations
