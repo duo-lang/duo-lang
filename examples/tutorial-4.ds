@@ -1,2 +1,2 @@
-infixl;
-infixr;
+infixl 2;
+infixr 4;

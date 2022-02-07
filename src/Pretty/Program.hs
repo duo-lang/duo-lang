@@ -13,7 +13,7 @@ import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.CommonTerm
-import Syntax.Lowering.Types (Assoc(..))
+import Syntax.Lowering.Types (Assoc(..), Precedence(..))
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
@@ -52,6 +52,8 @@ prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> pcmd <> semi
 
+instance PrettyAnn Precedence where
+  prettyAnn (MkPrecedence p) = pretty p
 
 instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
@@ -62,10 +64,10 @@ instance PrettyAnn (Declaration ext) where
     prettyAnn decl
   prettyAnn (ImportDecl _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (FixityDecl _ LeftAssoc) =
-    annKeyword "infixl" <> semi
-  prettyAnn (FixityDecl _ RightAssoc) =
-    annKeyword "infixr" <> semi
+  prettyAnn (FixityDecl _ LeftAssoc prec) =
+    annKeyword "infixl" <+> prettyAnn prec <> semi
+  prettyAnn (FixityDecl _ RightAssoc prec) =
+    annKeyword "infixr" <+> prettyAnn prec <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
 
@@ -78,10 +80,10 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     prettyAnn decl
   prettyAnn (NamedRep (ImportDecl _ mod)) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (FixityDecl _ LeftAssoc)) =
-    annKeyword "infixl" <> semi
-  prettyAnn (NamedRep (FixityDecl _ RightAssoc)) =
-    annKeyword "infixl" <> semi
+  prettyAnn (NamedRep (FixityDecl _ LeftAssoc prec)) =
+    annKeyword "infixl" <+> prettyAnn prec <> semi
+  prettyAnn (NamedRep (FixityDecl _ RightAssoc prec)) =
+    annKeyword "infixl" <+> prettyAnn prec <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
 

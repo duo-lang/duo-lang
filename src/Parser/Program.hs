@@ -14,7 +14,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CommonTerm
 import Syntax.AST.Types (DataCodata(..))
-import Syntax.Lowering.Types (Assoc(..))
+import Syntax.Lowering.Types (Assoc(..),Precedence(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
@@ -71,14 +71,21 @@ setDeclP = do
 ---------------------------------------------------------------------------------
 
 assocP :: Parser (Assoc, SourcePos)
-assocP = (infixlKwP >>= \sp -> semi >> pure (LeftAssoc, sp)) <|>
-         (infixrKwP >>= \sp -> semi >> pure (RightAssoc, sp))
+assocP = (infixlKwP >>= \sp -> pure (LeftAssoc, sp)) <|>
+         (infixrKwP >>= \sp -> pure (RightAssoc, sp))
+
+precedenceP :: Parser Precedence
+precedenceP = do
+  (p,_) <- numP
+  pure $ MkPrecedence p
 
 fixityDeclP :: Parser Declaration
 fixityDeclP = do
   startPos <- getSourcePos
-  (assoc, endPos) <- assocP
-  pure $ FixityDecl (Loc startPos endPos) assoc
+  (assoc, _) <- assocP
+  prec <- precedenceP
+  endPos <- semi
+  pure $ FixityDecl (Loc startPos endPos) assoc prec
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
