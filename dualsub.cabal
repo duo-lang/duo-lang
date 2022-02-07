@@ -18,26 +18,18 @@ source-repository head
   type: git
   location: https://github.com/ps-tuebingen/algebraic-subtyping-implementation
 
-common shared-build-depends
-  build-depends:
-      ansi-terminal
-    , base >=4.7 && <5
-    , containers
-    , data-default
-    , directory
-    , filepath
-    , fgl >=5.7 && <6
-    , graphviz >=2999.20 && < 3000
-    , haskeline >= 0.8.0.0 && < 0.9
-    , megaparsec
-    , mtl
-    , prettyprinter >= 1.7 && < 1.8
-    , repline >=0.4 && <0.5
-    , text >= 1.2 && < 1.3
-    , unliftio-core
-    , sorted-list
-    , hslogger
-    , unordered-containers
+common binary-options
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+    -Wall
+    -fwarn-tabs
+    -fno-warn-name-shadowing
+    -fno-warn-orphans
+    -fno-warn-unticked-promoted-constructors
+
+common language-options
   default-language:    Haskell2010
   default-extensions:
                      RecordWildCards,
@@ -60,7 +52,29 @@ common shared-build-depends
                      ImportQualifiedPost,
                      ViewPatterns
 
+common shared-build-depends
+  build-depends:
+      ansi-terminal
+    , base >=4.7 && <5
+    , containers
+    , data-default
+    , directory
+    , filepath
+    , fgl >=5.7 && <6
+    , graphviz >=2999.20 && < 3000
+    , haskeline >= 0.8.0.0 && < 0.9
+    , megaparsec
+    , mtl
+    , prettyprinter >= 1.7 && < 1.8
+    , repline >=0.4 && <0.5
+    , text >= 1.2 && < 1.3
+    , unliftio-core
+    , sorted-list
+    , hslogger
+    , unordered-containers
+
 library
+  import: language-options
   import: shared-build-depends
   exposed-modules:
       Errors
@@ -125,7 +139,9 @@ library
     -fno-warn-unticked-promoted-constructors
 
 executable dualsub
+  import: language-options
   import: shared-build-depends
+  import: binary-options
   main-is: Main.hs
   other-modules:
       Compile
@@ -147,15 +163,6 @@ executable dualsub
       Paths_dualsub
   hs-source-dirs:
       app
-  ghc-options:
-    -threaded
-    -rtsopts
-    -with-rtsopts=-N
-    -Wall
-    -fwarn-tabs
-    -fno-warn-name-shadowing
-    -fno-warn-orphans
-    -fno-warn-unticked-promoted-constructors
   build-depends:
       dualsub,
       optparse-applicative,
@@ -163,6 +170,8 @@ executable dualsub
       gitrev
 
 test-suite dualsub-test
+  import: language-options
+  import: binary-options
   import: shared-build-depends
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
@@ -179,15 +188,6 @@ test-suite dualsub-test
     , TestUtils
   hs-source-dirs:
       test
-  ghc-options:
-    -Wall
-    -fwarn-tabs
-    -fno-warn-name-shadowing
-    -fno-warn-orphans
-    -fno-warn-unticked-promoted-constructors
-    -threaded
-    -rtsopts
-    -with-rtsopts=-N
   build-depends:
       dualsub
     , QuickCheck
