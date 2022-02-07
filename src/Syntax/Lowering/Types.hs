@@ -7,6 +7,7 @@ module Syntax.Lowering.Types
   , Variance(..)
   ) where
 
+import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
@@ -97,12 +98,40 @@ newtype Precedence = MkPrecedence { unPrecedence :: Int }
 data Assoc = LeftAssoc | RightAssoc
     deriving Eq
 
+type DesugarFun = forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+
+
+mkSubst :: (Variance, AST.TVar) -> Typ -> PolarityRep pol 
+        -> Either LoweringError (M.Map AST.TVar (AST.Typ Pos, AST.Typ Neg))
+mkSubst (Covariant, tv) ty PosRep = do
+    ty' <- lowerTyp PosRep ty
+    pure $ M.fromList [(tv, (ty',undefined))]
+mkSubst (Covariant, tv) ty NegRep = do
+    ty' <- lowerTyp NegRep ty
+    pure $ M.fromList [(tv, (undefined,ty'))]
+mkSubst (Contravariant, tv) ty PosRep = do
+    ty' <- lowerTyp NegRep ty
+    pure $ M.fromList [(tv, (undefined,ty'))]
+mkSubst (Contravariant, tv) ty NegRep = do
+    ty' <- lowerTyp PosRep ty
+    pure $ M.fromList [(tv, (ty',undefined))]
+
+mkDesugarFun :: (Variance, AST.TVar) -> (Variance, AST.TVar) -> Typ
+             -> DesugarFun
+mkDesugarFun tv1 tv2 ty = 
+    \pr ty1 ty2 -> do
+            subst1 <- mkSubst tv1 ty1 pr
+            subst2 <- mkSubst tv2 ty2 pr
+            ty' <- lowerTyp pr ty
+            let subst = M.union subst1 subst2
+            pure (AST.substituteType subst ty')
+
 data Op = Op
     {
         symbol :: BinOp,
         assoc :: Assoc,
         prec :: Precedence,
-        desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+        desugar :: DesugarFun
     }
 
 
