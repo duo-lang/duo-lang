@@ -14,6 +14,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CommonTerm
 import Syntax.AST.Types (DataCodata(..))
+import Syntax.Lowering.Types (Assoc(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
@@ -64,6 +65,20 @@ setDeclP = do
   (txt,_) <- optionP
   endPos <- semi
   return (SetDecl (Loc startPos endPos) txt)
+
+---------------------------------------------------------------------------------
+-- Parsing Fixity Declarations
+---------------------------------------------------------------------------------
+
+assocP :: Parser (Assoc, SourcePos)
+assocP = (infixlKwP >>= \sp -> pure (LeftAssoc, sp)) <|>
+         (infixrKwP >>= \sp -> pure (RightAssoc, sp))
+
+fixityDeclP :: Parser Declaration
+fixityDeclP = do
+  startPos <- getSourcePos
+  (assoc, endPos) <- assocP
+  pure $ FixityDecl (Loc startPos endPos) assoc
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
@@ -117,6 +132,7 @@ declarationP =
   cmdDeclarationP <|>
   importDeclP <|>
   setDeclP <|>
+  fixityDeclP <|>
   dataDeclP
 
 programP :: Parser Program
