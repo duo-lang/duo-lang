@@ -32,7 +32,7 @@ data LoweringError where
     IntersectionInPosPolarity :: LoweringError
     UnionInNegPolarity :: LoweringError
     -- Operator errors
-    UnknownOperator :: BinOp -> LoweringError
+    UnknownOperator :: BinOpSym -> LoweringError
 
 instance Show LoweringError where
     show MissingVarsInTypeScheme = "Missing declaration of type variable"
@@ -80,7 +80,7 @@ lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> Either LoweringError (AST.PrdC
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdCnsType PrdRep <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.PrdCnsType CnsRep <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> Either LoweringError (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOpSym, Typ) -> Either LoweringError (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -119,7 +119,7 @@ mkDesugarFun tv1 tv2 ty =
 
 data Op = Op
     {
-        symbol :: BinOp,
+        symbol :: BinOpSym,
         assoc :: Assoc,
         prec :: Precedence,
         desugar :: DesugarFun
@@ -153,7 +153,7 @@ parOp = Op { symbol = ParOp
 ops :: [Op]
 ops = [ funOp, unionOp, interOp, parOp ]
 
-lookupOp :: [Op] -> BinOp -> Either LoweringError (Op, Precedence)
+lookupOp :: [Op] -> BinOpSym -> Either LoweringError (Op, Precedence)
 lookupOp [] s = Left (UnknownOperator s)
 lookupOp (op@(Op s' _ prec _) : _) s | s == s' = Right (op, prec)
 lookupOp (_ : ops) s = lookupOp ops s
@@ -175,7 +175,7 @@ lookupOp (_ : ops) s = lookupOp ops s
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> NonEmpty (BinOp, Typ) -> Either LoweringError Typ
+associateOps :: Typ -> NonEmpty (BinOpSym, Typ) -> Either LoweringError Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     (op1, prio1) <- lookupOp ops s1
@@ -190,7 +190,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     else
         error "Unhandled case reached. This is a bug the operator precedence parser"
 
-lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> Either LoweringError (AST.Typ pol)
+lowerBinOp :: PolarityRep pol -> Typ -> BinOpSym -> Typ -> Either LoweringError (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
     (op, _) <- lookupOp ops s
     desugar op rep lhs rhs

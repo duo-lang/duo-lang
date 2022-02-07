@@ -138,7 +138,7 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> TyBot <$ botKwP
   <|> typeVariableP
 
-tyOpP :: Parser BinOp
+tyOpP :: Parser BinOpSym
 tyOpP = FunOp <$ thinRightarrow
     <|> InterOp <$ intersectionSym
     <|> UnionOp <$ unionSym

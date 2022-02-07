@@ -5,7 +5,6 @@ import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.CST.Types (BinOp(..))
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Types
 import Syntax.Kinds
@@ -67,13 +66,13 @@ instance PrettyAnn Kind where
 -- Prettyprinting of types
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn BinOp where
+instance PrettyAnn BinOpSym where
   prettyAnn FunOp = arrowSym
   prettyAnn ParOp = parSym
   prettyAnn UnionOp = unionSym
   prettyAnn InterOp = interSym
 
-resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
+resugarType :: Typ pol -> Maybe (Doc Annotation, BinOpSym, Doc Annotation)
 resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
 resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
 resugarType _ = Nothing
@@ -162,9 +161,9 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyBinOp ty op ty') = prettyAnn ty <+> prettyAnn op <+> prettyAnn ty'
   prettyAnn (CST.TyParens ty) = parens (prettyAnn ty)
 
-prettyTyOpChain :: NE.NonEmpty (BinOp, CST.Typ) -> Doc Annotation
+prettyTyOpChain :: NE.NonEmpty (BinOpSym, CST.Typ) -> Doc Annotation
 prettyTyOpChain args = prettyTyOpChain' (NE.toList args)
   where
-    prettyTyOpChain' :: [(BinOp, CST.Typ)] -> Doc Annotation
+    prettyTyOpChain' :: [(BinOpSym, CST.Typ)] -> Doc Annotation
     prettyTyOpChain' [] = mempty
     prettyTyOpChain' ((op,ty):xs) = prettyAnn op <+> prettyAnn ty <+> prettyTyOpChain' xs

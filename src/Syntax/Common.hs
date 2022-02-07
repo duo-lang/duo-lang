@@ -59,6 +59,13 @@ type Index = (Int, Int)
 -- Operators
 ---------------------------------------------------------------------------------
 
+data BinOpSym where
+  FunOp    :: BinOpSym
+  ParOp    :: BinOpSym
+  UnionOp  :: BinOpSym
+  InterOp  :: BinOpSym
+  deriving (Show, Eq)
+
 data Variance = Covariant | Contravariant
   deriving (Show, Eq, Ord)
 

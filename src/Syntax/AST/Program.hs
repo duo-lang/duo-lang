@@ -6,11 +6,9 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.Common
-    ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName, IsRec )
 import Syntax.AST.Terms( Command, Term )
 import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol, TVar)
 import Syntax.CST.Types qualified as CST
-import Syntax.Lowering.Types (Assoc, Precedence, Variance)
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -27,7 +25,7 @@ data Declaration (ext :: Phase) where
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
-  FixityDecl     :: DeclExt ext -> Assoc -> Precedence -> ((Variance, TVar), CST.BinOp, (Variance, TVar)) -> CST.Typ       -> Declaration ext
+  FixityDecl     :: DeclExt ext -> Assoc -> Precedence -> ((Variance, TVar), BinOpSym, (Variance, TVar)) -> CST.Typ       -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
   
 
