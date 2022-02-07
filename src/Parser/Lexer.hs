@@ -382,7 +382,8 @@ argListsIP mode p = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> (eof >> getSourcePos)
+  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|>
+             infixlKwP <|> infixrKwP <|> setKwP <|> (eof >> getSourcePos)
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

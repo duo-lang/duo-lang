@@ -71,8 +71,8 @@ setDeclP = do
 ---------------------------------------------------------------------------------
 
 assocP :: Parser (Assoc, SourcePos)
-assocP = (infixlKwP >>= \sp -> pure (LeftAssoc, sp)) <|>
-         (infixrKwP >>= \sp -> pure (RightAssoc, sp))
+assocP = (infixlKwP >>= \sp -> semi >> pure (LeftAssoc, sp)) <|>
+         (infixrKwP >>= \sp -> semi >> pure (RightAssoc, sp))
 
 fixityDeclP :: Parser Declaration
 fixityDeclP = do
