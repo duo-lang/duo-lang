@@ -1,4 +1,4 @@
-module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig, Precedence(..)) where
+module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig, Precedence(..), Assoc(..)) where
 
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))

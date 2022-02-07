@@ -229,6 +229,11 @@ inferDecl (ImportDecl loc mod) = do
   setEnvironment (oldEnv <> newEnv)
   return (ImportDecl loc mod)
 --
+-- FixityDecl
+--
+inferDecl (FixityDecl loc as) =
+  pure (FixityDecl loc as)
+--
 -- SetDecl
 --
 inferDecl (SetDecl loc txt) = case T.unpack txt of

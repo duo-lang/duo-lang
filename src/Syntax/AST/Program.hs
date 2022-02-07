@@ -10,6 +10,7 @@ import Syntax.CommonTerm
 import Syntax.AST.Terms( Command, Term )
 import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
 import Syntax.CST.Program qualified as CST
+import Syntax.Lowering.Types (Assoc(..))
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -26,6 +27,7 @@ data Declaration (ext :: Phase) where
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
+  FixityDecl     :: DeclExt ext -> Assoc                                                           -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
   
 

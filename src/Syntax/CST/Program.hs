@@ -5,6 +5,7 @@ import Data.Text (Text)
 import Syntax.CST.Terms
 import Syntax.CST.Types
 import Syntax.CommonTerm
+import Syntax.Lowering.Types (Assoc(..))
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -19,6 +20,7 @@ data Declaration where
   DataDecl       :: Loc -> DataDecl                                                              -> Declaration
   ImportDecl     :: Loc -> ModuleName                                                            -> Declaration
   SetDecl        :: Loc -> Text                                                                  -> Declaration
+  FixityDecl     :: Loc -> Assoc                                                                 -> Declaration
   ParseErrorDecl ::                                                                                 Declaration
 
 instance Show Declaration where

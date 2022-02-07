@@ -13,7 +13,7 @@ import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.CommonTerm
-
+import Syntax.Lowering.Types (Assoc(..))
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
@@ -62,6 +62,10 @@ instance PrettyAnn (Declaration ext) where
     prettyAnn decl
   prettyAnn (ImportDecl _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (FixityDecl _ LeftAssoc) =
+    annKeyword "infixl" <> semi
+  prettyAnn (FixityDecl _ RightAssoc) =
+    annKeyword "infixr" <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
 
@@ -74,6 +78,10 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     prettyAnn decl
   prettyAnn (NamedRep (ImportDecl _ mod)) =
     annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (NamedRep (FixityDecl _ LeftAssoc)) =
+    annKeyword "infixl" <> semi
+  prettyAnn (NamedRep (FixityDecl _ RightAssoc)) =
+    annKeyword "infixl" <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
 
