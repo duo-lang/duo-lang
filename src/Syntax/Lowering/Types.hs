@@ -1,4 +1,4 @@
-module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
+module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig, Precedence(..)) where
 
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -78,41 +78,52 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-data Op = Op
-    {
-        symbol :: BinOp,
-        assoc :: Assoc,
-        desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
-    }
+newtype Precedence = MkPrecedence { unPrecedence :: Int }
+  deriving (Show, Eq, Ord)
 
 data Assoc = LeftAssoc | RightAssoc
     deriving Eq
 
-type Ops = [Op]
-type Prio = Int
+data Op = Op
+    {
+        symbol :: BinOp,
+        assoc :: Assoc,
+        prec :: Precedence,
+        desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+    }
+
 
 funOp :: Op
-funOp = Op { symbol = FunOp, assoc = RightAssoc, desugar = desugarArrowType }
+funOp = Op { symbol = FunOp
+           , assoc = RightAssoc
+           , prec = MkPrecedence 0
+           , desugar = desugarArrowType }
 
 unionOp :: Op
-unionOp = Op { symbol = UnionOp, assoc = LeftAssoc, desugar =  desugarUnionType }
+unionOp = Op { symbol = UnionOp
+             , assoc = LeftAssoc
+             , prec = MkPrecedence 1
+             , desugar =  desugarUnionType }
 
 interOp :: Op
-interOp = Op { symbol = InterOp, assoc = LeftAssoc, desugar = desugarIntersectionType }
+interOp = Op { symbol = InterOp
+             , assoc = LeftAssoc
+             , prec = MkPrecedence 2
+             , desugar = desugarIntersectionType }
 
 parOp :: Op
-parOp = Op { symbol = ParOp, assoc = LeftAssoc, desugar = desugarParType }
+parOp = Op { symbol = ParOp
+           , assoc = LeftAssoc
+           , prec = MkPrecedence 3
+           , desugar = desugarParType }
 
-ops :: Ops
+ops :: [Op]
 ops = [ funOp, unionOp, interOp, parOp ]
 
-lookupOp :: Ops -> BinOp -> Either LoweringError (Op, Prio)
-lookupOp = lookupHelper 0
-    where
-        lookupHelper :: Prio -> Ops -> BinOp -> Either LoweringError (Op, Prio)
-        lookupHelper _ [] s = Left (UnknownOperator s)
-        lookupHelper p (op@(Op s' _ _) : _) s | s == s' = Right (op, p)
-        lookupHelper p (_ : ops) s = lookupHelper (p + 1) ops s
+lookupOp :: [Op] -> BinOp -> Either LoweringError (Op, Precedence)
+lookupOp [] s = Left (UnknownOperator s)
+lookupOp (op@(Op s' _ prec _) : _) s | s == s' = Right (op, prec)
+lookupOp (_ : ops) s = lookupOp ops s
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes

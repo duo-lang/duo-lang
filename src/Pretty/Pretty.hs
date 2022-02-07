@@ -8,6 +8,7 @@ import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
 
 import Syntax.CommonTerm
+import Syntax.Lowering.Types (Precedence(..))
 
 ---------------------------------------------------------------------------------
 -- Annotations
@@ -36,6 +37,9 @@ annXtorName = annotate AnnXtorName
 -- Why the builtin  Pretty class is not sufficient, see: https://github.com/quchen/prettyprinter/issues/102
 class PrettyAnn a where
   prettyAnn :: a -> Doc Annotation
+  
+  prettyAnnPrec :: Precedence -> a -> Doc Annotation
+  prettyAnnPrec _ = prettyAnn
 
 instance {-# OVERLAPPING #-} PrettyAnn String where
   prettyAnn = pretty
