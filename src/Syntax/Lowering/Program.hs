@@ -45,7 +45,7 @@ lowerDecl (CST.CmdDecl loc fv cmd) = AST.CmdDecl loc fv <$> (lowerCommand cmd)
 lowerDecl (CST.DataDecl loc dd)    = AST.DataDecl loc <$> lowerDataDecl dd
 lowerDecl (CST.ImportDecl loc mod) = pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt)    = pure $ AST.SetDecl loc txt
-lowerDecl (CST.FixityDecl loc assoc prec) = pure $ AST.FixityDecl loc assoc prec
+lowerDecl (CST.FixityDecl loc assoc prec op typ) = pure $ AST.FixityDecl loc assoc prec op typ
 lowerDecl CST.ParseErrorDecl       = Left "Unreachable: ParseErrorDecl cannot be parsed"
 
 lowerProgram :: CST.Program -> Either Text (AST.Program Parsed)

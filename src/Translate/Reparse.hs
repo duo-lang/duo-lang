@@ -114,7 +114,7 @@ reparseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl defaultLoc rep isRec 
 reparseDecl (CmdDecl _ fv cmd) = CmdDecl defaultLoc fv (reparseCommand cmd)
 reparseDecl (DataDecl _ decl) = DataDecl defaultLoc decl
 reparseDecl (ImportDecl _ mn) = ImportDecl defaultLoc mn
-reparseDecl (FixityDecl _ as prec) = FixityDecl defaultLoc as prec
+reparseDecl (FixityDecl _ as prec op typ) = FixityDecl defaultLoc as prec op typ
 reparseDecl (SetDecl _ txt) = SetDecl defaultLoc txt
 
 reparseProgram :: Program ext -> Program Parsed

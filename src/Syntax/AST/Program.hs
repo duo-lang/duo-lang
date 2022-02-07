@@ -8,8 +8,9 @@ import Data.Text (Text)
 import Syntax.CommonTerm
     ( FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName )
 import Syntax.AST.Terms( Command, Term )
-import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol )
+import Syntax.AST.Types ( TypeScheme, Polarity(..), DataDecl, PrdCnsToPol, TVar)
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Types qualified as CST
 import Syntax.Lowering.Types (Assoc(..), Precedence)
 import Utils ( Loc )
 
@@ -27,7 +28,7 @@ data Declaration (ext :: Phase) where
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
-  FixityDecl     :: DeclExt ext -> Assoc -> Precedence                                             -> Declaration ext
+  FixityDecl     :: DeclExt ext -> Assoc -> Precedence -> (TVar, CST.BinOp, TVar) -> CST.Typ       -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
   
 

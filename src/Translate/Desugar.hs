@@ -113,7 +113,7 @@ desugarDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv anno
 desugarDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (desugarCmd cmd)
 desugarDecl (DataDecl _ decl)                   = DataDecl () decl
 desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
-desugarDecl (FixityDecl _ as prec)              = FixityDecl () as prec
+desugarDecl (FixityDecl _ as prec op typ)       = FixityDecl () as prec op typ
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
 
 desugarProgram :: Program Inferred -> Program Compiled

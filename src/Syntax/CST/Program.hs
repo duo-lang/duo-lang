@@ -2,6 +2,7 @@ module Syntax.CST.Program where
 
 import Data.Text (Text)
 
+import Syntax.AST.Types (TVar)
 import Syntax.CST.Terms
 import Syntax.CST.Types
 import Syntax.CommonTerm
@@ -20,7 +21,7 @@ data Declaration where
   DataDecl       :: Loc -> DataDecl                                                              -> Declaration
   ImportDecl     :: Loc -> ModuleName                                                            -> Declaration
   SetDecl        :: Loc -> Text                                                                  -> Declaration
-  FixityDecl     :: Loc -> Assoc -> Precedence                                                   -> Declaration
+  FixityDecl     :: Loc -> Assoc -> Precedence -> (TVar, BinOp, TVar) -> Typ                     -> Declaration
   ParseErrorDecl ::                                                                                 Declaration
 
 instance Show Declaration where

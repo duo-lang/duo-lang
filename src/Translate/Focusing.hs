@@ -201,7 +201,7 @@ focusDecl eo (PrdCnsDecl _ pc isRec name annot prd) = PrdCnsDecl () pc isRec nam
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
 focusDecl _  decl@(DataDecl _ _)              = decl
 focusDecl _  decl@(ImportDecl _ _)            = decl
-focusDecl _  decl@(FixityDecl _ _ _)          = decl
+focusDecl _  decl@(FixityDecl _ _ _ _ _)      = decl
 focusDecl _  decl@(SetDecl _ _)               = decl
 
 focusProgram :: CallingConvention -> Program Compiled -> Program Compiled

@@ -231,8 +231,8 @@ inferDecl (ImportDecl loc mod) = do
 --
 -- FixityDecl
 --
-inferDecl (FixityDecl loc as prec) =
-  pure (FixityDecl loc as prec)
+inferDecl (FixityDecl loc as prec op typ) =
+  pure (FixityDecl loc as prec op typ)
 --
 -- SetDecl
 --

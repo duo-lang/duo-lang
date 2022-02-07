@@ -87,12 +87,12 @@ fixityDeclP = do
   (assoc, _) <- assocP
   prec <- precedenceP
   tv1 <- MkTVar . fst <$> freeVarName
-  _binop <- tyOpP
+  binop <- tyOpP
   tv2 <- MkTVar . fst <$> freeVarName
   _ <- coloneq
-  _ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert tv2 (S.insert tv1 tvars) }) typP
+  ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert tv2 (S.insert tv1 tvars) }) typP
   endPos <- semi
-  pure $ FixityDecl (Loc startPos endPos) assoc prec
+  pure $ FixityDecl (Loc startPos endPos) assoc prec (tv1, binop, tv2) ty
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser

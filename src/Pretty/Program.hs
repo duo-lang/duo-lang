@@ -64,10 +64,14 @@ instance PrettyAnn (Declaration ext) where
     prettyAnn decl
   prettyAnn (ImportDecl _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (FixityDecl _ LeftAssoc prec) =
-    annKeyword "infixl" <+> prettyAnn prec <> semi
-  prettyAnn (FixityDecl _ RightAssoc prec) =
-    annKeyword "infixr" <+> prettyAnn prec <> semi
+  prettyAnn (FixityDecl _ LeftAssoc prec (tv1, op, tv2) typ) =
+    annKeyword "infixl" <+> prettyAnn prec <+>
+    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+> 
+    annSymbol ":=" <+> prettyAnn typ <> semi
+  prettyAnn (FixityDecl _ RightAssoc prec (tv1, op, tv2) typ) =
+    annKeyword "infixr" <+> prettyAnn prec <+> 
+    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+>
+    annSymbol ":=" <+> prettyAnn typ <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
 
@@ -80,10 +84,14 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     prettyAnn decl
   prettyAnn (NamedRep (ImportDecl _ mod)) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (FixityDecl _ LeftAssoc prec)) =
-    annKeyword "infixl" <+> prettyAnn prec <> semi
-  prettyAnn (NamedRep (FixityDecl _ RightAssoc prec)) =
-    annKeyword "infixl" <+> prettyAnn prec <> semi
+  prettyAnn (NamedRep (FixityDecl _ LeftAssoc prec (tv1, op, tv2) typ)) =
+    annKeyword "infixl" <+> prettyAnn prec <+>
+    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+> 
+    annSymbol ":=" <+> prettyAnn typ <> semi
+  prettyAnn (NamedRep (FixityDecl _ RightAssoc prec (tv1, op, tv2) typ)) =
+    annKeyword "infixr" <+> prettyAnn prec <+> 
+    prettyAnn tv1 <+> prettyAnn op <+> prettyAnn tv2 <+>
+    annSymbol ":=" <+> prettyAnn typ <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
 
