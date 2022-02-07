@@ -75,7 +75,7 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Parser.Definition
-import Syntax.Common
+import Syntax.Common (PrdCns(..), XtorName(..), NominalStructural(..), Variance(..), ModuleName(..), FreeVarName)
 import Syntax.AST.Types
 
 -------------------------------------------------------------------------------------------

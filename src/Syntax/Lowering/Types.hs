@@ -86,76 +86,27 @@ lowerBinOpChain rep fst rest = do
     lowerTyp rep op
 
 ---------------------------------------------------------------------------------
--- Operator Desugaring
+-- Reassociating Operators
 ---------------------------------------------------------------------------------
 
-type DesugarFun = forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
-
-
-mkSubst :: (Variance, AST.TVar) -> Typ -> PolarityRep pol 
-        -> Either LoweringError (M.Map AST.TVar (AST.Typ Pos, AST.Typ Neg))
-mkSubst (Covariant, tv) ty PosRep = do
-    ty' <- lowerTyp PosRep ty
-    pure $ M.fromList [(tv, (ty',undefined))]
-mkSubst (Covariant, tv) ty NegRep = do
-    ty' <- lowerTyp NegRep ty
-    pure $ M.fromList [(tv, (undefined,ty'))]
-mkSubst (Contravariant, tv) ty PosRep = do
-    ty' <- lowerTyp NegRep ty
-    pure $ M.fromList [(tv, (undefined,ty'))]
-mkSubst (Contravariant, tv) ty NegRep = do
-    ty' <- lowerTyp PosRep ty
-    pure $ M.fromList [(tv, (ty',undefined))]
-
-mkDesugarFun :: (Variance, AST.TVar) -> (Variance, AST.TVar) -> Typ
-             -> DesugarFun
-mkDesugarFun tv1 tv2 ty = 
-    \pr ty1 ty2 -> do
-            subst1 <- mkSubst tv1 ty1 pr
-            subst2 <- mkSubst tv2 ty2 pr
-            ty' <- lowerTyp pr ty
-            let subst = M.union subst1 subst2
-            pure (AST.substituteType subst ty')
-
-data BinOp = BinOp
-    {
-        symbol :: BinOpSym,
-        assoc :: Assoc,
-        prec :: Precedence,
-        desugar :: DesugarFun
-    }
-
-
 funOp :: BinOp
-funOp = BinOp { symbol = FunOp
+funOp = BinOp { symbol = OtherOp "->"
               , assoc = RightAssoc
               , prec = MkPrecedence 0
-              , desugar = desugarArrowType }
-
-unionOp :: BinOp
-unionOp = BinOp { symbol = UnionOp
-                , assoc = LeftAssoc
-                , prec = MkPrecedence 1
-                , desugar =  desugarUnionType }
-
-interOp :: BinOp
-interOp = BinOp { symbol = InterOp
-                , assoc = LeftAssoc
-                , prec = MkPrecedence 2
-                , desugar = desugarIntersectionType }
+              }
 
 parOp :: BinOp
-parOp = BinOp { symbol = ParOp
+parOp = BinOp { symbol = OtherOp "⅋"
               , assoc = LeftAssoc
               , prec = MkPrecedence 3
-              , desugar = desugarParType }
+              }
 
 ops :: [BinOp]
 ops = [ funOp, unionOp, interOp, parOp ]
 
 lookupOp :: [BinOp] -> BinOpSym -> Either LoweringError BinOp
 lookupOp [] s = Left (UnknownOperator s)
-lookupOp (op@(BinOp s' _ _ _) : _) s | s == s' = Right op
+lookupOp (op@(BinOp s' _ _) : _) s | s == s' = Right op
 lookupOp (_ : ops) s = lookupOp ops s
 
 -- | Operator precedence parsing
@@ -190,14 +141,48 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     else
         error "Unhandled case reached. This is a bug the operator precedence parser"
 
+---------------------------------------------------------------------------------
+-- Lowering Binary Operators (After reassociating)
+---------------------------------------------------------------------------------
+
+lookupDesugaring :: BinOpSym -> DesugarFun
+lookupDesugaring UnionOp = desugarUnionType
+lookupDesugaring InterOp = desugarIntersectionType
+lookupDesugaring (OtherOp "->") = desugarArrowType
+lookupDesugaring (OtherOp "⅋")  = desugarParType
+
 lowerBinOp :: PolarityRep pol -> Typ -> BinOpSym -> Typ -> Either LoweringError (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
-    op <- lookupOp ops s
-    desugar op rep lhs rhs
+    let f = lookupDesugaring s
+    f rep lhs rhs
 
----------------------------------------------------------------------------------
--- Syntactic Sugar
----------------------------------------------------------------------------------
+type DesugarFun = forall pol. PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+
+
+mkSubst :: (Variance, AST.TVar) -> Typ -> PolarityRep pol 
+        -> Either LoweringError (M.Map AST.TVar (AST.Typ Pos, AST.Typ Neg))
+mkSubst (Covariant, tv) ty PosRep = do
+    ty' <- lowerTyp PosRep ty
+    pure $ M.fromList [(tv, (ty',undefined))]
+mkSubst (Covariant, tv) ty NegRep = do
+    ty' <- lowerTyp NegRep ty
+    pure $ M.fromList [(tv, (undefined,ty'))]
+mkSubst (Contravariant, tv) ty PosRep = do
+    ty' <- lowerTyp NegRep ty
+    pure $ M.fromList [(tv, (undefined,ty'))]
+mkSubst (Contravariant, tv) ty NegRep = do
+    ty' <- lowerTyp PosRep ty
+    pure $ M.fromList [(tv, (ty',undefined))]
+
+mkDesugarFun :: (Variance, AST.TVar) -> (Variance, AST.TVar) -> Typ
+             -> DesugarFun
+mkDesugarFun tv1 tv2 ty = 
+    \pr ty1 ty2 -> do
+            subst1 <- mkSubst tv1 ty1 pr
+            subst2 <- mkSubst tv2 ty2 pr
+            ty' <- lowerTyp pr ty
+            let subst = M.union subst1 subst2
+            pure (AST.substituteType subst ty')
 
 desugarTopType :: AST.Typ 'Neg
 desugarTopType = AST.TySet NegRep Nothing []

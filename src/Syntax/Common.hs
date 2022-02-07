@@ -59,11 +59,11 @@ type Index = (Int, Int)
 -- Operators
 ---------------------------------------------------------------------------------
 
+-- | Binary Type Operators
 data BinOpSym where
-  FunOp    :: BinOpSym
-  ParOp    :: BinOpSym
-  UnionOp  :: BinOpSym
-  InterOp  :: BinOpSym
+  UnionOp :: BinOpSym
+  InterOp :: BinOpSym
+  OtherOp :: Text -> BinOpSym
   deriving (Show, Eq)
 
 data Variance = Covariant | Contravariant
@@ -74,3 +74,21 @@ newtype Precedence = MkPrecedence { unPrecedence :: Int }
 
 data Assoc = LeftAssoc | RightAssoc
     deriving (Show, Eq, Ord)
+
+data BinOp = BinOp
+    { symbol :: BinOpSym
+    , assoc :: Assoc
+    , prec :: Precedence
+    }
+
+unionOp :: BinOp
+unionOp = BinOp { symbol = UnionOp
+                , assoc = LeftAssoc
+                , prec = MkPrecedence 1
+                }
+
+interOp :: BinOp
+interOp = BinOp { symbol = InterOp
+                , assoc = LeftAssoc
+                , prec = MkPrecedence 2
+                }

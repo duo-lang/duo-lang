@@ -41,12 +41,6 @@ pipeSym = prettyAnn ("|" :: String)
 commaSym :: Doc Annotation
 commaSym = prettyAnn ("," :: String)
 
-arrowSym :: Doc Annotation
-arrowSym = annKeyword "->"
-
-parSym :: Doc Annotation
-parSym = annKeyword "⅋"
-
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Kinds
 ---------------------------------------------------------------------------------
@@ -67,14 +61,13 @@ instance PrettyAnn Kind where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn BinOpSym where
-  prettyAnn FunOp = arrowSym
-  prettyAnn ParOp = parSym
   prettyAnn UnionOp = unionSym
   prettyAnn InterOp = interSym
+  prettyAnn (OtherOp op) = annKeyword (prettyAnn op)
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOpSym, Doc Annotation)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , OtherOp "->", prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, OtherOp "⅋", prettyAnn tr)
 resugarType _ = Nothing
 
 instance PrettyAnn Polarity where

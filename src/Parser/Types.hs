@@ -139,10 +139,10 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> typeVariableP
 
 tyOpP :: Parser BinOpSym
-tyOpP = FunOp <$ thinRightarrow
+tyOpP = (OtherOp "->") <$ thinRightarrow
     <|> InterOp <$ intersectionSym
     <|> UnionOp <$ unionSym
-    <|> ParOp <$ parSym
+    <|> (OtherOp "⅋") <$ parSym
 
 opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
 opsChainP' p op = do
