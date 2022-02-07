@@ -6,6 +6,7 @@ import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.CST.Types (BinOp(..))
+import Syntax.CST.Types qualified as CST
 import Syntax.AST.Types
 import Syntax.Kinds
 import Syntax.CommonTerm
@@ -137,3 +138,33 @@ instance PrettyAnn (TypeScheme pol) where
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
 
+---------------------------------------------------------------------------------
+-- Prettyprinting of CST types
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.PrdCnsTyp where
+  prettyAnn (CST.PrdType t) = prettyAnn t
+  prettyAnn (CST.CnsType t) = prettyAnn t
+
+instance PrettyAnn CST.XtorSig where
+  prettyAnn CST.MkXtorSig { sig_name, sig_args } = prettyAnn sig_name <> prettyAnn sig_args
+
+instance PrettyAnn CST.Typ where
+  prettyAnn (CST.TyVar tv) = prettyAnn tv
+  prettyAnn (CST.TyXData Data Nothing xtors) = angles' pipeSym  (prettyAnn <$> xtors) 
+  prettyAnn (CST.TyXData Codata Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
+  prettyAnn (CST.TyXData xdata (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (CST.TyXData xdata Nothing xtors)]
+  prettyAnn (CST.TyNominal tn) = prettyAnn tn
+  prettyAnn (CST.TyRec var ty) = recSym <+> prettyAnn var <> "." <> align (prettyAnn ty)
+  prettyAnn CST.TyTop = topSym
+  prettyAnn CST.TyBot = botSym
+  prettyAnn (CST.TyBinOpChain ty args) = prettyAnn ty <+> prettyTyOpChain args
+  prettyAnn (CST.TyBinOp ty op ty') = prettyAnn ty <+> prettyAnn op <+> prettyAnn ty'
+  prettyAnn (CST.TyParens ty) = parens (prettyAnn ty)
+
+prettyTyOpChain :: NE.NonEmpty (BinOp, CST.Typ) -> Doc Annotation
+prettyTyOpChain args = prettyTyOpChain' (NE.toList args)
+  where
+    prettyTyOpChain' :: [(BinOp, CST.Typ)] -> Doc Annotation
+    prettyTyOpChain' [] = mempty
+    prettyTyOpChain' ((op,ty):xs) = prettyAnn op <+> prettyAnn ty <+> prettyTyOpChain' xs
