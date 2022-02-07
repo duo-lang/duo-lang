@@ -117,7 +117,7 @@ mkDesugarFun tv1 tv2 ty =
             let subst = M.union subst1 subst2
             pure (AST.substituteType subst ty')
 
-data Op = Op
+data BinOp = BinOp
     {
         symbol :: BinOpSym,
         assoc :: Assoc,
@@ -126,36 +126,36 @@ data Op = Op
     }
 
 
-funOp :: Op
-funOp = Op { symbol = FunOp
-           , assoc = RightAssoc
-           , prec = MkPrecedence 0
-           , desugar = desugarArrowType }
+funOp :: BinOp
+funOp = BinOp { symbol = FunOp
+              , assoc = RightAssoc
+              , prec = MkPrecedence 0
+              , desugar = desugarArrowType }
 
-unionOp :: Op
-unionOp = Op { symbol = UnionOp
-             , assoc = LeftAssoc
-             , prec = MkPrecedence 1
-             , desugar =  desugarUnionType }
+unionOp :: BinOp
+unionOp = BinOp { symbol = UnionOp
+                , assoc = LeftAssoc
+                , prec = MkPrecedence 1
+                , desugar =  desugarUnionType }
 
-interOp :: Op
-interOp = Op { symbol = InterOp
-             , assoc = LeftAssoc
-             , prec = MkPrecedence 2
-             , desugar = desugarIntersectionType }
+interOp :: BinOp
+interOp = BinOp { symbol = InterOp
+                , assoc = LeftAssoc
+                , prec = MkPrecedence 2
+                , desugar = desugarIntersectionType }
 
-parOp :: Op
-parOp = Op { symbol = ParOp
-           , assoc = LeftAssoc
-           , prec = MkPrecedence 3
-           , desugar = desugarParType }
+parOp :: BinOp
+parOp = BinOp { symbol = ParOp
+              , assoc = LeftAssoc
+              , prec = MkPrecedence 3
+              , desugar = desugarParType }
 
-ops :: [Op]
+ops :: [BinOp]
 ops = [ funOp, unionOp, interOp, parOp ]
 
-lookupOp :: [Op] -> BinOpSym -> Either LoweringError (Op, Precedence)
+lookupOp :: [BinOp] -> BinOpSym -> Either LoweringError BinOp
 lookupOp [] s = Left (UnknownOperator s)
-lookupOp (op@(Op s' _ prec _) : _) s | s == s' = Right (op, prec)
+lookupOp (op@(BinOp s' _ _ _) : _) s | s == s' = Right op
 lookupOp (_ : ops) s = lookupOp ops s
 
 -- | Operator precedence parsing
@@ -178,9 +178,9 @@ lookupOp (_ : ops) s = lookupOp ops s
 associateOps :: Typ -> NonEmpty (BinOpSym, Typ) -> Either LoweringError Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
-    (op1, prio1) <- lookupOp ops s1
-    (_op2, prio2) <- lookupOp ops s2
-    if prio2 > prio1 || (assoc op1 == RightAssoc)
+    op1 <- lookupOp ops s1
+    op2 <- lookupOp ops s2
+    if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
         pure $ TyBinOp lhs s1 rhs
@@ -192,7 +192,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
 
 lowerBinOp :: PolarityRep pol -> Typ -> BinOpSym -> Typ -> Either LoweringError (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
-    (op, _) <- lookupOp ops s
+    op <- lookupOp ops s
     desugar op rep lhs rhs
 
 ---------------------------------------------------------------------------------
