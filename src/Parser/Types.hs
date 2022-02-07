@@ -5,6 +5,7 @@ module Parser.Types
   , typeSchemeP
   , typP
   , typAtomP
+  , tyOpP
   ) where
 
 import Control.Monad.State

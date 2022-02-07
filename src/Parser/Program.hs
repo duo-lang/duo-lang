@@ -4,6 +4,8 @@ module Parser.Program
   ) where
 
 import Control.Monad (void)
+import Control.Monad.Reader ( MonadReader(local) )
+import Data.Set qualified as S
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
@@ -13,7 +15,7 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CommonTerm
-import Syntax.AST.Types (DataCodata(..))
+import Syntax.AST.Types (DataCodata(..),TVar(..))
 import Syntax.Lowering.Types (Assoc(..),Precedence(..))
 import Utils
 
@@ -84,6 +86,11 @@ fixityDeclP = do
   startPos <- getSourcePos
   (assoc, _) <- assocP
   prec <- precedenceP
+  tv1 <- MkTVar . fst <$> freeVarName
+  _binop <- tyOpP
+  tv2 <- MkTVar . fst <$> freeVarName
+  _ <- coloneq
+  _ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert tv2 (S.insert tv1 tvars) }) typP
   endPos <- semi
   pure $ FixityDecl (Loc startPos endPos) assoc prec
 
