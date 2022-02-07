@@ -18,7 +18,7 @@ data Declaration where
   DataDecl       :: Loc -> DataDecl                                                              -> Declaration
   ImportDecl     :: Loc -> ModuleName                                                            -> Declaration
   SetDecl        :: Loc -> Text                                                                  -> Declaration
-  FixityDecl     :: Loc -> Assoc -> Precedence -> ((Variance,TVar), BinOpSym, (Variance,TVar)) -> Typ                     -> Declaration
+  FixityDecl     :: Loc -> BinOp -> (Variance,TVar) -> (Variance,TVar) -> Typ                    -> Declaration
   ParseErrorDecl ::                                                                                 Declaration
 
 instance Show Declaration where

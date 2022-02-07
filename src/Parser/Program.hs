@@ -98,7 +98,8 @@ fixityDeclP = do
   _ <- coloneq
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert (snd tv2) (S.insert (snd tv1) tvars) }) typP
   endPos <- semi
-  pure $ FixityDecl (Loc startPos endPos) assoc prec (tv1, binop, tv2) ty
+  let bo = BinOp binop assoc prec
+  pure $ FixityDecl (Loc startPos endPos) bo tv1 tv2 ty
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser

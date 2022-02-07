@@ -25,7 +25,7 @@ data Declaration (ext :: Phase) where
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                      -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                        -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                      -> Declaration ext
-  FixityDecl     :: DeclExt ext -> Assoc -> Precedence -> ((Variance, TVar), BinOpSym, (Variance, TVar)) -> CST.Typ       -> Declaration ext
+  FixityDecl     :: DeclExt ext -> BinOp -> (Variance, TVar) -> (Variance, TVar) -> CST.Typ        -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                            -> Declaration ext
   
 
