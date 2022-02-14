@@ -12,14 +12,14 @@ import Syntax.AST.Types
 -- Subsume
 
 subCmd :: Text -> Repl ()
-subCmd s = do
-  (t1,t2) <- parseInteractive subtypingProblemP s
-  case (lowerTypeScheme PosRep t1, lowerTypeScheme PosRep t2) of
-     (Right res1, Right res2) -> do
-       res <- fromRight (subsume res1 res2)
-       prettyRepl res
+subCmd s = undefined
+  -- (t1,t2) <- parseInteractive subtypingProblemP s
+  -- case (lowerTypeScheme PosRep t1, lowerTypeScheme PosRep t2) of
+  --    (Right res1, Right res2) -> do
+  --      res <- fromRight (subsume res1 res2)
+  --      prettyRepl res
        
-     (_,_) -> fail "SubtypingProblemP: Cannot lower types."
+  --    (_,_) -> fail "SubtypingProblemP: Cannot lower types."
 
   
 

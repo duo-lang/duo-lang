@@ -88,6 +88,7 @@ library
       Syntax.CST.Types
       Syntax.Kinds
       Syntax.Lowering.Program
+      Syntax.Lowering.Lowering
       Syntax.Lowering.Terms
       Syntax.Lowering.Types
       Syntax.Zonking

@@ -1,7 +1,10 @@
-module Syntax.Lowering.Program where
+module Syntax.Lowering.Program (lowerProgram) where
+
+import Control.Monad.Except
 
 import Syntax.Lowering.Terms (lowerTerm, lowerCommand)
-import Syntax.Lowering.Types (lowerTypeScheme, lowerXTorSig, LowerM, LoweringError(..))
+import Syntax.Lowering.Types (lowerTypeScheme, lowerXTorSig)
+import Syntax.Lowering.Lowering
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
@@ -32,7 +35,7 @@ lowerAnnot PrdRep ts = lowerTypeScheme AST.PosRep ts
 lowerAnnot CnsRep ts = lowerTypeScheme AST.NegRep ts
 
 lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> LowerM (Maybe (AST.TypeScheme (AST.PrdCnsToPol pc)))
-lowerMaybeAnnot _ Nothing = Right Nothing
+lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
 lowerDecl :: CST.Declaration -> LowerM (AST.Declaration Parsed)
@@ -42,7 +45,10 @@ lowerDecl (CST.CmdDecl loc fv cmd) = AST.CmdDecl loc fv <$> (lowerCommand cmd)
 lowerDecl (CST.DataDecl loc dd)    = AST.DataDecl loc <$> lowerDataDecl dd
 lowerDecl (CST.ImportDecl loc mod) = pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt)    = pure $ AST.SetDecl loc txt
-lowerDecl CST.ParseErrorDecl       = Left (OtherError "Unreachable: ParseErrorDecl cannot be parsed")
+lowerDecl CST.ParseErrorDecl       = throwError (OtherError "Unreachable: ParseErrorDecl cannot be parsed")
 
-lowerProgram :: CST.Program -> LowerM (AST.Program Parsed)
-lowerProgram = sequence . fmap lowerDecl
+lowerProgram :: CST.Program -> Either LoweringError (AST.Program Parsed)
+lowerProgram prog = do
+    let symbolTable = createSymbolTable prog
+    let loweredProg = sequence (lowerDecl <$> prog)
+    runLowerM symbolTable loweredProg

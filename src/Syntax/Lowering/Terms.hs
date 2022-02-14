@@ -1,5 +1,6 @@
 module Syntax.Lowering.Terms (lowerTerm, lowerCommand) where
 
+import Control.Monad.Except
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Text.Megaparsec.Pos (SourcePos)
@@ -96,27 +97,27 @@ lowerTerm PrdRep (CST.Dtor loc tick xtor tm subst)  = do
   tm' <- lowerTerm PrdRep tm
   subst' <- lowerSubstitutionI subst
   pure $ AST.Dtor loc xtor' tm' subst'
-lowerTerm CnsRep (CST.Dtor _loc _tick _xtor _tm _s)  = Left (OtherError "Cannot lower Dtor to a consumer (TODO).")
+lowerTerm CnsRep (CST.Dtor _loc _tick _xtor _tm _s)  = throwError (OtherError "Cannot lower Dtor to a consumer (TODO).")
 lowerTerm PrdRep (CST.Case loc tm cases)       = do
   cases' <- sequence (lowerTermCase <$> cases)
   tm' <- lowerTerm PrdRep tm
   ns <- termCasesToNS cases
   pure $ AST.Case loc ns tm' cases'
-lowerTerm CnsRep (CST.Case _loc _tm _cases)    = Left (OtherError "Cannot lower Match to a consumer (TODO)")
+lowerTerm CnsRep (CST.Case _loc _tm _cases)    = throwError (OtherError "Cannot lower Match to a consumer (TODO)")
 lowerTerm PrdRep (CST.Cocase loc cases)        = do
   cases' <- sequence (lowerTermCaseI <$> cases)
   ns <- termCasesIToNS cases
   pure $ AST.Cocase loc ns cases'
-lowerTerm CnsRep (CST.Cocase _loc _cases)      = Left (OtherError "Cannot lower Comatch to a consumer (TODO)")
+lowerTerm CnsRep (CST.Cocase _loc _cases)      = throwError (OtherError "Cannot lower Comatch to a consumer (TODO)")
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
-lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = Left (OtherError "Cannot lower NatLit to a consumer.")
+lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = throwError (OtherError "Cannot lower NatLit to a consumer.")
 lowerTerm rep    (CST.TermParens _loc tm)      = lowerTerm rep tm
 lowerTerm rep    (CST.DtorChain pos tm dtors)  = lowerDtorChain pos tm dtors >>= lowerTerm rep
 lowerTerm PrdRep (CST.FunApp loc fun arg)      = lowerApp loc fun arg
-lowerTerm CnsRep (CST.FunApp _loc _fun _arg)   = Left (OtherError "Cannot lower FunApp to a consumer.")
+lowerTerm CnsRep (CST.FunApp _loc _fun _arg)   = throwError (OtherError "Cannot lower FunApp to a consumer.")
 lowerTerm rep    (CST.MultiLambda loc fvs tm)  = lowerMultiLambda loc fvs tm >>= lowerTerm rep
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
-lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = Left (OtherError "Cannot lower Lambda to a consumer.")
+lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = throwError (OtherError "Cannot lower Lambda to a consumer.")
 
 
 lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (Bool, XtorName', CST.SubstitutionI, SourcePos) -> LowerM CST.Term

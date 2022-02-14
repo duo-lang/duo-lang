@@ -20,15 +20,17 @@ import TypeInference.Driver
 letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
-  case lowerDecl decl of
+  case lowerProgram [decl] of
     Left err -> prettyText (T.pack (show err))
-    Right decl -> do
+    Right [] -> undefined
+    Right [decl] -> do
       oldEnv <- gets replEnv
       opts <- gets typeInfOpts
       newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (inferDecl decl)
       case newEnv of
         Left _ -> return ()
         Right (_,state) -> modifyEnvironment (const (driverEnv state))
+    Right (_:_) -> undefined
 
 letOption :: Option
 letOption = Option

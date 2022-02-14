@@ -12,6 +12,7 @@ import Syntax.AST.Types (PolarityRep)
 import Syntax.AST.Types qualified as AST
 import Syntax.Lowering.Types
 import Syntax.Lowering.Program
+import Syntax.Lowering.Lowering
 import Syntax.CommonTerm
 import Syntax.AST.Program
 import TypeInference.Driver
@@ -50,7 +51,7 @@ getEnvironment fp infopts = do
 typPLowering :: PolarityRep pol -> Parser (AST.Typ pol)
 typPLowering rep = do
   t <- typP
-  case lowerTyp rep t of
+  case runLowerM emptySymbolTable (lowerTyp rep t) of
     Right t -> pure t
     Left err -> fail (show err)
 
@@ -58,6 +59,6 @@ typPLowering rep = do
 typeSchemePLowering :: PolarityRep pol -> Parser (AST.TypeScheme pol)
 typeSchemePLowering rep = do
   s <- typeSchemeP
-  case lowerTypeScheme rep s of
+  case runLowerM emptySymbolTable (lowerTypeScheme rep s) of
     Right s -> pure s
     Left err -> fail (show err)

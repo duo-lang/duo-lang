@@ -100,7 +100,7 @@ safeRead file =  do
 cmd :: String -> Repl ()
 cmd s = do
   (comLoc,_) <- parseInteractive commandP (T.pack s)
-  comLoc <- fromRight (first show (lowerCommand comLoc))
+  comLoc <- undefined -- fromRight (first show (lowerCommand comLoc))
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CmdDecl defaultLoc "main" comLoc]
