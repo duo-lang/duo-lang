@@ -61,9 +61,9 @@ addDecl _ m = m
 
 lowerXtorName :: Bool -> XtorName' -> LowerM XtorName
 lowerXtorName True (MkXtorName' xt) = pure (MkXtorName Structural xt)
-lowerXtorName _ xtor@(MkXtorName' xt) = do
+lowerXtorName False xtor@(MkXtorName' xt) = do
     st <- ask
     case M.lookup xtor st of
-        Nothing -> throwError (OtherError (T.pack ("The symbol" <> show xt <> " is not in symbol table.")))
+        Nothing -> throwError (OtherError (T.pack ("The symbol" <> show xt <> " is not in symbol table: " <> show (M.toList st))))
         Just Refined -> pure (MkXtorName Refinement xt)
         Just NotRefined -> pure (MkXtorName Nominal xt)
