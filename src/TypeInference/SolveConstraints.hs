@@ -22,7 +22,6 @@ import Syntax.Zonking
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.Constraints
 
 ------------------------------------------------------------------------------
@@ -33,13 +32,14 @@ data SolverState = SolverState
   { sst_bounds :: Map TVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   , sst_kvars :: [([KVar], Maybe CallingConvention)] -- Union-find algorithm
-  , sst_inferMode :: InferenceMode }
+  }
 
-createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs kuvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
+
+createInitState :: ConstraintSet -> SolverState
+createInitState (ConstraintSet _ uvs kuvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
                                                          , sst_cache = S.empty
                                                          , sst_kvars = [([kv], Nothing) | kv <- kuvs]
-                                                         , sst_inferMode = im }
+                                                         }
 
 type SolverM a = (ReaderT (Environment Inferred, ()) (StateT SolverState (Except Error))) a
 
@@ -54,13 +54,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache kvars im) -> SolverState gr (f cache) kvars im)
+    modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache kvars im) -> SolverState (M.adjust f uv varMap) cache kvars im)
+modifyBounds f uv = modify (\(SolverState varMap cache kvars) -> SolverState (M.adjust f uv varMap) cache kvars)
 
 getBounds :: TVar -> SolverM VariableState
 getBounds uv = do
@@ -376,9 +376,9 @@ zonkVariableState m (VariableState lbs ubs k) =
     VariableState (zonkType bisubst <$> lbs) (zonkType bisubst <$> ubs) (zonkKind bisubst k)
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment Inferred -> InferenceMode -> KindPolicy -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _ _) env im policy = do
-  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
+solveConstraints :: ConstraintSet -> Environment Inferred -> KindPolicy -> Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _ _) env policy = do
+  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
   kvarSolution <- computeKVarSolution policy (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution

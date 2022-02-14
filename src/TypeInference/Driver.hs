@@ -39,8 +39,7 @@ import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
-import TypeInference.GenerateConstraints.Definition
-    ( InferenceMode(..), runGenM )
+import TypeInference.GenerateConstraints.Definition (runGenM)
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -56,7 +55,6 @@ import Utils ( Verbosity(..), Loc )
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity   :: Verbosity      -- ^ Whether to print debug information to the terminal.
   , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
-  , infOptsMode        :: InferenceMode  -- ^ Whether to infer nominal or refinement types.
   , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
   , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
   }
@@ -65,7 +63,6 @@ defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
-  , infOptsMode = InferNominal 
   , infOptsSimplify = True 
   , infOptsLibPath = []
   }
@@ -159,10 +156,10 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   let genFun = case isRec of
         Recursive -> genConstraintsTermRecursive loc fv pc term
         NonRecursive -> genConstraintsTerm term
-  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env ErrorUnresolved
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -195,12 +192,11 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
 -- CmdDecl
 --
 inferDecl (CmdDecl loc v cmd) = do
-  infopts <- gets driverOpts
   env <- gets driverEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env ErrorUnresolved
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -231,10 +227,7 @@ inferDecl (ImportDecl loc mod) = do
 --
 -- SetDecl
 --
-inferDecl (SetDecl loc txt) = case T.unpack txt of
-  "refined" -> do
-    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
-    return (SetDecl loc txt)
+inferDecl (SetDecl _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
 
 ---------------------------------------------------------------------------------

@@ -57,7 +57,8 @@ data TypeScheme = TypeScheme
 ------------------------------------------------------------------------------
 
 data DataDecl = NominalDecl
-  { data_name :: AST.TypeName
+  { data_refined :: AST.IsRefined
+  , data_name :: AST.TypeName
   , data_polarity :: AST.DataCodata
   , data_kind :: Kind
   , data_xtors :: [XtorSig]
