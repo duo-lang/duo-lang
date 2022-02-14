@@ -36,7 +36,7 @@ loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
   case lowerProgram decls of
-    Left err -> prettyText err
+    Left err -> prettyText (T.pack (show err))
     Right decls -> do
       opts <- gets typeInfOpts
       res <- liftIO $ inferProgramIO (DriverState opts mempty) decls

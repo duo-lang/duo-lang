@@ -243,7 +243,7 @@ inferProgramFromDisk fp = do
     Left err -> throwOtherError [T.pack (errorBundlePretty err)]
     Right decls -> do
       case lowerProgram decls of
-        Left err -> throwError (OtherError Nothing err)
+        Left err -> throwError (OtherError Nothing (T.pack (show err)))
         Right decls -> do
           -- Use inference options of parent? Probably not?
           x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls

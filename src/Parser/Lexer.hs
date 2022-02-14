@@ -33,6 +33,7 @@ module Parser.Lexer
   , typeKwP
   , refinementKwP
     -- Symbols
+  , tick
   , dot
   , pipe
   , comma
@@ -62,7 +63,7 @@ module Parser.Lexer
   , argListsP
   , argListsIP
     -- Other
-  , checkTick
+  , parseTick
   , parseUntilKeywP
   ) where
 
@@ -144,17 +145,18 @@ freeVarName = try $ do
   checkReserved name
   return (name, pos)
 
-checkTick :: NominalStructural -> Parser ()
-checkTick Nominal = return ()
-checkTick Structural = () <$ tick
-checkTick Refinement = return ()
+parseTick :: Parser Bool
+parseTick = do
+  x <- optional tick
+  case x of
+    Nothing -> pure False
+    Just _ -> pure True
 
-xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
-xtorName ns = try $ do
-  () <- checkTick ns
+xtorName :: Parser (XtorName', SourcePos)
+xtorName = try $ do
   (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
-  return (MkXtorName ns name, pos)
+  return (MkXtorName' name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = try $ do

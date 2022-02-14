@@ -69,11 +69,11 @@ setDeclP = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
-xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
+xtorDeclP :: Parser (Bool, XtorName', [(PrdCns, Typ)])
 xtorDeclP = do
-  (xt, _pos) <- xtorName Nominal
+  (tick, xt, _pos) <- xtorNameP
   (args,_) <- argListsP typP
-  return (xt, args )
+  return (tick, xt, args )
 
 
 argListToLctxt :: [(PrdCns, Typ)] -> LinearContext
@@ -82,10 +82,10 @@ argListToLctxt = fmap convert
     convert (Prd, ty) = PrdType ty
     convert (Cns, ty) = CnsType ty
 
-combineXtor :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
-combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
+combineXtor :: (Bool, XtorName', [(PrdCns, Typ)]) -> XtorSig
+combineXtor (tick, xt, args) = MkXtorSig tick xt (argListToLctxt args)
 
-combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
+combineXtors :: [(Bool, XtorName', [(PrdCns, Typ)])] -> [XtorSig]
 combineXtors = fmap combineXtor
 
 dataCodataPrefixP :: Parser (IsRefined,DataCodata)

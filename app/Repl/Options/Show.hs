@@ -33,7 +33,7 @@ showCmd "" = do
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
     case lowerProgram decls of
-      Left err -> prettyText err
+      Left err -> prettyRepl (show err)
       Right decls -> prettyRepl decls
 showCmd str = do
   let s = trim str

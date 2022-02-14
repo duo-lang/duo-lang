@@ -1,6 +1,7 @@
 module Parser.Terms
   ( termP
   , commandP
+  , xtorNameP
   )where
 
 import Data.Bifunctor (first)
@@ -17,8 +18,11 @@ import Utils
 -- Helper functions
 --------------------------------------------------------------------------------------------
 
-xtorNameP :: Parser (XtorName, SourcePos)
-xtorNameP = xtorName Nominal <|> xtorName Structural
+xtorNameP :: Parser (Bool, XtorName', SourcePos)
+xtorNameP = do
+  tick <- parseTick
+  (name, endPos) <- xtorName
+  pure (tick, name, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
@@ -59,18 +63,23 @@ freeVar = do
   return (CST.Var (Loc startPos endPos) v, endPos)
 
 natLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
-natLitP ns = do
+natLitP Nominal = do
   startPos <- getSourcePos
-  () <- checkTick ns
   (num, endPos) <- numP
-  return (CST.NatLit (Loc startPos endPos) ns num, endPos)
+  return (CST.NatLit (Loc startPos endPos) Nominal num, endPos)
+natLitP Structural = do
+  startPos <- getSourcePos
+  _ <- tick
+  (num, endPos) <- numP
+  return (CST.NatLit (Loc startPos endPos) Structural num, endPos)
+natLitP Refinement = fail "Cannot parse refined Nat literal"
 
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
+  (tick, xt, _pos) <- xtorNameP
   (subst, endPos) <- substitutionP
-  return (CST.Xtor (Loc startPos endPos) xt subst, endPos)
+  return (CST.Xtor (Loc startPos endPos) tick xt subst, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -185,11 +194,11 @@ cstcommandP =
 cmdcaseP :: Parser (CST.CommandCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
+  (tick, xt, _pos) <- xtorNameP
   (args,_) <- bindingSiteP
   _ <- rightarrow
   (cmd, endPos) <- cstcommandP
-  let pmcase = (Loc startPos endPos, xt, args, cmd)
+  let pmcase = (Loc startPos endPos,tick, xt, args, cmd)
   return (pmcase, endPos)
 
 xmatchP :: Parser (CST.Term, SourcePos)
@@ -206,11 +215,11 @@ xmatchP = do
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
+  (tick, xt, _pos) <- xtorNameP
   (args,_) <- bindingSiteP
   _ <- rightarrow
   (res, endPos) <- termTopP
-  let pmcase = (Loc startPos endPos, xt, args, res)
+  let pmcase = (Loc startPos endPos,tick, xt, args, res)
   return (pmcase, endPos)
 
 caseofP :: Parser (CST.Term, SourcePos)
@@ -229,11 +238,11 @@ caseofP = do
 termCaseIP :: Parser (CST.TermCaseI, SourcePos)
 termCaseIP = do
   startPos <- getSourcePos
-  (xt, _) <- xtorNameP
+  (tick, xt, _) <- xtorNameP
   (bs, _) <- bindingSiteIP
   _ <- rightarrow
   (res, endPos) <- termTopP
-  return ((Loc startPos endPos, xt, bs, res), endPos)
+  return ((Loc startPos endPos, tick, xt, bs, res), endPos)
 
 cocaseP :: Parser (CST.Term, SourcePos)
 cocaseP = do
@@ -310,13 +319,13 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -------------------------------------------------------------------------------------------
 
 -- | Parses "D(t,..*.,t)"
-destructorP :: Parser (XtorName, CST.SubstitutionI, SourcePos)
+destructorP :: Parser (Bool, XtorName', CST.SubstitutionI, SourcePos)
 destructorP = do
-  (xt, _) <- xtorNameP
+  (tick, xt, _) <- xtorNameP
   (substi, endPos) <- substitutionIP
-  return (xt, substi, endPos)
+  return (tick, xt, substi, endPos)
 
-destructorChainP :: Parser [(XtorName, CST.SubstitutionI, SourcePos)]
+destructorChainP :: Parser [(Bool, XtorName', CST.SubstitutionI, SourcePos)]
 destructorChainP = many (dot >> destructorP)
 
 dtorP :: Parser (CST.Term, SourcePos)

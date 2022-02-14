@@ -36,7 +36,7 @@ runCompile fp = do
             (Left err) -> ppPrintIO (errorBundlePretty err)
             (Right prog) -> do
               case lowerProgram prog of
-                Left err -> ppPrintIO err
+                Left err -> ppPrintIO (show err)
                 Right prog -> do
                 -- Infer program
                   inferredProg <- inferProgramIO driverState prog

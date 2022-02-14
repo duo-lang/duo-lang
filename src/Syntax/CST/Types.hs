@@ -34,7 +34,8 @@ data Typ where
   deriving Show
 
 data XtorSig = MkXtorSig
-  { sig_name :: XtorName
+  { sig_tick :: Bool
+  , sig_name :: XtorName'
   , sig_args :: LinearContext
   }
   deriving Show

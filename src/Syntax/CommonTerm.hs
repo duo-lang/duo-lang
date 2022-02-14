@@ -46,7 +46,12 @@ newtype ModuleName = ModuleName { unModuleName :: Text }
 data NominalStructural = Nominal | Structural | Refinement deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
-data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: Text } deriving (Eq, Ord, Show)
+data XtorName = MkXtorName { xtorNominalStructural :: NominalStructural, unXtorName :: Text }
+  deriving (Eq, Ord, Show)
+
+-- | Name of a constructor/destructor. Starts with an uppercase letter.
+data XtorName' = MkXtorName' { unXtorName' :: Text }
+  deriving (Eq, Ord, Show)
 
 -- | Name of a free variable. Starts with a lowercase letter.
 type FreeVarName = Text

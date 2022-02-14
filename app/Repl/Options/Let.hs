@@ -21,7 +21,7 @@ letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
   case lowerDecl decl of
-    Left err -> prettyText err
+    Left err -> prettyText (T.pack (show err))
     Right decl -> do
       oldEnv <- gets replEnv
       opts <- gets typeInfOpts

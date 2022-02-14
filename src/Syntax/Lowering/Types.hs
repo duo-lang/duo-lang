@@ -1,5 +1,7 @@
-module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
+module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig, lowerXtorName, LoweringError(..), LowerM) where
 
+import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
@@ -22,6 +24,7 @@ data LoweringError where
     UnionInNegPolarity :: LoweringError
     -- Operator errors
     UnknownOperator :: BinOp -> LoweringError
+    OtherError :: Text -> LoweringError
 
 instance Show LoweringError where
     show MissingVarsInTypeScheme = "Missing declaration of type variable"
@@ -30,15 +33,21 @@ instance Show LoweringError where
     show IntersectionInPosPolarity = "Cannot use `/\\` in positive polarity"
     show UnionInNegPolarity = "Cannot use `\\/` in negative polarity"
     show (UnknownOperator op) = "Undefined type operator `" ++ show op ++ "`"
+    show (OtherError txt) = T.unpack txt
 
-lowerTypeScheme :: PolarityRep pol -> TypeScheme -> Either LoweringError (AST.TypeScheme pol)
+type LowerM a = Either LoweringError a
+
+lowerXtorName :: Bool -> XtorName' -> LowerM XtorName
+lowerXtorName = undefined
+
+lowerTypeScheme :: PolarityRep pol -> TypeScheme -> LowerM (AST.TypeScheme pol)
 lowerTypeScheme rep (TypeScheme tvars monotype) = do
     monotype <- lowerTyp rep monotype
     if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList tvars)
         then pure (AST.TypeScheme tvars monotype)
         else Left MissingVarsInTypeScheme
 
-lowerTyp :: PolarityRep pol -> Typ -> Either LoweringError (AST.Typ pol)
+lowerTyp :: PolarityRep pol -> Typ -> LowerM (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
 lowerTyp rep (TyXData AST.Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
@@ -56,20 +65,23 @@ lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
 lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
 
-lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> Either LoweringError [AST.XtorSig pol]
+lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> LowerM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs
 
-lowerXTorSig :: PolarityRep pol -> XtorSig -> Either LoweringError (AST.XtorSig pol)
-lowerXTorSig rep (MkXtorSig name ctx) = AST.MkXtorSig name <$> lowerLinearContext rep ctx
+lowerXTorSig :: PolarityRep pol -> XtorSig -> LowerM (AST.XtorSig pol)
+lowerXTorSig rep (MkXtorSig tick name ctx) = do
+    name <- lowerXtorName tick name
+    ctx <- lowerLinearContext rep ctx
+    pure $ AST.MkXtorSig name ctx
 
-lowerLinearContext :: PolarityRep pol -> LinearContext -> Either LoweringError (AST.LinearContext pol)
+lowerLinearContext :: PolarityRep pol -> LinearContext -> LowerM (AST.LinearContext pol)
 lowerLinearContext rep ctx = sequence $ lowerPrdCnsTyp rep <$> ctx
 
-lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> Either LoweringError (AST.PrdCnsType pol)
+lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> LowerM (AST.PrdCnsType pol)
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdCnsType PrdRep <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.PrdCnsType CnsRep <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> Either LoweringError (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> LowerM (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -106,7 +118,7 @@ parOp = Op { symbol = ParOp, assoc = LeftAssoc, desugar = desugarParType }
 ops :: Ops
 ops = [ funOp, unionOp, interOp, parOp ]
 
-lookupOp :: Ops -> BinOp -> Either LoweringError (Op, Prio)
+lookupOp :: Ops -> BinOp -> LowerM (Op, Prio)
 lookupOp = lookupHelper 0
     where
         lookupHelper :: Prio -> Ops -> BinOp -> Either LoweringError (Op, Prio)
@@ -131,7 +143,7 @@ lookupOp = lookupHelper 0
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> NonEmpty (BinOp, Typ) -> Either LoweringError Typ
+associateOps :: Typ -> NonEmpty (BinOp, Typ) -> LowerM Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     (op1, prio1) <- lookupOp ops s1
@@ -146,7 +158,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     else
         error "Unhandled case reached. This is a bug the operator precedence parser"
 
-lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> Either LoweringError (AST.Typ pol)
+lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> LowerM (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
     (op, _) <- lookupOp ops s
     desugar op rep lhs rhs
@@ -161,7 +173,7 @@ desugarTopType = AST.TySet NegRep Nothing []
 desugarBotType :: AST.Typ 'Pos
 desugarBotType = AST.TySet PosRep Nothing []
 
-desugarIntersectionType :: PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+desugarIntersectionType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
 desugarIntersectionType NegRep tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
@@ -170,7 +182,7 @@ desugarIntersectionType NegRep tl tr = do
         _ -> pure $ AST.TySet NegRep Nothing [tl, tr]
 desugarIntersectionType PosRep _ _ = Left IntersectionInPosPolarity
 
-desugarUnionType :: PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+desugarUnionType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
 desugarUnionType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
@@ -180,7 +192,7 @@ desugarUnionType PosRep tl tr = do
 desugarUnionType NegRep _ _ = Left UnionInNegPolarity
 
 -- | Desugar function arrow syntax
-desugarArrowType :: PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+desugarArrowType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
 desugarArrowType PosRep tl tr = do
     tl <- lowerTyp (flipPolarityRep PosRep) tl
     tr <- lowerTyp PosRep tr
@@ -194,7 +206,7 @@ desugarArrowType NegRep tl tr = do
         [ AST.MkXtorSig (MkXtorName Structural "Ap")
           [AST.PrdCnsType PrdRep tl, AST.PrdCnsType CnsRep tr]]
 
-desugarParType :: PolarityRep pol -> Typ -> Typ -> Either LoweringError (AST.Typ pol)
+desugarParType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
 desugarParType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr

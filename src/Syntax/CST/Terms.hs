@@ -27,9 +27,9 @@ type BindingSiteI = (BindingSite, (), BindingSite)
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
-type CommandCase = (Loc, XtorName, BindingSite,  Command)
-type TermCase    = (Loc, XtorName, BindingSite,  Term)
-type TermCaseI   = (Loc, XtorName, BindingSiteI, Term)
+type CommandCase = (Loc, Bool, XtorName', BindingSite,  Command)
+type TermCase    = (Loc, Bool, XtorName', BindingSite,  Term)
+type TermCaseI   = (Loc, Bool, XtorName', BindingSiteI, Term)
 
 --------------------------------------------------------------------------------------------
 -- Terms
@@ -38,14 +38,14 @@ type TermCaseI   = (Loc, XtorName, BindingSiteI, Term)
 data Term where
     -- AST Nodes
     Var :: Loc -> FreeVarName -> Term
-    Xtor :: Loc -> XtorName -> Substitution -> Term
+    Xtor :: Loc -> Bool -> XtorName' -> Substitution -> Term
     XMatch :: Loc -> [CommandCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Command -> Term
-    Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
+    Dtor :: Loc -> Bool -> XtorName' -> Term -> SubstitutionI -> Term
     Case :: Loc -> Term -> [TermCase] -> Term
     Cocase :: Loc -> [TermCaseI] -> Term
     -- Sugar Nodes
-    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
+    DtorChain :: SourcePos -> Term -> NonEmpty (Bool, XtorName', SubstitutionI, SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term

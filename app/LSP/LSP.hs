@@ -199,7 +199,7 @@ publishErrors uri = do
       sendParsingError (toNormalizedUri uri) err
     Right decls -> do
       case lowerProgram decls of
-        Left err -> sendLocatedError (toNormalizedUri uri) (OtherError Nothing err)
+        Left err -> sendLocatedError (toNormalizedUri uri) (OtherError Nothing (T.pack (show err)))
         Right decls -> do
           res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
           case res of

@@ -33,7 +33,7 @@ getParsedDeclarations fp = do
     Left err -> pure (Left (ParseError Nothing (T.pack (errorBundlePretty err))))
     Right prog -> do
       case lowerProgram prog of
-        Left err -> pure (Left (OtherError Nothing err))
+        Left err -> pure (Left (Errors.OtherError Nothing (T.pack (show err))))
         Right prog -> pure (pure prog)
   
 
