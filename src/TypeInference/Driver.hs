@@ -5,6 +5,7 @@ module TypeInference.Driver
   , execDriverM
   , inferProgramIO
   , inferProgramIO'
+  , renameProgramIO
   , inferDecl
   ) where
 
@@ -243,6 +244,8 @@ inferDecl (SetDecl loc txt) = case T.unpack txt of
 -- Infer programs
 ---------------------------------------------------------------------------------
 
+
+
 inferProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred, Program Inferred)
 inferProgramFromDisk fp = do
@@ -260,9 +263,24 @@ inferProgramFromDisk fp = do
 inferProgram :: [CST.Declaration]
              -> DriverM (Program Inferred)
 inferProgram decls = do
+  decls <- renameProgram decls
+  forM decls inferDecl
+
+renameProgram :: [CST.Declaration]
+              -> DriverM (Program Parsed)
+renameProgram decls = do
   case lowerProgram decls of
     Left err -> throwOtherError [T.pack (show err)]
-    Right decls -> forM decls inferDecl
+    Right decls -> pure decls
+
+renameProgramIO :: DriverState
+                -> [CST.Declaration]
+                -> IO (Either Error (Program Parsed))
+renameProgramIO state decls = do
+  x <- execDriverM state (renameProgram decls)
+  case x of
+      Left err -> return (Left err)
+      Right (res,_) -> return (Right res)
 
 inferProgram' :: Program Parsed
               -> DriverM (Program Inferred)

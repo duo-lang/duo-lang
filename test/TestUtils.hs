@@ -33,6 +33,14 @@ getParsedDeclarations fp = do
     Left err -> pure (Left (ParseError Nothing (T.pack (errorBundlePretty err))))
     Right prog -> pure (pure prog)
 
+getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error (Program Parsed))
+getRenamedDeclarations fp infopts = do
+  decls <- getParsedDeclarations fp
+  case decls of
+    Right decls -> do
+      renameProgramIO (DriverState infopts mempty) decls
+    Left err -> return (Left err)
+
 getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error (Program Inferred))
 getTypecheckedDecls fp infopts = do
   decls <- getParsedDeclarations fp
