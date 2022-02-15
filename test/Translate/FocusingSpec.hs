@@ -24,7 +24,7 @@ testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ e
     Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
     Right decls -> do
       let focusedDecls :: Program Parsed = reparseProgram $ focusProgram cbx (desugarProgram decls)
-      res <- runIO $ inferProgramIO driverState undefined -- focusedDecls
+      res <- runIO $ inferProgramIO' driverState focusedDecls
       case res of
         Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
         Right _env -> return ()

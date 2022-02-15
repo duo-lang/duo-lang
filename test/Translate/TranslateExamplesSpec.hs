@@ -27,7 +27,7 @@ spec = do
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
               let desugaredDecls :: Program Parsed = reparseProgram $ desugarProgram decls
-              res <- runIO $ inferProgramIO driverState undefined -- desugaredDecls
+              res <- runIO $ inferProgramIO' driverState desugaredDecls
               case res of
                 Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
                 Right _env -> return ()

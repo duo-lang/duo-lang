@@ -4,6 +4,7 @@ module TypeInference.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
+  , inferProgramIO'
   , inferDecl
   ) where
 
@@ -263,11 +264,24 @@ inferProgram decls = do
     Left err -> throwOtherError [T.pack (show err)]
     Right decls -> forM decls inferDecl
 
+inferProgram' :: Program Parsed
+              -> DriverM (Program Inferred)
+inferProgram' decls = forM decls inferDecl              
+
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
                 -> IO (Either Error (Environment Inferred, Program Inferred))
 inferProgramIO state decls = do
-    x <- execDriverM state (inferProgram decls)
-    case x of
-        Left err -> return (Left err)
-        Right (res,x) -> return (Right ((driverEnv x), res))
+  x <- execDriverM state (inferProgram decls)
+  case x of
+      Left err -> return (Left err)
+      Right (res,x) -> return (Right ((driverEnv x), res))
+
+inferProgramIO' :: DriverState -- ^ Initial State
+                -> Program Parsed
+                -> IO (Either Error (Environment Inferred, Program Inferred))
+inferProgramIO' state decls = do
+  x <- execDriverM state (inferProgram' decls)
+  case x of
+    Left err -> return (Left err)
+    Right (res,x) -> return (Right ((driverEnv x), res))
