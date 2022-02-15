@@ -25,6 +25,7 @@ import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Terms
 import Syntax.CommonTerm
 import Syntax.Lowering.Program
+import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
@@ -249,23 +250,21 @@ inferProgramFromDisk fp = do
   case parsed of
     Left err -> throwOtherError [T.pack (errorBundlePretty err)]
     Right decls -> do
-      case lowerProgram decls of
-        Left err -> throwError (OtherError Nothing err)
-        Right decls -> do
-          -- Use inference options of parent? Probably not?
-          x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
-          case x of
-            Left err -> throwError err
-            Right env -> return env
+      -- Use inference options of parent? Probably not?
+      x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
+      case x of
+        Left err -> throwError err
+        Right env -> return env
 
-inferProgram :: [Declaration Parsed]
+inferProgram :: [CST.Declaration]
              -> DriverM (Program Inferred)
-inferProgram decls = forM decls inferDecl
-
-
+inferProgram decls = do
+  case lowerProgram decls of
+    Left err -> throwOtherError [T.pack (show err)]
+    Right decls -> forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> [Declaration Parsed]
+                -> [CST.Declaration]
                 -> IO (Either Error (Environment Inferred, Program Inferred))
 inferProgramIO state decls = do
     x <- execDriverM state (inferProgram decls)

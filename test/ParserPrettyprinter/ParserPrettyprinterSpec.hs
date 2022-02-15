@@ -10,7 +10,6 @@ import Pretty.Errors ()
 import Pretty.Program ()
 import TestUtils
 import TypeInference.Driver
-import Syntax.Lowering.Program
 
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed
@@ -23,7 +22,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
-        decls <- runIO $ getParsedDeclarations example
+        decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
         it "Can be parsed again." $
           case decls of
             Left err -> expectationFailure (ppPrintString err)
@@ -33,24 +32,14 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
-        decls <- runIO $ getParsedDeclarations example
+        decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
         case decls of 
             Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
             Right decls -> case (runFileParser example programP (ppPrint decls)) of
               Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
               Right decls -> do
-                case lowerProgram decls of
-                  Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be lowered"
-                  Right decls -> do
-                    res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) decls
-                    it "Can be parsed and typechecked again." $
-                        res `shouldSatisfy` isRight
-
-
-
-
-
-
-
+                res <- runIO $ inferProgramIO (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) decls
+                it "Can be parsed and typechecked again." $
+                    res `shouldSatisfy` isRight
 
 

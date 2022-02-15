@@ -22,17 +22,13 @@ spec = do
       examples <- runIO $ getAvailableExamples "examples/"
       forM_ examples $ \example -> do
         describe ("Desugaring the program in  " ++ example ++ " typechecks.") $ do
-          decls <- runIO $ getParsedDeclarations example
+          decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
           case decls of
-            Left err -> it "Could not parse example " $ expectationFailure (ppPrintString err)
+            Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-                inferredDecls <- runIO $ inferProgramIO driverState decls
-                case inferredDecls of
-                  Left err -> it "Could not typecheck example " $ expectationFailure (ppPrintString err)
-                  Right (_,inferredDecls) -> do
-                    let desugaredDecls :: Program Parsed = reparseProgram $ desugarProgram inferredDecls
-                    res <- runIO $ inferProgramIO driverState desugaredDecls
-                    case res of
-                        Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
-                        Right _env -> return ()
+              let desugaredDecls :: Program Parsed = reparseProgram $ desugarProgram decls
+              res <- runIO $ inferProgramIO driverState undefined -- desugaredDecls
+              case res of
+                Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
+                Right _env -> return ()
 
