@@ -4,6 +4,8 @@ module TypeInference.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
+  , inferProgramIO'
+  , renameProgramIO
   , inferDecl
   ) where
 
@@ -25,6 +27,7 @@ import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Terms
 import Syntax.CommonTerm
 import Syntax.Lowering.Program
+import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
@@ -234,6 +237,8 @@ inferDecl (SetDecl _ txt) = case T.unpack txt of
 -- Infer programs
 ---------------------------------------------------------------------------------
 
+
+
 inferProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred, Program Inferred)
 inferProgramFromDisk fp = do
@@ -242,26 +247,52 @@ inferProgramFromDisk fp = do
   case parsed of
     Left err -> throwOtherError [T.pack (errorBundlePretty err)]
     Right decls -> do
-      case lowerProgram decls of
-        Left err -> throwError (OtherError Nothing (T.pack (show err)))
-        Right decls -> do
-          -- Use inference options of parent? Probably not?
-          x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
-          case x of
-            Left err -> throwError err
-            Right env -> return env
+      -- Use inference options of parent? Probably not?
+      x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
+      case x of
+        Left err -> throwError err
+        Right env -> return env
 
-inferProgram :: [Declaration Parsed]
+inferProgram :: [CST.Declaration]
              -> DriverM (Program Inferred)
-inferProgram decls = forM decls inferDecl
+inferProgram decls = do
+  decls <- renameProgram decls
+  forM decls inferDecl
 
+renameProgram :: [CST.Declaration]
+              -> DriverM (Program Parsed)
+renameProgram decls = do
+  case lowerProgram decls of
+    Left err -> throwOtherError [T.pack (show err)]
+    Right decls -> pure decls
 
+renameProgramIO :: DriverState
+                -> [CST.Declaration]
+                -> IO (Either Error (Program Parsed))
+renameProgramIO state decls = do
+  x <- execDriverM state (renameProgram decls)
+  case x of
+      Left err -> return (Left err)
+      Right (res,_) -> return (Right res)
+
+inferProgram' :: Program Parsed
+              -> DriverM (Program Inferred)
+inferProgram' decls = forM decls inferDecl              
 
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> [Declaration Parsed]
+                -> [CST.Declaration]
                 -> IO (Either Error (Environment Inferred, Program Inferred))
 inferProgramIO state decls = do
-    x <- execDriverM state (inferProgram decls)
-    case x of
-        Left err -> return (Left err)
-        Right (res,x) -> return (Right ((driverEnv x), res))
+  x <- execDriverM state (inferProgram decls)
+  case x of
+      Left err -> return (Left err)
+      Right (res,x) -> return (Right ((driverEnv x), res))
+
+inferProgramIO' :: DriverState -- ^ Initial State
+                -> Program Parsed
+                -> IO (Either Error (Environment Inferred, Program Inferred))
+inferProgramIO' state decls = do
+  x <- execDriverM state (inferProgram' decls)
+  case x of
+    Left err -> return (Left err)
+    Right (res,x) -> return (Right ((driverEnv x), res))

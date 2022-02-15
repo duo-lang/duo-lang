@@ -20,7 +20,6 @@ import Repl.Repl
       prettyRepl,
       prettyText,
       parseFile )
-import Syntax.Lowering.Program
 import TypeInference.Driver
 import Utils (trim)
 
@@ -35,17 +34,14 @@ loadCmd s = do
 loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
-  case lowerProgram decls of
-    Left err -> prettyText (T.pack (show err))
-    Right decls -> do
-      opts <- gets typeInfOpts
-      res <- liftIO $ inferProgramIO (DriverState opts mempty) decls
-      case res of
-        Left err -> printLocatedError err
-        Right (newEnv,_) -> do
-          modifyEnvironment (newEnv <>)
-          prettyRepl newEnv
-          prettyRepl $ "Successfully loaded: " ++ fp
+  opts <- gets typeInfOpts
+  res <- liftIO $ inferProgramIO (DriverState opts mempty) decls
+  case res of
+    Left err -> printLocatedError err
+    Right (newEnv,_) -> do
+      modifyEnvironment (newEnv <>)
+      prettyRepl newEnv
+      prettyRepl $ "Successfully loaded: " ++ fp
 
 loadOption :: Option
 loadOption = Option
