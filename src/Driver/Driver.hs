@@ -1,4 +1,4 @@
-module TypeInference.Driver
+module Driver.Driver
   ( InferenceOptions(..)
   , defaultInferenceOptions
   , DriverState(..)

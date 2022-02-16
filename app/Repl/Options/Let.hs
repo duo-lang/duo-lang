@@ -15,7 +15,7 @@ import Repl.Repl
       fromRight,
       modifyEnvironment )
 import Syntax.Lowering.Program
-import TypeInference.Driver
+import Driver.Driver
 
 letCmd :: Text -> Repl ()
 letCmd s = do

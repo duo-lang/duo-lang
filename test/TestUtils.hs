@@ -15,7 +15,7 @@ import Syntax.AST.Program
 import Syntax.Lowering.Types
 import Syntax.Lowering.Lowering
 import Syntax.CommonTerm
-import TypeInference.Driver
+import Driver.Driver
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do

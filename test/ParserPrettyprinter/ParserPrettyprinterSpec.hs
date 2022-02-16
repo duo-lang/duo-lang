@@ -9,7 +9,7 @@ import Pretty.Pretty
 import Pretty.Errors ()
 import Pretty.Program ()
 import TestUtils
-import TypeInference.Driver
+import Driver.Driver
 
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed

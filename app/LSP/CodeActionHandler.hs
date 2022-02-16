@@ -20,7 +20,7 @@ import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax
-import TypeInference.Driver
+import Driver.Driver
     ( defaultInferenceOptions,
       inferProgramIO,
       DriverState(DriverState),

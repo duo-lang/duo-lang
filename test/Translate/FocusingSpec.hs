@@ -5,7 +5,7 @@ import Test.Hspec
 import TestUtils
 import Pretty.Pretty
 
-import TypeInference.Driver
+import Driver.Driver
 import Translate.Desugar
 import Syntax.CommonTerm
 import Syntax.Kinds

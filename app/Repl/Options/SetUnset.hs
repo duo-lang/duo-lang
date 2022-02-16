@@ -21,7 +21,7 @@ import Repl.Repl
       prettyRepl,
       mkWordCompleter )
 import Utils (trim,  Verbosity(..))
-import TypeInference.Driver
+import Driver.Driver
 
 -- Set & Unset
 
