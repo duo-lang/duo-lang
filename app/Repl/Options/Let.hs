@@ -15,6 +15,7 @@ import Repl.Repl
       fromRight,
       modifyEnvironment )
 import Syntax.Lowering.Program
+import Driver.Definition (emptySymbolTable)
 import Driver.Driver
 
 letCmd :: Text -> Repl ()
@@ -26,7 +27,7 @@ letCmd s = do
     Right [decl] -> do
       oldEnv <- gets replEnv
       opts <- gets typeInfOpts
-      newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (inferDecl decl)
+      newEnv <- liftIO $ execDriverM emptySymbolTable (DriverState opts oldEnv) (inferDecl decl)
       case newEnv of
         Left _ -> return ()
         Right (_,state) -> modifyEnvironment (const (driverEnv state))

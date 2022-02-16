@@ -160,8 +160,6 @@ inferDecl (SetDecl _ txt) = case T.unpack txt of
 -- Infer programs
 ---------------------------------------------------------------------------------
 
-
-
 inferProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred, Program Inferred)
 inferProgramFromDisk fp = do
@@ -193,7 +191,7 @@ renameProgramIO :: DriverState
                 -> [CST.Declaration]
                 -> IO (Either Error (Program Parsed))
 renameProgramIO state decls = do
-  x <- execDriverM state (renameProgram decls)
+  x <- execDriverM emptySymbolTable state (renameProgram decls)
   case x of
       Left err -> return (Left err)
       Right (res,_) -> return (Right res)
@@ -206,7 +204,7 @@ inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
                 -> IO (Either Error (Environment Inferred, Program Inferred))
 inferProgramIO state decls = do
-  x <- execDriverM state (inferProgram decls)
+  x <- execDriverM emptySymbolTable state (inferProgram decls)
   case x of
       Left err -> return (Left err)
       Right (res,x) -> return (Right ((driverEnv x), res))
@@ -215,7 +213,7 @@ inferProgramIO' :: DriverState -- ^ Initial State
                 -> Program Parsed
                 -> IO (Either Error (Environment Inferred, Program Inferred))
 inferProgramIO' state decls = do
-  x <- execDriverM state (inferProgram' decls)
+  x <- execDriverM emptySymbolTable state (inferProgram' decls)
   case x of
     Left err -> return (Left err)
     Right (res,x) -> return (Right ((driverEnv x), res))
