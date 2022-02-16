@@ -7,35 +7,15 @@ import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 
+import Errors
 import Syntax.CommonTerm
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.AST.Types (IsRefined(..))
 
-data LoweringError where
-    -- Type scheme violations
-    MissingVarsInTypeScheme :: LoweringError
-    -- Polarity violations
-    TopInPosPolarity :: LoweringError
-    BotInNegPolarity :: LoweringError
-    IntersectionInPosPolarity :: LoweringError
-    UnionInNegPolarity :: LoweringError
-    -- Operator errors
-    UnknownOperator :: BinOp -> LoweringError
-    OtherError :: Text -> LoweringError
+type LowerM a = ReaderT SymbolTable (Except Error) a
 
-instance Show LoweringError where
-    show MissingVarsInTypeScheme = "Missing declaration of type variable"
-    show TopInPosPolarity = "Cannot use `Top` in positive polarity"
-    show BotInNegPolarity = "Cannot use `Bot` in negative polarity"
-    show IntersectionInPosPolarity = "Cannot use `/\\` in positive polarity"
-    show UnionInNegPolarity = "Cannot use `\\/` in negative polarity"
-    show (UnknownOperator op) = "Undefined type operator `" ++ show op ++ "`"
-    show (OtherError txt) = T.unpack txt
-
-type LowerM a = ReaderT SymbolTable (Except LoweringError) a
-
-runLowerM :: SymbolTable -> LowerM a -> Either LoweringError a
+runLowerM :: SymbolTable -> LowerM a -> Either Error a
 runLowerM st m = runExcept (runReaderT m st)
 
 
@@ -64,6 +44,6 @@ lowerXtorName True (MkXtorName' xt) = pure (MkXtorName Structural xt)
 lowerXtorName False xtor@(MkXtorName' xt) = do
     st <- ask
     case M.lookup xtor st of
-        Nothing -> throwError (OtherError (T.pack ("The symbol" <> show xt <> " is not in symbol table: " <> show (M.toList st))))
+        Nothing -> throwError (OtherError Nothing (T.pack ("The symbol" <> show xt <> " is not in symbol table: " <> show (M.toList st))))
         Just Refined -> pure (MkXtorName Refinement xt)
         Just NotRefined -> pure (MkXtorName Nominal xt)
