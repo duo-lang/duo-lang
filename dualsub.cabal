@@ -63,6 +63,7 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
+      Driver.Definition
       Driver.Driver
       Errors
       Eval.Eval
