@@ -7,6 +7,7 @@ import Control.Monad.State ( forM_, gets )
 import Data.List (find)
 import Data.Map qualified as M
 import Data.Text (Text)
+import Data.Text qualified as T
 import System.Console.Repline ()
 
 import Parser.Parser ( programP )
@@ -23,6 +24,7 @@ import Syntax.AST.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.AST.Types ( TypeName(MkTypeName), DataDecl(data_name) )
 import Syntax.Lowering.Program
+import Syntax.Lowering.Lowering
 import Utils (trim)
 
 -- Show

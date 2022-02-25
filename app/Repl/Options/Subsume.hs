@@ -6,6 +6,7 @@ import Parser.Parser ( subtypingProblemP )
 import Repl.Repl
     ( prettyRepl, Repl, Option(..), fromRight, parseInteractive )
 import TypeAutomata.Subsume (subsume)
+import Syntax.Lowering.Lowering
 import Syntax.Lowering.Types
 import Syntax.AST.Types
 

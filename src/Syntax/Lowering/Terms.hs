@@ -1,6 +1,6 @@
 module Syntax.Lowering.Terms (lowerTerm, lowerCommand) where
 
-import Control.Monad.Except
+import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Text.Megaparsec.Pos (SourcePos)

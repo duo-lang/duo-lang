@@ -1,6 +1,6 @@
-module Syntax.Lowering.Program (lowerProgram) where
+module Syntax.Lowering.Program (lowerProgram, lowerDecl) where
 
-import Control.Monad.Except
+import Control.Monad.Except (throwError)
 
 import Errors
 import Syntax.Lowering.Terms (lowerTerm, lowerCommand)

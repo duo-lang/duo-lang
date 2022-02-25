@@ -4,7 +4,6 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Text (Text)
 import Data.Text qualified as T
 
 import Errors

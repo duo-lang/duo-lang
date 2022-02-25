@@ -1,8 +1,9 @@
 module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig, lowerXtorName, LoweringError(..), LowerM) where
 
-import Control.Monad.Except
+import Control.Monad.Except (throwError)
 import Data.Text qualified as T
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors

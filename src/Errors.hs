@@ -11,16 +11,16 @@ import Utils
 ----------------------------------------------------------------------------------
 
 data LoweringError where
-    -- Type scheme violations
-    MissingVarsInTypeScheme :: LoweringError
-    -- Polarity violations
-    TopInPosPolarity :: LoweringError
-    BotInNegPolarity :: LoweringError
-    IntersectionInPosPolarity :: LoweringError
-    UnionInNegPolarity :: LoweringError
-    -- Operator errors
-    UnknownOperator :: Text -> LoweringError
-    deriving (Show, Eq)
+  -- Type scheme violations
+  MissingVarsInTypeScheme :: LoweringError
+  -- Polarity violations
+  TopInPosPolarity :: LoweringError
+  BotInNegPolarity :: LoweringError
+  IntersectionInPosPolarity :: LoweringError
+  UnionInNegPolarity :: LoweringError
+  -- Operator errors
+  UnknownOperator :: Text -> LoweringError
+  deriving (Show, Eq)
 
 data Error where
   ParseError            :: Maybe Loc -> Text -> Error
