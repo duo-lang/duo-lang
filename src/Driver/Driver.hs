@@ -21,11 +21,9 @@ import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
-import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Terms
 import Syntax.CommonTerm
 import Syntax.Lowering.Program
-import Syntax.Lowering.Lowering (runLowerM)
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
@@ -47,11 +45,12 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsCommand,
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
-import Utils ( Verbosity(..), Loc )
+import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
 ---------------------------------------------------------------------------------
+
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type

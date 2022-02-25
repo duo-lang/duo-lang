@@ -37,7 +37,6 @@ defaultInferenceOptions = InferenceOptions
   , infOptsLibPath = []
   }
 
-
 ---------------------------------------------------------------------------------
 -- Symbol Table
 ---------------------------------------------------------------------------------
@@ -110,7 +109,6 @@ findModule (ModuleName mod) loc = do
     [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
     (fp:_) -> return fp
 
-
 liftErr :: Loc -> Error -> DriverM a
 liftErr loc err = do
     let locerr = attachLoc loc err
@@ -121,7 +119,6 @@ liftEitherErr :: Loc -> Either Error a -> DriverM a
 liftEitherErr loc x = case x of
     Left err -> liftErr loc err
     Right res -> return res
-
 
 lowerXtorName :: Bool -> XtorName' -> DriverM XtorName
 lowerXtorName True (MkXtorName' xt) = pure (MkXtorName Structural xt)
