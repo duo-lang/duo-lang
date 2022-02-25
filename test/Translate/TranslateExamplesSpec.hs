@@ -10,7 +10,7 @@ import Syntax.CommonTerm
 import Syntax.AST.Program
 import Translate.Desugar
 import Translate.Reparse
-import TypeInference.Driver
+import Driver.Driver
 import TestUtils
 
 driverState :: DriverState

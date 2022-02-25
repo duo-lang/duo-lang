@@ -33,7 +33,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import TypeInference.Driver
+import Driver.Driver
 import Utils
 import LSP.Definition
 import LSP.HoverHandler ( hoverHandler, updateHoverCache )

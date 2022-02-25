@@ -10,7 +10,7 @@ import Pretty.Errors ()
 import Syntax.AST.Terms
 import Syntax.AST.Program
 import TestUtils
-import TypeInference.Driver
+import Driver.Driver
 
 spec :: Spec
 spec = do
