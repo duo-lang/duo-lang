@@ -2,6 +2,7 @@ module Syntax.Lowering.Program (lowerProgram, lowerDecl) where
 
 import Control.Monad.Except (throwError)
 
+import Errors
 import Syntax.Lowering.Terms (lowerTerm, lowerCommand)
 import Syntax.Lowering.Types (lowerTypeScheme, lowerXTorSig)
 import Syntax.Lowering.Lowering
@@ -44,7 +45,7 @@ lowerDecl (CST.CmdDecl loc fv cmd) = AST.CmdDecl loc fv <$> (lowerCommand cmd)
 lowerDecl (CST.DataDecl loc dd)    = AST.DataDecl loc <$> lowerDataDecl dd
 lowerDecl (CST.ImportDecl loc mod) = pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt)    = pure $ AST.SetDecl loc txt
-lowerDecl CST.ParseErrorDecl       = throwError (OtherError "Unreachable: ParseErrorDecl cannot be parsed")
+lowerDecl CST.ParseErrorDecl       = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
 lowerProgram :: CST.Program -> LowerM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl

@@ -2,8 +2,10 @@ module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
+import Errors
 import Syntax.Lowering.Lowering
 import Syntax.CommonTerm
 import qualified Syntax.AST.Types as AST
@@ -21,7 +23,7 @@ lowerTypeScheme rep (TypeScheme tvars monotype) = do
     monotype <- lowerTyp rep monotype
     if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList tvars)
         then pure (AST.TypeScheme tvars monotype)
-        else throwError MissingVarsInTypeScheme
+        else throwError (LowerError Nothing MissingVarsInTypeScheme)
 
 lowerTyp :: PolarityRep pol -> Typ -> LowerM (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
@@ -33,10 +35,10 @@ lowerTyp rep (TyXData AST.Codata name sigs) = do
     pure $ AST.TyCodata rep name sigs
 lowerTyp rep (TyNominal name) = pure $ AST.TyNominal rep Nothing name
 lowerTyp rep (TyRec v typ) = AST.TyRec rep v <$> lowerTyp rep typ
-lowerTyp PosRep TyTop = throwError TopInPosPolarity
+lowerTyp PosRep TyTop = throwError (LowerError Nothing TopInPosPolarity)
 lowerTyp NegRep TyTop = pure desugarTopType
 lowerTyp PosRep TyBot = pure desugarBotType
-lowerTyp NegRep TyBot = throwError BotInNegPolarity
+lowerTyp NegRep TyBot = throwError (LowerError Nothing BotInNegPolarity)
 lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
 lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
@@ -95,7 +97,7 @@ lookupOp :: Ops -> BinOp -> LowerM (Op, Prio)
 lookupOp = lookupHelper 0
     where
         lookupHelper :: Prio -> Ops -> BinOp -> LowerM (Op, Prio)
-        lookupHelper _ [] s = throwError (UnknownOperator s)
+        lookupHelper _ [] s = throwError (LowerError Nothing (UnknownOperator (T.pack (show s))))
         lookupHelper p (op@(Op s' _ _) : _) s | s == s' = pure (op, p)
         lookupHelper p (_ : ops) s = lookupHelper (p + 1) ops s
 
@@ -153,7 +155,7 @@ desugarIntersectionType NegRep tl tr = do
     case tl of
         AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
         _ -> pure $ AST.TySet NegRep Nothing [tl, tr]
-desugarIntersectionType PosRep _ _ = throwError IntersectionInPosPolarity
+desugarIntersectionType PosRep _ _ = throwError (LowerError Nothing IntersectionInPosPolarity)
 
 desugarUnionType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
 desugarUnionType PosRep tl tr = do
@@ -162,7 +164,7 @@ desugarUnionType PosRep tl tr = do
     case tl of
         AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
         _ -> pure $ AST.TySet PosRep Nothing [tl, tr]
-desugarUnionType NegRep _ _ = throwError UnionInNegPolarity
+desugarUnionType NegRep _ _ = throwError (LowerError Nothing UnionInNegPolarity)
 
 -- | Desugar function arrow syntax
 desugarArrowType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
