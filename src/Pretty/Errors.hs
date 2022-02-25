@@ -20,12 +20,12 @@ prettyMaybeLoc Nothing = mempty
 prettyMaybeLoc (Just loc) = prettyAnn loc <> ": "
 
 instance PrettyAnn LoweringError where
-  prettyAnn MissingVarsInTypeScheme = "Missing declaration of type variable"
-  prettyAnn TopInPosPolarity = "Cannot use `Top` in positive polarity"
-  prettyAnn BotInNegPolarity = "Cannot use `Bot` in negative polarity"
-  prettyAnn IntersectionInPosPolarity = "Cannot use `/\\` in positive polarity"
-  prettyAnn UnionInNegPolarity = "Cannot use `\\/` in negative polarity"
-  prettyAnn (UnknownOperator op) = "Undefined type operator `" <> pretty op <> "`"
+  prettyAnn MissingVarsInTypeScheme         = "Missing declaration of type variable"
+  prettyAnn TopInPosPolarity                = "Cannot use `Top` in positive polarity"
+  prettyAnn BotInNegPolarity                = "Cannot use `Bot` in negative polarity"
+  prettyAnn IntersectionInPosPolarity       = "Cannot use `/\\` in positive polarity"
+  prettyAnn UnionInNegPolarity              = "Cannot use `\\/` in negative polarity"
+  prettyAnn (UnknownOperator op)            = "Undefined type operator `" <> pretty op <> "`"
 
 instance PrettyAnn Error where
   prettyAnn (ParseError loc err)            = prettyMaybeLoc loc <> "Parsing error:" <+> pretty err
