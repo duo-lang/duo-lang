@@ -155,17 +155,12 @@ inferDecl (ImportDecl loc mod) = do
 --
 -- SetDecl
 --
-inferDecl (SetDecl loc txt) = case T.unpack txt of
-  "refined" -> do
-    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
-    return (SetDecl loc txt)
+inferDecl (SetDecl _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
 
 ---------------------------------------------------------------------------------
 -- Infer programs
 ---------------------------------------------------------------------------------
-
-
 
 inferProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred, Program Inferred)

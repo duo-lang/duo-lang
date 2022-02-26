@@ -23,7 +23,10 @@ instance PrettyAnn DataCodata where
   prettyAnn Codata = annKeyword "codata"
 
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl tn dc knd xtors) =
+  prettyAnn (NominalDecl ref tn dc knd xtors) =
+    (case ref of
+      Refined -> annKeyword "refinement" <+> mempty
+      NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
     colon <+>

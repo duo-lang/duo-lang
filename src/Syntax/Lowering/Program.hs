@@ -21,9 +21,10 @@ lowerXtors sigs = do
     pure (posSigs, negSigs)
 
 lowerDataDecl :: CST.DataDecl -> LowerM AST.DataDecl
-lowerDataDecl CST.NominalDecl { data_name, data_polarity, data_kind, data_xtors } = do
+lowerDataDecl CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
     xtors <- lowerXtors data_xtors
-    pure AST.NominalDecl { data_name = data_name
+    pure AST.NominalDecl { data_refined = data_refined
+                         , data_name = data_name
                          , data_polarity = data_polarity
                          , data_kind = data_kind
                          , data_xtors = xtors
