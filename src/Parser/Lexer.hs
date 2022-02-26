@@ -31,6 +31,7 @@ module Parser.Lexer
   , cbvKwP
   , cbnKwP
   , typeKwP
+  , refinementKwP
     -- Symbols
   , dot
   , pipe
@@ -172,7 +173,7 @@ moduleNameP = try $ do
 
 keywords :: [Text]
 keywords = ["match", "comatch", "case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
-           , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN"]
+           , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN", "refinement"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -248,6 +249,9 @@ cbnKwP = keywordP "CBN"
 
 typeKwP :: Parser SourcePos
 typeKwP = keywordP "Type"
+
+refinementKwP :: Parser SourcePos
+refinementKwP = keywordP "refinement"
 
 -------------------------------------------------------------------------------------------
 -- Symbols
@@ -374,7 +378,7 @@ argListsIP mode p = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> (eof >> getSourcePos)
+  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> refinementKwP <|> (eof >> getSourcePos)
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

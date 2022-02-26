@@ -1,18 +1,16 @@
-set refined;
-
 # Examples for testing type decl translation
-data Bool : Type CBV { True, False }; # Boolean values
-data Nat : Type CBV { Z, S(Nat) }; # Natural numbers
+refinement data Bool : Type CBV { True, False }; # Boolean values
+refinement data Nat : Type CBV { Z, S(Nat) }; # Natural numbers
 
-data Even : Type CBV { Ze, Se(Odd) }; # Dual mutual recursion
-data Odd  : Type CBV { So(Even) };
+refinement data Even : Type CBV { Ze, Se(Odd) }; # Dual mutual recursion
+refinement data Odd  : Type CBV { So(Even) };
 
-data X1 : Type CBV { A, B(X2), C(X3) }; # Multiple mutual recursion
-data X2 : Type CBV { D(X3) };
-data X3 : Type CBV { E(X1,X2) };
+refinement data X1 : Type CBV { A, B(X2), C(X3) }; # Multiple mutual recursion
+refinement data X2 : Type CBV { D(X3) };
+refinement data X3 : Type CBV { E(X1,X2) };
 
-codata Tuple : Type CBV { Left[Bool], Right[Bool] };
-codata Fun : Type CBV { ApNN(Nat)[Nat], ApBB(Bool)[Bool], ApNB(Nat)[Bool] };
+refinement codata Tuple : Type CBV { Left[Bool], Right[Bool] };
+refinement codata Fun : Type CBV { ApNN(Nat)[Nat], ApBB(Bool)[Bool], ApNB(Nat)[Bool] };
 
 # Structural and refinement (co)data as well as refinements of different 
 # nominal types should not mix

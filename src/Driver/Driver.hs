@@ -29,6 +29,8 @@ import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
+      IsRefined(..),
+      DataDecl(data_refined)
     )
 import Syntax.AST.Program
     ( Program,
@@ -138,6 +140,9 @@ inferDecl (CmdDecl loc v cmd) = do
 --
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
+  case data_refined dcl of 
+    Refined -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
+    NotRefined -> pure ()
   -- TODO: Check data decls
   env <- gets driverEnv
   let newEnv = env { declEnv = (loc,dcl) : declEnv env}
@@ -155,17 +160,12 @@ inferDecl (ImportDecl loc mod) = do
 --
 -- SetDecl
 --
-inferDecl (SetDecl loc txt) = case T.unpack txt of
-  "refined" -> do
-    modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
-    return (SetDecl loc txt)
+inferDecl (SetDecl _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
 
 ---------------------------------------------------------------------------------
 -- Infer programs
 ---------------------------------------------------------------------------------
-
-
 
 inferProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred, Program Inferred)

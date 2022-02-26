@@ -1,8 +1,7 @@
-set refined;
 
-data L : Type CBV { Atom, NegAtom };
-data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
-data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };
+refinement data L : Type CBV { Atom, NegAtom };
+refinement data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
+refinement data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };
 
 # prd rec nnf := cocase { 'Ap(f) => case f of {
 #     Lit(a)   => case a of { 

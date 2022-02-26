@@ -13,7 +13,7 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CommonTerm
-import Syntax.AST.Types (DataCodata(..))
+import Syntax.AST.Types (DataCodata(..), IsRefined(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
@@ -88,10 +88,19 @@ combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
 combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
 combineXtors = fmap combineXtor
 
+dataCodataPrefixP :: Parser (IsRefined,DataCodata)
+dataCodataPrefixP = do
+  refined <- optional refinementKwP
+  dataCodata <- (dataKwP >> return Data) <|> (codataKwP >> return Codata)
+  case refined of
+    Nothing -> pure (NotRefined, dataCodata)
+    Just _ -> pure (Refined, dataCodata)
+
+
 dataDeclP :: Parser Declaration
 dataDeclP = do
   startPos <- getSourcePos
-  dataCodata <- (dataKwP >> return Data) <|> (codataKwP >> return Codata)
+  (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
     _ <- colon
@@ -99,7 +108,8 @@ dataDeclP = do
     (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
     endPos <- semi
     let decl = NominalDecl
-          { data_name = tn
+          { data_refined = refined
+          , data_name = tn
           , data_polarity = dataCodata
           , data_kind = knd
           , data_xtors = combineXtors xtors

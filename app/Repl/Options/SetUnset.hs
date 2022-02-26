@@ -20,7 +20,6 @@ import Repl.Repl
       EvalSteps(NoSteps, Steps),
       prettyRepl,
       mkWordCompleter )
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 import Utils (trim,  Verbosity(..))
 import Driver.Driver
 
@@ -28,13 +27,13 @@ import Driver.Driver
 
 setCmdVariants :: [(Text, Repl ())]
 setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                   , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
-                   , ("steps", modify (\rs -> rs { steps = Steps }))
-                   , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = True } }))
-                   , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = True } }))
-                   , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
-                   , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
-                   , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferRefined  } })) ]
+                 , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
+                 , ("steps", modify (\rs -> rs { steps = Steps }))
+                 , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = True } }))
+                 , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = True } }))
+                 , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
+                 , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
+                 ]
 
 setCmd :: Text -> Repl ()
 setCmd s = do
@@ -67,9 +66,9 @@ setOption = Option
 
 unsetCmdVariants :: [(Text, Repl ())]
 unsetCmdVariants = [ ("steps", modify (\rs -> rs { steps = NoSteps }))
-                     , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = False } }))
-                     , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = False } }))
-                     , ("refinements", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsMode = InferNominal } }))]
+                   , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = False } }))
+                   , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = False } }))
+                   ]
 
 unsetCmd :: Text -> Repl ()
 unsetCmd s = do
