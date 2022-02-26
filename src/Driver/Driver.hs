@@ -28,6 +28,8 @@ import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
+      IsRefined(..),
+      DataDecl(data_refined)
     )
 import Syntax.AST.Program
     ( Program,

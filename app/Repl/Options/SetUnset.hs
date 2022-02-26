@@ -70,7 +70,6 @@ unsetCmdVariants = [ ("steps", modify (\rs -> rs { steps = NoSteps }))
                    , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = False } }))
                    ]
 
-
 unsetCmd :: Text -> Repl ()
 unsetCmd s = do
   let s' = trim s
