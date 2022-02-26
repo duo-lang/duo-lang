@@ -20,7 +20,7 @@ import Repl.Repl
       prettyRepl,
       prettyText,
       parseFile )
-import TypeInference.Driver
+import Driver.Driver
 import Utils (trim)
 
 -- Load

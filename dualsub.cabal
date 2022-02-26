@@ -63,6 +63,8 @@ common shared-build-depends
 library
   import: shared-build-depends
   exposed-modules:
+      Driver.Definition
+      Driver.Driver
       Errors
       Eval.Eval
       Lookup
@@ -104,7 +106,6 @@ library
       TypeAutomata.Subsume
       TypeAutomata.ToAutomaton
       TypeInference.Coalescing
-      TypeInference.Driver
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.Terms
       TypeInference.SolveConstraints

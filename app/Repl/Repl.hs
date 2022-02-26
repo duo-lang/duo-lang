@@ -22,7 +22,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
 import Syntax.CommonTerm (Phase(..))
-import TypeInference.Driver
+import Driver.Driver
 import Translate.Desugar
 import Translate.Focusing
 import Utils (trimStr, defaultLoc)
