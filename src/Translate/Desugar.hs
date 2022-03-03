@@ -112,6 +112,7 @@ desugarDecl :: Declaration Inferred -> Declaration Compiled
 desugarDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (desugarTerm tm)
 desugarDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (desugarCmd cmd)
 desugarDecl (DataDecl _ decl)                   = DataDecl () decl
+desugarDecl (XtorDecl _ dc xt args ret)         = XtorDecl () dc xt args ret
 desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
 

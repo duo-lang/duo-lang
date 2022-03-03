@@ -111,10 +111,11 @@ reparseCommand cmd = evalState (createNamesCommand cmd) names
 
 reparseDecl :: Declaration ext -> Declaration Parsed
 reparseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl defaultLoc rep isRec fv ts (reparseTerm tm)
-reparseDecl (CmdDecl _ fv cmd) = CmdDecl defaultLoc fv (reparseCommand cmd)
-reparseDecl (DataDecl _ decl) = DataDecl defaultLoc decl
-reparseDecl (ImportDecl _ mn) = ImportDecl defaultLoc mn
-reparseDecl (SetDecl _ txt) = SetDecl defaultLoc txt
+reparseDecl (CmdDecl _ fv cmd)                = CmdDecl defaultLoc fv (reparseCommand cmd)
+reparseDecl (DataDecl _ decl)                 = DataDecl defaultLoc decl
+reparseDecl (XtorDecl _ dc xt args ret)       = XtorDecl defaultLoc dc xt args ret
+reparseDecl (ImportDecl _ mn)                 = ImportDecl defaultLoc mn
+reparseDecl (SetDecl _ txt)                   = SetDecl defaultLoc txt
 
 reparseProgram :: Program ext -> Program Parsed
 reparseProgram = fmap reparseDecl

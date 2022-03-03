@@ -149,6 +149,11 @@ inferDecl (DataDecl loc dcl) = do
   setEnvironment newEnv
   return (DataDecl loc dcl)
 --
+-- XtorDecl
+--
+inferDecl (XtorDecl loc dc xt args ret) =
+  pure $ XtorDecl loc dc xt args ret
+--
 -- ImportDecl
 --
 inferDecl (ImportDecl loc mod) = do
