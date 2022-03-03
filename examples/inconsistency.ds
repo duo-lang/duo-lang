@@ -1,3 +1,5 @@
+destructor Ap(CBV)[CBV] : CBV;
+
 prd fixLazy := comatch { 'Ap(f)[k] => 
                  comatch { 'Ap(x)[k] => x >> 
                    'Ap(x)[mu xx. f >> 'Ap(xx)[k]] } >> 
