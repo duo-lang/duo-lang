@@ -1,5 +1,7 @@
 # DualSub
 
+## About
+
 DualSub is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
 The general programming style is similar to programming languages in the ML tradition (SML, Miranda, Haskell, OCaml).
 This means that the language provides a rich language for defining new types, and these types can be inferred using a powerful type inference mechanism.
@@ -23,5 +25,8 @@ DualSub is a language focused on two central ideas; **Dual**ity and **Sub**typin
 - **Subtyping:** Subtyping in programming languages is mostly associated with object-oriented programming and inheritance.
   Part of the reason for this association is that statically-typed functional programming languages heavily rely on type-inference, and it was widely thought that good type inference is incompatible with subtyping.
   We use the recently developed algebraic-subtyping approach to infer types.
-  This approach allows to infer principal types with minimal need for user-provided type annotations.
+  This approach allows to infer principal types with minimal need for user-provided type annotations, even in the presence of subtyping and parametric polymorphism.
 
+## About Us
+
+DualSub is developed on [GitHub](https://github.com/ps-tuebingen/dualsub) at the chair for programming languages at the University of Tübingen.

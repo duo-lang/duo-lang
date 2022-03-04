@@ -15,10 +15,12 @@
 
 # Formal Specification
 
-- [Specification](./specification/spec.md)
+- [Specification]()
 
 # Language Server Features
 
 - [LSP Features](./features/features.md)
+
+---
 
 [Further Reading](./furtherReading.md)
