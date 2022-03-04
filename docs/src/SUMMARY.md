@@ -2,6 +2,8 @@
 
 [Preface](./preface.md)
 
+---
+
 # Installation
 
 - [Installing DualSub](./installation/dualsub.md)
