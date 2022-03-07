@@ -1,24 +1,38 @@
 # These examples used to be part of the testsuite in "StaticExamplesSpec"
 # The tests have been transferred here since we now support checking of type annotations.
 
-import Prg;
 import Prelude;
+
+destructor Ap : CBN;
+constructor TT : CBV;
+constructor FF : CBV;
+constructor Succ : CBV;
+constructor Zero : CBV;
+
+prd fix := comatch { Ap(f)[k] =>
+             comatch { Ap(x)[k] => f >>
+               Ap( comatch { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] } >>
+                 Ap( comatch { Ap(x)[k] => f >>
+                   Ap( comatch { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] })[k] };
+
+prd addNominal := comatch { Ap(n,m)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
+prd mltNominal := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
 
 prd ex1 : forall a. { Ap(a)[a] } := comatch { Ap(x)[k] => x >> k };
  
-prd ex2 : < S(< Z >) > := S(Z);
+prd ex2 : < Succ(< Zero >) > := Succ(Zero);
 
-prd ex3 : forall a. { Ap(< True | False >, a, a)[a] } := comatch { Ap(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }};
+prd ex3 : forall a. { Ap(< TT | FF >, a, a)[a] } := comatch { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
 
-prd ex4 : forall a b. { Ap(<True|False>, a, b)[a \/ b] } := comatch { Ap(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }};
+prd ex4 : forall a b. { Ap(<TT|FF>, a, b)[a \/ b] } := comatch { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
 
 prd ex5 :  forall a b. { Ap({ Ap(a \/ b)[b] })[{ Ap(a)[b] }] } := comatch { Ap(f)[k] => (comatch { Ap(x)[k] => f >> Ap(x)[mu y. f >> Ap(y)[k]]}) >> k};
 
-prd ex6 : { Ap(Bool)[Bool] } := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }};
+prd ex6 : { Ap(Bool)[Bool] } := comatch { Ap(x)[k] => x >> match { True => False >> k, False => True >> k }};
 
-prd ex7 : { Ap(Bool)[(Bool \/ Nat)] } := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }};
+prd ex7 : { Ap(Bool)[(Bool \/ Nat)] } := comatch { Ap(x)[k] => x >> match { True => False >> k, False => Z >> k }};
 
-prd ex8 : { Ap(Bool)[(Nat \/ Bool)] } := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }};
+prd ex8 : { Ap(Bool)[(Nat \/ Bool)] } := comatch { Ap(x)[k] => x >> match { True => False >> k, False => Z >> k }};
 
 prd ex9 : { Ap(Nat,Nat)[Nat] } := comatch { Ap(n,m)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
 

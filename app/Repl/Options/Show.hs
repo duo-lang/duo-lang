@@ -18,7 +18,7 @@ import Repl.Repl
       prettyRepl,
       parseFile,
       Option(..),
-      ReplState(loadedFiles, replEnv),
+      ReplState(loadedFiles, replEnv, typeInfOpts),
       Repl )
 import Syntax.AST.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
@@ -32,9 +32,12 @@ import Utils (trim)
 showCmd :: Text -> Repl ()
 showCmd "" = do
   loadedFiles <- gets loadedFiles
+  oldEnv <- gets replEnv
+  opts <- gets typeInfOpts
+  let ds = DriverState opts oldEnv
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
-    decls' <- liftIO $ execDriverM undefined $ lowerProgram decls
+    decls' <- liftIO $ execDriverM ds $ lowerProgram decls
     case decls' of
       Left err -> prettyText (T.pack $ show err)
       Right (decls,_) -> prettyRepl decls
