@@ -24,7 +24,6 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Syntax.AST.Terms
 import Syntax.CommonTerm
 import Syntax.Lowering.Program
-import Syntax.Lowering.Lowering (runLowerM)
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
@@ -194,10 +193,7 @@ inferProgram decls = do
 
 renameProgram :: [CST.Declaration]
               -> DriverM (Program Parsed)
-renameProgram decls = do
-  case runLowerM (lowerProgram decls) of
-    Left err -> throwOtherError [T.pack (show err)]
-    Right decls -> pure decls
+renameProgram decls = lowerProgram decls
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]

@@ -6,7 +6,7 @@ import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
-import Syntax.Lowering.Lowering
+import Driver.Definition
 import Syntax.CommonTerm
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
@@ -18,14 +18,14 @@ import Syntax.CST.Types
 
 
 
-lowerTypeScheme :: PolarityRep pol -> TypeScheme -> LowerM (AST.TypeScheme pol)
+lowerTypeScheme :: PolarityRep pol -> TypeScheme -> DriverM (AST.TypeScheme pol)
 lowerTypeScheme rep (TypeScheme tvars monotype) = do
     monotype <- lowerTyp rep monotype
     if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList tvars)
         then pure (AST.TypeScheme tvars monotype)
         else throwError (LowerError Nothing MissingVarsInTypeScheme)
 
-lowerTyp :: PolarityRep pol -> Typ -> LowerM (AST.Typ pol)
+lowerTyp :: PolarityRep pol -> Typ -> DriverM (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
 lowerTyp rep (TyXData AST.Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
@@ -43,20 +43,20 @@ lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
 lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
 
-lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> LowerM [AST.XtorSig pol]
+lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> DriverM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs
 
-lowerXTorSig :: PolarityRep pol -> XtorSig -> LowerM (AST.XtorSig pol)
+lowerXTorSig :: PolarityRep pol -> XtorSig -> DriverM (AST.XtorSig pol)
 lowerXTorSig rep (MkXtorSig name ctx) = AST.MkXtorSig name <$> lowerLinearContext rep ctx
 
-lowerLinearContext :: PolarityRep pol -> LinearContext -> LowerM (AST.LinearContext pol)
+lowerLinearContext :: PolarityRep pol -> LinearContext -> DriverM (AST.LinearContext pol)
 lowerLinearContext rep ctx = sequence $ lowerPrdCnsTyp rep <$> ctx
 
-lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> LowerM (AST.PrdCnsType pol)
+lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> DriverM (AST.PrdCnsType pol)
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdCnsType PrdRep <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.PrdCnsType CnsRep <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> LowerM (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> DriverM (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -69,7 +69,7 @@ data Op = Op
     {
         symbol :: BinOp,
         assoc :: Assoc,
-        desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
+        desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
     }
 
 data Assoc = LeftAssoc | RightAssoc
@@ -93,10 +93,10 @@ parOp = Op { symbol = ParOp, assoc = LeftAssoc, desugar = desugarParType }
 ops :: Ops
 ops = [ funOp, unionOp, interOp, parOp ]
 
-lookupOp :: Ops -> BinOp -> LowerM (Op, Prio)
+lookupOp :: Ops -> BinOp -> DriverM (Op, Prio)
 lookupOp = lookupHelper 0
     where
-        lookupHelper :: Prio -> Ops -> BinOp -> LowerM (Op, Prio)
+        lookupHelper :: Prio -> Ops -> BinOp -> DriverM (Op, Prio)
         lookupHelper _ [] s = throwError (LowerError Nothing (UnknownOperator (T.pack (show s))))
         lookupHelper p (op@(Op s' _ _) : _) s | s == s' = pure (op, p)
         lookupHelper p (_ : ops) s = lookupHelper (p + 1) ops s
@@ -118,7 +118,7 @@ lookupOp = lookupHelper 0
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> NonEmpty (BinOp, Typ) -> LowerM Typ
+associateOps :: Typ -> NonEmpty (BinOp, Typ) -> DriverM Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     (op1, prio1) <- lookupOp ops s1
@@ -133,7 +133,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     else
         error "Unhandled case reached. This is a bug the operator precedence parser"
 
-lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> LowerM (AST.Typ pol)
+lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> DriverM (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
     (op, _) <- lookupOp ops s
     desugar op rep lhs rhs
@@ -148,7 +148,7 @@ desugarTopType = AST.TySet NegRep Nothing []
 desugarBotType :: AST.Typ 'Pos
 desugarBotType = AST.TySet PosRep Nothing []
 
-desugarIntersectionType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
+desugarIntersectionType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
 desugarIntersectionType NegRep tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
@@ -157,7 +157,7 @@ desugarIntersectionType NegRep tl tr = do
         _ -> pure $ AST.TySet NegRep Nothing [tl, tr]
 desugarIntersectionType PosRep _ _ = throwError (LowerError Nothing IntersectionInPosPolarity)
 
-desugarUnionType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
+desugarUnionType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
 desugarUnionType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
@@ -167,7 +167,7 @@ desugarUnionType PosRep tl tr = do
 desugarUnionType NegRep _ _ = throwError (LowerError Nothing UnionInNegPolarity)
 
 -- | Desugar function arrow syntax
-desugarArrowType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
+desugarArrowType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
 desugarArrowType PosRep tl tr = do
     tl <- lowerTyp (flipPolarityRep PosRep) tl
     tr <- lowerTyp PosRep tr
@@ -181,7 +181,7 @@ desugarArrowType NegRep tl tr = do
         [ AST.MkXtorSig (MkXtorName "Ap")
           [AST.PrdCnsType PrdRep tl, AST.PrdCnsType CnsRep tr]]
 
-desugarParType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
+desugarParType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
 desugarParType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr

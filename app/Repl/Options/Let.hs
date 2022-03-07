@@ -15,21 +15,18 @@ import Repl.Repl
       fromRight,
       modifyEnvironment )
 import Syntax.Lowering.Program
-import Syntax.Lowering.Lowering
 import Driver.Driver
 
 letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
-  case runLowerM (lowerDecl decl) of
+  oldEnv <- gets replEnv
+  opts <- gets typeInfOpts
+  let ds = DriverState opts oldEnv
+  newEnv <- liftIO $ execDriverM ds (lowerDecl decl >>= \x -> inferDecl x)
+  case newEnv of
     Left err -> prettyText (T.pack $ show err)
-    Right decl -> do
-      oldEnv <- gets replEnv
-      opts <- gets typeInfOpts
-      newEnv <- liftIO $ execDriverM (DriverState opts oldEnv) (inferDecl decl)
-      case newEnv of
-        Left _ -> return ()
-        Right (_,state) -> modifyEnvironment (const (driverEnv state))
+    Right (_,state) -> modifyEnvironment (const (driverEnv state))
 
 letOption :: Option
 letOption = Option
