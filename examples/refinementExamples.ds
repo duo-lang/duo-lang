@@ -14,7 +14,7 @@ refinement codata Fun : Type CBV { ApNN(Nat)[Nat], ApBB(Bool)[Bool], ApNB(Nat)[B
 
 # Structural and refinement (co)data as well as refinements of different 
 # nominal types should not mix
-prd ex1 := case True of { True => S(Z), False => 'H };
+prd ex1 := case True of { True => S(Z), False => H };
 
 prd ex2 := case True of { True => S(Z), False => True };
 
@@ -26,7 +26,7 @@ prd oneA := S(Z);
 prd threeA := S(S(S(Z)));
 
 # Incomplete pattern and copattern matches
-cns foo := match { True => Print('T); Done };
+cns foo := match { True => Print(T); Done };
 
 prd isSuccA := cocase { ApNB(n)[*] => case n of { 
                  S(m) => True

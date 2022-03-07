@@ -4,28 +4,28 @@
 import PrgOld;
 import Prelude;
 
-prd ex1 : forall a. { 'Ap(a)[a] } := comatch { 'Ap(x)[k] => x >> k };
+prd ex1 : forall a. { Ap(a)[a] } := comatch { Ap(x)[k] => x >> k };
  
-prd ex2 : < 'S(< 'Z >) > := 'S('Z);
+prd ex2 : < S(< Z >) > := S(Z);
 
-prd ex3 : forall a. { 'Ap(< 'True | 'False >, a, a)[a] } := comatch { 'Ap(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }};
+prd ex3 : forall a. { Ap(< True | False >, a, a)[a] } := comatch { Ap(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }};
 
-prd ex4 : forall a b. { 'Ap(<'True|'False>, a, b)[a \/ b] } := comatch { 'Ap(b,x,y)[k] => b >> match { 'True => x >> k, 'False => y >> k }};
+prd ex4 : forall a b. { Ap(<True|False>, a, b)[a \/ b] } := comatch { Ap(b,x,y)[k] => b >> match { True => x >> k, False => y >> k }};
 
-prd ex5 :  forall a b. { 'Ap({ 'Ap(a \/ b)[b] })[{ 'Ap(a)[b] }] } := comatch { 'Ap(f)[k] => (comatch { 'Ap(x)[k] => f >> 'Ap(x)[mu y. f >> 'Ap(y)[k]]}) >> k};
+prd ex5 :  forall a b. { Ap({ Ap(a \/ b)[b] })[{ Ap(a)[b] }] } := comatch { Ap(f)[k] => (comatch { Ap(x)[k] => f >> Ap(x)[mu y. f >> Ap(y)[k]]}) >> k};
 
-prd ex6 : { 'Ap(Bool)[Bool] } := comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }};
+prd ex6 : { Ap(Bool)[Bool] } := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }};
 
-prd ex7 : { 'Ap(Bool)[(Bool \/ Nat)] } := comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }};
+prd ex7 : { Ap(Bool)[(Bool \/ Nat)] } := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }};
 
-prd ex8 : { 'Ap(Bool)[(Nat \/ Bool)] } := comatch { 'Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }};
+prd ex8 : { Ap(Bool)[(Nat \/ Bool)] } := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => Z >> k }};
 
-prd ex9 : { 'Ap(Nat,Nat)[Nat] } := comatch { 'Ap(n,m)[k] => fix >> 'Ap( comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> 'Ap(p)[mu w. S(w) >> k] }} >> k })['Ap(m)[k]] };
+prd ex9 : { Ap(Nat,Nat)[Nat] } := comatch { Ap(n,m)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
 
-prd ex10 : forall t0. { 'Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> 'Ap(p)[mu w. addNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]]};
+prd ex10 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
 
-prd ex11 : forall t0. { 'Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> 'Ap(p)[mu w. mltNominal >> 'Ap(n,w)[k]] } } >> k })['Ap(m)[k]] };
+prd ex11 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
 
-prd ex12 : forall t0. { 'Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := comatch { 'Ap(n,m)[k] => fix >> 'Ap(comatch { 'Ap(alpha)[k] => comatch { 'Ap(n)[k] => comatch { 'Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> 'Ap(np)['Ap(mp)[k]] }}} >> k } >> k })['Ap(n)['Ap(m)[k]]]};
+prd ex12 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := comatch { Ap(n,m)[k] => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(n)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
 
 

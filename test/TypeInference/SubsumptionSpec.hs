@@ -37,17 +37,17 @@ spec :: Spec
 spec = do
   describe "Subsumption between typeschemes works" $ do
     -- Subsumptions which should hold
-    subsumptionCheckPos True "forall a. { 'Ap(a)[a] }" "{ 'Ap(< 'True >)[< 'True >] }"
-    subsumptionCheckPos True "{ 'Ap(< 'True >)[< 'True >] }" "{ 'Ap(< 'True >)[< 'True >] }"
-    subsumptionCheckPos True "forall a. { 'Ap(< 'True >)[< 'True >] }" "{ 'Ap(< 'True >)[< 'True >] }"
-    subsumptionCheckPos True "{ 'Ap(< 'True >)[< 'True >] }" "forall a. { 'Ap(< 'True >)[< 'True >] }"
-    subsumptionCheckPos True "{ 'Ap(< 'True | 'False >)[< 'True >] }" "{ 'Ap(< 'True >)[< 'True | 'False >] }"
-    subsumptionCheckPos True "{ 'Ap( Nat )[ { 'Ap( Nat )[ Bool ] } ] }" "{ 'Ap( Nat )[ { 'Ap( Nat )[ Bool ] } ] }"
+    subsumptionCheckPos True "forall a. { Ap(a)[a] }" "{ Ap(< True >)[< True >] }"
+    subsumptionCheckPos True "{ Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
+    subsumptionCheckPos True "forall a. { Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
+    subsumptionCheckPos True "{ Ap(< True >)[< True >] }" "forall a. { Ap(< True >)[< True >] }"
+    subsumptionCheckPos True "{ Ap(< True | False >)[< True >] }" "{ Ap(< True >)[< True | False >] }"
+    subsumptionCheckPos True "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }" "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }"
     subsumptionCheckPos True "Nat" "Nat"
-    subsumptionCheckPos True "{ 'Ap(Nat)[Bool] }" "{ 'Ap(Nat)[Bool] }"
-    -- Subsumptions which shouldn't hold
+    subsumptionCheckPos True "{ Ap(Nat)[Bool] }" "{ Ap(Nat)[Bool] }"
+    -- Subsumptions which shouldnt hold
     subsumptionCheckPos False "{}" "<>"
-    subsumptionCheckPos False "{ 'Ap(< 'True >)[< 'True >] }" "forall a. { 'Ap(a)[a] }"
-    subsumptionCheckPos False "{ 'Ap(< 'True >)[< 'True | 'False >] }" "{ 'Ap(< 'True >)[< 'True >] }"
+    subsumptionCheckPos False "{ Ap(< True >)[< True >] }" "forall a. { Ap(a)[a] }"
+    subsumptionCheckPos False "{ Ap(< True >)[< True | False >] }" "{ Ap(< True >)[< True >] }"
     subsumptionCheckPos False "Foo" "Bar"
 
