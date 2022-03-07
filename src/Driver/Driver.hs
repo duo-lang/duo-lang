@@ -29,7 +29,8 @@ import Syntax.AST.Types
     ( TypeScheme,
       generalize,
       IsRefined(..),
-      DataDecl(data_refined)
+      DataDecl(data_refined,data_xtors),
+      XtorSig (sig_name)
     )
 import Syntax.AST.Program
     ( Program,
@@ -144,13 +145,17 @@ inferDecl (DataDecl loc dcl) = do
     NotRefined -> pure ()
   -- TODO: Check data decls
   env <- gets driverEnv
-  let newEnv = env { declEnv = (loc,dcl) : declEnv env}
+  let newEnv = env { declEnv = (loc,dcl) : declEnv env
+                   , xtorMap = M.union (M.fromList [(xt, Nominal)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
   setEnvironment newEnv
   return (DataDecl loc dcl)
 --
 -- XtorDecl
 --
-inferDecl (XtorDecl loc dc xt args ret) =
+inferDecl (XtorDecl loc dc xt args ret) = do
+  env <- gets driverEnv
+  let newEnv = env { xtorMap = M.insert xt Structural (xtorMap env)}
+  setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --
 -- ImportDecl
