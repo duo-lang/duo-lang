@@ -34,9 +34,10 @@ lowerTermCase (loc, xtor, bs, tm) = do
                       , tmcase_term = AST.termClosing bs tm'
                       }
 
-termCasesToNS :: [CST.TermCase] -> NominalStructural
-termCasesToNS [] = Structural
-termCasesToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
+termCasesToNS :: [CST.TermCase] -> LowerM NominalStructural
+termCasesToNS [] = pure Structural
+termCasesToNS ((_,xtor,_,_):_) =
+  pure $ undefined -- xtorNominalStructural xtor
 
 lowerTermCaseI :: CST.TermCaseI -> LowerM (AST.TermCaseI Parsed)
 lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
@@ -50,9 +51,10 @@ lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
                        , tmcasei_term = AST.termClosing (bs1 ++ [(Cns, "*")] ++ bs2) tm'
                        }
 
-termCasesIToNS :: [CST.TermCaseI] -> NominalStructural
-termCasesIToNS [] = Structural
-termCasesIToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
+termCasesIToNS :: [CST.TermCaseI] -> LowerM NominalStructural
+termCasesIToNS [] = pure Structural
+termCasesIToNS ((_,xtor,_,_):_) = 
+  pure $ undefined -- xtorNominalStructural xtor
 
 lowerCommandCase :: CST.CommandCase -> LowerM (AST.CmdCase Parsed)
 lowerCommandCase (loc, xtor, bs, cmd) = do
@@ -64,32 +66,42 @@ lowerCommandCase (loc, xtor, bs, cmd) = do
                      }
 
 -- TODO: Check that all command cases use the same nominal/structural variant.
-commandCasesToNS :: [CST.CommandCase] -> NominalStructural
-commandCasesToNS [] = Structural
-commandCasesToNS ((_,xtor,_,_):_) = xtorNominalStructural xtor
+commandCasesToNS :: [CST.CommandCase] -> LowerM NominalStructural
+commandCasesToNS [] = pure Structural
+commandCasesToNS ((_,xtor,_,_):_) =
+  pure $ undefined -- xtorNominalStructural xtor
 
 lowerTerm :: PrdCnsRep pc -> CST.Term -> LowerM (AST.Term pc Parsed)
 lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
-lowerTerm rep    (CST.Xtor loc xtor subst)     = AST.Xtor loc rep xtor <$> lowerSubstitution subst
+lowerTerm rep    (CST.Xtor loc xtor subst)     = do
+  ns <- undefined -- lookup xtor TODO!
+  AST.Xtor loc rep ns xtor <$> lowerSubstitution subst
 lowerTerm rep    (CST.XMatch loc cases)        = do
   cases' <- sequence (lowerCommandCase <$> cases)
-  pure $ AST.XMatch loc rep (commandCasesToNS cases) cases'
+  ns <- commandCasesToNS cases
+  pure $ AST.XMatch loc rep ns cases'
 lowerTerm PrdRep (CST.MuAbs loc fv cmd)        = do
   cmd' <- lowerCommand cmd
   pure $ AST.MuAbs loc PrdRep (Just fv) (AST.commandClosing [(Cns,fv)] cmd')
 lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = do
   cmd' <- lowerCommand cmd
   pure $ AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] cmd')
-lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = AST.Dtor loc xtor <$> lowerTerm PrdRep tm <*> lowerSubstitutionI subst
+lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = do
+  ns <- undefined -- lookup xtor TODO!
+  tm' <- lowerTerm PrdRep tm
+  subst' <- lowerSubstitutionI subst
+  pure $ AST.Dtor loc ns xtor tm' subst'
 lowerTerm CnsRep (CST.Dtor _loc _xtor _tm _s)  = throwError (OtherError Nothing "Cannot lower Dtor to a consumer (TODO).")
 lowerTerm PrdRep (CST.Case loc tm cases)       = do
   cases' <- sequence (lowerTermCase <$> cases)
   tm' <- lowerTerm PrdRep tm
-  pure $ AST.Case loc (termCasesToNS cases) tm' cases'
+  ns <- termCasesToNS cases
+  pure $ AST.Case loc ns tm' cases'
 lowerTerm CnsRep (CST.Case _loc _tm _cases)    = throwError (OtherError Nothing "Cannot lower Match to a consumer (TODO)")
 lowerTerm PrdRep (CST.Cocase loc cases)        = do
   cases' <- sequence (lowerTermCaseI <$> cases)
-  pure $ AST.Cocase loc (termCasesIToNS cases) cases'
+  ns <- termCasesIToNS cases
+  pure $ AST.Cocase loc ns cases'
 lowerTerm CnsRep (CST.Cocase _loc _cases)      = throwError (OtherError Nothing "Cannot lower Comatch to a consumer (TODO)")
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
 lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = throwError (OtherError Nothing "Cannot lower NatLit to a consumer.")
@@ -116,24 +128,24 @@ lowerMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> lowerMultiLambda loc fv
 lowerLambda :: Loc -> FreeVarName -> CST.Term -> LowerM (AST.Term Prd Parsed)
 lowerLambda loc var tm = do
   tm' <- lowerTerm PrdRep tm
-  pure $ AST.Cocase loc Structural [ AST.MkTermCaseI loc (MkXtorName Structural "Ap")
+  pure $ AST.Cocase loc Structural [ AST.MkTermCaseI loc (MkXtorName "Ap")
                                                          ([(Prd, Just var)], (), [])
                                                         (AST.termClosing [(Prd, var)] tm')
                                    ]
 
 -- | Lower a natural number literal.
 lowerNatLit :: Loc -> NominalStructural -> Int -> LowerM (AST.Term Prd Parsed)
-lowerNatLit loc ns 0 = pure $ AST.Xtor loc PrdRep (MkXtorName ns "Z") []
+lowerNatLit loc ns 0 = pure $ AST.Xtor loc PrdRep ns (MkXtorName "Z") []
 lowerNatLit loc ns n = do
   n' <- lowerNatLit loc ns (n-1)
-  pure $ AST.Xtor loc PrdRep (MkXtorName ns "S") [AST.PrdTerm n']
+  pure $ AST.Xtor loc PrdRep ns (MkXtorName "S") [AST.PrdTerm n']
 
 -- | Lower an application.
 lowerApp :: Loc -> CST.Term -> CST.Term -> LowerM (AST.Term Prd Parsed)
 lowerApp loc fun arg = do
   fun' <- lowerTerm PrdRep fun
   arg' <- lowerTerm PrdRep arg
-  pure $ AST.Dtor loc (MkXtorName Structural "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
+  pure $ AST.Dtor loc Structural (MkXtorName "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
 
 lowerCommand :: CST.Command -> LowerM (AST.Command Parsed)
 lowerCommand (CST.Apply loc tm1 tm2)      = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2

@@ -39,56 +39,56 @@ spec = do
                  (TyData PosRep (Just $ MkTypeName "Nat") [])
     parseExample (typPLowering PosRep)
                  "{ 'A() }"
-                 (TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") []])
+                 (TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") []])
     parseExample (typPLowering PosRep)
                  "{ 'A[{ 'B }] }"
-                 (TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") []] ]])
+                 (TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseExample (typPLowering PosRep)
                  "{{Fun :>> {} }}"
                  (TyCodata PosRep (Just $ MkTypeName "Fun") [])
     parseExample (typPLowering PosRep)
                  "< 'X({{ Nat :>> < > }}) >"
-                 (TyData PosRep Nothing [MkXtorSig (MkXtorName Structural "X") [ PrdCnsType PrdRep $ TyData PosRep (Just $ MkTypeName "Nat") [] ]])
+                 (TyData PosRep Nothing [MkXtorSig (MkXtorName "X") [ PrdCnsType PrdRep $ TyData PosRep (Just $ MkTypeName "Nat") [] ]])
     parseExample (typPLowering PosRep)
                  "{{ Nat :>> < S > }}"
-                 (TyData PosRep (Just $ MkTypeName "Nat") [MkXtorSig (MkXtorName Nominal "S") []])
+                 (TyData PosRep (Just $ MkTypeName "Nat") [MkXtorSig (MkXtorName "S") []])
     parseExample (typPLowering PosRep)
                  "{{ Foo :>> { A[{ B }] } }}"
                  (TyCodata PosRep (Just $ MkTypeName "Foo")
-                           [MkXtorSig (MkXtorName Nominal "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Nominal "B") []] ]])
+                           [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseExample (typPLowering NegRep)
                  "< 'A | 'B > /\\ < 'B >"
-                 (TySet NegRep Nothing [ TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                                       , TyData   NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet NegRep Nothing [ TyData   NegRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
+                                       , TyData   NegRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseExample (typPLowering PosRep)
                  "< 'A | 'B > \\/ < 'B >"
-                 (TySet PosRep Nothing [ TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                                       , TyData   PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet PosRep Nothing [ TyData   PosRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
+                                       , TyData   PosRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseExample (typPLowering NegRep)
                  "{ 'A , 'B } /\\ { 'B }"
-                 (TySet NegRep Nothing [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                                       , TyCodata NegRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet NegRep Nothing [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
+                                       , TyCodata NegRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseExample (typPLowering PosRep)
                  "{ 'A , 'B} \\/ { 'B }"
-                 (TySet PosRep Nothing [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "A") mempty, MkXtorSig (MkXtorName Structural "B") mempty]
-                                       , TyCodata PosRep Nothing [MkXtorSig (MkXtorName Structural "B") mempty]])
+                 (TySet PosRep Nothing [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
+                                       , TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseExample (typPLowering PosRep)
                  "Nat -> Nat"
-                 (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
+                 (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
                     [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal PosRep Nothing $ MkTypeName "Nat")] ])
     parseExample (typPLowering NegRep)
                  "Nat -> Nat"
-                 (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
+                 (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
                     [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal NegRep Nothing $ MkTypeName "Nat")] ])
     parseExample (typPLowering PosRep)
                  "Nat -> Nat -> Nat"
-                 (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
+                 (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
+                    [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
                     [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal PosRep Nothing $ MkTypeName "Nat")] ])] ])
     parseExample (typPLowering NegRep)
                  "Nat -> Nat -> Nat"
-                 (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName Structural "Ap")
+                 (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
+                    [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
                     [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal NegRep Nothing $ MkTypeName "Nat")] ])] ])
     parseIdentical (typPLowering PosRep) "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
     parseIdentical (typPLowering NegRep) "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"

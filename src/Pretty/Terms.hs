@@ -90,8 +90,8 @@ instance PrettyAnn (SubstitutionI ext pc) where
 ---------------------------------------------------------------------------------
 
 isNumSTerm :: Term pc ext -> Maybe Int
-isNumSTerm (Xtor _ PrdRep (MkXtorName Nominal "Z") []) = Just 0
-isNumSTerm (Xtor _ PrdRep (MkXtorName Nominal "S") [PrdTerm n]) = case isNumSTerm n of
+isNumSTerm (Xtor _ PrdRep _ (MkXtorName "Z") []) = Just 0
+isNumSTerm (Xtor _ PrdRep _ (MkXtorName "S") [PrdTerm n]) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
@@ -100,7 +100,7 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (isNumSTerm -> Just n) = pretty n
   prettyAnn (BoundVar _ _ (i,j)) = parens (pretty i <> "," <> pretty j)
   prettyAnn (FreeVar _ _ v) = pretty v
-  prettyAnn (Xtor _ _ xt args) = prettyAnn xt <> prettyAnn args
+  prettyAnn (Xtor _ _ _ xt args) = prettyAnn xt <> prettyAnn args
   prettyAnn (XMatch _ PrdRep _ cases) =
     annKeyword "comatch" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
@@ -110,7 +110,7 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
-  prettyAnn (Dtor _ xt t substi) =
+  prettyAnn (Dtor _ _ xt t substi) =
       parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
   prettyAnn (Case _ _ t cases) =
     annKeyword "case" <+>

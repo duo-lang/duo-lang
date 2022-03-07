@@ -16,7 +16,6 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.CommonTerm
 import Syntax.Kinds
 import Syntax.AST.Types (DataCodata (Data, Codata), TVar (MkTVar))
 import Syntax.CST.Types
@@ -85,7 +84,7 @@ xdataTypeP Codata = fst <$> braces (do
 -- - "'Head[Nat]"
 xtorSignatureP :: Parser XtorSig
 xtorSignatureP = do
-  (xt, _pos) <- xtorName Structural <|> xtorName Nominal
+  (xt, _pos) <- xtorName
   MkXtorSig xt <$> linearContextP
 
 ---------------------------------------------------------------------------------

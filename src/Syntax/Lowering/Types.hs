@@ -172,21 +172,21 @@ desugarArrowType PosRep tl tr = do
     tl <- lowerTyp (flipPolarityRep PosRep) tl
     tr <- lowerTyp PosRep tr
     pure $ AST.TyCodata PosRep Nothing
-        [ AST.MkXtorSig (MkXtorName Structural "Ap")
+        [ AST.MkXtorSig (MkXtorName "Ap")
           [AST.PrdCnsType PrdRep tl, AST.PrdCnsType CnsRep tr]]
 desugarArrowType NegRep tl tr = do
     tl <- lowerTyp (flipPolarityRep NegRep) tl
     tr <- lowerTyp NegRep tr
     pure $ AST.TyCodata NegRep Nothing
-        [ AST.MkXtorSig (MkXtorName Structural "Ap")
+        [ AST.MkXtorSig (MkXtorName "Ap")
           [AST.PrdCnsType PrdRep tl, AST.PrdCnsType CnsRep tr]]
 
 desugarParType :: PolarityRep pol -> Typ -> Typ -> LowerM (AST.Typ pol)
 desugarParType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
-    pure $ AST.TyCodata PosRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
+    pure $ AST.TyCodata PosRep Nothing [ AST.MkXtorSig (MkXtorName "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
 desugarParType NegRep tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
-    pure $ AST.TyCodata NegRep Nothing [ AST.MkXtorSig (MkXtorName Structural "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
+    pure $ AST.TyCodata NegRep Nothing [ AST.MkXtorSig (MkXtorName "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
