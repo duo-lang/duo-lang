@@ -2,10 +2,18 @@ import Prelude;
 
 ## Boolean functions ##
 
+destructor Ap : CBN;
+destructor Fst : CBN;
+destructor Snd : CBN;
+constructor Pair : CBV;
 constructor True : CBV;
 constructor False : CBV;
 constructor Z : CBV;
 constructor S(CBV) : CBV;
+constructor Nil : CBV;
+constructor Cons : CBV;
+destructor Head : CBN;
+destructor Tail : CBN;
 
 ## iftenelse :: forall t0. { Ap(< False | True >,t0,t0)[t0] }
 ## gives x out, if b is True, else y
@@ -474,6 +482,9 @@ prd repeat := comatch { Ap(x)[k] => fixLazy >>
 
 ## misc interesting terms
 
+constructor X : CBV;
+constructor B : CBV;
+constructor A : CBV;
 # prd doubleCycle := comatch { Ap(x) => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(x) => x >> match { X(x1) => x1 >> match { X(x2) => alpha >> Ap(x2)}, Y(y1) => y1 >> match { Y(y2) => alpha >> Ap(y2)}}} >> k })[Ap(x)]};
 prd faultyEdgeTest := comatch { Ap(b,f) => b >> match { True => f >> match { X(x) => Done, Y(x) => Done }, False => f >> match { X(x) => Done, Z(x)=>Done }}};
 prd oneortwo := comatch { Ap(b)[k] => b >> match { True => S(Z) >> k, False => S(S(Z)) >> k }};
@@ -487,7 +498,7 @@ prd parserTest := comatch { Ap(x)[x] => x >> x };
 
 data Bool : Type CBV { TT, FF };
 data Nat : Type CBV { Z, S(Nat) };
-codata NatBoolFun : Type CBN { Ap(Nat)[Bool] };
+codata NatBoolFun : Type CBN { ApNB(Nat)[Bool] };
 prd nominalNot := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k } };
 
 

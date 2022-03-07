@@ -1,4 +1,9 @@
 import Prelude;
+
+destructor Ap : CBV;
+constructor Z : CBV;
+constructor S : CBV;
+
 prd rec addS := comatch { Ap(x,y)[k] =>
                        x
                        >>

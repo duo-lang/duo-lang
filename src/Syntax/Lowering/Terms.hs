@@ -17,11 +17,11 @@ import Syntax.CommonTerm
 import Utils
 
 
-lookupXtor :: XtorName -> DriverM NominalStructural
-lookupXtor xtor = do
+lookupXtor :: Loc -> XtorName -> DriverM NominalStructural
+lookupXtor loc xtor = do
   xtorMap <- gets (xtorMap . driverEnv)
   case M.lookup xtor xtorMap of
-    Nothing -> throwError $ OtherError Nothing ("Xtor not in environment: " <> ppPrint xtor)
+    Nothing -> throwError $ OtherError (Just loc) ("Xtor not in environment: " <> ppPrint xtor)
     Just ns -> pure ns
 
 
@@ -49,7 +49,7 @@ lowerTermCase (loc, xtor, bs, tm) = do
 
 termCasesToNS :: [CST.TermCase] -> DriverM NominalStructural
 termCasesToNS [] = pure Structural
-termCasesToNS ((_,xtor,_,_):_) = lookupXtor xtor
+termCasesToNS ((loc,xtor,_,_):_) = lookupXtor loc xtor
 
 lowerTermCaseI :: CST.TermCaseI -> DriverM (AST.TermCaseI Parsed)
 lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
@@ -65,7 +65,7 @@ lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
 
 termCasesIToNS :: [CST.TermCaseI] -> DriverM NominalStructural
 termCasesIToNS [] = pure Structural
-termCasesIToNS ((_,xtor,_,_):_) = lookupXtor xtor
+termCasesIToNS ((loc,xtor,_,_):_) = lookupXtor loc xtor
 
 lowerCommandCase :: CST.CommandCase -> DriverM (AST.CmdCase Parsed)
 lowerCommandCase (loc, xtor, bs, cmd) = do
@@ -79,12 +79,12 @@ lowerCommandCase (loc, xtor, bs, cmd) = do
 -- TODO: Check that all command cases use the same nominal/structural variant.
 commandCasesToNS :: [CST.CommandCase] -> DriverM NominalStructural
 commandCasesToNS [] = pure Structural
-commandCasesToNS ((_,xtor,_,_):_) = lookupXtor xtor
+commandCasesToNS ((loc,xtor,_,_):_) = lookupXtor loc xtor
 
 lowerTerm :: PrdCnsRep pc -> CST.Term -> DriverM (AST.Term pc Parsed)
 lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
 lowerTerm rep    (CST.Xtor loc xtor subst)     = do
-  ns <- lookupXtor xtor
+  ns <- lookupXtor loc xtor
   AST.Xtor loc rep ns xtor <$> lowerSubstitution subst
 lowerTerm rep    (CST.XMatch loc cases)        = do
   cases' <- sequence (lowerCommandCase <$> cases)
@@ -97,7 +97,7 @@ lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = do
   cmd' <- lowerCommand cmd
   pure $ AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] cmd')
 lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = do
-  ns <- lookupXtor xtor
+  ns <- lookupXtor loc xtor
   tm' <- lowerTerm PrdRep tm
   subst' <- lowerSubstitutionI subst
   pure $ AST.Dtor loc ns xtor tm' subst'

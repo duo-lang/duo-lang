@@ -76,16 +76,16 @@ spec = do
                  "{{ Nat :>> < > }}"
                  (TyData PosRep (Just $ MkTypeName "Nat") [])
     parseType PosRep
-                 "{ 'A() }"
+                 "{ A() }"
                  (TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") []])
     parseType PosRep
-                 "{ 'A[{ 'B }] }"
+                 "{ A[{ B }] }"
                  (TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseType PosRep
                  "{{Fun :>> {} }}"
                  (TyCodata PosRep (Just $ MkTypeName "Fun") [])
     parseType PosRep
-                 "< 'X({{ Nat :>> < > }}) >"
+                 "< X({{ Nat :>> < > }}) >"
                  (TyData PosRep Nothing [MkXtorSig (MkXtorName "X") [ PrdCnsType PrdRep $ TyData PosRep (Just $ MkTypeName "Nat") [] ]])
     parseType PosRep
                  "{{ Nat :>> < S > }}"
@@ -95,19 +95,19 @@ spec = do
                  (TyCodata PosRep (Just $ MkTypeName "Foo")
                            [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseType NegRep
-                 "< 'A | 'B > /\\ < 'B >"
+                 "< A | B > /\\ < B >"
                  (TySet NegRep Nothing [ TyData   NegRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
                                        , TyData   NegRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType PosRep
-                 "< 'A | 'B > \\/ < 'B >"
+                 "< A | B > \\/ < B >"
                  (TySet PosRep Nothing [ TyData   PosRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
                                        , TyData   PosRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType NegRep
-                 "{ 'A , 'B } /\\ { 'B }"
+                 "{ A , B } /\\ { B }"
                  (TySet NegRep Nothing [ TyCodata NegRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
                                        , TyCodata NegRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType PosRep
-                 "{ 'A , 'B} \\/ { 'B }"
+                 "{ A , B} \\/ { B }"
                  (TySet PosRep Nothing [ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
                                        , TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType PosRep

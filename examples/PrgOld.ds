@@ -3,6 +3,23 @@ cns print := mu x.Print(x); Done;
 
 ## Boolean functions ##
 
+constructor True : CBV;
+constructor False : CBV;
+destructor Ap : CBN;
+constructor Z : CBV;
+constructor S : CBV;
+constructor Pair : CBV;
+destructor Fst : CBN;
+destructor Snd : CBN;
+constructor Nil : CBV;
+constructor Cons : CBV;
+destructor Head : CBN;
+destructor Tail : CBN;
+constructor X : CBV;
+constructor A : CBV;
+constructor B : CBV;
+
+
 ## iftenelse :: forall t0. { Ap(< False | True >,t0,t0)[t0] }
 ## gives x out, if b is True, else y
 prd ifthenelse := comatch { 
@@ -554,7 +571,7 @@ prd parserTest := comatch { Ap(x)[x] => x >> x };
 
 data Bool : Type CBV { TT, FF };
 data Nat : Type CBV { Z, S(Nat) };
-codata NatBoolFun : Type CBN { Ap(Nat)[Bool] };
+codata NatBoolFun : Type CBN { ApNB(Nat)[Bool] };
 prd nominalNot := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }};
 
 prd addNominal := comatch { Ap(n,m)[k] => fix >> Ap( comatch { Ap(alpha)[k] => comatch { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
