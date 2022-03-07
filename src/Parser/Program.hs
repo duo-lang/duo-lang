@@ -96,7 +96,6 @@ dataCodataPrefixP = do
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
 
-
 dataDeclP :: Parser Declaration
 dataDeclP = do
   startPos <- getSourcePos
@@ -117,6 +116,26 @@ dataDeclP = do
     pure (DataDecl (Loc startPos endPos) decl)
 
 ---------------------------------------------------------------------------------
+-- Xtor Declaration Parser
+---------------------------------------------------------------------------------
+
+-- | Parses either "constructor" or "destructor"
+ctorDtorP :: Parser DataCodata
+ctorDtorP = (constructorKwP >> pure Data) <|> (destructorKwP >> pure Codata)
+
+xtorDeclarationP :: Parser Declaration
+xtorDeclarationP = do
+  startPos <- getSourcePos
+  dc <- ctorDtorP
+  (xt, _) <- xtorName Nominal
+  (args, _) <- argListsP callingConventionP
+  _ <- colon
+  ret <- callingConventionP
+  endPos <- semi
+  pure (XtorDecl (Loc startPos endPos) dc xt args ret)
+  
+
+---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
@@ -127,7 +146,8 @@ declarationP =
   cmdDeclarationP <|>
   importDeclP <|>
   setDeclP <|>
-  dataDeclP
+  dataDeclP <|>
+  xtorDeclarationP
 
 programP :: Parser Program
 programP = do

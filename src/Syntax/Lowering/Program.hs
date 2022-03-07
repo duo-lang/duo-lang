@@ -42,11 +42,12 @@ lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 lowerDecl :: CST.Declaration -> LowerM (AST.Declaration Parsed)
 lowerDecl (CST.PrdCnsDecl loc Prd isrec fv annot tm) = AST.PrdCnsDecl loc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
 lowerDecl (CST.PrdCnsDecl loc Cns isrec fv annot tm) = AST.PrdCnsDecl loc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
-lowerDecl (CST.CmdDecl loc fv cmd) = AST.CmdDecl loc fv <$> (lowerCommand cmd)
-lowerDecl (CST.DataDecl loc dd)    = AST.DataDecl loc <$> lowerDataDecl dd
-lowerDecl (CST.ImportDecl loc mod) = pure $ AST.ImportDecl loc mod
-lowerDecl (CST.SetDecl loc txt)    = pure $ AST.SetDecl loc txt
-lowerDecl CST.ParseErrorDecl       = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
+lowerDecl (CST.CmdDecl loc fv cmd)          = AST.CmdDecl loc fv <$> (lowerCommand cmd)
+lowerDecl (CST.DataDecl loc dd)             = AST.DataDecl loc <$> lowerDataDecl dd
+lowerDecl (CST.XtorDecl loc dc xt args ret) = pure $ AST.XtorDecl loc dc xt args ret
+lowerDecl (CST.ImportDecl loc mod)          = pure $ AST.ImportDecl loc mod
+lowerDecl (CST.SetDecl loc txt)             = pure $ AST.SetDecl loc txt
+lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
 lowerProgram :: CST.Program -> LowerM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl

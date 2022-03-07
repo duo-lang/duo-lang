@@ -1,4 +1,6 @@
 
+destructor Ap(CBV)[CBV] : CBN;
+
 refinement data L : Type CBV { Atom, NegAtom };
 refinement data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
 refinement data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };

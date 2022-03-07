@@ -32,6 +32,8 @@ module Parser.Lexer
   , cbnKwP
   , typeKwP
   , refinementKwP
+  , constructorKwP
+  , destructorKwP
     -- Symbols
   , dot
   , pipe
@@ -173,7 +175,8 @@ moduleNameP = try $ do
 
 keywords :: [Text]
 keywords = ["match", "comatch", "case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
-           , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type", "CBV", "CBN", "refinement"]
+           , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type"
+           , "CBV", "CBN", "refinement", "constructor", "destructor"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -252,6 +255,12 @@ typeKwP = keywordP "Type"
 
 refinementKwP :: Parser SourcePos
 refinementKwP = keywordP "refinement"
+
+constructorKwP :: Parser SourcePos
+constructorKwP = keywordP "constructor"
+
+destructorKwP :: Parser SourcePos
+destructorKwP = keywordP "destructor"
 
 -------------------------------------------------------------------------------------------
 -- Symbols
@@ -356,7 +365,7 @@ bracketsListIP p = brackets $ do
   snds <- option [] (try (comma *> p' `sepBy` comma))
   return (fsts, snds)
 
--- | Parse a sequence of produer/consumer argument lists
+-- | Parse a sequence of producer/consumer argument lists
 argListsP ::  Parser a -> Parser ([(PrdCns,a)], SourcePos)
 argListsP p = do
   endPos <- getSourcePos
@@ -378,7 +387,7 @@ argListsIP mode p = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> refinementKwP <|> (eof >> getSourcePos)
+  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> refinementKwP <|> constructorKwP <|> destructorKwP <|> (eof >> getSourcePos)
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

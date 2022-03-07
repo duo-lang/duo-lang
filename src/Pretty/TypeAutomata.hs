@@ -24,6 +24,7 @@ prettyArity :: [PrdCns] -> Doc Annotation
 prettyArity [] = mempty
 prettyArity (Prd:rest) = parens "-" <> prettyArity rest
 prettyArity (Cns:rest) = brackets "-" <> prettyArity rest
+
 instance PrettyAnn XtorLabel where
   prettyAnn MkXtorLabel { labelName, labelArity } =
     prettyAnn labelName <> prettyArity labelArity

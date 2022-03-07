@@ -2,6 +2,11 @@ import Prelude;
 
 ## Boolean functions ##
 
+constructor True : CBV;
+constructor False : CBV;
+constructor Z : CBV;
+constructor S(CBV) : CBV;
+
 ## iftenelse :: forall t0. { 'Ap(< 'False | 'True >,t0,t0)[t0] }
 ## gives x out, if b is True, else y
 prd ifthenelse := comatch {

@@ -13,6 +13,7 @@ import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.CommonTerm
+import Syntax.Kinds (CallingConvention)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -55,6 +56,15 @@ prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> pcmd <> semi
 
+prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Doc Annotation
+prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
+prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
+
+-- | Prettyprint the list of calling conventions.
+prettyCCList :: [(PrdCns, CallingConvention)] -> Doc Annotation
+prettyCCList [] = mempty
+prettyCCList ((Prd, cc):xs) = (parens   $ prettyAnn cc) <> prettyCCList xs
+prettyCCList ((Cns, cc):xs) = (brackets $ prettyAnn cc) <> prettyCCList xs
 
 instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
@@ -63,6 +73,8 @@ instance PrettyAnn (Declaration ext) where
     prettyCmdDecl fv (prettyAnn cm)
   prettyAnn (DataDecl _ decl) =
     prettyAnn decl
+  prettyAnn (XtorDecl _ dc xt args ret) =
+    prettyXtorDecl dc xt args ret
   prettyAnn (ImportDecl _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (SetDecl _ txt) =
@@ -75,6 +87,8 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
   prettyAnn (NamedRep (DataDecl _ decl)) =
     prettyAnn decl
+  prettyAnn (NamedRep (XtorDecl _ dc xt args ret)) =
+    prettyXtorDecl dc xt args ret
   prettyAnn (NamedRep (ImportDecl _ mod)) =
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
