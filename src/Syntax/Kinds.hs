@@ -1,7 +1,5 @@
 module Syntax.Kinds where
 
-import Data.Text (Text)
-
 ------------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------------
@@ -12,18 +10,7 @@ data CallingConvention
   | CBN -- ^ Call-by-name
   deriving (Show, Eq, Ord)
 
--- | Kind variable
-newtype KVar = MkKVar { unKVar :: Text }
-  deriving (Show, Eq, Ord)
-
 -- | We use the "Kinds are calling-conventions" approach to track
 -- calling conventions at the type level.
--- Kind Variables are necessary during type inference, but we don't support
--- kind polymorphism.
 data Kind = MonoKind CallingConvention
-          | KindVar KVar
   deriving (Show, Eq, Ord)
-
-freeKindVars :: Kind -> [KVar]
-freeKindVars (MonoKind _) = []
-freeKindVars (KindVar kv) = [kv]

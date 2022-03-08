@@ -61,7 +61,7 @@ data GenerateState = GenerateState
   }
 
 initialConstraintSet :: ConstraintSet
-initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [], cs_kuvars = [] }
+initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [] }
 
 initialState :: GenerateState
 initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
