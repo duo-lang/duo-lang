@@ -45,7 +45,7 @@ spec = do
     subsumptionCheckPos True "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }" "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }"
     subsumptionCheckPos True "Nat" "Nat"
     subsumptionCheckPos True "{ Ap(Nat)[Bool] }" "{ Ap(Nat)[Bool] }"
-    -- Subsumptions which shouldnt hold
+    -- Subsumptions which shouldn't hold
     subsumptionCheckPos False "{}" "<>"
     subsumptionCheckPos False "{ Ap(< True >)[< True >] }" "forall a. { Ap(a)[a] }"
     subsumptionCheckPos False "{ Ap(< True >)[< True | False >] }" "{ Ap(< True >)[< True >] }"
