@@ -30,7 +30,7 @@ data SolverState = SolverState
   }
 
 createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState undefined) | uv <- uvs]
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
                                                        , sst_cache = S.empty
                                                        }
 
