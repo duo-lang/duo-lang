@@ -161,7 +161,7 @@ executable dualsub
       dualsub,
       optparse-applicative,
       lsp,
-      gitrev
+      githash
 
 test-suite dualsub-test
   import: shared-build-depends

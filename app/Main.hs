@@ -2,7 +2,7 @@
 module Main where
 
 import Data.Version (showVersion)
-import Development.GitRev (gitHash, gitBranch)
+import GitHash (tGitInfoCwd, giHash, giBranch)
 
 import Options (Options(..), parseOptions)
 import Compile (runCompile)
@@ -23,6 +23,7 @@ dispatch OptVersion      = printVersion
 
 printVersion :: IO ()
 printVersion = do
+    let gi = $$tGitInfoCwd
     putStrLn $ "DualSub Version: " <> showVersion version
-    putStrLn $ "Git Commit: " <> $(gitHash)
-    putStrLn $ "Git Branch: " <> $(gitBranch)
+    putStrLn $ "Git Commit: " <> giHash gi
+    putStrLn $ "Git Branch: " <> giBranch gi
