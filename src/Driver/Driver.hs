@@ -140,8 +140,11 @@ inferDecl (CmdDecl loc v cmd) = do
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
   env <- gets driverEnv
+  let ns = case data_refined dcl of
+                  Refined -> Refinement
+                  NotRefined -> Nominal
   let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                   , xtorMap = M.union (M.fromList [(xt, Nominal)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
+                   , xtorMap = M.union (M.fromList [(xt, ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
   setEnvironment newEnv
   return (DataDecl loc dcl)
 --
