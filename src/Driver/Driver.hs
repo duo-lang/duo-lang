@@ -43,7 +43,7 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( InferenceMode(..), runGenM )
+    ( runGenM )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -85,7 +85,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   let genFun = case isRec of
         Recursive -> genConstraintsTermRecursive loc fv pc term
         NonRecursive -> genConstraintsTerm term
-  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
   solverResult <- liftEitherErr loc $ solveConstraints constraintSet env
@@ -121,10 +121,9 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
 -- CmdDecl
 --
 inferDecl (CmdDecl loc v cmd) = do
-  infopts <- gets driverOpts
   env <- gets driverEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
   -- Solve the constraints
   solverResult <- liftEitherErr loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -140,10 +139,6 @@ inferDecl (CmdDecl loc v cmd) = do
 --
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
-  case data_refined dcl of 
-    Refined -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
-    NotRefined -> pure ()
-  -- TODO: Check data decls
   env <- gets driverEnv
   let newEnv = env { declEnv = (loc,dcl) : declEnv env
                    , xtorMap = M.union (M.fromList [(xt, Nominal)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
