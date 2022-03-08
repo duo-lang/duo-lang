@@ -18,7 +18,6 @@ import Syntax.AST.Program (Environment)
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
-import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 import TypeInference.Constraints
 
 ------------------------------------------------------------------------------
@@ -28,12 +27,13 @@ import TypeInference.Constraints
 data SolverState = SolverState
   { sst_bounds :: Map TVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
-  , sst_inferMode :: InferenceMode }
+  }
 
-createInitState :: ConstraintSet -> InferenceMode -> SolverState
-createInitState (ConstraintSet _ uvs) im = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState undefined) | uv <- uvs]
+createInitState :: ConstraintSet -> SolverState
+createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState undefined) | uv <- uvs]
                                                        , sst_cache = S.empty
-                                                       , sst_inferMode = im }
+                                                       }
+
 
 type SolverM a = (ReaderT (Environment Inferred, ()) (StateT SolverState (Except Error))) a
 
@@ -48,13 +48,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache im) -> SolverState gr (f cache) im)
+    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache im) -> SolverState (M.adjust f uv varMap) cache im)
+modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
 getBounds :: TVar -> SolverM VariableState
 getBounds uv = do
@@ -302,8 +302,8 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _ _)) =
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment Inferred -> InferenceMode -> Either Error SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) env im = do
-  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
+solveConstraints :: ConstraintSet -> Environment Inferred ->  Either Error SolverResult
+solveConstraints constraintSet@(ConstraintSet css _) env = do
+  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
   pure (MkSolverResult (sst_bounds solverState))
 
