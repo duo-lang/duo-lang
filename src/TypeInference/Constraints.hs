@@ -34,8 +34,7 @@ data ConstraintInfo
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
-  KindEq  :: a -> Kind -> Kind -> Constraint a
-  deriving (Eq, Ord, Functor)
+    deriving (Eq, Ord, Functor)
 
 -- | Information about the provenance of a unification variable.
 data UVarProvenance
@@ -49,7 +48,6 @@ data UVarProvenance
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
                                    , cs_uvars :: [(TVar, UVarProvenance)]
-                                   , cs_kuvars :: [KVar]
                                    }
 
 ------------------------------------------------------------------------------
@@ -67,5 +65,4 @@ emptyVarState kind = VariableState [] [] kind
 
 data SolverResult = MkSolverResult
   { tvarSolution :: Map TVar VariableState
-  , kvarSolution :: Map KVar Kind
-  }
+    }

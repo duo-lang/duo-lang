@@ -83,7 +83,6 @@ evalTermOnce (Call _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (KindVar)"]
 evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
 
 evalApplyOnce :: CallingConvention -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))

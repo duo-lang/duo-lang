@@ -55,12 +55,8 @@ instance PrettyAnn CallingConvention  where
   prettyAnn CBV = "CBV"
   prettyAnn CBN = "CBN"
 
-instance PrettyAnn KVar where
-  prettyAnn kv = pretty (unKVar kv)
-
 instance PrettyAnn Kind where
   prettyAnn (MonoKind eo) = "Type" <+> prettyAnn eo
-  prettyAnn (KindVar var) = prettyAnn var
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of types

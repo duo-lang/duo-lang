@@ -6,15 +6,12 @@ import Data.Map qualified as M
 import Syntax.CommonTerm
 import Syntax.AST.Terms
 import Syntax.AST.Types
-import Syntax.Kinds
 
 --------------------------------------------------------------------------------
 -- Bisubstitution
 ---------------------------------------------------------------------------------
 
-data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg)
-                                       , kvarSubst :: Map KVar Kind
-                                       }
+data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg) }
 
 ---------------------------------------------------------------------------------
 -- Zonking of Types
@@ -29,15 +26,9 @@ zonkType bisubst ty@(TyVar NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) o
     Just (_,tyNeg) -> tyNeg
 zonkType bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)
 zonkType bisubst (TyCodata rep tn xtors) = TyCodata rep tn (zonkXtorSig bisubst <$> xtors)
-zonkType bisubst (TyNominal rep kind tn) = TyNominal rep (zonkKind bisubst <$> kind) tn
-zonkType bisubst (TySet rep kind tys) = TySet rep (zonkKind bisubst <$> kind) (zonkType bisubst <$> tys)
+zonkType _       (TyNominal rep kind tn) = TyNominal rep kind tn
+zonkType bisubst (TySet rep kind tys) = TySet rep kind (zonkType bisubst <$> tys)
 zonkType bisubst (TyRec rep tv ty) = TyRec rep tv (zonkType bisubst ty)
-
-zonkKind :: Bisubstitution -> Kind -> Kind
-zonkKind _ (MonoKind cc) = MonoKind cc
-zonkKind bisubst kind@(KindVar kv) = case M.lookup kv (kvarSubst bisubst) of
-    Nothing -> kind
-    Just kind' -> kind'
 
 zonkPrdCnsType :: Bisubstitution -> PrdCnsType pol -> PrdCnsType pol
 zonkPrdCnsType bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonkType bisubst ty)
@@ -85,7 +76,7 @@ zonkTermCaseI :: Bisubstitution -> TermCaseI Inferred -> TermCaseI  Inferred
 zonkTermCaseI bisubst (MkTermCaseI loc nm args tm) = MkTermCaseI loc nm args (zonkTerm bisubst tm)
 
 zonkCommand :: Bisubstitution -> Command Inferred -> Command Inferred
-zonkCommand bisubst (Apply ext kind prd cns) = Apply ext (zonkKind bisubst <$> kind) (zonkTerm bisubst prd) (zonkTerm bisubst cns)
+zonkCommand bisubst (Apply ext kind prd cns) = Apply ext kind (zonkTerm bisubst prd) (zonkTerm bisubst cns)
 zonkCommand bisubst (Print ext prd cmd) = Print ext (zonkTerm bisubst prd) (zonkCommand bisubst cmd)
 zonkCommand bisubst (Read ext cns) = Read ext (zonkTerm bisubst cns)
 zonkCommand _       (Call ext fv) = Call ext fv
