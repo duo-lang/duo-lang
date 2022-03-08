@@ -2,6 +2,8 @@
 
 # Bool
 
+destructor Ap : CBN;
+
 data Bool : Type CBV { True, False };
 
 prd not := \b => case b of { True => False, False => True};

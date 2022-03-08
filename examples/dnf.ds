@@ -5,30 +5,30 @@ refinement data L : Type CBV { Atom, NegAtom };
 refinement data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
 refinement data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };
 
-# prd rec nnf := cocase { 'Ap(f) => case f of {
+# prd rec nnf := cocase { Ap(f) => case f of {
 #     Lit(a)   => case a of { 
 #       Atom    => Lit(Atom), 
 #       NegAtom => Lit(NegAtom) 
 #     },
-#     And(p,q) => And(nnf.'Ap(p), nnf.'Ap(q)),
-#     Or(p,q)  => Or(nnf.'Ap(p), nnf.'Ap(q)),
-#     Imp(p,q) => Or(nnf.'Ap(Not(p)), nnf.'Ap(q)),
+#     And(p,q) => And(nnf.Ap(p), nnf.Ap(q)),
+#     Or(p,q)  => Or(nnf.Ap(p), nnf.Ap(q)),
+#     Imp(p,q) => Or(nnf.Ap(Not(p)), nnf.Ap(q)),
 #     Not(x)   => case x of {
 #       Lit(a)   => case a of {
 #         Atom    => Lit(NegAtom),
 #         NegAtom => Lit(Atom)
 #       },
-#       Not(p)   => nnf.'Ap(p),
-#       And(p,q) => Or(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
-#       Or(p,q)  => And(nnf.'Ap(Not(p)), nnf.'Ap(Not(q))),
-#       Imp(p,q) => And(nnf.'Ap(p), nnf.'Ap(Not(q)))
+#       Not(p)   => nnf.Ap(p),
+#       And(p,q) => Or(nnf.Ap(Not(p)), nnf.Ap(Not(q))),
+#       Or(p,q)  => And(nnf.Ap(Not(p)), nnf.Ap(Not(q))),
+#       Imp(p,q) => And(nnf.Ap(p), nnf.Ap(Not(q)))
 #     }
 # }};
 
-# prd nnf2dnf := cocase { 'Ap(f) => case f of {
+# prd nnf2dnf := cocase { Ap(f) => case f of {
 # 		Lit(a)   => SetSet,
-# 		Or(p,q)  => SetSet,  ## Union(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q)),
-# 		And(p,q) => SetSet   ## Distrib(nnf2dnf.'Ap(p), nnf2dnf.'Ap(q))
+# 		Or(p,q)  => SetSet,  ## Union(nnf2dnf.Ap(p), nnf2dnf.Ap(q)),
+# 		And(p,q) => SetSet   ## Distrib(nnf2dnf.Ap(p), nnf2dnf.Ap(q))
 # }};
 
-# prd dnf := cocase { 'Ap(f) => nnf2dnf.'Ap(nnf.'Ap(f)) };
+# prd dnf := cocase { Ap(f) => nnf2dnf.Ap(nnf.Ap(f)) };

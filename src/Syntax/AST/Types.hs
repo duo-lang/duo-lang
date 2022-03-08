@@ -7,7 +7,6 @@ import Data.Text (Text)
 
 import Syntax.CommonTerm
     ( XtorName(..),
-      NominalStructural(..),
       PrdCnsRep(..),
       PrdCns(..) )
 import Syntax.Kinds ( Kind )
@@ -145,11 +144,6 @@ getPolarity (TyCodata rep _ _)    = rep
 getPolarity (TyNominal rep _ _)   = rep
 getPolarity (TySet rep _ _)       = rep
 getPolarity (TyRec rep _ _)       = rep
-
--- | Make the XtorName of an XtorSig structural
-xtorSigMakeStructural :: XtorSig pol -> XtorSig pol
-xtorSigMakeStructural (MkXtorSig (MkXtorName _ s) typArgs) =
-  MkXtorSig (MkXtorName Structural s) typArgs
 
 -- | We map producer terms to positive types, and consumer terms to negative types.
 type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
