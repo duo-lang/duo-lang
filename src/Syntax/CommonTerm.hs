@@ -36,7 +36,7 @@ flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
 flipPrdCns PrdRep = CnsRep
 flipPrdCns CnsRep = PrdRep
 
-data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
+data NominalStructural = Nominal | Structural | Refinement deriving (Eq, Ord, Show)
 
 ---------------------------------------------------------------------------------
 -- Names
