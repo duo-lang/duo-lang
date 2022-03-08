@@ -49,14 +49,14 @@ zonkTerm bisubst (BoundVar (loc,ty) rep idx) =
     BoundVar (loc, zonkType bisubst ty) rep idx
 zonkTerm bisubst (FreeVar  (loc,ty) rep nm)  =
     FreeVar  (loc, zonkType bisubst ty) rep nm
-zonkTerm bisubst (Xtor (loc,ty) rep xn subst) =
-    Xtor (loc, zonkType bisubst ty) rep xn (zonkPCTerm bisubst <$> subst)
+zonkTerm bisubst (Xtor (loc,ty) rep ns xt subst) =
+    Xtor (loc, zonkType bisubst ty) rep ns xt (zonkPCTerm bisubst <$> subst)
 zonkTerm bisubst (XMatch (loc,ty) rep ns cases) =
     XMatch (loc, zonkType bisubst ty) rep ns (zonkCmdCase bisubst <$> cases)
 zonkTerm bisubst (MuAbs (loc,ty) rep fv cmd) =
     MuAbs (loc, zonkType bisubst ty) rep fv (zonkCommand bisubst cmd)
-zonkTerm bisubst (Dtor (loc,ty) xt prd (subst1,pcrep,subst2)) =
-    Dtor (loc, zonkType bisubst ty) xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
+zonkTerm bisubst (Dtor (loc,ty) ns xt prd (subst1,pcrep,subst2)) =
+    Dtor (loc, zonkType bisubst ty) ns xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
 zonkTerm bisubst (Case (loc,ty) ns prd cases) =
     Case (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
 zonkTerm bisubst (Cocase (loc,ty) ns cases) =

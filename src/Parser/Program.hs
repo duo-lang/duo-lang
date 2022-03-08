@@ -71,7 +71,7 @@ setDeclP = do
 
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
-  (xt, _pos) <- xtorName Nominal
+  (xt, _pos) <- xtorName
   (args,_) <- argListsP typP
   return (xt, args )
 
@@ -127,7 +127,7 @@ xtorDeclarationP :: Parser Declaration
 xtorDeclarationP = do
   startPos <- getSourcePos
   dc <- ctorDtorP
-  (xt, _) <- xtorName Nominal
+  (xt, _) <- xtorName
   (args, _) <- argListsP callingConventionP
   _ <- colon
   ret <- callingConventionP

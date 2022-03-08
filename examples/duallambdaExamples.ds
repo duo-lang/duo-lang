@@ -4,7 +4,6 @@ import Prelude;
 codata Par : Type CBN { MkPar[List,Unit]};
 
 data List : Type CBV { Nil, Cons(Nat,List) };
-data Pred : Type CBV { Ap(Nat)[Bool] };
 
 # Implementation is not important, since I only want to do typechecking.
 prd rec f : Unit -> Par := f;

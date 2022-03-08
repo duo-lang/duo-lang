@@ -150,12 +150,11 @@ checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
 checkTick Structural = () <$ tick
 
-xtorName :: NominalStructural -> Parser (XtorName, SourcePos)
-xtorName ns = try $ do
-  () <- checkTick ns
+xtorName :: Parser (XtorName, SourcePos)
+xtorName = try $ do
   (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
-  return (MkXtorName ns name, pos)
+  return (MkXtorName name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = try $ do

@@ -122,8 +122,7 @@ intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
 instance PrettyAnn XtorName where
-  prettyAnn (MkXtorName Structural xt) = annXtorName $ "'" <> prettyAnn xt
-  prettyAnn (MkXtorName Nominal    xt) = annXtorName $ prettyAnn xt
+  prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
 instance PrettyAnn (Maybe FreeVarName) where
   prettyAnn Nothing = "_"
