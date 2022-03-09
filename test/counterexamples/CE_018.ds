@@ -1,6 +1,6 @@
 # Match acase arg usage does not fit type
 
-data Nat { Z, S(Nat) };
-data Foo { A, B(Foo) };
+data Nat : Type CBV { Z, S(Nat) };
+data Foo : Type CBV { A, B(Foo) };
 
-def fail := match A with { A => Z, B(f) => S(f) };
+prd fail := case A of { A => Z, B(f) => S(f) };

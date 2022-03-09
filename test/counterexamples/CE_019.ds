@@ -1,7 +1,7 @@
 # Comatch acase arg usage does not fit type
 
-data Nat { Z, S(Nat) };
-data Nat { True, False };
-codata Fun { Ap(Bool)[Nat] };
+data Nat : Type CBV { Z, S(Nat) };
+data Nat : Type CBV { True, False };
+codata Fun : Type CBN { Ap(Bool)[Nat] };
 
-def fail := comatch { Ap(b) => S(b) };
+prd fail := cocase { Ap(b)[*] => S(b) };

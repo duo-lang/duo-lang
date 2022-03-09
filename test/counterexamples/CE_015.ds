@@ -1,6 +1,7 @@
 # Match is not correct
 
-data Bool { True, False };
-data Bool2 { TT, FF };
+data Bool : Type CBV { True, False };
+data Bool2 : Type CBV { TT, FF };
 
-def fail := match True with { TT => 'None, False => 'None };
+constructor None : CBV;
+prd fail := case True of { TT => None, False => None };

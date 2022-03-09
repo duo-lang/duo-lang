@@ -1,9 +1,10 @@
 # Pattern match destructee has incorrect type
 
-data Bool { True, False };
-data Bool2 { TT, FF };
+data Bool : Type CBV { True, False };
+data Bool2 : Type CBV { TT, FF };
 
-def fail := match True with { TT => 'None
-                            , FF => 'None
-                            };
+constructor None : CBV;
+prd fail := case True of { TT => None
+                         , FF => None
+                         };
 
