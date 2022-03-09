@@ -1,5 +1,5 @@
 # Match is not exhaustive
 
-data Bool { True, False };
+data Bool : Type CBV { True, False };
 
-def fail := match True with { True => False };
+prd fail := case True of { True => False };

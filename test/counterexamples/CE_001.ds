@@ -1,1 +1,5 @@
-prd foo := comatch { 'Ap => 'A >> 'B };
+# Cannot have cut between constructor and destructor.
+constructor A : CBV;
+constructor B : CBV;
+destructor Ap : CBV;
+prd foo := comatch { Ap => A >> B };

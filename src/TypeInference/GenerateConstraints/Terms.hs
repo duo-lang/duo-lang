@@ -55,15 +55,15 @@ genConstraintsCtxts (_:_) [] info =
 splitContext :: Int -- ^ The offset of the projected type
              -> PrdCnsRep pc -- ^ The expected mode of the type
              -> LinearContext pol -- ^ The context to be split
-             -> (LinearContext pol, Typ (PrdCnsFlip pc pol), LinearContext pol)
+             -> GenM (LinearContext pol, Typ (PrdCnsFlip pc pol), LinearContext pol)
 splitContext n PrdRep sig = case splitAt n sig of
-                              (_, []) -> error "splitContext: Too short."
-                              (_, PrdCnsType CnsRep _:_) -> error "splitContext: Found CnsType, expected PrdType."
-                              (tys1, PrdCnsType PrdRep ty:tys2) -> (tys1, ty, tys2)
+                              (_, []) -> throwGenError ["splitContext: Too short."]
+                              (_, PrdCnsType CnsRep _:_) -> throwGenError ["splitContext: Found CnsType, expected PrdType."]
+                              (tys1, PrdCnsType PrdRep ty:tys2) -> pure (tys1, ty, tys2)
 splitContext n CnsRep sig = case splitAt n sig of
-                              (_, []) -> error "splitContext: Too short."
-                              (_, PrdCnsType PrdRep _:_) -> error "splitContext: Found PrdType, expected CnsType."
-                              (tys1, PrdCnsType CnsRep ty:tys2) -> (tys1, ty, tys2)
+                              (_, []) -> throwGenError ["splitContext: Too short."]
+                              (_, PrdCnsType PrdRep _:_) -> throwGenError ["splitContext: Found PrdType, expected CnsType."]
+                              (tys1, PrdCnsType CnsRep ty:tys2) -> pure (tys1, ty, tys2)
 
 ---------------------------------------------------------------------------------------------
 -- Terms
@@ -270,7 +270,7 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,PrdRep,subst2)) = do
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit arguments and the implicit argument.
   -- The return type is the implicit element in the xtorSig, which must be a CnsType.
-  let (tys1,retType, tys2) = splitContext (length subst1) CnsRep (sig_args xtorSig)
+  (tys1,retType, tys2) <- splitContext (length subst1) CnsRep (sig_args xtorSig)
   -- The argument types must be subtypes of the types declared in the xtorSig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
   return (Dtor (loc,retType) Nominal xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
@@ -288,7 +288,7 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,CnsRep,subst2)) = do
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
   -- The return type is the implicit element in the xtorSig, which must be a PrdType.
-  let (tys1,retType, tys2) = splitContext (length subst1) PrdRep (sig_args xtorSig)
+  (tys1,retType, tys2) <- splitContext (length subst1) PrdRep (sig_args xtorSig)
   -- The argument types must be subtypes of the types declared in the xtorSig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
   return (Dtor (loc,retType) Nominal xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
@@ -316,7 +316,7 @@ genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,PrdRep,subst2)) = 
   -- The xtor sig has to be translated.
   xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
   -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-  let (tys1,_retType, tys2) = splitContext (length subst1) CnsRep (sig_args xtorSigTranslated)
+  (tys1,_retType, tys2) <- splitContext (length subst1) CnsRep (sig_args xtorSigTranslated)
   -- The argument types must be subtypes of the greatest translation of the xtor sig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
   return (Dtor (loc,retTypePos) Refinement xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
@@ -340,7 +340,7 @@ genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,CnsRep,subst2)) = 
   -- The xtor sig has to be translated.
   xtorSigTranslated <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
   -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
-  let (tys1,_retType, tys2) = splitContext (length subst1) PrdRep (sig_args xtorSigTranslated)
+  (tys1,_retType, tys2) <- splitContext (length subst1) PrdRep (sig_args xtorSigTranslated)
   -- The argument types must be subtypes of the greatest translation of the xtor sig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
   return (Dtor (loc,retTypeNeg) Refinement xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
@@ -468,9 +468,9 @@ genConstraintsTerm (Cocase loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}
     -- Type case term using new type vars
     tmcasei_termInferred <- withContext (init posTypes) (genConstraintsTerm tmcasei_term)
     -- The return type is the last element in the xtorSig, which must be a CnsType.
-    let retType = case last posTypes of
-                   (PrdCnsType PrdRep _)  -> error "Boom"
-                   (PrdCnsType CnsRep ty) -> ty
+    retType <- case last posTypes of
+                 (PrdCnsType PrdRep _)  -> throwGenError ["Boom"]
+                 (PrdCnsType CnsRep ty) -> pure ty
     -- The term must have a subtype of the copattern match return type
     addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
     return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred)
@@ -504,9 +504,9 @@ genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = x
     upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig tmcasei_name NegRep)
 
     -- HACK: Split the argument list into the explicit (lb1, lb2) and implicit arguments (_lbi). (Implicit argument in the middle)
-    let (lb1, retType, lb2) = splitContext (length as1) CnsRep lowerBound
+    (lb1, retType, lb2) <- splitContext (length as1) CnsRep lowerBound
     -- HACK: Split the argument list into the explicit (ub1, ub2) and implicit arguments (_ubi). (Implicit argument in the middle)
-    let (ub1, _ubi, ub2) = splitContext (length as1) CnsRep upperBound
+    (ub1, _ubi, ub2) <- splitContext (length as1) CnsRep upperBound
 
     genConstraintsCtxts (lb1 ++ lb2) (argtsNeg1 ++ argtsNeg2) (PatternMatchConstraint loc)
     genConstraintsCtxts (argtsPos1 ++ argtsPos2) (ub1 ++ ub2) (PatternMatchConstraint loc)
