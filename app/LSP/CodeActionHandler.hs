@@ -16,7 +16,7 @@ import Syntax.AST.Program
     ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv))
 import Syntax.AST.Types ( TypeScheme, PrdCnsToPol )
 import Syntax.Kinds (CallingConvention(..))
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax
 import Driver.Driver

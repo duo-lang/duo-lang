@@ -4,7 +4,7 @@ import Data.Text (Text)
 
 import Syntax.CST.Terms
 import Syntax.CST.Types
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Types (DataCodata)
 import Syntax.Kinds (CallingConvention)
 import Utils

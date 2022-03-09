@@ -42,7 +42,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.AST.Program
 import Syntax.AST.Types
-import Syntax.CommonTerm
+import Syntax.Common
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils

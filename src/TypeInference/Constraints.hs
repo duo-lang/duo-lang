@@ -2,7 +2,7 @@ module TypeInference.Constraints where
 
 import Data.Map (Map)
 
-import Syntax.CommonTerm ( FreeVarName )
+import Syntax.Common ( FreeVarName )
 import Syntax.AST.Types ( Polarity(..), Typ, TVar )
 import Syntax.Kinds
 import Utils ( Loc )

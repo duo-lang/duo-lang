@@ -1,6 +1,6 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Types
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition

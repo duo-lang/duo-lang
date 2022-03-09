@@ -10,7 +10,7 @@ module Translate.Desugar
   where
 
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
 
 ---------------------------------------------------------------------------------

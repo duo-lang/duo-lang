@@ -13,7 +13,7 @@ import Data.Set qualified as S
 
 import Errors
 import Syntax.AST.Types
-import Syntax.CommonTerm (XtorName, Phase(..), PrdCnsRep(..))
+import Syntax.Common (XtorName, Phase(..), PrdCnsRep(..))
 import Syntax.AST.Program (Environment)
 import Pretty.Pretty
 import Pretty.Types ()

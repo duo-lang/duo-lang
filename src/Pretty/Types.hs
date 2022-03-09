@@ -8,7 +8,7 @@ import Pretty.Pretty
 import Syntax.CST.Types (BinOp(..))
 import Syntax.AST.Types
 import Syntax.Kinds
-import Syntax.CommonTerm
+import Syntax.Common
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types

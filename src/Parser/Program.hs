@@ -12,7 +12,7 @@ import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Types (DataCodata(..), IsRefined(..))
 import Utils
 

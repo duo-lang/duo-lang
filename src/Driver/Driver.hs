@@ -22,7 +22,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Lowering.Program
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types

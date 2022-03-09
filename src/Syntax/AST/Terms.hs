@@ -7,7 +7,7 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.CommonTerm
+import Syntax.Common
     ( Index,
       FreeVarName,
       XtorName,

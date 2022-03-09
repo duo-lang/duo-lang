@@ -13,7 +13,7 @@ import Pretty.Pretty
 import Syntax.CST.Terms qualified as CST
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program (Environment(..))
-import Syntax.CommonTerm
+import Syntax.Common
 import Utils
 
 

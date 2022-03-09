@@ -8,7 +8,7 @@ import Pretty.Program ()
 
 import Driver.Driver
 import Translate.Desugar
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Kinds
 import Syntax.AST.Program
 import Translate.Focusing

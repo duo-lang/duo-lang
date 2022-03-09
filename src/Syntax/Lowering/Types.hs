@@ -7,7 +7,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
 import Driver.Definition
-import Syntax.CommonTerm
+import Syntax.Common
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
 import Syntax.CST.Types

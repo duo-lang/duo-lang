@@ -9,7 +9,7 @@ import Errors
 import Parser.Parser
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program
-import Syntax.CommonTerm
+import Syntax.Common
 import Driver.Driver
 
 getAvailableCounterExamples :: IO [FilePath]

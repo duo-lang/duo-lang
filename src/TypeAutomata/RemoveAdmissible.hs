@@ -2,7 +2,7 @@ module TypeAutomata.RemoveAdmissible
   ( removeAdmissableFlowEdges
   ) where
 
-import Syntax.CommonTerm (PrdCns(..))
+import Syntax.Common (PrdCns(..))
 import Syntax.AST.Types
 import TypeAutomata.Definition
 

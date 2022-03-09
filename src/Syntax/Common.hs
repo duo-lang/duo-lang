@@ -1,4 +1,4 @@
-module Syntax.CommonTerm where
+module Syntax.Common where
 
 import Data.Text (Text)
 
