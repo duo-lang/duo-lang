@@ -9,7 +9,7 @@ import Errors
 import Driver.Definition
 import Syntax.Common
 import qualified Syntax.AST.Types as AST
-import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
+import Syntax.AST.Types ( freeTypeVars)
 import Syntax.CST.Types
 
 ---------------------------------------------------------------------------------
@@ -27,10 +27,10 @@ lowerTypeScheme rep (TypeScheme tvars monotype) = do
 
 lowerTyp :: PolarityRep pol -> Typ -> DriverM (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
-lowerTyp rep (TyXData AST.Data name sigs) = do
+lowerTyp rep (TyXData Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
     pure $ AST.TyData rep name sigs
-lowerTyp rep (TyXData AST.Codata name sigs) = do
+lowerTyp rep (TyXData Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ AST.TyCodata rep name sigs
 lowerTyp rep (TyNominal name) = pure $ AST.TyNominal rep Nothing name

@@ -15,7 +15,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Syntax.AST.Types ( TVar(MkTVar) )
+import Syntax.Common ( TVar(MkTVar) )
 
 -------------------------------------------------------------------------------------
 -- Compute Biclique Decomposition

@@ -18,6 +18,7 @@ import Control.Monad.State
 
 import Errors
 import Syntax.AST.Types
+import Syntax.Common
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)

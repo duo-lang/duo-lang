@@ -7,9 +7,8 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.Common
-    ( XtorName, FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep(..), ModuleName, NominalStructural, IsRec)
 import Syntax.AST.Terms( Command, Term )
-import Syntax.AST.Types ( TypeScheme, DataCodata, Polarity(..), DataDecl, PrdCnsToPol )
+import Syntax.AST.Types ( TypeScheme, DataDecl )
 import Syntax.Kinds (CallingConvention)
 import Utils ( Loc )
 

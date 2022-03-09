@@ -13,7 +13,6 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
-import Syntax.AST.Types (DataCodata(..), IsRefined(..))
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration

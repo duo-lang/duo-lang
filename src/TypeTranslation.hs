@@ -21,7 +21,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.AST.Program
 import Syntax.AST.Types
-import Syntax.Common (Phase(Inferred),PrdCnsRep(..))
+import Syntax.Common
 
 ---------------------------------------------------------------------------------------------
 -- TranslationState:

@@ -10,6 +10,7 @@ import TypeAutomata.Subsume (subsume)
 import Driver.Definition
 import Syntax.Lowering.Types
 import Syntax.AST.Types
+import Syntax.Common
 
 -- Subsume
 

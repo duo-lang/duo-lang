@@ -5,7 +5,6 @@ import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.CST.Types (BinOp(..))
 import Syntax.AST.Types
 import Syntax.Kinds
 import Syntax.Common

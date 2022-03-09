@@ -8,13 +8,6 @@ import Data.Text qualified as T
 import Utils
 import Errors
 import Syntax.Common
-    ( Index,
-      FreeVarName,
-      XtorName,
-      NominalStructural,
-      PrdCnsRep(..),
-      PrdCns(..),
-      Phase(..) )
 import Syntax.AST.Types
 import Syntax.Kinds
 

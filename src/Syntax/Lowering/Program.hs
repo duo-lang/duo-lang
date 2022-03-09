@@ -21,10 +21,10 @@ import Syntax.AST.Program (Environment(xtorMap))
 
 
 
-lowerXtors :: [CST.XtorSig] -> DriverM ([AST.XtorSig AST.Pos], [AST.XtorSig AST.Neg])
+lowerXtors :: [CST.XtorSig] -> DriverM ([AST.XtorSig Pos], [AST.XtorSig Neg])
 lowerXtors sigs = do
-    posSigs <- sequence $ lowerXTorSig AST.PosRep <$> sigs
-    negSigs <- sequence $ lowerXTorSig AST.NegRep <$> sigs
+    posSigs <- sequence $ lowerXTorSig PosRep <$> sigs
+    negSigs <- sequence $ lowerXTorSig NegRep <$> sigs
     pure (posSigs, negSigs)
 
 lowerDataDecl :: CST.DataDecl -> DriverM AST.DataDecl
@@ -38,11 +38,11 @@ lowerDataDecl CST.NominalDecl { data_refined, data_name, data_polarity, data_kin
                          }
 
 
-lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (AST.PrdCnsToPol pc))
-lowerAnnot PrdRep ts = lowerTypeScheme AST.PosRep ts
-lowerAnnot CnsRep ts = lowerTypeScheme AST.NegRep ts
+lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (PrdCnsToPol pc))
+lowerAnnot PrdRep ts = lowerTypeScheme PosRep ts
+lowerAnnot CnsRep ts = lowerTypeScheme NegRep ts
 
-lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> DriverM (Maybe (AST.TypeScheme (AST.PrdCnsToPol pc)))
+lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> DriverM (Maybe (AST.TypeScheme (PrdCnsToPol pc)))
 lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
@@ -54,8 +54,8 @@ lowerDecl (CST.DataDecl loc dd)             = do
   lowered <- lowerDataDecl dd
   env <- gets driverEnv
   let ns = case CST.data_refined dd of
-                 AST.Refined -> Refinement
-                 AST.NotRefined -> Nominal
+                 Refined -> Refinement
+                 NotRefined -> Nominal
   let newEnv = env { AST.xtorMap = M.union (M.fromList [(xt, ns)| xt <- AST.sig_name <$> fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered

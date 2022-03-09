@@ -7,8 +7,8 @@ import Driver.Definition
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
-import Syntax.AST.Types
 import Syntax.Lowering.Types
+import Syntax.Common
 import TypeAutomata.Subsume (subsume)
 
 ds :: DriverState

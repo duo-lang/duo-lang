@@ -12,7 +12,7 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 
-import Syntax.AST.Types ( Polarity(Neg, Pos) )
+import Syntax.Common
 import TypeAutomata.Definition
     ( EdgeLabelNormal,
       NodeLabel(..),
