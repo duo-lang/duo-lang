@@ -1,5 +1,5 @@
-data Nat { Z, S(Nat) };
-codata Fun { Ap(Nat,Nat)[Nat] };
+data Nat : Type CBV { Z, S(Nat) };
+codata Fun : Type CBN { Ap(Nat,Nat)[Nat] };
 
-def rec add := comatch { Ap(n,m) => match n with { Z => m, S(p) => add.Ap(p,S(m),Z) } };
+prd rec add := cocase { Ap(n,m)[*] => case n of { Z => m, S(p) => add.Ap(p,S(m),Z)[*] } };
 
