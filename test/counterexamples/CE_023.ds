@@ -1,2 +1,6 @@
 # The annotated type is more general than the inferred one.
-def foo : forall a. { 'Ap(a)[a] } := comatch { 'Ap(x) => match x with { 'True => 'True, 'False => 'False }};
+destructor Ap : CBN;
+constructor True : CBV;
+constructor False : CBV;
+prd foo : forall a. { Ap(a)[a] } := cocase { Ap(x)[*] =>
+      case x of { True => True, False => False }};
