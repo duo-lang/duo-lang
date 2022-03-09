@@ -1,0 +1,10 @@
+import Prelude;
+
+data List(+a : CBV) : CBV {
+    Nil,
+    Cons(a, List(a))
+};
+
+data Rose(+a : CBV) : CBN {
+    Node(List(Rose(a)))
+};

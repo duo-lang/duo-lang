@@ -1,6 +1,7 @@
 module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Control.Monad.Except (throwError)
+import Control.Monad.State
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -11,6 +12,8 @@ import Syntax.CommonTerm
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
 import Syntax.CST.Types
+import Syntax.AST.Program (Environment(declEnv, MkEnvironment))
+import Data.List
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> AST)
@@ -33,7 +36,9 @@ lowerTyp rep (TyXData AST.Data name sigs) = do
 lowerTyp rep (TyXData AST.Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ AST.TyCodata rep name sigs
-lowerTyp rep (TyNominal name) = pure $ AST.TyNominal rep Nothing name
+lowerTyp rep (TyNominal name args) = do
+    (covArgs, conArgs) <- lowerTypeArgs rep name args
+    pure $ AST.TyNominal rep Nothing name covArgs conArgs
 lowerTyp rep (TyRec v typ) = AST.TyRec rep v <$> lowerTyp rep typ
 lowerTyp PosRep TyTop = throwError (LowerError Nothing TopInPosPolarity)
 lowerTyp NegRep TyTop = pure desugarTopType
@@ -42,6 +47,26 @@ lowerTyp NegRep TyBot = throwError (LowerError Nothing BotInNegPolarity)
 lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
 lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
+
+lowerTypeArgs :: PolarityRep pol -> AST.TypeName -> [Typ] -> DriverM ([AST.Typ pol], [AST.Typ (AST.FlipPol pol)])
+lowerTypeArgs rep tn args = do
+    (n_cov, n_contra) <- lookupTypeConstructorAritiy tn
+    let (cov, contra) = splitAt n_cov args
+    if n_cov /= length cov || n_contra /= length contra then
+        throwOtherError ["Type constructor " <> AST.unTypeName tn <> " must be fully applied"]
+    else do
+        cov <- sequence (lowerTyp rep <$> cov)
+        contra <- sequence (lowerTyp (AST.flipPolarityRep rep) <$> contra)
+        pure (cov, contra)
+
+-- | Find the number of (covariant, contravariant) type parameters
+lookupTypeConstructorAritiy :: AST.TypeName -> DriverM (Int, Int)
+lookupTypeConstructorAritiy tn = do
+    MkEnvironment {..} <- gets driverEnv
+    let env = snd <$> declEnv
+    case find (\AST.NominalDecl{..} -> data_name == tn) env of
+        Just AST.NominalDecl{..} -> pure (length (AST.covariant data_params), length (AST.contravariant data_params))
+        Nothing -> throwOtherError ["Type name " <> AST.unTypeName tn <> " not found in environment"]
 
 lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> DriverM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs

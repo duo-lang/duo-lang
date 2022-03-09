@@ -17,7 +17,9 @@ import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.CommonTerm
-import Syntax.AST.Program (Environment(xtorMap))
+import Syntax.AST.Program (Environment(xtorMap, declEnv))
+import Syntax.AST.Types (DataDecl(data_params))
+import Utils (Loc)
 
 
 
@@ -27,16 +29,25 @@ lowerXtors sigs = do
     negSigs <- sequence $ lowerXTorSig AST.NegRep <$> sigs
     pure (posSigs, negSigs)
 
-lowerDataDecl :: CST.DataDecl -> DriverM AST.DataDecl
-lowerDataDecl CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
-    xtors <- lowerXtors data_xtors
-    pure AST.NominalDecl { data_refined = data_refined
-                         , data_name = data_name
-                         , data_polarity = data_polarity
-                         , data_kind = data_kind
-                         , data_xtors = xtors
-                         }
+lowerDataDecl :: Loc -> CST.DataDecl -> DriverM AST.DataDecl
+lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors, data_params } = do
+  -- HACK: Insert preliminary data declaration information (needed to lower type constructor applications)
+  env <- gets driverEnv
+  let prelim_dd = AST.NominalDecl
+        { data_refined = data_refined
+        , data_name = data_name
+        , data_polarity = data_polarity
+        , data_kind = data_kind
+        , data_xtors = ([], [])
+        , data_params = data_params
+        }
 
+  let newEnv = env { declEnv = (loc, prelim_dd) : declEnv env }
+  setEnvironment newEnv
+
+  xtors <- lowerXtors data_xtors
+
+  pure $ prelim_dd { AST.data_xtors = xtors}
 
 lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (AST.PrdCnsToPol pc))
 lowerAnnot PrdRep ts = lowerTypeScheme AST.PosRep ts
@@ -51,7 +62,7 @@ lowerDecl (CST.PrdCnsDecl loc Prd isrec fv annot tm) = AST.PrdCnsDecl loc PrdRep
 lowerDecl (CST.PrdCnsDecl loc Cns isrec fv annot tm) = AST.PrdCnsDecl loc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
 lowerDecl (CST.CmdDecl loc fv cmd)          = AST.CmdDecl loc fv <$> (lowerCommand cmd)
 lowerDecl (CST.DataDecl loc dd)             = do
-  lowered <- lowerDataDecl dd
+  lowered <- lowerDataDecl loc dd
   env <- gets driverEnv
   let ns = case CST.data_refined dd of
                  AST.Refined -> Refinement

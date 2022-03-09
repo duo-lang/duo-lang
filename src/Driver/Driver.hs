@@ -192,6 +192,11 @@ inferProgram :: [CST.Declaration]
              -> DriverM (Program Inferred)
 inferProgram decls = do
   decls <- renameProgram decls
+  -- HACK: Reset declaration environment to remove preliminary contents (added during lowering)
+  env <- gets driverEnv
+  let newEnv = env { declEnv = [] }
+  setEnvironment newEnv
+  -- Infer all declarations
   forM decls inferDecl
 
 renameProgram :: [CST.Declaration]
@@ -209,7 +214,7 @@ renameProgramIO state decls = do
 
 inferProgram' :: Program Parsed
               -> DriverM (Program Inferred)
-inferProgram' decls = forM decls inferDecl              
+inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]

@@ -95,7 +95,7 @@ instance PrettyAnn (Typ pol) where
   -- Recursive types
   prettyAnn (TyRec _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
-  prettyAnn (TyNominal _ _ tn)   = prettyAnn tn
+  prettyAnn (TyNominal _ _ tn args_cov args_contra) = prettyAnn tn <> parens' commaSym ((prettyAnn <$> args_cov) ++ (prettyAnn <$> args_contra))
   -- Structural data and codata types
   prettyAnn (TyData _ Nothing xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)

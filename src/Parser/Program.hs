@@ -4,6 +4,7 @@ module Parser.Program
   ) where
 
 import Control.Monad (void)
+import Control.Monad.Reader ( MonadReader(local) )
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
@@ -13,8 +14,9 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CommonTerm
-import Syntax.AST.Types (DataCodata(..), IsRefined(..))
+import Syntax.AST.Types (DataCodata(..), IsRefined(..), Variance (Covariant, Contravariant), TVar (MkTVar), TParams (MkTParams), allTypeVars)
 import Utils
+import Syntax.Kinds (Kind)
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
@@ -96,24 +98,58 @@ dataCodataPrefixP = do
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
 
+varianceP :: Variance -> Parser ()
+varianceP Covariant = void plusSym
+varianceP Contravariant = void minusSym
+
+tParamP :: Variance -> Parser (TVar, Kind)
+tParamP v = do
+  _ <- varianceP v
+  tvar <- MkTVar . fst <$> freeVarName
+  _ <- colon
+  kind <- kindP
+  pure (tvar, kind)
+
+tparamsP :: Parser TParams
+tparamsP =
+  (fst <$> parens inner) <|> pure (MkTParams [] [])
+  where
+    inner = do
+      cov_ps <- tParamP Covariant `sepBy` try (comma <* notFollowedBy (varianceP Contravariant))
+      if null cov_ps then
+        MkTParams [] <$> tParamP Contravariant `sepBy` comma
+      else do
+        contra_ps <-
+          try comma *> tParamP Contravariant `sepBy` comma
+          <|> pure []
+        pure (MkTParams cov_ps contra_ps)
+
 dataDeclP :: Parser Declaration
 dataDeclP = do
   startPos <- getSourcePos
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
-    _ <- colon
-    knd <- kindP
-    (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
-    endPos <- semi
-    let decl = NominalDecl
-          { data_refined = refined
-          , data_name = tn
-          , data_polarity = dataCodata
-          , data_kind = knd
-          , data_xtors = combineXtors xtors
-          }
-    pure (DataDecl (Loc startPos endPos) decl)
+    params <- tparamsP
+    if refined == Refined && not (null (allTypeVars params)) then
+      error "Parametrized refinement types are not supported, yet"
+    else
+      do
+        _ <- colon
+        knd <- kindP
+        let xtorP = local (\s -> s { tvars = allTypeVars params }) xtorDeclP
+        (xtors, _pos) <- braces $ xtorP `sepBy` comma
+        endPos <- semi
+        let decl = NominalDecl
+              { data_refined = refined
+              , data_name = tn
+              , data_polarity = dataCodata
+              , data_kind = knd
+              , data_xtors = combineXtors xtors
+              , data_params = params
+              }
+
+        pure (DataDecl (Loc startPos endPos) decl)
 
 ---------------------------------------------------------------------------------
 -- Xtor Declaration Parser
@@ -133,7 +169,6 @@ xtorDeclarationP = do
   ret <- callingConventionP
   endPos <- semi
   pure (XtorDecl (Loc startPos endPos) dc xt args ret)
-  
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
