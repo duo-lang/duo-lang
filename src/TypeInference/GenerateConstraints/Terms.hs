@@ -131,8 +131,8 @@ genConstraintsTerm (Xtor loc rep Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (Xtor (loc, TyData   PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep Nominal xt substInferred)
-    CnsRep -> return (Xtor (loc, TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep Nominal xt substInferred)
+    PrdRep -> return (Xtor (loc, TyData   PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep Refinement xt substInferred)
+    CnsRep -> return (Xtor (loc, TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
@@ -203,8 +203,8 @@ genConstraintsTerm (XMatch loc rep Refinement cases@(pmcase:_)) = do
                        -- and greatest type translation.
                        return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
   case rep of
-    PrdRep -> return $ XMatch (loc, TyCodata PosRep (Just (data_name decl)) (snd <$> inferredCases)) rep Nominal (fst <$> inferredCases)
-    CnsRep -> return $ XMatch (loc, TyData   NegRep (Just (data_name decl)) (snd <$> inferredCases)) rep Nominal (fst <$> inferredCases)
+    PrdRep -> return $ XMatch (loc, TyCodata PosRep (Just (data_name decl)) (snd <$> inferredCases)) rep Refinement (fst <$> inferredCases)
+    CnsRep -> return $ XMatch (loc, TyData   NegRep (Just (data_name decl)) (snd <$> inferredCases)) rep Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --
@@ -319,7 +319,7 @@ genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,PrdRep,subst2)) = 
   let (tys1,_retType, tys2) = splitContext (length subst1) CnsRep (sig_args xtorSigTranslated)
   -- The argument types must be subtypes of the greatest translation of the xtor sig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-  return (Dtor (loc,retTypePos) Nominal xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
+  return (Dtor (loc,retTypePos) Refinement xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
 genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,CnsRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
@@ -343,7 +343,7 @@ genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,CnsRep,subst2)) = 
   let (tys1,_retType, tys2) = splitContext (length subst1) PrdRep (sig_args xtorSigTranslated)
   -- The argument types must be subtypes of the greatest translation of the xtor sig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-  return (Dtor (loc,retTypeNeg) Nominal xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
+  return (Dtor (loc,retTypeNeg) Refinement xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
 --
 --
 -- Structural Match (Syntactic Sugar):
@@ -430,7 +430,7 @@ genConstraintsTerm (Case loc Refinement destructee cases@(MkTermCase { tmcase_na
     return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred, MkXtorSig tmcase_name argtsNeg)
   --  The destructee must have a subtype of the refinement type constructed from the cases.
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyData NegRep (Just data_name) (snd <$> casesInferred)))
-  return (Case (loc,retTypePos) Nominal destructeeInferred (fst <$> casesInferred))
+  return (Case (loc,retTypePos) Refinement destructeeInferred (fst <$> casesInferred))
 --
 -- Structural Comatch (Syntactic Sugar):
 --
@@ -515,7 +515,7 @@ genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = x
     addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
     return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred,
       MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
-  return (Cocase (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Nominal (fst <$> cocasesInferred))
+  return (Cocase (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)
