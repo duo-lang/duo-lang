@@ -14,7 +14,6 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.AST.Program
     ( Declaration(PrdCnsDecl,CmdDecl), Environment(prdEnv, cnsEnv, cmdEnv))
-import Syntax.CST.Program (IsRec(..))    
 import Syntax.AST.Types ( TypeScheme, PrdCnsToPol )
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.CommonTerm

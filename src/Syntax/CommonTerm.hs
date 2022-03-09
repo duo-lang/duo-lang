@@ -38,6 +38,8 @@ flipPrdCns CnsRep = PrdRep
 
 data NominalStructural = Nominal | Structural | Refinement deriving (Eq, Ord, Show)
 
+data IsRec = Recursive | NonRecursive deriving (Show, Eq, Ord)
+
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------

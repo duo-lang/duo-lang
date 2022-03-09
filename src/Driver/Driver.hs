@@ -37,7 +37,6 @@ import Syntax.AST.Program
       Environment(..),
       Declaration(..)
     )
-import Syntax.CST.Program (IsRec(..))
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
