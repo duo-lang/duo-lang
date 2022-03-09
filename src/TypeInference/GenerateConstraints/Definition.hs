@@ -17,7 +17,6 @@ module TypeInference.GenerateConstraints.Definition
     -- Adding a constraint
   , addConstraint
     -- Other
-  , InferenceMode(..)
   , PrdCnsToPol
   , foo
   , fromMaybeVar
@@ -74,11 +73,10 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 ---------------------------------------------------------------------------------------------
 
 data GenerateReader = GenerateReader { context :: [LinearContext Pos]
-                                     , inferMode :: InferenceMode
                                      }
 
-initialReader :: Environment Inferred -> InferenceMode -> (Environment Inferred, GenerateReader)
-initialReader env im = (env, GenerateReader { context = [], inferMode = im })
+initialReader :: Environment Inferred -> (Environment Inferred, GenerateReader)
+initialReader env = (env, GenerateReader { context = [] })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
@@ -87,8 +85,8 @@ initialReader env im = (env, GenerateReader { context = [], inferMode = im })
 newtype GenM a = GenM { getGenM :: ReaderT (Environment Inferred, GenerateReader) (StateT GenerateState (Except Error)) a }
   deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment Inferred, GenerateReader), MonadError Error)
 
-runGenM :: Environment Inferred -> InferenceMode -> GenM a -> Either Error (a, ConstraintSet)
-runGenM env im m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env im)) initialState) of
+runGenM :: Environment Inferred -> GenM a -> Either Error (a, ConstraintSet)
+runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
 

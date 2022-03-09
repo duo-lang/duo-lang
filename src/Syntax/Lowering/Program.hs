@@ -53,7 +53,10 @@ lowerDecl (CST.CmdDecl loc fv cmd)          = AST.CmdDecl loc fv <$> (lowerComma
 lowerDecl (CST.DataDecl loc dd)             = do
   lowered <- lowerDataDecl dd
   env <- gets driverEnv
-  let newEnv = env { AST.xtorMap = M.union (M.fromList [(xt, Nominal)| xt <- AST.sig_name <$> fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
+  let ns = case CST.data_refined dd of
+                 AST.Refined -> Refinement
+                 AST.NotRefined -> Nominal
+  let newEnv = env { AST.xtorMap = M.union (M.fromList [(xt, ns)| xt <- AST.sig_name <$> fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do

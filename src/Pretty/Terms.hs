@@ -90,8 +90,8 @@ instance PrettyAnn (SubstitutionI ext pc) where
 ---------------------------------------------------------------------------------
 
 isNumSTerm :: Term pc ext -> Maybe Int
-isNumSTerm (Xtor _ PrdRep _ (MkXtorName "Z") []) = Just 0
-isNumSTerm (Xtor _ PrdRep _ (MkXtorName "S") [PrdTerm n]) = case isNumSTerm n of
+isNumSTerm (Xtor _ PrdRep Nominal (MkXtorName "Z") []) = Just 0
+isNumSTerm (Xtor _ PrdRep Nominal (MkXtorName "S") [PrdTerm n]) = case isNumSTerm n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing

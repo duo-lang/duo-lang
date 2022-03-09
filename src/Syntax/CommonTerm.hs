@@ -36,13 +36,13 @@ flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
 flipPrdCns PrdRep = CnsRep
 flipPrdCns CnsRep = PrdRep
 
-data NominalStructural = Nominal | Structural deriving (Eq, Ord, Show)
+data NominalStructural = Nominal | Structural | Refinement deriving (Eq, Ord, Show)
 
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------
 
-newtype ModuleName = ModuleName { unModuleName :: Text }
+newtype ModuleName = ModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
 newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)

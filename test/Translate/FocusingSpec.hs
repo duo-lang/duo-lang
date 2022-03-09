@@ -4,6 +4,7 @@ import Control.Monad
 import Test.Hspec
 import TestUtils
 import Pretty.Pretty
+import Pretty.Program ()
 
 import Driver.Driver
 import Translate.Desugar
@@ -26,7 +27,22 @@ testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ e
       let focusedDecls :: Program Parsed = reparseProgram $ focusProgram cbx (desugarProgram decls)
       res <- runIO $ inferProgramIO' driverState focusedDecls
       case res of
-        Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
+        Left err -> do
+           let msg = unlines [ "---------------------------------"
+                             , "Prettyprinted declarations:"
+                             , ""
+                             ,  ppPrintString focusedDecls
+                             , ""
+                             , "Show instance of declarations:"
+                             , ""
+                             , show focusedDecls
+                             , ""
+                             , "Error message:"
+                             , ""
+                             , ppPrintString err
+                             , "---------------------------------"
+                             ]
+           it "Could not load examples" $ expectationFailure msg
         Right _env -> return ()
 
 spec :: Spec

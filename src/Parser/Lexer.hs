@@ -148,6 +148,7 @@ freeVarName = try $ do
 
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
+checkTick Refinement = return ()
 checkTick Structural = () <$ tick
 
 xtorName :: Parser (XtorName, SourcePos)
