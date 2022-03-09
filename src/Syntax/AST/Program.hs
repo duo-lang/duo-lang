@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Syntax.AST.Program where
 
 import Data.Kind (Type)  
@@ -6,7 +7,7 @@ import Data.Map qualified as M
 import Data.Text (Text)
 
 import Syntax.CommonTerm
-    ( XtorName, FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep, ModuleName, NominalStructural)
+    ( XtorName, FreeVarName, PrdCns(Cns, Prd), Phase(..), PrdCnsRep(..), ModuleName, NominalStructural)
 import Syntax.AST.Terms( Command, Term )
 import Syntax.AST.Types ( TypeScheme, DataCodata, Polarity(..), DataDecl, PrdCnsToPol )
 import Syntax.CST.Program qualified as CST
@@ -31,9 +32,15 @@ data Declaration (ext :: Phase) where
   SetDecl        :: DeclExt ext -> Text                                                                         -> Declaration ext
   
 
-instance Show (Declaration ext) where
-  show _ = "<Show for Declaration not implemented>"
-
+instance (Show (DeclExt ext), Show (Term Prd ext), Show (Term Cns ext), Show (Command ext)) => Show (Declaration ext) where
+  show (PrdCnsDecl ext PrdRep isrec fv annot tm) = "PrdDecl: " ++ show ext ++ show isrec ++ show fv ++ show annot ++ show tm
+  show (PrdCnsDecl ext CnsRep isrec fv annot tm) = "CnsDecl: " ++ show ext ++ show isrec ++ show fv ++ show annot ++ show tm
+  show (CmdDecl ext fv cmd) = "CmdDecl: " ++ show ext ++ show fv ++ show cmd
+  show (DataDecl ext dcl)= "DataDecl: " ++ show ext ++ show dcl
+  show (XtorDecl ext dc xt args res) = "XtorDecl: " ++ show ext ++ show dc ++ show xt ++ show args ++ show res
+  show (ImportDecl ext mn) = "ImportDecl: " ++ show ext ++ show mn
+  show (SetDecl ext txt) = "SetDecl: " ++ show ext ++ show txt
+  
 type Program ext = [Declaration ext]
 
 ---------------------------------------------------------------------------------

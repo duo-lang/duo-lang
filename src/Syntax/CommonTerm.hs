@@ -42,7 +42,7 @@ data NominalStructural = Nominal | Structural | Refinement deriving (Eq, Ord, Sh
 -- Names
 ---------------------------------------------------------------------------------
 
-newtype ModuleName = ModuleName { unModuleName :: Text }
+newtype ModuleName = ModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
 newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)
