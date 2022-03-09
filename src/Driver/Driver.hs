@@ -138,14 +138,8 @@ inferDecl (CmdDecl loc v cmd) = do
 -- DataDecl
 --
 inferDecl (DataDecl loc dcl) = do
-  -- Insert into environment
-  env <- gets driverEnv
-  let ns = case data_refined dcl of
-                  Refined -> Refinement
-                  NotRefined -> Nominal
-  let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                   , xtorMap = M.union (M.fromList [(xt, ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
-  setEnvironment newEnv
+  -- HACK: inserting in the environment is already done in lowering
+  -- because the declarations are already needed for lowering
   return (DataDecl loc dcl)
 --
 -- XtorDecl
@@ -192,11 +186,6 @@ inferProgram :: [CST.Declaration]
              -> DriverM (Program Inferred)
 inferProgram decls = do
   decls <- renameProgram decls
-  -- HACK: Reset declaration environment to remove preliminary contents (added during lowering)
-  env <- gets driverEnv
-  let newEnv = env { declEnv = [] }
-  setEnvironment newEnv
-  -- Infer all declarations
   forM decls inferDecl
 
 renameProgram :: [CST.Declaration]

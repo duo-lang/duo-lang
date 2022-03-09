@@ -18,7 +18,7 @@ import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.CommonTerm
 import Syntax.AST.Program (Environment(xtorMap, declEnv))
-import Syntax.AST.Types (DataDecl(data_params))
+import Syntax.AST.Types (DataDecl(data_params), IsRefined (Refined, NotRefined))
 import Utils (Loc)
 
 
@@ -42,12 +42,23 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
         , data_params = data_params
         }
 
+  let prevDeclEnv = declEnv env
   let newEnv = env { declEnv = (loc, prelim_dd) : declEnv env }
   setEnvironment newEnv
 
   xtors <- lowerXtors data_xtors
 
-  pure $ prelim_dd { AST.data_xtors = xtors}
+  let ns = case data_refined of
+                  Refined -> Refinement
+                  NotRefined -> Nominal
+
+  -- HACK: insert final data declaration into environment
+  let dcl = prelim_dd { AST.data_xtors = xtors}
+  let newEnv = env { declEnv = (loc, dcl) : prevDeclEnv
+                   , xtorMap = M.union (M.fromList [(xt, ns)| xt <- AST.sig_name <$> fst (AST.data_xtors dcl)]) (xtorMap env)}
+  setEnvironment newEnv
+
+  pure dcl
 
 lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (AST.PrdCnsToPol pc))
 lowerAnnot PrdRep ts = lowerTypeScheme AST.PosRep ts
@@ -93,10 +104,20 @@ createSymbolTable [] = mempty
 createSymbolTable ((CST.XtorDecl _ _ xt _ _):decls) =
   let x = createSymbolTable decls
   in x { xtorMap = M.insert xt Structural (xtorMap x)}
-createSymbolTable ((CST.DataDecl _ dd):decls) =
+createSymbolTable ((CST.DataDecl loc dd):decls) =
   let x = createSymbolTable decls
       xtors = M.fromList [(xt, Nominal)| xt <- CST.sig_name <$> CST.data_xtors dd]
-  in x { xtorMap  = M.union xtors (xtorMap x)}
+  -- HACK: The type parameter arities of imported types need to be known in lowering,
+  -- hence we add a partial AST.NominalDecl without constructors for now
+  in x { declEnv = (loc, AST.NominalDecl
+        { data_refined = CST.data_refined dd
+        , data_name = CST.data_name dd
+        , data_polarity = CST.data_polarity dd
+        , data_kind = CST.data_kind dd
+        , data_xtors = ([], [])
+        , data_params = CST.data_params dd
+        }) : declEnv x,
+         xtorMap  = M.union xtors (xtorMap x)}
 createSymbolTable (_:decls) = createSymbolTable decls
 
 
