@@ -1,9 +1,9 @@
 destructor Ap(CBV)[CBV] : CBV;
 
-prd fixLazy := comatch { Ap(f)[k] => 
-                 comatch { Ap(x)[k] => x >> 
-                   Ap(x)[mu xx. f >> Ap(xx)[k]] } >> 
-                      Ap(comatch { Ap(x)[k] => x >> 
+prd fixLazy := comatch { Ap(f)[k] =>
+                 comatch { Ap(x)[k] => x >>
+                   Ap(x)[mu xx. f >> Ap(xx)[k]] } >>
+                      Ap(comatch { Ap(x)[k] => x >>
                         Ap(x)[mu xx. f >> Ap(xx)[k]] })[k]};
 
 prd id := comatch { Ap(x)[k] => x >> k };
@@ -16,7 +16,7 @@ prd omega2 := mu v. comatch { Ap(x)[k] => x >> Ap(x)[k] }
                     >>
                     Ap( comatch { Ap(x)[k] => x >> Ap(x)[k] })[v];
 
-data Fun : Type CBN { Ap(Fun)[Fun] };
+data Fun : CBN { Ap(Fun)[Fun] };
 
 prd omega3 := cocase { Ap(x)[*] => x.Ap(x)[*] }.Ap(cocase { Ap(x)[*] => x.Ap(x)[*]})[*];
 

@@ -28,11 +28,9 @@ import Syntax.CST.Types
 callingConventionP :: Parser CallingConvention
 callingConventionP = CBV <$ cbvKwP <|> CBN <$ cbnKwP
 
--- | Parses a MonoKind, either "Type CBV" or "Type CBN"
+-- | Parses a MonoKind, either "CBV" or "CBN"
 kindP :: Parser Kind
-kindP = do
-  _ <- typeKwP
-  MonoKind <$> callingConventionP
+kindP = MonoKind <$> callingConventionP
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts

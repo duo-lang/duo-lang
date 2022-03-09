@@ -494,9 +494,9 @@ prd parserTest := comatch { Ap(x)[x] => x >> x };
 
 ## Nominal Types
 
-data Bool : Type CBV { TT, FF };
-data Nat : Type CBV { Z, S(Nat) };
-codata NatBoolFun : Type CBN { ApNB(Nat)[Bool] };
+data Bool : CBV { TT, FF };
+data Nat : CBV { Z, S(Nat) };
+codata NatBoolFun : CBN { ApNB(Nat)[Bool] };
 prd nominalNot := comatch { Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k } };
 
 

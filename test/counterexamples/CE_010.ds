@@ -1,6 +1,6 @@
 # Ctor called with incorrect arg type
 
-data Nat : Type CBV { Z, S(Nat) };
-data Bool : Type CBV { True, False };
+data Nat : CBV { Z, S(Nat) };
+data Bool : CBV { True, False };
 
 prd fail := S(True);

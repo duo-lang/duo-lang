@@ -56,7 +56,7 @@ instance PrettyAnn CallingConvention  where
   prettyAnn CBN = "CBN"
 
 instance PrettyAnn Kind where
-  prettyAnn (MonoKind eo) = "Type" <+> prettyAnn eo
+  prettyAnn (MonoKind eo) = prettyAnn eo
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of types
@@ -102,7 +102,7 @@ instance PrettyAnn (Typ pol) where
   -- Refinement types
   prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
   prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
-  
+
 instance PrettyAnn (PrdCnsType pol) where
   prettyAnn (PrdCnsType _ ty) = prettyAnn ty
 

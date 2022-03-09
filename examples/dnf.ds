@@ -1,14 +1,14 @@
 
 destructor Ap(CBV)[CBV] : CBN;
 
-refinement data L : Type CBV { Atom, NegAtom };
-refinement data Fm : Type CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
-refinement data R : Type CBV { SetSet, Union(R,R), Distrib(R,R) };
+refinement data L : CBV { Atom, NegAtom };
+refinement data Fm : CBV { Lit(L), Not(Fm), And(Fm,Fm), Or(Fm,Fm), Imp(Fm,Fm) };
+refinement data R : CBV { SetSet, Union(R,R), Distrib(R,R) };
 
 # prd rec nnf := cocase { Ap(f) => case f of {
-#     Lit(a)   => case a of { 
-#       Atom    => Lit(Atom), 
-#       NegAtom => Lit(NegAtom) 
+#     Lit(a)   => case a of {
+#       Atom    => Lit(Atom),
+#       NegAtom => Lit(NegAtom)
 #     },
 #     And(p,q) => And(nnf.Ap(p), nnf.Ap(q)),
 #     Or(p,q)  => Or(nnf.Ap(p), nnf.Ap(q)),

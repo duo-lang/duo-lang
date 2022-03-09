@@ -1,7 +1,7 @@
 # Pattern match destructee has incorrect type
 
-data Bool : Type CBV { True, False };
-data Bool2 : Type CBV { TT, FF };
+data Bool : CBV { True, False };
+data Bool2 : CBV { TT, FF };
 
 constructor None : CBV;
 prd fail := case True of { TT => None

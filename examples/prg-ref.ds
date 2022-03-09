@@ -1,6 +1,6 @@
-refinement data Bool : Type CBV { True, False };
-refinement data Nat : Type CBV { S(Nat), Z };
-refinement codata FunBoolBool : Type CBN { Ap(Bool)[Bool] };
+refinement data Bool : CBV { True, False };
+refinement data Nat : CBV { S(Nat), Z };
+refinement codata FunBoolBool : CBN { Ap(Bool)[Bool] };
 
 constructor T : CBV;
 
