@@ -1,6 +1,6 @@
 # Dtor called with incorrect number of args
 
-data Nat : Type CBV { Z, S(Nat) };
-codata Fun : Type CBN { Ap(Nat)[Nat] };
+data Nat : CBV { Z, S(Nat) };
+codata Fun : CBN { Ap(Nat)[Nat] };
 
 prd fail := cocase { Ap(n)[*] => S(n) }.Ap(Z,Z)[*];

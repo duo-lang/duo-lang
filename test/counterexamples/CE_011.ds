@@ -1,7 +1,7 @@
 # Dtor called with incorrect arg type
 
-data Nat : Type CBV { Z, S(Nat) };
-data Bool : Type CBV { True, False };
-codata Fun : Type CBV { Ap(Nat)[Nat] };
+data Nat : CBV { Z, S(Nat) };
+data Bool : CBV { True, False };
+codata Fun : CBV { Ap(Nat)[Nat] };
 
 cns fail := Ap(True)[mu k.Done];
