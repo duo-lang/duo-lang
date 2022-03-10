@@ -12,7 +12,7 @@ import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.Common
-import Syntax.Kinds (CallingConvention)
+import Syntax.Kinds (CallingConvention, Kind)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -22,13 +22,25 @@ instance PrettyAnn DataCodata where
   prettyAnn Data = annKeyword "data"
   prettyAnn Codata = annKeyword "codata"
 
+instance PrettyAnn TParams where
+  prettyAnn (MkTParams cov_ps con_ps) =
+    parens' comma ((prettyTParam Covariant <$> cov_ps) ++ (prettyTParam Contravariant <$> con_ps))
+
+prettyTParam :: Variance -> (TVar, Kind) -> Doc Annotation
+prettyTParam v (tv, k) = prettyVariance v <> prettyAnn tv <+> ":" <+> prettyAnn k
+
+prettyVariance :: Variance -> Doc Annotation
+prettyVariance Covariant = annSymbol "+"
+prettyVariance Contravariant = annSymbol "-"
+
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl ref tn dc knd xtors) =
+  prettyAnn (NominalDecl ref tn dc knd xtors params) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
+    prettyAnn params <+>
     colon <+>
     prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>

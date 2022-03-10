@@ -14,8 +14,8 @@
 # DualSub supports standard algebraic data types, which can be declared with the following
 # syntax:
 
-data Bool : Type CBV { True, False };
-data Nat : Type CBV { Z, S(Nat) };
+data Bool : CBV { True, False };
+data Nat : CBV { Z, S(Nat) };
 
 # Note that type and value constructors have to start with an uppercase letter, and how arguments
 # to constructors are indicated in parentheses.
@@ -61,7 +61,7 @@ prd convolutedTwo := case 3 of { Z => Z, S(x) => x };
 # Instead, you can define one yourself, using codata types, which are dual to data types.
 # So let's define a (monomorphic) function type, the type of functions from Nat to Bool.
 
-codata Fun : Type CBN { Ap(Nat)[Bool] };
+codata Fun : CBN { Ap(Nat)[Bool] };
 
 # We call `Ap` (short for "apply) a destructor of the codata type Fun. In parentheses we indicate
 # the arguments of the destructor, and in square brackets we indicate the return type.

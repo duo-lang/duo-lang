@@ -29,6 +29,7 @@ data ConstraintInfo
   | XtorSubConstraint
   | IntersectionUnionSubConstraint
   | RecTypeSubConstraint
+  | NominalSubConstraint
   deriving (Show)
 
 

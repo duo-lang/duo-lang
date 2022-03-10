@@ -28,11 +28,9 @@ import Syntax.CST.Types
 callingConventionP :: Parser CallingConvention
 callingConventionP = CBV <$ cbvKwP <|> CBN <$ cbnKwP
 
--- | Parses a MonoKind, either "Type CBV" or "Type CBN"
+-- | Parses a MonoKind, either "CBV" or "CBN"
 kindP :: Parser Kind
-kindP = do
-  _ <- typeKwP
-  MonoKind <$> callingConventionP
+kindP = MonoKind <$> callingConventionP
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
@@ -61,12 +59,15 @@ linearContextP = Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
 -- Nominal and Structural Types
 ---------------------------------------------------------------------------------
 
+nominalTypeArgsP :: Parser [Typ]
+nominalTypeArgsP = (fst <$> parens (typP `sepBy` comma)) <|> pure []
+
 -- | Parse a nominal type.
 -- E.g. "Nat"
 nominalTypeP :: Parser Typ
 nominalTypeP = do
   (name, _pos) <- typeNameP
-  pure $ TyNominal name
+  TyNominal name <$> nominalTypeArgsP
 
 -- | Parse a data or codata type. E.g.:
 -- - "< ctor1 | ctor2 | ctor3 >"

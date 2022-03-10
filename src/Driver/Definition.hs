@@ -27,7 +27,7 @@ defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
-  , infOptsSimplify = True 
+  , infOptsSimplify = True
   , infOptsLibPath = []
   }
 

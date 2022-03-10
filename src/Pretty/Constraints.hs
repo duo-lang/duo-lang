@@ -45,6 +45,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn XtorSubConstraint              = parens "XtorSubConstraint"
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
+  prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
 
 
 instance PrettyAnn UVarProvenance where

@@ -1,8 +1,8 @@
 # Should not typecheck due to incorrect return type of comatch case
 
-data Nat : Type CBV { Z, S(Nat) };
-data Bool : Type CBV { True, False };
-codata FunNatBool : Type CBN { Ap(Nat)[Bool] };
+data Nat : CBV { Z, S(Nat) };
+data Bool : CBV { True, False };
+codata FunNatBool : CBN { Ap(Nat)[Bool] };
 
 # Type of m differs from consumer type Bool
 prd isZero := cocase { Ap(n)[*] => case n of { Z => True, S(m) => m } };

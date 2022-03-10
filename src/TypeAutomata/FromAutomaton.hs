@@ -86,7 +86,7 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
   where
     argFun (n,pc) = (pc, [ node | ((EdgeSymbol dc' xt pc' pos), node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
     args = argFun <$> (enumerate labelArity)
-    
+
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
@@ -157,7 +157,7 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
-    let nominals = TyNominal rep Nothing <$> S.toList tns
+    let nominals = (\tn -> TyNominal rep Nothing tn [] []) <$> S.toList tns
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
     return $ case typs of [t] -> t; _ -> TySet rep Nothing typs

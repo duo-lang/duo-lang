@@ -11,7 +11,7 @@ import Data.List.NonEmpty (NonEmpty)
 data Typ where
   TyVar :: TVar -> Typ
   TyXData :: DataCodata -> Maybe TypeName -> [XtorSig] -> Typ
-  TyNominal :: TypeName -> Typ
+  TyNominal :: TypeName -> [Typ] -> Typ
   TyRec :: TVar -> Typ -> Typ
   TyTop :: Typ
   TyBot :: Typ
@@ -54,4 +54,5 @@ data DataDecl = NominalDecl
   , data_polarity :: DataCodata
   , data_kind :: Kind
   , data_xtors :: [XtorSig]
+  , data_params :: TParams
   }

@@ -1,6 +1,10 @@
 module Syntax.Common where
 
+import Data.Set (Set)
+import Data.Set qualified as S
 import Data.Text (Text)
+
+import Syntax.Kinds
 
 ------------------------------------------------------------------------------
 -- Polarity
@@ -111,6 +115,24 @@ data IsRefined = Refined | NotRefined
 ---------------------------------------------------------------------------------
 
 data IsRec = Recursive | NonRecursive deriving (Show, Eq, Ord)
+
+---------------------------------------------------------------------------------
+-- Variance
+---------------------------------------------------------------------------------
+
+data Variance = Covariant | Contravariant
+
+---------------------------------------------------------------------------------
+-- TParams
+---------------------------------------------------------------------------------
+
+data TParams = MkTParams
+  { covariant :: [(TVar, Kind)]
+  , contravariant :: [(TVar, Kind)]
+  } deriving (Show)
+
+allTypeVars :: TParams -> Set TVar
+allTypeVars (MkTParams cov con) = S.fromList ((fst <$> cov) ++ (fst <$> con))
 
 ---------------------------------------------------------------------------------
 -- Type Operators

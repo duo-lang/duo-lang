@@ -28,7 +28,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
-      DataDecl(data_refined,data_xtors),
+      DataDecl(..),
       XtorSig (sig_name)
     )
 import Syntax.AST.Program
@@ -48,6 +48,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc )
+import Data.List
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type
@@ -138,13 +139,21 @@ inferDecl (CmdDecl loc v cmd) = do
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
   env <- gets driverEnv
-  let ns = case data_refined dcl of
-                  Refined -> Refinement
-                  NotRefined -> Nominal
-  let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                   , xtorMap = M.union (M.fromList [(xt, ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
-  setEnvironment newEnv
-  return (DataDecl loc dcl)
+  let tn = data_name dcl
+  case find (\NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
+    Just _ ->
+        -- HACK: inserting in the environment has already been done in lowering
+        -- because the declarations are already needed for lowering
+        -- In that case we make sure we don't insert twice
+        return (DataDecl loc dcl)
+    Nothing -> do
+      let ns = case data_refined dcl of
+                      Refined -> Refinement
+                      NotRefined -> Nominal
+      let newEnv = env { declEnv = (loc,dcl) : declEnv env
+                      , xtorMap = M.union (M.fromList [(xt, ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
+      setEnvironment newEnv
+      return (DataDecl loc dcl)
 --
 -- XtorDecl
 --
@@ -207,7 +216,7 @@ renameProgramIO state decls = do
 
 inferProgram' :: Program Parsed
               -> DriverM (Program Inferred)
-inferProgram' decls = forM decls inferDecl              
+inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]

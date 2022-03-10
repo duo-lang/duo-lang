@@ -9,7 +9,6 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe
-import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set
 import Data.Set qualified as S
@@ -29,14 +28,14 @@ import Syntax.Common
 -- We store mappings of recursive type variables
 ---------------------------------------------------------------------------------------------
 
-data TranslateState = TranslateState 
+data TranslateState = TranslateState
   { recVarsUsed :: Set TVar
   , varCount :: Int }
 
 initialState :: TranslateState
 initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { recVarMap :: Map TypeName TVar }
+newtype TranslateReader = TranslateReader { recVarMap :: M.Map TypeName TVar }
 
 initialReader :: Environment Inferred -> (Environment Inferred, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
@@ -51,9 +50,9 @@ runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReade
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-withVarMap :: (Map TypeName TVar -> Map TypeName TVar) -> TranslateM a -> TranslateM a
+withVarMap :: (M.Map TypeName TVar -> M.Map TypeName TVar) -> TranslateM a -> TranslateM a
 withVarMap f m = do
-  local (\(env,TranslateReader{..}) -> 
+  local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m
 
 modifyVarsUsed :: (Set TVar -> Set TVar) -> TranslateM ()
@@ -88,7 +87,7 @@ translateXtorSigUpper' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
-translateTypeUpper' (TyNominal NegRep _ tn) = do
+translateTypeUpper' (TyNominal NegRep _ tn _ _) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
@@ -129,7 +128,7 @@ translateXtorSigLower' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
-translateTypeLower' (TyNominal pr _ tn) = do
+translateTypeLower' (TyNominal pr _ tn _ _) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
@@ -145,7 +144,7 @@ translateTypeLower' (TyNominal pr _ tn) = do
         return $ TyRec pr tv $ TyData pr (Just tn) []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors 
+        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
         return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
 translateTypeLower' tv@TyVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]

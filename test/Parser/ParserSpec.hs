@@ -113,21 +113,21 @@ spec = do
     parseType PosRep
                  "Nat -> Nat"
                  (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal PosRep Nothing $ MkTypeName "Nat")] ])
+                    [PrdCnsType PrdRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] [])] ])
     parseType NegRep
                  "Nat -> Nat"
                  (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal NegRep Nothing $ MkTypeName "Nat")] ])
+                    [PrdCnsType PrdRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] [])] ])
     parseType PosRep
                  "Nat -> Nat -> Nat"
                  (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal PosRep Nothing $ MkTypeName "Nat")] ])] ])
+                    [PrdCnsType PrdRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
+                    [PrdCnsType PrdRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] [])] ])] ])
     parseType NegRep
                  "Nat -> Nat -> Nat"
                  (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing $ MkTypeName "Nat"), PrdCnsType CnsRep (TyNominal NegRep Nothing $ MkTypeName "Nat")] ])] ])
+                    [PrdCnsType PrdRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
+                    [PrdCnsType PrdRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] [])] ])] ])
 
     parseTypeIdentical PosRep "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
     parseTypeIdentical NegRep "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"

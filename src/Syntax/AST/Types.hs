@@ -22,7 +22,7 @@ instance Eq (PrdCnsType Neg) where
   (PrdCnsType PrdRep ty1) == (PrdCnsType PrdRep ty2) = ty1 == ty2
   (PrdCnsType CnsRep ty1) == (PrdCnsType CnsRep ty2) = ty1 == ty2
   _ == _ = False
--- For Ord: PrdType < CnsType  
+-- For Ord: PrdType < CnsType
 instance Ord (PrdCnsType Pos) where
   (PrdCnsType PrdRep ty1) `compare` (PrdCnsType PrdRep ty2) = ty1 `compare` ty2
   (PrdCnsType CnsRep ty1) `compare` (PrdCnsType CnsRep ty2) = ty1 `compare` ty2
@@ -64,7 +64,8 @@ data Typ (pol :: Polarity) where
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData   :: PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
   TyCodata :: PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyNominal :: PolarityRep pol -> Maybe Kind -> TypeName -> Typ pol
+  -- | Nominal types with arguments to type parameters (covariant, contravariant)
+  TyNominal :: PolarityRep pol -> Maybe Kind -> TypeName -> [Typ pol] -> [Typ (FlipPol pol)] -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> Maybe Kind -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
@@ -77,12 +78,12 @@ deriving instance Show (Typ Pos)
 deriving instance Show (Typ Neg)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TyVar rep _ _)       = rep
-getPolarity (TyData rep _ _)      = rep
-getPolarity (TyCodata rep _ _)    = rep
-getPolarity (TyNominal rep _ _)   = rep
-getPolarity (TySet rep _ _)       = rep
-getPolarity (TyRec rep _ _)       = rep
+getPolarity (TyVar rep _ _)         = rep
+getPolarity (TyData rep _ _)        = rep
+getPolarity (TyCodata rep _ _)      = rep
+getPolarity (TyNominal rep _ _ _ _) = rep
+getPolarity (TySet rep _ _)         = rep
+getPolarity (TyRec rep _ _)         = rep
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -105,15 +106,15 @@ freeTypeVars = nub . freeTypeVars'
   where
     freeTypeVars' :: Typ pol -> [TVar]
     freeTypeVars' (TyVar _ _ tv) = [tv]
-    freeTypeVars' (TySet _ _ ts) = concat $ map freeTypeVars' ts
+    freeTypeVars' (TySet _ _ ts) = concatMap freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
-    freeTypeVars' (TyNominal _ _ _) = []
-    freeTypeVars' (TyData _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
-    freeTypeVars' (TyCodata _ _ xtors) = concat (map freeTypeVarsXtorSig  xtors)
+    freeTypeVars' (TyNominal _ _ _ args_cov args_contra) = concatMap freeTypeVars args_cov ++ concatMap freeTypeVars args_contra
+    freeTypeVars' (TyData _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
+    freeTypeVars' (TyCodata _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
 
     freeTypeVarsPC :: PrdCnsType pol -> [TVar]
     freeTypeVarsPC (PrdCnsType _ ty) = freeTypeVars' ty
-    
+
     freeTypeVarsCtxt :: LinearContext pol -> [TVar]
     freeTypeVarsCtxt ctxt = concat (freeTypeVarsPC <$> ctxt)
 
@@ -147,7 +148,7 @@ substituteType m var@(TyVar NegRep _ tv) =
 -- Other cases
 substituteType m (TyData polrep mtn args) = TyData polrep mtn (substituteXtorSig m <$> args)
 substituteType m (TyCodata polrep mtn args) = TyCodata polrep mtn (substituteXtorSig m <$> args)
-substituteType _ ty@(TyNominal _ _ _) = ty
+substituteType m (TyNominal rep kind nm args_cov args_contra) = TyNominal rep kind nm (substituteType m <$> args_cov) (substituteType m <$> args_contra)
 substituteType m (TySet rep kind args) = TySet rep kind (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 
@@ -170,4 +171,5 @@ data DataDecl = NominalDecl
   , data_polarity :: DataCodata
   , data_kind :: Kind
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
+  , data_params :: TParams
   } deriving (Show)

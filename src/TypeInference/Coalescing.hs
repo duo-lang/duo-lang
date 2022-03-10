@@ -52,7 +52,7 @@ getRecVar ptv = do
           modify (\(i,m) -> (i,M.insert ptv recVar m))
           return recVar
       Just tv -> return tv
- 
+
 coalesce :: SolverResult -> Bisubstitution
 coalesce result@(MkSolverResult { tvarSolution }) = MkBisubstitution (M.fromList xs)
     where
@@ -96,8 +96,10 @@ coalesceType (TyData rep tn xtors) = do
 coalesceType (TyCodata rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata rep tn xtors')
-coalesceType (TyNominal rep kind tn) =
-    return $ TyNominal rep kind tn
+coalesceType (TyNominal rep kind tn cov_args contra_args) = do
+    cov_args' <- sequence $ coalesceType <$> cov_args
+    contra_args' <- sequence $ coalesceType <$> contra_args
+    return $ TyNominal rep kind tn cov_args' contra_args'
 coalesceType (TySet rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet rep kind tys')
