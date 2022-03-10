@@ -13,8 +13,7 @@ import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.CommonTerm
-import Syntax.AST.Types (DataCodata(..), IsRefined(..), Variance (Covariant, Contravariant), TVar (MkTVar), TParams (MkTParams), allTypeVars)
+import Syntax.Common
 import Utils
 import Syntax.Kinds (Kind)
 

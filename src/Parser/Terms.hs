@@ -10,7 +10,7 @@ import Text.Megaparsec hiding (State)
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
-import Syntax.CommonTerm
+import Syntax.Common
 import Utils
 
 --------------------------------------------------------------------------------------------

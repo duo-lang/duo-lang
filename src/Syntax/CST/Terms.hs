@@ -3,7 +3,7 @@ module Syntax.CST.Terms where
 import Data.List.NonEmpty (NonEmpty(..))
 import Text.Megaparsec.Pos (SourcePos)
 
-import Syntax.CommonTerm
+import Syntax.Common
 import Utils
 
 --------------------------------------------------------------------------------------------

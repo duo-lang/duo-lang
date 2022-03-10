@@ -7,7 +7,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
 import Pretty.Program ()
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program
 import Translate.Desugar
 import Translate.Reparse

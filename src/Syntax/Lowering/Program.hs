@@ -16,17 +16,17 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program (Environment(xtorMap, declEnv))
-import Syntax.AST.Types (DataDecl(data_params), IsRefined (Refined, NotRefined))
+import Syntax.AST.Types (DataDecl(data_params))
 import Utils (Loc)
 
 
 
-lowerXtors :: [CST.XtorSig] -> DriverM ([AST.XtorSig AST.Pos], [AST.XtorSig AST.Neg])
+lowerXtors :: [CST.XtorSig] -> DriverM ([AST.XtorSig Pos], [AST.XtorSig Neg])
 lowerXtors sigs = do
-    posSigs <- sequence $ lowerXTorSig AST.PosRep <$> sigs
-    negSigs <- sequence $ lowerXTorSig AST.NegRep <$> sigs
+    posSigs <- sequence $ lowerXTorSig PosRep <$> sigs
+    negSigs <- sequence $ lowerXTorSig NegRep <$> sigs
     pure (posSigs, negSigs)
 
 lowerDataDecl :: Loc -> CST.DataDecl -> DriverM AST.DataDecl
@@ -60,11 +60,11 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
 
   pure dcl
 
-lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (AST.PrdCnsToPol pc))
-lowerAnnot PrdRep ts = lowerTypeScheme AST.PosRep ts
-lowerAnnot CnsRep ts = lowerTypeScheme AST.NegRep ts
+lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (PrdCnsToPol pc))
+lowerAnnot PrdRep ts = lowerTypeScheme PosRep ts
+lowerAnnot CnsRep ts = lowerTypeScheme NegRep ts
 
-lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> DriverM (Maybe (AST.TypeScheme (AST.PrdCnsToPol pc)))
+lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> DriverM (Maybe (AST.TypeScheme (PrdCnsToPol pc)))
 lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
@@ -76,8 +76,8 @@ lowerDecl (CST.DataDecl loc dd)             = do
   lowered <- lowerDataDecl loc dd
   env <- gets driverEnv
   let ns = case CST.data_refined dd of
-                 AST.Refined -> Refinement
-                 AST.NotRefined -> Nominal
+                 Refined -> Refinement
+                 NotRefined -> Nominal
   let newEnv = env { AST.xtorMap = M.union (M.fromList [(xt, ns)| xt <- AST.sig_name <$> fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered

@@ -8,9 +8,9 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
 import Driver.Definition
-import Syntax.CommonTerm
+import Syntax.Common
 import qualified Syntax.AST.Types as AST
-import Syntax.AST.Types (PolarityRep (PosRep, NegRep), flipPolarityRep, Polarity (Neg, Pos), freeTypeVars)
+import Syntax.AST.Types ( freeTypeVars)
 import Syntax.CST.Types
 import Syntax.AST.Program (Environment(declEnv, MkEnvironment))
 import Data.List
@@ -30,10 +30,10 @@ lowerTypeScheme rep (TypeScheme tvars monotype) = do
 
 lowerTyp :: PolarityRep pol -> Typ -> DriverM (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
-lowerTyp rep (TyXData AST.Data name sigs) = do
+lowerTyp rep (TyXData Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
     pure $ AST.TyData rep name sigs
-lowerTyp rep (TyXData AST.Codata name sigs) = do
+lowerTyp rep (TyXData Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ AST.TyCodata rep name sigs
 lowerTyp rep (TyNominal name args) = do
@@ -48,27 +48,27 @@ lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
 lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
 
-lowerTypeArgs :: PolarityRep pol -> AST.TypeName -> [Typ] -> DriverM ([AST.Typ pol], [AST.Typ (AST.FlipPol pol)])
+lowerTypeArgs :: PolarityRep pol -> TypeName -> [Typ] -> DriverM ([AST.Typ pol], [AST.Typ (FlipPol pol)])
 -- HACK: Since types are not always properly declared in unit tests, don't check if no type arguments are provided
 lowerTypeArgs _ _ [] = pure ([], [])
 lowerTypeArgs rep tn args = do
     (n_cov, n_contra) <- lookupTypeConstructorAritiy tn
     let (cov, contra) = splitAt n_cov args
     if n_cov /= length cov || n_contra /= length contra then
-        throwOtherError ["Type constructor " <> AST.unTypeName tn <> " must be fully applied"]
+        throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
     else do
         cov <- sequence (lowerTyp rep <$> cov)
-        contra <- sequence (lowerTyp (AST.flipPolarityRep rep) <$> contra)
+        contra <- sequence (lowerTyp (flipPolarityRep rep) <$> contra)
         pure (cov, contra)
 
 -- | Find the number of (covariant, contravariant) type parameters
-lookupTypeConstructorAritiy :: AST.TypeName -> DriverM (Int, Int)
+lookupTypeConstructorAritiy :: TypeName -> DriverM (Int, Int)
 lookupTypeConstructorAritiy tn = do
     MkEnvironment {..} <- gets driverEnv
     let env = snd <$> declEnv
     case find (\AST.NominalDecl{..} -> data_name == tn) env of
-        Just AST.NominalDecl{..} -> pure (length (AST.covariant data_params), length (AST.contravariant data_params))
-        Nothing -> throwOtherError ["Type name " <> AST.unTypeName tn <> " not found in environment"]
+        Just AST.NominalDecl{..} -> pure (length (covariant data_params), length (contravariant data_params))
+        Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
 
 lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> DriverM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs

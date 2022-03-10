@@ -22,14 +22,13 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Lowering.Program
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
-      IsRefined(..),
-      DataDecl(data_refined,data_xtors, NominalDecl, data_name),
+      DataDecl(..),
       XtorSig (sig_name)
     )
 import Syntax.AST.Program
@@ -37,7 +36,6 @@ import Syntax.AST.Program
       Environment(..),
       Declaration(..)
     )
-import Syntax.CST.Program (IsRec(..))
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)

@@ -7,14 +7,7 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.CommonTerm
-    ( Index,
-      FreeVarName,
-      XtorName,
-      NominalStructural,
-      PrdCnsRep(..),
-      PrdCns(..),
-      Phase(..) )
+import Syntax.Common
 import Syntax.AST.Types
 import Syntax.Kinds
 

@@ -9,7 +9,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.Text qualified as T
 
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program
 import Syntax.AST.Terms
 import Utils

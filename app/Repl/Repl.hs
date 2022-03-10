@@ -21,7 +21,7 @@ import Pretty.Program ()
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
-import Syntax.CommonTerm (Phase(..))
+import Syntax.Common (Phase(..))
 import Driver.Driver
 import Translate.Desugar
 import Translate.Focusing

@@ -4,16 +4,13 @@ import Data.Text (Text)
 
 import Syntax.CST.Terms
 import Syntax.CST.Types
-import Syntax.CommonTerm
-import Syntax.AST.Types (DataCodata)
+import Syntax.Common
 import Syntax.Kinds (CallingConvention)
 import Utils
 
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
-
-data IsRec = Recursive | NonRecursive deriving (Show, Eq, Ord)
 
 data Declaration where
   PrdCnsDecl     :: Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration

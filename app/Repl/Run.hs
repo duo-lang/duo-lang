@@ -34,7 +34,8 @@ import Repl.Repl
       cmd )
 import Syntax.AST.Program
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.AST.Types ( DataDecl(data_name), TypeName(unTypeName) )
+import Syntax.AST.Types ( DataDecl(data_name))
+import Syntax.Common
 
 ------------------------------------------------------------------------------
 -- Options

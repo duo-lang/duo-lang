@@ -9,7 +9,7 @@ import System.Directory ( doesFileExist )
 import Errors
 import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Program
-import Syntax.CommonTerm
+import Syntax.Common
 import Utils
 
 ------------------------------------------------------------------------------

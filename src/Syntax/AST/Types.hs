@@ -3,75 +3,13 @@ module Syntax.AST.Types where
 import Data.List (nub)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Text (Text)
-import Data.Set (Set, fromList)
 
-import Syntax.CommonTerm
-    ( XtorName(..),
-      PrdCnsRep(..),
-      PrdCns(..) )
+import Syntax.Common
 import Syntax.Kinds ( Kind )
-
-------------------------------------------------------------------------------
--- Type Variables and Names
-------------------------------------------------------------------------------
-
--- | Type variables
-newtype TVar = MkTVar { tvar_name :: Text } deriving (Eq, Show, Ord)
-
--- | Name of nominal type
-newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
-
-------------------------------------------------------------------------------
--- Polarity
-------------------------------------------------------------------------------
-
-data Polarity = Pos | Neg deriving (Eq, Ord, Show)
-
-data PolarityRep pol where
-  PosRep :: PolarityRep Pos
-  NegRep :: PolarityRep Neg
-
-deriving instance Show (PolarityRep pol)
-deriving instance Eq (PolarityRep pol)
-deriving instance Ord (PolarityRep pol)
-
-flipPol :: Polarity -> Polarity
-flipPol Pos = Neg
-flipPol Neg = Pos
-
-type family FlipPol (pol :: Polarity) :: Polarity where
-  FlipPol Pos = Neg
-  FlipPol Neg = Pos
-
-flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
-flipPolarityRep PosRep = NegRep
-flipPolarityRep NegRep = PosRep
-
-polarityRepToPol :: PolarityRep pol -> Polarity
-polarityRepToPol PosRep = Pos
-polarityRepToPol NegRep = Neg
-
-------------------------------------------------------------------------------
--- Tags
-------------------------------------------------------------------------------
-
-data DataCodata = Data | Codata deriving (Eq, Ord, Show)
-
-data DataCodataRep (dc :: DataCodata) where
-  DataRep :: DataCodataRep Data
-  CodataRep :: DataCodataRep Codata
-deriving instance Show (DataCodataRep pol)
-deriving instance Eq (DataCodataRep pol)
-deriving instance Ord (DataCodataRep pol)
 
 ------------------------------------------------------------------------------
 -- LinearContexts
 ------------------------------------------------------------------------------
-
-type family PrdCnsFlip (pc :: PrdCns) (pol :: Polarity) :: Polarity where
-  PrdCnsFlip Prd pol = pol
-  PrdCnsFlip Cns pol = FlipPol pol
 
 data PrdCnsType (pol :: Polarity) where
   PrdCnsType :: PrdCnsRep pc -> Typ (PrdCnsFlip pc pol) -> PrdCnsType pol
@@ -146,15 +84,6 @@ getPolarity (TyCodata rep _ _)      = rep
 getPolarity (TyNominal rep _ _ _ _) = rep
 getPolarity (TySet rep _ _)         = rep
 getPolarity (TyRec rep _ _)         = rep
-
--- | We map producer terms to positive types, and consumer terms to negative types.
-type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
-  PrdCnsToPol Prd = Pos
-  PrdCnsToPol Cns = Neg
-
-prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
-prdCnsToPol PrdRep = PosRep
-prdCnsToPol CnsRep = NegRep
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -235,19 +164,6 @@ substitutePCType m (PrdCnsType pc ty)= PrdCnsType pc $ substituteType m ty
 ------------------------------------------------------------------------------
 -- Data Type declarations
 ------------------------------------------------------------------------------
-
-data IsRefined = Refined | NotRefined
-  deriving (Show, Ord, Eq)
-
-data Variance = Covariant | Contravariant
-
-data TParams = MkTParams
-  { covariant :: [(TVar, Kind)]
-  , contravariant :: [(TVar, Kind)]
-  } deriving (Show)
-
-allTypeVars :: TParams -> Set TVar
-allTypeVars (MkTParams cov con) = fromList ((fst <$> cov) ++ (fst <$> con))
 
 data DataDecl = NominalDecl
   { data_refined :: IsRefined
