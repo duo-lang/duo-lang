@@ -48,7 +48,6 @@ module Parser.Lexer
   , unionSym
   , intersectionSym
   , subtypeSym
-  , refineSym
   , implicitSym
   , parSym
   , plusSym
@@ -58,7 +57,6 @@ module Parser.Lexer
   , parens
   , brackets
   , braces
-  , dbraces
   , parensListP
   , parensListIP
   , bracketsListP
@@ -309,9 +307,6 @@ intersectionSym = symbol "/\\"
 subtypeSym :: Parser SourcePos
 subtypeSym = symbol "<:"
 
-refineSym :: Parser SourcePos
-refineSym = symbol ":>>"
-
 implicitSym :: Parser SourcePos
 implicitSym = symbol "*"
 
@@ -335,12 +330,11 @@ betweenP open close middle = do
   endPos <- close
   pure (res, endPos)
 
-parens, braces, brackets, angles, dbraces :: Parser a -> Parser (a, SourcePos)
+parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
 parens    = betweenP (symbol "(")  (symbol ")")
 braces    = betweenP (symbol "{")  (symbol "}")
 brackets  = betweenP (symbol "[")  (symbol "]")
 angles    = betweenP (symbol "<")  (symbol ">")
-dbraces   = betweenP (symbol "{{") (symbol "}}")
 
 -- | Parse a non-empty list of elements in parens.
 -- E.g. "(a,a,a)"

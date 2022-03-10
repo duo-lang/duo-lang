@@ -73,7 +73,7 @@ spec :: Spec
 spec = do
   describe "Check type parsing" $ do
     parseType PosRep
-                 "{{ Nat :>> < > }}"
+                 "< Nat | >"
                  (TyData PosRep (Just $ MkTypeName "Nat") [])
     parseType PosRep
                  "{ A() }"
@@ -82,16 +82,16 @@ spec = do
                  "{ A[{ B }] }"
                  (TyCodata PosRep Nothing [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseType PosRep
-                 "{{Fun :>> {} }}"
+                 "{ Fun | }"
                  (TyCodata PosRep (Just $ MkTypeName "Fun") [])
     parseType PosRep
-                 "< X({{ Nat :>> < > }}) >"
+                 "< X(< Nat | >) >"
                  (TyData PosRep Nothing [MkXtorSig (MkXtorName "X") [ PrdCnsType PrdRep $ TyData PosRep (Just $ MkTypeName "Nat") [] ]])
     parseType PosRep
-                 "{{ Nat :>> < S > }}"
+                 "< Nat | S >"
                  (TyData PosRep (Just $ MkTypeName "Nat") [MkXtorSig (MkXtorName "S") []])
     parseType PosRep
-                 "{{ Foo :>> { A[{ B }] } }}"
+                 "{ Foo |  A[{ B }]  }"
                  (TyCodata PosRep (Just $ MkTypeName "Foo")
                            [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseType NegRep
