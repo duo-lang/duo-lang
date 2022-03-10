@@ -74,7 +74,7 @@ nominalTypeP = do
 -- - "{ dtor1 , dtor2 , dtor3 }"
 xdataTypeP :: DataCodata -> Parser Typ
 xdataTypeP Data = fst <$> angles (do
-  xtorSigs <- xtorSignatureP `sepBy` pipe
+  xtorSigs <- xtorSignatureP `sepBy` comma
   return (TyXData Data Nothing xtorSigs))
 xdataTypeP Codata = fst <$> braces (do
   xtorSigs <- xtorSignatureP `sepBy` comma
@@ -112,15 +112,17 @@ recTypeP = do
 -- Refinement types
 ---------------------------------------------------------------------------------
 
-refinementTypeP :: Parser Typ
-refinementTypeP = fst <$> dbraces (do
+refinementTypeP :: DataCodata -> Parser Typ
+refinementTypeP Data = fst <$> angles (do
   (tn,_) <- typeNameP
-  _ <- refineSym
-  ty <- typP
-  case ty of
-    TyXData dc Nothing ctors -> return $ TyXData dc (Just tn) ctors
-    _ -> error "Second component of refinement type must be data or codata type"
-  )
+  _ <- pipe
+  ctors <- xtorSignatureP `sepBy` comma
+  pure $ TyXData Data (Just tn) ctors)
+refinementTypeP Codata = fst <$> braces (do
+  (tn,_) <- typeNameP
+  _ <- pipe
+  dtors <- xtorSignatureP `sepBy` comma
+  pure $ TyXData Codata (Just tn) dtors)
 
 ---------------------------------------------------------------------------------
 -- Type Parser
@@ -130,7 +132,8 @@ refinementTypeP = fst <$> dbraces (do
 typAtomP :: Parser Typ
 typAtomP = (TyParens . fst <$> parens typP)
   <|> nominalTypeP
-  <|> refinementTypeP
+  <|> try (refinementTypeP Data)
+  <|> try (refinementTypeP Codata)
   <|> xdataTypeP Data
   <|> xdataTypeP Codata
   <|> recTypeP

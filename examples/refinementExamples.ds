@@ -20,7 +20,7 @@ prd ex1 := case True of { True => S(Z), False => H };
 prd ex2 := case True of { True => S(Z), False => True };
 
 # Data construction
-prd oneS := S(Z);
+prd oneS : <Nat | S(<Nat | Z >) > := S(Z);
 prd threeS := S(S(S(Z)));
 
 prd oneA := S(Z);
@@ -28,7 +28,7 @@ prd threeA := S(S(S(Z)));
 
 constructor T : CBV;
 # Incomplete pattern and copattern matches
-cns foo := match { True => Print(T); Done };
+cns foo : < Bool | True > := match { True => Print(T); Done };
 
 prd isSuccA := cocase { ApNB(n)[*] => case n of {
                  S(m) => True
@@ -77,7 +77,7 @@ prd notS := comatch { ApBB(b)[k] => b >> match {
             }};
 
 # Codata examples
-prd pairA := cocase {
+prd pairA : { Tuple | Left[<Bool | True >], Right[<Bool | False>]}:= cocase {
                Left[*]  => True,
                Right[*] => False
              };
