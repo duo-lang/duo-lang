@@ -19,7 +19,7 @@ data BinOp where
 data Typ where
   TyVar :: AST.TVar -> Typ
   TyXData :: AST.DataCodata -> Maybe AST.TypeName -> [XtorSig] -> Typ
-  TyNominal :: AST.TypeName -> Typ
+  TyNominal :: AST.TypeName -> [Typ] -> Typ
   TyRec :: AST.TVar -> Typ -> Typ
   TyTop :: Typ
   TyBot :: Typ
@@ -62,4 +62,5 @@ data DataDecl = NominalDecl
   , data_polarity :: AST.DataCodata
   , data_kind :: Kind
   , data_xtors :: [XtorSig]
+  , data_params :: AST.TParams
   }

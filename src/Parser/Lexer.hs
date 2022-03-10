@@ -51,6 +51,8 @@ module Parser.Lexer
   , refineSym
   , implicitSym
   , parSym
+  , plusSym
+  , minusSym
     -- Parens
   , angles
   , parens
@@ -316,6 +318,12 @@ implicitSym = symbol "*"
 
 parSym :: Parser SourcePos
 parSym = symbol "⅋"
+
+plusSym :: Parser SourcePos
+plusSym = symbol "+"
+
+minusSym :: Parser SourcePos
+minusSym = symbol "-"
 
 -------------------------------------------------------------------------------------------
 -- Parens

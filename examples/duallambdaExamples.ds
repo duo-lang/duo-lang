@@ -1,9 +1,8 @@
 import Prelude;
 
+data List : CBV { Nil, Cons(Nat,List) };
 
 codata Par : CBN { MkPar[List,Unit]};
-
-data List : CBV { Nil, Cons(Nat,List) };
 
 # Implementation is not important, since I only want to do typechecking.
 prd rec f : Unit -> Par := f;

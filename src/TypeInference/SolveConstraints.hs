@@ -45,7 +45,7 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 ------------------------------------------------------------------------------
 
 addToCache :: Constraint ConstraintInfo -> SolverM ()
-addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache 
+addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
     modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
@@ -88,20 +88,18 @@ solve :: [Constraint ConstraintInfo] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
-  case cacheHit of
-    True -> solve css
-    False -> do
-      addToCache cs
-      case cs of
-        (SubType _ (TyVar PosRep _ uv) ub) -> do
-          newCss <- addUpperBound uv ub
-          solve (newCss ++ css)
-        (SubType _ lb (TyVar NegRep _ uv)) -> do
-          newCss <- addLowerBound uv lb
-          solve (newCss ++ css)
-        _ -> do
-          subCss <- subConstraints cs
-          solve (subCss ++ css)
+  if cacheHit then solve css else (do
+    addToCache cs
+    case cs of
+      (SubType _ (TyVar PosRep _ uv) ub) -> do
+        newCss <- addUpperBound uv ub
+        solve (newCss ++ css)
+      (SubType _ lb (TyVar NegRep _ uv)) -> do
+        newCss <- addLowerBound uv lb
+        solve (newCss ++ css)
+      _ -> do
+        subCss <- subConstraints cs
+        solve (subCss ++ css))
 
 ------------------------------------------------------------------------------
 -- Computing Subconstraints
@@ -241,8 +239,12 @@ subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Ju
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ tn1) (TyNominal _ _ tn2)) =
-  if tn1 == tn2 then pure [] else
+subConstraints (SubType _ (TyNominal _ _ tn1 cov_args1 contra_args1) (TyNominal _ _ tn2 cov_args2 contra_args2)) =
+  if tn1 == tn2 then do
+    let cs1 = zipWith (SubType NominalSubConstraint) cov_args1 cov_args2
+    let cs2 = zipWith (SubType NominalSubConstraint) contra_args2 contra_args1
+    pure $ cs1 ++ cs2
+  else
     throwSolverError ["The following nominal types are incompatible:"
                      , "    " <> ppPrint tn1
                      , "and"
@@ -296,7 +298,7 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _ _)) =
                    , "<:"
                    , ppPrint ty2
                    ]
-  
+
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------

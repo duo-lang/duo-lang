@@ -59,12 +59,15 @@ linearContextP = Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
 -- Nominal and Structural Types
 ---------------------------------------------------------------------------------
 
+nominalTypeArgsP :: Parser [Typ]
+nominalTypeArgsP = (fst <$> parens (typP `sepBy` comma)) <|> pure []
+
 -- | Parse a nominal type.
 -- E.g. "Nat"
 nominalTypeP :: Parser Typ
 nominalTypeP = do
   (name, _pos) <- typeNameP
-  pure $ TyNominal name
+  TyNominal name <$> nominalTypeArgsP
 
 -- | Parse a data or codata type. E.g.:
 -- - "< ctor1 | ctor2 | ctor3 >"
