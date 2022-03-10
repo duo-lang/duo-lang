@@ -126,13 +126,14 @@ tparamsP =
 
 dataDeclP :: Parser Declaration
 dataDeclP = do
+  o <- getOffset
   startPos <- getSourcePos
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
     params <- tparamsP
     if refined == Refined && not (null (allTypeVars params)) then
-      fail "Parametrized refinement types are not supported, yet"
+      region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
     else
       do
         _ <- colon
