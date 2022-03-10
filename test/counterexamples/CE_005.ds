@@ -1,1 +1,3 @@
-cmd test := 'A >> 'B;
+constructor A : CBV;
+constructor B : CBV;
+cmd test := A >> B;

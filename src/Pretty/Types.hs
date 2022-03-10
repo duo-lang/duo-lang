@@ -5,10 +5,9 @@ import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Pretty
-import Syntax.CST.Types (BinOp(..))
 import Syntax.AST.Types
 import Syntax.Kinds
-import Syntax.CommonTerm
+import Syntax.Common
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -55,12 +54,8 @@ instance PrettyAnn CallingConvention  where
   prettyAnn CBV = "CBV"
   prettyAnn CBN = "CBN"
 
-instance PrettyAnn KVar where
-  prettyAnn kv = pretty (unKVar kv)
-
 instance PrettyAnn Kind where
-  prettyAnn (MonoKind eo) = "Type" <+> prettyAnn eo
-  prettyAnn (KindVar var) = prettyAnn var
+  prettyAnn (MonoKind eo) = prettyAnn eo
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of types
@@ -73,8 +68,8 @@ instance PrettyAnn BinOp where
   prettyAnn InterOp = interSym
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName Structural "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
+resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
 resugarType _ = Nothing
 
 instance PrettyAnn Polarity where
@@ -99,14 +94,14 @@ instance PrettyAnn (Typ pol) where
   -- Recursive types
   prettyAnn (TyRec _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
-  prettyAnn (TyNominal _ _ tn)   = prettyAnn tn
+  prettyAnn (TyNominal _ _ tn args_cov args_contra) = prettyAnn tn <> parens' commaSym ((prettyAnn <$> args_cov) ++ (prettyAnn <$> args_contra))
   -- Structural data and codata types
   prettyAnn (TyData _ Nothing xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
   prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
   prettyAnn (TyCodata pr (Just tn) xtors) = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyCodata pr Nothing xtors)]
-  
+
 instance PrettyAnn (PrdCnsType pol) where
   prettyAnn (PrdCnsType _ ty) = prettyAnn ty
 

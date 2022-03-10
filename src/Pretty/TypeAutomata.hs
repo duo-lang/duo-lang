@@ -11,10 +11,8 @@ import Prettyprinter
 
 import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX, Annotation)
 import Pretty.Types ()
-import Syntax.CommonTerm (PrdCns(..))
+import Syntax.Common
 import TypeAutomata.Definition
-import Syntax.AST.Types
-
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Type Automata
@@ -24,6 +22,7 @@ prettyArity :: [PrdCns] -> Doc Annotation
 prettyArity [] = mempty
 prettyArity (Prd:rest) = parens "-" <> prettyArity rest
 prettyArity (Cns:rest) = brackets "-" <> prettyArity rest
+
 instance PrettyAnn XtorLabel where
   prettyAnn MkXtorLabel { labelName, labelArity } =
     prettyAnn labelName <> prettyArity labelArity

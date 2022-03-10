@@ -84,13 +84,12 @@ library
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.AST.Types
-      Syntax.CommonTerm
+      Syntax.Common
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
       Syntax.Kinds
       Syntax.Lowering.Program
-      Syntax.Lowering.Lowering
       Syntax.Lowering.Terms
       Syntax.Lowering.Types
       Syntax.Zonking
@@ -162,7 +161,7 @@ executable dualsub
       dualsub,
       optparse-applicative,
       lsp,
-      gitrev
+      githash
 
 test-suite dualsub-test
   import: shared-build-depends

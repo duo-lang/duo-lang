@@ -1,7 +1,7 @@
 # Comatch is not correct
 
-data Nat { Z, S(Nat) };
-codata Tuple { Fst[Nat], Snd[Nat] };
-codata Pair { L[Nat], R[Nat] };
+data Nat : CBV { Z, S(Nat) };
+codata Tuple : CBN { Fst[Nat], Snd[Nat] };
+codata Pair : CBN { L[Nat], R[Nat] };
 
-def fail := comatch { Fst => 1, R => 2 };
+prd fail := cocase { Fst[*] => 1, R[*] => 2 };

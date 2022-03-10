@@ -10,7 +10,7 @@ module Translate.Desugar
   where
 
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
 
 ---------------------------------------------------------------------------------
@@ -25,7 +25,7 @@ isDesugaredTerm :: Term pc Inferred -> Bool
 -- Core terms
 isDesugaredTerm (BoundVar _ _ _) = True
 isDesugaredTerm (FreeVar _ _ _) = True
-isDesugaredTerm (Xtor _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
+isDesugaredTerm (Xtor _ _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
 -- Non-core terms
@@ -57,23 +57,23 @@ desugarPCTerm (CnsTerm tm) = CnsTerm $ desugarTerm tm
 desugarTerm :: Term pc Inferred -> Term pc Compiled
 desugarTerm (BoundVar _ pc idx) = BoundVar () pc idx
 desugarTerm (FreeVar _ pc fv) = FreeVar () pc fv
-desugarTerm (Xtor _ pc xt args) = Xtor () pc xt (desugarPCTerm <$> args)
+desugarTerm (Xtor _ pc ns xt args) = Xtor () pc ns xt (desugarPCTerm <$> args)
 desugarTerm (MuAbs _ pc bs cmd) = MuAbs () pc bs (desugarCmd cmd)
 desugarTerm (XMatch _ pc ns cases) = XMatch () pc ns (desugarCmdCase <$> cases)
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
-desugarTerm (Dtor _ xt t (args1,PrdRep,args2)) =
+desugarTerm (Dtor _ ns xt t (args1,PrdRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [CnsTerm $ FreeVar () CnsRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Apply () Nothing (desugarTerm t)
-                           (Xtor () CnsRep xt args)
+                           (Xtor () CnsRep ns xt args)
   in
     MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
-desugarTerm (Dtor _ xt t (args1,CnsRep,args2)) =
+desugarTerm (Dtor _ ns xt t (args1,CnsRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [PrdTerm $ FreeVar () PrdRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Apply () Nothing (desugarTerm t)
-                           (Xtor () CnsRep xt args)
+                           (Xtor () CnsRep ns xt args)
   in
     MuAbs () CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
@@ -112,6 +112,7 @@ desugarDecl :: Declaration Inferred -> Declaration Compiled
 desugarDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (desugarTerm tm)
 desugarDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (desugarCmd cmd)
 desugarDecl (DataDecl _ decl)                   = DataDecl () decl
+desugarDecl (XtorDecl _ dc xt args ret)         = XtorDecl () dc xt args ret
 desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
 
@@ -119,10 +120,11 @@ desugarProgram :: Program Inferred -> Program Compiled
 desugarProgram ps = desugarDecl <$> ps
 
 desugarEnvironment :: Environment Inferred -> Environment Compiled
-desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) =
+desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, xtorMap }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> prdEnv
       , cnsEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> cnsEnv
       , cmdEnv = (\(cmd,loc) -> (desugarCmd cmd,loc)) <$> cmdEnv
       , declEnv = declEnv
+      , xtorMap = xtorMap
       }

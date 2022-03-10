@@ -9,8 +9,7 @@ import System.Directory ( doesFileExist )
 import Errors
 import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Program
-import Syntax.CommonTerm
-import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
+import Syntax.Common
 import Utils
 
 ------------------------------------------------------------------------------
@@ -20,7 +19,6 @@ import Utils
 data InferenceOptions = InferenceOptions
   { infOptsVerbosity   :: Verbosity      -- ^ Whether to print debug information to the terminal.
   , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
-  , infOptsMode        :: InferenceMode  -- ^ Whether to infer nominal or refinement types.
   , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
   , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
   }
@@ -29,8 +27,7 @@ defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
-  , infOptsMode = InferNominal
-  , infOptsSimplify = True 
+  , infOptsSimplify = True
   , infOptsLibPath = []
   }
 

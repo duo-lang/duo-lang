@@ -9,6 +9,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 
 import Syntax.AST.Types
+import Syntax.Common
 import Syntax.Zonking ( Bisubstitution(..) )
 import TypeInference.Constraints
 
@@ -51,9 +52,9 @@ getRecVar ptv = do
           modify (\(i,m) -> (i,M.insert ptv recVar m))
           return recVar
       Just tv -> return tv
- 
+
 coalesce :: SolverResult -> Bisubstitution
-coalesce result@(MkSolverResult { tvarSolution }) = MkBisubstitution (M.fromList xs) mempty
+coalesce result@(MkSolverResult { tvarSolution }) = MkBisubstitution (M.fromList xs)
     where
         res = M.keys tvarSolution
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep Nothing tvar
@@ -95,8 +96,10 @@ coalesceType (TyData rep tn xtors) = do
 coalesceType (TyCodata rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata rep tn xtors')
-coalesceType (TyNominal rep kind tn) =
-    return $ TyNominal rep kind tn
+coalesceType (TyNominal rep kind tn cov_args contra_args) = do
+    cov_args' <- sequence $ coalesceType <$> cov_args
+    contra_args' <- sequence $ coalesceType <$> contra_args
+    return $ TyNominal rep kind tn cov_args' contra_args'
 coalesceType (TySet rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet rep kind tys')

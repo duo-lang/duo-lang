@@ -10,15 +10,8 @@ import Text.Megaparsec hiding (State)
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
-import Syntax.CommonTerm
+import Syntax.Common
 import Utils
-
---------------------------------------------------------------------------------------------
--- Helper functions
---------------------------------------------------------------------------------------------
-
-xtorNameP :: Parser (XtorName, SourcePos)
-xtorNameP = xtorName Nominal <|> xtorName Structural
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
@@ -68,7 +61,7 @@ natLitP ns = do
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
+  (xt, _pos) <- xtorName
   (subst, endPos) <- substitutionP
   return (CST.Xtor (Loc startPos endPos) xt subst, endPos)
 
@@ -185,7 +178,7 @@ cstcommandP =
 cmdcaseP :: Parser (CST.CommandCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
+  (xt, _pos) <- xtorName
   (args,_) <- bindingSiteP
   _ <- rightarrow
   (cmd, endPos) <- cstcommandP
@@ -206,7 +199,7 @@ xmatchP = do
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
+  (xt, _pos) <- xtorName
   (args,_) <- bindingSiteP
   _ <- rightarrow
   (res, endPos) <- termTopP
@@ -229,7 +222,7 @@ caseofP = do
 termCaseIP :: Parser (CST.TermCaseI, SourcePos)
 termCaseIP = do
   startPos <- getSourcePos
-  (xt, _) <- xtorNameP
+  (xt, _) <- xtorName
   (bs, _) <- bindingSiteIP
   _ <- rightarrow
   (res, endPos) <- termTopP
@@ -312,7 +305,7 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -- | Parses "D(t,..*.,t)"
 destructorP :: Parser (XtorName, CST.SubstitutionI, SourcePos)
 destructorP = do
-  (xt, _) <- xtorNameP
+  (xt, _) <- xtorName
   (substi, endPos) <- substitutionIP
   return (xt, substi, endPos)
 

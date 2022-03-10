@@ -1,5 +1,5 @@
 # Ctor called with incorrect number of args
 
-data Nat { Z, S(Nat) };
+data Nat : CBV { Z, S(Nat) };
 
-def fail := S(Z,Z);
+prd fail := S(Z,Z);

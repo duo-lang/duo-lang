@@ -6,7 +6,8 @@ import Test.Hspec
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
-import Syntax.CommonTerm
+import Pretty.Program ()
+import Syntax.Common
 import Syntax.AST.Program
 import Translate.Desugar
 import Translate.Reparse
@@ -29,6 +30,21 @@ spec = do
               let desugaredDecls :: Program Parsed = reparseProgram $ desugarProgram decls
               res <- runIO $ inferProgramIO' driverState desugaredDecls
               case res of
-                Left err -> it "Could not load examples" $ expectationFailure (ppPrintString err)
+                Left err -> do
+                  let msg = unlines [ "---------------------------------"
+                                    , "Prettyprinted declarations:"
+                                    , ""
+                                    ,  ppPrintString desugaredDecls
+                                    , ""
+                                    , "Show instance of declarations:"
+                                    , ""
+                                    , show desugaredDecls
+                                    , ""
+                                    , "Error message:"
+                                    , ""
+                                    , ppPrintString err
+                                    , "---------------------------------"
+                                    ]
+                  it "Could not load examples" $ expectationFailure msg
                 Right _env -> return ()
 

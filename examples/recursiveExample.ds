@@ -1,9 +1,12 @@
 import Prelude;
-prd rec addS := comatch { 'Ap(x,y)[k] =>
+
+destructor Ap : CBV;
+
+prd rec addS := comatch { Ap(x,y)[k] =>
                        x
                        >>
-                       match { 'Z    => y >> k
-                             , 'S(z) => addS >> 'Ap(z,'S(y))[k]
+                       match { Z    => y >> k
+                             , S(z) => addS >> Ap(z,S(y))[k]
                              }
                    };
 

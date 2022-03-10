@@ -2,7 +2,9 @@
 
 # Bool
 
-data Bool : Type CBV { True, False };
+destructor Ap : CBN;
+
+data Bool : CBV { True, False };
 
 prd not := \b => case b of { True => False, False => True};
 
@@ -14,7 +16,7 @@ prd or := \b1 => \b2 => ifthenelse b1 True b2;
 
 # # Peano natural numbers
 
-data Nat : Type CBV { Z, S(Nat) };
+data Nat : CBV { Z, S(Nat) };
 
 prd rec add := \n => \m => case n of { Z => m
                                      , S(n) => S(add n m)};
@@ -27,7 +29,7 @@ prd rec nateq := \n => \m => case n of { Z => case m of { Z => True, S(m) => Fal
 
 # # Unit
 
-data Unit : Type CBV { Unit };
+data Unit : CBV { Unit };
 
 
 # # Other functions

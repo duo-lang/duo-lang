@@ -10,11 +10,12 @@ module Translate.Focusing
 import Data.Text qualified as T
 
 import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
-import Syntax.CommonTerm
+import Syntax.Common
     ( FreeVarName,
       PrdCns(Cns, Prd),
       PrdCnsRep(..),
       XtorName,
+      NominalStructural,
       Phase(..))
 import Syntax.AST.Terms
     ( Command(..),
@@ -58,7 +59,7 @@ isValueSubst eo subst = sequence (isValuePCTerm eo <$> subst)
 isFocusedTerm :: CallingConvention -> Term pc Compiled -> Maybe (Term pc Compiled)
 isFocusedTerm _  bv@BoundVar {}           = Just bv
 isFocusedTerm _  fv@FreeVar {}            = Just fv
-isFocusedTerm eo (Xtor _ pc xt subst)     = Xtor () pc xt <$> isValueSubst eo subst
+isFocusedTerm eo (Xtor _ pc ns xt subst)  = Xtor () pc ns xt <$> isValueSubst eo subst
 isFocusedTerm eo (XMatch _ x y  cases)    = XMatch () x y <$> (sequence (isFocusedCmdCase eo <$> cases))
 isFocusedTerm eo (MuAbs _ pc v cmd)       = MuAbs () pc v <$> isFocusedCmd eo cmd
 isFocusedTerm _ _ = error "isFocusedTerm should only be called on core terms."
@@ -132,7 +133,7 @@ focusTerm :: CallingConvention  -> Term pc Compiled -> Term pc Compiled
 focusTerm eo (isFocusedTerm eo -> Just tm) = tm
 focusTerm _  (BoundVar _ rep var)          = BoundVar () rep var
 focusTerm _  (FreeVar _ rep var)           = FreeVar () rep var
-focusTerm eo (Xtor _ pcrep name subst)     = focusXtor eo pcrep name subst
+focusTerm eo (Xtor _ pcrep ns xt subst)    = focusXtor eo pcrep ns xt subst
 focusTerm eo (XMatch _ rep ns cases)       = XMatch () rep ns (focusCmdCase eo <$> cases)
 focusTerm eo (MuAbs _ rep _ cmd)           = MuAbs () rep Nothing (focusCmd eo cmd)
 focusTerm _ _                              = error "focusTerm should only be called on Core terms"
@@ -149,28 +150,28 @@ betaVar i = "$beta" <> T.pack (show i)
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
-focusXtor :: CallingConvention -> PrdCnsRep pc -> XtorName -> Substitution Compiled -> Term pc Compiled
-focusXtor eo PrdRep name subst = MuAbs () PrdRep Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd (focusXtor' eo PrdRep name subst [])))
-focusXtor eo CnsRep name subst = MuAbs () CnsRep Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd (focusXtor' eo CnsRep name subst [])))
+focusXtor :: CallingConvention -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution Compiled -> Term pc Compiled
+focusXtor eo PrdRep ns xt subst = MuAbs () PrdRep Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd (focusXtor' eo PrdRep ns xt subst [])))
+focusXtor eo CnsRep ns xt subst = MuAbs () CnsRep Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd (focusXtor' eo CnsRep ns xt subst [])))
 
 
-focusXtor' :: CallingConvention -> PrdCnsRep pc -> XtorName -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
-focusXtor' eo CnsRep name [] pcterms' = Apply () (Just (MonoKind eo)) (FreeVar () PrdRep alphaVar)
-                                                                      (Xtor () CnsRep name (reverse pcterms'))
-focusXtor' eo PrdRep name [] pcterms' = Apply () (Just (MonoKind eo)) (Xtor () PrdRep name (reverse pcterms'))
-                                                                      (FreeVar () CnsRep alphaVar)
-focusXtor' eo pc     name (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc name pcterms (PrdTerm prd : pcterms')
-focusXtor' eo pc     name (PrdTerm                                 prd:pcterms) pcterms' =
+focusXtor' :: CallingConvention -> PrdCnsRep pc -> NominalStructural -> XtorName -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
+focusXtor' eo CnsRep ns xt [] pcterms' = Apply () (Just (MonoKind eo)) (FreeVar () PrdRep alphaVar)
+                                                                       (Xtor () CnsRep ns xt (reverse pcterms'))
+focusXtor' eo PrdRep ns xt [] pcterms' = Apply () (Just (MonoKind eo)) (Xtor () PrdRep ns xt (reverse pcterms'))
+                                                                       (FreeVar () CnsRep alphaVar)
+focusXtor' eo pc     ns xt (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc ns xt pcterms (PrdTerm prd : pcterms')
+focusXtor' eo pc     ns xt (PrdTerm                                 prd:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
-                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd (focusXtor' eo pc name pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
+                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd (focusXtor' eo pc ns xt pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
                                                               in
                                                                   Apply () (Just (MonoKind eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
-focusXtor' eo pc     name (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc name pcterms (CnsTerm cns : pcterms')
-focusXtor' eo pc     name (CnsTerm                                 cns:pcterms) pcterms' =
+focusXtor' eo pc     ns xt (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc ns xt pcterms (CnsTerm cns : pcterms')
+focusXtor' eo pc     ns xt (CnsTerm                                 cns:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
-                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd (focusXtor' eo pc name pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
+                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd (focusXtor' eo pc ns xt pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
                                                               in Apply () (Just (MonoKind eo)) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 
@@ -200,6 +201,7 @@ focusDecl :: CallingConvention -> Declaration Compiled -> Declaration Compiled
 focusDecl eo (PrdCnsDecl _ pc isRec name annot prd) = PrdCnsDecl () pc isRec name annot (focusTerm eo prd)
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
 focusDecl _  decl@(DataDecl _ _)              = decl
+focusDecl _  decl@(XtorDecl _ _ _ _ _)        = decl
 focusDecl _  decl@(ImportDecl _ _)            = decl
 focusDecl _  decl@(SetDecl _ _)               = decl
 
@@ -207,10 +209,11 @@ focusProgram :: CallingConvention -> Program Compiled -> Program Compiled
 focusProgram eo = fmap (focusDecl eo)
 
 focusEnvironment :: CallingConvention -> Environment Compiled -> Environment Compiled
-focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) =
+focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, xtorMap }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> prdEnv
       , cnsEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> cnsEnv
       , cmdEnv = (\(cmd,loc) -> (focusCmd cc cmd,loc)) <$> cmdEnv
       , declEnv = declEnv
+      , xtorMap = xtorMap
       }

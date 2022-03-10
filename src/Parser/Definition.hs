@@ -14,7 +14,7 @@ import Data.Text (Text)
 import Text.Megaparsec
     ( ParseErrorBundle, runParser, Parsec, MonadParsec )
 
-import Syntax.AST.Types ( TVar )
+import Syntax.Common ( TVar )
 
 -------------------------------------------------------------------------------------------
 -- Definition of the Parsing Monad

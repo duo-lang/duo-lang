@@ -8,11 +8,11 @@ import Data.List (intersperse)
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.CST.Program (IsRec(..))
 import Syntax.AST.Program
 import Syntax.AST.Types
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
+import Syntax.Kinds (CallingConvention, Kind)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -22,13 +22,25 @@ instance PrettyAnn DataCodata where
   prettyAnn Data = annKeyword "data"
   prettyAnn Codata = annKeyword "codata"
 
+instance PrettyAnn TParams where
+  prettyAnn (MkTParams cov_ps con_ps) =
+    parens' comma ((prettyTParam Covariant <$> cov_ps) ++ (prettyTParam Contravariant <$> con_ps))
+
+prettyTParam :: Variance -> (TVar, Kind) -> Doc Annotation
+prettyTParam v (tv, k) = prettyVariance v <> prettyAnn tv <+> ":" <+> prettyAnn k
+
+prettyVariance :: Variance -> Doc Annotation
+prettyVariance Covariant = annSymbol "+"
+prettyVariance Contravariant = annSymbol "-"
+
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl ref tn dc knd xtors) =
+  prettyAnn (NominalDecl ref tn dc knd xtors params) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
+    prettyAnn params <+>
     colon <+>
     prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
@@ -55,6 +67,15 @@ prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> pcmd <> semi
 
+prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Doc Annotation
+prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
+prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
+
+-- | Prettyprint the list of calling conventions.
+prettyCCList :: [(PrdCns, CallingConvention)] -> Doc Annotation
+prettyCCList [] = mempty
+prettyCCList ((Prd, cc):xs) = (parens   $ prettyAnn cc) <> prettyCCList xs
+prettyCCList ((Cns, cc):xs) = (brackets $ prettyAnn cc) <> prettyCCList xs
 
 instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
@@ -63,6 +84,8 @@ instance PrettyAnn (Declaration ext) where
     prettyCmdDecl fv (prettyAnn cm)
   prettyAnn (DataDecl _ decl) =
     prettyAnn decl
+  prettyAnn (XtorDecl _ dc xt args ret) =
+    prettyXtorDecl dc xt args ret
   prettyAnn (ImportDecl _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (SetDecl _ txt) =
@@ -75,6 +98,8 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
   prettyAnn (NamedRep (DataDecl _ decl)) =
     prettyAnn decl
+  prettyAnn (NamedRep (XtorDecl _ dc xt args ret)) =
+    prettyXtorDecl dc xt args ret
   prettyAnn (NamedRep (ImportDecl _ mod)) =
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =

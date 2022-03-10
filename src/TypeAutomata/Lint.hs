@@ -9,10 +9,8 @@ import Data.Graph.Inductive (Gr)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-
 import Errors
-import Syntax.CommonTerm (PrdCns(..), XtorName)
-import Syntax.AST.Types
+import Syntax.Common
 import TypeAutomata.Definition
 import Utils
 

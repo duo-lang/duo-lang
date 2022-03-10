@@ -15,7 +15,7 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.CommonTerm (PrdCns(..), PrdCnsRep(..))
+import Syntax.Common
 import Syntax.AST.Types
 import TypeAutomata.Definition
     ( TypeAutEps,
@@ -189,7 +189,7 @@ insertType (TyRec rep rv ty) = do
   return newNode
 insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep _ tn) = do
+insertType (TyNominal rep _ tn _ _) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })

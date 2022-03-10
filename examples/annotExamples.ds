@@ -1,25 +1,25 @@
 # Examples which illustrate type annotations on toplevel declarations.
 
-data Nat : Type CBV { Zero, Succ(Nat) };
+data Nat : CBV { Zero, Succ(Nat) };
 
-codata NatFun : Type CBN { Ap(Nat)[Nat] };
-
+codata NatFun : CBN { ApNN(Nat)[Nat] };
+destructor Ap : CBN;
 # Symmetric system:
 
-prd idPoly : forall a. { 'Ap(a)[a] } := comatch { 'Ap(x)[k] => x >> k };
+prd idPoly : forall a. { Ap(a)[a] } := comatch { Ap(x)[k] => x >> k };
 
-prd idPolyTwo : forall a b. { 'Ap(a /\ b)[a \/ b] } := comatch { 'Ap(x)[k] => x >> k };
+prd idPolyTwo : forall a b. { Ap(a /\ b)[a \/ b] } := comatch { Ap(x)[k] => x >> k };
 
-prd id : { 'Ap(Nat)[Nat] } := comatch { 'Ap(x)[k] => x >> k };
+prd id : { Ap(Nat)[Nat] } := comatch { Ap(x)[k] => x >> k };
 
-prd idNominal : NatFun := comatch { Ap(x)[k] => x >> k };
+prd idNominal : NatFun := comatch { ApNN(x)[k] => x >> k };
 
 # Asymmetric system:
 
-prd idPoly : forall a. { 'Ap(a)[a] } := cocase { 'Ap(x)[*] => x };
+prd idPoly : forall a. { Ap(a)[a] } := cocase { Ap(x)[*] => x };
 
-prd idPolyTwo : forall a b. { 'Ap(a /\ b)[a \/ b] } := cocase { 'Ap(x)[*] => x };
+prd idPolyTwo : forall a b. { Ap(a /\ b)[a \/ b] } := cocase { Ap(x)[*] => x };
 
-prd id : { 'Ap(Nat)[Nat] } := cocase { 'Ap(x)[*] => x };
+prd id : { Ap(Nat)[Nat] } := cocase { Ap(x)[*] => x };
 
-prd idNominal : NatFun := cocase { Ap(x)[*] => x };
+prd idNominal : NatFun := cocase { ApNN(x)[*] => x };

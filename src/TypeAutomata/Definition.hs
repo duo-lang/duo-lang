@@ -10,8 +10,8 @@ import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
-import Syntax.AST.Types
-import Syntax.CommonTerm
+
+import Syntax.Common
 
 --------------------------------------------------------------------------------
 -- # Type Automata

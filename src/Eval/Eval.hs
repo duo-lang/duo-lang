@@ -15,7 +15,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.AST.Program (Environment)
 import Syntax.Kinds (CallingConvention(..), Kind(..))
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.AST.Terms
 
 ---------------------------------------------------------------------------------
@@ -51,8 +51,8 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
 
 
 convertInt :: Int -> Term Prd Compiled
-convertInt 0 = Xtor () PrdRep (MkXtorName Nominal "Z") []
-convertInt n = Xtor () PrdRep (MkXtorName Nominal "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor () PrdRep Nominal (MkXtorName "Z") []
+convertInt n = Xtor () PrdRep Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd Compiled)
@@ -83,7 +83,6 @@ evalTermOnce (Call _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ (Just (KindVar _)) _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (KindVar)"]
 evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
 
 evalApplyOnce :: CallingConvention -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
@@ -95,11 +94,11 @@ evalApplyOnce eo prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupTerm CnsRep fv
   return (Just (Apply () (Just (MonoKind eo)) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
-evalApplyOnce _ prd@(Xtor _ PrdRep xt args) cns@(XMatch _ CnsRep _ cases) = do
+evalApplyOnce _ prd@(Xtor _ PrdRep _ xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(Xtor _ CnsRep xt args) = do
+evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(Xtor _ CnsRep _ xt args) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening

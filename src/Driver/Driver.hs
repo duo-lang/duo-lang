@@ -22,34 +22,33 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Syntax.AST.Terms
-import Syntax.CommonTerm
+import Syntax.Common
 import Syntax.Lowering.Program
-import Syntax.Lowering.Lowering (runLowerM)
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
-      IsRefined(..),
-      DataDecl(data_refined)
+      DataDecl(..),
+      XtorSig (sig_name)
     )
 import Syntax.AST.Program
     ( Program,
       Environment(..),
       Declaration(..)
     )
-import Syntax.CST.Program (IsRec(..))
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( InferenceMode(..), runGenM )
+    ( runGenM )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints, KindPolicy(..))
+import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc )
+import Data.List
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type
@@ -85,10 +84,10 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   let genFun = case isRec of
         Recursive -> genConstraintsTermRecursive loc fv pc term
         NonRecursive -> genConstraintsTerm term
-  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) genFun
+  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -121,12 +120,11 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
 -- CmdDecl
 --
 inferDecl (CmdDecl loc v cmd) = do
-  infopts <- gets driverOpts
   env <- gets driverEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (infOptsMode infopts) (genConstraintsCommand cmd)
+  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErr loc $ solveConstraints constraints env
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -140,14 +138,30 @@ inferDecl (CmdDecl loc v cmd) = do
 --
 inferDecl (DataDecl loc dcl) = do
   -- Insert into environment
-  case data_refined dcl of 
-    Refined -> modify (\DriverState { driverOpts, driverEnv} -> DriverState driverOpts { infOptsMode = InferRefined }driverEnv)
-    NotRefined -> pure ()
-  -- TODO: Check data decls
   env <- gets driverEnv
-  let newEnv = env { declEnv = (loc,dcl) : declEnv env}
+  let tn = data_name dcl
+  case find (\NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
+    Just _ ->
+        -- HACK: inserting in the environment has already been done in lowering
+        -- because the declarations are already needed for lowering
+        -- In that case we make sure we don't insert twice
+        return (DataDecl loc dcl)
+    Nothing -> do
+      let ns = case data_refined dcl of
+                      Refined -> Refinement
+                      NotRefined -> Nominal
+      let newEnv = env { declEnv = (loc,dcl) : declEnv env
+                      , xtorMap = M.union (M.fromList [(xt, ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
+      setEnvironment newEnv
+      return (DataDecl loc dcl)
+--
+-- XtorDecl
+--
+inferDecl (XtorDecl loc dc xt args ret) = do
+  env <- gets driverEnv
+  let newEnv = env { xtorMap = M.insert xt Structural (xtorMap env)}
   setEnvironment newEnv
-  return (DataDecl loc dcl)
+  pure $ XtorDecl loc dc xt args ret
 --
 -- ImportDecl
 --
@@ -189,10 +203,7 @@ inferProgram decls = do
 
 renameProgram :: [CST.Declaration]
               -> DriverM (Program Parsed)
-renameProgram decls = do
-  case runLowerM (lowerProgram decls) of
-    Left err -> throwOtherError [T.pack (show err)]
-    Right decls -> pure decls
+renameProgram decls = lowerProgram decls
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]
@@ -205,7 +216,7 @@ renameProgramIO state decls = do
 
 inferProgram' :: Program Parsed
               -> DriverM (Program Inferred)
-inferProgram' decls = forM decls inferDecl              
+inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]

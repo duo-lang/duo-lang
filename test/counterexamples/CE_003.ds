@@ -1,5 +1,5 @@
 # Match cases incorrect
-data Bool { True, False };
-prd nominalNot := \(x)[k] => x >> match { True => False >> k
-                                        , False => True >> k
-					, Third => True >> k };
+data Bool : CBV { True, False };
+prd nominalNot := \x => case x of { True => False
+                                  , False => True
+                                  , Third => True };

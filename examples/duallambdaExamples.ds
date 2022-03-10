@@ -1,10 +1,8 @@
 import Prelude;
 
+data List : CBV { Nil, Cons(Nat,List) };
 
-codata Par : Type CBN { MkPar[List,Unit]};
-
-data List : Type CBV { Nil, Cons(Nat,List) };
-data Pred : Type CBV { Ap(Nat)[Bool] };
+codata Par : CBN { MkPar[List,Unit]};
 
 # Implementation is not important, since I only want to do typechecking.
 prd rec f : Unit -> Par := f;
@@ -15,17 +13,17 @@ prd compose := \x => cocase { MkPar[err,*] =>
                                 (h (g ((f x).MkPar[err,*]).MkPar[err,*])).MkPar[err,*]
                             };
 
-prd rec filterHelper := \p l => case l of { 
+prd rec filterHelper := \p l => case l of {
     Nil => comatch {
         MkPar[k1,k2] => Unit >> k2
     },
     Cons(x,xs) => case p x of {
-        True => 
+        True =>
             comatch {
                 MkPar[k1,k2] =>
                     filterHelper p xs >> MkPar[mu ys. Cons(x,ys) >> k1, k2]
             },
-        False => 
+        False =>
             comatch {
                 MkPar[k1,k2] =>
                     filterHelper p xs >> MkPar[k1, mu y. xs >> k1]
