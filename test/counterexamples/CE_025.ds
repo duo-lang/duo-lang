@@ -2,6 +2,6 @@
 
 destructor Ap : CBN;
 constructor Bar : CBV;
-prd id : { Ap(<True | False >)[<True | False>] } := comatch { Ap(x)[k] => x >> k };
+prd id : { Ap(<True , False >)[<True , False>] } := comatch { Ap(x)[k] => x >> k };
 
 prd useId : < Bar > := mu k.(id >> Ap(Bar)[k]);

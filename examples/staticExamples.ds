@@ -22,9 +22,9 @@ prd ex1 : forall a. { Ap(a)[a] } := comatch { Ap(x)[k] => x >> k };
  
 prd ex2 : < Succ(< Zero >) > := Succ(Zero);
 
-prd ex3 : forall a. { Ap(< TT | FF >, a, a)[a] } := comatch { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
+prd ex3 : forall a. { Ap(< TT , FF >, a, a)[a] } := comatch { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
 
-prd ex4 : forall a b. { Ap(<TT|FF>, a, b)[a \/ b] } := comatch { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
+prd ex4 : forall a b. { Ap(<TT,FF>, a, b)[a \/ b] } := comatch { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
 
 prd ex5 :  forall a b. { Ap({ Ap(a \/ b)[b] })[{ Ap(a)[b] }] } := comatch { Ap(f)[k] => (comatch { Ap(x)[k] => f >> Ap(x)[mu y. f >> Ap(y)[k]]}) >> k};
 

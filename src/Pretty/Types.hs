@@ -96,7 +96,7 @@ instance PrettyAnn (Typ pol) where
   -- Nominal types
   prettyAnn (TyNominal _ _ tn args_cov args_contra) = prettyAnn tn <> parens' commaSym ((prettyAnn <$> args_cov) ++ (prettyAnn <$> args_contra))
   -- Structural data and codata types
-  prettyAnn (TyData _ Nothing xtors)   = angles' pipeSym  (prettyAnn <$> xtors)
+  prettyAnn (TyData _ Nothing xtors)   = angles' commaSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
   prettyAnn (TyData pr (Just tn) xtors)   = dbraces' mempty [prettyAnn tn <+> refinementSym, prettyAnn (TyData pr Nothing xtors)]
