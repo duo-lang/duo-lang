@@ -8,9 +8,8 @@ import Repl.Repl
     ( prettyRepl, ReplState(..), Repl, Option(..), fromRight, parseInteractive )
 import TypeAutomata.Subsume (subsume)
 import Driver.Definition
-import Syntax.Lowering.Types
-import Syntax.AST.Types
 import Syntax.Common
+import Syntax.Lowering.Types
 
 -- Subsume
 

@@ -2,19 +2,16 @@ module TypeAutomata.RemoveAdmissible
   ( removeAdmissableFlowEdges
   ) where
 
-import Syntax.Common
-import Syntax.AST.Types
-import TypeAutomata.Definition
-
-import Data.Graph.Inductive.Graph
-
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
-
+import Data.Graph.Inductive.Graph
 import Data.List (delete)
-import Data.Tuple (swap)
 import Data.Maybe (isJust)
 import Data.Set qualified as S
+import Data.Tuple (swap)
+
+import Syntax.Common
+import TypeAutomata.Definition
 
 ----------------------------------------------------------------------------------------
 -- Removal of admissible flow edges.

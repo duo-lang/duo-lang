@@ -3,7 +3,6 @@ module Syntax.AST.Types where
 import Data.List (nub)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Text (Text)
 
 import Syntax.Common
 import Syntax.Kinds ( Kind )

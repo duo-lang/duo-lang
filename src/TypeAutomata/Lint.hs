@@ -9,10 +9,8 @@ import Data.Graph.Inductive (Gr)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-
 import Errors
 import Syntax.Common
-import Syntax.AST.Types
 import TypeAutomata.Definition
 import Utils
 
