@@ -14,6 +14,7 @@ import Syntax.AST.Types ( freeTypeVars)
 import Syntax.CST.Types
 import Syntax.AST.Program (Environment(declEnv, MkEnvironment))
 import Data.List
+import Lookup (lookupTypeName)
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> AST)
@@ -64,11 +65,8 @@ lowerTypeArgs rep tn args = do
 -- | Find the number of (covariant, contravariant) type parameters
 lookupTypeConstructorAritiy :: TypeName -> DriverM (Int, Int)
 lookupTypeConstructorAritiy tn = do
-    MkEnvironment {..} <- gets driverEnv
-    let env = snd <$> declEnv
-    case find (\AST.NominalDecl{..} -> data_name == tn) env of
-        Just AST.NominalDecl{..} -> pure (length (covariant data_params), length (contravariant data_params))
-        Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
+    AST.NominalDecl{..} <- lookupTypeName tn
+    pure (length (covariant data_params), length (contravariant data_params))
 
 lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> DriverM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs

@@ -11,6 +11,7 @@ import Pretty.Errors ( printLocatedError )
 import Syntax.AST.Program
 import Syntax.Common
 import Utils
+import Lookup
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -83,3 +84,10 @@ liftEitherErr :: Loc -> Either Error a -> DriverM a
 liftEitherErr loc x = case x of
     Left err -> liftErr loc err
     Right res -> return res
+
+---------------------------------------------------------------------------------
+-- Environment lookup
+---------------------------------------------------------------------------------
+
+instance HasEnv DriverM where
+  getEnv = gets driverEnv
