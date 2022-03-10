@@ -222,10 +222,10 @@ checkCorrectness :: [XtorName]
                  -> GenM ()
 checkCorrectness matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
-  forM_ matched $ \xn -> unless (xn `elem` declared) 
+  forM_ matched $ \xn -> unless (xn `elem` declared)
     (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
 
--- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration 
+-- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
 checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
@@ -235,3 +235,10 @@ checkExhaustiveness matched decl = do
   forM_ declared $ \xn -> unless (xn `elem` matched)
     (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
                      ppPrint (data_name decl) <> " is not matched against." ])
+
+---------------------------------------------------------------------------------
+-- Environment lookup
+---------------------------------------------------------------------------------
+
+instance HasEnv GenM where
+  getEnv = asks fst

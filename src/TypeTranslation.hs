@@ -46,6 +46,9 @@ newtype TranslateM a = TraM { getTraM :: ReaderT (Environment Inferred, Translat
 runTranslateM :: Environment Inferred -> TranslateM a -> Either Error (a, TranslateState)
 runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState)
 
+instance HasEnv TranslateM where
+  getEnv = asks fst
+
 ---------------------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------------------

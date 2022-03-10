@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.AST.Program where
 
-import Data.Kind (Type)  
+import Data.Kind (Type)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
@@ -28,7 +28,7 @@ data Declaration (ext :: Phase) where
   XtorDecl       :: DeclExt ext -> DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                                   -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                                         -> Declaration ext
-  
+
 
 instance (Show (DeclExt ext), Show (Term Prd ext), Show (Term Cns ext), Show (Command ext)) => Show (Declaration ext) where
   show (PrdCnsDecl ext PrdRep isrec fv annot tm) = "PrdDecl: " ++ show ext ++ show isrec ++ show fv ++ show annot ++ show tm
@@ -38,7 +38,7 @@ instance (Show (DeclExt ext), Show (Term Prd ext), Show (Term Cns ext), Show (Co
   show (XtorDecl ext dc xt args res) = "XtorDecl: " ++ show ext ++ show dc ++ show xt ++ show args ++ show res
   show (ImportDecl ext mn) = "ImportDecl: " ++ show ext ++ show mn
   show (SetDecl ext txt) = "SetDecl: " ++ show ext ++ show txt
-  
+
 type Program ext = [Declaration ext]
 
 ---------------------------------------------------------------------------------

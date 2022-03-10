@@ -48,6 +48,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc )
+import Lookup
 import Data.List
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
@@ -235,3 +236,10 @@ inferProgramIO' state decls = do
   case x of
     Left err -> return (Left err)
     Right (res,x) -> return (Right ((driverEnv x), res))
+
+---------------------------------------------------------------------------------
+-- Environment lookup
+---------------------------------------------------------------------------------
+
+instance HasEnv DriverM where
+  getEnv = gets driverEnv
