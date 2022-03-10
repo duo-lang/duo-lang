@@ -132,7 +132,7 @@ dataDeclP = do
     (tn, _pos) <- typeNameP
     params <- tparamsP
     if refined == Refined && not (null (allTypeVars params)) then
-      error "Parametrized refinement types are not supported, yet"
+      fail "Parametrized refinement types are not supported, yet"
     else
       do
         _ <- colon
