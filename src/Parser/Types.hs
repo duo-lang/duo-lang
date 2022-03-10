@@ -74,7 +74,7 @@ nominalTypeP = do
 -- - "{ dtor1 , dtor2 , dtor3 }"
 xdataTypeP :: DataCodata -> Parser Typ
 xdataTypeP Data = fst <$> angles (do
-  xtorSigs <- xtorSignatureP `sepBy` pipe
+  xtorSigs <- xtorSignatureP `sepBy` comma
   return (TyXData Data Nothing xtorSigs))
 xdataTypeP Codata = fst <$> braces (do
   xtorSigs <- xtorSignatureP `sepBy` comma

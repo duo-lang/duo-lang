@@ -95,11 +95,11 @@ spec = do
                  (TyCodata PosRep (Just $ MkTypeName "Foo")
                            [MkXtorSig (MkXtorName "A") [PrdCnsType CnsRep $ TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") []] ]])
     parseType NegRep
-                 "< A | B > /\\ < B >"
+                 "< A , B > /\\ < B >"
                  (TySet NegRep Nothing [ TyData   NegRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
                                        , TyData   NegRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType PosRep
-                 "< A | B > \\/ < B >"
+                 "< A , B > \\/ < B >"
                  (TySet PosRep Nothing [ TyData   PosRep Nothing [MkXtorSig (MkXtorName "A") mempty, MkXtorSig (MkXtorName "B") mempty]
                                        , TyData   PosRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType NegRep

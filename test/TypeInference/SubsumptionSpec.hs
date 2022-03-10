@@ -41,13 +41,13 @@ spec = do
     subsumptionCheckPos True "{ Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
     subsumptionCheckPos True "forall a. { Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
     subsumptionCheckPos True "{ Ap(< True >)[< True >] }" "forall a. { Ap(< True >)[< True >] }"
-    subsumptionCheckPos True "{ Ap(< True | False >)[< True >] }" "{ Ap(< True >)[< True | False >] }"
+    subsumptionCheckPos True "{ Ap(< True , False >)[< True >] }" "{ Ap(< True >)[< True , False >] }"
     subsumptionCheckPos True "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }" "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }"
     subsumptionCheckPos True "Nat" "Nat"
     subsumptionCheckPos True "{ Ap(Nat)[Bool] }" "{ Ap(Nat)[Bool] }"
     -- Subsumptions which shouldn't hold
     subsumptionCheckPos False "{}" "<>"
     subsumptionCheckPos False "{ Ap(< True >)[< True >] }" "forall a. { Ap(a)[a] }"
-    subsumptionCheckPos False "{ Ap(< True >)[< True | False >] }" "{ Ap(< True >)[< True >] }"
+    subsumptionCheckPos False "{ Ap(< True >)[< True , False >] }" "{ Ap(< True >)[< True >] }"
     subsumptionCheckPos False "Foo" "Bar"
 
