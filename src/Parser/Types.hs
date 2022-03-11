@@ -37,14 +37,14 @@ kindP = MonoKind <$> callingConventionP
 ---------------------------------------------------------------------------------
 
 -- | Parse a parenthesized list of producer types.
--- E.g.: "(Nat, Bool, { 'Ap(Nat)[Bool] })"
+-- E.g.: "(Nat, Bool, { Ap(Nat)[Bool] })"
 prdCtxtPartP :: Parser LinearContext
 prdCtxtPartP = do
   (res, _) <- parens $ (PrdType <$> typP) `sepBy` comma
   return res
 
 -- | Parse a bracketed list of consumer types.
--- E.g.: "[Nat, Bool, { 'Ap(Nat)[Bool] }]"
+-- E.g.: "[Nat, Bool, { Ap(Nat)[Bool] }]"
 cnsCtxtPartP :: Parser LinearContext
 cnsCtxtPartP = do
   (res,_) <- brackets $ (CnsType <$> typP) `sepBy` comma
@@ -82,7 +82,7 @@ xdataTypeP Codata = fst <$> braces (do
 
 -- | Parse a Constructor or destructor signature. E.g.
 -- - "Cons(Nat,List)"
--- - "'Head[Nat]"
+-- - "Head[Nat]"
 xtorSignatureP :: Parser XtorSig
 xtorSignatureP = do
   (xt, _pos) <- xtorName
