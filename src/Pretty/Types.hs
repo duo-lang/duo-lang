@@ -74,6 +74,10 @@ instance PrettyAnn Polarity where
   prettyAnn Pos = "Pos"
   prettyAnn Neg = "Neg"
 
+instance PrettyAnn Variance where
+  prettyAnn Covariant = "+"
+  prettyAnn Contravariant = "-"
+
 instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv
 

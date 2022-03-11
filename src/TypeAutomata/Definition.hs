@@ -150,7 +150,8 @@ data NodeLabel = MkNodeLabel
   { nl_pol :: Polarity
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
-  , nl_nominal :: Set TypeName
+  -- Nominal type names with the arities of (contravariant, covariant) type parameters
+  , nl_nominal :: Set (TypeName, Int, Int)
   , nl_ref_data :: Map TypeName (Set XtorLabel)
   , nl_ref_codata :: Map TypeName (Set XtorLabel)
   } deriving (Eq,Show,Ord)
@@ -172,7 +173,8 @@ data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
   | RefineEdge TypeName
-  deriving (Eq,Show, Ord)
+  | TypeArgEdge TypeName Variance Int
+  deriving (Eq, Show, Ord)
 
 type EdgeLabelNormal  = EdgeLabel Void
 type EdgeLabelEpsilon = EdgeLabel ()

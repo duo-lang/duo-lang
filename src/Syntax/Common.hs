@@ -121,6 +121,7 @@ data IsRec = Recursive | NonRecursive deriving (Show, Eq, Ord)
 ---------------------------------------------------------------------------------
 
 data Variance = Covariant | Contravariant
+  deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
 -- TParams

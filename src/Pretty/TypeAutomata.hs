@@ -28,7 +28,7 @@ instance PrettyAnn XtorLabel where
     prettyAnn labelName <> prettyArity labelArity
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) = 
+  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) =
     intercalateX ";" (catMaybes [printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
                                 , printNominal tns
@@ -39,14 +39,14 @@ instance PrettyAnn NodeLabel where
       printCodat codat = mempty <+> cat (punctuate " , " (prettyAnn <$> S.toList codat)) <+> mempty
       printNominal tnSet = case S.toList tnSet of
         [] -> Nothing
-        tns -> Just (intercalateX ";" (prettyAnn <$> tns))
+        tns -> Just (intercalateX ";" ((\(tn, _, _) -> prettyAnn tn) <$> tns))
       printRefDat refDat = case M.toList refDat of
         [] -> Nothing
-        refTns -> Just $ intercalateX "; " $ (\(key, content) -> angles $ mempty <+> 
+        refTns -> Just $ intercalateX "; " $ (\(key, content) -> angles $ mempty <+>
           prettyAnn key <+> pipeSym <+> printDat content <+> mempty) <$> refTns
       printRefCodat refCodat = case M.toList refCodat of
         [] -> Nothing
-        refTns -> Just $ intercalateX "; " $ (\(key, content) -> braces $ mempty <+> 
+        refTns -> Just $ intercalateX "; " $ (\(key, content) -> braces $ mempty <+>
           prettyAnn key <+> pipeSym <+> printCodat content <+> mempty) <$> refTns
 
 instance PrettyAnn (EdgeLabel a) where
@@ -54,6 +54,7 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Cns i) = prettyAnn xt <> brackets (pretty i)
   prettyAnn (EpsilonEdge _) = "e"
   prettyAnn (RefineEdge tn) = prettyAnn tn
+  prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (pretty (unTypeName tn) <> " , " <> prettyAnn v <> " , " <> pretty i)
 
 typeAutToDot :: TypeAut' (EdgeLabel a) f pol -> DotGraph Node
 typeAutToDot TypeAut {ta_core = TypeAutCore{..}} =
@@ -72,8 +73,10 @@ typeAutParams = defaultParams
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
                               RefineEdge tn -> refEdgeStyle tn
+                              el@(TypeArgEdge _ _ _) -> typeArgEdgeStyle el
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
     regularEdgeStyle el = [textLabel $ pack (ppPrintString el)]
     refEdgeStyle tn = [arrowTo vee, Style [SItem Dotted []], textLabel $ pack $ ppPrintString tn]
+    typeArgEdgeStyle el = [textLabel $ pack (ppPrintString el)]
