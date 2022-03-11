@@ -160,14 +160,12 @@ nodeToTypeNoCache rep i = do
     let adjEdges = lsuc gr i
     let typeArgsMap = fromList [((tn, i), t) | (t, TypeArgEdge tn i) <- adjEdges]
     let unsafeLookup = \k -> case Data.Map.lookup k typeArgsMap of
-          Just x -> x
-          Nothing -> error "Impossible: Cannot loose type arguments in automata"
-    let getArgs :: TypeName -> Int -> Int -> ([Node], [Node]) = \tn ncon ncov ->
-          ( [ unsafeLookup (tn, i) | i <- [0 .. ncon-1] ]
-          , [ unsafeLookup (tn, ncon + i) | i <- [0 .. ncov-1] ] )
+          Just x -> pure x
+          Nothing -> throwOtherError ["Impossible: Cannot loose type arguments in automata"]
     nominals <- do
         forM (S.toList tns) $ \(tn, ncon, ncov) -> do
-          let (conNodes, covNodes) = getArgs tn ncon ncov
+          conNodes <- sequence [ unsafeLookup (tn, i) | i <- [0 .. ncon-1] ]
+          covNodes <- sequence [ unsafeLookup (tn, ncon + i) | i <- [0 .. ncov-1] ]
           conArgs <- sequence (nodeToType (flipPolarityRep rep) <$> conNodes)
           covArgs <- sequence (nodeToType rep <$> covNodes)
           pure $ TyNominal rep Nothing tn conArgs covArgs
