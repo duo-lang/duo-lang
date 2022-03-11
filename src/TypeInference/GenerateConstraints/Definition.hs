@@ -131,7 +131,7 @@ freshTVarsForTypeParams rep dd = do
   where
     freshTVars ::  TypeName -> [TVar] -> GenM [(Typ Pos, Typ Neg)]
     freshTVars _ [] = pure []
-    freshTVars tn (MkTVar v : vs) = do
+    freshTVars tn (v : vs) = do
       vs' <- freshTVars tn vs
       (tp, tn) <- freshTVar (TypeParameter tn v)
       pure $ (tp, tn) : vs'
