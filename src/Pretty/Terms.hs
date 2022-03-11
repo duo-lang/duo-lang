@@ -99,7 +99,7 @@ isNumSTerm _ = Nothing
 instance PrettyAnn (Term pc ext) where
   prettyAnn (isNumSTerm -> Just n) = pretty n
   prettyAnn (BoundVar _ _ (i,j)) = parens (pretty i <> "," <> pretty j)
-  prettyAnn (FreeVar _ _ v) = pretty v
+  prettyAnn (FreeVar _ _ v) = prettyAnn v
   prettyAnn (Xtor _ _ _ xt args) = prettyAnn xt <> prettyAnn args
   prettyAnn (XMatch _ PrdRep _ cases) =
     annKeyword "comatch" <+>

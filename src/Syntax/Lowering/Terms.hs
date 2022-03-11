@@ -60,7 +60,7 @@ lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
                        -- HACK: We want to ensure that the implicit argument gets the intuitive De-Bruijn index.
                        -- termClosing doesn't support implicit arguments yet. We can emulate it for now by passing
                        -- a string that cannot be parsed as a variable (e.g. *).
-                       , tmcasei_term = AST.termClosing (bs1 ++ [(Cns, "*")] ++ bs2) tm'
+                       , tmcasei_term = AST.termClosing (bs1 ++ [(Cns, MkFreeVarName "*")] ++ bs2) tm'
                        }
 
 termCasesIToNS :: [CST.TermCaseI] -> DriverM NominalStructural

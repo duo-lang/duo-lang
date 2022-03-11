@@ -121,9 +121,9 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
     f n = do
       env <- gets replEnv
       let completionList = (':' :) . T.unpack . option_name <$> allOptions
-      let keys = concat [ M.keys (prdEnv env)
-                        , M.keys (cnsEnv env)
-                        , M.keys (cmdEnv env)
+      let keys = concat [ unFreeVarName <$> M.keys (prdEnv env)
+                        , unFreeVarName <$> M.keys (cnsEnv env)
+                        , unFreeVarName <$> M.keys (cmdEnv env)
                         , (unTypeName . data_name . snd) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))

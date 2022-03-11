@@ -11,12 +11,6 @@ import Data.Text qualified as T
 
 import Syntax.AST.Program ( Declaration(..), Program, Environment(..) )
 import Syntax.Common
-    ( FreeVarName,
-      PrdCns(Cns, Prd),
-      PrdCnsRep(..),
-      XtorName,
-      NominalStructural,
-      Phase(..))
 import Syntax.AST.Terms
     ( Command(..),
       Term(..),
@@ -141,12 +135,12 @@ focusTerm _ _                              = error "focusTerm should only be cal
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
 alphaVar :: FreeVarName
-alphaVar = "$alpha"
+alphaVar = MkFreeVarName "$alpha"
 
 -- | The variable used for focusing the individual arguments of the Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
 betaVar :: Int -> FreeVarName
-betaVar i = "$beta" <> T.pack (show i)
+betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
