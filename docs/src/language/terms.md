@@ -46,7 +46,7 @@ There are five categories of terms in DualSub:
 
 ## Core constructs
 
-DualSub supports control operators in the form of the mu and tilde/mu constructs of the lambda mu tilde/mu calculus.
+DualSub supports control operators in the form of the \\(\mu\\) and \\(\tilde\mu\\) constructs of the \\(\lambda\mu\tilde\mu\\) calculus.
 Both constructs use identical syntax.
 
 ```
