@@ -96,14 +96,14 @@ xtorSignatureP = do
 typeVariableP :: Parser Typ
 typeVariableP = do
   tvs <- asks tvars
-  tv <- MkTVar . fst <$> freeVarName
-  guard (tv `S.member` tvs)
-  return $ TyVar tv
+  (tvar, _) <- tvarP
+  guard (tvar `S.member` tvs)
+  return $ TyVar tvar
 
 recTypeP :: Parser Typ
 recTypeP = do
   _ <- recKwP
-  rv <- MkTVar . fst <$> freeVarName
+  (rv,_) <- tvarP
   _ <- dot
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP
   return $ TyRec rv ty
@@ -175,6 +175,6 @@ typP = typOpsP <|> typAtomP
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
-  tvars' <- option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
+  tvars' <- option [] (forallKwP >> some (fst <$> tvarP) <* dot)
   monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP
   pure (TypeScheme tvars' monotype)

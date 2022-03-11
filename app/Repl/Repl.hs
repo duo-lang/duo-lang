@@ -21,7 +21,7 @@ import Pretty.Program ()
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program ( Environment, Declaration(..) )
 import Syntax.Kinds ( CallingConvention(CBV) )
-import Syntax.Common (Phase(..))
+import Syntax.Common
 import Driver.Driver
 import Translate.Desugar
 import Translate.Focusing
@@ -102,7 +102,7 @@ cmd s = do
   (comLoc,_) <- parseInteractive commandP (T.pack s)
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CST.CmdDecl defaultLoc "main" comLoc]
+  inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CST.CmdDecl defaultLoc (MkFreeVarName "main") comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ inferredCmd]) -> do
       evalOrder <- gets evalOrder

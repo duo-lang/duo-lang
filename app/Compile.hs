@@ -15,7 +15,7 @@ import Translate.Focusing (focusCmd, focusEnvironment)
 import Driver.Driver (inferProgramIO, DriverState(..), InferenceOptions(..), defaultInferenceOptions)
 import Syntax.AST.Program (Environment(..))
 import Syntax.Kinds (CallingConvention(..))
-import Syntax.Common (Phase(..))
+import Syntax.Common
 
 driverState :: DriverState
 driverState = DriverState { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"]}
@@ -39,7 +39,7 @@ runCompile fp = do
                   (Left err) -> ppPrintIO err
                   (Right (env,_inferredProg)) -> do
                     -- Run program
-                    case M.lookup "main" (cmdEnv env) of
+                    case M.lookup (MkFreeVarName "main") (cmdEnv env) of
                       Nothing -> putStrLn "Program does not contain a \"main\" function."
                       Just (cmd,_) -> do
                         let compiledCmd = focusCmd CBV (desugarCmd cmd)

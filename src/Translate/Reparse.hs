@@ -21,8 +21,8 @@ import Utils
 type CreateNameM a = State ([FreeVarName],[FreeVarName]) a
 
 names :: ([FreeVarName], [FreeVarName])
-names =  ((\y -> "x" <> T.pack (show y)) <$> [(1 :: Int)..]
-         ,(\y -> "k" <> T.pack (show y)) <$> [(1 :: Int)..])
+names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
+         ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
 
 fresh :: PrdCns -> CreateNameM (Maybe FreeVarName)
 fresh Prd = do

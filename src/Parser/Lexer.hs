@@ -3,6 +3,7 @@ module Parser.Lexer
   , numP
     -- Names
   , freeVarName
+  , tvarP
   , xtorName
   , typeNameP
   , moduleNameP
@@ -143,7 +144,14 @@ freeVarName :: Parser (FreeVarName, SourcePos)
 freeVarName = try $ do
   (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
   checkReserved name
-  return (name, pos)
+  return (MkFreeVarName name, pos)
+
+tvarP :: Parser (TVar, SourcePos)
+tvarP = try $ do
+  (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
+  checkReserved name
+  return (MkTVar name, pos)
+
 
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
@@ -166,7 +174,7 @@ moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
   (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
-  return (ModuleName name, pos)
+  return (MkModuleName name, pos)
 
 -------------------------------------------------------------------------------------------
 -- Keywords
