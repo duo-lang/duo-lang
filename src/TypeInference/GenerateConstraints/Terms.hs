@@ -276,10 +276,10 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,PrdRep,subst2)) = do
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams PosRep decl
+  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
   let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
-  let ty = TyNominal NegRep Nothing (data_name decl) conArgs covArgs
+  let ty = TyNominal NegRep Nothing (data_name decl) covArgs conArgs
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit arguments and the implicit argument.
