@@ -40,7 +40,7 @@ getVariableState :: TVar -> CoalesceM VariableState
 getVariableState tv = do
     mp <- asks (tvarSolution . fst)
     case M.lookup tv mp of
-      Nothing -> error ("Not in variable states: " ++ show (tvar_name tv))
+      Nothing -> error ("Not in variable states: " ++ show (unTVar tv))
       Just vs -> return vs
 
 getRecVar :: (TVar, Polarity) -> CoalesceM TVar

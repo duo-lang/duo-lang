@@ -124,6 +124,9 @@ intercalateComma xs = cat (punctuate comma xs)
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
+instance PrettyAnn FreeVarName where
+  prettyAnn (MkFreeVarName nm) = prettyAnn nm
+
 instance PrettyAnn (Maybe FreeVarName) where
   prettyAnn Nothing = "_"
   prettyAnn (Just fv) = prettyAnn fv

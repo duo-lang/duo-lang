@@ -43,7 +43,7 @@ showCmd "" = do
       Left err -> prettyText (T.pack $ show err)
       Right (decls,_) -> prettyRepl decls
 showCmd str = do
-  let s = trim str
+  let s = MkFreeVarName (trim str)
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
     Just (prd,_,_) -> prettyRepl (NamedRep prd)

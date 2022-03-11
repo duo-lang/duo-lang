@@ -37,14 +37,14 @@ kindP = MonoKind <$> callingConventionP
 ---------------------------------------------------------------------------------
 
 -- | Parse a parenthesized list of producer types.
--- E.g.: "(Nat, Bool, { 'Ap(Nat)[Bool] })"
+-- E.g.: "(Nat, Bool, { Ap(Nat)[Bool] })"
 prdCtxtPartP :: Parser LinearContext
 prdCtxtPartP = do
   (res, _) <- parens $ (PrdType <$> typP) `sepBy` comma
   return res
 
 -- | Parse a bracketed list of consumer types.
--- E.g.: "[Nat, Bool, { 'Ap(Nat)[Bool] }]"
+-- E.g.: "[Nat, Bool, { Ap(Nat)[Bool] }]"
 cnsCtxtPartP :: Parser LinearContext
 cnsCtxtPartP = do
   (res,_) <- brackets $ (CnsType <$> typP) `sepBy` comma
@@ -82,7 +82,7 @@ xdataTypeP Codata = fst <$> braces (do
 
 -- | Parse a Constructor or destructor signature. E.g.
 -- - "Cons(Nat,List)"
--- - "'Head[Nat]"
+-- - "Head[Nat]"
 xtorSignatureP :: Parser XtorSig
 xtorSignatureP = do
   (xt, _pos) <- xtorName
@@ -96,14 +96,14 @@ xtorSignatureP = do
 typeVariableP :: Parser Typ
 typeVariableP = do
   tvs <- asks tvars
-  tv <- MkTVar . fst <$> freeVarName
-  guard (tv `S.member` tvs)
-  return $ TyVar tv
+  (tvar, _) <- tvarP
+  guard (tvar `S.member` tvs)
+  return $ TyVar tvar
 
 recTypeP :: Parser Typ
 recTypeP = do
   _ <- recKwP
-  rv <- MkTVar . fst <$> freeVarName
+  (rv,_) <- tvarP
   _ <- dot
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP
   return $ TyRec rv ty
@@ -175,6 +175,6 @@ typP = typOpsP <|> typAtomP
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
-  tvars' <- option [] (forallKwP >> some (MkTVar . fst <$> freeVarName) <* dot)
+  tvars' <- option [] (forallKwP >> some (fst <$> tvarP) <* dot)
   monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP
   pure (TypeScheme tvars' monotype)

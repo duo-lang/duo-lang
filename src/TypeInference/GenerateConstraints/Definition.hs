@@ -131,7 +131,7 @@ freshTVarsForTypeParams rep dd = do
   where
     freshTVars ::  TypeName -> [TVar] -> GenM [(Typ Pos, Typ Neg)]
     freshTVars _ [] = pure []
-    freshTVars tn (MkTVar v : vs) = do
+    freshTVars tn (v : vs) = do
       vs' <- freshTVars tn vs
       (tp, tn) <- freshTVar (TypeParameter tn v)
       pure $ (tp, tn) : vs'
@@ -237,7 +237,7 @@ foo PrdRep = PosRep
 foo CnsRep = NegRep
 
 fromMaybeVar :: Maybe FreeVarName -> FreeVarName
-fromMaybeVar Nothing = "generated"
+fromMaybeVar Nothing = MkFreeVarName "generated"
 fromMaybeVar (Just fv) = fv
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in

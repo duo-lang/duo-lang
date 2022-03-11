@@ -151,7 +151,7 @@ data BinOp where
 -- Names
 ---------------------------------------------------------------------------------
 
-newtype ModuleName = ModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
+newtype ModuleName = MkModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
 newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)
@@ -160,10 +160,10 @@ newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)
 newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
 
 -- | Name of a free variable. Starts with a lowercase letter.
-type FreeVarName = Text
+newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show)
 
 -- | Type variables
-newtype TVar = MkTVar { tvar_name :: Text } deriving (Eq, Show, Ord)
+newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
 
 -- | Two-level de Bruijn indices.
 type Index = (Int, Int)

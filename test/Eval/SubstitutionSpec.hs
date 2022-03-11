@@ -9,6 +9,7 @@ import Pretty.Pretty
 import Pretty.Errors ()
 import Syntax.AST.Terms
 import Syntax.AST.Program
+import Syntax.Common
 import TestUtils
 import Driver.Driver
 
@@ -23,6 +24,6 @@ spec = do
           Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
           Right env -> do
             forM_ (M.toList (prdEnv env)) $ \(name,(term,_,_)) -> do
-              it (T.unpack name ++ " does not contain dangling deBruijn indizes") $
+              it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes") $
                 termLocallyClosed term `shouldBe` Right ()
 

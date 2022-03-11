@@ -3,14 +3,14 @@ module Pretty.TypeAutomata ( typeAutToDot ) where
 import Data.Graph.Inductive.Graph
 import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed,Dotted), StyleItem(SItem))
 import Data.GraphViz
-import Data.Maybe (catMaybes, fromJust)
+import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Map qualified as M
 import Data.Text.Lazy (pack)
 import Prettyprinter
 
 import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX, Annotation)
-import Pretty.Types ()
+import Pretty.Types (pipeSym)
 import Syntax.Common
 import TypeAutomata.Definition
 
@@ -35,21 +35,19 @@ instance PrettyAnn NodeLabel where
                                 , printRefDat refDat
                                 , printRefCodat refCodat])
     where
-      printDat   dat   = angles (mempty <+> cat (punctuate " | " (prettyAnn <$> S.toList dat)) <+> mempty)
-      printCodat codat = braces (mempty <+> cat (punctuate " , " (prettyAnn <$> S.toList codat)) <+> mempty)
+      printDat   dat   = mempty <+> cat (punctuate " , " (prettyAnn <$> S.toList dat)) <+> mempty
+      printCodat codat = mempty <+> cat (punctuate " , " (prettyAnn <$> S.toList codat)) <+> mempty
       printNominal tnSet = case S.toList tnSet of
         [] -> Nothing
         tns -> Just (intercalateX ";" ((\(tn, _, _) -> prettyAnn tn) <$> tns))
-      printRefDat refDat = case M.keys refDat of
+      printRefDat refDat = case M.toList refDat of
         [] -> Nothing
-        refTns -> Just $ intercalateX "; " $ (\key -> braces $ braces $ mempty <+>
-          prettyAnn key <+> ":>>" <+> printDat
-            (fromJust $ M.lookup key refDat) <+> mempty) <$> refTns
-      printRefCodat refCodat = case M.keys refCodat of
+        refTns -> Just $ intercalateX "; " $ (\(key, content) -> angles $ mempty <+>
+          prettyAnn key <+> pipeSym <+> printDat content <+> mempty) <$> refTns
+      printRefCodat refCodat = case M.toList refCodat of
         [] -> Nothing
-        refTns -> Just $ intercalateX "; " $ (\key -> braces $ braces $ mempty <+>
-          prettyAnn key <+> ":>>" <+> printCodat
-            (fromJust $ M.lookup key refDat) <+> mempty) <$> refTns
+        refTns -> Just $ intercalateX "; " $ (\(key, content) -> braces $ mempty <+>
+          prettyAnn key <+> pipeSym <+> printCodat content <+> mempty) <$> refTns
 
 instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)
