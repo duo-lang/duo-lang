@@ -7,7 +7,7 @@
 # Installation
 
 - [Installing DualSub](./installation/dualsub.md)
-- [Editor Integration](./installation/editorsupport.md)
+- [Editor Integration](./installation/editor-support.md)
 
 # The DualSub Language
 
@@ -25,4 +25,4 @@
 
 ---
 
-[Further Reading](./furtherReading.md)
+[Further Reading](./further-reading.md)
