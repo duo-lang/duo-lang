@@ -1,0 +1,272 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Terms - DualSub - Documentation</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="Documentation of the DualSub language">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="../installation/dualsub.html"><strong aria-hidden="true">1.</strong> Installing DualSub</a></li><li class="chapter-item expanded "><a href="../installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The DualSub Language</li><li class="chapter-item expanded "><a href="../language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="../language/terms.html" class="active"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="../language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="../features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../further-reading.html">Further Reading</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">DualSub - Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/ps-tuebingen/dualsub" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/ps-tuebingen/dualsub/edit/main/docs/src/language/terms.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="terms"><a class="header" href="#terms">Terms</a></h1>
+<p>DualSub is based on a term language for the sequent calculus.
+In distinction to lambda calculus, the term language of natural deduction, we have a first-class treatment of both
+<strong>producers</strong> and <strong>consumers</strong> of each type.
+In addition, there is a third syntactic category, commands.
+Commands are executable pieces of code.
+For example, it is possible to define producers, consumers and commands at the toplevel of the program, using <code>prd</code>, <code>cns</code> and <code>cmd</code> declarations:</p>
+<pre><code>prd someProducer := ...;
+cns someConsumer := ...;
+cmd someCommand := ...;
+</code></pre>
+<p>Toplevel declarations of consumers and producers can additionally be annotated with a type scheme.</p>
+<pre><code>prd someProducer : ... := ...;
+cns someConsumer : ... := ...;
+</code></pre>
+<p>For example, the polymorphic identity function is defined like so:</p>
+<pre><code>prd id : forall (a : CBV). a -&gt; a :=
+  \x =&gt; x;
+</code></pre>
+<p>If a function is used recursively in its own body, the <code>rec</code> keyword is necessary:</p>
+<pre><code>prd rec add := \x y =&gt; case x of {
+    Z =&gt; y,
+    S(x) =&gt; S(add x y)
+}
+</code></pre>
+<p>There are five categories of terms in DualSub:</p>
+<ul>
+<li>Core constructs, which are independent of any concrete type.</li>
+<li>Producer introduction rules</li>
+<li>Consumer introduction rules</li>
+<li>Producer elimination rules</li>
+<li>Consumer elimination rules</li>
+</ul>
+<h2 id="core-constructs"><a class="header" href="#core-constructs">Core constructs</a></h2>
+<p>DualSub supports control operators in the form of the \(\mu\) and \(\tilde\mu\) constructs of the \(\lambda\mu\tilde\mu\) calculus.
+Both constructs use identical syntax.</p>
+<pre><code>prd ex1 := mu x. Done;
+cns ex2 := mu x. Done;
+</code></pre>
+<h2 id="producer-introduction-rules"><a class="header" href="#producer-introduction-rules">Producer Introduction Rules</a></h2>
+<p>The rules for data and codata types are given separately</p>
+<h4 id="data-types"><a class="header" href="#data-types">Data Types</a></h4>
+<p>Introduction rules for producers of codata types are just uses of the corresponding constructors:</p>
+<pre><code>data Nat : CBV { Z, S(Nat) };
+prd ex1 := S(Z);
+</code></pre>
+<h4 id="codata-types"><a class="header" href="#codata-types">Codata Types</a></h4>
+<p>Introduction rules for producers of codata types consists of copattern matching.</p>
+<pre><code>codata Pair(+a : CBV, +b : CBV) : CBV {
+    PiLeft[a],
+    PiRight[b]
+};
+
+prd ex1 : Pair(Nat,Bool):= comatch
+  { PiLeft[*] =&gt; 5,
+    PiRight[*] =&gt; True
+  };
+
+prd ex2 : Pair(Nat,Bool):= comatch
+  { PiLeft[k] =&gt; 5 &gt;&gt; k,
+    PiRight[k] =&gt; True &gt;&gt; k
+  };
+</code></pre>
+<h2 id="consumer-introduction-rules"><a class="header" href="#consumer-introduction-rules">Consumer Introduction Rules</a></h2>
+<p>The rules for data and codata types are given separately</p>
+<h4 id="data-types-1"><a class="header" href="#data-types-1">Data Types</a></h4>
+<p>A consumer of a data type is introduced using pattern matching</p>
+<pre><code>cns ex1 := match {
+    Z =&gt; Done,
+    S(x) =&gt; Done
+};
+</code></pre>
+<h4 id="codata-types-1"><a class="header" href="#codata-types-1">Codata Types</a></h4>
+<p>Introduction rules for consumers of codata types use one of the available destructors.</p>
+<pre><code>cns ex1 : NatStream := Head[mu x.Done];
+</code></pre>
+<h2 id="producer-elimination-rules"><a class="header" href="#producer-elimination-rules">Producer Elimination Rules</a></h2>
+<p>The rules for data and codata types are given separately</p>
+<h4 id="data-types-2"><a class="header" href="#data-types-2">Data Types</a></h4>
+<p>TODO</p>
+<h4 id="codata-types-2"><a class="header" href="#codata-types-2">Codata Types</a></h4>
+<p>TODO</p>
+<h2 id="consumer-elimination-rules"><a class="header" href="#consumer-elimination-rules">Consumer Elimination Rules</a></h2>
+<p>The rules for data and codata types are given separately</p>
+<h4 id="data-types-3"><a class="header" href="#data-types-3">Data Types</a></h4>
+<p>TODO</p>
+<h4 id="codata-types-3"><a class="header" href="#codata-types-3">Codata Types</a></h4>
+<p>TODO</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../language/types.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="../language/commands.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../language/types.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="../language/commands.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>
