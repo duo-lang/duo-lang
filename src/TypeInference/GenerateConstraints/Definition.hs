@@ -6,6 +6,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Generating fresh unification variables
   , freshTVar
   , freshTVars
+  , freshTVarsForTypeParams
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -46,6 +47,7 @@ import Syntax.Common
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
+import Data.Map
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -115,6 +117,29 @@ freshTVars ((Cns,fv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
+
+freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([Typ (FlipPol pol)], [Typ pol], Map TVar (Typ Pos, Typ Neg))
+freshTVarsForTypeParams rep dd = do
+    let (MkTParams con cov) = data_params dd
+    let tn = data_name dd
+    con' <- freshTVars tn (fst <$> con)
+    cov' <- freshTVars tn (fst <$> cov)
+    let map = paramsMap dd (con', cov')
+    case rep of
+      PosRep -> pure (snd <$> con', fst <$> cov', map)
+      NegRep -> pure (fst <$> con', snd <$> cov', map)
+  where
+    freshTVars ::  TypeName -> [TVar] -> GenM [(Typ Pos, Typ Neg)]
+    freshTVars _ [] = pure []
+    freshTVars tn (MkTVar v : vs) = do
+      vs' <- freshTVars tn vs
+      (tp, tn) <- freshTVar (TypeParameter tn v)
+      pure $ (tp, tn) : vs'
+
+    paramsMap :: DataDecl -> ([(Typ Pos, Typ Neg)], [(Typ Pos, Typ Neg)]) -> Map TVar (Typ Pos, Typ Neg)
+    paramsMap dd (freshCon, freshCov) =
+        let (MkTParams con cov) = data_params dd in
+        fromList (zip (fst <$> con) freshCon ++ zip (fst <$> cov) freshCov)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -222,10 +247,10 @@ checkCorrectness :: [XtorName]
                  -> GenM ()
 checkCorrectness matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
-  forM_ matched $ \xn -> unless (xn `elem` declared) 
+  forM_ matched $ \xn -> unless (xn `elem` declared)
     (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
 
--- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration 
+-- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
 checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.

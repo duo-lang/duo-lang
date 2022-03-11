@@ -96,10 +96,10 @@ coalesceType (TyData rep tn xtors) = do
 coalesceType (TyCodata rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata rep tn xtors')
-coalesceType (TyNominal rep kind tn cov_args contra_args) = do
-    cov_args' <- sequence $ coalesceType <$> cov_args
+coalesceType (TyNominal rep kind tn contra_args cov_args) = do
     contra_args' <- sequence $ coalesceType <$> contra_args
-    return $ TyNominal rep kind tn cov_args' contra_args'
+    cov_args' <- sequence $ coalesceType <$> cov_args
+    return $ TyNominal rep kind tn contra_args' cov_args'
 coalesceType (TySet rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet rep kind tys')

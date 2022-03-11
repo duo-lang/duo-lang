@@ -64,8 +64,8 @@ data Typ (pol :: Polarity) where
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData   :: PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
   TyCodata :: PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
-  -- | Nominal types with arguments to type parameters (covariant, contravariant)
-  TyNominal :: PolarityRep pol -> Maybe Kind -> TypeName -> [Typ pol] -> [Typ (FlipPol pol)] -> Typ pol
+  -- | Nominal types with arguments to type parameters (contravariant, covariant)
+  TyNominal :: PolarityRep pol -> Maybe Kind -> TypeName -> [Typ (FlipPol pol)] -> [Typ pol] -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> Maybe Kind -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
@@ -108,7 +108,7 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyVar _ _ tv) = [tv]
     freeTypeVars' (TySet _ _ ts) = concatMap freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
-    freeTypeVars' (TyNominal _ _ _ args_cov args_contra) = concatMap freeTypeVars args_cov ++ concatMap freeTypeVars args_contra
+    freeTypeVars' (TyNominal _ _ _ conArgs covArgs) = concatMap freeTypeVars conArgs ++ concatMap freeTypeVars covArgs
     freeTypeVars' (TyData _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
     freeTypeVars' (TyCodata _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
 

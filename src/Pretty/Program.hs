@@ -23,8 +23,8 @@ instance PrettyAnn DataCodata where
   prettyAnn Codata = annKeyword "codata"
 
 instance PrettyAnn TParams where
-  prettyAnn (MkTParams cov_ps con_ps) =
-    parens' comma ((prettyTParam Covariant <$> cov_ps) ++ (prettyTParam Contravariant <$> con_ps))
+  prettyAnn (MkTParams con_ps cov_ps) =
+    parens' comma ((prettyTParam Contravariant <$> con_ps) ++ (prettyTParam Covariant <$> cov_ps))
 
 prettyTParam :: Variance -> (TVar, Kind) -> Doc Annotation
 prettyTParam v (tv, k) = prettyVariance v <> prettyAnn tv <+> ":" <+> prettyAnn k
