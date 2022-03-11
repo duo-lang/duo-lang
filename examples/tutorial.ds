@@ -1,11 +1,11 @@
 # ##################
-# Tutorial Part 1
+# DualSub Tutorial
 # ##################
 
-# Welcome to the first part of this tutorial and short tour of the features of DualSub.
+# Welcome to this tutorial and short tour of the features of DualSub.
 #
-# In order to try out the examples, please start a REPL session with `stack run dualsub`,
-# and enter `:load tutorial-1.txt` to start following along.
+# In order to try out the examples, install dualsub and start a REPL session with `dualsub repl`,
+# and enter `:load tutorial.txt` to start following along.
 
 # ####################################
 # 1.1 Data Types and Pattern matching.
@@ -81,7 +81,7 @@ prd isZ := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
 # We can call a function which is declared in this way by using its destructor on it.
 # For example, in order to check whether 5 is zero, we can write:
 
-# def isFiveZ := isZ.Ap(5);
+prd isFiveZ := isZ.Ap(5)[*] ;
 
 # Here is how this syntax corresponds to the more usual syntax for lambda abstractions in, e.g. Haskell.
 #
@@ -90,8 +90,12 @@ prd isZ := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
 #    \x -> t          <->    comatch { Ap(x) => t }
 #    f t              <->    f.Ap(t)
 #
-# Since functions are so ubiquitious, it is likely we are going to add some additional syntactic sugar
-# for them in the future.
+
+# Since functions are so ubiquitious, DualSub contains some syntactic sugar for them:
+
+prd isZSugared := \x => case x of { Z => True, S(x) => False };
+
+# prd isFiveZSugared := isZ 5; 
 
 # All toplevel declarations are defined by mutual recursion, so it is possible to define a
 # recursive function like `isEven`:
@@ -112,7 +116,7 @@ prd isZ := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
 #    |-------------|------------------------------|---------------------|
 #    |             |       Nominal                |        Structural   |
 #    |-------------|------------------------------|---------------------|
-#    |   Data      | data Nat { Z, S(Nat) } |      (Part 2)       |
+#    |   Data      | data Nat { Z, S(Nat) }       |      (Part 2)       |
 #    |-------------|------------------------------|---------------------|
 #    |  Codata     | codata Fun { Ap(Nat)[Bool] } |      (Part 2)       |
 #    |-------------|------------------------------|---------------------|

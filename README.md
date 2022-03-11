@@ -20,5 +20,5 @@ stack run dualsub
 
 ## Features and Tutorial
 
-There is a four-part tutorial on the features of the language in the  `examples/` subfolder.
+There is a tutorial on the features of the language in the  `examples/` subfolder.
 
