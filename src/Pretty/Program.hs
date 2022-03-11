@@ -47,7 +47,7 @@ instance PrettyAnn DataDecl where
     semi
 
 instance PrettyAnn ModuleName where
-  prettyAnn (ModuleName nm) = prettyAnn nm
+  prettyAnn (MkModuleName nm) = prettyAnn nm
 
 instance PrettyAnn (PrdCnsRep pc) where
   prettyAnn PrdRep = annKeyword "prd"
@@ -57,15 +57,15 @@ prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdCnsDecl :: Pretty a => PrdCnsRep pc -> IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyPrdCnsDecl :: PrettyAnn a => PrdCnsRep pc -> IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
-  prettyAnn pc <+> "rec" <+> pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  prettyAnn pc <+> "rec" <+> prettyAnn fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
-  prettyAnn pc <+>           pretty fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  prettyAnn pc <+>           prettyAnn fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
-prettyCmdDecl :: Pretty a => a -> Doc Annotation -> Doc Annotation
+prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
-   annKeyword "cmd" <+> pretty fv <+> annSymbol ":=" <+> pcmd <> semi
+   annKeyword "cmd" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
 
 prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Doc Annotation
 prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
@@ -121,13 +121,13 @@ instance PrettyAnn (Environment ph) where
     where
       ppPrds = case M.toList prdEnv of
         [] -> mempty
-        env -> vsep $ intersperse "" $ ("Producers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> env)) ++ [""]
+        env -> vsep $ intersperse "" $ ("Producers:" : ( (\(v,(_,_,ty)) -> prettyAnn v <+> ":" <+> prettyAnn ty) <$> env)) ++ [""]
       ppCns  = case M.toList cnsEnv of
         [] -> mempty
-        env -> vsep $ intersperse "" $ ("Consumers:" : ( (\(v,(_,_,ty)) -> pretty v <+> ":" <+> prettyAnn ty) <$> env)) ++ [""]
+        env -> vsep $ intersperse "" $ ("Consumers:" : ( (\(v,(_,_,ty)) -> prettyAnn v <+> ":" <+> prettyAnn ty) <$> env)) ++ [""]
       ppCmds = case M.toList cmdEnv of
         [] -> mempty
-        env -> vsep $ intersperse "" $ ("Commands" : ( (\(v,_) -> pretty v) <$> env)) ++ [""]
+        env -> vsep $ intersperse "" $ ("Commands" : ( (\(v,_) -> prettyAnn v) <$> env)) ++ [""]
       ppDecls = case declEnv of
         [] -> mempty
         env -> vsep $ intersperse "" $ ("Type declarations:" : (prettyAnn . snd <$> env)) ++ [""]

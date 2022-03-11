@@ -85,7 +85,7 @@ generateCodeActions ident (Range {_start= start}) env = do
 
 
 generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
-generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
+generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> (unFreeVarName name)
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
                                                                   , _isPreferred = Nothing
@@ -110,7 +110,7 @@ generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   }
 
 generateCmdFocusCodeAction :: TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
-generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> name
+generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> (unFreeVarName name)
                                                                   , _kind = Just CodeActionQuickFix 
                                                                   , _diagnostics = Nothing
                                                                   , _isPreferred = Nothing
@@ -137,7 +137,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 ---------------------------------------------------------------------------------
 
 generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
-generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> name
+generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> (unFreeVarName name)
                                                                     , _kind = Just CodeActionQuickFix 
                                                                     , _diagnostics = Nothing
                                                                     , _isPreferred = Nothing
@@ -159,7 +159,7 @@ generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
                   , _changeAnnotations=Nothing}
 
 generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
-generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> name
+generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> (unFreeVarName name)
                                                                    , _kind = Just CodeActionQuickFix
                                                                    , _diagnostics = Nothing
                                                                    , _isPreferred = Nothing

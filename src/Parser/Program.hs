@@ -104,7 +104,7 @@ varianceP Contravariant = void minusSym
 tParamP :: Variance -> Parser (TVar, Kind)
 tParamP v = do
   _ <- varianceP v
-  tvar <- MkTVar . fst <$> freeVarName
+  (tvar,_) <- tvarP
   _ <- colon
   kind <- kindP
   pure (tvar, kind)

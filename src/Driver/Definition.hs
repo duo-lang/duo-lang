@@ -62,7 +62,7 @@ guardVerbose action = do
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
-findModule (ModuleName mod) loc = do
+findModule (MkModuleName mod) loc = do
   infopts <- gets driverOpts
   let libpaths = infOptsLibPath infopts
   fps <- forM libpaths $ \libpath -> do

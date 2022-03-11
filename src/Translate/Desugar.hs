@@ -47,7 +47,7 @@ isDesugaredCommand (Done _) = True
 ---------------------------------------------------------------------------------
 
 resVar :: FreeVarName
-resVar = "$result"
+resVar = MkFreeVarName "$result"
 
 
 desugarPCTerm :: PrdCnsTerm Inferred -> PrdCnsTerm Compiled

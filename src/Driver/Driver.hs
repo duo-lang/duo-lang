@@ -99,7 +99,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
   typSimplified <- case infOptsSimplify infopts of
     True -> do
       printGraphs <- gets (infOptsPrintGraphs . driverOpts)
-      tys <- simplify (generalize typ) printGraphs (T.unpack fv)
+      tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName fv))
       guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
     False -> return (generalize typ)
