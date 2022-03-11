@@ -15,7 +15,6 @@ import Data.Maybe (fromJust)
 import Data.Functor.Identity
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
