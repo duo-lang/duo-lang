@@ -1,7 +1,6 @@
 module TypeAutomata.ToAutomaton ( typeToAut ) where
 
 
-import Control.Monad ( forM_ )
 import Control.Monad.Except ( runExcept, Except )
 import Control.Monad.Reader
     ( ReaderT(..), asks, MonadReader(..) )
@@ -30,6 +29,7 @@ import TypeAutomata.Definition
       emptyNodeLabel,
       singleNodeLabel )
 import Utils ( enumerate )
+import Control.Monad
 
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
@@ -189,10 +189,14 @@ insertType (TyRec rep rv ty) = do
   return newNode
 insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep _ tn _ _) = do
+insertType (TyNominal rep _ tn covArgs contraArgs) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton tn })
+  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, length covArgs, length contraArgs) })
+  covArgNodes <- forM covArgs insertType
+  contraArgNodes <- forM contraArgs insertType
+  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn i)) <$> enumerate covArgNodes)
+  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn (length covArgNodes + i))) <$> enumerate contraArgNodes)
   return newNode
 
 --------------------------------------------------------------------------

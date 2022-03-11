@@ -20,6 +20,7 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
+import Data.Map
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
@@ -84,14 +85,14 @@ computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a no
                 -> [(PrdCns,[Node])] -- ^ The nodes which contain the arguments of the constructor / destructor
 computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
   where
-    argFun (n,pc) = (pc, [ node | ((EdgeSymbol dc' xt pc' pos), node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
-    args = argFun <$> (enumerate labelArity)
+    argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
+    args = argFun <$> enumerate labelArity
 
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes argNodes rep = do
-  argTypes <- forM argNodes $ \ns -> do
+  forM argNodes $ \ns -> do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
@@ -99,16 +100,16 @@ argNodesToArgTypes argNodes rep = do
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
          return $ case typs of [t] -> PrdCnsType CnsRep t; _ -> PrdCnsType CnsRep (TySet (flipPolarityRep rep) Nothing typs)
-  return argTypes
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
-  case inCache of
-    True -> return $ TyVar rep Nothing (MkTVar ("r" <> T.pack (show i)))
-    False -> nodeToTypeNoCache rep i
+  if inCache then
+    return $ TyVar rep Nothing (MkTVar ("r" <> T.pack (show i)))
+  else
+    nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
@@ -157,7 +158,20 @@ nodeToTypeNoCache rep i = do
           return (MkXtorSig (labelName xt) argTypes)
         return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
-    let nominals = (\tn -> TyNominal rep Nothing tn [] []) <$> S.toList tns
+    let adjEdges = lsuc gr i
+    let typeArgsMap = fromList [((tn, i), t) | (t, TypeArgEdge tn i) <- adjEdges]
+    let unsafeLookup = \k -> case Data.Map.lookup k typeArgsMap of
+          Just x -> x
+          Nothing -> error "Impossible: Cannot loose type arguments in automata"
+    let getArgs :: TypeName -> Int -> Int -> ([Node], [Node]) = \tn ncov ncon ->
+          ( [ unsafeLookup (tn, i) | i <- [0 .. ncov-1] ]
+          , [ unsafeLookup (tn, ncov + i) | i <- [0 .. ncon-1] ] )
+    nominals <- do
+        forM (S.toList tns) $ \(tn, ncov, ncon) -> do
+          let (covNodes, conNodes) = getArgs tn ncov ncon
+          covArgs <- sequence (nodeToType rep <$> covNodes)
+          conArgs <- sequence (nodeToType (flipPolarityRep rep) <$> conNodes)
+          pure $ TyNominal rep Nothing tn covArgs conArgs
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
     return $ case typs of [t] -> t; _ -> TySet rep Nothing typs
