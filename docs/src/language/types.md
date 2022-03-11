@@ -93,8 +93,8 @@ Codata types make it possible to define the function type, instead of having a b
 The declaration of the function type looks like this.
 
 ```
-codata Fun(+a : CBV, -b CBV) : CBN {
-    Ap(b)[a]
+codata Fun(-a : CBV, +b CBV) : CBN {
+    Ap(a)[b]
 }
 ```
 

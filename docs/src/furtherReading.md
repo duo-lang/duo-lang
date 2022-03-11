@@ -30,7 +30,7 @@ Two follow-up papers, "Decomposition Diversity with Symmetric Data and Codata", 
 
 The duality between producers and consumers of a type corresponds, via the Curry-Howard isomorphism, to the duality between proofs and refutations in logic.
 A proof system which exploits this duality of proofs and refutations is the Sequent Calculus, developed by Gentzen at the same time as his more popular relative, natural deduction.
-At its core, DualSub is based on a term assignment system for the sequent calculus, the lambda mu /tilde mu calculus by Pierre-Louis Curien and Hugo Herbelin.
+At its core, DualSub is based on a term assignment system for the sequent calculus, the \\(\lambda \mu \tilde\mu\\) calculus by Pierre-Louis Curien and Hugo Herbelin.
 In this term assignment system, consumers correspond to a first-class notion of continuations.
 We only cite some of the more important references of the extensive literature on term-assignment systems for the sequent calculus.
 
