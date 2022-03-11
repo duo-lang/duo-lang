@@ -69,6 +69,13 @@ parseTypeSchemeIdentical pol input1 input2 = do
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
 
+
+mkFun :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol -> Typ pol
+mkFun rep t1 t2 = (TyNominal rep Nothing (MkTypeName "Fun") [t1] [t2])
+
+mkNat :: PolarityRep pol -> Typ pol
+mkNat rep = TyNominal rep Nothing (MkTypeName "Nat") [] []
+
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
@@ -112,22 +119,16 @@ spec = do
                                        , TyCodata PosRep Nothing [MkXtorSig (MkXtorName "B") mempty]])
     parseType PosRep
                  "Nat -> Nat"
-                 (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] [])] ])
+                 (mkFun PosRep (mkNat NegRep) (mkNat PosRep))
     parseType NegRep
                  "Nat -> Nat"
-                 (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] [])] ])
+                 (mkFun NegRep (mkNat PosRep) (mkNat NegRep))
     parseType PosRep
                  "Nat -> Nat -> Nat"
-                 (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyCodata PosRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] [])] ])] ])
+                 (mkFun PosRep (mkNat NegRep) (mkFun PosRep (mkNat NegRep) (mkNat PosRep)))
     parseType NegRep
                  "Nat -> Nat -> Nat"
-                 (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyCodata NegRep Nothing [ MkXtorSig (MkXtorName "Ap")
-                    [PrdCnsType PrdRep (TyNominal PosRep Nothing (MkTypeName "Nat") [] []), PrdCnsType CnsRep (TyNominal NegRep Nothing (MkTypeName "Nat") [] [])] ])] ])
+                 (mkFun NegRep (mkNat PosRep) (mkFun NegRep (mkNat PosRep) (mkNat NegRep)))
 
     parseTypeIdentical PosRep "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
     parseTypeIdentical NegRep "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"

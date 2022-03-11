@@ -1,4 +1,4 @@
-destructor Ap(CBV)[CBV] : CBV;
+import Prelude;
 
 prd fixLazy := comatch { Ap(f)[k] =>
                  comatch { Ap(x)[k] => x >>
@@ -16,7 +16,6 @@ prd omega2 := mu v. comatch { Ap(x)[k] => x >> Ap(x)[k] }
                     >>
                     Ap( comatch { Ap(x)[k] => x >> Ap(x)[k] })[v];
 
-data Fun : CBN { Ap(Fun)[Fun] };
 
 prd omega3 := cocase { Ap(x)[*] => x.Ap(x)[*] }.Ap(cocase { Ap(x)[*] => x.Ap(x)[*]})[*];
 

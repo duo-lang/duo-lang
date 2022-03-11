@@ -1,8 +1,15 @@
 # Standard Prelude
 
-# Bool
+# The function type
 
-destructor Ap : CBN;
+data Fun(-a : CBV, +b : CBV) : CBN {
+    Ap(a)[b]
+};
+
+
+prd id := \x => x;
+
+# Bool
 
 data Bool : CBV { True, False };
 
@@ -32,9 +39,7 @@ prd rec nateq := \n => \m => case n of { Z => case m of { Z => True, S(m) => Fal
 data Unit : CBV { Unit };
 
 
-# # Other functions
 
-prd id := \x => x;
 
 # # Generic print consumer
 cns print := mu x.Print(x); Done;

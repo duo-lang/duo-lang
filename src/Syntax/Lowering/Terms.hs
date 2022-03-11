@@ -138,10 +138,10 @@ lowerMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> lowerMultiLambda loc fv
 lowerLambda :: Loc -> FreeVarName -> CST.Term -> DriverM (AST.Term Prd Parsed)
 lowerLambda loc var tm = do
   tm' <- lowerTerm PrdRep tm
-  pure $ AST.Cocase loc Structural [ AST.MkTermCaseI loc (MkXtorName "Ap")
-                                                         ([(Prd, Just var)], (), [])
-                                                        (AST.termClosing [(Prd, var)] tm')
-                                   ]
+  pure $ AST.Cocase loc Nominal [ AST.MkTermCaseI loc (MkXtorName "Ap")
+                                                      ([(Prd, Just var)], (), [])
+                                                      (AST.termClosing [(Prd, var)] tm')
+                                ]
 
 -- | Lower a natural number literal.
 lowerNatLit :: Loc -> NominalStructural -> Int -> DriverM (AST.Term Prd Parsed)
@@ -155,7 +155,7 @@ lowerApp :: Loc -> CST.Term -> CST.Term -> DriverM (AST.Term Prd Parsed)
 lowerApp loc fun arg = do
   fun' <- lowerTerm PrdRep fun
   arg' <- lowerTerm PrdRep arg
-  pure $ AST.Dtor loc Structural (MkXtorName "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
+  pure $ AST.Dtor loc Nominal (MkXtorName "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
 
 lowerCommand :: CST.Command -> DriverM (AST.Command Parsed)
 lowerCommand (CST.Apply loc tm1 tm2)      = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2
