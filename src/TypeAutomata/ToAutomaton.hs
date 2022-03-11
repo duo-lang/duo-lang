@@ -189,14 +189,14 @@ insertType (TyRec rep rv ty) = do
   return newNode
 insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep _ tn covArgs contraArgs) = do
+insertType (TyNominal rep _ tn contraArgs covArgs) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, length covArgs, length contraArgs) })
-  covArgNodes <- forM covArgs insertType
+  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, length contraArgs, length covArgs) })
   contraArgNodes <- forM contraArgs insertType
-  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn i)) <$> enumerate covArgNodes)
-  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn (length covArgNodes + i))) <$> enumerate contraArgNodes)
+  covArgNodes <- forM covArgs insertType
+  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn i)) <$> enumerate contraArgNodes)
+  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn (length contraArgNodes + i))) <$> enumerate covArgNodes)
   return newNode
 
 --------------------------------------------------------------------------

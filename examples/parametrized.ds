@@ -11,7 +11,7 @@ data Rose(+a : CBV) : CBN {
     Node(List(Rose(a)))
 };
 
-data Fun(+b : CBV, -a : CBV) : CBN {
+data Fun(-a : CBV, +b : CBV) : CBN {
     Ap(a)[b]
 };
 
@@ -19,7 +19,7 @@ constructor A : CBV;
 constructor B : CBV;
 
 prd l1 : List(Bool \/ Nat) := Cons(1, Cons(True, Nil));
-prd l2 : List(<A | B>) := Cons(A, Cons(B, Nil));
+prd l2 : List(<A , B>) := Cons(A, Cons(B, Nil));
 prd l3 : List(Nat) := Cons(1, Cons(2, Cons(3, Nil)));
 prd r1 : Rose(Nat) := Node(Cons(Leaf(1), Cons(Leaf(1), Nil)));
 prd id := match {
@@ -30,7 +30,7 @@ prd succ := match {
     Ap(x)[k] => S(x) >> k
 };
 
-prd rec map : forall a b. Fun(Fun(List(b), List(a)), Fun(b, a)) := match {
+prd rec map : forall a b. Fun(Fun(a, b), Fun(List(a), List(b))) := match {
     Ap(g)[j] => match {
         Ap(xs)[k] => case xs of {
             Nil => Nil,

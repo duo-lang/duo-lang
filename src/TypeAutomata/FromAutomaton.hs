@@ -162,15 +162,15 @@ nodeToTypeNoCache rep i = do
     let unsafeLookup = \k -> case Data.Map.lookup k typeArgsMap of
           Just x -> x
           Nothing -> error "Impossible: Cannot loose type arguments in automata"
-    let getArgs :: TypeName -> Int -> Int -> ([Node], [Node]) = \tn ncov ncon ->
-          ( [ unsafeLookup (tn, i) | i <- [0 .. ncov-1] ]
-          , [ unsafeLookup (tn, ncov + i) | i <- [0 .. ncon-1] ] )
+    let getArgs :: TypeName -> Int -> Int -> ([Node], [Node]) = \tn ncon ncov ->
+          ( [ unsafeLookup (tn, i) | i <- [0 .. ncon-1] ]
+          , [ unsafeLookup (tn, ncon + i) | i <- [0 .. ncov-1] ] )
     nominals <- do
-        forM (S.toList tns) $ \(tn, ncov, ncon) -> do
-          let (covNodes, conNodes) = getArgs tn ncov ncon
-          covArgs <- sequence (nodeToType rep <$> covNodes)
+        forM (S.toList tns) $ \(tn, ncon, ncov) -> do
+          let (conNodes, covNodes) = getArgs tn ncon ncov
           conArgs <- sequence (nodeToType (flipPolarityRep rep) <$> conNodes)
-          pure $ TyNominal rep Nothing tn covArgs conArgs
+          covArgs <- sequence (nodeToType rep <$> covNodes)
+          pure $ TyNominal rep Nothing tn conArgs covArgs
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
     return $ case typs of [t] -> t; _ -> TySet rep Nothing typs

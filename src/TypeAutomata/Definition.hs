@@ -150,7 +150,7 @@ data NodeLabel = MkNodeLabel
   { nl_pol :: Polarity
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
-  -- Nominal type names with the arities of (covariant, contravariant) type parameters
+  -- Nominal type names with the arities of (contravariant, covariant) type parameters
   , nl_nominal :: Set (TypeName, Int, Int)
   , nl_ref_data :: Map TypeName (Set XtorLabel)
   , nl_ref_codata :: Map TypeName (Set XtorLabel)
