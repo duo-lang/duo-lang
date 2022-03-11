@@ -158,7 +158,7 @@ nodeToTypeNoCache rep i = do
         return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
     let adjEdges = lsuc gr i
-    let typeArgsMap = fromList [((tn, i), t) | (t, TypeArgEdge tn i) <- adjEdges]
+    let typeArgsMap = fromList [((tn, i), t) | (t, TypeArgEdge tn _ i) <- adjEdges]
     let unsafeLookup = \k -> case Data.Map.lookup k typeArgsMap of
           Just x -> pure x
           Nothing -> throwOtherError ["Impossible: Cannot loose type arguments in automata"]

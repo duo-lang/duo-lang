@@ -56,7 +56,7 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Cns i) = prettyAnn xt <> brackets (pretty i)
   prettyAnn (EpsilonEdge _) = "e"
   prettyAnn (RefineEdge tn) = prettyAnn tn
-  prettyAnn (TypeArgEdge tn i) = "TypeArg" <> parens (pretty (unTypeName tn) <> " , " <> pretty i)
+  prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (pretty (unTypeName tn) <> " , " <> prettyAnn v <> " , " <> pretty i)
 
 typeAutToDot :: TypeAut' (EdgeLabel a) f pol -> DotGraph Node
 typeAutToDot TypeAut {ta_core = TypeAutCore{..}} =
@@ -75,7 +75,7 @@ typeAutParams = defaultParams
                               el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
                               RefineEdge tn -> refEdgeStyle tn
-                              el@(TypeArgEdge _ _) -> typeArgEdgeStyle el
+                              el@(TypeArgEdge _ _ _) -> typeArgEdgeStyle el
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]

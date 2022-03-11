@@ -195,8 +195,8 @@ insertType (TyNominal rep _ tn contraArgs covArgs) = do
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, length contraArgs, length covArgs) })
   contraArgNodes <- forM contraArgs insertType
   covArgNodes <- forM covArgs insertType
-  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn i)) <$> enumerate contraArgNodes)
-  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn (length contraArgNodes + i))) <$> enumerate covArgNodes)
+  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn Contravariant i)) <$> enumerate contraArgNodes)
+  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn Covariant (length contraArgNodes + i))) <$> enumerate covArgNodes)
   return newNode
 
 --------------------------------------------------------------------------

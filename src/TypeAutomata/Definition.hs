@@ -173,8 +173,8 @@ data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
   | RefineEdge TypeName
-  | TypeArgEdge TypeName Int
-  deriving (Eq,Show, Ord)
+  | TypeArgEdge TypeName Variance Int
+  deriving (Eq, Show, Ord)
 
 type EdgeLabelNormal  = EdgeLabel Void
 type EdgeLabelEpsilon = EdgeLabel ()

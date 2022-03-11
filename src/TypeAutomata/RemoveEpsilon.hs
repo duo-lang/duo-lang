@@ -12,7 +12,7 @@ unsafeEmbedEdgeLabel :: EdgeLabelEpsilon -> EdgeLabelNormal
 unsafeEmbedEdgeLabel (EdgeSymbol dc xt pc i) = EdgeSymbol dc xt pc i
 unsafeEmbedEdgeLabel (EpsilonEdge _) = error "unsafeEmbedEdgeLabel failed"
 unsafeEmbedEdgeLabel (RefineEdge tn) = RefineEdge tn
-unsafeEmbedEdgeLabel (TypeArgEdge tn i) = TypeArgEdge tn i
+unsafeEmbedEdgeLabel (TypeArgEdge tn v i) = TypeArgEdge tn v i
 
 -- | Remove all epsilon edges starting from the node n.
 -- I.e. replace this configuration:
