@@ -1,13 +1,13 @@
 import Prelude;
 
-data List : CBV { Nil, Cons(Nat,List) };
+data List(+a : CBV) : CBV { Nil, Cons(a,List(a)) };
 
 codata Par(+a : CBV, +b : CBV) : CBN { MkPar[a,b]};
 
 # Implementation is not important, since I only want to do typechecking.
-prd rec f : Unit -> Par(List, Unit) := f;
-prd rec g : Unit -> Par(List, Unit) := g;
-prd rec h : Unit -> Par(List, Unit) := h;
+prd rec f : Unit -> List(Nat) ⅋ Unit := f;
+prd rec g : Unit -> List(Nat) ⅋ Unit := g;
+prd rec h : Unit -> List(Nat) ⅋ Unit := h;
 
 prd compose := \x => cocase { MkPar[err,*] =>
                                 (h (g ((f x).MkPar[err,*]).MkPar[err,*])).MkPar[err,*]

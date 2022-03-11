@@ -208,8 +208,8 @@ desugarParType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
 desugarParType PosRep tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
-    pure $ AST.TyCodata PosRep Nothing [ AST.MkXtorSig (MkXtorName "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
+    pure $ AST.TyNominal PosRep Nothing (MkTypeName "Par") [] [tl,tr]
 desugarParType NegRep tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
-    pure $ AST.TyCodata NegRep Nothing [ AST.MkXtorSig (MkXtorName "Par") [AST.PrdCnsType CnsRep tl, AST.PrdCnsType CnsRep tr]]
+    pure $ AST.TyNominal NegRep Nothing (MkTypeName "Par") [] [tl,tr]
