@@ -118,16 +118,16 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([Typ pol], [Typ (FlipPol pol)], Map TVar (Typ Pos, Typ Neg))
+freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([Typ (FlipPol pol)], [Typ pol], Map TVar (Typ Pos, Typ Neg))
 freshTVarsForTypeParams rep dd = do
-    let (MkTParams cov con) = data_params dd
+    let (MkTParams con cov) = data_params dd
     let tn = data_name dd
-    cov' <- freshTVars tn (fst <$> cov)
     con' <- freshTVars tn (fst <$> con)
-    let map = paramsMap dd (cov', con')
+    cov' <- freshTVars tn (fst <$> cov)
+    let map = paramsMap dd (con', cov')
     case rep of
-      PosRep -> pure (fst <$> cov', snd <$> con', map)
-      NegRep -> pure (snd <$> cov', fst <$> con', map)
+      PosRep -> pure (snd <$> con', fst <$> cov', map)
+      NegRep -> pure (fst <$> con', snd <$> cov', map)
   where
     freshTVars ::  TypeName -> [TVar] -> GenM [(Typ Pos, Typ Neg)]
     freshTVars _ [] = pure []
@@ -137,9 +137,9 @@ freshTVarsForTypeParams rep dd = do
       pure $ (tp, tn) : vs'
 
     paramsMap :: DataDecl -> ([(Typ Pos, Typ Neg)], [(Typ Pos, Typ Neg)]) -> Map TVar (Typ Pos, Typ Neg)
-    paramsMap dd (freshCov, freshCon) =
-        let (MkTParams cov con) = data_params dd in
-        fromList (zip (fst <$> cov) freshCov ++ zip (fst <$> con) freshCon)
+    paramsMap dd (freshCon, freshCov) =
+        let (MkTParams con cov) = data_params dd in
+        fromList (zip (fst <$> con) freshCon ++ zip (fst <$> cov) freshCov)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment

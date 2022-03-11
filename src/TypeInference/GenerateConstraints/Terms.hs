@@ -111,15 +111,15 @@ genConstraintsTerm (Xtor loc rep Nominal xt subst) = do
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
   let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
   -- Then we generate constraints between the inferred types of the substitution
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (Xtor (loc, TyNominal PosRep Nothing (data_name decl) covArgs conArgs) rep Nominal xt substInferred)
-    CnsRep -> return (Xtor (loc, TyNominal NegRep Nothing (data_name decl) covArgs conArgs) rep Nominal xt substInferred)
+    PrdRep -> return (Xtor (loc, TyNominal PosRep Nothing (data_name decl) conArgs covArgs) rep Nominal xt substInferred)
+    CnsRep -> return (Xtor (loc, TyNominal NegRep Nothing (data_name decl) conArgs covArgs) rep Nominal xt substInferred)
 --
 -- Refinement Xtors
 --
@@ -168,7 +168,7 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
   -- We check that all xtors in the type declaration are matched against.
   checkExhaustiveness (cmdcase_name <$> cases) decl
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
 
   inferredCases <- forM cases (\MkCmdCase {..} -> do
                    -- We lookup the types belonging to the xtor in the type declaration.
@@ -182,8 +182,8 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name negTypes'))
   case rep of
-    PrdRep -> return $ XMatch (loc, TyNominal PosRep Nothing (data_name decl) covArgs conArgs) rep Nominal (fst <$> inferredCases)
-    CnsRep -> return $ XMatch (loc, TyNominal NegRep Nothing (data_name decl) covArgs conArgs) rep Nominal (fst <$> inferredCases)
+    PrdRep -> return $ XMatch (loc, TyNominal PosRep Nothing (data_name decl) conArgs covArgs) rep Nominal (fst <$> inferredCases)
+    CnsRep -> return $ XMatch (loc, TyNominal NegRep Nothing (data_name decl) conArgs covArgs) rep Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
@@ -276,10 +276,10 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,PrdRep,subst2)) = do
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
+  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
   let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
-  let ty = TyNominal NegRep Nothing (data_name decl) covArgs conArgs
+  let ty = TyNominal NegRep Nothing (data_name decl) conArgs covArgs
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit arguments and the implicit argument.
@@ -298,10 +298,10 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,CnsRep,subst2)) = do
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
+  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
   let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
-  let ty = TyNominal NegRep Nothing (data_name decl) covArgs conArgs
+  let ty = TyNominal NegRep Nothing (data_name decl) conArgs covArgs
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
@@ -402,9 +402,9 @@ genConstraintsTerm (Case loc Nominal destructee cases@(MkTermCase { tmcase_name 
   -- We check that all xtors in the type declaration are matched against.
   checkExhaustiveness (tmcase_name <$> cases) tn
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep tn
+  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep tn
   -- We check that the destructee is a subtype of the Nominal Type.
-  addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyNominal NegRep Nothing data_name covArgs conArgs))
+  addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyNominal NegRep Nothing data_name conArgs covArgs))
   -- We generate a unification variable for the return type.
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   casesInferred <- forM cases $ \MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } -> do
@@ -485,7 +485,7 @@ genConstraintsTerm (Cocase loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}
   -- We check that all xtors in the type declaration are matched against.
   checkExhaustiveness (tmcasei_name <$> cocases) tn
   -- Generate fresh unification variables for type parameters
-  (covArgs, conArgs, tyParamsMap) <- freshTVarsForTypeParams PosRep tn
+  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams PosRep tn
   cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
     -- We look up the argument types of the xtor
     posTypes <- sig_args <$> lookupXtorSig tmcasei_name PosRep
@@ -500,7 +500,7 @@ genConstraintsTerm (Cocase loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}
     -- The term must have a subtype of the copattern match return type
     addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
     return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred)
-  return (Cocase (loc, TyNominal PosRep Nothing data_name covArgs conArgs) Nominal cocasesInferred)
+  return (Cocase (loc, TyNominal PosRep Nothing data_name conArgs covArgs) Nominal cocasesInferred)
 --
 -- Refinement Comatch (Syntactic Sugar):
 --

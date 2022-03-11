@@ -127,12 +127,12 @@ data Variance = Covariant | Contravariant
 ---------------------------------------------------------------------------------
 
 data TParams = MkTParams
-  { covariant :: [(TVar, Kind)]
-  , contravariant :: [(TVar, Kind)]
+  { contravariant :: [(TVar, Kind)],
+    covariant :: [(TVar, Kind)]
   } deriving (Show)
 
 allTypeVars :: TParams -> Set TVar
-allTypeVars (MkTParams cov con) = S.fromList ((fst <$> cov) ++ (fst <$> con))
+allTypeVars (MkTParams con cov) = S.fromList ((fst <$> con) ++ (fst <$> cov))
 
 ---------------------------------------------------------------------------------
 -- Type Operators

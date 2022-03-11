@@ -114,14 +114,14 @@ tparamsP =
   (fst <$> parens inner) <|> pure (MkTParams [] [])
   where
     inner = do
-      cov_ps <- tParamP Covariant `sepBy` try (comma <* notFollowedBy (varianceP Contravariant))
-      if null cov_ps then
-        MkTParams [] <$> tParamP Contravariant `sepBy` comma
+      con_ps <- tParamP Contravariant `sepBy` try (comma <* notFollowedBy (varianceP Covariant))
+      if null con_ps then
+        MkTParams [] <$> tParamP Covariant `sepBy` comma
       else do
-        contra_ps <-
-          try comma *> tParamP Contravariant `sepBy` comma
+        cov_ps <-
+          try comma *> tParamP Covariant `sepBy` comma
           <|> pure []
-        pure (MkTParams cov_ps contra_ps)
+        pure (MkTParams con_ps cov_ps)
 
 dataDeclP :: Parser Declaration
 dataDeclP = do

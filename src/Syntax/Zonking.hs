@@ -26,8 +26,8 @@ zonkType bisubst ty@(TyVar NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) o
     Just (_,tyNeg) -> tyNeg
 zonkType bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)
 zonkType bisubst (TyCodata rep tn xtors) = TyCodata rep tn (zonkXtorSig bisubst <$> xtors)
-zonkType bisubst (TyNominal rep kind tn cov_args contra_args) =
-    TyNominal rep kind tn (zonkType bisubst <$> cov_args) (zonkType bisubst <$> contra_args)
+zonkType bisubst (TyNominal rep kind tn contra_args cov_args) =
+    TyNominal rep kind tn (zonkType bisubst <$> contra_args) (zonkType bisubst <$> cov_args)
 zonkType bisubst (TySet rep kind tys) = TySet rep kind (zonkType bisubst <$> tys)
 zonkType bisubst (TyRec rep tv ty) = TyRec rep tv (zonkType bisubst ty)
 
