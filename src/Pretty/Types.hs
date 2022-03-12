@@ -66,8 +66,8 @@ instance PrettyAnn BinOp where
   prettyAnn InterOp = interSym
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName "Ap") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
-resugarType (TyCodata _ Nothing [MkXtorSig (MkXtorName "Par") [PrdCnsType PrdRep tl, PrdCnsType CnsRep tr]]) = Just (prettyAnn tl, ParOp, prettyAnn tr)
+resugarType (TyNominal _ _ (MkTypeName "Fun") [tl] [tr]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
+resugarType (TyNominal _ _ (MkTypeName "Par") [][t1,t2]) = Just (prettyAnn t1 , ParOp, prettyAnn t2)
 resugarType _ = Nothing
 
 instance PrettyAnn Polarity where
