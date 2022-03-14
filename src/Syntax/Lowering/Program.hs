@@ -55,7 +55,7 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
   -- HACK: insert final data declaration into environment
   let dcl = prelim_dd { AST.data_xtors = xtors}
   let newEnv = env { declEnv = (loc, dcl) : prevDeclEnv
-                   , xtorMap = M.union (M.fromList [(xt, ns)| xt <- AST.sig_name <$> fst (AST.data_xtors dcl)]) (xtorMap env)}
+                   , xtorMap = M.union (M.fromList [((xt,data_polarity), ns)| xt <- AST.sig_name <$> fst (AST.data_xtors dcl)]) (xtorMap env)}
   setEnvironment newEnv
 
   pure dcl
@@ -78,12 +78,12 @@ lowerDecl (CST.DataDecl loc dd)             = do
   let ns = case CST.data_refined dd of
                  Refined -> Refinement
                  NotRefined -> Nominal
-  let newEnv = env { AST.xtorMap = M.union (M.fromList [(xt, ns)| xt <- AST.sig_name <$> fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
+  let newEnv = env { AST.xtorMap = M.union (M.fromList [((xt, CST.data_polarity dd), ns)| xt <- AST.sig_name <$> fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { AST.xtorMap = M.insert xt Structural (AST.xtorMap env)}
+  let newEnv = env { AST.xtorMap = M.insert (xt,dc) Structural (AST.xtorMap env)}
   setEnvironment newEnv
   pure $ AST.XtorDecl loc dc xt args ret
 lowerDecl (CST.ImportDecl loc mod) = do
@@ -101,12 +101,12 @@ lowerProgram = sequence . fmap lowerDecl
 
 createSymbolTable :: CST.Program  -> AST.Environment Inferred
 createSymbolTable [] = mempty
-createSymbolTable ((CST.XtorDecl _ _ xt _ _):decls) =
+createSymbolTable ((CST.XtorDecl _ dc xt _ _):decls) =
   let x = createSymbolTable decls
-  in x { xtorMap = M.insert xt Structural (xtorMap x)}
+  in x { xtorMap = M.insert (xt,dc) Structural (xtorMap x)}
 createSymbolTable ((CST.DataDecl loc dd):decls) =
   let x = createSymbolTable decls
-      xtors = M.fromList [(xt, Nominal)| xt <- CST.sig_name <$> CST.data_xtors dd]
+      xtors = M.fromList [((xt, CST.data_polarity dd), Nominal)| xt <- CST.sig_name <$> CST.data_xtors dd]
   -- HACK: The type parameter arities of imported types need to be known in lowering,
   -- hence we add a partial AST.NominalDecl without constructors for now
   in x { declEnv = (loc, AST.NominalDecl

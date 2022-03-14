@@ -50,7 +50,7 @@ data Environment (ph :: Phase) = MkEnvironment
   , cnsEnv :: Map FreeVarName (Term Cns ph, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command ph, Loc)
   , declEnv :: [(Loc,DataDecl)]
-  , xtorMap :: Map XtorName NominalStructural
+  , xtorMap :: Map (XtorName,DataCodata) NominalStructural
   }
 
 instance Show (Environment ph) where
