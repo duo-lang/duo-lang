@@ -18,10 +18,10 @@ import Utils
 
 
 lookupXtor :: Loc -> (XtorName, DataCodata) -> DriverM NominalStructural
-lookupXtor loc xs@(xtor,_) = do
+lookupXtor loc xs@(xtor,dc) = do
   xtorMap <- gets (xtorMap . driverEnv)
   case M.lookup xs xtorMap of
-    Nothing -> throwError $ OtherError (Just loc) ("Xtor not in environment: " <> ppPrint xtor)
+    Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in environment: " <> ppPrint xtor)
     Just ns -> pure ns
 
 
