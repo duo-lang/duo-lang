@@ -1,0 +1,5 @@
+# Destructor should not be recognized as constructor
+
+destructor A : CBV;
+
+prd test := A;
