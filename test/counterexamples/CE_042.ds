@@ -1,0 +1,3 @@
+# Comatch is not a consumer
+
+cns foo := match {};
