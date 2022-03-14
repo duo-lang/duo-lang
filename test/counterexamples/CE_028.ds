@@ -1,0 +1,5 @@
+# Constructor should not be recognized as destructor
+
+constructor A : CBV;
+
+cns test := A;

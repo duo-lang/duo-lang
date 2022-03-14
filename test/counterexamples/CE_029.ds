@@ -1,0 +1,5 @@
+# Destructor should not be recognized as constructor
+
+destructor A : CBV;
+
+cns test := match { A => Done };

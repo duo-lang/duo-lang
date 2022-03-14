@@ -1,0 +1,5 @@
+# Constructor should not be recognized as destructor
+
+constructor A : CBV;
+
+prd test := comatch { A => Done };

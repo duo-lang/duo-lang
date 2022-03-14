@@ -151,7 +151,7 @@ inferDecl (DataDecl loc dcl) = do
                       Refined -> Refinement
                       NotRefined -> Nominal
       let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                      , xtorMap = M.union (M.fromList [(xt, ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
+                       , xtorMap = M.union (M.fromList [((xt, data_polarity dcl), ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
       setEnvironment newEnv
       return (DataDecl loc dcl)
 --
@@ -159,7 +159,7 @@ inferDecl (DataDecl loc dcl) = do
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { xtorMap = M.insert xt Structural (xtorMap env)}
+  let newEnv = env { xtorMap = M.insert (xt,dc) Structural (xtorMap env)}
   setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --
