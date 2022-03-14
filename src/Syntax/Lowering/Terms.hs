@@ -86,10 +86,16 @@ lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
 lowerTerm rep    (CST.Xtor loc xtor subst)     = do
   ns <- lookupXtor loc (xtor, case rep of PrdRep -> Data; CnsRep -> Codata)
   AST.Xtor loc rep ns xtor <$> lowerSubstitution subst
-lowerTerm rep    (CST.XMatch loc cases)        = do
+lowerTerm CnsRep (CST.XMatch loc Data cases)        = do
   cases' <- sequence (lowerCommandCase <$> cases)
-  ns <- commandCasesToNS cases (case rep of PrdRep -> Codata; CnsRep -> Data)
-  pure $ AST.XMatch loc rep ns cases'
+  ns <- commandCasesToNS cases Data
+  pure $ AST.XMatch loc CnsRep ns cases'
+lowerTerm PrdRep (CST.XMatch loc Data _)       = throwError (OtherError (Just loc) "Cannot lower pattern match to a producer.")
+lowerTerm PrdRep (CST.XMatch loc Codata cases)        = do
+  cases' <- sequence (lowerCommandCase <$> cases)
+  ns <- commandCasesToNS cases Codata
+  pure $ AST.XMatch loc PrdRep ns cases'
+lowerTerm CnsRep (CST.XMatch loc Codata _)     = throwError (OtherError (Just loc) "Cannot lower copattern match to a consumer.")
 lowerTerm PrdRep (CST.MuAbs loc fv cmd)        = do
   cmd' <- lowerCommand cmd
   pure $ AST.MuAbs loc PrdRep (Just fv) (AST.commandClosing [(Cns,fv)] cmd')
@@ -101,27 +107,27 @@ lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = do
   tm' <- lowerTerm PrdRep tm
   subst' <- lowerSubstitutionI subst
   pure $ AST.Dtor loc ns xtor tm' subst'
-lowerTerm CnsRep (CST.Dtor _loc _xtor _tm _s)  = throwError (OtherError Nothing "Cannot lower Dtor to a consumer (TODO).")
+lowerTerm CnsRep (CST.Dtor loc _xtor _tm _s)   = throwError (OtherError (Just loc) "Cannot lower Dtor to a consumer (TODO).")
 lowerTerm PrdRep (CST.Case loc tm cases)       = do
   cases' <- sequence (lowerTermCase <$> cases)
   tm' <- lowerTerm PrdRep tm
   ns <- termCasesToNS cases Data
   pure $ AST.Case loc ns tm' cases'
-lowerTerm CnsRep (CST.Case _loc _tm _cases)    = throwError (OtherError Nothing "Cannot lower Match to a consumer (TODO)")
+lowerTerm CnsRep (CST.Case loc _tm _cases)     = throwError (OtherError (Just loc) "Cannot lower Match to a consumer (TODO)")
 lowerTerm PrdRep (CST.Cocase loc cases)        = do
   cases' <- sequence (lowerTermCaseI <$> cases)
   ns <- termCasesIToNS cases Codata
   pure $ AST.Cocase loc ns cases'
-lowerTerm CnsRep (CST.Cocase _loc _cases)      = throwError (OtherError Nothing "Cannot lower Comatch to a consumer (TODO)")
+lowerTerm CnsRep (CST.Cocase loc _cases)       = throwError (OtherError (Just loc) "Cannot lower Comatch to a consumer (TODO)")
 lowerTerm PrdRep (CST.NatLit loc ns i)         = lowerNatLit loc ns i
-lowerTerm CnsRep (CST.NatLit _loc _ns _i)      = throwError (OtherError Nothing "Cannot lower NatLit to a consumer.")
+lowerTerm CnsRep (CST.NatLit loc _ns _i)       = throwError (OtherError (Just loc) "Cannot lower NatLit to a consumer.")
 lowerTerm rep    (CST.TermParens _loc tm)      = lowerTerm rep tm
 lowerTerm rep    (CST.DtorChain pos tm dtors)  = lowerDtorChain pos tm dtors >>= lowerTerm rep
 lowerTerm PrdRep (CST.FunApp loc fun arg)      = lowerApp loc fun arg
-lowerTerm CnsRep (CST.FunApp _loc _fun _arg)   = throwError (OtherError Nothing "Cannot lower FunApp to a consumer.")
+lowerTerm CnsRep (CST.FunApp loc _fun _arg)    = throwError (OtherError (Just loc) "Cannot lower FunApp to a consumer.")
 lowerTerm rep    (CST.MultiLambda loc fvs tm)  = lowerMultiLambda loc fvs tm >>= lowerTerm rep
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
-lowerTerm CnsRep (CST.Lambda _loc _fv _tm)     = throwError (OtherError Nothing "Cannot lower Lambda to a consumer.")
+lowerTerm CnsRep (CST.Lambda loc _fv _tm)      = throwError (OtherError (Just loc) "Cannot lower Lambda to a consumer.")
 
 
 lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> DriverM CST.Term

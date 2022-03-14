@@ -26,12 +26,12 @@ prd id := comatch {
     Ap(x)[k] => x >> k
 };
 prd x := id.Ap(1)[*];
-prd succ := match {
+prd succ := comatch {
     Ap(x)[k] => S(x) >> k
 };
 
-prd rec map : forall a b. Fun(Fun(a, b), Fun(List(a), List(b))) := match {
-    Ap(g)[j] => match {
+prd rec map : forall a b. Fun(Fun(a, b), Fun(List(a), List(b))) := comatch {
+    Ap(g)[j] => comatch {
         Ap(xs)[k] => case xs of {
             Nil => Nil,
             Cons(y, ys) => Cons(g.Ap(y)[*], map.Ap(g)[*].Ap(ys)[*])
