@@ -55,6 +55,21 @@ data Term where
 deriving instance Show Term
 deriving instance Eq Term
 
+getLoc :: Term -> Loc
+getLoc (Var loc _) = loc
+getLoc (Xtor loc _ _) = loc
+getLoc (XMatch loc _ _) = loc
+getLoc (MuAbs loc _ _) = loc
+getLoc (Dtor loc _ _ _) = loc
+getLoc (Case loc _ _) = loc
+getLoc (Cocase loc _) = loc
+getLoc (DtorChain _ tm _)  = getLoc tm
+getLoc (NatLit loc _ _) = loc
+getLoc (TermParens loc _) = loc
+getLoc (FunApp loc _ _) = loc
+getLoc (MultiLambda loc _ _) = loc
+getLoc (Lambda loc _ _) = loc
+
 --------------------------------------------------------------------------------------------
 -- Commands
 --------------------------------------------------------------------------------------------

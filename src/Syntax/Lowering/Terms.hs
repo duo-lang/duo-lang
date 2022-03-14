@@ -36,8 +36,8 @@ lowerSubstitution (Cns:ar) (CST.CnsTerm tm:tms) = do
   tm' <- lowerTerm CnsRep tm
   subst <- lowerSubstitution ar tms
   pure (AST.CnsTerm tm':subst)
-lowerSubstitution (Prd:_)(CST.CnsTerm _:_) = throwError (OtherError Nothing "Arity Mismatch: Expected: Producer. Got: Consumer.")
-lowerSubstitution (Cns:_)(CST.PrdTerm _:_) = throwError (OtherError Nothing "Arity Mismatch: Expected: Consumer. Got: Producer.")
+lowerSubstitution (Prd:_)(CST.CnsTerm tm:_) = throwError (OtherError (Just (CST.getLoc tm)) "Arity Mismatch: Expected: Producer. Got: Consumer.")
+lowerSubstitution (Cns:_)(CST.PrdTerm tm:_) = throwError (OtherError (Just (CST.getLoc tm)) "Arity Mismatch: Expected: Consumer. Got: Producer.")
 lowerSubstitution [] (_:_) = throwError (OtherError Nothing "Arity Mismatch: Too many arguments.")
 lowerSubstitution (_:_) [] = throwError (OtherError Nothing "Arity Mismatch: Too few arguments.")
 
