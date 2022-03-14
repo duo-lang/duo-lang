@@ -1,0 +1,5 @@
+# Constructor is applied to too few arguments.
+
+constructor B(CBV) : CBV;
+
+prd foo := B;

@@ -1,0 +1,6 @@
+# Destructor is applied to too many arguments.
+
+constructor A : CBV;
+destructor B(CBV) : CBV;
+
+cns foo := B(A,A);
