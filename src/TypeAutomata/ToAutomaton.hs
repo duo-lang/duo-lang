@@ -146,14 +146,6 @@ lookupTVar NegRep tv = do
 -- Inserting a type into an automaton
 --------------------------------------------------------------------------
 
-
-linearContextToArity :: LinearContext pol -> [PrdCns]
-linearContextToArity = map f
-  where
-    f :: PrdCnsType pol -> PrdCns
-    f (PrdCnsType PrdRep _) = Prd
-    f (PrdCnsType CnsRep _) = Cns
-
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 

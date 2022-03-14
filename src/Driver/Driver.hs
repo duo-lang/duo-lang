@@ -29,7 +29,8 @@ import Syntax.AST.Types
     ( TypeScheme,
       generalize,
       DataDecl(..),
-      XtorSig (sig_name)
+      XtorSig (sig_name, sig_args),
+      linearContextToArity
     )
 import Syntax.AST.Program
     ( Program,
@@ -151,7 +152,7 @@ inferDecl (DataDecl loc dcl) = do
                       Refined -> Refinement
                       NotRefined -> Nominal
       let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                       , xtorMap = M.union (M.fromList [((xt, data_polarity dcl), ns)| xt <- sig_name <$> fst (data_xtors dcl)]) (xtorMap env)}
+                       , xtorMap = M.union (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]) (xtorMap env)}
       setEnvironment newEnv
       return (DataDecl loc dcl)
 --
@@ -159,7 +160,7 @@ inferDecl (DataDecl loc dcl) = do
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { xtorMap = M.insert (xt,dc) Structural (xtorMap env)}
+  let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
   setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --

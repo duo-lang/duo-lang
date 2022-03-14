@@ -18,7 +18,7 @@ import TypeAutomata.Definition
 -- Prettyprinting of Type Automata
 ---------------------------------------------------------------------------------
 
-prettyArity :: [PrdCns] -> Doc Annotation
+prettyArity :: Arity -> Doc Annotation
 prettyArity [] = mempty
 prettyArity (Prd:rest) = parens "-" <> prettyArity rest
 prettyArity (Cns:rest) = brackets "-" <> prettyArity rest
