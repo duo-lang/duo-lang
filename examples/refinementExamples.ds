@@ -2,12 +2,12 @@
 refinement data Bool : CBV { True, False }; # Boolean values
 refinement data Nat : CBV { Z, S(Nat) }; # Natural numbers
 
-refinement data Even : CBV { Ze, Se(Odd) }; # Dual mutual recursion
-refinement data Odd  : CBV { So(Even) };
+#refinement data Even : CBV { Ze, Se(Odd) }; # Dual mutual recursion
+#refinement data Odd  : CBV { So(Even) };
 
-refinement data X1 : CBV { A, B(X2), C(X3) }; # Multiple mutual recursion
-refinement data X2 : CBV { D(X3) };
-refinement data X3 : CBV { E(X1,X2) };
+#refinement data X1 : CBV { A, B(X2), C(X3) }; # Multiple mutual recursion
+#refinement data X2 : CBV { D(X3) };
+#refinement data X3 : CBV { E(X1,X2) };
 
 refinement codata Tuple : CBV { Left[Bool], Right[Bool] };
 refinement codata Fun : CBV { ApNN(Nat)[Nat], ApBB(Bool)[Bool], ApNB(Nat)[Bool] };

@@ -49,8 +49,6 @@ lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
 
 lowerTypeArgs :: PolarityRep pol -> TypeName -> [Typ] -> DriverM ([AST.Typ (FlipPol pol)], [AST.Typ pol])
--- HACK: Since types are not always properly declared in unit tests, don't check if no type arguments are provided
-lowerTypeArgs _ _ [] = pure ([], [])
 lowerTypeArgs rep tn args = do
     (n_contra, n_cov) <- lookupTypeConstructorAritiy tn
     let (contra, cov) = splitAt n_contra args
