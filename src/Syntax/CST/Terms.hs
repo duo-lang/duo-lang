@@ -39,7 +39,7 @@ data Term where
     -- AST Nodes
     Var :: Loc -> FreeVarName -> Term
     Xtor :: Loc -> XtorName -> Substitution -> Term
-    XMatch :: Loc -> [CommandCase] -> Term
+    XMatch :: Loc -> DataCodata -> [CommandCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Command -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     Case :: Loc -> Term -> [TermCase] -> Term

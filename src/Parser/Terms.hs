@@ -185,12 +185,15 @@ cmdcaseP = do
   let pmcase = (Loc startPos endPos, xt, args, cmd)
   return (pmcase, endPos)
 
+matchComatchP :: Parser DataCodata
+matchComatchP = (matchKwP *> pure Data) <|> (comatchKwP *> pure Codata)
+
 xmatchP :: Parser (CST.Term, SourcePos)
 xmatchP = do
   startPos <- getSourcePos
-  _ <- matchKwP <|> comatchKwP
+  dc <- matchComatchP
   (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
-  return (CST.XMatch (Loc startPos endPos) cases, endPos)
+  return (CST.XMatch (Loc startPos endPos) dc cases, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Case-of
