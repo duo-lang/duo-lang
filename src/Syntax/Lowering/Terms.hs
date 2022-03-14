@@ -25,18 +25,31 @@ lookupXtor loc xs@(xtor,dc) = do
     Just ns -> pure ns
 
 
+
 lowerSubstitution :: Arity -> CST.Substitution -> DriverM (AST.Substitution Parsed)
-lowerSubstitution _ subst = sequence $ fmap lowerPrdCnsTerm subst
+lowerSubstitution [] [] = pure []
+lowerSubstitution (Prd:ar) (CST.PrdTerm tm:tms) = do
+  tm' <- lowerTerm PrdRep tm
+  subst <- lowerSubstitution ar tms
+  pure (AST.PrdTerm tm':subst)
+lowerSubstitution (Cns:ar) (CST.CnsTerm tm:tms) = do
+  tm' <- lowerTerm CnsRep tm
+  subst <- lowerSubstitution ar tms
+  pure (AST.CnsTerm tm':subst)
+lowerSubstitution (Prd:_)(CST.CnsTerm _:_) = throwError (OtherError Nothing "Arity Mismatch: Expected: Producer. Got: Consumer.")
+lowerSubstitution (Cns:_)(CST.PrdTerm _:_) = throwError (OtherError Nothing "Arity Mismatch: Expected: Consumer. Got: Producer.")
+lowerSubstitution [] (_:_) = throwError (OtherError Nothing "Arity Mismatch: Too many arguments.")
+lowerSubstitution (_:_) [] = throwError (OtherError Nothing "Arity Mismatch: Too few arguments.")
 
 lowerSubstitutionI :: Arity -> CST.SubstitutionI -> DriverM (AST.SubstitutionI Parsed Prd)
-lowerSubstitutionI _ (subst1, _, subst2) = do
-  subst1' <- lowerSubstitution undefined subst1
-  subst2' <- lowerSubstitution undefined subst2
+lowerSubstitutionI ar (subst1, _, subst2) = do
+  let (ar1,arrest) = splitAt (length subst1) ar
+  (_,ar2) <- case arrest of
+    [] -> throwError (OtherError Nothing "Arity Mismatch: Too many arguments.")
+    (a:ar2) -> pure (a,ar2)
+  subst1' <- lowerSubstitution ar1 subst1
+  subst2' <- lowerSubstitution ar2 subst2
   pure (subst1', PrdRep, subst2')
-
-lowerPrdCnsTerm :: CST.PrdCnsTerm -> DriverM (AST.PrdCnsTerm Parsed)
-lowerPrdCnsTerm (CST.PrdTerm tm) = AST.PrdTerm <$> lowerTerm PrdRep tm
-lowerPrdCnsTerm (CST.CnsTerm tm) = AST.CnsTerm <$> lowerTerm CnsRep tm
 
 lowerTermCase :: CST.TermCase -> DriverM (AST.TermCase Parsed)
 lowerTermCase (loc, xtor, bs, tm) = do
