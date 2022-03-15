@@ -1,0 +1,125 @@
+# ____              _ ____        _     
+# |  _ \ _   _  __ _| / ___| _   _| |__  
+# | | | | | | |/ _` | \___ \| | | | '_ \ 
+# | |_| | |_| | (_| | |___) | |_| | |_) |
+# |____/ \__,_|\__,_|_|____/ \__,_|_.__/ 
+#
+
+
+# Data Types and Pattern Matching
+
+# Type of Booleans
+data Bool : CBV { True, False };
+
+# Declaration syntax
+prd tr := True;
+
+# Pattern matching
+prd fls := case True of { True => False, False => True};
+
+# Necessary for functions (write after not function)
+codata Fun(-arg : CBV, +res : CBV) : CBV {
+    Ap(arg)[res]
+};
+
+# I have not defined functions before!
+prd not := \x => case x of { True => False, False => True};
+
+prd tr := not fls;
+
+
+# Codata Types
+
+codata Stream(+a : CBV) : CBV {
+    Head[a],
+    Tail[Stream(a)]
+};
+
+prd rec constTrue : Stream(Bool):= cocase {
+    Head[*] => True,
+    Tail[*] => constTrue
+};
+
+prd rec constFalse : Stream(Bool) := comatch {
+    Head[k] => False >> k,
+    Tail[k] => constFalse >> k
+};
+
+prd secondElem := constTrue.Tail[*].Head[*];
+
+
+# Error Handling
+
+# Arg -> Result OR Error
+
+data Error : CBV { 
+    IOError(Bool),
+    OomError,
+    ArithError
+};
+
+constructor IOError(CBV) : CBV;
+constructor OomError : CBV;
+constructor ArithError : CBV;
+
+prd someError := IOError(True);
+
+cns handler := match {
+    IOError(x) => Done,
+    OomError => Done
+};
+
+cmd handledError := someError >> handler;
+
+# What is the OR
+
+data List(+a : CBV) : CBV {
+    Nil,
+    Cons(a,List(a))
+};
+
+data Plus(+err : CBV, +res : CBV) : CBV {
+    Left(err),
+    Right(res)
+};
+
+data Unit : CBV { MkUnit };
+
+prd safeHead := \x => case x of {
+    Nil => Left(MkUnit),
+    Cons(x,xs) => Right(x) 
+};
+
+prd composePlus := \f g x =>
+  case g x of {
+      Left(err) => Left(err),
+      Right(res) => f res
+  };
+
+# An alternative
+
+codata Par(+err : CBV, +res : CBV) : CBV {
+    MkPar[err,res]
+};
+
+prd return := \x => cocase { MkPar[err,*] => x };
+prd throw := \x => cocase { MkPar[*,res] => x};
+
+prd safeHead := \x => case x of {
+    Nil => throw MkUnit,
+    Cons(x,xs) => return x
+};
+
+prd composePar := \g f x => cocase { MkPar[err,*] =>
+   (f ((g x).MkPar[err,*])).MkPar[err,*]
+};
+
+data Not(+a : CBV) : CBV {
+    MkNot[a]
+};
+
+prd handle := \x k => case k of { MkNot[err] => x.MkPar[err,*]};
+
+prd composeParH := \f g x => cocase { MkPar[err,*] =>
+  handle (f (handle (g x) MkNot[err])) MkNot[err]
+};
