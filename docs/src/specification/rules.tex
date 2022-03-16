@@ -1,0 +1,61 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\usepackage{mathtools}
+
+\newcommand{\translate}[1]{\llbracket #1 \rrbracket}
+\newcommand{\C}{\mathcal{C}}
+
+\newcommand{\case}[1]{\mathbf{case}\ \{\ #1\ \}}
+\newcommand{\caseof}[2]{\mathbf{case}\ #1\ \mathbf{of}\ \{\ #2\ \}}
+
+\newcommand{\pat}[1]{\C\Gamma \Rightarrow #1 }
+\newcommand{\prdpat}[2]{\C\Gamma(#1)\Delta \Rightarrow #2 }
+\newcommand{\cnspat}[2]{\C\Gamma[#1]\Delta \Rightarrow #2 }
+
+\newcommand{\cut}[2]{\langle\ #1\ |\ #2\ \rangle}
+\begin{document}
+
+\section{Data Types}
+
+The expression $\translate{X}$ marks translation of the 4-calculi formalism into the introduction calculus.
+The meta-variable $\sigma$ stands for a list of applications $(prd)$ and $[cns]$.
+The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
+
+
+\subsection{Right-Introduction}
+\begin{align*}
+  \translate{\C\sigma} \coloneqq \C\translate{\sigma}
+\end{align*}
+
+\subsection{Right-Elimination}
+
+\begin{align*}
+  \translate{\caseof{prd}{\pat{prd'}}} &\coloneqq \mu k.\cut{\translate{prd}}{\case{\pat{\cut{\translate{prd'}}{k}}}}\\
+  \translate{\caseof{prd}{\pat{cns}}} &\coloneqq \mu x.\cut{\translate{prd}}{\case{\pat{\cut{x}{\translate{cns}}}}}\\
+  \translate{\caseof{prd}{\pat{cmd}}} &\coloneqq \cut{\translate{prd}}{\case{\pat{\translate{cmd}}}}\\
+  \translate{\caseof{prd}{\prdpat{*}{cns}}} &\coloneqq \cut{\translate{prd}}{\case{\prdpat{x}{\cut{x}{\translate{cns}}}}} \\
+  \translate{\caseof{prd}{\cnspat{*}{prd'}}} &\coloneqq \cut{\translate{prd}}{\case{\cnspat{k}{\cut{\translate{prd'}}{k}}}} \\
+\end{align*}
+
+\subsection{Left-Introduction}
+
+\begin{align*}
+  \translate{\case{\pat{cmd}}} &\coloneqq \case{\pat{\translate{cmd}}} \\
+  \translate{\case{\prdpat{*}{cns}}} &\coloneqq \case{\prdpat{x}{\cut{x}{\translate{cns}}}} \\
+  \translate{\case{\cnspat{*}{prd}}} &\coloneqq \case{\cnspat{k}{\cut{\translate{prd}}{k}}} \\
+\end{align*}
+
+\subsection{Left-Elimination}
+
+\begin{align*}
+  \translate{\C\sigma;cns} &\coloneqq \cut{\C\translate{\sigma}}{\translate{cns}} \\
+  \translate{\C\sigma(*)\tau;cns} &\coloneqq \mu x.\cut{\C\translate{\sigma}(x)\translate{\tau}}{\translate{cns}} \\
+  \translate{\C\sigma[*]\tau;cns} &\coloneqq \mu k.\cut{\C\translate{\sigma}[k]\translate{\tau}}{\translate{cns}} \\
+\end{align*}
+
+\end{document}
+
+
