@@ -1,0 +1,3 @@
+cmd impossible := Done;
+prd impossible := mu k. impossible;
+cns impossible := mu x. impossible;
