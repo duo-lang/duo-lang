@@ -1,5 +1,5 @@
 # These examples used to be part of the testsuite in "StaticExamplesSpec"
-# The tests have been transferred here since we now support checking of type annotations.
+# The tests have been transferred here since we now suppormt checking of type annotations.
 
 import Prelude;
 
@@ -15,31 +15,31 @@ prd fix := cocase { Ap(f)[k] =>
                  Ap( cocase { Ap(x)[k] => f >>
                    Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] })[k] };
 
-prd addNominal := cocase { Ap(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
-prd mltNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
+prd addNominal := cocase { Ap(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
+prd mltNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
 
 prd ex1 : forall a. { Ap(a)[a] } := cocase { Ap(x)[k] => x >> k };
  
 prd ex2 : < Succ(< Zero >) > := Succ(Zero);
 
-prd ex3 : forall a. { Ap(< TT , FF >, a, a)[a] } := cocase { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
+prd ex3 : forall a. { Ap(< TT , FF >, a, a)[a] } := cocase { Ap(b,x,y)[k] => b >> case { TT => x >> k, FF => y >> k }};
 
-prd ex4 : forall a b. { Ap(<TT,FF>, a, b)[a \/ b] } := cocase { Ap(b,x,y)[k] => b >> match { TT => x >> k, FF => y >> k }};
+prd ex4 : forall a b. { Ap(<TT,FF>, a, b)[a \/ b] } := cocase { Ap(b,x,y)[k] => b >> case { TT => x >> k, FF => y >> k }};
 
 prd ex5 :  forall a b. { Ap({ Ap(a \/ b)[b] })[{ Ap(a)[b] }] } := cocase { Ap(f)[k] => (cocase { Ap(x)[k] => f >> Ap(x)[mu y. f >> Ap(y)[k]]}) >> k};
 
-prd ex6 : { Ap(Bool)[Bool] } := cocase { Ap(x)[k] => x >> match { True => False >> k, False => True >> k }};
+prd ex6 : { Ap(Bool)[Bool] } := cocase { Ap(x)[k] => x >> case { True => False >> k, False => True >> k }};
 
-prd ex7 : { Ap(Bool)[(Bool \/ Nat)] } := cocase { Ap(x)[k] => x >> match { True => False >> k, False => Z >> k }};
+prd ex7 : { Ap(Bool)[(Bool \/ Nat)] } := cocase { Ap(x)[k] => x >> case { True => False >> k, False => Z >> k }};
 
-prd ex8 : { Ap(Bool)[(Nat \/ Bool)] } := cocase { Ap(x)[k] => x >> match { True => False >> k, False => Z >> k }};
+prd ex8 : { Ap(Bool)[(Nat \/ Bool)] } := cocase { Ap(x)[k] => x >> case { True => False >> k, False => Z >> k }};
 
-prd ex9 : { Ap(Nat,Nat)[Nat] } := cocase { Ap(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
+prd ex9 : { Ap(Nat,Nat)[Nat] } := cocase { Ap(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
 
-prd ex10 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
+prd ex10 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
 
-prd ex11 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
+prd ex11 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
 
-prd ex12 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
+prd ex12 : forall t0. { Ap((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
 
 

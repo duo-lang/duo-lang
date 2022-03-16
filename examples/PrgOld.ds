@@ -24,14 +24,14 @@ constructor B : CBV;
 ## gives x out, if b is True, else y
 prd ifthenelse := cocase {
                     Ap(b,x,y)[k] => b >>
-                      match { True => x >> k
+                      case { True => x >> k
                             , False => y >> k }};
 
 ## neg :: { Ap(< False | True >)[< False | True >] }
 ## boolean negation operation
 prd neg        := cocase {
                     Ap(b)[k] => b >>
-                      match { True => False >> k
+                      case { True => False >> k
                             , False => True >> k }};
 
 ## and :: forall t0. { Ap((t0 /\ < False | True >),t0)[t0] }
@@ -62,7 +62,7 @@ prd nor        := cocase {
 ## boolean implication operation
 prd impl       := cocase {
                     Ap(x,y)[k]   => x >>
-                      match { True => y >> k
+                      case { True => y >> k
                             , False => True >> k } };
 
 ## basic functional stuff ##
@@ -131,7 +131,7 @@ prd fixLazy := cocase { Ap(f)[k] =>
 prd recZero := cocase { Ap(n)[k] => fix >>
                            Ap(cocase { Ap(alpha)[k] =>
                               cocase { Ap(n)[k] => n >>
-                                match { Zero => Zero >> k
+                                case { Zero => Zero >> k
                                       , S(p) => alpha >>
                                           Ap(p)[k] }} >> k})[Ap(n)[k]] };
 
@@ -159,7 +159,7 @@ prd succ := cocase { Ap(n)[k] => S(n) >> k };
 ## pred :: forall t0. { Ap(< S(t0) >)[t0] }
 ## computes predecessor of an n > 0
 prd pred := cocase { Ap(n)[k] => n >>
-                        match { S(m) => m >> k } };
+                        case { S(m) => m >> k } };
 
 ## add :: forall t0. { Ap(t0,rec r1.< S(r1) | Zero >)[rec r3.(t0 \/ < S(r3) >)] }
 ## adds two nats n and m
@@ -167,7 +167,7 @@ prd add := cocase {
              Ap(n,m)[k] => fix >>
                Ap( cocase { Ap(alpha)[k] =>
                       cocase { Ap(m)[k] => m >>
-                        match { Zero => n >> k
+                        case { Zero => n >> k
                               , S(p) => alpha >>
                                   Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
 
@@ -178,7 +178,7 @@ prd mlt := cocase {
              Ap(n,m)[k] => fix >>
                Ap(cocase { Ap(alpha)[k] =>
                      cocase { Ap(m)[k] => m >>
-                       match { Zero => Zero >> k
+                       case { Zero => Zero >> k
                              , S(p) => alpha >>
                                  Ap(p)[mu w. add >>
                                    Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
@@ -190,7 +190,7 @@ prd exp := cocase {
              Ap(n,m)[k] => fix >>
                Ap(cocase { Ap(alpha)[k] =>
                      cocase { Ap(m)[k] => m >>
-                       match { Zero => S(Zero) >> k
+                       case { Zero => S(Zero) >> k
                              , S(p) => alpha >>
                                  Ap(p)[mu w. mlt >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
 
@@ -200,7 +200,7 @@ prd sub := cocase {
              Ap(n,m)[k] => fix >>
                Ap(cocase { Ap(alpha)[k] =>
                      cocase { Ap(m)[k] => m >>
-                       match { Zero => n >> k
+                       case { Zero => n >> k
                              , S(p) => alpha >>
                                  Ap(p)[mu w. pred >> Ap(w)[k]] }} >> k })[Ap(m)[k]] };
 
@@ -211,9 +211,9 @@ prd subSafe := cocase {
                    Ap(cocase { Ap(alpha)[k] =>
                          cocase { Ap(n)[k] =>
                            cocase { Ap(m)[k] => m >>
-                             match { Zero => n >> k
+                             case { Zero => n >> k
                                    , S(mp) => n >>
-                                       match { Zero => n >> k
+                                       case { Zero => n >> k
                                              , S(np) => alpha >>
                                                  Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
 
@@ -224,7 +224,7 @@ prd foldNat := cocase {
                   Ap( cocase { Ap(alpha)[k] =>
                          cocase { Ap(n)[k] =>
                            cocase { Ap(x)[k] => n >>
-                             match { Zero => x >> k
+                             case { Zero => x >> k
                                    , S(p) => f >>
                                        Ap(x)[mu w. alpha >>
                                          Ap(p)[Ap(w)[k]]] } } >> k } >> k })
@@ -237,8 +237,8 @@ prd foldNat1 := cocase {
                     Ap( cocase { Ap(alpha)[k] =>
                            cocase { Ap(n)[k] =>
                              cocase { Ap(x)[k] => n >>
-                               match { S(m) => m >>
-                                 match { Zero => f >>
+                               case { S(m) => m >>
+                                 case { Zero => f >>
                                    Ap(x)[k], S(p) => f >>
                                      Ap(x)[mu w. alpha >>
                                        Ap(m)[Ap(w)[k]]] }}} >> k } >> k })
@@ -252,9 +252,9 @@ prd ltUnsafe := cocase {
                     Ap( cocase { Ap(alpha)[k] =>
                            cocase { Ap(n)[k] =>
                              cocase { Ap(m)[k] => n >>
-                               match { Zero => True >> k
+                               case { Zero => True >> k
                                      , S(np) => m >>
-                                         match { S(mp) => alpha >>
+                                         case { S(mp) => alpha >>
                                                    Ap(np)[Ap(mp)[k]] }}} >> k } >> k })
                        [Ap(n)[Ap(m)[k]]] };
 
@@ -266,9 +266,9 @@ prd ltSafe := cocase {
                     Ap(alpha)[k] =>
                       cocase { Ap(n)[k] =>
                         cocase { Ap(m)[k] => n >>
-                                    match { Zero => True >> k
+                                    case { Zero => True >> k
                                           , S(np) => m >>
-                                            match { Zero => False >> k
+                                            case { Zero => False >> k
                                                   , S(mp) => alpha >>
                                                       Ap(np)[Ap(mp)[k]] }}} >> k } >> k })
                      [Ap(n)[Ap(m)[k]]] };
@@ -280,8 +280,8 @@ prd eqUnsafe := cocase {
                     Ap( cocase { Ap(alpha)[k] =>
                       cocase { Ap(n)[k] =>
                         cocase { Ap(m)[k] => n >>
-                          match { Zero => m >> match { Zero => True >> k }
-                                , S(np) => m >> match { S(mp) => alpha >>
+                          case { Zero => m >> case { Zero => True >> k }
+                                , S(np) => m >> case { S(mp) => alpha >>
                                                            Ap(np)[Ap(mp)[k]] }}} >> k } >> k })
                        [Ap(n)[Ap(m)[k]]] };
 
@@ -293,11 +293,11 @@ prd eqSafe := cocase {
                     Ap(alpha)[k] =>
                       cocase { Ap(n)[k] =>
                         cocase { Ap(m)[k] => n >>
-                          match { Zero => m >>
-                            match { Zero => True >> k
+                          case { Zero => m >>
+                            case { Zero => True >> k
                                   , S(mp) => False >> k }
                                 , S(np) => m >>
-                                    match { Zero => False >> k
+                                    case { Zero => False >> k
                                           , S(mp) => alpha >>
                                               Ap(np)[Ap(mp)[k]] } } } >> k } >> k })
                      [Ap(n)[Ap(m)[k]]] };
@@ -309,7 +309,7 @@ prd times2 := cocase {
                   Ap( cocase {
                          Ap(alpha)[k] =>
                            cocase { Ap(n)[k] => n >>
-                             match { Zero => Zero >> k
+                             case { Zero => Zero >> k
                                    , S(m) => alpha >> Ap(m)[mu w. S(S(w)) >> k]}} >> k })
                      [Ap(n)[k]]};
 
@@ -321,7 +321,7 @@ prd times3 := cocase {
                   Ap( cocase {
                          Ap(alpha)[k] =>
                            cocase { Ap(n)[k] => n >>
-                            match { Zero => Zero >> k
+                            case { Zero => Zero >> k
                                   , S(m) => alpha >>
                                       Ap(m)[mu w. S(S(S(w))) >> k] } } >> k })
                      [Ap(n)[k]] };
@@ -332,7 +332,7 @@ prd times3 := cocase {
 ## multiplies n by two or three
 prd times2or3 := cocase {
                    Ap(b,n)[k] => b >>
-                     match { True => times2 >> Ap(n)[k]
+                     case { True => times2 >> Ap(n)[k]
                            , False => times3 >> Ap(n)[k] } };
 
 ## times2and3 :: { Ap(rec r0.< S(r0) | Zero >)[rec r1.< S(< S(r1) >) | Zero >] }
@@ -347,9 +347,9 @@ prd div2 := cocase {
               Ap(n)[k] => fix >>
                 Ap( cocase { Ap(alpha)[k] =>
                        cocase { Ap(n)[k] => n >>
-                                   match { Zero => Zero >> k
+                                   case { Zero => Zero >> k
                                          , S(m) => m >>
-                                             match { S(p) => alpha >>
+                                             case { S(p) => alpha >>
                                               Ap(p)[mu w. S(w) >> k]}}} >> k })
                    [Ap(n)[k]] };
 
@@ -359,10 +359,10 @@ prd div3 := cocase {
               Ap(n)[k] => fix >>
                 Ap( cocase { Ap(alpha)[k] =>
                        cocase { Ap(n)[k] => n >>
-                         match { Zero => Zero >> k
+                         case { Zero => Zero >> k
                                , S(m) => m >>
-                                   match { S(p) => p >>
-                                     match { S(r) => alpha >>
+                                   case { S(p) => p >>
+                                     case { S(r) => alpha >>
                                        Ap(r)[mu w. S(w) >> k] }}}} >> k })
                   [Ap(n)[k]]};
 
@@ -372,24 +372,24 @@ prd div3 := cocase {
 ## divides n by two or by three
 prd div2or3 := cocase {
                  Ap(b,n)[k] => b >>
-                   match { True  => div2 >> Ap(n)[k]
+                   case { True  => div2 >> Ap(n)[k]
                          , False => div3 >> Ap(n)[k] }};
 
 ## pairs (data type)
 
 ## fst :: forall t0. { Ap(< Pair(t0,Top) >)[t0] }
 ## extract the first component of a pair
-prd fst := cocase { Ap(p)[k] => p >> match { Pair(x,y) => x >> k }};
+prd fst := cocase { Ap(p)[k] => p >> case { Pair(x,y) => x >> k }};
 
 ## snd :: forall t0. { Ap(< Pair(Top,t0) >)[t0] }
 ## extract the second component of a pair
-prd snd := cocase { Ap(p)[k] => p >> match { Pair(x,y) => y >> k }};
+prd snd := cocase { Ap(p)[k] => p >> case { Pair(x,y) => y >> k }};
 
 ## bimapDat :: forall t0t1t2t3. { Ap( { Ap(t3)[t1] } , { Ap(t2)[t0] } , < Pair(t3,t2) >)
 ##                                   [< Pair(t1,t0) >] }
 ## given two functions f and g, maps f to the first and g to the second component
 prd bimapDat := cocase { Ap(f,g,p)[k] => p >>
-                            match { Pair(x,y) => f >>
+                            case { Pair(x,y) => f >>
                                       Ap(x)[mu fx. g >>
                                               Ap(y)[mu gy. Pair(fx,gy) >> k]] }};
 
@@ -422,7 +422,7 @@ prd map := cocase {
              Ap(f, xs)[k] => fix >>
                Ap( cocase { Ap(alpha)[k] =>
                       cocase { Ap(xs)[k] => xs >>
-                        match { Nil => Nil >> k
+                        case { Nil => Nil >> k
                               , Cons(p,ys) => alpha >>
                                   Ap(ys)[mu w1. f >>
                                     Ap(p)[mu w2. Cons(w2,w1) >> k]] } } >> k})
@@ -431,17 +431,17 @@ prd map := cocase {
 ## head :: forall t0. { Ap(< Cons(t0,Top) >)[t0] }
 ## returns the head of the non-empty list xs
 prd head := cocase { Ap(xs)[k] => xs >>
-              match { Cons(x,xs) => x >> k }};
+              case { Cons(x,xs) => x >> k }};
 
 ## tail :: forall t0. { Ap(< Cons(Top,t0) >)[t0] }
 ## returns the tail of the non-empty list xs
 prd tail := cocase { Ap(xs)[k] => xs >> #
-              match { Cons(x,xs) => xs >> k }};
+              case { Cons(x,xs) => xs >> k }};
 
 ## null :: { Ap(< Cons(Top,Top) | Nil >)[< False | True >] }
 ## returns True if a list is empty, otherwise False
 prd null := cocase { Ap(xs)[k] => xs >>
-              match { Nil => True >> k
+              case { Nil => True >> k
                     , Cons(x,rest) => False >> k }};
 
 ## append :: forall t0t1. { Ap(rec r0.< Cons(t1,r0) | Nil >,t0)
@@ -450,7 +450,7 @@ prd null := cocase { Ap(xs)[k] => xs >>
 prd append := cocase { Ap(xs,ys)[k] => fix >>
                 Ap( cocase { Ap(alpha)[k] =>
                        cocase { Ap(xs)[k] => xs >>
-                         match { Nil          => ys >> k
+                         case { Nil          => ys >> k
                                , Cons(x,rest) => alpha >>
                                    Ap(rest)[mu w. Cons(x,w) >> k] }} >> k })
                    [Ap(xs)[k]]};
@@ -461,7 +461,7 @@ prd elemAt := cocase { Ap(xs,n)[k] => fix >>
                Ap( cocase { Ap(alpha)[k] =>
                       cocase { Ap(xs)[k] =>
                         cocase { Ap(n)[k] => n >>
-                          match { Zero    => head >> Ap(xs)[k]
+                          case { Zero    => head >> Ap(xs)[k]
                                 , S(p) => tail >>
                                     Ap(xs)[mu w. alpha >>
                                                     Ap(w)[Ap(p)[k]]] }} >> k } >> k })
@@ -473,7 +473,7 @@ prd foldl := cocase { Ap(f,x,xs)[k] => fix >>
               Ap( cocase { Ap(alpha)[k] =>
                      cocase { Ap(x)[k] =>
                        cocase { Ap(xs)[k] => xs >>
-                         match { Nil => x >> k
+                         case { Nil => x >> k
                                , Cons(y,ys) => f >>
                                    Ap(x,y)[mu fxy.alpha >>
                                                     Ap(fxy)[Ap(ys)[k]]] } } >> k } >> k })
@@ -484,7 +484,7 @@ prd foldl := cocase { Ap(f,x,xs)[k] => fix >>
 prd reverse := cocase { Ap(xs)[k] => fix >> #
                  Ap( cocase { Ap(alpha)[k] =>
                         cocase { Ap(xs)[k] => xs >>
-                          match { Nil => Nil >> k
+                          case { Nil => Nil >> k
                                 , Cons(x,rest) => alpha >>
                                     Ap(rest)[mu w. append >>
                                                       Ap(w,Cons(x,Nil))[k]] }} >> k })
@@ -495,7 +495,7 @@ prd reverse := cocase { Ap(xs)[k] => fix >> #
 prd length := cocase { Ap(xs)[k] => fix >>
                 Ap( cocase { Ap(alpha)[k] =>
                        cocase { Ap(xs)[k] => xs >>
-                         match { Nil => Zero >> k
+                         case { Nil => Zero >> k
                                , Cons(x,rest) => alpha >>
                                    Ap(rest)[mu w. S(w) >> k]}} >> k })
                    [Ap(xs)[k]]};
@@ -507,9 +507,9 @@ prd length := cocase { Ap(xs)[k] => fix >>
 prd filter := cocase { Ap(p,xs)[k] => fix >>
                 Ap( cocase { Ap(alpha)[k] =>
                        cocase { Ap(xs)[k] => xs >>
-                         match { Nil => Nil >> k
+                         case { Nil => Nil >> k
                                , Cons(x,rest) => p >>
-                                   Ap(x)[ match { True  => alpha >> Ap(rest)[mu w. Cons(x,w) >> k]
+                                   Ap(x)[ case { True  => alpha >> Ap(rest)[mu w. Cons(x,w) >> k]
                                                  , False => alpha >> Ap(rest)[k] }] } } >> k })
                    [Ap(xs)[k]]};
 
@@ -542,7 +542,7 @@ prd elemAtNeg := cocase { Ap(xs,n)[k] => fix >>
                    Ap( cocase { Ap(alpha)[k] =>
                           cocase { Ap(xs)[k] =>
                             cocase { Ap(n)[k] => n >>
-                              match { Zero => xs >> Head[k]
+                              case { Zero => xs >> Head[k]
                                     , S(m) => xs >> Tail[mu ys. alpha >>
                                                        Ap(ys)[Ap(m)[k]]] }} >> k } >> k })
                       [Ap(xs)[Ap(n)[k]]]};
@@ -558,12 +558,12 @@ prd repeat := cocase { Ap(x)[k] => fixLazy >>
 
 ## misc interesting terms
 
-# prd doubleCycle := cocase { Ap(x) => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(x) => x >> match { X(x1) => x1 >> match { X(x2) => alpha >> Ap(x2)}, Y(y1) => y1 >> match { Y(y2) => alpha >> Ap(y2)}}} >> k })[Ap(x)]};
-prd faultyEdgeTest := cocase { Ap(b,f) => b >> match { True => f >> match { X(x) => Done, Y(x) => Done }, False => f >> match { X(x) => Done, Zero(x)=>Done }}};
-prd oneortwo := cocase { Ap(b)[k] => b >> match { True => S(Zero) >> k, False => S(S(Zero)) >> k }};
-prd admissabilityTest := cocase { Ap(f)[k] => True >> match { True => cocase { Ap(x)[k] => f >> Ap(x)[k]} >> k, False => f >> k }};
+# prd doubleCycle := cocase { Ap(x) => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(x) => x >> case { X(x1) => x1 >> case { X(x2) => alpha >> Ap(x2)}, Y(y1) => y1 >> case { Y(y2) => alpha >> Ap(y2)}}} >> k })[Ap(x)]};
+prd faultyEdgeTest := cocase { Ap(b,f) => b >> case { True => f >> case { X(x) => Done, Y(x) => Done }, False => f >> case { X(x) => Done, Zero(x)=>Done }}};
+prd oneortwo := cocase { Ap(b)[k] => b >> case { True => S(Zero) >> k, False => S(S(Zero)) >> k }};
+prd admissabilityTest := cocase { Ap(f)[k] => True >> case { True => cocase { Ap(x)[k] => f >> Ap(x)[k]} >> k, False => f >> k }};
 
-prd implicationConstraintsTest1 := cocase { Ap(x) => x >> match { A => Done, B => x >> match { B => Done }}};
+prd implicationConstraintsTest1 := cocase { Ap(x) => x >> case { A => Done, B => x >> case { B => Done }}};
 
 prd parserTest := cocase { Ap(x)[x] => x >> x };
 
@@ -572,12 +572,12 @@ prd parserTest := cocase { Ap(x)[x] => x >> x };
 data Bool : CBV { TT, FF };
 data Nat : CBV { Z, S(Nat) };
 codata NatBoolFun : CBN { ApNB(Nat)[Bool] };
-prd nominalNot := cocase { Ap(x)[k] => x >> match { TT => FF >> k, FF => TT >> k }};
+prd nominalNot := cocase { Ap(x)[k] => x >> case { TT => FF >> k, FF => TT >> k }};
 
-prd addNominal := cocase { Ap(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
-prd mltNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
-prd expNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> match { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
-prd subSafeNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> match { Z => n >> k, S(mp) => n >> match { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
+prd addNominal := cocase { Ap(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
+prd mltNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]]};
+prd expNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap(n,w)[k]] } } >> k })[Ap(m)[k]] };
+prd subSafeNominal := cocase { Ap(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
 
 cmd exampleCommand1 := Print(2); Done ;
 cmd exampleCommand2 := mu x.Print(2); Done >> mu y. Print(4); Done;

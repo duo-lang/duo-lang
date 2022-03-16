@@ -5,7 +5,7 @@ destructor Ap : CBV;
 prd rec addS := cocase { Ap(x,y)[k] =>
                        x
                        >>
-                       match { Z    => y >> k
+                       case { Z    => y >> k
                              , S(z) => addS >> Ap(z,S(y))[k]
                              }
                    };
