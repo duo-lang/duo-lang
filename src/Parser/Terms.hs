@@ -171,6 +171,48 @@ cstcommandP =
 -------------------------------------------------------------------------------------------
 -- Bottom Parser
 -------------------------------------------------------------------------------------------
+
+allCaseP :: Parser (CST.Term, SourcePos)
+allCaseP = caseP <|> cocaseP
+
+------------------------------------------
+
+caseP :: Parser (CST.Term, SourcePos)
+caseP = do
+  startPos <- getSourcePos
+  _ <- caseKwP
+  caseRestP startPos <|> caseRestP' startPos
+
+caseRestP :: SourcePos -> Parser (CST.Term, SourcePos)
+caseRestP startPos = do
+  (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
+  return (CST.XMatch (Loc startPos endPos) Data cases, endPos)
+
+caseRestP' :: SourcePos -> Parser (CST.Term, SourcePos)
+caseRestP' startPos = do
+  (arg, _pos) <- termTopP
+  _ <- ofKwP
+  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` comma)
+  return (CST.Case (Loc startPos endPos) arg cases, endPos)
+
+------------------------------------------
+
+cocaseP :: Parser (CST.Term, SourcePos)
+cocaseP = do
+  startPos <- getSourcePos
+  _ <- cocaseKwP
+  try (cocaseRestP startPos) <|> cocaseRestP' startPos
+
+cocaseRestP :: SourcePos -> Parser (CST.Term, SourcePos)
+cocaseRestP startPos = do
+  (cocases, endPos) <- braces ((fst <$> termCaseIP) `sepBy` comma)
+  return (CST.Cocase (Loc startPos endPos) cocases, endPos)
+
+cocaseRestP' :: SourcePos -> Parser (CST.Term, SourcePos)
+cocaseRestP' startPos = do
+  (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
+  return (CST.XMatch (Loc startPos endPos) Codata cases, endPos)
+
 --------------------------------------------------------------------------------------------
 -- XMatches
 --------------------------------------------------------------------------------------------
@@ -185,15 +227,6 @@ cmdcaseP = do
   let pmcase = (Loc startPos endPos, xt, args, cmd)
   return (pmcase, endPos)
 
-matchComatchP :: Parser DataCodata
-matchComatchP = (caseKwP *> pure Data) <|> (cocaseKwP *> pure Codata)
-
-xmatchP :: Parser (CST.Term, SourcePos)
-xmatchP = do
-  startPos <- getSourcePos
-  dc <- matchComatchP
-  (cases, endPos) <- braces ((fst <$> cmdcaseP) `sepBy` comma)
-  return (CST.XMatch (Loc startPos endPos) dc cases, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Case-of
@@ -209,14 +242,6 @@ termCaseP = do
   let pmcase = (Loc startPos endPos, xt, args, res)
   return (pmcase, endPos)
 
-caseofP :: Parser (CST.Term, SourcePos)
-caseofP = do
-  startPos <- getSourcePos
-  _ <- caseKwP
-  (arg, _pos) <- termTopP
-  _ <- ofKwP
-  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` comma)
-  return (CST.Case (Loc startPos endPos) arg cases, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Cocase
@@ -230,13 +255,6 @@ termCaseIP = do
   _ <- rightarrow
   (res, endPos) <- termTopP
   return ((Loc startPos endPos, xt, bs, res), endPos)
-
-cocaseP :: Parser (CST.Term, SourcePos)
-cocaseP = do
-  startPos <- getSourcePos
-  _ <- cocaseKwP
-  (cocases, endPos) <- braces ((fst <$> termCaseIP) `sepBy` comma)
-  return (CST.Cocase (Loc startPos endPos) cocases, endPos)
 
 --------------------------------------------------------------------------------------------
 -- CST-Sugar
@@ -269,9 +287,7 @@ termBotP = freeVar <|>
   try (natLitP Structural) <|>
   natLitP Nominal <|>
   xtorP <|>
-  xmatchP <|>
-  caseofP  <|>
-  cocaseP  <|>
+  allCaseP <|>
   muAbstraction  <|>
   termParensP <|>
   lambdaP
