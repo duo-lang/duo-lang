@@ -1,15 +1,5 @@
 import Prelude;
 
-destructor Ap : CBV;
-
-prd rec addS := comatch { Ap(x,y)[k] =>
-                       x
-                       >>
-                       match { Z    => y >> k
-                             , S(z) => addS >> Ap(z,S(y))[k]
-                             }
-                   };
-
 prd rec addA := \x => \y => case x of { Z => y
                                       , S(z) => addA z S(y)
 					        };
