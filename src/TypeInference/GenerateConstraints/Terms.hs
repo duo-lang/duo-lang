@@ -486,17 +486,15 @@ genConstraintsTerm (Cocase loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}
   checkExhaustiveness (tmcasei_name <$> cocases) tn
   -- Generate fresh unification variables for type parameters
   (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams PosRep tn
-  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } -> do
+  cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = tmcasei_args@(as1, (),_), tmcasei_term } -> do
     -- We look up the argument types of the xtor
     posTypes <- sig_args <$> lookupXtorSig tmcasei_name PosRep
     -- Substitute fresh unification variables for type parameters
     let posTypes' = substituteContext tyParamsMap posTypes
+    -- Split the args accordingly:
+    (ctxt1,retType, ctxt2) <- splitContext (length as1) CnsRep posTypes'
     -- Type case term using new type vars
-    tmcasei_termInferred <- withContext (init posTypes') (genConstraintsTerm tmcasei_term)
-    -- The return type is the last element in the xtorSig, which must be a CnsType.
-    retType <- case last posTypes' of
-                 (PrdCnsType PrdRep _)  -> throwGenError ["Boom"]
-                 (PrdCnsType CnsRep ty) -> pure ty
+    tmcasei_termInferred <- withContext (ctxt1 ++ [PrdCnsType CnsRep (TyVar NegRep Nothing (MkTVar "*"))] ++  ctxt2) (genConstraintsTerm tmcasei_term)
     -- The term must have a subtype of the copattern match return type
     addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
     return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred)
