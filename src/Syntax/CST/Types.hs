@@ -42,7 +42,7 @@ linearContextToArity :: LinearContext -> Arity
 linearContextToArity = map f
   where
     f (PrdType _) = Prd
-    f (CnsType _) = Prd
+    f (CnsType _) = Cns
 
 data TypeScheme = TypeScheme
   { ts_vars :: [TVar]
