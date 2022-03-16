@@ -28,7 +28,7 @@ substitutionToArity = map f
 
 substitutionIToArity :: SubstitutionI -> Arity
 substitutionIToArity (subst1, pc, subst2) =
-  substitutionToArity subst1 ++ [pc] ++ substitutionToArity subst2
+  substitutionToArity subst1 ++ [case pc of Prd -> Cns; Cns -> Prd] ++ substitutionToArity subst2
 
 type BindingSite = [(PrdCns,FreeVarName)]
 type BindingSiteI = (BindingSite, (), BindingSite)

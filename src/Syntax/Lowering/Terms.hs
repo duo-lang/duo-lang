@@ -35,7 +35,7 @@ checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> DriverM ()
 checkXtorArity loc (xt, dc) arityUsed = do
   (_,aritySpecified) <- lookupXtor loc (xt, dc)
   if (arityUsed /= aritySpecified)
-    then throwError (LowerError (Just loc) (ArityMismatch xt arityUsed aritySpecified))
+    then throwError (LowerError (Just loc) (ArityMismatch xt aritySpecified arityUsed))
     else pure ()
   
 
