@@ -10,6 +10,7 @@ import Pretty.Pretty
 import Pretty.Constraints ()
 import Utils
 import Errors
+import Syntax.Common
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -19,6 +20,10 @@ prettyMaybeLoc :: Maybe Loc -> Doc Annotation
 prettyMaybeLoc Nothing = mempty
 prettyMaybeLoc (Just loc) = prettyAnn loc <> ": "
 
+instance PrettyAnn PrdCns where
+  prettyAnn Prd = "Prd"
+  prettyAnn Cns = "Cns"
+
 instance PrettyAnn LoweringError where
   prettyAnn MissingVarsInTypeScheme         = "Missing declaration of type variable"
   prettyAnn TopInPosPolarity                = "Cannot use `Top` in positive polarity"
@@ -26,6 +31,11 @@ instance PrettyAnn LoweringError where
   prettyAnn IntersectionInPosPolarity       = "Cannot use `/\\` in positive polarity"
   prettyAnn UnionInNegPolarity              = "Cannot use `\\/` in negative polarity"
   prettyAnn (UnknownOperator op)            = "Undefined type operator `" <> pretty op <> "`"
+  prettyAnn (ArityMismatch xt ar1 ar2)      = vsep [ "Arity mismatch:"
+                                                   , "  Constructor/Destructor:" <+> prettyAnn xt
+                                                   , "  Specified Arity:" <+> prettyAnn ar1
+                                                   , "  Used Arity:" <+> prettyAnn ar2
+                                                   ]
 
 instance PrettyAnn Error where
   prettyAnn (ParseError loc err)            = prettyMaybeLoc loc <> "Parsing error:" <+> pretty err

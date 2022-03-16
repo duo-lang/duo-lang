@@ -16,17 +16,44 @@ import Syntax.AST.Program (Environment(..))
 import Syntax.Common
 import Utils
 
+---------------------------------------------------------------------------------
+-- Helper Functions
+---------------------------------------------------------------------------------
 
-lookupXtor :: Loc -> (XtorName, DataCodata) -> DriverM NominalStructural
+lookupXtor :: Loc -> (XtorName, DataCodata) -> DriverM (NominalStructural, Arity)
 lookupXtor loc xs@(xtor,dc) = do
   xtorMap <- gets (xtorMap . driverEnv)
   case M.lookup xs xtorMap of
     Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in environment: " <> ppPrint xtor)
     Just ns -> pure ns
 
+---------------------------------------------------------------------------------
+-- Check Arity of Xtor
+---------------------------------------------------------------------------------
+
+checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> DriverM ()
+checkXtorArity loc (xt, dc) arityUsed = do
+  (_,aritySpecified) <- lookupXtor loc (xt, dc)
+  if (arityUsed /= aritySpecified)
+    then throwError (LowerError (Just loc) (ArityMismatch xt aritySpecified arityUsed))
+    else pure ()
+  
+
+---------------------------------------------------------------------------------
+-- Check Arity of Xtor
+---------------------------------------------------------------------------------
 
 lowerSubstitution :: CST.Substitution -> DriverM (AST.Substitution Parsed)
-lowerSubstitution subst = sequence $ fmap lowerPrdCnsTerm subst
+lowerSubstitution [] = pure []
+lowerSubstitution (CST.PrdTerm tm:tms) = do
+  tm' <- lowerTerm PrdRep tm
+  subst <- lowerSubstitution tms
+  pure (AST.PrdTerm tm':subst)
+lowerSubstitution (CST.CnsTerm tm:tms) = do
+  tm' <- lowerTerm CnsRep tm
+  subst <- lowerSubstitution tms
+  pure (AST.CnsTerm tm':subst)
+
 
 lowerSubstitutionI :: CST.SubstitutionI -> DriverM (AST.SubstitutionI Parsed Prd)
 lowerSubstitutionI (subst1, _, subst2) = do
@@ -34,13 +61,12 @@ lowerSubstitutionI (subst1, _, subst2) = do
   subst2' <- lowerSubstitution subst2
   pure (subst1', PrdRep, subst2')
 
-lowerPrdCnsTerm :: CST.PrdCnsTerm -> DriverM (AST.PrdCnsTerm Parsed)
-lowerPrdCnsTerm (CST.PrdTerm tm) = AST.PrdTerm <$> lowerTerm PrdRep tm
-lowerPrdCnsTerm (CST.CnsTerm tm) = AST.CnsTerm <$> lowerTerm CnsRep tm
 
-lowerTermCase :: CST.TermCase -> DriverM (AST.TermCase Parsed)
-lowerTermCase (loc, xtor, bs, tm) = do
+
+lowerTermCase :: DataCodata -> CST.TermCase -> DriverM (AST.TermCase Parsed)
+lowerTermCase dc (loc, xtor, bs, tm) = do
   tm' <- lowerTerm PrdRep tm
+  checkXtorArity loc (xtor, dc) (fst <$> bs)
   pure AST.MkTermCase { tmcase_ext = loc
                       , tmcase_name = xtor
                       , tmcase_args = second Just <$> bs
@@ -49,11 +75,12 @@ lowerTermCase (loc, xtor, bs, tm) = do
 
 termCasesToNS :: [CST.TermCase] -> DataCodata -> DriverM NominalStructural
 termCasesToNS [] _ = pure Structural
-termCasesToNS ((loc,xtor,_,_):_) dc = lookupXtor loc (xtor, dc)
+termCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTermCaseI :: CST.TermCaseI -> DriverM (AST.TermCaseI Parsed)
-lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
+lowerTermCaseI :: DataCodata -> CST.TermCaseI -> DriverM (AST.TermCaseI Parsed)
+lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
   tm' <- lowerTerm PrdRep tm
+  checkXtorArity loc (xtor,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
   pure AST.MkTermCaseI { tmcasei_ext = loc
                        , tmcasei_name = xtor
                        , tmcasei_args = (second Just <$> bs1, (), second Just <$> bs2)
@@ -65,11 +92,12 @@ lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
 
 termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> DriverM NominalStructural
 termCasesIToNS [] _ = pure Structural
-termCasesIToNS ((loc,xtor,_,_):_) dc = lookupXtor loc (xtor, dc)
+termCasesIToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerCommandCase :: CST.CommandCase -> DriverM (AST.CmdCase Parsed)
-lowerCommandCase (loc, xtor, bs, cmd) = do
+lowerCommandCase :: DataCodata -> CST.CommandCase -> DriverM (AST.CmdCase Parsed)
+lowerCommandCase dc (loc, xtor, bs, cmd) = do
   cmd' <- lowerCommand cmd
+  checkXtorArity loc (xtor,dc) (fst <$> bs)
   pure AST.MkCmdCase { cmdcase_ext = loc
                      , cmdcase_name = xtor
                      , cmdcase_args = second Just <$> bs
@@ -79,20 +107,25 @@ lowerCommandCase (loc, xtor, bs, cmd) = do
 -- TODO: Check that all command cases use the same nominal/structural variant.
 commandCasesToNS :: [CST.CommandCase] -> DataCodata -> DriverM NominalStructural
 commandCasesToNS [] _ = pure Structural
-commandCasesToNS ((loc,xtor,_,_):_) dc = lookupXtor loc (xtor, dc)
+commandCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
 lowerTerm :: PrdCnsRep pc -> CST.Term -> DriverM (AST.Term pc Parsed)
 lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
-lowerTerm rep    (CST.Xtor loc xtor subst)     = do
-  ns <- lookupXtor loc (xtor, case rep of PrdRep -> Data; CnsRep -> Codata)
-  AST.Xtor loc rep ns xtor <$> lowerSubstitution subst
+lowerTerm PrdRep (CST.Xtor loc xtor subst)     = do
+  (ns, _) <- lookupXtor loc (xtor, Data)
+  checkXtorArity loc (xtor,Data) (CST.substitutionToArity subst)
+  AST.Xtor loc PrdRep ns xtor <$> lowerSubstitution subst
+lowerTerm CnsRep (CST.Xtor loc xtor subst)     = do
+  (ns, _) <- lookupXtor loc (xtor, Codata)
+  checkXtorArity loc (xtor,Codata) (CST.substitutionToArity subst)
+  AST.Xtor loc CnsRep ns xtor <$> lowerSubstitution subst  
 lowerTerm CnsRep (CST.XMatch loc Data cases)        = do
-  cases' <- sequence (lowerCommandCase <$> cases)
+  cases' <- sequence (lowerCommandCase Data <$> cases)
   ns <- commandCasesToNS cases Data
   pure $ AST.XMatch loc CnsRep ns cases'
 lowerTerm PrdRep (CST.XMatch loc Data _)       = throwError (OtherError (Just loc) "Cannot lower pattern match to a producer.")
 lowerTerm PrdRep (CST.XMatch loc Codata cases)        = do
-  cases' <- sequence (lowerCommandCase <$> cases)
+  cases' <- sequence (lowerCommandCase Codata <$> cases)
   ns <- commandCasesToNS cases Codata
   pure $ AST.XMatch loc PrdRep ns cases'
 lowerTerm CnsRep (CST.XMatch loc Codata _)     = throwError (OtherError (Just loc) "Cannot lower copattern match to a consumer.")
@@ -103,19 +136,20 @@ lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = do
   cmd' <- lowerCommand cmd
   pure $ AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] cmd')
 lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = do
-  ns <- lookupXtor loc (xtor, Codata)
+  (ns, _) <- lookupXtor loc (xtor, Codata)
+  checkXtorArity loc (xtor,Codata) (CST.substitutionIToArity subst)
   tm' <- lowerTerm PrdRep tm
   subst' <- lowerSubstitutionI subst
   pure $ AST.Dtor loc ns xtor tm' subst'
 lowerTerm CnsRep (CST.Dtor loc _xtor _tm _s)   = throwError (OtherError (Just loc) "Cannot lower Dtor to a consumer (TODO).")
 lowerTerm PrdRep (CST.Case loc tm cases)       = do
-  cases' <- sequence (lowerTermCase <$> cases)
+  cases' <- sequence (lowerTermCase Data <$> cases)
   tm' <- lowerTerm PrdRep tm
   ns <- termCasesToNS cases Data
   pure $ AST.Case loc ns tm' cases'
 lowerTerm CnsRep (CST.Case loc _tm _cases)     = throwError (OtherError (Just loc) "Cannot lower Match to a consumer (TODO)")
 lowerTerm PrdRep (CST.Cocase loc cases)        = do
-  cases' <- sequence (lowerTermCaseI <$> cases)
+  cases' <- sequence (lowerTermCaseI Codata <$> cases)
   ns <- termCasesIToNS cases Codata
   pure $ AST.Cocase loc ns cases'
 lowerTerm CnsRep (CST.Cocase loc _cases)       = throwError (OtherError (Just loc) "Cannot lower Comatch to a consumer (TODO)")

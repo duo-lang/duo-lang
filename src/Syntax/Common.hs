@@ -83,6 +83,8 @@ prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 prdCnsToPol PrdRep = PosRep
 prdCnsToPol CnsRep = NegRep
 
+type Arity = [PrdCns]
+
 ------------------------------------------------------------------------------
 -- Data/Codata
 ------------------------------------------------------------------------------
