@@ -68,7 +68,7 @@ codata Fun : CBN { Ap(Nat)[Bool] };
 # For the moment, we restrict ourselves to one return type, but will come back to the general situation
 # at a later point.
 #
-# We can use a copattern match (or "comatch" for short) to construct a term of this codata type.
+# We can use a copattern match (or "cocase" for short) to construct a term of this codata type.
 # For example, we can define the functions which return constant True or False:
 
 prd constTrue := cocase { Ap(x)[*] => True };
@@ -87,7 +87,7 @@ prd isFiveZ := isZ.Ap(5)[*] ;
 #
 #    Haskell:                DualSub:
 #
-#    \x -> t          <->    comatch { Ap(x) => t }
+#    \x -> t          <->    cocase { Ap(x) => t }
 #    f t              <->    f.Ap(t)
 #
 
@@ -100,11 +100,11 @@ prd isZSugared := \x => case x of { Z => True, S(x) => False };
 # All toplevel declarations are defined by mutual recursion, so it is possible to define a
 # recursive function like `isEven`:
 
-# def isEven := comatch { Ap(x) => match x with
+# def isEven := cocase { Ap(x) => case x of
 #        { Z => True
 #        , S(x) => isOdd.Ap(x) }};
 
-# def isOdd := comatch { Ap(x) => match x with
+# def isOdd := cocase { Ap(x) => case x of
 #        { Z => False
 #        , S(x) => isEven.Ap(x) }};
 
