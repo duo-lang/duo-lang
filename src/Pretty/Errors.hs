@@ -31,7 +31,7 @@ instance PrettyAnn LoweringError where
   prettyAnn IntersectionInPosPolarity       = "Cannot use `/\\` in positive polarity"
   prettyAnn UnionInNegPolarity              = "Cannot use `\\/` in negative polarity"
   prettyAnn (UnknownOperator op)            = "Undefined type operator `" <> pretty op <> "`"
-  prettyAnn (ArityMismatch xt ar1 ar2)      = hsep [ "Arity mismatch:"
+  prettyAnn (ArityMismatch xt ar1 ar2)      = vsep [ "Arity mismatch:"
                                                    , "  Constructor/Destructor:" <+> prettyAnn xt
                                                    , "  Specified Arity:" <+> prettyAnn ar1
                                                    , "  Used Arity:" <+> prettyAnn ar2
