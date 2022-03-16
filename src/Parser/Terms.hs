@@ -186,7 +186,7 @@ cmdcaseP = do
   return (pmcase, endPos)
 
 matchComatchP :: Parser DataCodata
-matchComatchP = (matchKwP *> pure Data) <|> (comatchKwP *> pure Codata)
+matchComatchP = (caseKwP *> pure Data) <|> (cocaseKwP *> pure Codata)
 
 xmatchP :: Parser (CST.Term, SourcePos)
 xmatchP = do
