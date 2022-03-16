@@ -51,9 +51,16 @@ lowerSubstitutionI ar (subst1, _, subst2) = do
   subst2' <- lowerSubstitution ar2 subst2
   pure (subst1', PrdRep, subst2')
 
-lowerTermCase :: CST.TermCase -> DriverM (AST.TermCase Parsed)
-lowerTermCase (loc, xtor, bs, tm) = do
+checkArity :: Loc -> Arity -> Arity -> DriverM ()
+checkArity loc ar1 ar2 = case ar1 == ar2 of
+  True -> pure ()
+  False -> throwError (OtherError (Just loc) "Arity mismatch.")
+
+lowerTermCase :: DataCodata -> CST.TermCase -> DriverM (AST.TermCase Parsed)
+lowerTermCase dc (loc, xtor, bs, tm) = do
   tm' <- lowerTerm PrdRep tm
+  (_,ar) <- lookupXtor loc (xtor, dc)
+  checkArity loc ar (fst <$> bs)
   pure AST.MkTermCase { tmcase_ext = loc
                       , tmcase_name = xtor
                       , tmcase_args = second Just <$> bs
@@ -64,9 +71,11 @@ termCasesToNS :: [CST.TermCase] -> DataCodata -> DriverM NominalStructural
 termCasesToNS [] _ = pure Structural
 termCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTermCaseI :: CST.TermCaseI -> DriverM (AST.TermCaseI Parsed)
-lowerTermCaseI (loc, xtor, (bs1,(),bs2), tm) = do
+lowerTermCaseI :: DataCodata -> CST.TermCaseI -> DriverM (AST.TermCaseI Parsed)
+lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
   tm' <- lowerTerm PrdRep tm
+  (_, ar) <- lookupXtor loc (xtor, dc)
+  checkArity loc ar ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
   pure AST.MkTermCaseI { tmcasei_ext = loc
                        , tmcasei_name = xtor
                        , tmcasei_args = (second Just <$> bs1, (), second Just <$> bs2)
@@ -80,9 +89,11 @@ termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> DriverM NominalStructural
 termCasesIToNS [] _ = pure Structural
 termCasesIToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerCommandCase :: CST.CommandCase -> DriverM (AST.CmdCase Parsed)
-lowerCommandCase (loc, xtor, bs, cmd) = do
+lowerCommandCase :: DataCodata -> CST.CommandCase -> DriverM (AST.CmdCase Parsed)
+lowerCommandCase dc (loc, xtor, bs, cmd) = do
   cmd' <- lowerCommand cmd
+  (_,ar) <- lookupXtor loc (xtor, dc)
+  checkArity loc ar (fst <$> bs)
   pure AST.MkCmdCase { cmdcase_ext = loc
                      , cmdcase_name = xtor
                      , cmdcase_args = second Just <$> bs
@@ -100,12 +111,12 @@ lowerTerm rep    (CST.Xtor loc xtor subst)     = do
   (ns, arity) <- lookupXtor loc (xtor, case rep of PrdRep -> Data; CnsRep -> Codata)
   AST.Xtor loc rep ns xtor <$> lowerSubstitution arity subst
 lowerTerm CnsRep (CST.XMatch loc Data cases)        = do
-  cases' <- sequence (lowerCommandCase <$> cases)
+  cases' <- sequence (lowerCommandCase Data <$> cases)
   ns <- commandCasesToNS cases Data
   pure $ AST.XMatch loc CnsRep ns cases'
 lowerTerm PrdRep (CST.XMatch loc Data _)       = throwError (OtherError (Just loc) "Cannot lower pattern match to a producer.")
 lowerTerm PrdRep (CST.XMatch loc Codata cases)        = do
-  cases' <- sequence (lowerCommandCase <$> cases)
+  cases' <- sequence (lowerCommandCase Codata <$> cases)
   ns <- commandCasesToNS cases Codata
   pure $ AST.XMatch loc PrdRep ns cases'
 lowerTerm CnsRep (CST.XMatch loc Codata _)     = throwError (OtherError (Just loc) "Cannot lower copattern match to a consumer.")
@@ -122,13 +133,13 @@ lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = do
   pure $ AST.Dtor loc ns xtor tm' subst'
 lowerTerm CnsRep (CST.Dtor loc _xtor _tm _s)   = throwError (OtherError (Just loc) "Cannot lower Dtor to a consumer (TODO).")
 lowerTerm PrdRep (CST.Case loc tm cases)       = do
-  cases' <- sequence (lowerTermCase <$> cases)
+  cases' <- sequence (lowerTermCase Data <$> cases)
   tm' <- lowerTerm PrdRep tm
   ns <- termCasesToNS cases Data
   pure $ AST.Case loc ns tm' cases'
 lowerTerm CnsRep (CST.Case loc _tm _cases)     = throwError (OtherError (Just loc) "Cannot lower Match to a consumer (TODO)")
 lowerTerm PrdRep (CST.Cocase loc cases)        = do
-  cases' <- sequence (lowerTermCaseI <$> cases)
+  cases' <- sequence (lowerTermCaseI Codata <$> cases)
   ns <- termCasesIToNS cases Codata
   pure $ AST.Cocase loc ns cases'
 lowerTerm CnsRep (CST.Cocase loc _cases)       = throwError (OtherError (Just loc) "Cannot lower Comatch to a consumer (TODO)")
