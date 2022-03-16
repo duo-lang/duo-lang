@@ -112,11 +112,11 @@ commandCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 lowerTerm :: PrdCnsRep pc -> CST.Term -> DriverM (AST.Term pc Parsed)
 lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
 lowerTerm PrdRep (CST.Xtor loc xtor subst)     = do
-  (ns, arity) <- lookupXtor loc (xtor, Data)
+  (ns, _) <- lookupXtor loc (xtor, Data)
   checkXtorArity loc (xtor,Data) (CST.substitutionToArity subst)
   AST.Xtor loc PrdRep ns xtor <$> lowerSubstitution subst
 lowerTerm CnsRep (CST.Xtor loc xtor subst)     = do
-  (ns, arity) <- lookupXtor loc (xtor, Codata)
+  (ns, _) <- lookupXtor loc (xtor, Codata)
   checkXtorArity loc (xtor,Codata) (CST.substitutionToArity subst)
   AST.Xtor loc CnsRep ns xtor <$> lowerSubstitution subst  
 lowerTerm CnsRep (CST.XMatch loc Data cases)        = do
@@ -136,7 +136,7 @@ lowerTerm CnsRep (CST.MuAbs loc fv cmd)        = do
   cmd' <- lowerCommand cmd
   pure $ AST.MuAbs loc CnsRep (Just fv) (AST.commandClosing [(Prd,fv)] cmd')
 lowerTerm PrdRep (CST.Dtor loc xtor tm subst)  = do
-  (ns, arity) <- lookupXtor loc (xtor, Codata)
+  (ns, _) <- lookupXtor loc (xtor, Codata)
   checkXtorArity loc (xtor,Codata) (CST.substitutionIToArity subst)
   tm' <- lowerTerm PrdRep tm
   subst' <- lowerSubstitutionI subst
