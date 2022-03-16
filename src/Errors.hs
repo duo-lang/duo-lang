@@ -4,6 +4,7 @@ import Control.Monad.Except
 import Data.Text (Text)
 import Data.Text qualified as T
 
+import Syntax.Common
 import Utils
 
 ----------------------------------------------------------------------------------
@@ -20,6 +21,10 @@ data LoweringError where
   UnionInNegPolarity :: LoweringError
   -- Operator errors
   UnknownOperator :: Text -> LoweringError
+  ArityMismatch :: XtorName
+                -> Arity
+                -> Arity
+                -> LoweringError
   deriving (Show, Eq)
 
 data Error where

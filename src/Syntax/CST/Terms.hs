@@ -20,6 +20,16 @@ deriving instance Eq PrdCnsTerm
 type Substitution = [PrdCnsTerm]
 type SubstitutionI = (Substitution,PrdCns,Substitution)
 
+substitutionToArity :: Substitution -> Arity
+substitutionToArity = map f
+  where
+    f (PrdTerm _) = Prd
+    f (CnsTerm _) = Cns
+
+substitutionIToArity :: SubstitutionI -> Arity
+substitutionIToArity (subst1, pc, subst2) =
+  substitutionToArity subst1 ++ [pc] ++ substitutionToArity subst2
+
 type BindingSite = [(PrdCns,FreeVarName)]
 type BindingSiteI = (BindingSite, (), BindingSite)
 
