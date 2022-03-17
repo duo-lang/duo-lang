@@ -1,12 +1,12 @@
 import Prelude;
 
-destructor Ap : CBV;
+destructor Ap2(CBV,CBV)[CBV] : CBV;
 
-prd rec addS := cocase { Ap(x,y)[k] =>
+prd rec addS := cocase { Ap2(x,y)[k] =>
                        x
                        >>
                        case { Z    => y >> k
-                             , S(z) => addS >> Ap(z,S(y))[k]
+                             , S(z) => addS >> Ap2(z,S(y))[k]
                              }
                    };
 

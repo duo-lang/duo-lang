@@ -42,6 +42,13 @@ instance Show (PrdCnsType Neg) where
 
 type LinearContext pol = [PrdCnsType pol]
 
+linearContextToArity :: LinearContext pol -> Arity
+linearContextToArity = map f
+  where
+    f :: PrdCnsType pol -> PrdCns
+    f (PrdCnsType PrdRep _) = Prd
+    f (PrdCnsType CnsRep _) = Cns
+
 ------------------------------------------------------------------------------
 -- Types
 ------------------------------------------------------------------------------

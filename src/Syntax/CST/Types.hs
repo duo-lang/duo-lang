@@ -31,12 +31,18 @@ data XtorSig = MkXtorSig
   }
   deriving Show
 
-type LinearContext = [PrdCnsTyp]
-
 data PrdCnsTyp where
   PrdType :: Typ -> PrdCnsTyp
   CnsType :: Typ -> PrdCnsTyp
   deriving Show
+
+type LinearContext = [PrdCnsTyp]
+
+linearContextToArity :: LinearContext -> Arity
+linearContextToArity = map f
+  where
+    f (PrdType _) = Prd
+    f (CnsType _) = Cns
 
 data TypeScheme = TypeScheme
   { ts_vars :: [TVar]

@@ -142,7 +142,7 @@ import Syntax.Common
 
 data XtorLabel = MkXtorLabel
   { labelName :: XtorName
-  , labelArity :: [PrdCns]
+  , labelArity :: Arity
   }
   deriving (Eq, Show, Ord)
 

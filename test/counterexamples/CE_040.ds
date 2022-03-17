@@ -1,0 +1,6 @@
+# Constructor is applied to too many arguments in match
+destructor A(CBV) : CBV;
+
+prd foo := cocase {
+    A(x,y) => Done
+};
