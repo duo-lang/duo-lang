@@ -1,6 +1,11 @@
+import Function;
+import LinearLogic;
+import List;
+import Bool;
+
 prd rec filterHelper := \p l => case l of {
     Nil => cocase {
-        MkPar[k1,k2] => Unit >> k2
+        MkPar[k1,k2] => MkUnit >> k2
     },
     Cons(x,xs) => case p x of {
         True =>

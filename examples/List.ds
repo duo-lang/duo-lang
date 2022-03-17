@@ -1,5 +1,6 @@
-import Prelude;
 import LinearLogic;
+import Peano;
+import Bool;
 
 data List(+a : CBV) : CBV {
     Nil,

@@ -1,7 +1,9 @@
 # These examples serve primarily as a testsuite for the compiler.
 # Do not expect the following examples to be sensible or understandable
+import Function;
+import Peano;
+import Bool;
 import Prelude;
-
 # Symmetric system:
 
 prd id1 : forall a. a -> a := cocase { Ap(x)[k] => x >> k };

@@ -1,10 +1,5 @@
 # Standard Prelude
 
-import Function;
-import Bool;
-import Peano;
-import LinearLogic;
-
 
 cmd impossible := Done;
 prd impossible := mu k. impossible;

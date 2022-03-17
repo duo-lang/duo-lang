@@ -1,3 +1,17 @@
+import Function;
+import Bool;
+import List;
+import Peano;
+import LinearLogic;
+
+data Not(-a : CBV) : CBV {
+    MkNot[a]
+};
+cmd impossible := Done;
+prd impossible := mu k. impossible;
+cns impossible := mu x. impossible;
+
+
 data Ordering : CBV {
     LT,
     EQ,
@@ -15,7 +29,7 @@ prd rec splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         }
     };
 
-prd rec splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> PosBot :=
+prd rec splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> Void :=
     \xs ys k => case k of {
         MkNot[k] => case xs of {
             Nil => mu j. MkTensor(Nil, ys) >> k,

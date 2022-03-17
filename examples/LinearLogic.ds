@@ -6,7 +6,6 @@ data Plus(+a : CBV, +b : CBV) : CBV {
     Right(b)
 };
 
-
 data Void : CBV {};
 
 # Positive Conjunction and its Unit
@@ -33,5 +32,11 @@ codata UnitN : CBV {};
 codata Par(+a : CBV, +b : CBV) : CBN {
     MkPar[a,b]
 };
+
+prd return : forall a. a -> Bot ⅋ a :=
+  \x => cocase { MkPar[err,*] => x };
+
+prd throw : forall a. a -> a ⅋ Bot :=
+  \x => cocase { MkPar[*,res] => x };
 
 codata VoidN : CBV { MkVoidN };
