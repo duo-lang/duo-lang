@@ -3,14 +3,11 @@ import Bool;
 import List;
 import Peano;
 import LinearLogic;
+import Prelude;
 
 data Not(-a : CBV) : CBV {
     MkNot[a]
 };
-cmd impossible := Done;
-prd impossible := mu k. impossible;
-cns impossible := mu x. impossible;
-
 
 data Ordering : CBV {
     LT,

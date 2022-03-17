@@ -4,11 +4,9 @@ codata Fun(-a : CBV, +b : CBV) : CBN {
     Ap(a)[b]
 };
 
-
 # The polymorphic identity function
 prd id : forall a. a -> a :=
   \x => x;
-
 
 # Function composition
 prd compose :=
@@ -21,7 +19,6 @@ prd twice :=
 # Apply a function three times to its argument
 prd thrice  :=
   \f x => f (f (f x));
-
 
 prd fix := cocase { Ap(f)[k] =>
              cocase { Ap(x)[k] => f >>

@@ -95,7 +95,7 @@ prd isFiveZ := isZ.Ap(5)[*] ;
 
 prd isZSugared := \x => case x of { Z => True, S(x) => False };
 
-# prd isFiveZSugared := isZ 5; 
+# prd isFiveZSugared := isZ 5;
 
 # All toplevel declarations are defined by mutual recursion, so it is possible to define a
 # recursive function like `isEven`:
@@ -123,4 +123,3 @@ prd isZSugared := \x => case x of { Z => True, S(x) => False };
 #
 # In this part we have seen nominal data and codata types, in the next part of the tutorial we will introduce
 # structural data and codata types.
-

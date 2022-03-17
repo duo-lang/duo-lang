@@ -40,5 +40,3 @@ prd rec foldl : forall a b. (b -> a -> b) -> b -> List(a) -> b :=
         Nil => acc,
         Cons(y, ys) => foldl f (f acc y) ys
     };
-
-

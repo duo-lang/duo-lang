@@ -9,7 +9,6 @@ refinement data Nat : CBV {
     S(Nat)
 };
 
-
 prd rec add :=
   \n m => case n of { Z => m
                     , S(n) => S(add n m)};
