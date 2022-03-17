@@ -65,6 +65,7 @@ library
   exposed-modules:
       Driver.Definition
       Driver.Driver
+      Driver.SymbolTable
       Errors
       Eval.Eval
       Lookup

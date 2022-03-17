@@ -36,7 +36,8 @@ import Syntax.AST.Program
     ( Program,
       Declaration(..)
     )
-import Syntax.Environment (Environment(..), SymbolTable(..))    
+import Syntax.Environment (Environment(..))
+import Driver.SymbolTable (SymbolTable(..))    
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)

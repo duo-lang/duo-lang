@@ -6,24 +6,8 @@ import Data.Map qualified as M
 import Syntax.Common
 import Syntax.AST.Terms
 import Syntax.AST.Types
-import Syntax.Kinds
 import Utils
-
----------------------------------------------------------------------------------
--- SymbolTable
----------------------------------------------------------------------------------
-
-data SymbolTable = MkSymbolTable {
-     xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity),
-     tyConMap :: Map TypeName (IsRefined, DataCodata, TParams, Kind)
-}
-
-instance Semigroup SymbolTable where
-  (MkSymbolTable m1 m2) <> (MkSymbolTable m1' m2') =
-    MkSymbolTable (M.union m1 m1') (M.union m2 m2')
-
-instance Monoid SymbolTable where
-  mempty = MkSymbolTable M.empty M.empty
+import Driver.SymbolTable
 
 ---------------------------------------------------------------------------------
 -- Environment

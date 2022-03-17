@@ -3,21 +3,18 @@ module Syntax.Lowering.Program (lowerProgram, lowerDecl) where
 import Control.Monad.Except (throwError)
 import Control.Monad.State
 import Data.Map qualified as M
-import Data.Text qualified as T
-import Data.Text.IO qualified as T
-import Text.Megaparsec ( errorBundlePretty )
 
 import Errors
 import Syntax.Lowering.Terms (lowerTerm, lowerCommand)
 import Syntax.Lowering.Types (lowerTypeScheme, lowerXTorSig)
 import Driver.Definition
-import Parser.Parser ( runFileParser, programP )
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
-import Syntax.Environment (Environment(..), SymbolTable(..))
+import Syntax.Environment (Environment(..))
+import Driver.SymbolTable (SymbolTable(..), createSymbolTableFromDisk)
 import Syntax.AST.Types (DataDecl(data_params))
 import Utils (Loc)
 
@@ -102,31 +99,3 @@ lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Un
 
 lowerProgram :: CST.Program -> DriverM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl
-
----------------------------------------------------------------------------------
--- SymbolTable
----------------------------------------------------------------------------------
-
-createSymbolTable :: CST.Program  -> SymbolTable
-createSymbolTable [] = mempty
-createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
-  let st = createSymbolTable decls
-  in MkSymbolTable (M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)) (tyConMap st)
-createSymbolTable ((CST.DataDecl _ dd):decls) =
-  let ns = case CST.data_refined dd of
-               Refined -> Refinement
-               NotRefined -> Nominal
-      st = createSymbolTable decls
-      xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
-  in MkSymbolTable (M.union xtors (xtorMap st)) (tyConMap st)
-createSymbolTable (_:decls) = createSymbolTable decls
-
-
-createSymbolTableFromDisk :: FilePath
-                          -> DriverM SymbolTable
-createSymbolTableFromDisk fp = do
-  file <- liftIO $ T.readFile fp
-  let parsed = runFileParser fp programP file
-  case parsed of
-    Left err -> throwOtherError [T.pack (errorBundlePretty err)]
-    Right decls -> pure $ createSymbolTable decls

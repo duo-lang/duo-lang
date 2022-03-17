@@ -12,7 +12,8 @@ import Driver.Definition
 import Pretty.Pretty
 import Syntax.CST.Terms qualified as CST
 import Syntax.AST.Terms qualified as AST
-import Syntax.Environment (Environment(..), SymbolTable(..))
+import Syntax.Environment (Environment(..))
+import Driver.SymbolTable (SymbolTable(..))
 import Syntax.Common
 import Utils
 
