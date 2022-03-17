@@ -1,6 +1,7 @@
-import Prelude;
-import Linear;
-import Impossible;
+import LinearLogic;
+import Peano;
+import Bool;
+import Function;
 
 data List(+a : CBV) : CBV {
     Nil,
@@ -39,84 +40,3 @@ prd rec foldl : forall a b. (b -> a -> b) -> b -> List(a) -> b :=
         Nil => acc,
         Cons(y, ys) => foldl f (f acc y) ys
     };
-
-data Ordering : CBV {
-    LT,
-    EQ,
-    GT
-};
-
-prd rec splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
-    \n xs => case n of {
-        Z => MkTensor(Nil, xs),
-        S(n) => case xs of {
-            Nil => MkTensor(Nil, Nil),
-            Cons(x, xs) => case splitAt n xs of {
-                MkTensor(left, right) => MkTensor (Cons(x, left), right)
-            }
-        }
-    };
-
-prd rec splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> PosBot :=
-    \xs ys k => case k of {
-        MkNot[k] => case xs of {
-            Nil => mu j. MkTensor(Nil, ys) >> k,
-            Cons(x1, xs) => case xs of {
-                Nil => mu j. MkTensor(Nil, ys) >> k,
-                Cons(x2, xs) => case ys of {
-                    Nil => impossible,
-                    Cons(y, ys) => splitHalvesHelper xs ys (MkNot[
-                        mu tensor. case tensor of {
-                            MkTensor(left, right) =>
-                                MkTensor(Cons(y, left), right)
-                        } >> k
-                    ])
-                }
-            }
-        }
-    };
-
-prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
-    \xs => mu k. splitHalvesHelper xs xs MkNot[k] >> impossible;
-
-prd rec merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
-    \f left right => case left of {
-        Nil => right,
-        Cons(x, xs) => case right of {
-            Nil => left,
-            Cons(y, ys) => case f x y of {
-                LT => Cons(x, merge f xs right),
-                EQ => Cons(x, merge f xs right),
-                GT => Cons(y, merge f left ys)
-            }
-        }
-    };
-
-prd rec sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
-    \f xs => case xs of {
-        Nil => Nil,
-        Cons(y, ys) => case ys of {
-            Nil => Cons(y, Nil),
-            Cons(y2, ys2) => case splitHalves xs of {
-                MkTensor(left, right) => merge f (sort f left) (sort f right)
-            }
-        }
-    };
-
-prd rec compare : Nat -> Nat -> Ordering :=
-    \x y => case x of {
-        Z => case y of {
-            Z => EQ,
-            S(y) => LT
-        },
-        S(x) => case y of {
-            Z => GT,
-            S(y) => compare x y
-        }
-    };
-
-# Examples
-
-prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
-
-cmd main := Print(sort compare testlist); Done;

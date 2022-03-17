@@ -38,10 +38,15 @@ subsumptionCheckPos env bspec s1 s2 = do
 spec :: Spec
 spec = do
   describe "Subsumption between typeschemes works" $ do
-    eenv <- runIO $ getEnvironment "examples/Prelude.ds" defaultInferenceOptions
-    let env = case eenv of
-                Left _ -> error "Could not load Prelude.ds"
+    eenv <- runIO $ getEnvironment "examples/Peano.ds" defaultInferenceOptions { infOptsLibPath = ["examples"] }
+    let env' = case eenv of
+                Left _ -> error "Could not load Peano.ds"
                 Right env -> env
+    eenv' <- runIO $ getEnvironment "examples/Bool.ds" defaultInferenceOptions { infOptsLibPath = ["examples"] }
+    let env'' = case eenv' of
+                Left _ -> error "Could not load Bool.ds"
+                Right env -> env
+    let env = env' <> env''            
     -- Subsumptions which should hold
     subsumptionCheckPos env True "forall a. { Ap(a)[a] }" "{ Ap(< True >)[< True >] }"
     subsumptionCheckPos env True "{ Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"

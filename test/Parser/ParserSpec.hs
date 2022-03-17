@@ -19,7 +19,7 @@ import TestUtils (getEnvironment)
 import Driver.Definition
 
 ds :: Environment Inferred ->  DriverState
-ds env = DriverState defaultInferenceOptions env
+ds env = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } env
 
 parseType :: Environment Inferred -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
 parseType env pol input expected = do
@@ -81,9 +81,9 @@ mkNat rep = TyNominal rep Nothing (MkTypeName "Nat") [] []
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
-    eenv <- runIO $ getEnvironment "examples/Prelude.ds" defaultInferenceOptions
+    eenv <- runIO $ getEnvironment "examples/Peano.ds" defaultInferenceOptions { infOptsLibPath = ["examples"] }
     let env = case eenv of
-                Left _ -> error "Could not load Prelude.ds"
+                Left _ -> error "Could not load Peano.ds"
                 Right env -> env
     parseType env PosRep
                  "< Nat | >"

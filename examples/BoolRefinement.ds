@@ -1,0 +1,41 @@
+# Booleans (Refinement)
+
+import Function;
+
+refinement data Bool : CBV {
+    True,
+    False
+};
+
+# Boolean negation.
+prd not : < Bool | False, True > -> < Bool | False, True >:=
+  \b => case b of { True => False,
+                    False => True
+                  };
+
+# Boolean if-then-else
+prd ifthenelse : forall a. < Bool | False, True > -> a -> a -> a :=
+  \b e1 e2 => case b of { True => e1, False => e2 };
+
+# Boolean conjunction
+prd and :=
+  \b1 b2 => ifthenelse b1 b2 False;
+
+# Boolean disjunction
+prd or :=
+  \b1 b2 => ifthenelse b1 True b2;
+
+# Boolean nand
+prd nand :=
+  \b1 b2 => not (and b1 b2);
+
+# Boolean nor
+prd nor :=
+  \b1 b2 => not (or b1 b2);
+
+# Boolean implication
+prd impl :=
+  \b1 b2 => case b1 of {
+      True => b2,
+      False => True
+  };

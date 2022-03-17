@@ -1,7 +1,0 @@
-refinement data Bool : CBV { True, False };
-refinement data Nat : CBV { S(Nat), Z };
-refinement codata FunBoolBool : CBN { Ap(Bool)[Bool] };
-
-constructor T : CBV;
-
-cns foo := case { True => Print(T); Done };
