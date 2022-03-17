@@ -479,37 +479,3 @@ prd repeat := cocase { Ap(x)[k] => fixLazy >>
                                , Tail[k] => alpha >> k } >> k })
                    [k]};
 
-
-## misc interesting terms
-
-constructor X(CBV) : CBV;
-constructor Y(CBV) : CBV;
-constructor B : CBV;
-constructor A : CBV;
-# prd doubleCycle := comatch { Ap(x) => fix >> Ap(comatch { Ap(alpha)[k] => comatch { Ap(x) => x >> match { X(x1) => x1 >> match { X(x2) => alpha >> Ap(x2)}, Y(y1) => y1 >> match { Y(y2) => alpha >> Ap(y2)}}} >> k })[Ap(x)]};
-prd oneortwo := cocase { Ap(b)[k] => b >> case { True => S(Zero) >> k, False => S(S(Zero)) >> k }};
-prd admissabilityTest := cocase { Ap(f)[k] => True >> case { True => cocase { Ap(x)[k] => f >> Ap(x)[k]} >> k, False => f >> k }};
-
-
-
-
-prd parserTest := cocase { Ap(x)[x] => x >> x };
-
-## Nominal Types
-
-data Bool : CBV { TT, FF };
-data Nat : CBV { Z, S(Nat) };
-codata NatBoolFun : CBN { ApNB(Nat)[Bool] };
-prd nominalNot := cocase { Ap(x)[k] => x >> case { TT => FF >> k, FF => TT >> k } };
-
-
-prd addNominal := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
-prd mltNominal := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]]};
-prd expNominal := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]] };
-prd subSafeNominal := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
-
-cmd exampleCommand1 := Print(2); Done;
-cmd exampleCommand2 := mu x.Print(2); Done >> mu y. Print(4); Done ;
-cmd exampleCommand3 := Read[mu x. Print(x); Done];
-
-prd newStylePredTwo := (cocase { Ap(x)[*] => case x of { Z => Z, S(x) => x }}.Ap(S(S(S(Z))))[*]);
