@@ -1,6 +1,7 @@
 import LinearLogic;
 import Peano;
 import Bool;
+import Function;
 
 data List(+a : CBV) : CBV {
     Nil,
