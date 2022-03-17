@@ -1,7 +1,24 @@
-# These examples used to be part of the testsuite in "StaticExamplesSpec"
-# The tests have been transferred here since we now support checking of type annotations.
-
+# These examples serve primarily as a testsuite for the compiler.
+# Do not expect the following examples to be sensible or understandable
 import Prelude;
+
+# Symmetric system:
+
+prd idPoly : forall a. a -> a := cocase { Ap(x)[k] => x >> k };
+
+prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[k] => x >> k };
+
+prd id : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
+
+prd idNominal : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
+
+# Asymmetric system:
+
+prd idPoly : forall a. a -> a := cocase { Ap(x)[*] => x };
+
+prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[*] => x };
+
+prd id : Nat -> Nat := cocase { Ap(x)[*] => x };
 
 destructor Ap(CBV)[CBV]: CBV;
 destructor Ap2(CBV,CBV)[CBV] : CBV;
