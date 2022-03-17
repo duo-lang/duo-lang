@@ -151,8 +151,10 @@ inferDecl (DataDecl loc dcl) = do
       let ns = case data_refined dcl of
                       Refined -> Refinement
                       NotRefined -> Nominal
+      let newXtors = (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)])
+      let newSymTable = MkSymbolTable (M.union newXtors (xtorMap (symTable env))) (tyConMap (symTable env))
       let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                       , symTable = MkSymbolTable $ M.union (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]) (xtorMap (symTable env))}
+                       , symTable = newSymTable }
       setEnvironment newEnv
       return (DataDecl loc dcl)
 --
@@ -160,7 +162,8 @@ inferDecl (DataDecl loc dcl) = do
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { symTable = MkSymbolTable $ M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))}
+  let newSymTable = MkSymbolTable (M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))) (tyConMap (symTable env))
+  let newEnv = env { symTable = newSymTable }
   setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --

@@ -54,8 +54,10 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
 
   -- HACK: insert final data declaration into environment
   let dcl = prelim_dd { AST.data_xtors = xtors}
+  let newXtors = (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)])
+  let newSymTable = MkSymbolTable (M.union newXtors (xtorMap (symTable env))) (tyConMap (symTable env))
   let newEnv = env { declEnv = (loc, dcl) : prevDeclEnv
-                   , symTable = MkSymbolTable $ M.union (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)]) (xtorMap (symTable env))}
+                   , symTable = newSymTable }
   setEnvironment newEnv
 
   pure dcl
@@ -78,19 +80,22 @@ lowerDecl (CST.DataDecl loc dd)             = do
   let ns = case CST.data_refined dd of
                  Refined -> Refinement
                  NotRefined -> Nominal
-  let newEnv = env { symTable = MkSymbolTable $ M.union (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]) (xtorMap (symTable env))}
+  let newXtors = (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)])
+  let newSymTable = MkSymbolTable (M.union newXtors (xtorMap (symTable env))) (tyConMap (symTable env))
+  let newEnv = env { symTable =  newSymTable }
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { symTable = MkSymbolTable $ M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))}
+  let newSymTable = MkSymbolTable (M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))) (tyConMap (symTable env))
+  let newEnv = env { symTable = newSymTable }
   setEnvironment newEnv
   pure $ AST.XtorDecl loc dc xt args ret
 lowerDecl (CST.ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
-  newEnv <- lowerProgramFromDisk fp
-  setEnvironment (oldEnv <> newEnv)
+  newEnv <- createSymbolTableFromDisk fp
+  setEnvironment (oldEnv <> mempty { symTable = newEnv })
   pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt)             = pure $ AST.SetDecl loc txt
 lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
@@ -98,35 +103,28 @@ lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Un
 lowerProgram :: CST.Program -> DriverM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl
 
+---------------------------------------------------------------------------------
+-- SymbolTable
+---------------------------------------------------------------------------------
 
-createSymbolTable :: CST.Program  -> Environment Inferred
+createSymbolTable :: CST.Program  -> SymbolTable
 createSymbolTable [] = mempty
 createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
-  let x = createSymbolTable decls
-  in x { symTable = MkSymbolTable $ M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable x))}
-createSymbolTable ((CST.DataDecl loc dd):decls) =
+  let st = createSymbolTable decls
+  in MkSymbolTable (M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)) (tyConMap st)
+createSymbolTable ((CST.DataDecl _ dd):decls) =
   let ns = case CST.data_refined dd of
                Refined -> Refinement
                NotRefined -> Nominal
-      x = createSymbolTable decls
+      st = createSymbolTable decls
       xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
-  -- HACK: The type parameter arities of imported types need to be known in lowering,
-  -- hence we add a partial AST.NominalDecl without constructors for now
-  in x { declEnv = (loc, AST.NominalDecl
-        { data_refined = CST.data_refined dd
-        , data_name = CST.data_name dd
-        , data_polarity = CST.data_polarity dd
-        , data_kind = CST.data_kind dd
-        , data_xtors = ([], [])
-        , data_params = CST.data_params dd
-        }) : declEnv x,
-         symTable  = MkSymbolTable $ M.union xtors (xtorMap (symTable x))}
+  in MkSymbolTable (M.union xtors (xtorMap st)) (tyConMap st)
 createSymbolTable (_:decls) = createSymbolTable decls
 
 
-lowerProgramFromDisk :: FilePath
-                     -> DriverM (Environment Inferred)
-lowerProgramFromDisk fp = do
+createSymbolTableFromDisk :: FilePath
+                          -> DriverM SymbolTable
+createSymbolTableFromDisk fp = do
   file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file
   case parsed of
