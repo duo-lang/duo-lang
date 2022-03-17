@@ -7,6 +7,7 @@ import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 
+import Driver.SymbolTable
 import Errors
 import Pretty.Errors ( printLocatedError )
 import Syntax.Environment
@@ -41,11 +42,11 @@ data DriverState = DriverState
   , driverEnv :: Environment Inferred
   }
 
-newtype DriverM a = DriverM { unDriverM :: ReaderT () (StateT DriverState  (ExceptT Error IO)) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadReader ())
+newtype DriverM a = DriverM { unDriverM :: ReaderT SymbolTable (StateT DriverState  (ExceptT Error IO)) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadReader SymbolTable)
 
 execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
-execDriverM state act = runExceptT $ runStateT (runReaderT (unDriverM act) ()) state
+execDriverM state act = runExceptT $ runStateT (runReaderT (unDriverM act) mempty) state
 
 ---------------------------------------------------------------------------------
 -- Utility functions
