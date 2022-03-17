@@ -1,5 +1,5 @@
 # These examples used to be part of the testsuite in "StaticExamplesSpec"
-# The tests have been transferred here since we now suppormt checking of type annotations.
+# The tests have been transferred here since we now support checking of type annotations.
 
 import Prelude;
 
