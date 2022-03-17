@@ -1,0 +1,17 @@
+# The type of infinite Streams
+import Function;
+
+codata Stream(+a : CBV) : CBV {
+    Head[a],
+    Tail[Stream(a)]
+};
+
+prd rec map := \f s => cocase {
+    Head[*] => f s.Head[*],
+    Tail[*] => map f (s.Tail[*])
+};
+
+prd rec constStream := \x => cocase {
+    Head[*] => x,
+    Tail[*] => constStream x
+};
