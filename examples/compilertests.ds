@@ -4,7 +4,7 @@ import Prelude;
 
 # Symmetric system:
 
-prd idPoly : forall a. a -> a := cocase { Ap(x)[k] => x >> k };
+prd id1 : forall a. a -> a := cocase { Ap(x)[k] => x >> k };
 
 prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[k] => x >> k };
 

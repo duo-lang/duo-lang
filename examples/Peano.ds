@@ -1,0 +1,23 @@
+# Peano Natural Numbers (Nominal)
+
+import Function;
+import Bool;
+
+# The type of Peano natural numbers.
+data Nat : CBV {
+    Z,
+    S(Nat)
+};
+
+
+prd rec add :=
+  \n m => case n of { Z => m
+                    , S(n) => S(add n m)};
+
+prd rec mul :=
+  \n m => case n of { Z => Z
+                    , S(n) => add m (mul n m)};
+
+prd rec nateq :=
+  \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
+                    , S(n) => case m of { Z => False, S(m) => nateq n m}};

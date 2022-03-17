@@ -1,18 +1,3 @@
-import Prelude;
-
-data List(+a : CBV) : CBV { Nil, Cons(a,List(a)) };
-
-codata Par(+a : CBV, +b : CBV) : CBN { MkPar[a,b]};
-
-# Implementation is not important, since I only want to do typechecking.
-prd rec f : Unit -> List(Nat) ⅋ Unit := f;
-prd rec g : Unit -> List(Nat) ⅋ Unit := g;
-prd rec h : Unit -> List(Nat) ⅋ Unit := h;
-
-prd compose := \x => cocase { MkPar[err,*] =>
-                                (h (g ((f x).MkPar[err,*]).MkPar[err,*])).MkPar[err,*]
-                            };
-
 prd rec filterHelper := \p l => case l of {
     Nil => cocase {
         MkPar[k1,k2] => Unit >> k2
@@ -33,4 +18,3 @@ prd rec filterHelper := \p l => case l of {
 
 prd filter  := \p l => mu k. filterHelper p l >> MkPar[k, mu y. l >> k];
 prd filter2 := \p l => mu k. (filterHelper p l).MkPar[k,*] >> mu y. l >> k;
-
