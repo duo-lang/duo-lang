@@ -12,7 +12,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.AST.Types
 import Syntax.AST.Types qualified as AST
-import Syntax.AST.Program
+import Syntax.Environment
 import Syntax.Common
 import Syntax.Lowering.Types
 import TestUtils (getEnvironment)

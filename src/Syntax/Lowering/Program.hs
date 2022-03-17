@@ -17,7 +17,7 @@ import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
-import Syntax.AST.Program (Environment(xtorMap, declEnv))
+import Syntax.Environment (Environment(..))
 import Syntax.AST.Types (DataDecl(data_params))
 import Utils (Loc)
 
@@ -78,12 +78,12 @@ lowerDecl (CST.DataDecl loc dd)             = do
   let ns = case CST.data_refined dd of
                  Refined -> Refinement
                  NotRefined -> Nominal
-  let newEnv = env { AST.xtorMap = M.union (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]) (AST.xtorMap env)}
+  let newEnv = env { xtorMap = M.union (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]) (xtorMap env)}
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { AST.xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (AST.xtorMap env)}
+  let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
   setEnvironment newEnv
   pure $ AST.XtorDecl loc dc xt args ret
 lowerDecl (CST.ImportDecl loc mod) = do
@@ -99,7 +99,7 @@ lowerProgram :: CST.Program -> DriverM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl
 
 
-createSymbolTable :: CST.Program  -> AST.Environment Inferred
+createSymbolTable :: CST.Program  -> Environment Inferred
 createSymbolTable [] = mempty
 createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
   let x = createSymbolTable decls
@@ -125,7 +125,7 @@ createSymbolTable (_:decls) = createSymbolTable decls
 
 
 lowerProgramFromDisk :: FilePath
-                     -> DriverM (AST.Environment Inferred)
+                     -> DriverM (Environment Inferred)
 lowerProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   let parsed = runFileParser fp programP file

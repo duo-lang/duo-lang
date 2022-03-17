@@ -20,7 +20,7 @@ import Repl.Repl
       Option(..),
       ReplState(loadedFiles, replEnv, typeInfOpts),
       Repl )
-import Syntax.AST.Program
+import Syntax.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.AST.Types ( DataDecl(data_name) )
 import Syntax.Lowering.Program

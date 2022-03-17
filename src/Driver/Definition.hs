@@ -8,7 +8,7 @@ import System.Directory ( doesFileExist )
 
 import Errors
 import Pretty.Errors ( printLocatedError )
-import Syntax.AST.Program
+import Syntax.Environment
 import Syntax.Common
 import Utils
 

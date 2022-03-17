@@ -20,7 +20,7 @@ import Pretty.Pretty
 import Syntax.Common
 import Syntax.AST.Terms
 import Syntax.AST.Types
-import Syntax.AST.Program
+import Syntax.Environment (Environment(..))
 import Utils
 
 ---------------------------------------------------------------------------------
