@@ -26,15 +26,16 @@ import Syntax.Kinds
 
 data SymbolTable = MkSymbolTable {
      xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity),
-     tyConMap :: Map TypeName (IsRefined, DataCodata, TParams, Kind)
+     tyConMap :: Map TypeName (IsRefined, DataCodata, TParams, Kind),
+     importedModules :: [ModuleName]
 }
 
 instance Semigroup SymbolTable where
-  (MkSymbolTable m1 m2) <> (MkSymbolTable m1' m2') =
-    MkSymbolTable (M.union m1 m1') (M.union m2 m2')
+  (MkSymbolTable m1 m2 m3) <> (MkSymbolTable m1' m2' m3') =
+    MkSymbolTable (M.union m1 m1') (M.union m2 m2') (m3 ++ m3')
 
 instance Monoid SymbolTable where
-  mempty = MkSymbolTable M.empty M.empty
+  mempty = MkSymbolTable M.empty M.empty []
 
 ---------------------------------------------------------------------------------
 -- Creating a SymbolTable
@@ -44,14 +45,21 @@ createSymbolTable :: CST.Program  -> SymbolTable
 createSymbolTable [] = mempty
 createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
   let st = createSymbolTable decls
-  in MkSymbolTable (M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)) (tyConMap st)
+  in MkSymbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)
+                   , tyConMap = tyConMap st
+                   , importedModules = importedModules st
+                   }
 createSymbolTable ((CST.DataDecl _ dd):decls) =
-  let ns = case CST.data_refined dd of
+  let
+    st = createSymbolTable decls
+    ns = case CST.data_refined dd of
                Refined -> Refinement
                NotRefined -> Nominal
-      st = createSymbolTable decls
-      xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
-  in MkSymbolTable (M.union xtors (xtorMap st)) (tyConMap st)
+    xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
+  in MkSymbolTable { xtorMap = M.union xtors (xtorMap st)
+                   , tyConMap = tyConMap st
+                   , importedModules = importedModules st
+                   }
 createSymbolTable (_:decls) = createSymbolTable decls
 
 

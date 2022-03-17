@@ -52,7 +52,10 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
   -- HACK: insert final data declaration into environment
   let dcl = prelim_dd { AST.data_xtors = xtors}
   let newXtors = (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)])
-  let newSymTable = MkSymbolTable (M.union newXtors (xtorMap (symTable env))) (tyConMap (symTable env))
+  let newSymTable = MkSymbolTable { xtorMap = M.union newXtors (xtorMap (symTable env))
+                                  , tyConMap = tyConMap (symTable env)
+                                  , importedModules = importedModules (symTable env)
+                                  }
   let newEnv = env { declEnv = (loc, dcl) : prevDeclEnv
                    , symTable = newSymTable }
   setEnvironment newEnv
@@ -78,13 +81,19 @@ lowerDecl (CST.DataDecl loc dd)             = do
                  Refined -> Refinement
                  NotRefined -> Nominal
   let newXtors = (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)])
-  let newSymTable = MkSymbolTable (M.union newXtors (xtorMap (symTable env))) (tyConMap (symTable env))
+  let newSymTable = MkSymbolTable { xtorMap = M.union newXtors (xtorMap (symTable env))
+                                  , tyConMap = tyConMap (symTable env)
+                                  , importedModules = importedModules (symTable env)
+                                  }
   let newEnv = env { symTable =  newSymTable }
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newSymTable = MkSymbolTable (M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))) (tyConMap (symTable env))
+  let newSymTable = MkSymbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))
+                                  , tyConMap = tyConMap (symTable env)
+                                  , importedModules = importedModules (symTable env)
+                                  }
   let newEnv = env { symTable = newSymTable }
   setEnvironment newEnv
   pure $ AST.XtorDecl loc dc xt args ret
