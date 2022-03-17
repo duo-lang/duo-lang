@@ -12,7 +12,7 @@ import Driver.Definition
 import Pretty.Pretty
 import Syntax.CST.Terms qualified as CST
 import Syntax.AST.Terms qualified as AST
-import Syntax.Environment (Environment(..))
+import Syntax.Environment (Environment(..), SymbolTable(..))
 import Syntax.Common
 import Utils
 
@@ -22,7 +22,7 @@ import Utils
 
 lookupXtor :: Loc -> (XtorName, DataCodata) -> DriverM (NominalStructural, Arity)
 lookupXtor loc xs@(xtor,dc) = do
-  xtorMap <- gets (xtorMap . driverEnv)
+  xtorMap <- gets (xtorMap . symTable . driverEnv)
   case M.lookup xs xtorMap of
     Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in environment: " <> ppPrint xtor)
     Just ns -> pure ns

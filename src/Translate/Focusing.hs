@@ -204,11 +204,11 @@ focusProgram :: CallingConvention -> Program Compiled -> Program Compiled
 focusProgram eo = fmap (focusDecl eo)
 
 focusEnvironment :: CallingConvention -> Environment Compiled -> Environment Compiled
-focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, xtorMap }) =
+focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, symTable }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> prdEnv
       , cnsEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> cnsEnv
       , cmdEnv = (\(cmd,loc) -> (focusCmd cc cmd,loc)) <$> cmdEnv
       , declEnv = declEnv
-      , xtorMap = xtorMap
+      , symTable = symTable
       }

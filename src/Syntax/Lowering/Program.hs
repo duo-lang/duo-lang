@@ -17,7 +17,7 @@ import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
-import Syntax.Environment (Environment(..))
+import Syntax.Environment (Environment(..), SymbolTable(..))
 import Syntax.AST.Types (DataDecl(data_params))
 import Utils (Loc)
 
@@ -55,7 +55,7 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
   -- HACK: insert final data declaration into environment
   let dcl = prelim_dd { AST.data_xtors = xtors}
   let newEnv = env { declEnv = (loc, dcl) : prevDeclEnv
-                   , xtorMap = M.union (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)]) (xtorMap env)}
+                   , symTable = MkSymbolTable $ M.union (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)]) (xtorMap (symTable env))}
   setEnvironment newEnv
 
   pure dcl
@@ -78,12 +78,12 @@ lowerDecl (CST.DataDecl loc dd)             = do
   let ns = case CST.data_refined dd of
                  Refined -> Refinement
                  NotRefined -> Nominal
-  let newEnv = env { xtorMap = M.union (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]) (xtorMap env)}
+  let newEnv = env { symTable = MkSymbolTable $ M.union (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]) (xtorMap (symTable env))}
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
+  let newEnv = env { symTable = MkSymbolTable $ M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))}
   setEnvironment newEnv
   pure $ AST.XtorDecl loc dc xt args ret
 lowerDecl (CST.ImportDecl loc mod) = do
@@ -103,7 +103,7 @@ createSymbolTable :: CST.Program  -> Environment Inferred
 createSymbolTable [] = mempty
 createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
   let x = createSymbolTable decls
-  in x { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap x)}
+  in x { symTable = MkSymbolTable $ M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable x))}
 createSymbolTable ((CST.DataDecl loc dd):decls) =
   let ns = case CST.data_refined dd of
                Refined -> Refinement
@@ -120,7 +120,7 @@ createSymbolTable ((CST.DataDecl loc dd):decls) =
         , data_xtors = ([], [])
         , data_params = CST.data_params dd
         }) : declEnv x,
-         xtorMap  = M.union xtors (xtorMap x)}
+         symTable  = MkSymbolTable $ M.union xtors (xtorMap (symTable x))}
 createSymbolTable (_:decls) = createSymbolTable decls
 
 

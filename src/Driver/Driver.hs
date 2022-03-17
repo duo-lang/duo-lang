@@ -36,7 +36,7 @@ import Syntax.AST.Program
     ( Program,
       Declaration(..)
     )
-import Syntax.Environment (Environment(..))    
+import Syntax.Environment (Environment(..), SymbolTable(..))    
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
@@ -152,7 +152,7 @@ inferDecl (DataDecl loc dcl) = do
                       Refined -> Refinement
                       NotRefined -> Nominal
       let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                       , xtorMap = M.union (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]) (xtorMap env)}
+                       , symTable = MkSymbolTable $ M.union (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]) (xtorMap (symTable env))}
       setEnvironment newEnv
       return (DataDecl loc dcl)
 --
@@ -160,7 +160,7 @@ inferDecl (DataDecl loc dcl) = do
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
+  let newEnv = env { symTable = MkSymbolTable $ M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))}
   setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --

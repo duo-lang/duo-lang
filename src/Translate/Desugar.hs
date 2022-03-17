@@ -121,11 +121,11 @@ desugarProgram :: Program Inferred -> Program Compiled
 desugarProgram ps = desugarDecl <$> ps
 
 desugarEnvironment :: Environment Inferred -> Environment Compiled
-desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, xtorMap }) =
+desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, symTable }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> prdEnv
       , cnsEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> cnsEnv
       , cmdEnv = (\(cmd,loc) -> (desugarCmd cmd,loc)) <$> cmdEnv
       , declEnv = declEnv
-      , xtorMap = xtorMap
+      , symTable = symTable
       }

@@ -9,6 +9,20 @@ import Syntax.AST.Types
 import Utils
 
 ---------------------------------------------------------------------------------
+-- SymbolTable
+---------------------------------------------------------------------------------
+
+data SymbolTable = MkSymbolTable {
+     xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
+}
+
+instance Semigroup SymbolTable where
+  (MkSymbolTable m1) <> (MkSymbolTable m2) = MkSymbolTable (M.union m1 m2)
+
+instance Monoid SymbolTable where
+  mempty = MkSymbolTable M.empty
+
+---------------------------------------------------------------------------------
 -- Environment
 ---------------------------------------------------------------------------------
 
@@ -17,19 +31,19 @@ data Environment (ph :: Phase) = MkEnvironment
   , cnsEnv :: Map FreeVarName (Term Cns ph, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command ph, Loc)
   , declEnv :: [(Loc,DataDecl)]
-  , xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
+  , symTable :: SymbolTable
   }
 
 instance Show (Environment ph) where
   show _ = "<Environment>"
 
 instance Semigroup (Environment ph) where
-  (MkEnvironment prdEnv1 cnsEnv1 cmdEnv1 declEnv1 xtorMap1) <> (MkEnvironment prdEnv2 cnsEnv2 cmdEnv2 declEnv2 xtorMap2) =
+  (MkEnvironment prdEnv1 cnsEnv1 cmdEnv1 declEnv1 symTable1) <> (MkEnvironment prdEnv2 cnsEnv2 cmdEnv2 declEnv2 symTable2) =
     MkEnvironment { prdEnv = M.union prdEnv1 prdEnv2
                   , cnsEnv = M.union cnsEnv1 cnsEnv2
                   , cmdEnv = M.union cmdEnv1 cmdEnv2
                   , declEnv = declEnv1 ++ declEnv2
-                  , xtorMap = M.union xtorMap1 xtorMap2
+                  , symTable = symTable1 <> symTable2
                   }
 
 instance Monoid (Environment ph) where
@@ -38,5 +52,5 @@ instance Monoid (Environment ph) where
     , cnsEnv = M.empty
     , cmdEnv = M.empty
     , declEnv = []
-    , xtorMap = M.empty
+    , symTable = mempty
     }
