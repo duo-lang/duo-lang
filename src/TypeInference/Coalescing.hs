@@ -113,6 +113,7 @@ coalesceType (TyRec NegRep tv ty) = do
     let f = (\(x,s) -> (x, S.insert (tv,Neg) s))
     ty' <- local f $ coalesceType ty
     return $ TyRec NegRep tv ty'
+coalesceType t@(TyPrim _ _) = return t
 
 coalescePrdCnsType :: PrdCnsType pol -> CoalesceM (PrdCnsType pol)
 coalescePrdCnsType (PrdCnsType rep ty) = PrdCnsType rep <$> coalesceType ty

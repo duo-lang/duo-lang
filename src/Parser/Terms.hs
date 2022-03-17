@@ -12,6 +12,8 @@ import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
+import Syntax.Primitives
+import Syntax.CST.Terms (Term(PrimLit))
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
@@ -42,7 +44,7 @@ bindingSiteIP :: Parser (CST.BindingSiteI, SourcePos)
 bindingSiteIP = argListsIP Cns (fst <$> freeVarName)
 
 --------------------------------------------------------------------------------------------
--- Free Variables, Literals and Xtors
+-- Free Variables and Xtors
 --------------------------------------------------------------------------------------------
 
 freeVar :: Parser (CST.Term, SourcePos)
@@ -51,19 +53,31 @@ freeVar = do
   (v, endPos) <- freeVarName
   return (CST.Var (Loc startPos endPos) v, endPos)
 
-natLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
-natLitP ns = do
-  startPos <- getSourcePos
-  () <- checkTick ns
-  (num, endPos) <- numP
-  return (CST.NatLit (Loc startPos endPos) ns num, endPos)
-
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorName
   (subst, endPos) <- substitutionP
   return (CST.Xtor (Loc startPos endPos) xt subst, endPos)
+
+--------------------------------------------------------------------------------------------
+-- Literals and primitives
+--------------------------------------------------------------------------------------------
+
+natLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
+natLitP ns = do
+  startPos <- getSourcePos
+  () <- checkTick ns
+  (num, endPos) <- natP <* notFollowedBy primitiveSym
+  return (CST.NatLit (Loc startPos endPos) ns num, endPos)
+
+primitiveLitP :: Parser (CST.Term, SourcePos)
+primitiveLitP = do
+  startPos <- getSourcePos
+  lit <- try (F64Lit . fst <$> floatP <* f64KwP)
+     <|> I64Lit . fst <$> intP <* i64KwP
+  endPos <- getSourcePos
+  pure (PrimLit (Loc startPos endPos) lit, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -284,7 +298,8 @@ termParensP = do
 --      | \x => t
 termBotP :: Parser (CST.Term, SourcePos)
 termBotP = freeVar <|>
-  try (natLitP Structural) <|>
+  try primitiveLitP <|>
+  natLitP Structural <|>
   natLitP Nominal <|>
   xtorP <|>
   allCaseP <|>

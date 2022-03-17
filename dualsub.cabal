@@ -89,6 +89,7 @@ library
       Syntax.CST.Terms
       Syntax.CST.Types
       Syntax.Environment
+      Syntax.Primitives
       Syntax.Kinds
       Syntax.Lowering.Program
       Syntax.Lowering.Terms

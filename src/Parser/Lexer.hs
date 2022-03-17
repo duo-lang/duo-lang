@@ -1,6 +1,10 @@
 module Parser.Lexer
   ( sc
-  , numP
+    -- Literals
+  , natP
+  , intP
+  , uintP
+  , floatP
     -- Names
   , freeVarName
   , tvarP
@@ -27,8 +31,12 @@ module Parser.Lexer
   , setKwP
   , topKwP
   , botKwP
+  , i64KwP
+  , f64KwP
   , cbvKwP
   , cbnKwP
+  , i64RepKwP
+  , f64RepKwP
   , typeKwP
   , refinementKwP
   , constructorKwP
@@ -51,6 +59,7 @@ module Parser.Lexer
   , parSym
   , plusSym
   , minusSym
+  , primitiveSym
     -- Parens
   , angles
   , parens
@@ -75,6 +84,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 import Parser.Definition
 import Syntax.Common
+import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -97,7 +107,7 @@ import Syntax.Common
 -------------------------------------------------------------------------------------------
 
 sc :: Parser ()
-sc = L.space space1 (L.skipLineComment "#") (L.skipBlockComment "###" "###")
+sc = L.space space1 (L.skipLineComment "--") empty
 
 -------------------------------------------------------------------------------------------
 -- Helper functions
@@ -125,10 +135,28 @@ keywordP str = do
   sc
   return endPos
 
-numP :: Parser (Int, SourcePos)
-numP = do
+natP :: Parser (Int, SourcePos)
+natP = do
   (numStr, pos) <- lexeme (some numberChar)
   return (read numStr, pos)
+
+uintP :: Parser (Integer, SourcePos)
+uintP = do
+  pos <- getSourcePos
+  i <- decimal
+  pure (i, pos)
+
+intP :: Parser (Integer, SourcePos)
+intP = do
+  pos <- getSourcePos
+  i <- signed space decimal
+  pure (i, pos)
+
+floatP :: Parser (Double, SourcePos)
+floatP = do
+  pos <- getSourcePos
+  f <- signed space float
+  pure (f, pos)
 
 -- | Used for parsing options using the "set option;" syntax
 optionP :: Parser (Text, SourcePos)
@@ -181,7 +209,7 @@ moduleNameP = try $ do
 keywords :: [Text]
 keywords = ["case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
            , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type"
-           , "CBV", "CBN", "refinement", "constructor", "destructor"]
+           , "CBV", "CBN", "F64Rep", "I64Rep", "refinement", "constructor", "destructor"]
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -243,11 +271,26 @@ topKwP = keywordP "Top"
 botKwP :: Parser SourcePos
 botKwP = keywordP "Bot"
 
+primitiveTyP :: String -> Parser SourcePos
+primitiveTyP s = keywordP (T.pack ("#" ++ s))
+
+i64KwP :: Parser SourcePos
+i64KwP = primitiveTyP "I64"
+
+f64KwP :: Parser SourcePos
+f64KwP = primitiveTyP "F64"
+
 cbvKwP :: Parser SourcePos
 cbvKwP = keywordP "CBV"
 
 cbnKwP :: Parser SourcePos
 cbnKwP = keywordP "CBN"
+
+i64RepKwP :: Parser SourcePos
+i64RepKwP = keywordP "I64Rep"
+
+f64RepKwP :: Parser SourcePos
+f64RepKwP = keywordP "F64Rep"
 
 typeKwP :: Parser SourcePos
 typeKwP = keywordP "Type"
@@ -318,6 +361,9 @@ plusSym = symbol "+"
 
 minusSym :: Parser SourcePos
 minusSym = symbol "-"
+
+primitiveSym :: Parser SourcePos
+primitiveSym = symbol "#"
 
 -------------------------------------------------------------------------------------------
 -- Parens

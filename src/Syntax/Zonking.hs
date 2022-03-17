@@ -30,6 +30,7 @@ zonkType bisubst (TyNominal rep kind tn contra_args cov_args) =
     TyNominal rep kind tn (zonkType bisubst <$> contra_args) (zonkType bisubst <$> cov_args)
 zonkType bisubst (TySet rep kind tys) = TySet rep kind (zonkType bisubst <$> tys)
 zonkType bisubst (TyRec rep tv ty) = TyRec rep tv (zonkType bisubst ty)
+zonkType _ t@(TyPrim _ _) = t
 
 zonkPrdCnsType :: Bisubstitution -> PrdCnsType pol -> PrdCnsType pol
 zonkPrdCnsType bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonkType bisubst ty)
@@ -62,6 +63,7 @@ zonkTerm bisubst (Case (loc,ty) ns prd cases) =
     Case (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
 zonkTerm bisubst (Cocase (loc,ty) ns cases) =
     Cocase (loc, zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
+zonkTerm _ lit@PrimLit{} = lit
 
 zonkPCTerm :: Bisubstitution -> PrdCnsTerm Inferred -> PrdCnsTerm Inferred
 zonkPCTerm bisubst (PrdTerm tm) = PrdTerm (zonkTerm bisubst tm)

@@ -16,6 +16,7 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils
 import Lookup
+import Syntax.Primitives (typeOfLiteral)
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -540,6 +541,7 @@ genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = x
     return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred,
       MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
   return (Cocase (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
+genConstraintsTerm (PrimLit loc lit) = pure $ PrimLit (loc, TyPrim PosRep (typeOfLiteral lit)) lit
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)

@@ -1,0 +1,20 @@
+data Nat : CBV {
+    Z,
+    S(Nat)
+};
+
+data I64 : CBV {
+    MkI64(#I64)
+};
+
+data F64 : CBV {
+    MkF64(#F64)
+};
+
+prd natLit : Nat := 123;
+prd i64Lit : #I64 := 123#I64;
+prd f64Lit : #F64 := 123.0#F64;
+prd i64 : I64 := MkI64(123#I64);
+prd f64 : F64 := MkF64(123.0#F64);
+
+cmd main := Print(f64Lit); Done;

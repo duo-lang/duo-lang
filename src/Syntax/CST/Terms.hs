@@ -5,6 +5,7 @@ import Text.Megaparsec.Pos (SourcePos)
 
 import Syntax.Common
 import Utils
+import Syntax.Primitives
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and Binding Sites
@@ -54,6 +55,7 @@ data Term where
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     Case :: Loc -> Term -> [TermCase] -> Term
     Cocase :: Loc -> [TermCaseI] -> Term
+    PrimLit :: Loc -> PrimitiveLiteral -> Term
     -- Sugar Nodes
     DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
@@ -73,6 +75,7 @@ getLoc (MuAbs loc _ _) = loc
 getLoc (Dtor loc _ _ _) = loc
 getLoc (Case loc _ _) = loc
 getLoc (Cocase loc _) = loc
+getLoc (PrimLit loc _) = loc
 getLoc (DtorChain _ tm _)  = getLoc tm
 getLoc (NatLit loc _ _) = loc
 getLoc (TermParens loc _) = loc

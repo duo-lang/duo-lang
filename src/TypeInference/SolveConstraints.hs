@@ -298,6 +298,30 @@ subConstraints (SubType _ ty1 ty2@(TyVar _ _ _)) =
                    , "<:"
                    , ppPrint ty2
                    ]
+-- Primitive types:
+subConstraints (SubType _ t1@(TyPrim _ pt1) t2@(TyPrim _ pt2)) =
+  if pt1 == pt2 then do
+    pure []
+  else
+    throwSolverError ["The following primitive types are incompatible:"
+                     , "    " <> ppPrint t1
+                     , "and"
+                     , "    " <> ppPrint t2 ]
+-- Constraints between primitive types and other types
+--
+-- These constraints cannot be solved.
+subConstraints (SubType _ t1@TyPrim{} t2@TyNominal{}) = do
+  throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by nominal type " <> ppPrint t2]
+subConstraints (SubType _ t1@TyNominal{} t2@TyPrim{}) = do
+  throwSolverError ["Cannot constrain nominal type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
+subConstraints (SubType _ t1@TyPrim{} t2@TyData{}) = do
+  throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
+subConstraints (SubType _ t1@TyData{} t2@TyPrim{}) = do
+  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
+subConstraints (SubType _ t1@TyPrim{} t2@TyCodata{}) = do
+  throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
+subConstraints (SubType _ t1@TyCodata{} t2@TyPrim{}) = do
+  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
 
 ------------------------------------------------------------------------------
 -- Exported Function

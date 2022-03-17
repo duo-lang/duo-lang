@@ -8,6 +8,7 @@ import Pretty.Pretty
 import Syntax.AST.Terms
 import Syntax.Common
 import Data.Bifunctor
+import Syntax.Primitives
 
 
 
@@ -96,6 +97,10 @@ isNumSTerm (Xtor _ PrdRep Nominal (MkXtorName "S") [PrdTerm n]) = case isNumSTer
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
 
+instance PrettyAnn PrimitiveLiteral where
+  prettyAnn (I64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#I64"
+  prettyAnn (F64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#I64"
+
 instance PrettyAnn (Term pc ext) where
   prettyAnn (isNumSTerm -> Just n) = pretty n
   prettyAnn (BoundVar _ _ (i,j)) = parens (pretty i <> "," <> pretty j)
@@ -120,6 +125,7 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (Cocase _ _ cocases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
+  prettyAnn (PrimLit _ lit) = prettyAnn lit
 
 instance PrettyAnn (Command ext) where
   prettyAnn (Done _)= annKeyword "Done"

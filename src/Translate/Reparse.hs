@@ -63,6 +63,7 @@ createNamesTerm (Case _ ns e cases) = do
 createNamesTerm (Cocase _ ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
   return $ Cocase defaultLoc ns cases'
+createNamesTerm (PrimLit _ lit) = pure (PrimLit defaultLoc lit)
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
 createNamesCommand (Done _) = return $ Done defaultLoc

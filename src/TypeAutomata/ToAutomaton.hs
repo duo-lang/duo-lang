@@ -190,6 +190,11 @@ insertType (TyNominal rep _ tn contraArgs covArgs) = do
   insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn Contravariant i)) <$> enumerate contraArgNodes)
   insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn Covariant (length contraArgNodes + i))) <$> enumerate covArgNodes)
   return newNode
+insertType (TyPrim rep pt) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton pt })
+  return newNode
 
 --------------------------------------------------------------------------
 --

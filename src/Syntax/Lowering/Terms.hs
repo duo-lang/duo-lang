@@ -37,7 +37,7 @@ checkXtorArity loc (xt, dc) arityUsed = do
   if (arityUsed /= aritySpecified)
     then throwError (LowerError (Just loc) (ArityMismatch xt aritySpecified arityUsed))
     else pure ()
-  
+
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -118,7 +118,7 @@ lowerTerm PrdRep (CST.Xtor loc xtor subst)     = do
 lowerTerm CnsRep (CST.Xtor loc xtor subst)     = do
   (ns, _) <- lookupXtor loc (xtor, Codata)
   checkXtorArity loc (xtor,Codata) (CST.substitutionToArity subst)
-  AST.Xtor loc CnsRep ns xtor <$> lowerSubstitution subst  
+  AST.Xtor loc CnsRep ns xtor <$> lowerSubstitution subst
 lowerTerm CnsRep (CST.XMatch loc Data cases)        = do
   cases' <- sequence (lowerCommandCase Data <$> cases)
   ns <- commandCasesToNS cases Data
@@ -162,6 +162,9 @@ lowerTerm CnsRep (CST.FunApp loc _fun _arg)    = throwError (OtherError (Just lo
 lowerTerm rep    (CST.MultiLambda loc fvs tm)  = lowerMultiLambda loc fvs tm >>= lowerTerm rep
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
 lowerTerm CnsRep (CST.Lambda loc _fv _tm)      = throwError (OtherError (Just loc) "Cannot lower Lambda to a consumer.")
+lowerTerm PrdRep (CST.PrimLit loc lit)         = pure $ AST.PrimLit loc lit
+lowerTerm CnsRep (CST.PrimLit loc _)         = throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
+
 
 
 lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> DriverM CST.Term

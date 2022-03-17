@@ -4,7 +4,7 @@ module LSP.CodeActionHandler (codeActionHandler) where
 import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
-import Data.Map qualified as M 
+import Data.Map qualified as M
 import Data.Maybe ( fromMaybe, isNothing )
 import System.Log.Logger ( debugM )
 import Data.HashMap.Strict qualified as Map
@@ -25,7 +25,7 @@ import Driver.Driver
       inferProgramIO,
       DriverState(DriverState),
       InferenceOptions(infOptsLibPath) )
-import Utils 
+import Utils
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
@@ -87,7 +87,7 @@ generateCodeActions ident (Range {_start= start}) env = do
 
 generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
 generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> (unFreeVarName name)
-                                                                  , _kind = Just CodeActionQuickFix 
+                                                                  , _kind = Just CodeActionQuickFix
                                                                   , _diagnostics = Nothing
                                                                   , _isPreferred = Nothing
                                                                   , _disabled = Nothing
@@ -104,7 +104,7 @@ generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                 CnsRep -> NamedRep $ PrdCnsDecl defaultLoc CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
-  in 
+  in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
@@ -112,7 +112,7 @@ generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
 
 generateCmdFocusCodeAction :: TextDocumentIdentifier -> CallingConvention -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
 generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> (unFreeVarName name)
-                                                                  , _kind = Just CodeActionQuickFix 
+                                                                  , _kind = Just CodeActionQuickFix
                                                                   , _diagnostics = Nothing
                                                                   , _isPreferred = Nothing
                                                                   , _disabled = Nothing
@@ -127,7 +127,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
     newDecl = NamedRep $ CmdDecl defaultLoc name (reparseCommand (focusCmd eo (desugarCmd cmd)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
-  in 
+  in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
@@ -139,7 +139,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 
 generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
 generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> (unFreeVarName name)
-                                                                    , _kind = Just CodeActionQuickFix 
+                                                                    , _kind = Just CodeActionQuickFix
                                                                     , _diagnostics = Nothing
                                                                     , _isPreferred = Nothing
                                                                     , _disabled = Nothing
@@ -148,15 +148,15 @@ generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "
                                                                     , _xdata = Nothing
                                                                     }
 
-generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit 
-generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) = 
+generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(Term pc Inferred, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
+generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
   let
     newDecl = NamedRep $ reparseDecl $ PrdCnsDecl () rep Recursive name (Just ty) (desugarTerm tm)
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in
     WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
-                  , _documentChanges=Nothing 
+                  , _documentChanges=Nothing
                   , _changeAnnotations=Nothing}
 
 generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (Syntax.Command Inferred, Loc)) -> Command |? CodeAction
