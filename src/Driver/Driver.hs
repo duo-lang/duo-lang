@@ -28,16 +28,12 @@ import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
-      DataDecl(..),
-      XtorSig (sig_name, sig_args),
-      linearContextToArity
     )
 import Syntax.AST.Program
     ( Program,
       Declaration(..)
     )
 import Syntax.Environment (Environment(..))
-import Driver.SymbolTable (SymbolTable(..))    
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
@@ -50,7 +46,6 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc )
-import Data.List
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type
@@ -139,39 +134,11 @@ inferDecl (CmdDecl loc v cmd) = do
 -- DataDecl
 --
 inferDecl (DataDecl loc dcl) = do
-  -- Insert into environment
-  env <- gets driverEnv
-  let tn = data_name dcl
-  case find (\NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
-    Just _ ->
-        -- HACK: inserting in the environment has already been done in lowering
-        -- because the declarations are already needed for lowering
-        -- In that case we make sure we don't insert twice
-        return (DataDecl loc dcl)
-    Nothing -> do
-      let ns = case data_refined dcl of
-                      Refined -> Refinement
-                      NotRefined -> Nominal
-      let newXtors = (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)])
-      let newSymTable = MkSymbolTable { xtorMap = M.union newXtors (xtorMap (symTable env))
-                                      , tyConMap = tyConMap (symTable env)
-                                      , importedModules = importedModules (symTable env)
-                                      }
-      let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                       , symTable = newSymTable }
-      setEnvironment newEnv
-      return (DataDecl loc dcl)
+  pure (DataDecl loc dcl)
 --
 -- XtorDecl
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
-  env <- gets driverEnv
-  let newSymTable = MkSymbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symTable env))
-                                  , tyConMap = tyConMap (symTable env)
-                                  , importedModules = importedModules (symTable env)
-                                  }
-  let newEnv = env { symTable = newSymTable }
-  setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --
 -- ImportDecl
