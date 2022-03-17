@@ -10,8 +10,8 @@ import Text.Megaparsec ( errorBundlePretty )
 
 import Errors
 import Parser.Parser ( runFileParser, programP )
-import Syntax.CST.Program qualified as CST
-import Syntax.CST.Types qualified as CST
+import Syntax.CST.Program
+import Syntax.CST.Types
 import Syntax.Common
 import Syntax.Kinds
 
@@ -41,27 +41,33 @@ instance Monoid SymbolTable where
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
-createSymbolTable :: CST.Program  -> SymbolTable
+createSymbolTable :: Program  -> SymbolTable
 createSymbolTable [] = mempty
-createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
+createSymbolTable ((XtorDecl _ dc xt args _):decls) =
   let st = createSymbolTable decls
   in MkSymbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)
                    , tyConMap = tyConMap st
                    , importedModules = importedModules st
                    }
-createSymbolTable ((CST.DataDecl _ dd):decls) =
+createSymbolTable ((DataDecl _ tydecl):decls) =
   let
     st = createSymbolTable decls
-    ns = case CST.data_refined dd of
+    ns = case data_refined tydecl of
                Refined -> Refinement
                NotRefined -> Nominal
-    xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
+    xtors = M.fromList [((sig_name xt, data_polarity tydecl), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors tydecl]
+    tycon = (data_refined tydecl, data_polarity tydecl, data_params tydecl, data_kind tydecl)
   in MkSymbolTable { xtorMap = M.union xtors (xtorMap st)
-                   , tyConMap = tyConMap st
+                   , tyConMap = M.insert (data_name tydecl) tycon (tyConMap st)
                    , importedModules = importedModules st
                    }
-createSymbolTable (_:decls) = createSymbolTable decls
-
+createSymbolTable (PrdCnsDecl _ _ _ _ _ _:decls) = createSymbolTable decls
+createSymbolTable (CmdDecl _ _ _:decls) = createSymbolTable decls
+createSymbolTable (SetDecl _ _:decls)    = createSymbolTable decls
+createSymbolTable (ImportDecl _ mn:decls) = 
+    let st = createSymbolTable decls
+    in st { importedModules = mn : importedModules st}
+createSymbolTable (ParseErrorDecl:decls) = createSymbolTable decls
 
 createSymbolTableFromDisk :: (MonadIO m, MonadError Error m) => FilePath
                           -> m SymbolTable
