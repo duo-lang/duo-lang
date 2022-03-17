@@ -1,3 +1,3 @@
-# Match is not a producer
+# Case is not a producer
 
-prd foo := match {};
+prd foo := case {};

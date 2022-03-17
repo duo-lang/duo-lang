@@ -2,4 +2,4 @@
 
 destructor A : CBV;
 
-cns test := match { A => Done };
+cns test := case { A => Done };

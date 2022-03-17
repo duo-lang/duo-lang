@@ -3,13 +3,13 @@ import Prelude;
 
 # Symmetric system:
 
-prd idPoly : forall a. a -> a := comatch { Ap(x)[k] => x >> k };
+prd idPoly : forall a. a -> a := cocase { Ap(x)[k] => x >> k };
 
-prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := comatch { Ap(x)[k] => x >> k };
+prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[k] => x >> k };
 
-prd id : Nat -> Nat := comatch { Ap(x)[k] => x >> k };
+prd id : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
 
-prd idNominal : Nat -> Nat := comatch { Ap(x)[k] => x >> k };
+prd idNominal : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
 
 # Asymmetric system:
 

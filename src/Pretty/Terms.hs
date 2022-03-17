@@ -102,10 +102,10 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (FreeVar _ _ v) = prettyAnn v
   prettyAnn (Xtor _ _ _ xt args) = prettyAnn xt <> prettyAnn args
   prettyAnn (XMatch _ PrdRep _ cases) =
-    annKeyword "comatch" <+>
+    annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (XMatch _ CnsRep _ cases) =
-    annKeyword "match"   <+>
+    annKeyword "case"   <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>

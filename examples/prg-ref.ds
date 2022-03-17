@@ -4,4 +4,4 @@ refinement codata FunBoolBool : CBN { Ap(Bool)[Bool] };
 
 constructor T : CBV;
 
-cns foo := match { True => Print(T); Done };
+cns foo := case { True => Print(T); Done };

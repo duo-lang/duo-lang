@@ -9,9 +9,7 @@ module Parser.Lexer
   , moduleNameP
   , optionP
     -- Keywords
-  , matchKwP
   , caseKwP
-  , comatchKwP
   , cocaseKwP
   , ofKwP
   , prdKwP
@@ -181,7 +179,7 @@ moduleNameP = try $ do
 -------------------------------------------------------------------------------------------
 
 keywords :: [Text]
-keywords = ["match", "comatch", "case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
+keywords = ["case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
            , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type"
            , "CBV", "CBN", "refinement", "constructor", "destructor"]
 
@@ -191,14 +189,8 @@ checkReserved :: Text -> Parser ()
 checkReserved str | str `elem` keywords = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
 
-matchKwP :: Parser SourcePos
-matchKwP = keywordP "match"
-
 caseKwP :: Parser SourcePos
 caseKwP = keywordP "case"
-
-comatchKwP :: Parser SourcePos
-comatchKwP = keywordP "comatch"
 
 cocaseKwP :: Parser SourcePos
 cocaseKwP = keywordP "cocase"

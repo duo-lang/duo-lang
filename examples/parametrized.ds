@@ -22,16 +22,16 @@ prd l1 : List(Bool \/ Nat) := Cons(1, Cons(True, Nil));
 prd l2 : List(<A , B>) := Cons(A, Cons(B, Nil));
 prd l3 : List(Nat) := Cons(1, Cons(2, Cons(3, Nil)));
 prd r1 : Rose(Nat) := Node(Cons(Leaf(1), Cons(Leaf(1), Nil)));
-prd id := comatch {
+prd id := cocase {
     Ap(x)[k] => x >> k
 };
 prd x := id.Ap(1)[*];
-prd succ := comatch {
+prd succ := cocase {
     Ap(x)[k] => S(x) >> k
 };
 
-prd rec map : forall a b. Fun(Fun(a, b), Fun(List(a), List(b))) := comatch {
-    Ap(g)[j] => comatch {
+prd rec map : forall a b. Fun(Fun(a, b), Fun(List(a), List(b))) := cocase {
+    Ap(g)[j] => cocase {
         Ap(xs)[k] => case xs of {
             Nil => Nil,
             Cons(y, ys) => Cons(g.Ap(y)[*], map.Ap(g)[*].Ap(ys)[*])

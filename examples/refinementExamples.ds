@@ -27,14 +27,14 @@ prd oneA := S(Z);
 prd threeA := S(S(S(Z)));
 
 constructor T : CBV;
-# Incomplete pattern and copattern matches
-cns foo : < Bool | True > := match { True => Print(T); Done };
+# Incomplete pattern and copattern cases
+cns foo : < Bool | True > := case { True => Print(T); Done };
 
 prd isSuccA := cocase { ApNB(n)[*] => case n of {
                  S(m) => True
                }};
 
-prd isSuccS := comatch { ApNB(n)[k] => n >> match {
+prd isSuccS := cocase { ApNB(n)[k] => n >> case {
                  S(m) => True >> k
                }};
 
@@ -44,8 +44,8 @@ prd isOneA := cocase { ApNB(n)[*] => case n of {
                 }
               }};
 
-prd isOneS := comatch { ApNB(n)[k] => n >> match {
-                S(m) => m >> match {
+prd isOneS := cocase { ApNB(n)[k] => n >> case {
+                S(m) => m >> case {
                   Z() => True >> k
                 }
               }};
@@ -58,9 +58,9 @@ prd isTwoA := cocase { ApNB(n)[*] => case n of {
                }
              }};
 
-prd isTwoS := comatch { ApNB(n)[k] => n >> match {
-                S(p) => p >> match {
-                  S(q) => q >> match {
+prd isTwoS := cocase { ApNB(n)[k] => n >> case {
+                S(p) => p >> case {
+                  S(q) => q >> case {
                     Z() => True >> k
                   }
                 }
@@ -71,7 +71,7 @@ prd notA := cocase { ApBB(b)[*] => case b of {
               False => True
             }};
 
-prd notS := comatch { ApBB(b)[k] => b >> match {
+prd notS := cocase { ApBB(b)[k] => b >> case {
               True => False >> k,
               False => True >> k
             }};
@@ -82,7 +82,7 @@ prd pairA : { Tuple | Left[<Bool | True >], Right[<Bool | False>]}:= cocase {
                Right[*] => False
              };
 
-prd pairS := comatch {
+prd pairS := cocase {
               Left[k]  => True >> k,
               Right[k] => False >> k
             };
@@ -91,7 +91,7 @@ prd pairLeftA := cocase {
                   Left[*] => True
                 };
 
-prd pairLeftS := comatch {
+prd pairLeftS := cocase {
                    Left[k] => True >> k
                  };
 
@@ -100,14 +100,14 @@ prd idA := cocase {
             ApBB(b)[*] => b
           };
 
-prd idS := comatch {
+prd idS := cocase {
             ApNN(n)[k] => n >> k,
             ApBB(b)[k] => b >> k
           };
 
 prd succA := cocase { ApNN(n)[*] => S(n) };
 
-prd succS := comatch { ApNN(n)[k] => S(n) >> k };
+prd succS := cocase { ApNN(n)[k] => S(n) >> k };
 
 prd rec natIdA := cocase { ApNN(n)[*] => case n of {
             Z    => Z,

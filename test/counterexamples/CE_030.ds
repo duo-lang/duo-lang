@@ -2,4 +2,4 @@
 
 constructor A : CBV;
 
-prd test := comatch { A => Done };
+prd test := cocase { A => Done };

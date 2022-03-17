@@ -1,6 +1,6 @@
 # Destructor is applied to too few arguments in match
 destructor A(CBV) : CBV;
 
-prd foo := comatch {
+prd foo := cocase {
     A => Done
 };
