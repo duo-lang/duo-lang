@@ -19,8 +19,8 @@ subCmd s = do
   opts <- gets typeInfOpts
   let ds = DriverState opts env
   (t1,t2) <- parseInteractive subtypingProblemP s
-  t1' <- liftIO $ execDriverM ds $ lowerTypeScheme PosRep t1
-  t2' <- liftIO $ execDriverM ds $ lowerTypeScheme PosRep t2
+  t1' <- liftIO $ execDriverM ds mempty $ lowerTypeScheme PosRep t1
+  t2' <- liftIO $ execDriverM ds mempty $ lowerTypeScheme PosRep t2
   case (t1', t2') of
      (Right (res1,_), Right (res2,_)) -> do
        res <- fromRight (subsume res1 res2)

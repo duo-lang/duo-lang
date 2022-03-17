@@ -28,7 +28,7 @@ parseType env pol input expected = do
     case parseResult of
       Left _err -> expectationFailure "Could not parse example type"
       Right result -> do
-        lowerResult <- execDriverM (ds env) (lowerTyp pol result)
+        lowerResult <- execDriverM (ds env) mempty (lowerTyp pol result)
         case lowerResult of
           Left _err -> expectationFailure "Could not lower type"
           Right (result,_) -> case pol of -- Necessary to provide Show instance for (Typ pol)
@@ -44,8 +44,8 @@ parseTypeIdentical env pol input1 input2 =
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) (lowerTyp pol r1)
-        lowerResult2 <- execDriverM (ds env) (lowerTyp pol r2)
+        lowerResult1 <- execDriverM (ds env) mempty (lowerTyp pol r1)
+        lowerResult2 <- execDriverM (ds env) mempty (lowerTyp pol r2)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
@@ -62,8 +62,8 @@ parseTypeSchemeIdentical env pol input1 input2 = do
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) (lowerTypeScheme pol r1)
-        lowerResult2 <- execDriverM (ds env) (lowerTypeScheme pol r2)
+        lowerResult1 <- execDriverM (ds env) mempty (lowerTypeScheme pol r1)
+        lowerResult2 <- execDriverM (ds env) mempty (lowerTypeScheme pol r2)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"

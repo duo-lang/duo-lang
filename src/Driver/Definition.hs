@@ -45,8 +45,9 @@ data DriverState = DriverState
 newtype DriverM a = DriverM { unDriverM :: ReaderT SymbolTable (StateT DriverState  (ExceptT Error IO)) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadReader SymbolTable)
 
-execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
-execDriverM state act = runExceptT $ runStateT (runReaderT (unDriverM act) mempty) state
+execDriverM :: DriverState -> SymbolTable -> DriverM a -> IO (Either Error (a,DriverState))
+execDriverM state symbolTable action =
+  runExceptT $ runStateT (runReaderT (unDriverM action) symbolTable) state
 
 ---------------------------------------------------------------------------------
 -- Utility functions
