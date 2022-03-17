@@ -34,9 +34,9 @@ import Syntax.AST.Types
     )
 import Syntax.AST.Program
     ( Program,
-      Environment(..),
       Declaration(..)
     )
+import Syntax.Environment (Environment(..))    
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)

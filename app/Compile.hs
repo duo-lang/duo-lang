@@ -13,7 +13,7 @@ import Pretty.Pretty (ppPrintIO)
 import Translate.Desugar (desugarCmd, desugarEnvironment)
 import Translate.Focusing (focusCmd, focusEnvironment)
 import Driver.Driver (inferProgramIO, DriverState(..), InferenceOptions(..), defaultInferenceOptions)
-import Syntax.AST.Program (Environment(..))
+import Syntax.Environment (Environment(..))
 import Syntax.Kinds (CallingConvention(..))
 import Syntax.Common
 

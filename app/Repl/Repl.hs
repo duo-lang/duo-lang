@@ -19,7 +19,8 @@ import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.CST.Program qualified as CST
-import Syntax.AST.Program ( Environment, Declaration(..) )
+import Syntax.AST.Program ( Declaration(..) )
+import Syntax.Environment (Environment)
 import Syntax.Kinds ( CallingConvention(CBV) )
 import Syntax.Common
 import Driver.Driver
