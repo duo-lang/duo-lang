@@ -2,6 +2,7 @@ module Driver.Definition where
 
 import Control.Monad.Except
 import Control.Monad.State
+import Control.Monad.Reader
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
@@ -40,11 +41,11 @@ data DriverState = DriverState
   , driverEnv :: Environment Inferred
   }
 
-newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO)
+newtype DriverM a = DriverM { unDriverM :: ReaderT () (StateT DriverState  (ExceptT Error IO)) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadReader ())
 
 execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
-execDriverM state act = runExceptT $ runStateT (unDriverM act) state
+execDriverM state act = runExceptT $ runStateT (runReaderT (unDriverM act) ()) state
 
 ---------------------------------------------------------------------------------
 -- Utility functions
