@@ -12,7 +12,7 @@ import Syntax.Common
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types ( freeTypeVars)
 import Syntax.CST.Types
-import Syntax.AST.Program (Environment(declEnv, MkEnvironment))
+import Syntax.Environment (Environment(..))
 import Data.List
 
 ---------------------------------------------------------------------------------

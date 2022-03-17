@@ -13,7 +13,7 @@ import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.AST.Program (Environment)
+import Syntax.Environment (Environment)
 import Syntax.Kinds (CallingConvention(..), Kind(..))
 import Syntax.Common
 import Syntax.AST.Terms

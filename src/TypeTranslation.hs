@@ -18,7 +18,7 @@ import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.Types ()
-import Syntax.AST.Program
+import Syntax.Environment
 import Syntax.AST.Types
 import Syntax.Common
 

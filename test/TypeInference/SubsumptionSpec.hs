@@ -9,7 +9,7 @@ import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
 import Syntax.Lowering.Types
 import Syntax.Common
-import Syntax.AST.Program
+import Syntax.Environment 
 import TestUtils (getEnvironment)
 import TypeAutomata.Subsume (subsume)
 

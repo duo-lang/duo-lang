@@ -15,8 +15,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
 import LSP.MegaparsecToLSP
 
-
-import Syntax.AST.Program
+import Syntax.Environment
 import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as Terms

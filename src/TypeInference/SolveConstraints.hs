@@ -14,7 +14,7 @@ import Data.Set qualified as S
 import Errors
 import Syntax.AST.Types
 import Syntax.Common
-import Syntax.AST.Program (Environment)
+import Syntax.Environment (Environment)
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
