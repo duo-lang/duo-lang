@@ -1,7 +1,27 @@
-# These examples used to be part of the testsuite in "StaticExamplesSpec"
-# The tests have been transferred here since we now support checking of type annotations.
-
+# These examples serve primarily as a testsuite for the compiler.
+# Do not expect the following examples to be sensible or understandable
+import Function;
+import Peano;
+import Bool;
 import Prelude;
+
+# Symmetric system:
+
+prd id1 : forall a. a -> a := cocase { Ap(x)[k] => x >> k };
+
+prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[k] => x >> k };
+
+prd id : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
+
+prd idNominal : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
+
+# Asymmetric system:
+
+prd idPoly : forall a. a -> a := cocase { Ap(x)[*] => x };
+
+prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[*] => x };
+
+prd id : Nat -> Nat := cocase { Ap(x)[*] => x };
 
 destructor Ap(CBV)[CBV]: CBV;
 destructor Ap2(CBV,CBV)[CBV] : CBV;
@@ -21,7 +41,7 @@ prd addNominal := cocase { Ap2(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => co
 prd mltNominal := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]]};
 
 prd ex1 : forall a. { Ap(a)[a] } := cocase { Ap(x)[k] => x >> k };
- 
+
 prd ex2 : < Succ(< Zero >) > := Succ(Zero);
 
 prd ex3 : forall a. { Ap3(< TT , FF >, a, a)[a] } := cocase { Ap3(b,x,y)[k] => b >> case { TT => x >> k, FF => y >> k }};
@@ -43,5 +63,3 @@ prd ex10 : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)
 prd ex11 : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]] };
 
 prd ex12 : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
-
-

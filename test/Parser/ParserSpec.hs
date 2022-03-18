@@ -80,7 +80,7 @@ spec = do
   describe "Check type parsing" $ do
     eenv <- runIO $ getSymbolTable "examples/Prelude.ds"
     let env = case eenv of
-                Left _ -> error "Could not load Prelude.ds"
+                Left _ -> error "Could not load Peano.ds"
                 Right env -> env
     parseType env PosRep
                  "< Nat | >"

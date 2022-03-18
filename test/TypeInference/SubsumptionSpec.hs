@@ -36,10 +36,15 @@ subsumptionCheckPos symbolTable bspec s1 s2 = do
 spec :: Spec
 spec = do
   describe "Subsumption between typeschemes works" $ do
-    eenv <- runIO $ getSymbolTable "examples/Prelude.ds"
-    let env = case eenv of
-                Left _ -> error "Could not load Prelude.ds"
+    eenv <- runIO $ getSymbolTable "examples/Peano.ds"
+    let env1 = case eenv of
+                Left _ -> error "Could not load Peano.ds"
                 Right env -> env
+    eenv <- runIO $ getSymbolTable "examples/Bool.ds"
+    let env2 = case eenv of
+                Left _ -> error "Could not load Bool.ds"
+                Right env -> env
+    let env = env1 <> env2
     -- Subsumptions which should hold
     subsumptionCheckPos env True "forall a. { Ap(a)[a] }" "{ Ap(< True >)[< True >] }"
     subsumptionCheckPos env True "{ Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
