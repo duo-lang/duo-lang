@@ -10,6 +10,7 @@ import Parser.Types (typP)
 import Pretty.Errors ()
 import Pretty.Terms ()
 import Pretty.Types ()
+import Pretty.Pretty (ppPrintString)
 import Syntax.AST.Types
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
@@ -23,11 +24,11 @@ parseType symbolTable pol input expected = do
   it ("Parsing of " ++ T.unpack input ++ " works") $ do
     let parseResult = runInteractiveParser typP input
     case parseResult of
-      Left _err -> expectationFailure "Could not parse example type"
+      Left err -> expectationFailure ("Could not parse example type:" ++ ppPrintString err)
       Right result -> do
         let lowerResult = runLowerM symbolTable (lowerTyp pol result) :: Either Error (Typ pol)
         case lowerResult of
-          Left _err -> expectationFailure "Could not lower type"
+          Left err -> expectationFailure ("Could not lower type:" ++ ppPrintString err)
           Right result-> case pol of -- Necessary to provide Show instance for (Typ pol)
             PosRep -> result `shouldBe` expected
             NegRep -> result `shouldBe` expected
@@ -38,14 +39,14 @@ parseTypeIdentical symbolTable pol input1 input2 =
     let parseResult1 = runInteractiveParser typP input1
     let parseResult2 = runInteractiveParser typP input2
     case (parseResult1, parseResult2) of
-      (Left _err, _) -> expectationFailure "Could not parse left example"
-      (_, Left _err) -> expectationFailure "Could not parse right example"
+      (Left err, _) -> expectationFailure ("Could not parse left example: " ++ ppPrintString err)
+      (_, Left err) -> expectationFailure ("Could not parse right example:" ++ ppPrintString err)
       (Right r1, Right r2) -> do
         let lowerResult1 = runLowerM symbolTable (lowerTyp pol r1) :: Either Error (Typ pol)
         let lowerResult2 = runLowerM symbolTable (lowerTyp pol r2) :: Either Error (Typ pol)
         case (lowerResult1, lowerResult2) of
-          (Left _err, _) -> expectationFailure "Could not lower left example"
-          (_, Left _err) -> expectationFailure "Could not lower right example"
+          (Left err, _) -> expectationFailure ("Could not lower left example:" ++ ppPrintString err)
+          (_, Left err) -> expectationFailure ("Could not lower right example:" ++ ppPrintString err)
           (Right r1, Right r2) -> case pol of -- Necessary to provide Show instance for (Typ pol)
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
@@ -56,14 +57,14 @@ parseTypeSchemeIdentical symbolTable pol input1 input2 = do
     let parseResult1 = runInteractiveParser typeSchemeP input1
     let parseResult2 = runInteractiveParser typeSchemeP input2
     case (parseResult1, parseResult2) of
-      (Left _err, _) -> expectationFailure "Could not parse left example"
-      (_, Left _err) -> expectationFailure "Could not parse right example"
+      (Left err, _) -> expectationFailure ("Could not parse left example: " ++ ppPrintString err)
+      (_, Left err) -> expectationFailure ("Could not parse right example:" ++ ppPrintString err)
       (Right r1, Right r2) -> do
         let lowerResult1 = runLowerM symbolTable (lowerTypeScheme pol r1) :: Either Error (TypeScheme pol)
         let lowerResult2 = runLowerM symbolTable (lowerTypeScheme pol r2) :: Either Error (TypeScheme pol)
         case (lowerResult1, lowerResult2) of
-          (Left _err, _) -> expectationFailure "Could not lower left example"
-          (_, Left _err) -> expectationFailure "Could not lower right example"
+          (Left err, _) -> expectationFailure ("Could not lower left example:" ++ ppPrintString err)
+          (_, Left err) -> expectationFailure ("Could not lower right example:" ++ ppPrintString err)
           (Right r1, Right r2) -> case pol of -- Necessary to provide Show instance for (TypScheme pol)
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
