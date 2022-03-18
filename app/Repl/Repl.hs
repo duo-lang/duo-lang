@@ -1,8 +1,8 @@
 module Repl.Repl  where
 
+import Control.Monad.Except (runExcept)
 import Control.Monad.State
     ( gets, forM_, StateT, MonadIO(liftIO), modify )
-import Data.Bifunctor (first)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -27,7 +27,6 @@ import Driver.Driver
 import Translate.Desugar
 import Translate.Focusing
 import Utils (trimStr, defaultLoc)
-import Text.Megaparsec.Error (errorBundlePretty)
 
 ------------------------------------------------------------------------------
 -- Internal State of the Repl
@@ -77,12 +76,12 @@ fromRight (Left err) = prettyRepl err >> abort
 
 parseInteractive :: Parser a -> Text -> Repl a
 parseInteractive p s = do
-  fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser p s))
+  fromRight (runExcept (runInteractiveParser p s))
 
 parseFile :: FilePath -> Parser a -> Repl a
 parseFile fp p = do
   s <- safeRead fp
-  fromRight (first (T.pack . errorBundlePretty) (runFileParser fp p s))
+  fromRight (runExcept (runFileParser fp p s))
 
 safeRead :: FilePath -> Repl Text
 safeRead file =  do

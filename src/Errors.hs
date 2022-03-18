@@ -3,6 +3,7 @@ module Errors where
 import Control.Monad.Except
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.List.NonEmpty (NonEmpty)
 
 import Syntax.Common
 import Utils
@@ -33,18 +34,21 @@ data LoweringError where
                 -> LoweringError
   deriving (Show, Eq)
 
+data ParserError = MkParserError Loc Text
+  deriving (Show, Eq)
+
 data Error where
-  ParseError            :: Maybe Loc -> Text -> Error
-  GenConstraintsError   :: Maybe Loc -> Text -> Error
-  EvalError             :: Maybe Loc -> Text -> Error
-  SolveConstraintsError :: Maybe Loc -> Text -> Error
-  TypeAutomatonError    :: Maybe Loc -> Text -> Error
+  ParserErrorBundle     :: NonEmpty ParserError       -> Error
+  GenConstraintsError   :: Maybe Loc -> Text          -> Error
+  EvalError             :: Maybe Loc -> Text          -> Error
+  SolveConstraintsError :: Maybe Loc -> Text          -> Error
+  TypeAutomatonError    :: Maybe Loc -> Text          -> Error
   LowerError            :: Maybe Loc -> LoweringError -> Error
-  OtherError            :: Maybe Loc -> Text -> Error
+  OtherError            :: Maybe Loc -> Text          -> Error
   deriving (Show, Eq)
 
 attachLoc :: Loc -> Error -> Error
-attachLoc loc (ParseError _ txt) = ParseError (Just loc) txt
+attachLoc _   err@(ParserErrorBundle _) = err
 attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError (Just loc) txt
 attachLoc loc (EvalError _ txt) = EvalError (Just loc) txt
 attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError (Just loc) txt
@@ -53,7 +57,7 @@ attachLoc loc (LowerError _ err) = LowerError (Just loc) err
 attachLoc loc (OtherError _ txt) = OtherError (Just loc) txt
 
 getLoc :: Error -> Maybe Loc
-getLoc (ParseError loc _)  = loc
+getLoc (ParserErrorBundle _)  = Nothing
 getLoc (GenConstraintsError loc _) = loc
 getLoc (EvalError loc _) = loc
 getLoc (SolveConstraintsError loc _) = loc

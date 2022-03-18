@@ -14,7 +14,6 @@ import Control.Monad.Except
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Text.Megaparsec hiding (Pos)
 
 import Driver.Definition
 import Errors
@@ -186,15 +185,12 @@ inferProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred, Program Inferred)
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
-  let parsed = runFileParser fp programP file
-  case parsed of
-    Left err -> throwOtherError [T.pack (errorBundlePretty err)]
-    Right decls -> do
-      -- Use inference options of parent? Probably not?
-      x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
-      case x of
-        Left err -> throwError err
-        Right env -> return env
+  decls <- runFileParser fp programP file
+  -- Use inference options of parent? Probably not?
+  x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
+  case x of
+     Left err -> throwError err
+     Right env -> return env
 
 inferProgram :: [CST.Declaration]
              -> DriverM (Program Inferred)
