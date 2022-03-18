@@ -14,7 +14,7 @@ import Utils ( Loc )
 
 -- | Information about the provenance of a constraint.
 data ConstraintInfo
-  -- PrimitiveType constraints from constraint generation:
+  -- Primitive constraints from constraint generation:
   = CtorArgsConstraint Loc     -- ^ Constraint for checking that args of constructor call have correct type.
   | DtorArgsConstraint Loc     -- ^ Constraint for checking that args of destructor call have correct type.
   | CaseConstraint Loc         -- ^ Constraint for checking that a pattern-match case has correct return type.

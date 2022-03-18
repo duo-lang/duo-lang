@@ -2,8 +2,8 @@ module Syntax.Primitives where
 
 -- | A primitive type/calling convention
 data PrimitiveType =
-      I64 -- ^ PrimitiveType signed 64-bit integer
-    | F64 -- ^ PrimitiveType double-precision floating point
+      I64 -- ^ Primitive signed 64-bit integer
+    | F64 -- ^ Primitive double-precision floating point
     deriving (Show, Eq, Ord)
 
 -- | A primitive literal
