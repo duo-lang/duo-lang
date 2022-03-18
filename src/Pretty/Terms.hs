@@ -99,7 +99,7 @@ isNumSTerm _ = Nothing
 
 instance PrettyAnn PrimitiveLiteral where
   prettyAnn (I64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#I64"
-  prettyAnn (F64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#I64"
+  prettyAnn (F64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#F64"
 
 instance PrettyAnn (Term pc ext) where
   prettyAnn (isNumSTerm -> Just n) = pretty n
