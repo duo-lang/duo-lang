@@ -14,7 +14,7 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.Environment (Environment)
-import Syntax.Kinds (CallingConvention(..), Kind(..))
+import Syntax.Kinds (CallingConvention(..), Kind(..), EvaluationOrder(..), evalOrder)
 import Syntax.Common
 import Syntax.AST.Terms
 
@@ -78,21 +78,21 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
-  return (Just (Apply () (Just (MonoKind CBV)) tm cns))
+  return (Just (Apply () (Just (MonoKind (CBox CBV))) tm cns))
 evalTermOnce (Call _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
+evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce (evalOrder cc) prd cns
 
-evalApplyOnce :: CallingConvention -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: EvaluationOrder -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce eo (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupTerm PrdRep fv
-  return (Just (Apply () (Just (MonoKind eo)) prd cns))
+  return (Just (Apply () (Just (MonoKind (CBox eo))) prd cns))
 evalApplyOnce eo prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupTerm CnsRep fv
-  return (Just (Apply () (Just (MonoKind eo)) prd cns))
+  return (Just (Apply () (Just (MonoKind (CBox eo))) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(Xtor _ PrdRep _ xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases

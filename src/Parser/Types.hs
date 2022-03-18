@@ -27,8 +27,8 @@ import Syntax.Primitives
 
 -- | Parses one of the keywords "CBV" or "CBN"
 callingConventionP :: Parser CallingConvention
-callingConventionP = CBV <$ cbvKwP
-                 <|> CBN <$ cbnKwP
+callingConventionP = CBox CBV <$ cbvKwP
+                 <|> CBox CBN <$ cbnKwP
                  <|> CRep I64 <$ i64RepKwP
                  <|> CRep F64 <$ f64RepKwP
 

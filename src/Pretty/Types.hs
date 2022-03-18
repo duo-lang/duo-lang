@@ -50,8 +50,8 @@ parSym = annKeyword "⅋"
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CallingConvention  where
-  prettyAnn CBV = "CBV"
-  prettyAnn CBN = "CBN"
+  prettyAnn (CBox CBV) = "CBV"
+  prettyAnn (CBox CBN) = "CBN"
   prettyAnn (CRep I64) = "I64Rep"
   prettyAnn (CRep F64) = "F64Rep"
 
