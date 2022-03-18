@@ -12,31 +12,28 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.AST.Types
 import Syntax.AST.Types qualified as AST
-import Syntax.Environment
 import Syntax.Common
 import Syntax.Lowering.Types
-import TestUtils (getEnvironment)
-import Driver.Definition
+import TestUtils (getSymbolTable, runLowerM)
+import Driver.SymbolTable (SymbolTable)
+import Errors
 
-ds :: Environment Inferred ->  DriverState
-ds env = DriverState defaultInferenceOptions env
-
-parseType :: Environment Inferred -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
-parseType env pol input expected = do
+parseType :: forall pol. SymbolTable -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
+parseType symbolTable pol input expected = do
   it ("Parsing of " ++ T.unpack input ++ " works") $ do
     let parseResult = runInteractiveParser typP input
     case parseResult of
       Left _err -> expectationFailure "Could not parse example type"
       Right result -> do
-        lowerResult <- execDriverM (ds env) mempty (lowerTyp pol result)
+        let lowerResult = runLowerM symbolTable (lowerTyp pol result) :: Either Error (Typ pol)
         case lowerResult of
           Left _err -> expectationFailure "Could not lower type"
-          Right (result,_) -> case pol of -- Necessary to provide Show instance for (Typ pol)
+          Right result-> case pol of -- Necessary to provide Show instance for (Typ pol)
             PosRep -> result `shouldBe` expected
             NegRep -> result `shouldBe` expected
 
-parseTypeIdentical :: Environment Inferred -> PolarityRep pol -> Text -> Text -> Spec
-parseTypeIdentical env pol input1 input2 =
+parseTypeIdentical :: forall pol. SymbolTable -> PolarityRep pol -> Text -> Text -> Spec
+parseTypeIdentical symbolTable pol input1 input2 =
   it ("Parsing of " ++ T.unpack input1 ++ " yields the same result as parsing " ++ T.unpack input2) $ do
     let parseResult1 = runInteractiveParser typP input1
     let parseResult2 = runInteractiveParser typP input2
@@ -44,17 +41,17 @@ parseTypeIdentical env pol input1 input2 =
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) mempty (lowerTyp pol r1)
-        lowerResult2 <- execDriverM (ds env) mempty (lowerTyp pol r2)
+        let lowerResult1 = runLowerM symbolTable (lowerTyp pol r1) :: Either Error (Typ pol)
+        let lowerResult2 = runLowerM symbolTable (lowerTyp pol r2) :: Either Error (Typ pol)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
-          (Right (r1,_), Right (r2,_)) -> case pol of -- Necessary to provide Show instance for (Typ pol)
+          (Right r1, Right r2) -> case pol of -- Necessary to provide Show instance for (Typ pol)
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
 
-parseTypeSchemeIdentical :: Environment Inferred -> PolarityRep pol -> Text -> Text -> Spec
-parseTypeSchemeIdentical env pol input1 input2 = do
+parseTypeSchemeIdentical :: forall pol. SymbolTable -> PolarityRep pol -> Text -> Text -> Spec
+parseTypeSchemeIdentical symbolTable pol input1 input2 = do
   it ("Parsing of " ++ T.unpack input1 ++ " yields the same result as parsing " ++ T.unpack input2) $ do
     let parseResult1 = runInteractiveParser typeSchemeP input1
     let parseResult2 = runInteractiveParser typeSchemeP input2
@@ -62,12 +59,12 @@ parseTypeSchemeIdentical env pol input1 input2 = do
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) mempty (lowerTypeScheme pol r1)
-        lowerResult2 <- execDriverM (ds env) mempty (lowerTypeScheme pol r2)
+        let lowerResult1 = runLowerM symbolTable (lowerTypeScheme pol r1) :: Either Error (TypeScheme pol)
+        let lowerResult2 = runLowerM symbolTable (lowerTypeScheme pol r2) :: Either Error (TypeScheme pol)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
-          (Right (r1,_), Right (r2,_)) -> case pol of -- Necessary to provide Show instance for (TypScheme pol)
+          (Right r1, Right r2) -> case pol of -- Necessary to provide Show instance for (TypScheme pol)
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
 
@@ -81,7 +78,7 @@ mkNat rep = TyNominal rep Nothing (MkTypeName "Nat") [] []
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
-    eenv <- runIO $ getEnvironment "examples/Prelude.ds" defaultInferenceOptions
+    eenv <- runIO $ getSymbolTable "examples/Prelude.ds"
     let env = case eenv of
                 Left _ -> error "Could not load Prelude.ds"
                 Right env -> env

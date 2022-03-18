@@ -1,17 +1,21 @@
 module TestUtils where
 
+import Control.Monad.Reader
+import Control.Monad.Except
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
 import Text.Megaparsec (errorBundlePretty)
 
 import Errors
-import Parser.Parser
+import Parser.Definition ( runFileParser )
+import Parser.Program ( programP )
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program
 import Syntax.Environment
 import Syntax.Common
 import Driver.Driver
+import Driver.SymbolTable (SymbolTable, createSymbolTable)
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
@@ -54,3 +58,12 @@ getEnvironment fp infopts = do
       fmap fst <$> inferProgramIO (DriverState infopts mempty) decls
     Left err -> return (Left err)
 
+runLowerM ::  SymbolTable -> ReaderT SymbolTable (Except Error) a -> Either Error a
+runLowerM symbolTable action = runExcept (runReaderT action symbolTable)
+
+getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
+getSymbolTable fp = do
+  mParsedDecls <- getParsedDeclarations fp
+  case mParsedDecls of
+    Left err -> pure (Left err)
+    Right parsedDecls -> pure (Right (createSymbolTable  parsedDecls))
