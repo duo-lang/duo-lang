@@ -1,8 +1,8 @@
-# Standard Prelude
+-- Standard Prelude
 
 cmd impossible := Done;
 prd impossible := mu k. impossible;
 cns impossible := mu x. impossible;
 
-# Generic print consumer
+-- Generic print consumer
 cns print := mu x.Print(x); Done;

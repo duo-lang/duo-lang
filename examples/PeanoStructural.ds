@@ -1,9 +1,9 @@
-# Peano Natural Numbers (Structural)
+-- Peano Natural Numbers (Structural)
 
 import Function;
 import Bool;
 
-# The type of Peano natural numbers.
+-- The type of Peano natural numbers.
 constructor Z : CBV;
 constructor S(CBV) : CBV;
 

@@ -1,4 +1,4 @@
-# Dtor called with incorrect number of args
+-- Dtor called with incorrect number of args
 
 data Nat : CBV { Z, S(Nat) };
 codata Fun : CBN { Ap(Nat)[Nat] };

@@ -1,4 +1,4 @@
-# Match is not correct
+-- Match is not correct
 
 data Bool : CBV { True, False };
 data Bool2 : CBV { TT, FF };

@@ -1,11 +1,11 @@
-# These examples serve primarily as a testsuite for the compiler.
-# Do not expect the following examples to be sensible or understandable
+-- These examples serve primarily as a testsuite for the compiler.
+-- Do not expect the following examples to be sensible or understandable
 import Function;
 import Peano;
 import Bool;
 import Prelude;
 
-# Symmetric system:
+-- Symmetric system:
 
 prd id1 : forall a. a -> a := cocase { Ap(x)[k] => x >> k };
 
@@ -15,7 +15,7 @@ prd id : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
 
 prd idNominal : Nat -> Nat := cocase { Ap(x)[k] => x >> k };
 
-# Asymmetric system:
+-- Asymmetric system:
 
 prd idPoly : forall a. a -> a := cocase { Ap(x)[*] => x };
 
