@@ -1,4 +1,4 @@
-# We can only use a definition with the annotated type, not the inferred type.
+-- We can only use a definition with the annotated type, not the inferred type.
 
 destructor Ap : CBN;
 constructor Bar : CBV;

@@ -1,4 +1,4 @@
-# Match is not exhaustive
+-- Match is not exhaustive
 
 data Bool : CBV { True, False };
 

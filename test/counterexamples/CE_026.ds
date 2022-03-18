@@ -1,9 +1,9 @@
-# We can only use a definition with the annotated type, not the inferred type.
+-- We can only use a definition with the annotated type, not the inferred type.
 
 destructor Ap : CBN;
 constructor True : CBV;
 constructor False : CBV;
-constructor Bar : CBV; 
+constructor Bar : CBV;
 
 prd id : { Ap(<True , False >)[<True , False>] } := cocase { Ap(x)[*] => x };
 

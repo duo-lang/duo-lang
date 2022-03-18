@@ -4,67 +4,18 @@ module Eval.Eval
   ) where
 
 import Control.Monad.Except
-import Control.Monad.Reader
-import Data.List (find)
 import Data.Text qualified as T
-import Text.Read (readMaybe)
 
 import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.Environment (Environment)
-import Syntax.Kinds (CallingConvention(..), Kind(..))
+import Syntax.Kinds (CallingConvention(..), Kind(..), EvaluationOrder(..), evalOrder)
 import Syntax.Common
 import Syntax.AST.Terms
-
----------------------------------------------------------------------------------
--- The Eval Monad
----------------------------------------------------------------------------------
-
-newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment Compiled, ()) (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment Compiled, ()), MonadIO)
-
-runEval :: EvalM a -> Environment Compiled -> IO (Either Error a)
-runEval e env = runExceptT (runReaderT (unEvalM e) (env, ()))
-
----------------------------------------------------------------------------------
--- Helper functions
----------------------------------------------------------------------------------
-
-lookupMatchCase :: XtorName -> [CmdCase Compiled] -> EvalM (CmdCase Compiled)
-lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_name } -> xt == cmdcase_name) cases of
-  Just pmcase -> return pmcase
-  Nothing -> throwEvalError ["Error during evaluation. The xtor: "
-                            , unXtorName xt
-                            , "doesn't occur in match."
-                            ]
-
-checkArgs :: Command Compiled -> [(PrdCns,a)] -> Substitution Compiled -> EvalM ()
-checkArgs _md [] [] = return ()
-checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
-checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
-checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
-                                   , ppPrint cmd
-                                   , "Argument lengths don't coincide."
-                                   ]
-
-
-convertInt :: Int -> Term Prd Compiled
-convertInt 0 = Xtor () PrdRep Nominal (MkXtorName "Z") []
-convertInt n = Xtor () PrdRep Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
-
-
-readInt :: IO (Term Prd Compiled)
-readInt = do
-  putStrLn "Enter a positive integer:"
-  input <- getLine
-  case readMaybe input of
-    Nothing        -> putStrLn "Incorrect input." >> readInt
-    Just i | i < 0 -> putStrLn "Incorrect input." >> readInt
-    Just i         -> pure (convertInt i)
-
-
+import Eval.Definition
+import Eval.Primitives
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -78,21 +29,22 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
-  return (Just (Apply () (Just (MonoKind CBV)) tm cns))
+  return (Just (Apply () (Just (MonoKind (CBox CBV))) tm cns))
 evalTermOnce (Call _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce cc prd cns
+evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce (evalOrder cc) prd cns
+evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
-evalApplyOnce :: CallingConvention -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: EvaluationOrder -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
 evalApplyOnce eo (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupTerm PrdRep fv
-  return (Just (Apply () (Just (MonoKind eo)) prd cns))
+  return (Just (Apply () (Just (MonoKind (CBox eo))) prd cns))
 evalApplyOnce eo prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupTerm CnsRep fv
-  return (Just (Apply () (Just (MonoKind eo)) prd cns))
+  return (Just (Apply () (Just (MonoKind (CBox eo))) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(Xtor _ PrdRep _ xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
@@ -116,7 +68,6 @@ evalApplyOnce _ _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable
 evalApplyOnce _ XMatch{} XMatch{} = throwEvalError ["Cannot evaluate match applied to match"]
 evalApplyOnce _ Xtor{} Xtor{} = throwEvalError ["Cannot evaluate constructor applied to destructor"]
 evalApplyOnce _ _ _ = throwEvalError ["Cannot evaluate, probably an asymmetric term..."]
-
 
 -- | Return just the final evaluation result
 evalM :: Command Compiled -> EvalM (Command Compiled)

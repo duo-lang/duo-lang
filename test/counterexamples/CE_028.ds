@@ -1,4 +1,4 @@
-# Constructor should not be recognized as destructor
+-- Constructor should not be recognized as destructor
 
 constructor A : CBV;
 

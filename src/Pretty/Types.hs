@@ -9,6 +9,7 @@ import Pretty.Pretty
 import Syntax.AST.Types
 import Syntax.Kinds
 import Syntax.Common
+import Syntax.Primitives
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -49,8 +50,10 @@ parSym = annKeyword "⅋"
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CallingConvention  where
-  prettyAnn CBV = "CBV"
-  prettyAnn CBN = "CBN"
+  prettyAnn (CBox CBV) = "CBV"
+  prettyAnn (CBox CBN) = "CBN"
+  prettyAnn (CRep I64) = "I64Rep"
+  prettyAnn (CRep F64) = "F64Rep"
 
 instance PrettyAnn Kind where
   prettyAnn (MonoKind eo) = prettyAnn eo
@@ -81,6 +84,10 @@ instance PrettyAnn Variance where
 instance PrettyAnn TVar where
   prettyAnn (MkTVar tv) = pretty tv
 
+instance PrettyAnn PrimitiveType where
+  prettyAnn I64 = "I64"
+  prettyAnn F64 = "F64"
+
 instance PrettyAnn (Typ pol) where
   -- Sugared types
   prettyAnn (resugarType -> Just (ty1, binOp, ty2)) = parens (ty1 <+> prettyAnn binOp <+> ty2)
@@ -103,6 +110,7 @@ instance PrettyAnn (Typ pol) where
   -- Refinement types
   prettyAnn (TyData _ (Just tn) xtors)   = angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   prettyAnn (TyCodata _ (Just tn) xtors) = braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (TyPrim _ pt) = "#" <> prettyAnn pt
 
 instance PrettyAnn (PrdCnsType pol) where
   prettyAnn (PrdCnsType _ ty) = prettyAnn ty

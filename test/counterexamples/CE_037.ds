@@ -1,4 +1,4 @@
-# Constructor is applied to too few arguments in match
+-- Constructor is applied to too few arguments in match
 constructor A(CBV) : CBV;
 
 cns foo := case {

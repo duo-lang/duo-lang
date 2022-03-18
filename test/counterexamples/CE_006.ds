@@ -1,2 +1,2 @@
-# Should not typecheck because True is nominal and not predeclared.
+-- Should not typecheck because True is nominal and not predeclared.
 prd fail := True;

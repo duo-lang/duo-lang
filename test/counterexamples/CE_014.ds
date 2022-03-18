@@ -1,4 +1,4 @@
-# Comatch is not exhaustive
+-- Comatch is not exhaustive
 
 data Nat : CBV { Z, S(Nat) };
 codata Tuple : CBN { Fst[Nat], Snd[Nat] };

@@ -115,7 +115,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns refDat refCodat)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns tps refDat refCodat)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   let refDatTypes = M.toList refDat -- Unique data ref types
   let refCodatTypes = M.toList refCodat -- Unique codata ref types
@@ -169,8 +169,10 @@ nodeToTypeNoCache rep i = do
           conArgs <- sequence (nodeToType (flipPolarityRep rep) <$> conNodes)
           covArgs <- sequence (nodeToType rep <$> covNodes)
           pure $ TyNominal rep Nothing tn conArgs covArgs
+    -- Creating primitive types
+    let prims = TyPrim rep <$> S.toList tps
 
-    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals
+    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
     return $ case typs of [t] -> t; _ -> TySet rep Nothing typs
 
   -- If the graph is cyclic, make a recursive type

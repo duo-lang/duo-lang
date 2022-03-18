@@ -11,6 +11,7 @@ import Pretty.Constraints ()
 import Utils
 import Errors
 import Syntax.Common
+import Syntax.Primitives (primOpKeyword, primTypeKeyword)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -25,14 +26,20 @@ instance PrettyAnn PrdCns where
   prettyAnn Cns = "Cns"
 
 instance PrettyAnn LoweringError where
-  prettyAnn MissingVarsInTypeScheme         = "Missing declaration of type variable"
-  prettyAnn TopInPosPolarity                = "Cannot use `Top` in positive polarity"
-  prettyAnn BotInNegPolarity                = "Cannot use `Bot` in negative polarity"
-  prettyAnn IntersectionInPosPolarity       = "Cannot use `/\\` in positive polarity"
-  prettyAnn UnionInNegPolarity              = "Cannot use `\\/` in negative polarity"
-  prettyAnn (UnknownOperator op)            = "Undefined type operator `" <> pretty op <> "`"
-  prettyAnn (ArityMismatch xt ar1 ar2)      = vsep [ "Arity mismatch:"
+  prettyAnn MissingVarsInTypeScheme               = "Missing declaration of type variable"
+  prettyAnn TopInPosPolarity                      = "Cannot use `Top` in positive polarity"
+  prettyAnn BotInNegPolarity                      = "Cannot use `Bot` in negative polarity"
+  prettyAnn IntersectionInPosPolarity             = "Cannot use `/\\` in positive polarity"
+  prettyAnn UnionInNegPolarity                    = "Cannot use `\\/` in negative polarity"
+  prettyAnn (UnknownOperator op)                  = "Undefined type operator `" <> pretty op <> "`"
+  prettyAnn (XtorArityMismatch xt ar1 ar2)        = vsep [ "Arity mismatch:"
                                                    , "  Constructor/Destructor:" <+> prettyAnn xt
+                                                   , "  Specified Arity:" <+> prettyAnn ar1
+                                                   , "  Used Arity:" <+> prettyAnn ar2
+                                                   ]
+  prettyAnn (UndefinedPrimOp (pt, op))             = "Undefined primitive operator  " <> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
+  prettyAnn (PrimOpArityMismatch (pt, op) ar1 ar2) = vsep [ "Arity mismatch:"
+                                                   , "  Primitive operation:" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
                                                    , "  Specified Arity:" <+> prettyAnn ar1
                                                    , "  Used Arity:" <+> prettyAnn ar2
                                                    ]

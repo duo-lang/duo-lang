@@ -1,4 +1,4 @@
-# Type constructor is applied to too many arguments.
+-- Type constructor is applied to too many arguments.
 data Bool : CBV { True, False };
 data A(+a : CBV) : CBV {};
 

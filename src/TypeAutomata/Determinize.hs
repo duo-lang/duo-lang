@@ -66,7 +66,7 @@ type TransFunReindexed = [(Node, Set Node, [(Node, EdgeLabelNormal)])]
 
 reIndexTransFun :: TransFun -> TransFunReindexed
 reIndexTransFun transFun =
-  let 
+  let
     mp = [(M.findIndex nodeSet transFun, nodeSet, es) | (nodeSet,es) <- M.toList transFun]
     mp' = fmap (\(i,ns,es) -> (i,ns, fmap (\(ns',el) -> (M.findIndex ns' transFun, el)) es)) mp
   in mp'
@@ -85,11 +85,12 @@ combineNodeLabels nls
       then error "Tried to combine node labels of different polarity!"
       else MkNodeLabel {
         nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ _ <- nls],
-        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ <- nls],
-        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs <- nls]
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ _ _ <- nls],
+        nl_primitive = S.unions [ pt | MkNodeLabel _ _ _ _ pt _ _ <- nls ],
+        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ _ refs _ <- nls],
+        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ _ refs <- nls]
         }
   where
     pol = nl_pol (head nls)
@@ -97,7 +98,7 @@ combineNodeLabels nls
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
-    mrgRefDat refs = case pol of 
+    mrgRefDat refs = case pol of
       Pos -> M.unionsWith S.union refs
       Neg -> M.unionsWith S.intersection refs
     mrgRefCodat refs = case pol of
