@@ -3,13 +3,18 @@ module Driver.Driver
   , defaultInferenceOptions
   , DriverState(..)
   , execDriverM
-  , inferProgramIO
-  , inferProgramIO'
-  , renameProgramIO
   , inferDecl
+  -- Rename
+  , renameProgram
+  , renameProgramFromDecls
+  -- Infer
+  , inferProgram
+  , inferProgramFromDecls
+  , inferProgramFromLoweredDecls
   ) where
 
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Monad.Except
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -23,7 +28,6 @@ import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Syntax.AST.Terms
 import Syntax.Common
 import Syntax.Lowering.Program
-import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
       generalize,
@@ -32,6 +36,7 @@ import Syntax.AST.Program
     ( Program,
       Declaration(..)
     )
+import Syntax.CST.Program qualified as CST
 import Syntax.Environment (Environment(..))
 import Syntax.Zonking (zonkType)
 import TypeAutomata.Simplify
@@ -44,7 +49,8 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsCommand,
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc )
+import Utils ( Loc, defaultLoc )
+import Driver.SymbolTable
 
 checkAnnot :: TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type
@@ -111,7 +117,7 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
     CnsRep -> do
       let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec fv (Just ty) tmInferred)
+      pure (PrdCnsDecl loc pc isRec fv (Just ty) tmInferred)
 --
 -- CmdDecl
 --
@@ -128,7 +134,7 @@ inferDecl (CmdDecl loc v cmd) = do
   env <- gets driverEnv
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
-  return (CmdDecl loc v cmdInferred)
+  pure (CmdDecl loc v cmdInferred)
 --
 -- DataDecl
 --
@@ -143,69 +149,76 @@ inferDecl (XtorDecl loc dc xt args ret) = do
 -- ImportDecl
 --
 inferDecl (ImportDecl loc mod) = do
-  fp <- findModule mod loc
-  oldEnv <- gets driverEnv
-  newEnv <- fst <$> inferProgramFromDisk fp
-  setEnvironment (oldEnv <> newEnv)
-  return (ImportDecl loc mod)
+  pure (ImportDecl loc mod)
 --
 -- SetDecl
 --
 inferDecl (SetDecl _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
 
+
+---------------------------------------------------------------------------------
+-- Rename Program
+---------------------------------------------------------------------------------
+
+renameProgram :: FilePath
+              -> DriverM (Program Parsed, SymbolTable)
+renameProgram fp = do
+  -- Read and parse file
+  file <- liftIO $ T.readFile fp
+  decls <- runFileParser fp programP file
+  renameProgramFromDecls decls
+
+renameProgramFromDecls :: CST.Program
+                       -> DriverM (Program Parsed, SymbolTable)
+renameProgramFromDecls decls = do
+  -- Compute the symbolTable and dependent modules
+  let symbolTable = createSymbolTable decls
+  let imports = importedModules symbolTable
+  -- Get the symboltables for all imports
+  imports <- forM imports $ \imp -> do 
+    fp <- findModule imp defaultLoc
+    renameProgram fp
+  let combinedSymbolTable = mconcat (symbolTable : (snd <$> imports))
+  -- Lower program
+  lowered <- local (<> combinedSymbolTable) (lowerProgram decls)
+  pure (lowered, combinedSymbolTable)
+
 ---------------------------------------------------------------------------------
 -- Infer programs
 ---------------------------------------------------------------------------------
 
-inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment Inferred, Program Inferred)
-inferProgramFromDisk fp = do
+inferProgram :: FilePath
+             -> DriverM (Program Inferred, SymbolTable, Environment Inferred)
+inferProgram fp = do
+  -- Read and parse file
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file
-  -- Use inference options of parent? Probably not?
-  x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
-  case x of
-     Left err -> throwError err
-     Right env -> return env
+  inferProgramFromDecls decls
 
-inferProgram :: [CST.Declaration]
-             -> DriverM (Program Inferred)
-inferProgram decls = do
-  decls <- renameProgram decls
-  forM decls inferDecl
+inferProgramFromDecls :: CST.Program
+                      -> DriverM (Program Inferred, SymbolTable, Environment Inferred)
+inferProgramFromDecls decls = do
+  -- Compute the symbolTable and dependent modules
+  let symbolTable = createSymbolTable decls
+  let imports = importedModules symbolTable
+  -- Get the symboltables for all imports
+  imports <- forM imports $ \imp -> do 
+    fp <- findModule imp defaultLoc
+    inferProgram fp
+  let combinedSymbolTable = mconcat (symbolTable : ((\(_,x,_) -> x) <$> imports))
+  let combinedEnv = mconcat ((\(_,_,x) -> x) <$> imports)
+  -- Lower program
+  lowered <- local (<> combinedSymbolTable) (lowerProgram decls)
+  -- Infer program
+  setEnvironment combinedEnv
+  inferred <- sequence $ inferDecl <$> lowered
+  env <- gets driverEnv
+  pure (inferred, combinedSymbolTable, env)
 
-renameProgram :: [CST.Declaration]
-              -> DriverM (Program Parsed)
-renameProgram decls = lowerProgram decls
-
-renameProgramIO :: DriverState
-                -> [CST.Declaration]
-                -> IO (Either Error (Program Parsed))
-renameProgramIO state decls = do
-  x <- execDriverM state mempty (renameProgram decls)
-  case x of
-      Left err -> return (Left err)
-      Right (res,_) -> return (Right res)
-
-inferProgram' :: Program Parsed
-              -> DriverM (Program Inferred)
-inferProgram' decls = forM decls inferDecl
-
-inferProgramIO  :: DriverState -- ^ Initial State
-                -> [CST.Declaration]
-                -> IO (Either Error (Environment Inferred, Program Inferred))
-inferProgramIO state decls = do
-  x <- execDriverM state mempty (inferProgram decls)
-  case x of
-      Left err -> return (Left err)
-      Right (res,x) -> return (Right ((driverEnv x), res))
-
-inferProgramIO' :: DriverState -- ^ Initial State
-                -> Program Parsed
-                -> IO (Either Error (Environment Inferred, Program Inferred))
-inferProgramIO' state decls = do
-  x <- execDriverM state mempty (inferProgram' decls)
-  case x of
-    Left err -> return (Left err)
-    Right (res,x) -> return (Right ((driverEnv x), res))
+inferProgramFromLoweredDecls :: Program Parsed
+                             -> DriverM (Program Inferred, Environment Inferred)
+inferProgramFromLoweredDecls decls = do
+  inferred <- sequence $ inferDecl <$> decls
+  env <- gets driverEnv
+  pure (inferred, env)

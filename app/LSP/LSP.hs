@@ -199,7 +199,7 @@ publishErrors uri = do
       -- sendError "Parsing error!"
       sendLocatedError (toNormalizedUri uri) err
     Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
+      res <- liftIO $ undefined -- inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
       case res of
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err

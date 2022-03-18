@@ -47,4 +47,4 @@ indexMaybe xs i | 0 <= i && i <= (length xs) -1 = Just (xs !! i)
                 | otherwise = Nothing
 
 data Verbosity = Verbose | Silent
-  deriving (Eq)
+  deriving (Eq, Show)

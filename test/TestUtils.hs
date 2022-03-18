@@ -34,27 +34,24 @@ getParsedDeclarations fp = do
 
 getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error (Program Parsed))
 getRenamedDeclarations fp infopts = do
-  decls <- getParsedDeclarations fp
-  case decls of
-    Right decls -> do
-      renameProgramIO (DriverState infopts mempty) decls
-    Left err -> return (Left err)
+  res <- execDriverM (DriverState infopts mempty) mempty (renameProgram fp)
+  case res of
+    Right ((decls,_),_) -> pure (pure decls)
+    Left err -> pure (Left err)
 
 getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error (Program Inferred))
 getTypecheckedDecls fp infopts = do
-  decls <- getParsedDeclarations fp
-  case decls of
-    Right decls -> do
-      fmap snd <$> inferProgramIO (DriverState infopts mempty) decls
-    Left err -> return (Left err)
+  res <- execDriverM (DriverState infopts mempty) mempty (inferProgram fp)
+  case res of
+    Right ((decls,_,_),_) -> pure (pure decls)
+    Left err -> pure (Left err)
 
 getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment Inferred))
 getEnvironment fp infopts = do
-  decls <- getParsedDeclarations fp
-  case decls of
-    Right decls -> do
-      fmap fst <$> inferProgramIO (DriverState infopts mempty) decls
-    Left err -> return (Left err)
+  res <- execDriverM (DriverState infopts mempty) mempty (inferProgram fp)
+  case res of
+    Right ((_,_,env),_) -> pure (pure env)
+    Left err -> pure (Left err)
 
 runLowerM ::  SymbolTable -> ReaderT SymbolTable (Except Error) a -> Either Error a
 runLowerM symbolTable action = runExcept (runReaderT action symbolTable)

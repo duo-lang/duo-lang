@@ -35,10 +35,10 @@ loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
   opts <- gets typeInfOpts
-  res <- liftIO $ inferProgramIO (DriverState opts mempty) decls
+  res <- liftIO $ execDriverM (DriverState opts mempty) mempty (inferProgramFromDecls decls)
   case res of
     Left err -> printLocatedError err
-    Right (newEnv,_) -> do
+    Right ((_,_,newEnv),_) -> do
       modifyEnvironment (newEnv <>)
       prettyRepl newEnv
       prettyRepl $ "Successfully loaded: " ++ fp

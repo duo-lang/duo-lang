@@ -23,7 +23,7 @@ data InferenceOptions = InferenceOptions
   , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
   , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
   , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
-  }
+  } deriving (Show)
 
 defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
@@ -40,7 +40,7 @@ defaultInferenceOptions = InferenceOptions
 data DriverState = DriverState
   { driverOpts :: InferenceOptions
   , driverEnv :: Environment Inferred
-  }
+  } deriving (Show)
 
 newtype DriverM a = DriverM { unDriverM :: ReaderT SymbolTable (StateT DriverState  (ExceptT Error IO)) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadReader SymbolTable)

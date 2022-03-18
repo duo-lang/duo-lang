@@ -1,18 +1,12 @@
 module Driver.SymbolTable where
 
-import Control.Monad.IO.Class
-import Control.Monad.Except
-import Data.Text.IO qualified as T
 import Data.Map (Map)
 import Data.Map qualified as M
 
-import Errors
-import Parser.Parser ( runFileParser, programP )
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Syntax.Kinds
-
 
 ---------------------------------------------------------------------------------
 -- SymbolTable
@@ -26,7 +20,7 @@ data SymbolTable = MkSymbolTable {
      xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity),
      tyConMap :: Map TypeName (IsRefined, DataCodata, TParams, Kind),
      importedModules :: [ModuleName]
-}
+} deriving (Show)
 
 instance Semigroup SymbolTable where
   (MkSymbolTable m1 m2 m3) <> (MkSymbolTable m1' m2' m3') =
@@ -66,10 +60,3 @@ createSymbolTable (ImportDecl _ mn:decls) =
     let st = createSymbolTable decls
     in st { importedModules = mn : importedModules st}
 createSymbolTable (ParseErrorDecl:decls) = createSymbolTable decls
-
-createSymbolTableFromDisk :: (MonadIO m, MonadError Error m) => FilePath
-                          -> m SymbolTable
-createSymbolTableFromDisk fp = do
-  file <- liftIO $ T.readFile fp
-  parsed <- runFileParser fp programP file
-  pure $ createSymbolTable parsed

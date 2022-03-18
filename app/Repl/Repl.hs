@@ -102,9 +102,10 @@ cmd s = do
   (comLoc,_) <- parseInteractive commandP (T.pack s)
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv) [CST.CmdDecl defaultLoc (MkFreeVarName "main") comLoc]
+  let action = inferProgramFromDecls [CST.CmdDecl defaultLoc (MkFreeVarName "main") comLoc]
+  inferredCmd <- liftIO $ execDriverM (DriverState opts oldEnv) mempty action
   case inferredCmd of
-    Right (_,[CmdDecl _ _ inferredCmd]) -> do
+    Right (([CmdDecl _ _ inferredCmd],_,_),_) -> do
       evalOrder <- gets evalOrder
       env <- gets replEnv
       steps <- gets steps
