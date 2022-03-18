@@ -94,6 +94,7 @@ data Command where
   Read  :: Loc -> Term -> Command
   Call  :: Loc -> FreeVarName -> Command
   Done  :: Loc -> Command
+  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
   -- Sugar Nodes
   CommandParens :: Loc -> Command -> Command
 

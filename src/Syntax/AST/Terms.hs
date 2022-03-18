@@ -224,11 +224,12 @@ data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply :: CommandExt ext -> Maybe Kind -> Term Prd ext -> Term Cns ext -> Command ext
-  Print :: CommandExt ext -> Term Prd ext -> Command ext -> Command ext
-  Read  :: CommandExt ext -> Term Cns ext -> Command ext
-  Call  :: CommandExt ext -> FreeVarName -> Command ext
-  Done  :: CommandExt ext -> Command ext
+  Apply  :: CommandExt ext -> Maybe Kind -> Term Prd ext -> Term Cns ext -> Command ext
+  Print  :: CommandExt ext -> Term Prd ext -> Command ext -> Command ext
+  Read   :: CommandExt ext -> Term Cns ext -> Command ext
+  Call   :: CommandExt ext -> FreeVarName -> Command ext
+  Done   :: CommandExt ext -> Command ext
+  PrimOp :: CommandExt ext -> PrimitiveType -> PrimitiveOp -> Substitution ext -> Command ext
 
 deriving instance (Eq (Command Parsed))
 deriving instance (Eq (Command Inferred))
@@ -279,6 +280,7 @@ commandOpeningRec k args (Print _ t cmd) = Print () (termOpeningRec k args t) (c
 commandOpeningRec k args (Read _ cns) = Read () (termOpeningRec k args cns)
 commandOpeningRec _ _ (Call _ fv) = Call () fv
 commandOpeningRec k args (Apply _ kind t1 t2) = Apply () kind (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec k args (PrimOp _ pt op subst) = PrimOp () pt op (pctermOpeningRec k args <$> subst)
 
 commandOpening :: Substitution Compiled -> Command Compiled -> Command Compiled
 commandOpening = commandOpeningRec 0
@@ -325,6 +327,7 @@ commandClosingRec _ _ (Call ext fv) = Call ext fv
 commandClosingRec k args (Print ext t cmd) = Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) = Read ext (termClosingRec k args cns)
 commandClosingRec k args (Apply ext kind t1 t2) = Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (PrimOp ext pt op subst) = PrimOp ext pt op (pctermClosingRec k args <$> subst)
 
 termClosing :: [(PrdCns, FreeVarName)] -> Term pc ext -> Term pc ext
 termClosing = termClosingRec 0
@@ -393,6 +396,7 @@ commandLocallyClosedRec _ (Call _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
 termLocallyClosed :: Term pc ext -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -467,7 +471,7 @@ openCommandComplete (Print _ t cmd) = Print () (openTermComplete t) (openCommand
 openCommandComplete (Read _ cns) = Read () (openTermComplete cns)
 openCommandComplete (Call _ fv) = Call () fv
 openCommandComplete (Done _) = Done ()
-
+openCommandComplete (PrimOp _ pt op subst) = PrimOp () pt op (openPCTermComplete <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Shifting
@@ -508,6 +512,7 @@ shiftCmdRec _ (Done ext) = Done ext
 shiftCmdRec n (Print ext prd cmd) = Print ext (shiftTermRec n prd) (shiftCmdRec n cmd)
 shiftCmdRec n (Read ext cns) = Read ext (shiftTermRec n cns)
 shiftCmdRec _ (Call ext fv) = Call ext fv
+shiftCmdRec n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
 shiftTerm :: Term pc ext -> Term pc ext
@@ -556,3 +561,4 @@ removeNamesCmd (Print ext prd cmd) = Print ext (removeNamesTerm prd) (removeName
 removeNamesCmd (Read ext cns) = Read ext (removeNamesTerm cns)
 removeNamesCmd (Call ext fv) = Call ext fv
 removeNamesCmd (Done ext) = Done ext
+removeNamesCmd (PrimOp ext pt op subst) = PrimOp ext pt op (removeNamesPrdCnsTerm <$> subst)

@@ -60,6 +60,7 @@ module Parser.Lexer
   , plusSym
   , minusSym
   , primitiveSym
+  , primOpKeywordP
     -- Parens
   , angles
   , parens
@@ -85,6 +86,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Parser.Definition
 import Syntax.Common
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
+import Syntax.Primitives (PrimitiveOp, primOpKeyword, PrimitiveType, primTypeKeyword)
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -364,6 +366,11 @@ minusSym = symbol "-"
 
 primitiveSym :: Parser SourcePos
 primitiveSym = symbol "#"
+
+primOpKeywordP :: PrimitiveType -> PrimitiveOp -> Parser (PrimitiveType, PrimitiveOp, SourcePos)
+primOpKeywordP pt op = do
+  endPos <- keywordP (T.pack (primOpKeyword op ++ primTypeKeyword pt))
+  pure (pt, op, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Parens

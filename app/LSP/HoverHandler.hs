@@ -134,6 +134,7 @@ commandToHoverMap (Print _ prd cmd)        = M.unions [termToHoverMap prd, comma
 commandToHoverMap (Read _ cns)             = termToHoverMap cns
 commandToHoverMap (Call _ _)               = M.empty
 commandToHoverMap (Done _)                 = M.empty
+commandToHoverMap PrimOp {}                = M.empty
 
 xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
 xtorArgsToHoverMap subst = M.unions (pctermToHoverMap <$> subst)

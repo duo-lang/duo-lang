@@ -66,7 +66,9 @@ library
       Driver.Definition
       Driver.Driver
       Errors
+      Eval.Definition
       Eval.Eval
+      Eval.Primitives
       Lookup
       Parser.Definition
       Parser.Lexer
@@ -85,6 +87,12 @@ library
       Syntax.AST.Terms
       Syntax.AST.Types
       Syntax.Common
+      Syntax.Common.Names
+      Syntax.Common.Phases
+      Syntax.Common.Polarity
+      Syntax.Common.PrdCns
+      Syntax.Common.Types
+      Syntax.Common.XData
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
@@ -108,6 +116,7 @@ library
       TypeAutomata.ToAutomaton
       TypeInference.Coalescing
       TypeInference.GenerateConstraints.Definition
+      TypeInference.GenerateConstraints.Primitives
       TypeInference.GenerateConstraints.Terms
       TypeInference.SolveConstraints
       TypeInference.Constraints

@@ -15,6 +15,7 @@ import Syntax.AST.Terms qualified as AST
 import Syntax.Environment (Environment(..))
 import Syntax.Common
 import Utils
+import Syntax.Primitives (PrimitiveType, PrimitiveOp, primOps)
 
 ---------------------------------------------------------------------------------
 -- Helper Functions
@@ -35,7 +36,7 @@ checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> DriverM ()
 checkXtorArity loc (xt, dc) arityUsed = do
   (_,aritySpecified) <- lookupXtor loc (xt, dc)
   if (arityUsed /= aritySpecified)
-    then throwError (LowerError (Just loc) (ArityMismatch xt aritySpecified arityUsed))
+    then throwError (LowerError (Just loc) (XtorArityMismatch xt aritySpecified arityUsed))
     else pure ()
 
 
@@ -201,9 +202,27 @@ lowerApp loc fun arg = do
   pure $ AST.Dtor loc Nominal (MkXtorName "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
 
 lowerCommand :: CST.Command -> DriverM (AST.Command Parsed)
-lowerCommand (CST.Apply loc tm1 tm2)      = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2
-lowerCommand (CST.Print loc tm cmd)       = AST.Print loc <$> lowerTerm PrdRep tm <*> lowerCommand cmd
-lowerCommand (CST.Read loc tm)            = AST.Read loc <$> lowerTerm CnsRep tm
-lowerCommand (CST.Call loc fv)            = pure $ AST.Call loc fv
-lowerCommand (CST.Done loc)               = pure $ AST.Done loc
-lowerCommand (CST.CommandParens _loc cmd) = lowerCommand cmd
+lowerCommand (CST.Apply loc tm1 tm2)       = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2
+lowerCommand (CST.Print loc tm cmd)        = AST.Print loc <$> lowerTerm PrdRep tm <*> lowerCommand cmd
+lowerCommand (CST.Read loc tm)             = AST.Read loc <$> lowerTerm CnsRep tm
+lowerCommand (CST.Call loc fv)             = pure $ AST.Call loc fv
+lowerCommand (CST.Done loc)                = pure $ AST.Done loc
+lowerCommand (CST.CommandParens _loc cmd)  = lowerCommand cmd
+lowerCommand (CST.PrimOp loc pt op subst)  = do
+  let arity = CST.substitutionToArity subst
+  _ <- checkPrimOpArity loc (pt, op) arity
+  AST.PrimOp loc pt op <$> lowerSubstitution subst
+
+---------------------------------------------------------------------------------
+-- Check Arity of PrimOp
+---------------------------------------------------------------------------------
+
+checkPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> Arity -> DriverM ()
+checkPrimOpArity loc primOp arityUsed = do
+  case M.lookup primOp primOps of
+    Nothing -> throwError (LowerError (Just loc) (UndefinedPrimOp primOp))
+    Just aritySpecified ->
+      if arityUsed /= aritySpecified then
+        throwError (LowerError (Just loc) (PrimOpArityMismatch primOp aritySpecified arityUsed))
+      else
+        pure ()

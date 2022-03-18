@@ -13,7 +13,8 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
 import Syntax.Primitives
-import Syntax.CST.Terms (Term(PrimLit))
+import Data.Map (keys)
+import Data.Foldable
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
@@ -77,7 +78,7 @@ primitiveLitP = do
   lit <- try (F64Lit . fst <$> floatP <* f64KwP)
      <|> I64Lit . fst <$> intP <* i64KwP
   endPos <- getSourcePos
-  pure (PrimLit (Loc startPos endPos) lit, endPos)
+  pure (CST.PrimLit (Loc startPos endPos) lit, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -137,12 +138,20 @@ commandParensP = do
   ((cmd,_), endPos) <- parens cstcommandP
   return (CST.CommandParens (Loc startPos endPos) cmd, endPos)
 
+primitiveCmdP :: Parser (CST.Command, SourcePos)
+primitiveCmdP = do
+  startPos <- getSourcePos
+  (pt, op, _) <- asum (uncurry primOpKeywordP <$> keys primOps)
+  (subst, endPos) <- substitutionP
+  pure (CST.PrimOp (Loc startPos endPos) pt op subst, endPos)
+
 cstcommandP :: Parser (CST.Command, SourcePos)
 cstcommandP =
   try commandParensP
   <|> doneCmdP
   <|> printCmdP
   <|> readCmdP
+  <|> primitiveCmdP
   <|> applyCmdP
   <|> commandVar
 

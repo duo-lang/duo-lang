@@ -6,6 +6,7 @@ import Data.Text qualified as T
 
 import Syntax.Common
 import Utils
+import Syntax.Primitives (PrimitiveType, PrimitiveOp)
 
 ----------------------------------------------------------------------------------
 -- Errors
@@ -21,7 +22,12 @@ data LoweringError where
   UnionInNegPolarity :: LoweringError
   -- Operator errors
   UnknownOperator :: Text -> LoweringError
-  ArityMismatch :: XtorName
+  XtorArityMismatch :: XtorName
+                -> Arity
+                -> Arity
+                -> LoweringError
+  UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> LoweringError
+  PrimOpArityMismatch :: (PrimitiveType, PrimitiveOp)
                 -> Arity
                 -> Arity
                 -> LoweringError

@@ -84,3 +84,4 @@ zonkCommand bisubst (Print ext prd cmd) = Print ext (zonkTerm bisubst prd) (zonk
 zonkCommand bisubst (Read ext cns) = Read ext (zonkTerm bisubst cns)
 zonkCommand _       (Call ext fv) = Call ext fv
 zonkCommand _       (Done ext) = Done ext
+zonkCommand bisubst (PrimOp ext pt op subst) = PrimOp ext pt op (zonkPCTerm bisubst <$> subst)

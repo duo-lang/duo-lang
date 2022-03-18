@@ -41,6 +41,7 @@ isDesugaredCommand (Print _ prd cmd) = isDesugaredTerm prd && isDesugaredCommand
 isDesugaredCommand (Read _ cns) = isDesugaredTerm cns
 isDesugaredCommand (Call _ _) = True
 isDesugaredCommand (Done _) = True
+isDesugaredCommand (PrimOp _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Desugar Terms
@@ -106,6 +107,7 @@ desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (Read _ cns) = Read () (desugarTerm cns)
 desugarCmd (Call _ fv) = Call () fv
 desugarCmd (Done _) = Done ()
+desugarCmd (PrimOp _ pt op subst) = PrimOp () pt op (desugarPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Translate Program

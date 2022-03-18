@@ -20,6 +20,7 @@ import Syntax.AST.Terms
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
 import Syntax.Kinds ( CallingConvention(..), Kind(..), EvaluationOrder(..) )
+import Syntax.Primitives
 
 
 ---------------------------------------------------------------------------------
@@ -70,6 +71,7 @@ isFocusedCmd _  (Done _)               = Just (Done ())
 isFocusedCmd _  (Call _ fv)            = Just (Call () fv)
 isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read _ cns)           = Read () <$> isValueTerm eo CnsRep cns
+isFocusedCmd eo (PrimOp _ pt op subst) = PrimOp () pt op <$> isValueSubst eo subst
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -176,6 +178,24 @@ focusCmdCase :: EvaluationOrder -> CmdCase Compiled -> CmdCase Compiled
 focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
     MkCmdCase () cmdcase_name ((\(pc,_) -> (pc, Nothing)) <$> cmdcase_args) (focusCmd eo cmdcase_cmd)
 
+
+focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
+focusPrimOp _  (pt, op) [] pcterms' = PrimOp () pt op (reverse pcterms')
+focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
+focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
+    let
+        var = betaVar (length pcterms')
+        cmd = commandClosing [(Prd,var)]  (shiftCmd (focusPrimOp eo op pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
+    in
+        Apply () (Just (MonoKind (CBox eo))) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
+focusPrimOp eo op (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp eo op pcterms (CnsTerm cns : pcterms')
+focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
+    let
+        var = betaVar (length pcterms')
+        cmd = commandClosing [(Cns,var)] (shiftCmd (focusPrimOp eo op pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
+    in
+        Apply () (Just (MonoKind (CBox eo))) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
+
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: EvaluationOrder -> Command Compiled -> Command Compiled
@@ -188,6 +208,7 @@ focusCmd eo (Print _ prd cmd) = Apply () (Just (MonoKind (CBox eo))) (focusTerm 
 focusCmd eo (Read _ (isValueTerm eo CnsRep -> Just cns)) = Read () cns
 focusCmd eo (Read _ cns) = Apply () (Just (MonoKind (CBox eo))) (MuAbs () PrdRep Nothing (Read () (BoundVar () CnsRep (0,0))))
                                                          (focusTerm eo cns)
+focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
