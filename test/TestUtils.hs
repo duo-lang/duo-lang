@@ -2,10 +2,8 @@ module TestUtils where
 
 import Control.Monad.Reader
 import Control.Monad.Except
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
-import Text.Megaparsec (errorBundlePretty)
 
 import Errors
 import Parser.Definition ( runFileParser )
@@ -30,8 +28,8 @@ getAvailableExamples fp = do
 getParsedDeclarations :: FilePath -> IO (Either Error CST.Program)
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  case runFileParser fp programP s of
-    Left err -> pure (Left (ParseError Nothing (T.pack (errorBundlePretty err))))
+  case runExcept (runFileParser fp programP s) of
+    Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
 getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error (Program Parsed))

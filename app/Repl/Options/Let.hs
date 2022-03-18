@@ -1,10 +1,9 @@
 module Repl.Options.Let (letOption) where
 
+import Control.Monad.Except (runExcept)
 import Control.Monad.State ( gets, MonadIO(liftIO) )
-import Data.Bifunctor ( Bifunctor(first) )
 import Data.Text (Text)
 import Data.Text qualified as T
-import Text.Megaparsec ( errorBundlePretty )
 
 import Parser.Parser ( runInteractiveParser, declarationP )
 import Repl.Repl
@@ -19,7 +18,7 @@ import Driver.Driver
 
 letCmd :: Text -> Repl ()
 letCmd s = do
-  decl <- fromRight (first (T.pack . errorBundlePretty) (runInteractiveParser declarationP s))
+  decl <- fromRight (runExcept (runInteractiveParser declarationP s))
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   let ds = DriverState opts oldEnv

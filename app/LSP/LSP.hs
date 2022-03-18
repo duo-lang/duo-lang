@@ -2,14 +2,14 @@
 module LSP.LSP ( runLSP ) where
 
 import Data.IORef
+import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class (liftIO)
+import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
 import Data.SortedList qualified as SL
-import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Version (showVersion)
-import Data.Void ( Void )
 import Language.LSP.VFS ( virtualFileText, VirtualFile )
 import Language.LSP.Server
     ( runServer,
@@ -23,12 +23,11 @@ import Language.LSP.Server
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
 import Language.LSP.Types
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
-import Text.Megaparsec ( ParseErrorBundle(..) )
 import Paths_dualsub (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import Errors
-import LSP.MegaparsecToLSP ( locToRange, parseErrorBundleToDiag )
+import LSP.MegaparsecToLSP ( locToRange )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
@@ -157,31 +156,34 @@ didCloseHandler = notificationHandler STextDocumentDidClose $ \notif -> do
 
 -- Publish diagnostics for File
 
-errorToDiag :: Error -> Diagnostic
-errorToDiag err =
-  let
-    loc = maybe defaultLoc id (getLoc err)
-    msg = ppPrint err
-    range = locToRange loc
-  in
-    Diagnostic { _range = range
-               , _severity = Just DsError
-               , _code = Nothing
-               , _source = Nothing
-               , _message = msg
-               , _tags = Nothing
-               , _relatedInformation = Nothing
-               }
+parserErrorToDiag :: ParserError -> Diagnostic
+parserErrorToDiag (MkParserError loc msg) =
+  Diagnostic { _range = locToRange loc
+             , _severity = Just DsError
+             , _code = Nothing
+             , _source = Nothing
+             , _message = msg
+             , _tags = Nothing
+             , _relatedInformation = Nothing
+             }
 
-sendParsingError :: NormalizedUri -> ParseErrorBundle Text Void -> LSPMonad ()
-sendParsingError uri err = do
-  let diag = parseErrorBundleToDiag err
-  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList diag)]))
+errorToDiags :: Error -> [Diagnostic]
+errorToDiags (ParserErrorBundle errs) = parserErrorToDiag <$> (NE.toList errs)
+errorToDiags err = [diag]
+  where
+    diag = Diagnostic { _range = locToRange (maybe defaultLoc id (getLoc err))
+                      , _severity = Just DsError
+                      , _code = Nothing
+                      , _source = Nothing
+                      , _message = ppPrint err
+                      , _tags = Nothing
+                      , _relatedInformation = Nothing
+                      }
 
 sendLocatedError :: NormalizedUri -> Error -> LSPMonad ()
 sendLocatedError uri le = do
-  let diag = errorToDiag le
-  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList [diag])]))
+  let diags = errorToDiags le
+  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList diags)]))
 
 
 publishErrors :: Uri -> LSPMonad ()
@@ -191,11 +193,11 @@ publishErrors uri = do
   let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp programP file
+  let decls = runExcept (runFileParser fp programP file)
   case decls of
     Left err -> do
       -- sendError "Parsing error!"
-      sendParsingError (toNormalizedUri uri) err
+      sendLocatedError (toNormalizedUri uri) err
     Right decls -> do
       res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
       case res of

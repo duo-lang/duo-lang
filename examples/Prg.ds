@@ -19,7 +19,7 @@ destructor Tail[CBN] : CBN;
 ## gives x out, if b is True, else y
 prd ifthenelse := cocase {
                     Ap3(b,x,y)[k] => b >>
-                      case { True => x >> k
+                      case  { True => x >> k
                             , False => y >> k }};
 
 ## neg :: { Ap(< False | True >)[< False | True >] }

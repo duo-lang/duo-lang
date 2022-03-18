@@ -2,11 +2,9 @@ module Driver.SymbolTable where
 
 import Control.Monad.IO.Class
 import Control.Monad.Except
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Map (Map)
 import Data.Map qualified as M
-import Text.Megaparsec ( errorBundlePretty )
 
 import Errors
 import Parser.Parser ( runFileParser, programP )
@@ -73,7 +71,5 @@ createSymbolTableFromDisk :: (MonadIO m, MonadError Error m) => FilePath
                           -> m SymbolTable
 createSymbolTableFromDisk fp = do
   file <- liftIO $ T.readFile fp
-  let parsed = runFileParser fp programP file
-  case parsed of
-    Left err -> throwOtherError [T.pack (errorBundlePretty err)]
-    Right decls -> pure $ createSymbolTable decls
+  parsed <- runFileParser fp programP file
+  pure $ createSymbolTable parsed

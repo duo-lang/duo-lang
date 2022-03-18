@@ -1,10 +1,10 @@
 module Compile (runCompile) where
 
+import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 import System.IO.Error (tryIOError)
-import Text.Megaparsec (errorBundlePretty)
 
 import Eval.Eval (eval)
 import Parser.Parser (runFileParser)
@@ -29,9 +29,9 @@ runCompile fp = do
     (Left _) -> putStrLn $ "File with name " ++ fp ++ " does not exist."
     (Right file) -> do
         -- Parse file
-        let parsedFile = runFileParser fp programP file
+        let parsedFile = runExcept (runFileParser fp programP file)
         case parsedFile of
-            (Left err) -> ppPrintIO (errorBundlePretty err)
+            (Left err) -> ppPrintIO err
             (Right prog) -> do
                 -- Infer program
                 inferredProg <- inferProgramIO driverState prog
