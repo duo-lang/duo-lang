@@ -139,6 +139,9 @@ inferDecl (CmdDecl loc v cmd) = do
 -- DataDecl
 --
 inferDecl (DataDecl loc dcl) = do
+  env <- gets driverEnv
+  let newEnv = env { declEnv = (loc, dcl): declEnv env} 
+  setEnvironment newEnv
   pure (DataDecl loc dcl)
 --
 -- XtorDecl
