@@ -21,7 +21,7 @@ import Pretty.Program ()
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program ( Declaration(..) )
 import Syntax.Environment (Environment)
-import Syntax.Kinds ( CallingConvention(CBV) )
+import Syntax.Kinds ( EvaluationOrder(CBV) )
 import Syntax.Common
 import Driver.Driver
 import Translate.Desugar
@@ -38,7 +38,7 @@ data ReplState = ReplState
   { replEnv :: Environment Inferred
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
-  , evalOrder :: CallingConvention
+  , evalOrder :: EvaluationOrder
   , typeInfOpts :: InferenceOptions
   }
 

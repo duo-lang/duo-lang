@@ -1,4 +1,4 @@
-# Dtor is called on value of incorrect type
+-- Dtor is called on value of incorrect type
 
 data Nat : CBV { Z, S(Nat) };
 data Bool : CBV { True, False };

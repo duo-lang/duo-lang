@@ -19,7 +19,7 @@
       },
       "symbols": {
         "patterns": [{
-            "match": "(:=|=>|>>|\\\\/|/\\\\|<:)", 
+            "match": "(:=|=>|>>|\\\\/|/\\\\|<:)",
             "name": "keyword.syntax"
         }]
 
@@ -33,7 +33,7 @@
       "comments": {
         "patterns": [
             {
-              "match": "#.*$\n?",
+              "match": "--.*$\n?",
               "name": "comment.line.number-sign.syntax"
             }
           ]

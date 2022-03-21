@@ -18,6 +18,7 @@ data Annotation
   | AnnSymbol
   | AnnTypeName
   | AnnXtorName
+  | AnnLiteral
   deriving (Show, Eq)
 
 annKeyword :: Doc Annotation -> Doc Annotation
@@ -31,6 +32,9 @@ annTypeName = annotate AnnTypeName
 
 annXtorName :: Doc Annotation -> Doc Annotation
 annXtorName = annotate AnnXtorName
+
+annLiteral :: Doc Annotation -> Doc Annotation
+annLiteral = annotate AnnLiteral
 
 -- A variant of the `Pretty` typeclass which uses our annotations.
 -- Why the builtin  Pretty class is not sufficient, see: https://github.com/quchen/prettyprinter/issues/102
@@ -50,6 +54,12 @@ instance PrettyAnn Bool where
   prettyAnn = pretty
 
 instance PrettyAnn () where
+  prettyAnn = pretty
+
+instance PrettyAnn Integer where
+  prettyAnn = pretty
+
+instance PrettyAnn Double where
   prettyAnn = pretty
 
 ---------------------------------------------------------------------------------
@@ -80,6 +90,7 @@ annotationToOpts AnnKeyword  = [SetColor Foreground Vivid Blue]
 annotationToOpts AnnSymbol   = [SetColor Foreground Dull Red]
 annotationToOpts AnnTypeName = [SetColor Foreground Dull Green]
 annotationToOpts AnnXtorName = [SetColor Foreground Dull Magenta]
+annotationToOpts AnnLiteral  = [SetColor Foreground Dull Cyan]
 
 ppPrintIO :: PrettyAnn a => a -> IO ()
 ppPrintIO doc =
@@ -167,6 +178,3 @@ angles' = mkParen True (prettyAnn ("<" :: String))(prettyAnn (">" :: String))
 
 braces' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
 braces' = mkParen True (prettyAnn ("{" :: String))(prettyAnn ("}" :: String))
-
-dbraces' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
-dbraces' = mkParen True (prettyAnn ("{{" :: String))(prettyAnn ("}}" :: String))

@@ -6,6 +6,7 @@ import qualified Data.Map as M
 
 import Syntax.Common
 import Syntax.Kinds ( Kind )
+import Syntax.Primitives
 
 ------------------------------------------------------------------------------
 -- LinearContexts
@@ -76,6 +77,7 @@ data Typ (pol :: Polarity) where
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> Maybe Kind -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
+  TyPrim :: PolarityRep pol -> PrimitiveType -> Typ pol
 
 deriving instance Eq (Typ Pos)
 deriving instance Eq (Typ Neg)
@@ -91,6 +93,7 @@ getPolarity (TyCodata rep _ _)      = rep
 getPolarity (TyNominal rep _ _ _ _) = rep
 getPolarity (TySet rep _ _)         = rep
 getPolarity (TyRec rep _ _)         = rep
+getPolarity (TyPrim rep _)          = rep
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -118,6 +121,7 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyNominal _ _ _ conArgs covArgs) = concatMap freeTypeVars conArgs ++ concatMap freeTypeVars covArgs
     freeTypeVars' (TyData _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
     freeTypeVars' (TyCodata _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
+    freeTypeVars' (TyPrim _ _) = []
 
     freeTypeVarsPC :: PrdCnsType pol -> [TVar]
     freeTypeVarsPC (PrdCnsType _ ty) = freeTypeVars' ty
@@ -158,6 +162,7 @@ substituteType m (TyCodata polrep mtn args) = TyCodata polrep mtn (substituteXto
 substituteType m (TyNominal rep kind nm args_cov args_contra) = TyNominal rep kind nm (substituteType m <$> args_cov) (substituteType m <$> args_contra)
 substituteType m (TySet rep kind args) = TySet rep kind (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
+substituteType _ t@(TyPrim _ _) = t
 
 substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
 substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteContext m sig_args)

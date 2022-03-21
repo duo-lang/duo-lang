@@ -18,7 +18,7 @@ import Translate.Reparse
 driverState :: DriverState
 driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty
 
-testHelper :: FilePath -> CallingConvention -> SpecWith ()
+testHelper :: FilePath -> EvaluationOrder -> SpecWith ()
 testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ do
   decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
   case decls of

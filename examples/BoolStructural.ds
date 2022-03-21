@@ -1,37 +1,37 @@
-# Booleans (Structural)
+-- Booleans (Structural)
 
 import Function;
 
 constructor True : CBV;
 constructor False : CBV;
 
-# Boolean negation.
+-- Boolean negation.
 prd not : < False, True > -> < False, True >:=
   \b => case b of { True => False,
                     False => True
                   };
 
-# Boolean if-then-else
+-- Boolean if-then-else
 prd ifthenelse : forall a. < False, True > -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
-# Boolean conjunction
+-- Boolean conjunction
 prd and :=
   \b1 b2 => ifthenelse b1 b2 False;
 
-# Boolean disjunction
+-- Boolean disjunction
 prd or :=
   \b1 b2 => ifthenelse b1 True b2;
 
-# Boolean nand
+-- Boolean nand
 prd nand :=
   \b1 b2 => not (and b1 b2);
 
-# Boolean nor
+-- Boolean nor
 prd nor :=
   \b1 b2 => not (or b1 b2);
 
-# Boolean implication
+-- Boolean implication
 prd impl :=
   \b1 b2 => case b1 of {
       True => b2,

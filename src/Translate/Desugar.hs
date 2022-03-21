@@ -24,11 +24,12 @@ isDesugaredPCTerm (CnsTerm tm) = isDesugaredTerm tm
 
 isDesugaredTerm :: Term pc Inferred -> Bool
 -- Core terms
-isDesugaredTerm (BoundVar _ _ _) = True
-isDesugaredTerm (FreeVar _ _ _) = True
+isDesugaredTerm BoundVar {} = True
+isDesugaredTerm FreeVar {} = True
 isDesugaredTerm (Xtor _ _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
+isDesugaredTerm PrimLit{} = True
 -- Non-core terms
 isDesugaredTerm Dtor{} = False
 isDesugaredTerm Case {} = False
@@ -40,6 +41,7 @@ isDesugaredCommand (Print _ prd cmd) = isDesugaredTerm prd && isDesugaredCommand
 isDesugaredCommand (Read _ cns) = isDesugaredTerm cns
 isDesugaredCommand (Call _ _) = True
 isDesugaredCommand (Done _) = True
+isDesugaredCommand (PrimOp _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Desugar Terms
@@ -61,6 +63,7 @@ desugarTerm (FreeVar _ pc fv) = FreeVar () pc fv
 desugarTerm (Xtor _ pc ns xt args) = Xtor () pc ns xt (desugarPCTerm <$> args)
 desugarTerm (MuAbs _ pc bs cmd) = MuAbs () pc bs (desugarCmd cmd)
 desugarTerm (XMatch _ pc ns cases) = XMatch () pc ns (desugarCmdCase <$> cases)
+desugarTerm (PrimLit _ lit) = PrimLit () lit
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
 desugarTerm (Dtor _ ns xt t (args1,PrdRep,args2)) =
@@ -104,6 +107,7 @@ desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (Read _ cns) = Read () (desugarTerm cns)
 desugarCmd (Call _ fv) = Call () fv
 desugarCmd (Done _) = Done ()
+desugarCmd (PrimOp _ pt op subst) = PrimOp () pt op (desugarPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Translate Program

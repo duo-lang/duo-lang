@@ -23,6 +23,7 @@ data ConstraintInfo
   | CommandConstraint Loc      -- ^ Constraint was generated from a command `prd >> cns`.
   | ReadConstraint Loc         -- ^ Constraint was generated from a `Read[cns]` command
   | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
+  | PrimOpArgsConstraint Loc   -- ^ Constraint for checking that args of primitive operation have correct type
   -- Derived constraints generated during constraing solving
   | UpperBoundConstraint
   | LowerBoundConstraint

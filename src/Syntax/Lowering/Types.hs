@@ -46,6 +46,7 @@ lowerTyp NegRep TyBot = throwError (LowerError Nothing BotInNegPolarity)
 lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
 lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
+lowerTyp rep (TyPrim pt) = pure $ AST.TyPrim rep pt
 
 lowerTypeArgs :: LowerM m => PolarityRep pol -> TypeName -> [Typ] -> m ([AST.Typ (FlipPol pol)], [AST.Typ pol])
 lowerTypeArgs rep tn args = do

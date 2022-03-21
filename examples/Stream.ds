@@ -1,4 +1,4 @@
-# The type of infinite Streams
+-- The type of infinite Streams
 import Function;
 
 codata Stream(+a : CBV) : CBV {

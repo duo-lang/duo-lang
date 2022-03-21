@@ -1,4 +1,4 @@
-# Pattern match destructee has incorrect type
+-- Pattern match destructee has incorrect type
 
 data Bool : CBV { True, False };
 data Bool2 : CBV { TT, FF };

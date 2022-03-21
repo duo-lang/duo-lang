@@ -1,9 +1,9 @@
-# Peano Natural Numbers (Nominal)
+-- Peano Natural Numbers (Nominal)
 
 import Function;
 import Bool;
 
-# The type of Peano natural numbers.
+-- The type of Peano natural numbers.
 data Nat : CBV {
     Z,
     S(Nat)

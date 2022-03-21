@@ -39,6 +39,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (CommandConstraint loc) = parens ("Constraint from logical command at" <+> prettyAnn loc)
   prettyAnn (ReadConstraint loc)    = parens ("Constraint from Read command at" <+> prettyAnn loc)
   prettyAnn RecursionConstraint = parens "Recursive"
+  prettyAnn (PrimOpArgsConstraint loc)     = parens ("Primitive operation args constraint at" <+> prettyAnn loc)
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"
   prettyAnn LowerBoundConstraint           = parens "LowerBound"
@@ -46,7 +47,6 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
   prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
-
 
 instance PrettyAnn UVarProvenance where
   prettyAnn (RecursiveUVar fv) = parens ("Recursive binding:" <+> prettyAnn fv)

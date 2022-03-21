@@ -5,6 +5,8 @@ module TypeInference.GenerateConstraints.Terms
   ) where
 
 import Control.Monad.Reader
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Constraints ()
@@ -16,6 +18,8 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils
 import Lookup
+import Syntax.Primitives (typeOfLiteral, primOpKeyword, primTypeKeyword)
+import TypeInference.GenerateConstraints.Primitives (primOps)
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -540,6 +544,7 @@ genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = x
     return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred,
       MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
   return (Cocase (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
+genConstraintsTerm (PrimLit loc lit) = pure $ PrimLit (loc, TyPrim PosRep (typeOfLiteral lit)) lit
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
 genConstraintsCommand (Done loc) = return (Done loc)
@@ -560,6 +565,14 @@ genConstraintsCommand (Apply loc kind t1 t2) = do
   t2' <- genConstraintsTerm t2
   addConstraint (SubType (CommandConstraint loc) (getTypeTerm t1') (getTypeTerm t2'))
   return (Apply loc kind t1' t2')
+genConstraintsCommand (PrimOp loc pt op subst) = do
+  substInferred <- genConstraintsSubst subst
+  let substTypes = getTypArgs substInferred
+  case M.lookup (pt, op) primOps of
+    Nothing -> throwGenError [T.pack $ "Unreachable: Signature for primitive op " ++ primOpKeyword op ++ primTypeKeyword pt ++ " not defined"]
+    Just sig -> do
+      _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
+      return (PrimOp loc pt op substInferred)
 
 ---------------------------------------------------------------------------------------------
 -- Checking recursive terms

@@ -1,4 +1,4 @@
-# Constructor is applied to too many arguments.
+-- Constructor is applied to too many arguments.
 
 constructor A : CBV;
 constructor B(CBV) : CBV;

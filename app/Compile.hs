@@ -8,7 +8,7 @@ import Translate.Desugar (desugarCmd, desugarEnvironment)
 import Translate.Focusing (focusCmd, focusEnvironment)
 import Driver.Driver (inferProgram, DriverState(..), InferenceOptions(..), defaultInferenceOptions, execDriverM)
 import Syntax.Environment (Environment(..))
-import Syntax.Kinds (CallingConvention(..))
+import Syntax.Kinds (EvaluationOrder(..))
 import Syntax.Common
 
 driverState :: DriverState

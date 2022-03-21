@@ -14,6 +14,7 @@ import Syntax.AST.Terms qualified as AST
 import Driver.SymbolTable (SymbolTable(..))
 import Syntax.Common
 import Utils
+import Syntax.Primitives (PrimitiveType, PrimitiveOp, primOps)
 
 type LowerM m = (MonadReader SymbolTable m, MonadError Error m)
 
@@ -36,9 +37,9 @@ checkXtorArity :: LowerM m => Loc -> (XtorName, DataCodata) -> Arity -> m ()
 checkXtorArity loc (xt, dc) arityUsed = do
   (_,aritySpecified) <- lookupXtor loc (xt, dc)
   if (arityUsed /= aritySpecified)
-    then throwError (LowerError (Just loc) (ArityMismatch xt aritySpecified arityUsed))
+    then throwError (LowerError (Just loc) (XtorArityMismatch xt aritySpecified arityUsed))
     else pure ()
-  
+
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -119,7 +120,7 @@ lowerTerm PrdRep (CST.Xtor loc xtor subst)     = do
 lowerTerm CnsRep (CST.Xtor loc xtor subst)     = do
   (ns, _) <- lookupXtor loc (xtor, Codata)
   checkXtorArity loc (xtor,Codata) (CST.substitutionToArity subst)
-  AST.Xtor loc CnsRep ns xtor <$> lowerSubstitution subst  
+  AST.Xtor loc CnsRep ns xtor <$> lowerSubstitution subst
 lowerTerm CnsRep (CST.XMatch loc Data cases)        = do
   cases' <- sequence (lowerCommandCase Data <$> cases)
   ns <- commandCasesToNS cases Data
@@ -163,6 +164,9 @@ lowerTerm CnsRep (CST.FunApp loc _fun _arg)    = throwError (OtherError (Just lo
 lowerTerm rep    (CST.MultiLambda loc fvs tm)  = lowerMultiLambda loc fvs tm >>= lowerTerm rep
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
 lowerTerm CnsRep (CST.Lambda loc _fv _tm)      = throwError (OtherError (Just loc) "Cannot lower Lambda to a consumer.")
+lowerTerm PrdRep (CST.PrimLit loc lit)         = pure $ AST.PrimLit loc lit
+lowerTerm CnsRep (CST.PrimLit loc _)         = throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
+
 
 
 lowerDtorChain :: LowerM m => SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> m CST.Term
@@ -205,3 +209,21 @@ lowerCommand (CST.Read loc tm)            = AST.Read loc <$> lowerTerm CnsRep tm
 lowerCommand (CST.Call loc fv)            = pure $ AST.Call loc fv
 lowerCommand (CST.Done loc)               = pure $ AST.Done loc
 lowerCommand (CST.CommandParens _loc cmd) = lowerCommand cmd
+lowerCommand (CST.PrimOp loc pt op subst)  = do
+  let arity = CST.substitutionToArity subst
+  _ <- checkPrimOpArity loc (pt, op) arity
+  AST.PrimOp loc pt op <$> lowerSubstitution subst
+
+---------------------------------------------------------------------------------
+-- Check Arity of PrimOp
+---------------------------------------------------------------------------------
+
+checkPrimOpArity :: LowerM m => Loc -> (PrimitiveType, PrimitiveOp) -> Arity -> m ()
+checkPrimOpArity loc primOp arityUsed = do
+  case M.lookup primOp primOps of
+    Nothing -> throwError (LowerError (Just loc) (UndefinedPrimOp primOp))
+    Just aritySpecified ->
+      if arityUsed /= aritySpecified then
+        throwError (LowerError (Just loc) (PrimOpArityMismatch primOp aritySpecified arityUsed))
+      else
+        pure ()

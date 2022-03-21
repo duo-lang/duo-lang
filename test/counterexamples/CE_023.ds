@@ -1,4 +1,4 @@
-# The annotated type is more general than the inferred one.
+-- The annotated type is more general than the inferred one.
 destructor Ap : CBN;
 constructor True : CBV;
 constructor False : CBV;

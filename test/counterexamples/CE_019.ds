@@ -1,4 +1,4 @@
-# Comatch acase arg usage does not fit type
+-- Comatch acase arg usage does not fit type
 
 data Nat : CBV { Z, S(Nat) };
 data Nat : CBV { True, False };

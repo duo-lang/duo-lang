@@ -1,4 +1,4 @@
-# Constructor is applied to too few arguments.
+-- Constructor is applied to too few arguments.
 
 destructor B(CBV) : CBV;
 

@@ -19,6 +19,7 @@ import Parser.Lexer
 import Syntax.Kinds
 import Syntax.Common
 import Syntax.CST.Types
+import Syntax.Primitives
 
 ---------------------------------------------------------------------------------
 -- Parsing of Kinds
@@ -26,7 +27,10 @@ import Syntax.CST.Types
 
 -- | Parses one of the keywords "CBV" or "CBN"
 callingConventionP :: Parser CallingConvention
-callingConventionP = CBV <$ cbvKwP <|> CBN <$ cbnKwP
+callingConventionP = CBox CBV <$ cbvKwP
+                 <|> CBox CBN <$ cbnKwP
+                 <|> CRep I64 <$ i64RepKwP
+                 <|> CRep F64 <$ f64RepKwP
 
 -- | Parses a MonoKind, either "CBV" or "CBN"
 kindP :: Parser Kind
@@ -125,6 +129,15 @@ refinementTypeP Codata = fst <$> braces (do
   pure $ TyXData Codata (Just tn) dtors)
 
 ---------------------------------------------------------------------------------
+-- Primitive types
+---------------------------------------------------------------------------------
+
+primitiveTypeP :: Parser PrimitiveType
+primitiveTypeP =
+      I64 <$ i64KwP
+  <|> F64 <$ f64KwP
+
+---------------------------------------------------------------------------------
 -- Type Parser
 ---------------------------------------------------------------------------------
 
@@ -139,6 +152,7 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> recTypeP
   <|> TyTop <$ topKwP
   <|> TyBot <$ botKwP
+  <|> TyPrim <$> primitiveTypeP
   <|> typeVariableP
 
 tyOpP :: Parser BinOp
