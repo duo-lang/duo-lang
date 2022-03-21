@@ -3,6 +3,7 @@ module Pretty.Errors (printLocatedError) where
 import Control.Monad (forM_)
 import Control.Monad.IO.Class
 import Data.Text.IO qualified as T
+import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 import Text.Megaparsec.Pos
 
@@ -25,6 +26,9 @@ instance PrettyAnn PrdCns where
   prettyAnn Prd = "Prd"
   prettyAnn Cns = "Cns"
 
+instance PrettyAnn ParserError where
+  prettyAnn (MkParserError loc txt) = prettyAnn loc <+> prettyAnn txt
+
 instance PrettyAnn LoweringError where
   prettyAnn MissingVarsInTypeScheme               = "Missing declaration of type variable"
   prettyAnn TopInPosPolarity                      = "Cannot use `Top` in positive polarity"
@@ -45,7 +49,7 @@ instance PrettyAnn LoweringError where
                                                    ]
 
 instance PrettyAnn Error where
-  prettyAnn (ParseError loc err)            = prettyMaybeLoc loc <> "Parsing error:" <+> pretty err
+  prettyAnn (ParserErrorBundle errs)        = vsep (NE.toList (prettyAnn <$> errs))
   prettyAnn (EvalError loc err)             = prettyMaybeLoc loc <>"Evaluation error:" <+> pretty err
   prettyAnn (GenConstraintsError loc err)   = prettyMaybeLoc loc <> "Constraint generation error:" <+> pretty err
   prettyAnn (SolveConstraintsError loc err) = prettyMaybeLoc loc <> "Constraint solving error:" <+> pretty err

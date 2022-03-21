@@ -3,9 +3,7 @@ module Syntax.Lowering.Program (lowerProgram, lowerDecl) where
 import Control.Monad.Except (throwError)
 import Control.Monad.State
 import Data.Map qualified as M
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Text.Megaparsec ( errorBundlePretty )
 
 import Errors
 import Syntax.Lowering.Terms (lowerTerm, lowerCommand)
@@ -128,7 +126,5 @@ lowerProgramFromDisk :: FilePath
                      -> DriverM (Environment Inferred)
 lowerProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
-  let parsed = runFileParser fp programP file
-  case parsed of
-    Left err -> throwOtherError [T.pack (errorBundlePretty err)]
-    Right decls -> pure $ createSymbolTable decls
+  decls <- runFileParser fp programP file
+  pure $ createSymbolTable decls
