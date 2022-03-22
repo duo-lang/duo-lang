@@ -100,6 +100,13 @@ varianceP :: Variance -> Parser ()
 varianceP Covariant = void plusSym
 varianceP Contravariant = void minusSym
 
+polyKindP :: Parser PolyKind
+polyKindP = do
+  (contra, cov) <- tparamsP
+  _ <- colon
+  ret <- evalOrderP
+  pure (MkPolyKind contra cov ret)
+
 tParamP :: Variance -> Parser (TVar, Kind)
 tParamP v = do
   _ <- varianceP v
@@ -108,19 +115,19 @@ tParamP v = do
   kind <- kindP
   pure (tvar, kind)
 
-tparamsP :: Parser TParams
+tparamsP :: Parser ([(TVar, Kind)],[(TVar, Kind)])
 tparamsP =
-  (fst <$> parens inner) <|> pure (MkTParams [] [])
+  (fst <$> parens inner) <|> pure ([],[])
   where
     inner = do
       con_ps <- tParamP Contravariant `sepBy` try (comma <* notFollowedBy (varianceP Covariant))
       if null con_ps then
-        MkTParams [] <$> tParamP Covariant `sepBy` comma
+        (\x -> ([], x)) <$> tParamP Covariant `sepBy` comma
       else do
         cov_ps <-
           try comma *> tParamP Covariant `sepBy` comma
           <|> pure []
-        pure (MkTParams con_ps cov_ps)
+        pure (con_ps, cov_ps)
 
 dataDeclP :: Parser Declaration
 dataDeclP = do
@@ -129,14 +136,12 @@ dataDeclP = do
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
-    params <- tparamsP
-    if refined == Refined && not (null (allTypeVars params)) then
+    knd <- polyKindP
+    if refined == Refined && not (null (allTypeVars knd)) then
       region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
     else
       do
-        _ <- colon
-        knd <- kindP
-        let xtorP = local (\s -> s { tvars = allTypeVars params }) xtorDeclP
+        let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
         (xtors, _pos) <- braces $ xtorP `sepBy` comma
         endPos <- semi
         let decl = NominalDecl
@@ -145,7 +150,6 @@ dataDeclP = do
               , data_polarity = dataCodata
               , data_kind = knd
               , data_xtors = combineXtors xtors
-              , data_params = params
               }
 
         pure (DataDecl (Loc startPos endPos) decl)

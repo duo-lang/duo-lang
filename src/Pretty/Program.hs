@@ -22,9 +22,13 @@ instance PrettyAnn DataCodata where
   prettyAnn Data = annKeyword "data"
   prettyAnn Codata = annKeyword "codata"
 
-instance PrettyAnn TParams where
-  prettyAnn (MkTParams con_ps cov_ps) =
-    parens' comma ((prettyTParam Contravariant <$> con_ps) ++ (prettyTParam Covariant <$> cov_ps))
+instance PrettyAnn PolyKind where
+  prettyAnn MkPolyKind { contravariant, covariant, returnKind } =
+    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> colon <+> prettyAnn returnKind
+
+instance PrettyAnn EvaluationOrder where
+  prettyAnn CBV = annKeyword "CBV"
+  prettyAnn CBN = annKeyword "CBN"
 
 prettyTParam :: Variance -> (TVar, Kind) -> Doc Annotation
 prettyTParam v (tv, k) = prettyVariance v <> prettyAnn tv <+> ":" <+> prettyAnn k
@@ -34,14 +38,12 @@ prettyVariance Covariant = annSymbol "+"
 prettyVariance Contravariant = annSymbol "-"
 
 instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl ref tn dc knd xtors params) =
+  prettyAnn (NominalDecl ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
-    prettyAnn params <+>
-    colon <+>
     prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
