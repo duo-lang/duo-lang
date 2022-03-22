@@ -96,39 +96,6 @@ dataCodataPrefixP = do
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
 
-varianceP :: Variance -> Parser ()
-varianceP Covariant = void plusSym
-varianceP Contravariant = void minusSym
-
-polyKindP :: Parser PolyKind
-polyKindP = do
-  (contra, cov) <- tparamsP
-  _ <- colon
-  ret <- evalOrderP
-  pure (MkPolyKind contra cov ret)
-
-tParamP :: Variance -> Parser (TVar, Kind)
-tParamP v = do
-  _ <- varianceP v
-  (tvar,_) <- tvarP
-  _ <- colon
-  kind <- kindP
-  pure (tvar, kind)
-
-tparamsP :: Parser ([(TVar, Kind)],[(TVar, Kind)])
-tparamsP =
-  (fst <$> parens inner) <|> pure ([],[])
-  where
-    inner = do
-      con_ps <- tParamP Contravariant `sepBy` try (comma <* notFollowedBy (varianceP Covariant))
-      if null con_ps then
-        (\x -> ([], x)) <$> tParamP Covariant `sepBy` comma
-      else do
-        cov_ps <-
-          try comma *> tParamP Covariant `sepBy` comma
-          <|> pure []
-        pure (con_ps, cov_ps)
-
 dataDeclP :: Parser Declaration
 dataDeclP = do
   o <- getOffset
