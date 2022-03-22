@@ -42,5 +42,32 @@
       "}"
     ],
     "description": "A copattern match"
+  },
+  "import": {
+    "prefix": [
+      "import"
+    ],
+    "body": [
+      "import ${0:modulename};"
+    ],
+    "description": "Import a module"
+  },
+  "constructor": {
+    "prefix": [
+      "constructor"
+    ],
+    "body": [
+      "constructor ${0:constructorname} : ${1:kind};"
+    ],
+    "description": "A structural constructor"
+  },
+  "destructor": {
+    "prefix": [
+      "destructor"
+    ],
+    "body": [
+      "destructor ${0:destructorname} : ${1:kind};"
+    ],
+    "description": "A structural destructor"
   }
 }
