@@ -39,6 +39,13 @@
 				"path": "./syntaxes/dualsub.tmGrammar.json"
 			}
 		],
+		"snippets": [
+			{
+				"language": "dualsub",
+				"path": "./snippets/snippets.json"
+			}
+		],
+
 		"configuration": {
 			"type": "object",
 			"title": "DualSub",

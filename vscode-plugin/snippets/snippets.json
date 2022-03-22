@@ -1,0 +1,46 @@
+{
+  "case-of": {
+    "prefix": [
+      "case-of"
+    ],
+    "body": [
+      "case ${1:destructee} of {",
+      "\t${0:patterns}",
+      "}"
+    ],
+    "description": "A pattern match"
+  },
+  "case": {
+    "prefix": [
+      "case"
+    ],
+    "body": [
+      "case {",
+      "\t${0:patterns}",
+      "}"
+    ],
+    "description": "A pattern match"
+  },
+  "cocase-of": {
+    "prefix": [
+      "cocase-of"
+    ],
+    "body": [
+      "cocase ${1:destructee} of {",
+      "\t${0:patterns}",
+      "}"
+    ],
+    "description": "A copattern match"
+  },
+  "cocase": {
+    "prefix": [
+      "cocase"
+    ],
+    "body": [
+      "cocase {",
+      "\t${0:patterns}",
+      "}"
+    ],
+    "description": "A copattern match"
+  }
+}
