@@ -10,14 +10,14 @@ data Nat : CBV {
 };
 
 
-prd rec add : Nat -> Nat -> Nat :=
+def rec add[*] : Nat -> Nat -> Nat :=
   \n m => case n of { Z => m
                     , S(n) => S(add n m)};
 
-prd rec mul : Nat -> Nat -> Nat :=
+def rec mul[*] : Nat -> Nat -> Nat :=
   \n m => case n of { Z => Z
                     , S(n) => add m (mul n m)};
 
-prd rec nateq : Nat -> Nat -> Bool :=
+def rec nateq[*] : Nat -> Nat -> Bool :=
   \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};

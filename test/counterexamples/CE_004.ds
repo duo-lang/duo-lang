@@ -1,5 +1,5 @@
 -- Match cases not exhaustive
 data Nat : CBV { Z, S(Nat) };
 destructor Ap : CBN;
-prd predNominal := cocase { Ap(n)[k] => n >> case { S(m) => m >> k } };
+def predNominal[*] := cocase { Ap(n)[k] => n >> case { S(m) => m >> k } };
 

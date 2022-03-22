@@ -3,7 +3,7 @@ import LinearLogic;
 import List;
 import Bool;
 
-prd rec filterHelper := \p l => case l of {
+def rec filterHelper[*] := \p l => case l of {
     Nil => cocase {
         MkPar[k1,k2] => MkUnit >> k2
     },
@@ -21,5 +21,5 @@ prd rec filterHelper := \p l => case l of {
     }
 };
 
-prd filter  := \p l => mu k. filterHelper p l >> MkPar[k, mu y. l >> k];
-prd filter2 := \p l => mu k. (filterHelper p l).MkPar[k,*] >> mu y. l >> k;
+def filter[*]  := \p l => mu k. filterHelper p l >> MkPar[k, mu y. l >> k];
+def filter2[*] := \p l => mu k. (filterHelper p l).MkPar[k,*] >> mu y. l >> k;

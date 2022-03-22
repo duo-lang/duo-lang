@@ -2,4 +2,4 @@
 constructor A : CBV;
 constructor B : CBV;
 destructor Ap : CBV;
-prd foo := cocase { Ap => A >> B };
+def foo[*] := cocase { Ap => A >> B };

@@ -4,35 +4,35 @@ data I64 : CBV {
     MkI64(#I64)
 };
 
-prd add : I64 -> I64 -> I64 := \x => \y =>
+def add[*] : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
             MkI64(y) => mu k. Add#I64(x, y)[mu z. MkI64(z) >> k]
         }
     };
 
-prd sub : I64 -> I64 -> I64 := \x => \y =>
+def sub[*] : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
             MkI64(y) => mu k. Sub#I64(x, y)[mu z. MkI64(z) >> k]
         }
     };
 
-prd mul : I64 -> I64 -> I64 := \x => \y =>
+def mul[*] : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
             MkI64(y) => mu k. Mul#I64(x, y)[mu z. MkI64(z) >> k]
         }
     };
 
-prd div : I64 -> I64 -> I64 := \x => \y =>
+def div[*] : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
             MkI64(y) => mu k. Div#I64(x, y)[mu z. MkI64(z) >> k]
         }
     };
 
-prd mod : I64 -> I64 -> I64 := \x => \y =>
+def mod[*] : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
             MkI64(y) => mu k. Mod#I64(x, y)[mu z. MkI64(z) >> k]
@@ -43,41 +43,41 @@ data F64 : CBV {
     MkF64(#F64)
 };
 
-prd addf : F64 -> F64 -> F64 := \x => \y =>
+def addf[*] : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
             MkF64(y) => mu k. Add#F64(x, y)[mu z. MkF64(z) >> k]
         }
     };
 
-prd subf : F64 -> F64 -> F64 := \x => \y =>
+def subf[*] : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
             MkF64(y) => mu k. Sub#F64(x, y)[mu z. MkF64(z) >> k]
         }
     };
 
-prd mulf : F64 -> F64 -> F64 := \x => \y =>
+def mulf[*] : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
             MkF64(y) => mu k. Mul#F64(x, y)[mu z. MkF64(z) >> k]
         }
     };
 
-prd divf : F64 -> F64 -> F64 := \x => \y =>
+def divf[*] : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
             MkF64(y) => mu k. Div#F64(x, y)[mu z. MkF64(z) >> k]
         }
     };
 
-prd x := MkI64(7#I64);
-prd y := MkI64(2#I64);
+def x[*] := MkI64(7#I64);
+def y[*] := MkI64(2#I64);
 
-prd xf := MkF64(7.0#F64);
-prd yf := MkF64(2.0#F64);
+def xf[*] := MkF64(7.0#F64);
+def yf[*] := MkF64(2.0#F64);
 
-cmd main :=
+def main :=
     Print(add x y);
     Print(sub x y);
     Print(div x y);
@@ -85,7 +85,7 @@ cmd main :=
     Print(mod x y);
     Done;
 
-cmd mainf :=
+def mainf :=
     Print(addf xf yf);
     Print(subf xf yf);
     Print(divf xf yf);

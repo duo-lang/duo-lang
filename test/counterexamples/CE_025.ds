@@ -2,6 +2,6 @@
 
 destructor Ap : CBN;
 constructor Bar : CBV;
-prd id : { Ap(<True , False >)[<True , False>] } := cocase { Ap(x)[k] => x >> k };
+def id[*] : { Ap(<True , False >)[<True , False>] } := cocase { Ap(x)[k] => x >> k };
 
-prd useId : < Bar > := mu k.(id >> Ap(Bar)[k]);
+def useId[*] : < Bar > := mu k.(id >> Ap(Bar)[k]);

@@ -2,5 +2,5 @@
 destructor Ap : CBN;
 constructor True : CBV;
 constructor False : CBV;
-prd foo : forall a. { Ap(a)[a] } := cocase { Ap(x)[*] =>
+def foo[*] : forall a. { Ap(a)[a] } := cocase { Ap(x)[*] =>
       case x of { True => True, False => False }};

@@ -4,4 +4,4 @@ data Nat : CBV { Z, S(Nat) };
 data Bool : CBV { True, False };
 codata Fun : CBV { Ap(Nat)[Nat] };
 
-cns fail := Ap(True)[mu k.Done];
+def fail[*] := Ap(True)[mu k.Done];

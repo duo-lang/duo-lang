@@ -6,12 +6,12 @@ codata Stream(+a : CBV) : CBV {
     Tail[Stream(a)]
 };
 
-prd rec map := \f s => cocase {
+def rec map[*] := \f s => cocase {
     Head[*] => f s.Head[*],
     Tail[*] => map f (s.Tail[*])
 };
 
-prd rec constStream := \x => cocase {
+def rec constStream[*] := \x => cocase {
     Head[*] => x,
     Tail[*] => constStream x
 };

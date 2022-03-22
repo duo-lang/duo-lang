@@ -2,4 +2,4 @@
 
 constructor A : CBV;
 
-cns test := A;
+def test(*) := A;

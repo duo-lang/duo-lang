@@ -50,9 +50,9 @@ instance PrettyAnn DataDecl where
 instance PrettyAnn ModuleName where
   prettyAnn (MkModuleName nm) = prettyAnn nm
 
-instance PrettyAnn (PrdCnsRep pc) where
-  prettyAnn PrdRep = annKeyword "prd"
-  prettyAnn CnsRep = annKeyword "cns"
+prettyPrdCnsRep :: PrdCnsRep pc -> Doc Annotation
+prettyPrdCnsRep PrdRep = "[*]"
+prettyPrdCnsRep CnsRep = "(*)"
 
 prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty
@@ -60,13 +60,13 @@ prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
 prettyPrdCnsDecl :: PrettyAnn a => PrdCnsRep pc -> IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
-  prettyAnn pc <+> "rec" <+> prettyAnn fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  annKeyword "def" <+> "rec" <+> prettyAnn fv <> prettyPrdCnsRep pc <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
-  prettyAnn pc <+>           prettyAnn fv <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  annKeyword "def" <+>           prettyAnn fv <> prettyPrdCnsRep pc <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
-   annKeyword "cmd" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
+   annKeyword "def" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
 
 prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Doc Annotation
 prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi

@@ -16,9 +16,7 @@ module Parser.Lexer
   , caseKwP
   , cocaseKwP
   , ofKwP
-  , prdKwP
-  , cnsKwP
-  , cmdKwP
+  , defKwP
   , doneKwP
   , printKwP
   , readKwP
@@ -209,7 +207,7 @@ moduleNameP = try $ do
 -------------------------------------------------------------------------------------------
 
 keywords :: [Text]
-keywords = ["case", "cocase", "prd", "cns", "cmd", "of", "set", "Top", "Bot"
+keywords = ["case", "cocase", "def", "of", "set", "Top", "Bot"
            , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type"
            , "CBV", "CBN", "F64Rep", "I64Rep", "refinement", "constructor", "destructor"]
 
@@ -228,14 +226,8 @@ cocaseKwP = keywordP "cocase"
 ofKwP :: Parser SourcePos
 ofKwP = keywordP "of"
 
-prdKwP :: Parser SourcePos
-prdKwP = keywordP "prd"
-
-cnsKwP :: Parser SourcePos
-cnsKwP = keywordP "cns"
-
-cmdKwP :: Parser SourcePos
-cmdKwP = keywordP "cmd"
+defKwP :: Parser SourcePos
+defKwP = keywordP "def"
 
 doneKwP :: Parser SourcePos
 doneKwP = keywordP "Done"
@@ -441,7 +433,7 @@ argListsIP mode p = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = prdKwP <|> cnsKwP <|> cmdKwP <|> dataKwP <|> codataKwP <|> setKwP <|> refinementKwP <|> constructorKwP <|> destructorKwP <|> (eof >> getSourcePos)
+  let endP = defKwP <|> dataKwP <|> codataKwP <|> setKwP <|> refinementKwP <|> constructorKwP <|> destructorKwP <|> (eof >> getSourcePos)
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 
