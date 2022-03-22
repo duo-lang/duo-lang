@@ -69,5 +69,27 @@
       "destructor ${0:destructorname} : ${1:kind};"
     ],
     "description": "A structural destructor"
+  },
+  "data declaration": {
+    "prefix": [
+      "data"
+    ],
+    "body": [
+      "data ${0:typename} : ${1:kind} {",
+      "\t${2:constructors}",
+      "};"
+    ],
+    "description": "A data declaration"
+  },
+  "codata declaration": {
+    "prefix": [
+      "codata"
+    ],
+    "body": [
+      "codata ${0:typename} : ${1:kind} {",
+      "\t${2:destructors}",
+      "};"
+    ],
+    "description": "A codata declaration"
   }
 }
