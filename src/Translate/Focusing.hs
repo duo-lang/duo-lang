@@ -19,7 +19,6 @@ import Syntax.AST.Terms
       Substitution,
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
-import Syntax.Kinds ( CallingConvention(..), Kind(..), EvaluationOrder(..) )
 import Syntax.Primitives
 
 

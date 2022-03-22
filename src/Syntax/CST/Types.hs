@@ -1,7 +1,6 @@
 module Syntax.CST.Types where
 
 import Syntax.Common
-import Syntax.Kinds
 import Data.List.NonEmpty (NonEmpty)
 import Syntax.Primitives
 

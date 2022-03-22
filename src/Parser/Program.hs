@@ -15,7 +15,6 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Utils
-import Syntax.Kinds (Kind)
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)

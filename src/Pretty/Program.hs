@@ -13,7 +13,6 @@ import Syntax.AST.Terms
 import Syntax.AST.Program
 import Syntax.Common
 import Syntax.Environment
-import Syntax.Kinds (CallingConvention, Kind)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations

@@ -21,8 +21,7 @@ import Pretty.Program ()
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program ( Declaration(..) )
 import Syntax.Environment (Environment)
-import Syntax.Kinds ( EvaluationOrder(CBV) )
-import Syntax.Common
+import Syntax.Common hiding (evalOrder)
 import Driver.Driver
 import Translate.Desugar
 import Translate.Focusing

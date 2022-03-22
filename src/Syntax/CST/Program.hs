@@ -5,7 +5,6 @@ import Data.Text (Text)
 import Syntax.CST.Terms
 import Syntax.CST.Types
 import Syntax.Common
-import Syntax.Kinds (CallingConvention)
 import Utils
 
 ---------------------------------------------------------------------------------

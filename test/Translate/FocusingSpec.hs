@@ -9,7 +9,6 @@ import Pretty.Program ()
 import Driver.Driver
 import Translate.Desugar
 import Syntax.Common
-import Syntax.Kinds
 import Syntax.AST.Program
 import Translate.Focusing
 import Translate.Reparse

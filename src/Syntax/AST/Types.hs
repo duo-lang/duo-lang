@@ -5,7 +5,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 
 import Syntax.Common
-import Syntax.Kinds ( Kind )
 import Syntax.Primitives
 
 ------------------------------------------------------------------------------

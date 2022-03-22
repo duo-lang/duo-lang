@@ -16,7 +16,6 @@ import Syntax.AST.Program
     ( Declaration(PrdCnsDecl,CmdDecl))
 import Syntax.Environment (Environment(prdEnv, cnsEnv, cmdEnv))
 import Syntax.AST.Types ( TypeScheme )
-import Syntax.Kinds (EvaluationOrder(..))
 import Syntax.Common
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax

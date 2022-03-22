@@ -7,7 +7,6 @@ import Data.Text (Text)
 import Syntax.Common
 import Syntax.AST.Terms( Command, Term )
 import Syntax.AST.Types ( TypeScheme, DataDecl )
-import Syntax.Kinds (CallingConvention)
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
