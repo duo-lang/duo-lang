@@ -91,5 +91,27 @@
       "};"
     ],
     "description": "A codata declaration"
+  },
+  "refinement data declaration": {
+    "prefix": [
+      "refinement-data"
+    ],
+    "body": [
+      "refinement data ${0:typename} : ${1:kind} {",
+      "\t${2:constructors}",
+      "};"
+    ],
+    "description": "A refinement data declaration"
+  },
+  "refinement codata declaration": {
+    "prefix": [
+      "refinement-codata"
+    ],
+    "body": [
+      "refinement codata ${0:typename} : ${1:kind} {",
+      "\t${2:destructors}",
+      "};"
+    ],
+    "description": "A refinement codata declaration"
   }
 }
