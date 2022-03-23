@@ -5,7 +5,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 
 import Syntax.Common
-import Syntax.Kinds ( Kind )
 import Syntax.Primitives
 
 ------------------------------------------------------------------------------
@@ -181,7 +180,6 @@ data DataDecl = NominalDecl
   { data_refined :: IsRefined
   , data_name :: TypeName
   , data_polarity :: DataCodata
-  , data_kind :: Kind
+  , data_kind :: PolyKind
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
-  , data_params :: TParams
   } deriving (Show)

@@ -66,7 +66,7 @@ lookupTypeConstructorAritiy tn = do
     MkEnvironment {..} <- gets driverEnv
     let env = snd <$> declEnv
     case find (\AST.NominalDecl{..} -> data_name == tn) env of
-        Just AST.NominalDecl{..} -> pure (length (contravariant data_params), length (covariant data_params))
+        Just AST.NominalDecl{..} -> pure (length (contravariant data_kind), length (covariant data_kind))
         Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
 
 lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> DriverM [AST.XtorSig pol]

@@ -9,7 +9,6 @@ import Utils
 import Errors
 import Syntax.Common
 import Syntax.AST.Types
-import Syntax.Kinds
 import Syntax.Primitives
 
 ---------------------------------------------------------------------------------

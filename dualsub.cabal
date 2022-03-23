@@ -87,6 +87,7 @@ library
       Syntax.AST.Terms
       Syntax.AST.Types
       Syntax.Common
+      Syntax.Common.Kinds
       Syntax.Common.Names
       Syntax.Common.Phases
       Syntax.Common.Polarity
@@ -98,7 +99,6 @@ library
       Syntax.CST.Types
       Syntax.Environment
       Syntax.Primitives
-      Syntax.Kinds
       Syntax.Lowering.Program
       Syntax.Lowering.Terms
       Syntax.Lowering.Types

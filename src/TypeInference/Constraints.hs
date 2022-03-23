@@ -4,7 +4,6 @@ import Data.Map (Map)
 
 import Syntax.Common
 import Syntax.AST.Types ( Typ )
-import Syntax.Kinds
 import Utils ( Loc )
 
 
