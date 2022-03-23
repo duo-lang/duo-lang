@@ -113,5 +113,38 @@
       "};"
     ],
     "description": "A refinement codata declaration"
+  },
+  "producer declaration": {
+    "prefix": [
+      "def"
+    ],
+    "body": [
+      "def ${0:varname}[*] := ${1:producer};"
+    ],
+    "description": [
+      "A toplevel producer declaration"
+    ]
+  },
+  "consumer declaration": {
+    "prefix": [
+      "def"
+    ],
+    "body": [
+      "def ${0:varname}(*) := ${1:consumer};"
+    ],
+    "description": [
+      "A toplevel consumer declaration"
+    ]
+  },
+  "command declaration": {
+    "prefix": [
+      "def"
+    ],
+    "body": [
+      "def ${0:varname} := ${1:command};"
+    ],
+    "description": [
+      "A toplevel command declaration"
+    ]
   }
 }
