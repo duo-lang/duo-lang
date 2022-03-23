@@ -2,4 +2,4 @@
 
 constructor A : CBV;
 
-prd test := cocase { A => Done };
+def test[*] := cocase { A => Done };

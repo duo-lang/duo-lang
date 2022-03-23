@@ -4,7 +4,7 @@ data Bool : CBV { True, False };
 data Bool2 : CBV { TT, FF };
 
 constructor None : CBV;
-prd fail := case True of { TT => None
-                         , FF => None
-                         };
+def fail[*] := case True of { TT => None
+                            , FF => None
+                            };
 

@@ -1,6 +1,6 @@
 -- Constructor is applied to too many arguments in match
 constructor A(CBV) : CBV;
 
-cns foo := case {
+def foo(*) := case {
     A(x,y) => Done
 };

@@ -3,4 +3,4 @@
 data Nat : CBV { Z, S(Nat) };
 data Bool : CBV { True, False };
 
-prd fail := S(True);
+def fail[*] := S(True);

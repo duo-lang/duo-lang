@@ -2,4 +2,4 @@
 destructor Ap : CBN;
 constructor True : CBV;
 constructor False : CBV;
-cns foo : forall a. { Ap(a)[a] } := Ap(True)[case { True => Done, False => Done }];
+def foo[*] : forall a. { Ap(a)[a] } := Ap(True)[case { True => Done, False => Done }];

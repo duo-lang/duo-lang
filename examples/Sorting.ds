@@ -15,7 +15,7 @@ data Ordering : CBV {
     GT
 };
 
-prd rec splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
+def rec splitAt[*] : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
     \n xs => case n of {
         Z => MkTensor(Nil, xs),
         S(n) => case xs of {
@@ -26,7 +26,7 @@ prd rec splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         }
     };
 
-prd rec splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> Void :=
+def rec splitHalvesHelper[*] : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> Void :=
     \xs ys k => case k of {
         MkNot[k] => case xs of {
             Nil => mu j. MkTensor(Nil, ys) >> k,
@@ -45,10 +45,10 @@ prd rec splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), 
         }
     };
 
-prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
+def splitHalves[*] : forall a. List(a) -> Tensor(List(a), List(a)) :=
     \xs => mu k. splitHalvesHelper xs xs MkNot[k] >> impossible;
 
-prd rec merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
+def rec merge[*] : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
     \f left right => case left of {
         Nil => right,
         Cons(x, xs) => case right of {
@@ -61,7 +61,7 @@ prd rec merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) 
         }
     };
 
-prd rec sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
+def rec sort[*] : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => case ys of {
@@ -72,7 +72,7 @@ prd rec sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
         }
     };
 
-prd rec compare : Nat -> Nat -> Ordering :=
+def rec compare[*] : Nat -> Nat -> Ordering :=
     \x y => case x of {
         Z => case y of {
             Z => EQ,
@@ -86,6 +86,6 @@ prd rec compare : Nat -> Nat -> Ordering :=
 
 -- Examples
 
-prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
+def testlist[*] := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
-cmd main := Print(sort compare testlist); Done;
+def main := Print(sort compare testlist); Done;

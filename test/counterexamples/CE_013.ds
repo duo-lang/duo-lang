@@ -2,4 +2,4 @@
 
 data Bool : CBV { True, False };
 
-prd fail := case True of { True => False };
+def fail[*] := case True of { True => False };

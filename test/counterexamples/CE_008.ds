@@ -2,4 +2,4 @@
 
 data Nat : CBV { Z, S(Nat) };
 
-prd fail := S(Z,Z);
+def fail[*] := S(Z,Z);
