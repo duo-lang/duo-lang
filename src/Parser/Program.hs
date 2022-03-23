@@ -26,29 +26,34 @@ isRecP = option NonRecursive (try recKwP >> pure Recursive)
 annotP :: Parser (Maybe TypeScheme)
 annotP = optional (try (notFollowedBy coloneq *> colon) >> typeSchemeP)
 
-prdCnsDeclarationP :: PrdCns -> Parser Declaration
-prdCnsDeclarationP pc = do
-  startPos <- getSourcePos
-  try (void (case pc of Prd -> prdKwP; Cns -> cnsKwP))
-  recoverDeclaration $ do
-    isRec <- isRecP
-    (v, _pos) <- freeVarName
+prdCnsDeclarationP :: SourcePos -> PrdCns -> Parser Declaration
+prdCnsDeclarationP startPos pc = do
+    (isRec, v) <- try $ do
+      isRec <- isRecP
+      (v, _pos) <- freeVarName
+      _ <- (case pc of Prd -> brackets implicitSym; Cns -> parens implicitSym)
+      pure (isRec, v)
     annot <- annotP
     _ <- coloneq
     (tm,_) <- termP
     endPos <- semi
     pure (PrdCnsDecl (Loc startPos endPos) pc isRec v annot tm)
 
-cmdDeclarationP :: Parser Declaration
-cmdDeclarationP = do
-  startPos <- getSourcePos
-  try (void cmdKwP)
-  recoverDeclaration $ do
-    (v, _pos) <- freeVarName
-    _ <- coloneq
+cmdDeclarationP :: SourcePos -> Parser Declaration
+cmdDeclarationP startPos = do
+    v <- try $ do
+      (v, _pos) <- freeVarName
+      _ <- coloneq
+      pure v
     (cmd,_) <- commandP
     endPos <- semi
     pure (CmdDecl (Loc startPos endPos) v cmd)
+
+defDeclarationP :: Parser Declaration
+defDeclarationP = do
+  startPos <- getSourcePos
+  try (void defKwP)
+  recoverDeclaration $ cmdDeclarationP startPos <|> prdCnsDeclarationP startPos Prd <|> prdCnsDeclarationP startPos Cns
 
 importDeclP :: Parser Declaration
 importDeclP = do
@@ -176,9 +181,7 @@ xtorDeclarationP = do
 
 declarationP :: Parser Declaration
 declarationP =
-  prdCnsDeclarationP Prd <|>
-  prdCnsDeclarationP Cns <|>
-  cmdDeclarationP <|>
+  defDeclarationP <|>
   importDeclP <|>
   setDeclP <|>
   dataDeclP <|>

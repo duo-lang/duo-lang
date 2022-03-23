@@ -3,4 +3,4 @@
 data Nat : CBV { Z, S(Nat) };
 codata Tuple : CBN { Fst[Nat], Snd[Nat] };
 
-prd fail := cocase { Fst[*] => 1 };
+def fail[*] := cocase { Fst[*] => 1 };

@@ -5,4 +5,4 @@ data Bool : CBV { True, False };
 codata FunNatNat : CBN { ApNN(Nat)[Nat] };
 codata FunBoolNat : CBN { ApBN(Bool)[Nat] };
 
-prd fail := cocase { ApNN(n)[*] => S(n) }.ApBN(True)[*];
+def fail[*] := cocase { ApNN(n)[*] => S(n) }.ApBN(True)[*];

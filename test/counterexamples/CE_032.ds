@@ -2,4 +2,4 @@
 data Bool : CBV { True, False };
 data A(+a : CBV) : CBV {};
 
-prd rec foo : A(Bool, Bool) := foo;
+def rec foo[*] : A(Bool, Bool) := foo;

@@ -1,4 +1,4 @@
 -- Type constructor is not applied to enough arguments.
 data A(+a : CBV) : CBV {};
 
-prd rec foo : A := foo;
+def rec foo[*] : A := foo;

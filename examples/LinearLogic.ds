@@ -13,8 +13,8 @@ data Tensor(+a : CBV, +b : CBV) : CBV {
     MkTensor(a, b)
 };
 
-prd fst := \p => case p of { MkTensor(x,y) => x};
-prd snd := \p => case p of { MkTensor(x,y) => y};
+def fst[*] := \p => case p of { MkTensor(x,y) => x};
+def snd[*] := \p => case p of { MkTensor(x,y) => y};
 
 data Unit : CBV { MkUnit };
 
@@ -24,7 +24,7 @@ codata With(+a : CBV, +b : CBV) : CBN {
     Proj2[a]
 };
 
-prd pair := \x y => cocase { Proj1[*] => x, Proj2[*] => y};
+def pair[*] := \x y => cocase { Proj1[*] => x, Proj2[*] => y};
 
 codata UnitN : CBV {};
 
@@ -33,10 +33,10 @@ codata Par(+a : CBV, +b : CBV) : CBN {
     MkPar[a,b]
 };
 
-prd return : forall a. a -> Bot ⅋ a :=
+def return[*] : forall a. a -> Bot ⅋ a :=
   \x => cocase { MkPar[err,*] => x };
 
-prd throw : forall a. a -> a ⅋ Bot :=
+def throw[*] : forall a. a -> a ⅋ Bot :=
   \x => cocase { MkPar[*,res] => x };
 
 codata VoidN : CBV { MkVoidN };

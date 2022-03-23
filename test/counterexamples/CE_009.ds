@@ -3,4 +3,4 @@
 data Nat : CBV { Z, S(Nat) };
 codata Fun : CBN { Ap(Nat)[Nat] };
 
-prd fail := cocase { Ap(n)[*] => S(n) }.Ap(Z,Z)[*];
+def fail[*] := cocase { Ap(n)[*] => S(n) }.Ap(Z,Z)[*];

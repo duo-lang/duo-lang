@@ -5,32 +5,32 @@ codata Fun(-a : CBV, +b : CBV) : CBN {
 };
 
 -- The polymorphic identity function
-prd id : forall a. a -> a :=
+def id[*] : forall a. a -> a :=
   \x => x;
 
 -- Function composition
-prd compose :=
+def compose[*] :=
   \f g x => f (g x);
 
 -- Apply a function two times to its argument
-prd twice :=
+def twice[*] :=
   \f x => f (f x);
 
 -- Apply a function three times to its argument
-prd thrice  :=
+def thrice[*]  :=
   \f x => f (f (f x));
 
-prd fix := cocase { Ap(f)[k] =>
+def fix[*] := cocase { Ap(f)[k] =>
              cocase { Ap(x)[k] => f >>
                Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] } >>
                  Ap( cocase { Ap(x)[k] => f >>
                    Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] })[k] };
 
-prd fixLazy := cocase { Ap(f)[k] =>
+def fixLazy[*] := cocase { Ap(f)[k] =>
                  cocase { Ap(x)[k] => x >>
                    Ap(x)[mu xx. f >> Ap(xx)[k]] } >>
                       Ap(cocase { Ap(x)[k] => x >>
                         Ap(x)[mu xx. f >> Ap(xx)[k]] })[k]};
 
-prd omega :=
+def omega[*] :=
   mu k.fixLazy >> Ap(id)[k];

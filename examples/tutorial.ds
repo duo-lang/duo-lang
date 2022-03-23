@@ -23,13 +23,13 @@ data Nat : CBV { Z, S(Nat) };
 -- We can define toplevel values using the following syntax, where the names of defined terms have
 -- to start with a lowercase letter.
 
-prd true := True;
-prd two := S(S(Z));
+def true[*] := True;
+def two[*] := S(S(Z));
 
 -- We also provide some syntactic sugar for (Peano) natural numbers, so that `two` can
 -- alternatively be written in the following way.
 
-prd twoSugared := 2;
+def twoSugared[*] := 2;
 
 -- We now want to check the inferred types of our declared terms. In order to do that you can
 -- enter the following command in the REPL:
@@ -40,7 +40,7 @@ prd twoSugared := 2;
 -- Datatypes would be quite useless if you couldn't also destruct them via pattern matching.
 -- A convoluted way to define the number two is to define it as the predecessor of 3:
 
-prd convolutedTwo := case 3 of { Z => Z, S(x) => x };
+def convolutedTwo[*] := case 3 of { Z => Z, S(x) => x };
 
 -- Pattern matches on the constructors of a declared datatype have to be exhaustive,
 -- otherwise an error is reported.
@@ -71,17 +71,17 @@ codata Fun : CBN { Ap(Nat)[Bool] };
 -- We can use a copattern match (or "cocase" for short) to construct a term of this codata type.
 -- For example, we can define the functions which return constant True or False:
 
-prd constTrue := cocase { Ap(x)[*] => True };
-prd constFalse := cocase { Ap(x)[*] => False };
+def constTrue[*] := cocase { Ap(x)[*] => True };
+def constFalse[*] := cocase { Ap(x)[*] => False };
 
 -- or, we can combine a copattern match with a pattern match to implement the `isZ` function:
 
-prd isZ := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
+def isZ[*] := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
 
 -- We can call a function which is declared in this way by using its destructor on it.
 -- For example, in order to check whether 5 is zero, we can write:
 
-prd isFiveZ := isZ.Ap(5)[*] ;
+def isFiveZ[*] := isZ.Ap(5)[*] ;
 
 -- Here is how this syntax corresponds to the more usual syntax for lambda abstractions in, e.g. Haskell.
 --
@@ -93,9 +93,9 @@ prd isFiveZ := isZ.Ap(5)[*] ;
 
 -- Since functions are so ubiquitious, DualSub contains some syntactic sugar for them:
 
-prd isZSugared := \x => case x of { Z => True, S(x) => False };
+def isZSugared[*] := \x => case x of { Z => True, S(x) => False };
 
--- prd isFiveZSugared := isZ 5;
+-- def isFiveZSugared[*] := isZ 5;
 
 -- All toplevel declarations are defined by mutual recursion, so it is possible to define a
 -- recursive function like `isEven`:

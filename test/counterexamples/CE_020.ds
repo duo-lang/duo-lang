@@ -5,4 +5,4 @@ data Bool : CBV { True, False };
 codata FunNatBool : CBN { Ap(Nat)[Bool] };
 
 -- Type of m differs from consumer type Bool
-prd isZero := cocase { Ap(n)[*] => case n of { Z => True, S(m) => m } };
+def isZero[*] := cocase { Ap(n)[*] => case n of { Z => True, S(m) => m } };
