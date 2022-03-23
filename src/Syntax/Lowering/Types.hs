@@ -91,41 +91,66 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-data Op = Op
+data Associativity where
+  LeftAssoc :: Associativity
+  RightAssoc :: Associativity
+  deriving (Eq, Show, Ord)
+
+data Precedence = MkPrecedence Int
+  deriving (Eq, Show, Ord)
+
+data TyOp = MkTyOp
     {
         symbol :: BinOp,
-        assoc :: Assoc,
+        prec :: Precedence,
+        assoc :: Associativity,
         desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
     }
 
-data Assoc = LeftAssoc | RightAssoc
-    deriving Eq
 
-type Ops = [Op]
-type Prio = Int
+-- | Type operator for the function type
+functionTyOp :: TyOp
+functionTyOp = MkTyOp
+  { symbol = FunOp
+  , prec = MkPrecedence 0
+  , assoc = RightAssoc
+  , desugar = desugarArrowType
+  }
 
-funOp :: Op
-funOp = Op { symbol = FunOp, assoc = RightAssoc, desugar = desugarArrowType }
+-- | Type operator for the union type
+unionTyOp :: TyOp
+unionTyOp = MkTyOp
+  { symbol = UnionOp
+  , prec = MkPrecedence 1
+  , assoc = LeftAssoc
+  , desugar =  desugarUnionType
+  }
 
-unionOp :: Op
-unionOp = Op { symbol = UnionOp, assoc = LeftAssoc, desugar =  desugarUnionType }
+-- | Type operator for the intersection type
+interTyOp :: TyOp
+interTyOp = MkTyOp
+  { symbol = InterOp
+  , prec = MkPrecedence 2
+  , assoc = LeftAssoc
+  , desugar = desugarIntersectionType
+  }
 
-interOp :: Op
-interOp = Op { symbol = InterOp, assoc = LeftAssoc, desugar = desugarIntersectionType }
+-- | Type operator for the Par type
+parTyOp :: TyOp
+parTyOp = MkTyOp
+  { symbol = ParOp
+  , prec = MkPrecedence 3
+  , assoc = LeftAssoc
+  , desugar = desugarParType
+  }
 
-parOp :: Op
-parOp = Op { symbol = ParOp, assoc = LeftAssoc, desugar = desugarParType }
+tyops :: [TyOp]
+tyops = [ functionTyOp, unionTyOp, interTyOp, parTyOp ]
 
-ops :: Ops
-ops = [ funOp, unionOp, interOp, parOp ]
-
-lookupOp :: Ops -> BinOp -> DriverM (Op, Prio)
-lookupOp = lookupHelper 0
-    where
-        lookupHelper :: Prio -> Ops -> BinOp -> DriverM (Op, Prio)
-        lookupHelper _ [] s = throwError (LowerError Nothing (UnknownOperator (T.pack (show s))))
-        lookupHelper p (op@(Op s' _ _) : _) s | s == s' = pure (op, p)
-        lookupHelper p (_ : ops) s = lookupHelper (p + 1) ops s
+lookupTyOp :: BinOp -> DriverM TyOp
+lookupTyOp op = case find (\tyop -> symbol tyop == op) tyops of
+    Nothing -> throwError (LowerError Nothing (UnknownOperator (T.pack (show op))))
+    Just tyop -> pure tyop
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes
@@ -147,9 +172,9 @@ lookupOp = lookupHelper 0
 associateOps :: Typ -> NonEmpty (BinOp, Typ) -> DriverM Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
-    (op1, prio1) <- lookupOp ops s1
-    (_op2, prio2) <- lookupOp ops s2
-    if prio2 > prio1 || (assoc op1 == RightAssoc)
+    op1 <- lookupTyOp s1
+    op2 <- lookupTyOp s2
+    if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
         pure $ TyBinOp lhs s1 rhs
@@ -157,11 +182,11 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     then do
         associateOps (TyBinOp lhs s1 rhs1) (next :| rest)
     else
-        error "Unhandled case reached. This is a bug the operator precedence parser"
+        throwError (OtherError Nothing "Unhandled case reached. This is a bug the operator precedence parser")
 
 lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> DriverM (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
-    (op, _) <- lookupOp ops s
+    op <- lookupTyOp s
     desugar op rep lhs rhs
 
 ---------------------------------------------------------------------------------
