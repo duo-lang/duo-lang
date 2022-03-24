@@ -120,7 +120,7 @@ dataDeclP = do
               { data_refined = refined
               , data_name = tn
               , data_polarity = dataCodata
-              , data_kind = knd
+              , data_kind = Just knd
               , data_xtors = combineXtors xtors
               }
 

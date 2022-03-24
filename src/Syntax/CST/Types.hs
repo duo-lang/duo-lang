@@ -59,6 +59,6 @@ data DataDecl = NominalDecl
   { data_refined :: IsRefined
   , data_name :: TypeName
   , data_polarity :: DataCodata
-  , data_kind :: PolyKind
+  , data_kind :: Maybe PolyKind
   , data_xtors :: [XtorSig]
   }
