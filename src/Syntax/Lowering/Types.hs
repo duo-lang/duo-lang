@@ -99,13 +99,41 @@ data Associativity where
 data Precedence = MkPrecedence Int
   deriving (Eq, Show, Ord)
 
+
+data TyOpDesugaring where
+    UnionDesugaring :: TyOpDesugaring
+    InterDesugaring :: TyOpDesugaring
+    NominalDesugaring :: TypeName -> TyOpDesugaring
+
+desugaring :: PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> DriverM (AST.Typ pol)
+desugaring PosRep UnionDesugaring tl tr = do
+    tl <- lowerTyp PosRep tl
+    tr <- lowerTyp PosRep tr
+    case tl of
+        AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
+        _ -> pure $ AST.TySet PosRep Nothing [tl, tr]
+desugaring NegRep UnionDesugaring _ _ =
+    throwError (LowerError Nothing UnionInNegPolarity)
+desugaring NegRep InterDesugaring tl tr = do
+    tl <- lowerTyp NegRep tl
+    tr <- lowerTyp NegRep tr
+    case tl of
+        AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
+        _ -> pure $ AST.TySet NegRep Nothing [tl, tr]
+desugaring PosRep InterDesugaring _ _ =
+    throwError (LowerError Nothing IntersectionInPosPolarity)
+desugaring rep (NominalDesugaring tyname) tl tr = do
+    lowerTyp rep (TyNominal tyname [tl, tr])
+
 data TyOp = MkTyOp
     {
         symbol :: BinOp,
         prec :: Precedence,
         assoc :: Associativity,
-        desugar :: forall pol. PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
+        desugar :: TyOpDesugaring
     }
+
+
 
 
 -- | Type operator for the function type
@@ -114,7 +142,7 @@ functionTyOp = MkTyOp
   { symbol = CustomOp (MkTyOpName "->")
   , prec = MkPrecedence 0
   , assoc = RightAssoc
-  , desugar = desugarArrowType
+  , desugar = NominalDesugaring (MkTypeName "Fun")
   }
 
 -- | Type operator for the union type
@@ -123,7 +151,7 @@ unionTyOp = MkTyOp
   { symbol = UnionOp
   , prec = MkPrecedence 1
   , assoc = LeftAssoc
-  , desugar =  desugarUnionType
+  , desugar = UnionDesugaring
   }
 
 -- | Type operator for the intersection type
@@ -132,7 +160,7 @@ interTyOp = MkTyOp
   { symbol = InterOp
   , prec = MkPrecedence 2
   , assoc = LeftAssoc
-  , desugar = desugarIntersectionType
+  , desugar = InterDesugaring
   }
 
 -- | Type operator for the Par type
@@ -141,7 +169,7 @@ parTyOp = MkTyOp
   { symbol = CustomOp (MkTyOpName "⅋")
   , prec = MkPrecedence 3
   , assoc = LeftAssoc
-  , desugar = desugarParType
+  , desugar = NominalDesugaring (MkTypeName "Par")
   }
 
 tyops :: [TyOp]
@@ -187,7 +215,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
 lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> DriverM (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
     op <- lookupTyOp s
-    desugar op rep lhs rhs
+    desugaring rep (desugar op) lhs rhs
 
 ---------------------------------------------------------------------------------
 -- Syntactic Sugar
@@ -198,42 +226,3 @@ desugarTopType = AST.TySet NegRep Nothing []
 
 desugarBotType :: AST.Typ 'Pos
 desugarBotType = AST.TySet PosRep Nothing []
-
-desugarIntersectionType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
-desugarIntersectionType NegRep tl tr = do
-    tl <- lowerTyp NegRep tl
-    tr <- lowerTyp NegRep tr
-    case tl of
-        AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
-        _ -> pure $ AST.TySet NegRep Nothing [tl, tr]
-desugarIntersectionType PosRep _ _ = throwError (LowerError Nothing IntersectionInPosPolarity)
-
-desugarUnionType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
-desugarUnionType PosRep tl tr = do
-    tl <- lowerTyp PosRep tl
-    tr <- lowerTyp PosRep tr
-    case tl of
-        AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
-        _ -> pure $ AST.TySet PosRep Nothing [tl, tr]
-desugarUnionType NegRep _ _ = throwError (LowerError Nothing UnionInNegPolarity)
-
--- | Desugar function arrow syntax
-desugarArrowType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
-desugarArrowType PosRep tl tr = do
-    tl <- lowerTyp (flipPolarityRep PosRep) tl
-    tr <- lowerTyp PosRep tr
-    pure $ AST.TyNominal PosRep Nothing (MkTypeName "Fun") [tl] [tr]
-desugarArrowType NegRep tl tr = do
-    tl <- lowerTyp (flipPolarityRep NegRep) tl
-    tr <- lowerTyp NegRep tr
-    pure $ AST.TyNominal NegRep Nothing (MkTypeName "Fun") [tl] [tr]
-
-desugarParType :: PolarityRep pol -> Typ -> Typ -> DriverM (AST.Typ pol)
-desugarParType PosRep tl tr = do
-    tl <- lowerTyp PosRep tl
-    tr <- lowerTyp PosRep tr
-    pure $ AST.TyNominal PosRep Nothing (MkTypeName "Par") [] [tl,tr]
-desugarParType NegRep tl tr = do
-    tl <- lowerTyp NegRep tl
-    tr <- lowerTyp NegRep tr
-    pure $ AST.TyNominal NegRep Nothing (MkTypeName "Par") [] [tl,tr]
