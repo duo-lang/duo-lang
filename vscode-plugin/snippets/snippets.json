@@ -57,7 +57,7 @@
       "constructor"
     ],
     "body": [
-      "constructor ${0:constructorname} : ${1:kind};"
+      "constructor ${1:constructorname} : ${0:kind};"
     ],
     "description": "A structural constructor"
   },
@@ -66,7 +66,7 @@
       "destructor"
     ],
     "body": [
-      "destructor ${0:destructorname} : ${1:kind};"
+      "destructor ${1:destructorname} : ${0:kind};"
     ],
     "description": "A structural destructor"
   },
@@ -75,8 +75,8 @@
       "data"
     ],
     "body": [
-      "data ${0:typename} : ${1:kind} {",
-      "\t${2:constructors}",
+      "data ${1:typename} : ${2:kind} {",
+      "\t${0:constructors}",
       "};"
     ],
     "description": "A data declaration"
@@ -86,8 +86,8 @@
       "codata"
     ],
     "body": [
-      "codata ${0:typename} : ${1:kind} {",
-      "\t${2:destructors}",
+      "codata ${1:typename} : ${2:kind} {",
+      "\t${0:destructors}",
       "};"
     ],
     "description": "A codata declaration"
@@ -97,8 +97,8 @@
       "refinement-data"
     ],
     "body": [
-      "refinement data ${0:typename} : ${1:kind} {",
-      "\t${2:constructors}",
+      "refinement data ${1:typename} : ${2:kind} {",
+      "\t${0:constructors}",
       "};"
     ],
     "description": "A refinement data declaration"
@@ -108,8 +108,8 @@
       "refinement-codata"
     ],
     "body": [
-      "refinement codata ${0:typename} : ${1:kind} {",
-      "\t${2:destructors}",
+      "refinement codata ${1:typename} : ${2:kind} {",
+      "\t${0:destructors}",
       "};"
     ],
     "description": "A refinement codata declaration"
@@ -119,7 +119,7 @@
       "def"
     ],
     "body": [
-      "def ${0:varname}[*] := ${1:producer};"
+      "def ${1:varname}[*] := ${0:producer};"
     ],
     "description": [
       "A toplevel producer declaration"
@@ -130,7 +130,7 @@
       "def"
     ],
     "body": [
-      "def ${0:varname}(*) := ${1:consumer};"
+      "def ${1:varname}(*) := ${0:consumer};"
     ],
     "description": [
       "A toplevel consumer declaration"
@@ -141,7 +141,7 @@
       "def"
     ],
     "body": [
-      "def ${0:varname} := ${1:command};"
+      "def ${1:varname} := ${0:command};"
     ],
     "description": [
       "A toplevel command declaration"
