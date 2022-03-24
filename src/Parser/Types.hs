@@ -196,10 +196,10 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> typeVariableP
 
 tyOpP :: Parser BinOp
-tyOpP = FunOp <$ thinRightarrow
+tyOpP = CustomOp (MkTyOpName "->") <$ thinRightarrow
     <|> InterOp <$ intersectionSym
     <|> UnionOp <$ unionSym
-    <|> ParOp <$ parSym
+    <|> CustomOp (MkTyOpName "⅋") <$ parSym
 
 opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
 opsChainP' p op = do

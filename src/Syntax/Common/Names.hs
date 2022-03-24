@@ -16,5 +16,15 @@ newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord,
 -- | Type variables
 newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
 
+-- | Name of type operators
+newtype TyOpName  = MkTyOpName { unTyOpName :: Text } deriving (Eq, Show, Ord)
+
+-- | Binary type operators
+data BinOp where
+  CustomOp :: TyOpName -> BinOp
+  UnionOp  :: BinOp
+  InterOp  :: BinOp
+  deriving (Show, Eq)
+
 -- | Two-level de Bruijn indices.
 type Index = (Int, Int)

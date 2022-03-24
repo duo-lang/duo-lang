@@ -18,14 +18,3 @@ data IsRefined = Refined | NotRefined
 ---------------------------------------------------------------------------------
 
 data IsRec = Recursive | NonRecursive deriving (Show, Eq, Ord)
-
----------------------------------------------------------------------------------
--- Type Operators
----------------------------------------------------------------------------------
-
-data BinOp where
-  FunOp    :: BinOp
-  ParOp    :: BinOp
-  UnionOp  :: BinOp
-  InterOp  :: BinOp
-  deriving (Show, Eq)

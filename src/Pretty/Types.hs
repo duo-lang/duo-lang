@@ -61,15 +61,17 @@ instance PrettyAnn Kind where
 -- Prettyprinting of types
 ---------------------------------------------------------------------------------
 
+instance PrettyAnn TyOpName where
+  prettyAnn (MkTyOpName op) = prettyAnn op
+
 instance PrettyAnn BinOp where
-  prettyAnn FunOp = arrowSym
-  prettyAnn ParOp = parSym
+  prettyAnn (CustomOp op) = prettyAnn op
   prettyAnn UnionOp = unionSym
   prettyAnn InterOp = interSym
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (TyNominal _ _ (MkTypeName "Fun") [tl] [tr]) = Just (prettyAnn tl , FunOp, prettyAnn tr)
-resugarType (TyNominal _ _ (MkTypeName "Par") [][t1,t2]) = Just (prettyAnn t1 , ParOp, prettyAnn t2)
+resugarType (TyNominal _ _ (MkTypeName "Fun") [tl] [tr]) = Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
+resugarType (TyNominal _ _ (MkTypeName "Par") [][t1,t2]) = Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
 resugarType _ = Nothing
 
 instance PrettyAnn Polarity where

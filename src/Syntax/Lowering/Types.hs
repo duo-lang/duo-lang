@@ -111,7 +111,7 @@ data TyOp = MkTyOp
 -- | Type operator for the function type
 functionTyOp :: TyOp
 functionTyOp = MkTyOp
-  { symbol = FunOp
+  { symbol = CustomOp (MkTyOpName "->")
   , prec = MkPrecedence 0
   , assoc = RightAssoc
   , desugar = desugarArrowType
@@ -138,7 +138,7 @@ interTyOp = MkTyOp
 -- | Type operator for the Par type
 parTyOp :: TyOp
 parTyOp = MkTyOp
-  { symbol = ParOp
+  { symbol = CustomOp (MkTyOpName "⅋")
   , prec = MkPrecedence 3
   , assoc = LeftAssoc
   , desugar = desugarParType
