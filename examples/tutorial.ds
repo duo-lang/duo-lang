@@ -14,8 +14,8 @@
 -- DualSub supports standard algebraic data types, which can be declared with the following
 -- syntax:
 
-data Bool : CBV { True, False };
-data Nat : CBV { Z, S(Nat) };
+data Bool { True, False };
+data Nat { Z, S(Nat) };
 
 -- Note that type and value constructors have to start with an uppercase letter, and how arguments
 -- to constructors are indicated in parentheses.

@@ -9,7 +9,7 @@ data Not(-a : CBV) : CBV {
     MkNot[a]
 };
 
-data Ordering : CBV {
+data Ordering {
     LT,
     EQ,
     GT
