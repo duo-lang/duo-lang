@@ -84,7 +84,10 @@ lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
   let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
   setEnvironment newEnv
-  pure $ AST.XtorDecl loc dc xt args ret
+  let ret' = case ret of
+               Just eo -> eo
+               Nothing -> case dc of Data -> CBV; Codata -> CBN
+  pure $ AST.XtorDecl loc dc xt args ret'
 lowerDecl (CST.ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv

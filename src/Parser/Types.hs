@@ -1,8 +1,9 @@
 module Parser.Types
   ( -- Kind Parser
     kindP
-    , callingConventionP
-    , polyKindP
+  , callingConventionP
+  , evalOrderP
+  , polyKindP
     -- Type Parsers
   , typeSchemeP
   , typP
