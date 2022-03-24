@@ -28,22 +28,22 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
-  return (Just (Apply () (Just (MonoKind (CBox CBV))) tm cns))
+  return (Just (Apply () (Just (CBox CBV)) tm cns))
 evalTermOnce (Call _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ (Just (MonoKind cc)) prd cns) = evalApplyOnce (evalOrder cc) prd cns
+evalTermOnce (Apply _ (Just kind) prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
-evalApplyOnce :: EvaluationOrder -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: MonoKind -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
 -- Free variables have to be looked up in the environment.
-evalApplyOnce eo (FreeVar _ PrdRep fv) cns = do
+evalApplyOnce kind (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupTerm PrdRep fv
-  return (Just (Apply () (Just (MonoKind (CBox eo))) prd cns))
-evalApplyOnce eo prd (FreeVar _ CnsRep fv) = do
+  return (Just (Apply () (Just kind) prd cns))
+evalApplyOnce kind prd (FreeVar _ CnsRep fv) = do
   (cns,_) <- lookupTerm CnsRep fv
-  return (Just (Apply () (Just (MonoKind (CBox eo))) prd cns))
+  return (Just (Apply () (Just kind) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(Xtor _ PrdRep _ xt args) cns@(XMatch _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
@@ -54,9 +54,11 @@ evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(Xtor _ CnsRep _ xt args) = do
   checkArgs (Apply () Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
-evalApplyOnce CBV (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
+evalApplyOnce (CBox CBV) (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce CBN prd@(MuAbs _ PrdRep _ _) (MuAbs _ CnsRep _ cmd) =
+evalApplyOnce (CRep _) (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
+  return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce (CBox CBN) prd@(MuAbs _ PrdRep _ _) (MuAbs _ CnsRep _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))
 evalApplyOnce _ (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpening [CnsTerm cns] cmd))
 evalApplyOnce _ prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpening [PrdTerm prd] cmd))

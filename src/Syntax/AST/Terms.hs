@@ -223,7 +223,7 @@ data Command (ext :: Phase) where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply  :: CommandExt ext -> Maybe Kind -> Term Prd ext -> Term Cns ext -> Command ext
+  Apply  :: CommandExt ext -> Maybe MonoKind -> Term Prd ext -> Term Cns ext -> Command ext
   Print  :: CommandExt ext -> Term Prd ext -> Command ext -> Command ext
   Read   :: CommandExt ext -> Term Cns ext -> Command ext
   Call   :: CommandExt ext -> FreeVarName -> Command ext

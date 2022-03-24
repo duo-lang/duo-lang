@@ -123,7 +123,7 @@ pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
 pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
 pctermToHoverMap (CnsTerm tm) = termToHoverMap tm
 
-applyToHoverMap :: Range -> Maybe Kind -> HoverMap
+applyToHoverMap :: Range -> Maybe MonoKind -> HoverMap
 applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 

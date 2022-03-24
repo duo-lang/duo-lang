@@ -139,9 +139,9 @@ xtorDeclarationP = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorName
-  (args, _) <- argListsP callingConventionP
+  (args, _) <- argListsP monoKindP
   _ <- colon
-  ret <- callingConventionP
+  ret <- evalOrderP
   endPos <- semi
   pure (XtorDecl (Loc startPos endPos) dc xt args ret)
 

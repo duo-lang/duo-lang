@@ -15,7 +15,7 @@ data Declaration where
   PrdCnsDecl     :: Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
   CmdDecl        :: Loc -> FreeVarName -> Command                                                       -> Declaration
   DataDecl       :: Loc -> DataDecl                                                                     -> Declaration
-  XtorDecl       :: Loc -> DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Declaration
+  XtorDecl       :: Loc -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration
   ImportDecl     :: Loc -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Text                                                                         -> Declaration
   ParseErrorDecl ::                                                                                        Declaration

@@ -1,9 +1,9 @@
 module Parser.Types
   ( -- Kind Parser
-    kindP
-    , callingConventionP
-    , polyKindP
-    -- Type Parsers
+    monoKindP
+  , polyKindP
+  , evalOrderP
+  -- Type Parsers
   , typeSchemeP
   , typP
   , typAtomP
@@ -26,14 +26,11 @@ import Syntax.Primitives
 ---------------------------------------------------------------------------------
 
 -- | Parses one of the keywords "CBV" or "CBN"
-callingConventionP :: Parser CallingConvention
-callingConventionP = CBox <$> evalOrderP
-                 <|> CRep I64 <$ i64RepKwP
-                 <|> CRep F64 <$ f64RepKwP
+monoKindP :: Parser MonoKind
+monoKindP = CBox <$> evalOrderP
+         <|> CRep I64 <$ i64RepKwP
+         <|> CRep F64 <$ f64RepKwP
 
--- | Parses a MonoKind, either "CBV" or "CBN"
-kindP :: Parser Kind
-kindP = MonoKind <$> callingConventionP
 
 evalOrderP :: Parser EvaluationOrder
 evalOrderP = (cbvKwP *> pure CBV) <|> (cbnKwP *> pure CBN)
@@ -54,15 +51,15 @@ polyKindP = do
   ret <- evalOrderP
   pure (MkPolyKind contra cov ret)
 
-tParamP :: Variance -> Parser (TVar, Kind)
+tParamP :: Variance -> Parser (TVar, MonoKind)
 tParamP v = do
   _ <- varianceP v
   (tvar,_) <- tvarP
   _ <- colon
-  kind <- kindP
+  kind <- monoKindP
   pure (tvar, kind)
 
-tparamsP :: Parser ([(TVar, Kind)],[(TVar, Kind)])
+tparamsP :: Parser ([(TVar, MonoKind)],[(TVar, MonoKind)])
 tparamsP =
   (fst <$> parens inner) <|> pure ([],[])
   where
