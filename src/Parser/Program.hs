@@ -140,10 +140,9 @@ xtorDeclarationP = do
   dc <- ctorDtorP
   (xt, _) <- xtorName
   (args, _) <- argListsP callingConventionP
-  _ <- colon
-  ret <- evalOrderP
+  ret <- optional (try colon >> evalOrderP)
   endPos <- semi
-  pure (XtorDecl (Loc startPos endPos) dc xt args (Just ret))
+  pure (XtorDecl (Loc startPos endPos) dc xt args ret)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
