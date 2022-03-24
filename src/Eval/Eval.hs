@@ -11,7 +11,6 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.Environment (Environment)
-import Syntax.Kinds (CallingConvention(..), Kind(..), EvaluationOrder(..), evalOrder)
 import Syntax.Common
 import Syntax.AST.Terms
 import Eval.Definition

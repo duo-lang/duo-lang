@@ -15,7 +15,6 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Utils
-import Syntax.Kinds (Kind)
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
@@ -102,32 +101,6 @@ dataCodataPrefixP = do
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
 
-varianceP :: Variance -> Parser ()
-varianceP Covariant = void plusSym
-varianceP Contravariant = void minusSym
-
-tParamP :: Variance -> Parser (TVar, Kind)
-tParamP v = do
-  _ <- varianceP v
-  (tvar,_) <- tvarP
-  _ <- colon
-  kind <- kindP
-  pure (tvar, kind)
-
-tparamsP :: Parser TParams
-tparamsP =
-  (fst <$> parens inner) <|> pure (MkTParams [] [])
-  where
-    inner = do
-      con_ps <- tParamP Contravariant `sepBy` try (comma <* notFollowedBy (varianceP Covariant))
-      if null con_ps then
-        MkTParams [] <$> tParamP Covariant `sepBy` comma
-      else do
-        cov_ps <-
-          try comma *> tParamP Covariant `sepBy` comma
-          <|> pure []
-        pure (MkTParams con_ps cov_ps)
-
 dataDeclP :: Parser Declaration
 dataDeclP = do
   o <- getOffset
@@ -135,14 +108,12 @@ dataDeclP = do
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
-    params <- tparamsP
-    if refined == Refined && not (null (allTypeVars params)) then
+    knd <- polyKindP
+    if refined == Refined && not (null (allTypeVars knd)) then
       region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
     else
       do
-        _ <- colon
-        knd <- kindP
-        let xtorP = local (\s -> s { tvars = allTypeVars params }) xtorDeclP
+        let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
         (xtors, _pos) <- braces $ xtorP `sepBy` comma
         endPos <- semi
         let decl = NominalDecl
@@ -151,7 +122,6 @@ dataDeclP = do
               , data_polarity = dataCodata
               , data_kind = knd
               , data_xtors = combineXtors xtors
-              , data_params = params
               }
 
         pure (DataDecl (Loc startPos endPos) decl)

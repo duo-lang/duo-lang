@@ -10,8 +10,7 @@ import Data.Text qualified as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
-
-import Syntax.Kinds ( EvaluationOrder(CBN, CBV) )
+import Syntax.Common hiding (evalOrder) 
 import Repl.Repl
     ( Option(..),
       Repl,

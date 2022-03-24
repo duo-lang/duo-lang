@@ -7,7 +7,6 @@ import Prettyprinter
 
 import Pretty.Pretty
 import Syntax.AST.Types
-import Syntax.Kinds
 import Syntax.Common
 import Syntax.Primitives
 

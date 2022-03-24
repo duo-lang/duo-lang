@@ -120,10 +120,10 @@ freshTVars ((Cns,fv):rest) = do
 
 freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([Typ (FlipPol pol)], [Typ pol], Map TVar (Typ Pos, Typ Neg))
 freshTVarsForTypeParams rep dd = do
-    let (MkTParams con cov) = data_params dd
+    let MkPolyKind { contravariant, covariant } = data_kind dd
     let tn = data_name dd
-    con' <- freshTVars tn (fst <$> con)
-    cov' <- freshTVars tn (fst <$> cov)
+    con' <- freshTVars tn (fst <$> contravariant)
+    cov' <- freshTVars tn (fst <$> covariant)
     let map = paramsMap dd (con', cov')
     case rep of
       PosRep -> pure (snd <$> con', fst <$> cov', map)
@@ -138,7 +138,7 @@ freshTVarsForTypeParams rep dd = do
 
     paramsMap :: DataDecl -> ([(Typ Pos, Typ Neg)], [(Typ Pos, Typ Neg)]) -> Map TVar (Typ Pos, Typ Neg)
     paramsMap dd (freshCon, freshCov) =
-        let (MkTParams con cov) = data_params dd in
+        let (MkPolyKind con cov _) = data_kind dd in
         fromList (zip (fst <$> con) freshCon ++ zip (fst <$> cov) freshCov)
 
 ---------------------------------------------------------------------------------------------

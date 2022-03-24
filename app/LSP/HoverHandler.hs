@@ -20,7 +20,6 @@ import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as Terms
 import Syntax.AST.Types
-import Syntax.Kinds
 import TypeTranslation
 
 import Data.Either (fromRight)

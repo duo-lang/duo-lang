@@ -16,7 +16,7 @@ import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
 import Syntax.Environment (Environment(..))
-import Syntax.AST.Types (DataDecl(data_params))
+import Syntax.AST.Types (DataDecl(..))
 import Utils (Loc)
 
 
@@ -28,7 +28,7 @@ lowerXtors sigs = do
     pure (posSigs, negSigs)
 
 lowerDataDecl :: Loc -> CST.DataDecl -> DriverM AST.DataDecl
-lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors, data_params } = do
+lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   -- HACK: Insert preliminary data declaration information (needed to lower type constructor applications)
   env <- gets driverEnv
   let prelim_dd = AST.NominalDecl
@@ -37,7 +37,6 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
         , data_polarity = data_polarity
         , data_kind = data_kind
         , data_xtors = ([], [])
-        , data_params = data_params
         }
 
   let prevDeclEnv = declEnv env
@@ -116,7 +115,6 @@ createSymbolTable ((CST.DataDecl loc dd):decls) =
         , data_polarity = CST.data_polarity dd
         , data_kind = CST.data_kind dd
         , data_xtors = ([], [])
-        , data_params = CST.data_params dd
         }) : declEnv x,
          xtorMap  = M.union xtors (xtorMap x)}
 createSymbolTable (_:decls) = createSymbolTable decls
