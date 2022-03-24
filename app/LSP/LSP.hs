@@ -10,7 +10,7 @@ import Data.Maybe ( fromMaybe )
 import Data.SortedList qualified as SL
 import Data.Text qualified as T
 import Data.Version (showVersion)
-import Language.LSP.VFS ( virtualFileText, VirtualFile )
+import Language.LSP.VFS ( virtualFileText )
 import Language.LSP.Server
     ( runServer,
       notificationHandler,
@@ -190,21 +190,20 @@ publishErrors :: Uri -> LSPMonad ()
 publishErrors uri = do
   flushDiagnosticsBySource 42 (Just "TypeInference")
   mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
-  let file = virtualFileText vfile
-  let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runExcept (runFileParser fp programP file)
-  case decls of
-    Left err -> do
-      -- sendError "Parsing error!"
-      sendLocatedError (toNormalizedUri uri) err
-    Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
-      case res of
+  case mfile of
+    Nothing -> sendError "Virtual File not present!"
+    Just vfile -> do
+      let file = virtualFileText vfile
+      let fp = fromMaybe "fail" (uriToFilePath uri)
+      let decls = runExcept (runFileParser fp programP file)
+      case decls of
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
-          -- sendError "Typeinference error!"
-        Right (env,_) -> do
-          updateHoverCache uri env
-          sendInfo $ "No errors in " <> T.pack fp <> "!"
+        Right decls -> do
+          res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty) decls
+          case res of
+            Left err -> do
+              sendLocatedError (toNormalizedUri uri) err
+            Right (env,_) -> do
+              updateHoverCache uri env
 
