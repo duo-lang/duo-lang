@@ -24,7 +24,7 @@ instance PrettyAnn DataCodata where
 
 instance PrettyAnn PolyKind where
   prettyAnn MkPolyKind { contravariant, covariant, returnKind } =
-    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> colon <+> prettyAnn returnKind
+    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> annSymbol "->" <+> prettyAnn returnKind
 
 instance PrettyAnn EvaluationOrder where
   prettyAnn CBV = annKeyword "CBV"
@@ -44,6 +44,7 @@ instance PrettyAnn DataDecl where
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
+    colon <+>
     prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
