@@ -5,7 +5,7 @@ import Peano;
 import LinearLogic;
 import Prelude;
 
-data Not(-a : CBV) : CBV {
+data Not : (-a : CBV) -> CBV {
     MkNot[a]
 };
 
