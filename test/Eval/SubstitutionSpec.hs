@@ -5,13 +5,13 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Test.Hspec
 
+import Driver.Driver
+import Driver.Environment
 import Pretty.Pretty
 import Pretty.Errors ()
 import Syntax.AST.Terms
-import Syntax.Environment
 import Syntax.Common
 import TestUtils
-import Driver.Driver
 
 spec :: Spec
 spec = do

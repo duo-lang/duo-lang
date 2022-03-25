@@ -4,12 +4,12 @@ import Data.Text (Text)
 import Test.Hspec
 
 import Driver.Definition
+import Driver.Environment 
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
 import Syntax.Lowering.Types
 import Syntax.Common
-import Syntax.Environment 
 import TestUtils (getEnvironment)
 import TypeAutomata.Subsume (subsume)
 

@@ -13,7 +13,7 @@ import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.AST.Program
 import Syntax.Common
-import Syntax.Environment
+import Driver.Environment
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations

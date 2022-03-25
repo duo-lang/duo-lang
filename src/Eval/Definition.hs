@@ -5,10 +5,10 @@ import Control.Monad.Reader
 import Data.List (find)
 import Text.Read (readMaybe)
 
+import Driver.Environment (Environment)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Environment (Environment)
 import Syntax.Common
 import Syntax.AST.Terms
 

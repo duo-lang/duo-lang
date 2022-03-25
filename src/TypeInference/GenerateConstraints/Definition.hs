@@ -36,12 +36,12 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
 
+import Driver.Environment
 import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.Environment
 import Syntax.AST.Types
 import Syntax.Common
 import TypeInference.Constraints

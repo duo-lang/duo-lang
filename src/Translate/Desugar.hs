@@ -9,10 +9,10 @@ module Translate.Desugar
   )
   where
 
+import Driver.Environment (Environment(..))
 import Syntax.AST.Terms
 import Syntax.Common
 import Syntax.AST.Program ( Declaration(..), Program)
-import Syntax.Environment (Environment(..))
 
 ---------------------------------------------------------------------------------
 -- Check if term is desugared

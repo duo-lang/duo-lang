@@ -65,6 +65,7 @@ library
   exposed-modules:
       Driver.Definition
       Driver.Driver
+      Driver.Environment
       Errors
       Eval.Definition
       Eval.Eval
@@ -100,7 +101,6 @@ library
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
-      Syntax.Environment
       Syntax.Lowering.Program
       Syntax.Lowering.Terms
       Syntax.Lowering.Types

@@ -6,9 +6,9 @@ import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 
+import Driver.Environment
 import Errors
 import Pretty.Errors ( printLocatedError )
-import Syntax.Environment
 import Syntax.Common
 import Utils
 

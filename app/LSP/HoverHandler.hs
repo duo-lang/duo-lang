@@ -3,29 +3,27 @@ module LSP.HoverHandler
   , updateHoverCache
   ) where
 
+import Control.Monad.IO.Class ( MonadIO(liftIO) )
+import Data.Either (fromRight)
+import Data.IORef (readIORef, modifyIORef)
+import Data.List (sortBy )
+import Data.Map (Map)
+import Data.Map qualified as M
+import Data.Text (Text)
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
-import Data.Map qualified as M
-import Data.List (sortBy )
-import System.Log.Logger ( debugM )
-import Pretty.Pretty ( ppPrint )
-import Control.Monad.IO.Class ( MonadIO(liftIO) )
-
 import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
 import LSP.MegaparsecToLSP
+import System.Log.Logger ( debugM )
 
-import Syntax.Environment
+import Driver.Environment
+import Pretty.Pretty ( ppPrint )
 import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as Terms
 import Syntax.AST.Types
 import TypeTranslation
-
-import Data.Either (fromRight)
-import Data.IORef (readIORef, modifyIORef)
-import Data.Text (Text)
-import Data.Map (Map)
 import Utils (Loc)
 
 ---------------------------------------------------------------------------------

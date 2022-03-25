@@ -6,15 +6,15 @@ import Data.Map qualified as M
 import Data.Text.IO qualified as T
 import System.IO.Error (tryIOError)
 
+import Driver.Driver (inferProgramIO, DriverState(..), InferenceOptions(..), defaultInferenceOptions)
+import Driver.Environment (Environment(..))
 import Eval.Eval (eval)
 import Parser.Parser (runFileParser)
 import Parser.Program (programP)
 import Pretty.Pretty (ppPrintIO)
+import Syntax.Common
 import Translate.Desugar (desugarCmd, desugarEnvironment)
 import Translate.Focusing (focusCmd, focusEnvironment)
-import Driver.Driver (inferProgramIO, DriverState(..), InferenceOptions(..), defaultInferenceOptions)
-import Syntax.Environment (Environment(..))
-import Syntax.Common
 
 driverState :: DriverState
 driverState = DriverState { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"]}

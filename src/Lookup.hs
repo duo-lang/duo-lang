@@ -14,14 +14,13 @@ import Control.Monad.Reader
 import Data.List
 import Data.Map qualified as M
 
-
+import Driver.Environment (Environment(..))
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.Common
 import Syntax.AST.Terms
 import Syntax.AST.Types
-import Syntax.Environment (Environment(..))
 import Utils
 
 ---------------------------------------------------------------------------------
