@@ -27,12 +27,12 @@ import Syntax.CST.Types
 -- | Parses one of the keywords "CBV" or "CBN"
 monoKindP :: Parser MonoKind
 monoKindP = CBox <$> evalOrderP
-         <|> CRep I64 <$ i64RepKwP
-         <|> CRep F64 <$ f64RepKwP
+         <|> CRep I64 <$ keywordP KwI64Rep
+         <|> CRep F64 <$ keywordP KwF64Rep
 
 
 evalOrderP :: Parser EvaluationOrder
-evalOrderP = (cbvKwP *> pure CBV) <|> (cbnKwP *> pure CBN)
+evalOrderP = (keywordP KwCBV *> pure CBV) <|> (keywordP KwCBN *> pure CBN)
 
 ---------------------------------------------------------------------------------
 -- Parsing of PolyKinds
@@ -147,7 +147,7 @@ typeVariableP = do
 
 recTypeP :: Parser Typ
 recTypeP = do
-  _ <- recKwP
+  _ <- keywordP KwRec
   (rv,_) <- tvarP
   _ <- dot
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP
@@ -175,8 +175,8 @@ refinementTypeP Codata = fst <$> braces (do
 
 primitiveTypeP :: Parser PrimitiveType
 primitiveTypeP =
-      I64 <$ i64KwP
-  <|> F64 <$ f64KwP
+      I64 <$ keywordP KwI64 
+  <|> F64 <$ keywordP KwF64
 
 ---------------------------------------------------------------------------------
 -- Type Parser
@@ -191,8 +191,8 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> xdataTypeP Data
   <|> xdataTypeP Codata
   <|> recTypeP
-  <|> TyTop <$ topKwP
-  <|> TyBot <$ botKwP
+  <|> TyTop <$ keywordP KwTop
+  <|> TyBot <$ keywordP KwBot
   <|> TyPrim <$> primitiveTypeP
   <|> typeVariableP
 
@@ -230,6 +230,6 @@ typP = typOpsP <|> typAtomP
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
-  tvars' <- option [] (forallKwP >> some (fst <$> tvarP) <* dot)
+  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* dot)
   monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP
   pure (TypeScheme tvars' monotype)

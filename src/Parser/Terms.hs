@@ -74,8 +74,8 @@ natLitP ns = do
 primitiveLitP :: Parser (CST.Term, SourcePos)
 primitiveLitP = do
   startPos <- getSourcePos
-  lit <- try (F64Lit . fst <$> floatP <* f64KwP)
-     <|> I64Lit . fst <$> intP <* i64KwP
+  lit <- try (F64Lit . fst <$> floatP <* keywordP KwF64)
+     <|> I64Lit . fst <$> intP <* keywordP KwI64
   endPos <- getSourcePos
   pure (CST.PrimLit (Loc startPos endPos) lit, endPos)
 
@@ -86,7 +86,7 @@ primitiveLitP = do
 muAbstraction :: Parser (CST.Term, SourcePos)
 muAbstraction = do
   startPos <- getSourcePos
-  _ <- muKwP
+  _ <- keywordP KwMu
   (v, _pos) <- freeVarName
   _ <- dot
   (cmd, endPos) <- cstcommandP
@@ -106,13 +106,13 @@ applyCmdP = do
 doneCmdP :: Parser (CST.Command, SourcePos)
 doneCmdP = do
   startPos <- getSourcePos
-  endPos <- doneKwP
+  endPos <- keywordP KwDone
   return (CST.Done (Loc startPos endPos), endPos)
 
 printCmdP :: Parser (CST.Command, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
-  _ <- printKwP
+  _ <- keywordP KwPrint
   (arg,_) <- parens (fst <$> termTopP)
   _ <- semi
   (cmd, endPos) <- cstcommandP
@@ -121,7 +121,7 @@ printCmdP = do
 readCmdP :: Parser (CST.Command, SourcePos)
 readCmdP = do
   startPos <- getSourcePos
-  _ <- readKwP
+  _ <- keywordP KwRead
   (arg,endPos) <- brackets (fst <$> termTopP)
   return (CST.Read (Loc startPos endPos) arg, endPos)
 
@@ -202,7 +202,7 @@ allCaseP = caseP <|> cocaseP
 caseP :: Parser (CST.Term, SourcePos)
 caseP = do
   startPos <- getSourcePos
-  _ <- caseKwP
+  _ <- keywordP KwCase
   caseRestP startPos <|> caseRestP' startPos
 
 caseRestP :: SourcePos -> Parser (CST.Term, SourcePos)
@@ -213,7 +213,7 @@ caseRestP startPos = do
 caseRestP' :: SourcePos -> Parser (CST.Term, SourcePos)
 caseRestP' startPos = do
   (arg, _pos) <- termTopP
-  _ <- ofKwP
+  _ <- keywordP KwOf
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` comma)
   return (CST.Case (Loc startPos endPos) arg cases, endPos)
 
@@ -222,7 +222,7 @@ caseRestP' startPos = do
 cocaseP :: Parser (CST.Term, SourcePos)
 cocaseP = do
   startPos <- getSourcePos
-  _ <- cocaseKwP
+  _ <- keywordP KwCocase
   try (cocaseRestP startPos) <|> cocaseRestP' startPos
 
 cocaseRestP :: SourcePos -> Parser (CST.Term, SourcePos)

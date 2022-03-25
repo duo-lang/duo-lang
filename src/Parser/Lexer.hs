@@ -6,39 +6,15 @@ module Parser.Lexer
   , uintP
   , floatP
     -- Names
+  , allCaseId
   , freeVarName
   , tvarP
   , xtorName
   , typeNameP
   , moduleNameP
-  , optionP
-    -- Keywords
-  , caseKwP
-  , cocaseKwP
-  , ofKwP
-  , defKwP
-  , doneKwP
-  , printKwP
-  , readKwP
-  , forallKwP
-  , dataKwP
-  , codataKwP
-  , recKwP
-  , muKwP
-  , importKwP
-  , setKwP
-  , topKwP
-  , botKwP
-  , i64KwP
-  , f64KwP
-  , cbvKwP
-  , cbnKwP
-  , i64RepKwP
-  , f64RepKwP
-  , typeKwP
-  , refinementKwP
-  , constructorKwP
-  , destructorKwP
+  -- Keywords
+  , Keyword(..)
+  , keywordP
     -- Symbols
   , dot
   , pipe
@@ -75,6 +51,7 @@ module Parser.Lexer
   , parseUntilKeywP
   ) where
 
+import Data.Foldable (asum)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Text.Megaparsec hiding (State)
@@ -126,14 +103,6 @@ lexeme p = do
   sc
   return (res, endPos)
 
-
-keywordP :: Text -> Parser SourcePos
-keywordP str = do
-  _ <- string str <* notFollowedBy alphaNumChar
-  endPos <- getSourcePos
-  sc
-  return endPos
-
 natP :: Parser (Int, SourcePos)
 natP = do
   (numStr, pos) <- lexeme (some numberChar)
@@ -157,145 +126,194 @@ floatP = do
   f <- signed space float
   pure (f, pos)
 
--- | Used for parsing options using the "set option;" syntax
-optionP :: Parser (Text, SourcePos)
-optionP = lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
-
 -------------------------------------------------------------------------------------------
 -- Names
 -------------------------------------------------------------------------------------------
 
-freeVarName :: Parser (FreeVarName, SourcePos)
-freeVarName = try $ do
+lowerCaseId :: Parser (Text, SourcePos)
+lowerCaseId = do
   (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
   checkReserved name
+  pure (name, pos)
+
+upperCaseId :: Parser (Text, SourcePos)
+upperCaseId = do
+  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
+  checkReserved name
+  pure (name, pos)
+
+allCaseId :: Parser (Text, SourcePos)
+allCaseId = do
+  (name, pos) <- lexeme $ T.pack <$> many alphaNumChar
+  checkReserved name
+  pure (name, pos)
+
+freeVarName :: Parser (FreeVarName, SourcePos)
+freeVarName = try $ do
+  (name, pos) <- lowerCaseId
   return (MkFreeVarName name, pos)
 
 tvarP :: Parser (TVar, SourcePos)
 tvarP = try $ do
-  (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
-  checkReserved name
+  (name, pos) <- lowerCaseId
   return (MkTVar name, pos)
 
+xtorName :: Parser (XtorName, SourcePos)
+xtorName = try $ do
+  (name, pos) <- upperCaseId
+  return (MkXtorName name, pos)
+
+typeNameP :: Parser (TypeName, SourcePos)
+typeNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkTypeName name, pos)
+
+moduleNameP :: Parser (ModuleName, SourcePos)
+moduleNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkModuleName name, pos)
 
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
 checkTick Refinement = return ()
 checkTick Structural = () <$ tick
 
-xtorName :: Parser (XtorName, SourcePos)
-xtorName = try $ do
-  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
-  checkReserved name
-  return (MkXtorName name, pos)
-
-typeNameP :: Parser (TypeName, SourcePos)
-typeNameP = try $ do
-  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
-  checkReserved name
-  return (MkTypeName name, pos)
-
-moduleNameP :: Parser (ModuleName, SourcePos)
-moduleNameP = try $ do
-  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
-  checkReserved name
-  return (MkModuleName name, pos)
-
 -------------------------------------------------------------------------------------------
 -- Keywords
 -------------------------------------------------------------------------------------------
 
-keywords :: [Text]
-keywords = ["case", "cocase", "def", "of", "set", "Top", "Bot"
-           , "Done", "Print", "Read", "forall", "data", "codata", "rec", "mu", "import", "Type"
-           , "CBV", "CBN", "F64Rep", "I64Rep", "refinement", "constructor", "destructor"]
+data Keyword where
+  -- Term Keywords
+  KwCase        :: Keyword
+  KwCocase      :: Keyword
+  KwOf          :: Keyword
+  KwMu          :: Keyword
+  -- Type and Kind Keywords
+  KwForall      :: Keyword
+  KwRec         :: Keyword
+  KwTop         :: Keyword
+  KwBot         :: Keyword
+  KwCBV         :: Keyword
+  KwCBN         :: Keyword
+  KwI64         :: Keyword
+  KwF64         :: Keyword
+  KwF64Rep      :: Keyword
+  KwI64Rep      :: Keyword
+  -- Command Keywords
+  KwDone        :: Keyword
+  KwPrint       :: Keyword
+  KwRead        :: Keyword
+  -- Declaration Keywords
+  KwRefinement  :: Keyword
+  KwConstructor :: Keyword
+  KwDestructor  :: Keyword
+  KwDef         :: Keyword
+  KwData        :: Keyword
+  KwCodata      :: Keyword
+  KwSet         :: Keyword
+  KwImport      :: Keyword
+  deriving (Eq, Ord, Enum, Bounded)
+
+instance Show Keyword where
+  -- Term Keywords
+  show KwCase        = "case"
+  show KwCocase      = "cocase"
+  show KwOf          = "of"
+  show KwMu          = "mu"
+  -- Type and Kind Keywords
+  show KwForall      = "forall"
+  show KwRec         = "rec"
+  show KwTop         = "Top"
+  show KwBot         = "Bot"
+  show KwCBV         = "CBV"
+  show KwCBN         = "CBN"
+  show KwI64         = "#I64"
+  show KwF64         = "#F64"
+  show KwF64Rep      = "F64Rep"
+  show KwI64Rep      = "I64Rep"
+  -- Command Keywords
+  show KwDone        = "Done"
+  show KwPrint       = "Print"
+  show KwRead        = "Read"
+  -- Declaration Keywords
+  show KwRefinement  = "refinement"
+  show KwConstructor = "constructor"
+  show KwDestructor  = "destructor"
+  show KwDef         = "def"
+  show KwData        = "data"
+  show KwCodata      = "codata"
+  show KwSet         = "set"
+  show KwImport      = "import"
+  
+
+-- | Which keywords start a toplevel declaration.
+-- These keywords are used to restart parsing after a parse error.
+isDeclarationKw :: Keyword -> Bool
+-- Term Keywords
+isDeclarationKw KwCase        = False
+isDeclarationKw KwCocase      = False
+isDeclarationKw KwOf          = False
+isDeclarationKw KwMu          = False
+-- Type and Kind Keywords
+isDeclarationKw KwForall      = False
+isDeclarationKw KwRec         = False
+isDeclarationKw KwTop         = False
+isDeclarationKw KwBot         = False
+isDeclarationKw KwCBV         = False
+isDeclarationKw KwCBN         = False
+isDeclarationKw KwI64         = False
+isDeclarationKw KwF64         = False
+isDeclarationKw KwF64Rep      = False
+isDeclarationKw KwI64Rep      = False
+-- Command Keywords
+isDeclarationKw KwDone        = False
+isDeclarationKw KwPrint       = False
+isDeclarationKw KwRead        = False
+-- Declaration Keywords
+isDeclarationKw KwRefinement  = True
+isDeclarationKw KwConstructor = True
+isDeclarationKw KwDestructor  = True
+isDeclarationKw KwDef         = True
+isDeclarationKw KwData        = True
+isDeclarationKw KwCodata      = True
+isDeclarationKw KwSet         = True
+isDeclarationKw KwImport      = True
+
+-- | All keywords of the language
+keywords :: [Keyword]
+keywords = enumFromTo minBound maxBound
+
+-- | All keywords which start toplevel Declarations
+declKeywords :: [Keyword]
+declKeywords = filter isDeclarationKw keywords
+
+-- | A parser which parses a keyword
+keywordP :: Keyword -> Parser SourcePos
+keywordP kw = do
+  _ <- string (T.pack (show kw)) <* notFollowedBy alphaNumChar
+  endPos <- getSourcePos
+  sc
+  return endPos
+
+parseUntilKeywP :: Parser ()
+parseUntilKeywP = do
+  let endP = asum ([keywordP kw | kw <- declKeywords] ++ [eof >> getSourcePos])
+  _ <- manyTill anySingle (lookAhead endP)
+  return ()
+
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
 checkReserved :: Text -> Parser ()
-checkReserved str | str `elem` keywords = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
+checkReserved str | str `elem` (T.pack . show <$> keywords) = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
 
-caseKwP :: Parser SourcePos
-caseKwP = keywordP "case"
-
-cocaseKwP :: Parser SourcePos
-cocaseKwP = keywordP "cocase"
-
-ofKwP :: Parser SourcePos
-ofKwP = keywordP "of"
-
-defKwP :: Parser SourcePos
-defKwP = keywordP "def"
-
-doneKwP :: Parser SourcePos
-doneKwP = keywordP "Done"
-
-printKwP :: Parser SourcePos
-printKwP = keywordP "Print"
-
-readKwP :: Parser SourcePos
-readKwP = keywordP "Read"
-
-forallKwP :: Parser SourcePos
-forallKwP = keywordP "forall"
-
-dataKwP :: Parser SourcePos
-dataKwP = keywordP "data"
-
-codataKwP :: Parser SourcePos
-codataKwP = keywordP "codata"
-
-recKwP :: Parser SourcePos
-recKwP = keywordP "rec"
-
-muKwP :: Parser SourcePos
-muKwP = keywordP "mu"
-
-importKwP :: Parser SourcePos
-importKwP = keywordP "import"
-
-setKwP :: Parser SourcePos
-setKwP = keywordP "set"
-
-topKwP :: Parser SourcePos
-topKwP = keywordP "Top"
-
-botKwP :: Parser SourcePos
-botKwP = keywordP "Bot"
-
-primitiveTyP :: String -> Parser SourcePos
-primitiveTyP s = keywordP (T.pack ("#" ++ s))
-
-i64KwP :: Parser SourcePos
-i64KwP = primitiveTyP "I64"
-
-f64KwP :: Parser SourcePos
-f64KwP = primitiveTyP "F64"
-
-cbvKwP :: Parser SourcePos
-cbvKwP = keywordP "CBV"
-
-cbnKwP :: Parser SourcePos
-cbnKwP = keywordP "CBN"
-
-i64RepKwP :: Parser SourcePos
-i64RepKwP = keywordP "I64Rep"
-
-f64RepKwP :: Parser SourcePos
-f64RepKwP = keywordP "F64Rep"
-
-typeKwP :: Parser SourcePos
-typeKwP = keywordP "Type"
-
-refinementKwP :: Parser SourcePos
-refinementKwP = keywordP "refinement"
-
-constructorKwP :: Parser SourcePos
-constructorKwP = keywordP "constructor"
-
-destructorKwP :: Parser SourcePos
-destructorKwP = keywordP "destructor"
+primOpKeywordP :: PrimitiveType -> PrimitiveOp -> Parser (PrimitiveType, PrimitiveOp, SourcePos)
+primOpKeywordP pt op = do
+  _ <- string (T.pack (primOpKeyword op ++ primTypeKeyword pt))
+  endPos <- getSourcePos
+  sc
+  pure (pt, op, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Symbols
@@ -357,11 +375,6 @@ minusSym = symbol "-"
 
 primitiveSym :: Parser SourcePos
 primitiveSym = symbol "#"
-
-primOpKeywordP :: PrimitiveType -> PrimitiveOp -> Parser (PrimitiveType, PrimitiveOp, SourcePos)
-primOpKeywordP pt op = do
-  endPos <- keywordP (T.pack (primOpKeyword op ++ primTypeKeyword pt))
-  pure (pt, op, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Parens
@@ -426,13 +439,5 @@ argListsIP mode p = do
   (lasts,endPos) <- argListsP p
   return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
 
--------------------------------------------------------------------------------------------
--- Recovery parser
--------------------------------------------------------------------------------------------
 
-parseUntilKeywP :: Parser ()
-parseUntilKeywP = do
-  let endP = defKwP <|> dataKwP <|> codataKwP <|> setKwP <|> refinementKwP <|> constructorKwP <|> destructorKwP <|> (eof >> getSourcePos)
-  _ <- manyTill anySingle (lookAhead endP)
-  return ()
 

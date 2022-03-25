@@ -20,7 +20,7 @@ recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
 
 isRecP :: Parser IsRec
-isRecP = option NonRecursive (try recKwP >> pure Recursive)
+isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
 
 annotP :: Parser (Maybe TypeScheme)
 annotP = optional (try (notFollowedBy coloneq *> colon) >> typeSchemeP)
@@ -51,13 +51,13 @@ cmdDeclarationP startPos = do
 defDeclarationP :: Parser Declaration
 defDeclarationP = do
   startPos <- getSourcePos
-  try (void defKwP)
+  try (void (keywordP KwDef))
   recoverDeclaration $ cmdDeclarationP startPos <|> prdCnsDeclarationP startPos Prd <|> prdCnsDeclarationP startPos Cns
 
 importDeclP :: Parser Declaration
 importDeclP = do
   startPos <- getSourcePos
-  try (void importKwP)
+  try (void (keywordP KwImport))
   (mn, _) <- moduleNameP
   endPos <- semi
   return (ImportDecl (Loc startPos endPos) mn)
@@ -65,8 +65,8 @@ importDeclP = do
 setDeclP :: Parser Declaration
 setDeclP = do
   startPos <- getSourcePos
-  try (void setKwP)
-  (txt,_) <- optionP
+  try (void (keywordP KwSet))
+  (txt,_) <- allCaseId
   endPos <- semi
   return (SetDecl (Loc startPos endPos) txt)
 
@@ -95,8 +95,8 @@ combineXtors = fmap combineXtor
 
 dataCodataPrefixP :: Parser (IsRefined,DataCodata)
 dataCodataPrefixP = do
-  refined <- optional refinementKwP
-  dataCodata <- (dataKwP >> return Data) <|> (codataKwP >> return Codata)
+  refined <- optional (keywordP KwRefinement)
+  dataCodata <- (keywordP KwData >> return Data) <|> (keywordP KwCodata >> return Codata)
   case refined of
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
@@ -144,7 +144,7 @@ dataDeclP = do
 
 -- | Parses either "constructor" or "destructor"
 ctorDtorP :: Parser DataCodata
-ctorDtorP = (constructorKwP >> pure Data) <|> (destructorKwP >> pure Codata)
+ctorDtorP = (keywordP KwConstructor >> pure Data) <|> (keywordP KwDestructor >> pure Codata)
 
 xtorDeclarationP :: Parser Declaration
 xtorDeclarationP = do
