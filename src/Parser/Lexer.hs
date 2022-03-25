@@ -15,27 +15,10 @@ module Parser.Lexer
   -- Keywords
   , Keyword(..)
   , keywordP
-    -- Symbols
-  , dot
-  , pipe
-  , comma
-  , semi
-  , colon
-  , backslash
-  , coloneq
-  , rightarrow
-  , thinRightarrow
-  , commandSym
-  , unionSym
-  , intersectionSym
-  , subtypeSym
-  , implicitSym
-  , parSym
-  , plusSym
-  , minusSym
-  , primitiveSym
-  , primOpKeywordP
-    -- Parens
+  -- Symbols
+  , Symbol(..)
+  , symbolP
+  -- Parens
   , angles
   , parens
   , brackets
@@ -46,7 +29,8 @@ module Parser.Lexer
   , bracketsListIP
   , argListsP
   , argListsIP
-    -- Other
+  -- Other
+  , primOpKeywordP
   , checkTick
   , parseUntilKeywP
   ) where
@@ -88,13 +72,6 @@ sc = L.space space1 (L.skipLineComment "--") empty
 -------------------------------------------------------------------------------------------
 -- Helper functions
 -------------------------------------------------------------------------------------------
-
-symbol :: Text -> Parser SourcePos
-symbol str = do
-  _ <- string str
-  endPos <- getSourcePos
-  sc
-  return endPos
 
 lexeme :: Parser a -> Parser (a, SourcePos)
 lexeme p = do
@@ -176,7 +153,7 @@ moduleNameP = try $ do
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
 checkTick Refinement = return ()
-checkTick Structural = () <$ tick
+checkTick Structural = () <$ symbolP SymTick
 
 -------------------------------------------------------------------------------------------
 -- Keywords
@@ -246,8 +223,9 @@ instance Show Keyword where
   show KwImport      = "import"
   
 
--- | Which keywords start a toplevel declaration.
--- These keywords are used to restart parsing after a parse error.
+-- | These keywords start a new declaration at the toplevel and
+--   are used to restart parsing after a parse error has been
+--   encountered.
 isDeclarationKw :: Keyword -> Bool
 -- Term Keywords
 isDeclarationKw KwCase        = False
@@ -283,7 +261,7 @@ isDeclarationKw KwImport      = True
 keywords :: [Keyword]
 keywords = enumFromTo minBound maxBound
 
--- | All keywords which start toplevel Declarations
+-- | All keywords which start toplevel declarations
 declKeywords :: [Keyword]
 declKeywords = filter isDeclarationKw keywords
 
@@ -300,7 +278,6 @@ parseUntilKeywP = do
   let endP = asum ([keywordP kw | kw <- declKeywords] ++ [eof >> getSourcePos])
   _ <- manyTill anySingle (lookAhead endP)
   return ()
-
 
 -- Check if the string is in the list of reserved keywords.
 -- Reserved keywords cannot be used as identifiers.
@@ -319,62 +296,75 @@ primOpKeywordP pt op = do
 -- Symbols
 -------------------------------------------------------------------------------------------
 
-comma :: Parser SourcePos
-comma = symbol ","
+data Symbol where
+  SymComma            :: Symbol
+  SymDot              :: Symbol
+  SymSemi             :: Symbol
+  SymColon            :: Symbol
+  SymPipe             :: Symbol
+  SymTick             :: Symbol
+  SymBackslash        :: Symbol
+  SymColoneq          :: Symbol
+  SymDoubleRightArrow :: Symbol
+  SymSimpleRightArrow :: Symbol
+  SymCommand          :: Symbol
+  SymUnion            :: Symbol
+  SymIntersection     :: Symbol
+  SymSubtype          :: Symbol
+  SymImplicit         :: Symbol
+  SymPar              :: Symbol
+  SymPlus             :: Symbol
+  SymMinus            :: Symbol
+  SymHash             :: Symbol
+  -- Parens Symbols
+  SymParenLeft        :: Symbol
+  SymParenRight       :: Symbol
+  SymBraceLeft        :: Symbol
+  SymBraceRight       :: Symbol
+  SymBracketLeft      :: Symbol
+  SymBracketRight     :: Symbol
+  SymAngleLeft        :: Symbol
+  SymAngleRight       :: Symbol
+  deriving (Eq, Ord, Enum, Bounded)
 
-dot :: Parser SourcePos
-dot = symbol "."
+instance Show Symbol where
+  show SymComma            = ","
+  show SymDot              = "."
+  show SymSemi             = ";"
+  show SymColon            = ":"
+  show SymPipe             = "|"
+  show SymTick             = "'"
+  show SymBackslash        = "\\"
+  show SymColoneq          = ":="
+  show SymDoubleRightArrow = "=>"
+  show SymSimpleRightArrow = "->"
+  show SymCommand          = ">>"
+  show SymUnion            = "\\/"
+  show SymIntersection     = "/\\"
+  show SymSubtype          = "<:"
+  show SymImplicit         = "*"
+  show SymPar              = "⅋"
+  show SymPlus             = "+"
+  show SymMinus            = "-"
+  show SymHash             = "#"
+  -- Parens Symbols
+  show SymParenLeft        = "("
+  show SymParenRight       = ")"
+  show SymBraceLeft        = "{"
+  show SymBraceRight       = "}"
+  show SymBracketLeft      = "["
+  show SymBracketRight     = "]"
+  show SymAngleLeft        = "<"
+  show SymAngleRight       = ">"
 
-semi :: Parser SourcePos
-semi = symbol ";"
 
-colon :: Parser SourcePos
-colon = symbol ":"
+symbolP :: Symbol -> Parser SourcePos
+symbolP sym = do
+  _ <- string (T.pack (show sym))
+  endPos <- getSourcePos
+  sc
+  return endPos
 
-pipe :: Parser SourcePos
-pipe = symbol "|"
-
-tick :: Parser SourcePos
-tick = symbol "'"
-
-backslash :: Parser SourcePos
-backslash = symbol "\\"
-
-coloneq :: Parser SourcePos
-coloneq = symbol ":="
-
-rightarrow :: Parser SourcePos
-rightarrow = symbol "=>"
-
-thinRightarrow :: Parser SourcePos
-thinRightarrow = symbol "->"
-
-commandSym :: Parser SourcePos
-commandSym = symbol ">>"
-
-unionSym :: Parser SourcePos
-unionSym = symbol "\\/"
-
-intersectionSym :: Parser SourcePos
-intersectionSym = symbol "/\\"
-
-subtypeSym :: Parser SourcePos
-subtypeSym = symbol "<:"
-
-implicitSym :: Parser SourcePos
-implicitSym = symbol "*"
-
-parSym :: Parser SourcePos
-parSym = symbol "⅋"
-
-plusSym :: Parser SourcePos
-plusSym = symbol "+"
-
-minusSym :: Parser SourcePos
-minusSym = symbol "-"
-
-primitiveSym :: Parser SourcePos
-primitiveSym = symbol "#"
 
 -------------------------------------------------------------------------------------------
 -- Parens
@@ -388,39 +378,39 @@ betweenP open close middle = do
   pure (res, endPos)
 
 parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
-parens    = betweenP (symbol "(")  (symbol ")")
-braces    = betweenP (symbol "{")  (symbol "}")
-brackets  = betweenP (symbol "[")  (symbol "]")
-angles    = betweenP (symbol "<")  (symbol ">")
+parens    = betweenP (symbolP SymParenLeft)   (symbolP SymParenRight)
+braces    = betweenP (symbolP SymBraceLeft)   (symbolP SymBraceRight)
+brackets  = betweenP (symbolP SymBracketLeft) (symbolP SymBracketRight)
+angles    = betweenP (symbolP SymAngleLeft)   (symbolP SymAngleRight)
 
 -- | Parse a non-empty list of elements in parens.
 -- E.g. "(a,a,a)"
 parensListP :: Parser a -> Parser ([(PrdCns, a)], SourcePos)
-parensListP p = parens  $ ((,) Prd <$> p) `sepBy` comma
+parensListP p = parens  $ ((,) Prd <$> p) `sepBy` symbolP SymComma
 
 -- | Parse a non-empty list of elements in parens, with exactly one asterisk.
 -- E.g. "(a,*,a)"
 parensListIP :: Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
 parensListIP p = parens $ do
   let p' =(\x -> (Prd, x)) <$> p
-  fsts <- option [] (try ((p' `sepBy` try (comma <* notFollowedBy implicitSym)) <* comma))
-  _ <- implicitSym
-  snds <- option [] (try (comma *> p' `sepBy` comma))
+  fsts <- option [] (try ((p' `sepBy` try (symbolP SymComma <* notFollowedBy (symbolP SymImplicit))) <* symbolP SymComma))
+  _ <- symbolP SymImplicit
+  snds <- option [] (try (symbolP SymComma *> p' `sepBy` symbolP SymComma))
   return (fsts, snds)
 
 -- | Parse a non-empty list of elements in brackets.
 -- E.g. "[a,a,a]"
 bracketsListP :: Parser a -> Parser ([(PrdCns,a)], SourcePos)
-bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` comma
+bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` symbolP SymComma
 
 -- | Parse a non-empty list of elements in parens, with exactly one asterisk.
 -- E.g. "[a,*,a]"
 bracketsListIP :: Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
 bracketsListIP p = brackets $ do
   let p' =(\x -> (Cns, x)) <$> p
-  fsts <- option [] (try ((p' `sepBy` try (comma <* notFollowedBy implicitSym)) <* comma))
-  _ <- implicitSym
-  snds <- option [] (try (comma *> p' `sepBy` comma))
+  fsts <- option [] (try ((p' `sepBy` try (symbolP SymComma <* notFollowedBy (symbolP SymImplicit))) <* symbolP SymComma))
+  _ <- symbolP SymImplicit
+  snds <- option [] (try (symbolP SymComma *> p' `sepBy` symbolP SymComma))
   return (fsts, snds)
 
 -- | Parse a sequence of producer/consumer argument lists

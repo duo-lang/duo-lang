@@ -23,29 +23,29 @@ isRecP :: Parser IsRec
 isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
 
 annotP :: Parser (Maybe TypeScheme)
-annotP = optional (try (notFollowedBy coloneq *> colon) >> typeSchemeP)
+annotP = optional (try (notFollowedBy (symbolP SymColoneq) *> symbolP SymColon) >> typeSchemeP)
 
 prdCnsDeclarationP :: SourcePos -> PrdCns -> Parser Declaration
 prdCnsDeclarationP startPos pc = do
     (isRec, v) <- try $ do
       isRec <- isRecP
       (v, _pos) <- freeVarName
-      _ <- (case pc of Prd -> brackets implicitSym; Cns -> parens implicitSym)
+      _ <- (case pc of Prd -> brackets (symbolP SymImplicit); Cns -> parens (symbolP SymImplicit))
       pure (isRec, v)
     annot <- annotP
-    _ <- coloneq
+    _ <- symbolP SymColoneq
     (tm,_) <- termP
-    endPos <- semi
+    endPos <- symbolP SymSemi
     pure (PrdCnsDecl (Loc startPos endPos) pc isRec v annot tm)
 
 cmdDeclarationP :: SourcePos -> Parser Declaration
 cmdDeclarationP startPos = do
     v <- try $ do
       (v, _pos) <- freeVarName
-      _ <- coloneq
+      _ <- symbolP SymColoneq
       pure v
     (cmd,_) <- commandP
-    endPos <- semi
+    endPos <- symbolP SymSemi
     pure (CmdDecl (Loc startPos endPos) v cmd)
 
 defDeclarationP :: Parser Declaration
@@ -59,7 +59,7 @@ importDeclP = do
   startPos <- getSourcePos
   try (void (keywordP KwImport))
   (mn, _) <- moduleNameP
-  endPos <- semi
+  endPos <- symbolP SymSemi
   return (ImportDecl (Loc startPos endPos) mn)
 
 setDeclP :: Parser Declaration
@@ -67,7 +67,7 @@ setDeclP = do
   startPos <- getSourcePos
   try (void (keywordP KwSet))
   (txt,_) <- allCaseId
-  endPos <- semi
+  endPos <- symbolP SymSemi
   return (SetDecl (Loc startPos endPos) txt)
 
 ---------------------------------------------------------------------------------
@@ -108,11 +108,11 @@ dataDeclP = do
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
-    knd <- optional (try colon >> polyKindP)
+    knd <- optional (try (symbolP SymColon) >> polyKindP)
     case knd of
       Nothing -> do
-        (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
-        endPos <- semi
+        (xtors, _pos) <- braces $ xtorDeclP `sepBy` symbolP SymComma
+        endPos <- symbolP SymSemi
         let decl = NominalDecl
               { data_refined = refined
               , data_name = tn
@@ -127,8 +127,8 @@ dataDeclP = do
         else
           do
             let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
-            (xtors, _pos) <- braces $ xtorP `sepBy` comma
-            endPos <- semi
+            (xtors, _pos) <- braces $ xtorP `sepBy` symbolP SymComma
+            endPos <- symbolP SymSemi
             let decl = NominalDecl
                   { data_refined = refined
                   , data_name = tn
@@ -152,8 +152,8 @@ xtorDeclarationP = do
   dc <- ctorDtorP
   (xt, _) <- xtorName
   (args, _) <- argListsP monoKindP
-  ret <- optional (try colon >> evalOrderP)
-  endPos <- semi
+  ret <- optional (try (symbolP SymColon) >> evalOrderP)
+  endPos <- symbolP SymSemi
   pure (XtorDecl (Loc startPos endPos) dc xt args ret)
 
 ---------------------------------------------------------------------------------
