@@ -77,6 +77,7 @@ library
       Parser.Terms
       Parser.Types
       Pretty.Pretty
+      Pretty.Common
       Pretty.Constraints
       Pretty.Terms
       Pretty.Types

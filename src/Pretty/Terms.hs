@@ -4,6 +4,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
+import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.AST.Terms
 import Syntax.Common
@@ -96,10 +97,6 @@ isNumSTerm (Xtor _ PrdRep Nominal (MkXtorName "S") [PrdTerm n]) = case isNumSTer
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTerm _ = Nothing
-
-instance PrettyAnn PrimitiveLiteral where
-  prettyAnn (I64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#I64"
-  prettyAnn (F64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#F64"
 
 instance PrettyAnn (Term pc ext) where
   prettyAnn (isNumSTerm -> Just n) = pretty n

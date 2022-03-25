@@ -3,7 +3,6 @@ module Pretty.Constraints () where
 import Prettyprinter
 import Data.List (intersperse)
 import Data.Map qualified as M
-import Text.Megaparsec.Pos
 
 import Pretty.Pretty
 import Pretty.Types ()
@@ -11,19 +10,6 @@ import Syntax.AST.Types
 import Syntax.Common
 import Syntax.Zonking (Bisubstitution(..))
 import TypeInference.Constraints
-import Utils
-
-
----------------------------------------------------------------------------------
--- Locations
----------------------------------------------------------------------------------
-
-instance PrettyAnn Pos where
-  prettyAnn p = pretty (unPos p)
-
-instance PrettyAnn Loc where
-  prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
-    pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
