@@ -176,6 +176,11 @@ inferDecl (ImportDecl loc mod) = do
 --
 inferDecl (SetDecl _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
+--
+-- TyOpDecl
+--
+inferDecl (TyOpDecl loc op prec ty) = do
+  pure (TyOpDecl loc op prec ty)
 
 ---------------------------------------------------------------------------------
 -- Infer programs

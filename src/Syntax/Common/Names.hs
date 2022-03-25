@@ -2,6 +2,10 @@ module Syntax.Common.Names where
 
 import Data.Text (Text)
 
+---------------------------------------------------------------------------------
+-- Names
+---------------------------------------------------------------------------------
+
 newtype ModuleName = MkModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
 
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
@@ -16,6 +20,10 @@ newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord,
 -- | Type variables
 newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
 
+---------------------------------------------------------------------------------
+-- Type operators
+---------------------------------------------------------------------------------
+
 -- | Name of type operators
 newtype TyOpName  = MkTyOpName { unTyOpName :: Text } deriving (Eq, Show, Ord)
 
@@ -25,6 +33,18 @@ data BinOp where
   UnionOp  :: BinOp
   InterOp  :: BinOp
   deriving (Show, Eq)
+
+data Associativity where
+  LeftAssoc :: Associativity
+  RightAssoc :: Associativity
+  deriving (Eq, Show, Ord)
+
+data Precedence = MkPrecedence Int
+  deriving (Eq, Show, Ord)
+
+---------------------------------------------------------------------------------
+-- de Bruijn indices
+---------------------------------------------------------------------------------
 
 -- | Two-level de Bruijn indices.
 type Index = (Int, Int)

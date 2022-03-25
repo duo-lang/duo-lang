@@ -68,6 +68,8 @@ instance PrettyAnn (Declaration ext) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (TyOpDecl _ op prec ty) =
+    annKeyword "type" <+> annKeyword "operator" <+> prettyAnn op <+> annKeyword "at" <+> prettyAnn prec <+> annSymbol ":=" <+> prettyAnn ty <> semi
 
 instance PrettyAnn (NamedRep (Declaration ext)) where
   prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
@@ -82,6 +84,8 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (NamedRep (TyOpDecl _ op prec ty)) =
+    annKeyword "type" <+> annKeyword "operator" <+> prettyAnn op <+> annKeyword "at" <+> prettyAnn prec <+> annSymbol ":=" <+> prettyAnn ty <> semi
 
 instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)

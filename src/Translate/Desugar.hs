@@ -120,6 +120,7 @@ desugarDecl (DataDecl _ decl)                   = DataDecl () decl
 desugarDecl (XtorDecl _ dc xt args ret)         = XtorDecl () dc xt args ret
 desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
+desugarDecl (TyOpDecl _ op prec ty)             = TyOpDecl () op prec ty
 
 desugarProgram :: Program Inferred -> Program Compiled
 desugarProgram ps = desugarDecl <$> ps

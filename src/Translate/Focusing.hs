@@ -214,10 +214,11 @@ focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 focusDecl :: EvaluationOrder -> Declaration Compiled -> Declaration Compiled
 focusDecl eo (PrdCnsDecl _ pc isRec name annot prd) = PrdCnsDecl () pc isRec name annot (focusTerm eo prd)
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
-focusDecl _  decl@(DataDecl _ _)              = decl
-focusDecl _  decl@(XtorDecl _ _ _ _ _)        = decl
-focusDecl _  decl@(ImportDecl _ _)            = decl
-focusDecl _  decl@(SetDecl _ _)               = decl
+focusDecl _  decl@DataDecl {}                 = decl
+focusDecl _  decl@XtorDecl {}                 = decl
+focusDecl _  decl@ImportDecl {}               = decl
+focusDecl _  decl@SetDecl {}                  = decl
+focusDecl _  decl@TyOpDecl {}                 = decl
 
 focusProgram :: EvaluationOrder -> Program Compiled -> Program Compiled
 focusProgram eo = fmap (focusDecl eo)

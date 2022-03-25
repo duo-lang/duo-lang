@@ -54,6 +54,10 @@ defDeclarationP = do
   try (void (keywordP KwDef))
   recoverDeclaration $ cmdDeclarationP startPos <|> prdCnsDeclarationP startPos Prd <|> prdCnsDeclarationP startPos Cns
 
+---------------------------------------------------------------------------------
+-- Import Declaration
+---------------------------------------------------------------------------------
+
 importDeclP :: Parser Declaration
 importDeclP = do
   startPos <- getSourcePos
@@ -62,6 +66,10 @@ importDeclP = do
   endPos <- symbolP SymSemi
   return (ImportDecl (Loc startPos endPos) mn)
 
+---------------------------------------------------------------------------------
+-- Set Option Declaration
+---------------------------------------------------------------------------------
+
 setDeclP :: Parser Declaration
 setDeclP = do
   startPos <- getSourcePos
@@ -69,6 +77,30 @@ setDeclP = do
   (txt,_) <- allCaseId
   endPos <- symbolP SymSemi
   return (SetDecl (Loc startPos endPos) txt)
+
+---------------------------------------------------------------------------------
+-- Type Operator Declaration
+---------------------------------------------------------------------------------
+
+precedenceP :: Parser Precedence
+precedenceP = do
+  (n,_) <- natP
+  pure (MkPrecedence n)
+
+-- | Parses a type operator declaration of the form
+--       "type operator -> at 5 := Fun;"
+typeOperatorDeclP :: Parser Declaration
+typeOperatorDeclP = do
+  startPos <- getSourcePos
+  try (void (keywordP KwType))
+  _ <- keywordP KwOperator
+  (sym,_) <- tyOpNameP
+  _ <- keywordP KwAt
+  prec <- precedenceP
+  _ <- symbolP SymColoneq
+  (tyname,_) <- typeNameP
+  endPos <- symbolP SymSemi
+  pure (TyOpDecl (Loc startPos endPos) sym prec tyname)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
@@ -162,6 +194,7 @@ xtorDeclarationP = do
 
 declarationP :: Parser Declaration
 declarationP =
+  typeOperatorDeclP <|>
   defDeclarationP <|>
   importDeclP <|>
   setDeclP <|>

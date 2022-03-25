@@ -18,6 +18,7 @@ data Declaration where
   XtorDecl       :: Loc -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder      -> Declaration
   ImportDecl     :: Loc -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Text                                                                         -> Declaration
+  TyOpDecl       :: Loc -> TyOpName -> Precedence -> TypeName                                           -> Declaration
   ParseErrorDecl ::                                                                                        Declaration
 
 instance Show Declaration where

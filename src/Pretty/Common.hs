@@ -45,6 +45,9 @@ instance PrettyAnn TVar where
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
 
+instance PrettyAnn Precedence where
+  prettyAnn (MkPrecedence i) = pretty i
+
 ---------------------------------------------------------------------------------
 -- Producer/Consumer and Arity
 ---------------------------------------------------------------------------------

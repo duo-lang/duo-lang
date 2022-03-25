@@ -11,6 +11,7 @@ module Parser.Lexer
   , tvarP
   , xtorName
   , typeNameP
+  , tyOpNameP
   , moduleNameP
   -- Keywords
   , Keyword(..)
@@ -125,6 +126,19 @@ allCaseId = do
   checkReserved name
   pure (name, pos)
 
+operatorP :: Parser (Text, SourcePos)
+operatorP = f <|> g
+  where
+    -- We have to treat the function arrow specially, since we want to allow it
+    -- as an operator, but it is also a reserved symbol.
+    f = symbolP SymSimpleRightArrow >>= \pos -> pure ("->",pos)
+    g = do
+      (name, pos) <- lexeme $ T.pack <$> many symbolChar
+      checkReservedOp name
+      pure (name, pos)
+
+---
+
 freeVarName :: Parser (FreeVarName, SourcePos)
 freeVarName = try $ do
   (name, pos) <- lowerCaseId
@@ -149,6 +163,11 @@ moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
   (name, pos) <- upperCaseId
   return (MkModuleName name, pos)
+
+tyOpNameP :: Parser (TyOpName, SourcePos)
+tyOpNameP = try $ do
+  (name, pos) <- operatorP
+  return (MkTyOpName name, pos)
 
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
@@ -176,11 +195,14 @@ data Keyword where
   KwF64         :: Keyword
   KwF64Rep      :: Keyword
   KwI64Rep      :: Keyword
+  KwOperator    :: Keyword
+  KwAt          :: Keyword
   -- Command Keywords
   KwDone        :: Keyword
   KwPrint       :: Keyword
   KwRead        :: Keyword
   -- Declaration Keywords
+  KwType        :: Keyword
   KwRefinement  :: Keyword
   KwConstructor :: Keyword
   KwDestructor  :: Keyword
@@ -208,11 +230,14 @@ instance Show Keyword where
   show KwF64         = "#F64"
   show KwF64Rep      = "F64Rep"
   show KwI64Rep      = "I64Rep"
+  show KwOperator    = "operator"
+  show KwAt          = "at"
   -- Command Keywords
   show KwDone        = "Done"
   show KwPrint       = "Print"
   show KwRead        = "Read"
   -- Declaration Keywords
+  show KwType        = "type"
   show KwRefinement  = "refinement"
   show KwConstructor = "constructor"
   show KwDestructor  = "destructor"
@@ -243,11 +268,14 @@ isDeclarationKw KwI64         = False
 isDeclarationKw KwF64         = False
 isDeclarationKw KwF64Rep      = False
 isDeclarationKw KwI64Rep      = False
+isDeclarationKw KwOperator    = False
+isDeclarationKw KwAt          = False
 -- Command Keywords
 isDeclarationKw KwDone        = False
 isDeclarationKw KwPrint       = False
 isDeclarationKw KwRead        = False
 -- Declaration Keywords
+isDeclarationKw KwType        = True
 isDeclarationKw KwRefinement  = True
 isDeclarationKw KwConstructor = True
 isDeclarationKw KwDestructor  = True
@@ -312,7 +340,6 @@ data Symbol where
   SymIntersection     :: Symbol
   SymSubtype          :: Symbol
   SymImplicit         :: Symbol
-  SymPar              :: Symbol
   SymPlus             :: Symbol
   SymMinus            :: Symbol
   SymHash             :: Symbol
@@ -343,7 +370,6 @@ instance Show Symbol where
   show SymIntersection     = "/\\"
   show SymSubtype          = "<:"
   show SymImplicit         = "*"
-  show SymPar              = "⅋"
   show SymPlus             = "+"
   show SymMinus            = "-"
   show SymHash             = "#"
@@ -357,7 +383,6 @@ instance Show Symbol where
   show SymAngleLeft        = "<"
   show SymAngleRight       = ">"
 
-
 symbolP :: Symbol -> Parser SourcePos
 symbolP sym = do
   _ <- string (T.pack (show sym))
@@ -365,6 +390,14 @@ symbolP sym = do
   sc
   return endPos
 
+operators :: [Symbol]
+operators = enumFromTo minBound maxBound
+
+-- Check if the string is in the list of reserved operators.
+-- Reserved operators cannot be used as custom operators
+checkReservedOp :: Text -> Parser ()
+checkReservedOp str | str `elem` (T.pack . show <$> operators) = fail . T.unpack $ "Operator " <> str <> " cannot be used as a custom operator."
+                    | otherwise = return ()
 
 -------------------------------------------------------------------------------------------
 -- Parens
