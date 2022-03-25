@@ -4,7 +4,9 @@ module Parser.Terms
   )where
 
 import Data.Bifunctor (first)
+import Data.Foldable
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Map (keys)
 import Text.Megaparsec hiding (State)
 
 import Parser.Definition
@@ -12,9 +14,6 @@ import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-import Syntax.Primitives
-import Data.Map (keys)
-import Data.Foldable
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions

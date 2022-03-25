@@ -11,7 +11,7 @@ import Errors
 import Pretty.Common
 import Pretty.Constraints ()
 import Pretty.Pretty
-import Syntax.Primitives (primOpKeyword, primTypeKeyword)
+import Syntax.Common
 import Utils
 
 ---------------------------------------------------------------------------------

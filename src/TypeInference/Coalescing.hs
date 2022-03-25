@@ -10,7 +10,7 @@ import Data.Text qualified as T
 
 import Syntax.AST.Types
 import Syntax.Common
-import Syntax.Zonking ( Bisubstitution(..) )
+import Syntax.AST.Zonking ( Bisubstitution(..) )
 import TypeInference.Constraints
 
 ---------------------------------------------------------------------------------

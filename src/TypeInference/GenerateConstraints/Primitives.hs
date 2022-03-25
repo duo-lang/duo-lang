@@ -3,7 +3,6 @@ module TypeInference.GenerateConstraints.Primitives where
 import Data.Map
 
 import Syntax.Common
-import Syntax.Primitives
 import Syntax.AST.Types
 
 simplePrimBinOp :: PrimitiveType -> LinearContext Neg

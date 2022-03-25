@@ -5,7 +5,6 @@ import Text.Megaparsec.Pos (SourcePos)
 
 import Syntax.Common
 import Utils
-import Syntax.Primitives
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and Binding Sites

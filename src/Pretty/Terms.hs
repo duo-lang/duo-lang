@@ -9,9 +9,6 @@ import Pretty.Pretty
 import Syntax.AST.Terms
 import Syntax.Common
 import Data.Bifunctor
-import Syntax.Primitives
-
-
 
 ---------------------------------------------------------------------------------
 -- Pattern match cases and cocases

@@ -15,7 +15,6 @@ import Syntax.AST.Terms qualified as AST
 import Syntax.Environment (Environment(..))
 import Syntax.Common
 import Utils
-import Syntax.Primitives (PrimitiveType, PrimitiveOp, primOps)
 
 ---------------------------------------------------------------------------------
 -- Helper Functions

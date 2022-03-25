@@ -36,7 +36,7 @@ import Syntax.AST.Program
       Declaration(..)
     )
 import Syntax.Environment (Environment(..))    
-import Syntax.Zonking (zonkType)
+import Syntax.AST.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )

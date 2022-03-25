@@ -19,8 +19,6 @@ import Syntax.AST.Terms
       Substitution,
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
-import Syntax.Primitives
-
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues

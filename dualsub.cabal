@@ -87,11 +87,13 @@ library
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.AST.Types
+      Syntax.AST.Zonking
       Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names
       Syntax.Common.Phases
       Syntax.Common.Polarity
+      Syntax.Common.Primitives
       Syntax.Common.PrdCns
       Syntax.Common.Types
       Syntax.Common.XData
@@ -99,11 +101,9 @@ library
       Syntax.CST.Terms
       Syntax.CST.Types
       Syntax.Environment
-      Syntax.Primitives
       Syntax.Lowering.Program
       Syntax.Lowering.Terms
       Syntax.Lowering.Types
-      Syntax.Zonking
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize

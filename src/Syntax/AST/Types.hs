@@ -5,7 +5,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 
 import Syntax.Common
-import Syntax.Primitives
 
 ------------------------------------------------------------------------------
 -- LinearContexts

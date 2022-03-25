@@ -2,7 +2,6 @@ module Syntax.CST.Types where
 
 import Syntax.Common
 import Data.List.NonEmpty (NonEmpty)
-import Syntax.Primitives
 
 ---------------------------------------------------------------------------------
 -- Parse Types

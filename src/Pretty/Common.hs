@@ -5,7 +5,6 @@ import Text.Megaparsec.Pos
 
 import Pretty.Pretty
 import Syntax.Common
-import Syntax.Primitives
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -45,7 +44,6 @@ instance PrettyAnn TVar where
 
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
-
 
 ---------------------------------------------------------------------------------
 -- Producer/Consumer and Arity

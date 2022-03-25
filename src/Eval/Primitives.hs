@@ -1,7 +1,6 @@
 module Eval.Primitives where
 
 import Syntax.Common
-import Syntax.Primitives
 import Syntax.AST.Terms
 
 import Eval.Definition
