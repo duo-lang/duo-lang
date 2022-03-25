@@ -65,7 +65,7 @@ isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocus
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: EvaluationOrder -> Command Compiled -> Maybe (Command Compiled)
-isFocusedCmd eo (Apply _ _ prd cns)    = Apply () (Just (MonoKind (CBox eo))) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
+isFocusedCmd eo (Apply _ _ prd cns)    = Apply () (Just (CBox eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (Done _)               = Just (Done ())
 isFocusedCmd _  (Call _ fv)            = Just (Call () fv)
 isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
@@ -153,23 +153,23 @@ focusXtor eo CnsRep ns xt subst = MuAbs () CnsRep Nothing (commandClosing [(Prd,
 
 
 focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> NominalStructural -> XtorName -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
-focusXtor' eo CnsRep ns xt [] pcterms' = Apply () (Just (MonoKind (CBox eo))) (FreeVar () PrdRep alphaVar)
-                                                                       (Xtor () CnsRep ns xt (reverse pcterms'))
-focusXtor' eo PrdRep ns xt [] pcterms' = Apply () (Just (MonoKind (CBox eo))) (Xtor () PrdRep ns xt (reverse pcterms'))
-                                                                       (FreeVar () CnsRep alphaVar)
+focusXtor' eo CnsRep ns xt [] pcterms' = Apply () (Just (CBox eo)) (FreeVar () PrdRep alphaVar)
+                                                                   (Xtor () CnsRep ns xt (reverse pcterms'))
+focusXtor' eo PrdRep ns xt [] pcterms' = Apply () (Just (CBox eo)) (Xtor () PrdRep ns xt (reverse pcterms'))
+                                                                   (FreeVar () CnsRep alphaVar)
 focusXtor' eo pc     ns xt (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc ns xt pcterms (PrdTerm prd : pcterms')
 focusXtor' eo pc     ns xt (PrdTerm                                 prd:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   cmd = commandClosing [(Prd,var)]  (shiftCmd (focusXtor' eo pc ns xt pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
                                                               in
-                                                                  Apply () (Just (MonoKind (CBox eo))) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
+                                                                  Apply () (Just (CBox eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
 focusXtor' eo pc     ns xt (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc ns xt pcterms (CnsTerm cns : pcterms')
 focusXtor' eo pc     ns xt (CnsTerm                                 cns:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   cmd = commandClosing [(Cns,var)] (shiftCmd (focusXtor' eo pc ns xt pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
-                                                              in Apply () (Just (MonoKind (CBox eo))) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
+                                                              in Apply () (Just (CBox eo)) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 
 
@@ -186,27 +186,27 @@ focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
         var = betaVar (length pcterms')
         cmd = commandClosing [(Prd,var)]  (shiftCmd (focusPrimOp eo op pcterms (PrdTerm (FreeVar () PrdRep var) : pcterms')))
     in
-        Apply () (Just (MonoKind (CBox eo))) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
+        Apply () (Just (CBox eo)) (focusTerm eo prd) (MuAbs () CnsRep Nothing cmd)
 focusPrimOp eo op (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp eo op pcterms (CnsTerm cns : pcterms')
 focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
         cmd = commandClosing [(Cns,var)] (shiftCmd (focusPrimOp eo op pcterms (CnsTerm (FreeVar () CnsRep var) : pcterms')))
     in
-        Apply () (Just (MonoKind (CBox eo))) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
+        Apply () (Just (CBox eo)) (MuAbs () PrdRep Nothing cmd) (focusTerm eo cns)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: EvaluationOrder -> Command Compiled -> Command Compiled
-focusCmd eo (Apply _ _ prd cns) = Apply () (Just (MonoKind (CBox eo))) (focusTerm eo prd) (focusTerm eo cns)
+focusCmd eo (Apply _ _ prd cns) = Apply () (Just (CBox eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (Done _) = Done ()
 focusCmd _  (Call _ fv) = Call () fv
 focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd) cmd) = Print () prd (focusCmd eo cmd)
-focusCmd eo (Print _ prd cmd) = Apply () (Just (MonoKind (CBox eo))) (focusTerm eo prd)
-                                                              (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))
+focusCmd eo (Print _ prd cmd) = Apply () (Just (CBox eo)) (focusTerm eo prd)
+                                                          (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))
 focusCmd eo (Read _ (isValueTerm eo CnsRep -> Just cns)) = Read () cns
-focusCmd eo (Read _ cns) = Apply () (Just (MonoKind (CBox eo))) (MuAbs () PrdRep Nothing (Read () (BoundVar () CnsRep (0,0))))
-                                                         (focusTerm eo cns)
+focusCmd eo (Read _ cns) = Apply () (Just (CBox eo)) (MuAbs () PrdRep Nothing (Read () (BoundVar () CnsRep (0,0))))
+                                                     (focusTerm eo cns)
 focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 
 ---------------------------------------------------------------------------------

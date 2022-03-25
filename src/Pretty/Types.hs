@@ -48,14 +48,11 @@ parSym = annKeyword "⅋"
 -- Prettyprinting of Kinds
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn CallingConvention  where
+instance PrettyAnn MonoKind where
   prettyAnn (CBox CBV) = "CBV"
   prettyAnn (CBox CBN) = "CBN"
   prettyAnn (CRep I64) = "I64Rep"
   prettyAnn (CRep F64) = "F64Rep"
-
-instance PrettyAnn Kind where
-  prettyAnn (MonoKind eo) = prettyAnn eo
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of types

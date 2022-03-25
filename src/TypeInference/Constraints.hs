@@ -59,10 +59,10 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInf
 data VariableState = VariableState
   { vst_upperbounds :: [Typ Neg]
   , vst_lowerbounds :: [Typ Pos]
-  , vst_kind        :: Kind
+  , vst_kind        :: MonoKind
   }
 
-emptyVarState :: Kind -> VariableState
+emptyVarState :: MonoKind -> VariableState
 emptyVarState kind = VariableState [] [] kind
 
 data SolverResult = MkSolverResult

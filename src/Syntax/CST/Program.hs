@@ -12,13 +12,13 @@ import Utils
 ---------------------------------------------------------------------------------
 
 data Declaration where
-  PrdCnsDecl     :: Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                        -> Declaration
-  CmdDecl        :: Loc -> FreeVarName -> Command                                                           -> Declaration
-  DataDecl       :: Loc -> DataDecl                                                                         -> Declaration
-  XtorDecl       :: Loc -> DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> Maybe EvaluationOrder -> Declaration
-  ImportDecl     :: Loc -> ModuleName                                                                       -> Declaration
-  SetDecl        :: Loc -> Text                                                                             -> Declaration
-  ParseErrorDecl ::                                                                                            Declaration
+  PrdCnsDecl     :: Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
+  CmdDecl        :: Loc -> FreeVarName -> Command                                                       -> Declaration
+  DataDecl       :: Loc -> DataDecl                                                                     -> Declaration
+  XtorDecl       :: Loc -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder      -> Declaration
+  ImportDecl     :: Loc -> ModuleName                                                                   -> Declaration
+  SetDecl        :: Loc -> Text                                                                         -> Declaration
+  ParseErrorDecl ::                                                                                        Declaration
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"

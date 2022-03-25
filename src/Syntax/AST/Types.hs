@@ -66,15 +66,15 @@ deriving instance Show (XtorSig Pos)
 deriving instance Show (XtorSig Neg)
 
 data Typ (pol :: Polarity) where
-  TyVar :: PolarityRep pol -> Maybe Kind -> TVar -> Typ pol
+  TyVar :: PolarityRep pol -> Maybe MonoKind -> TVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData   :: PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
   TyCodata :: PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: PolarityRep pol -> Maybe Kind -> TypeName -> [Typ (FlipPol pol)] -> [Typ pol] -> Typ pol
+  TyNominal :: PolarityRep pol -> Maybe MonoKind -> TypeName -> [Typ (FlipPol pol)] -> [Typ pol] -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
-  TySet :: PolarityRep pol -> Maybe Kind -> [Typ pol] -> Typ pol
+  TySet :: PolarityRep pol -> Maybe MonoKind -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
   TyPrim :: PolarityRep pol -> PrimitiveType -> Typ pol
 

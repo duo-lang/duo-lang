@@ -8,7 +8,7 @@ import Eval.Definition
 import Errors (throwEvalError)
 
 applyPrdToCns :: Term Prd Compiled -> Term Cns Compiled -> EvalM (Maybe (Command Compiled))
-applyPrdToCns x k = pure $ Just $ Apply () (Just $ MonoKind (CBox CBV)) x k
+applyPrdToCns x k = pure $ Just $ Apply () (Just $ CBox CBV) x k
 
 evalPrimOp :: PrimitiveType -> PrimitiveOp -> Substitution Compiled -> EvalM (Maybe (Command Compiled))
 -- I64

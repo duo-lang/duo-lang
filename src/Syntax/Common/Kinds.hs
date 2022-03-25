@@ -21,39 +21,28 @@ data EvaluationOrder = CBV | CBN
   deriving (Show, Eq, Ord)
 
 ---------------------------------------------------------------------------------
--- Calling Convention
+-- MonoKind
 ---------------------------------------------------------------------------------
 
--- | A calling convention is either boxed CBV/CBN or specific to a primitive type
-data CallingConvention
+-- | A MonoKind is a kind which classifies inhabitated types.
+data MonoKind
   = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
   | CRep PrimitiveType    -- ^ Primitive type representation
   deriving (Show, Eq, Ord)
-
-evalOrder :: CallingConvention -> EvaluationOrder
-evalOrder (CBox o) = o
-evalOrder (CRep _) = CBV
 
 ------------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------------
 
 data PolyKind =
-  MkPolyKind { contravariant :: [(TVar, Kind)]
-             , covariant :: [(TVar, Kind)]
+  MkPolyKind { contravariant :: [(TVar, MonoKind)]
+             , covariant :: [(TVar, MonoKind)]
              , returnKind :: EvaluationOrder
              }
 
 deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
+
 allTypeVars :: PolyKind -> Set TVar
 allTypeVars (MkPolyKind { contravariant, covariant }) =
   S.fromList ((fst <$> contravariant) ++ (fst <$> covariant))
-
--- | We use the "Kinds are calling-conventions" approach to track
--- calling conventions at the type level.
-data Kind where
-  MonoKind :: CallingConvention -> Kind
-  deriving (Show, Eq, Ord)
-
-

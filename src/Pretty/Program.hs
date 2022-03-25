@@ -30,7 +30,7 @@ instance PrettyAnn EvaluationOrder where
   prettyAnn CBV = annKeyword "CBV"
   prettyAnn CBN = annKeyword "CBN"
 
-prettyTParam :: Variance -> (TVar, Kind) -> Doc Annotation
+prettyTParam :: Variance -> (TVar, MonoKind) -> Doc Annotation
 prettyTParam v (tv, k) = prettyVariance v <> prettyAnn tv <+> ":" <+> prettyAnn k
 
 prettyVariance :: Variance -> Doc Annotation
@@ -70,12 +70,12 @@ prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "def" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
 
-prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> EvaluationOrder -> Doc Annotation
+prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder -> Doc Annotation
 prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 
--- | Prettyprint the list of calling conventions.
-prettyCCList :: [(PrdCns, CallingConvention)] -> Doc Annotation
+-- | Prettyprint the list of MonoKinds
+prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
 prettyCCList [] = mempty
 prettyCCList ((Prd, cc):xs) = (parens   $ prettyAnn cc) <> prettyCCList xs
 prettyCCList ((Cns, cc):xs) = (brackets $ prettyAnn cc) <> prettyCCList xs
