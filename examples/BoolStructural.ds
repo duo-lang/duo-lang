@@ -2,8 +2,8 @@
 
 import Function;
 
-constructor True : CBV;
-constructor False : CBV;
+constructor True;
+constructor False;
 
 -- Boolean negation.
 def not[*] : < False, True > -> < False, True >:=

@@ -35,7 +35,9 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
         { data_refined = data_refined
         , data_name = data_name
         , data_polarity = data_polarity
-        , data_kind = data_kind
+        , data_kind = case data_kind of
+            Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
+            Just knd -> knd
         , data_xtors = ([], [])
         }
 
@@ -82,7 +84,10 @@ lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
   let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
   setEnvironment newEnv
-  pure $ AST.XtorDecl loc dc xt args ret
+  let ret' = case ret of
+               Just eo -> eo
+               Nothing -> case dc of Data -> CBV; Codata -> CBN
+  pure $ AST.XtorDecl loc dc xt args ret'
 lowerDecl (CST.ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
@@ -113,7 +118,9 @@ createSymbolTable ((CST.DataDecl loc dd):decls) =
         { data_refined = CST.data_refined dd
         , data_name = CST.data_name dd
         , data_polarity = CST.data_polarity dd
-        , data_kind = CST.data_kind dd
+        , data_kind = case CST.data_kind dd of
+          Nothing -> MkPolyKind [] [] (case CST.data_polarity dd of { Data -> CBV; Codata -> CBN })
+          Just knd -> knd
         , data_xtors = ([], [])
         }) : declEnv x,
          xtorMap  = M.union xtors (xtorMap x)}

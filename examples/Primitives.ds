@@ -1,6 +1,6 @@
 import Function;
 
-data I64 : CBV {
+data I64 {
     MkI64(#I64)
 };
 
@@ -39,7 +39,7 @@ def mod[*] : I64 -> I64 -> I64 := \x => \y =>
         }
     };
 
-data F64 : CBV {
+data F64 {
     MkF64(#F64)
 };
 
