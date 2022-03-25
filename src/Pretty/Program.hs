@@ -8,34 +8,16 @@ import Data.List (intersperse)
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
+import Pretty.Common
 import Syntax.AST.Types
 import Syntax.AST.Terms
 import Syntax.AST.Program
 import Syntax.Common
-import Syntax.Environment
+import Driver.Environment
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
-
-instance PrettyAnn DataCodata where
-  prettyAnn Data = annKeyword "data"
-  prettyAnn Codata = annKeyword "codata"
-
-instance PrettyAnn PolyKind where
-  prettyAnn MkPolyKind { contravariant, covariant, returnKind } =
-    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> annSymbol "->" <+> prettyAnn returnKind
-
-instance PrettyAnn EvaluationOrder where
-  prettyAnn CBV = annKeyword "CBV"
-  prettyAnn CBN = annKeyword "CBN"
-
-prettyTParam :: Variance -> (TVar, MonoKind) -> Doc Annotation
-prettyTParam v (tv, k) = prettyVariance v <> prettyAnn tv <+> ":" <+> prettyAnn k
-
-prettyVariance :: Variance -> Doc Annotation
-prettyVariance Covariant = annSymbol "+"
-prettyVariance Contravariant = annSymbol "-"
 
 instance PrettyAnn DataDecl where
   prettyAnn (NominalDecl ref tn dc knd xtors) =
@@ -48,13 +30,6 @@ instance PrettyAnn DataDecl where
     prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
-
-instance PrettyAnn ModuleName where
-  prettyAnn (MkModuleName nm) = prettyAnn nm
-
-prettyPrdCnsRep :: PrdCnsRep pc -> Doc Annotation
-prettyPrdCnsRep PrdRep = "[*]"
-prettyPrdCnsRep CnsRep = "(*)"
 
 prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty

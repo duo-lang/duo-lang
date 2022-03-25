@@ -7,15 +7,14 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Text.Megaparsec.Pos (SourcePos)
 
-import Errors
 import Driver.Definition
+import Driver.Environment (Environment(..))
+import Errors
 import Pretty.Pretty
-import Syntax.CST.Terms qualified as CST
 import Syntax.AST.Terms qualified as AST
-import Syntax.Environment (Environment(..))
+import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-import Syntax.Primitives (PrimitiveType, PrimitiveOp, primOps)
 
 ---------------------------------------------------------------------------------
 -- Helper Functions

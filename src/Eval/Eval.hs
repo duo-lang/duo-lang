@@ -6,11 +6,11 @@ module Eval.Eval
 import Control.Monad.Except
 import Data.Text qualified as T
 
+import Driver.Environment (Environment)
 import Errors
 import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Environment (Environment)
 import Syntax.Common
 import Syntax.AST.Terms
 import Eval.Definition

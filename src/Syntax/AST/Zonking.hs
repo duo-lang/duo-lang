@@ -1,4 +1,4 @@
-module Syntax.Zonking where
+module Syntax.AST.Zonking where
 
 import Data.Map (Map)
 import Data.Map qualified as M

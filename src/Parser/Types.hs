@@ -19,7 +19,6 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.Common
 import Syntax.CST.Types
-import Syntax.Primitives
 
 ---------------------------------------------------------------------------------
 -- Parsing of Kinds
@@ -28,20 +27,20 @@ import Syntax.Primitives
 -- | Parses one of the keywords "CBV" or "CBN"
 monoKindP :: Parser MonoKind
 monoKindP = CBox <$> evalOrderP
-         <|> CRep I64 <$ i64RepKwP
-         <|> CRep F64 <$ f64RepKwP
+         <|> CRep I64 <$ keywordP KwI64Rep
+         <|> CRep F64 <$ keywordP KwF64Rep
 
 
 evalOrderP :: Parser EvaluationOrder
-evalOrderP = (cbvKwP *> pure CBV) <|> (cbnKwP *> pure CBN)
+evalOrderP = (keywordP KwCBV *> pure CBV) <|> (keywordP KwCBN *> pure CBN)
 
 ---------------------------------------------------------------------------------
 -- Parsing of PolyKinds
 ---------------------------------------------------------------------------------
 
 varianceP :: Variance -> Parser ()
-varianceP Covariant = void plusSym
-varianceP Contravariant = void minusSym
+varianceP Covariant = void (symbolP SymPlus)
+varianceP Contravariant = void (symbolP SymMinus)
 
 
 polyKindP :: Parser PolyKind
@@ -52,7 +51,7 @@ polyKindP = f <|> g
       pure (MkPolyKind [] [] eo)
     g = do
       (contra, cov) <- tparamsP
-      _ <- thinRightarrow
+      _ <- symbolP SymSimpleRightArrow
       ret <- evalOrderP
       pure (MkPolyKind contra cov ret)
 
@@ -60,7 +59,7 @@ tParamP :: Variance -> Parser (TVar, MonoKind)
 tParamP v = do
   _ <- varianceP v
   (tvar,_) <- tvarP
-  _ <- colon
+  _ <- symbolP SymColon
   kind <- monoKindP
   pure (tvar, kind)
 
@@ -69,12 +68,12 @@ tparamsP =
   (fst <$> parens inner) <|> pure ([],[])
   where
     inner = do
-      con_ps <- tParamP Contravariant `sepBy` try (comma <* notFollowedBy (varianceP Covariant))
+      con_ps <- tParamP Contravariant `sepBy` try (symbolP SymComma <* notFollowedBy (varianceP Covariant))
       if null con_ps then
-        (\x -> ([], x)) <$> tParamP Covariant `sepBy` comma
+        (\x -> ([], x)) <$> tParamP Covariant `sepBy` symbolP SymComma
       else do
         cov_ps <-
-          try comma *> tParamP Covariant `sepBy` comma
+          try (symbolP SymComma) *> tParamP Covariant `sepBy` symbolP SymComma
           <|> pure []
         pure (con_ps, cov_ps)
 
@@ -86,14 +85,14 @@ tparamsP =
 -- E.g.: "(Nat, Bool, { Ap(Nat)[Bool] })"
 prdCtxtPartP :: Parser LinearContext
 prdCtxtPartP = do
-  (res, _) <- parens $ (PrdType <$> typP) `sepBy` comma
+  (res, _) <- parens $ (PrdType <$> typP) `sepBy` symbolP SymComma
   return res
 
 -- | Parse a bracketed list of consumer types.
 -- E.g.: "[Nat, Bool, { Ap(Nat)[Bool] }]"
 cnsCtxtPartP :: Parser LinearContext
 cnsCtxtPartP = do
-  (res,_) <- brackets $ (CnsType <$> typP) `sepBy` comma
+  (res,_) <- brackets $ (CnsType <$> typP) `sepBy` symbolP SymComma
   return res
 
 -- | Parse a linear context.
@@ -106,7 +105,7 @@ linearContextP = Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: Parser [Typ]
-nominalTypeArgsP = (fst <$> parens (typP `sepBy` comma)) <|> pure []
+nominalTypeArgsP = (fst <$> parens (typP `sepBy` symbolP SymComma)) <|> pure []
 
 -- | Parse a nominal type.
 -- E.g. "Nat"
@@ -120,10 +119,10 @@ nominalTypeP = do
 -- - "{ dtor1 , dtor2 , dtor3 }"
 xdataTypeP :: DataCodata -> Parser Typ
 xdataTypeP Data = fst <$> angles (do
-  xtorSigs <- xtorSignatureP `sepBy` comma
+  xtorSigs <- xtorSignatureP `sepBy` symbolP SymComma
   return (TyXData Data Nothing xtorSigs))
 xdataTypeP Codata = fst <$> braces (do
-  xtorSigs <- xtorSignatureP `sepBy` comma
+  xtorSigs <- xtorSignatureP `sepBy` symbolP SymComma
   return (TyXData Codata Nothing xtorSigs))
 
 -- | Parse a Constructor or destructor signature. E.g.
@@ -148,9 +147,9 @@ typeVariableP = do
 
 recTypeP :: Parser Typ
 recTypeP = do
-  _ <- recKwP
+  _ <- keywordP KwRec
   (rv,_) <- tvarP
-  _ <- dot
+  _ <- symbolP SymDot
   ty <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP
   return $ TyRec rv ty
 
@@ -161,13 +160,13 @@ recTypeP = do
 refinementTypeP :: DataCodata -> Parser Typ
 refinementTypeP Data = fst <$> angles (do
   (tn,_) <- typeNameP
-  _ <- pipe
-  ctors <- xtorSignatureP `sepBy` comma
+  _ <- symbolP SymPipe
+  ctors <- xtorSignatureP `sepBy` symbolP SymComma
   pure $ TyXData Data (Just tn) ctors)
 refinementTypeP Codata = fst <$> braces (do
   (tn,_) <- typeNameP
-  _ <- pipe
-  dtors <- xtorSignatureP `sepBy` comma
+  _ <- symbolP SymPipe
+  dtors <- xtorSignatureP `sepBy` symbolP SymComma
   pure $ TyXData Codata (Just tn) dtors)
 
 ---------------------------------------------------------------------------------
@@ -176,8 +175,8 @@ refinementTypeP Codata = fst <$> braces (do
 
 primitiveTypeP :: Parser PrimitiveType
 primitiveTypeP =
-      I64 <$ i64KwP
-  <|> F64 <$ f64KwP
+      I64 <$ keywordP KwI64 
+  <|> F64 <$ keywordP KwF64
 
 ---------------------------------------------------------------------------------
 -- Type Parser
@@ -192,16 +191,16 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> xdataTypeP Data
   <|> xdataTypeP Codata
   <|> recTypeP
-  <|> TyTop <$ topKwP
-  <|> TyBot <$ botKwP
+  <|> TyTop <$ keywordP KwTop
+  <|> TyBot <$ keywordP KwBot
   <|> TyPrim <$> primitiveTypeP
   <|> typeVariableP
 
 tyOpP :: Parser BinOp
-tyOpP = CustomOp (MkTyOpName "->") <$ thinRightarrow
-    <|> InterOp <$ intersectionSym
-    <|> UnionOp <$ unionSym
-    <|> CustomOp (MkTyOpName "⅋") <$ parSym
+tyOpP = CustomOp (MkTyOpName "->") <$ symbolP SymSimpleRightArrow
+    <|> InterOp <$ symbolP SymIntersection
+    <|> UnionOp <$ symbolP SymUnion
+    <|> CustomOp (MkTyOpName "⅋") <$ symbolP SymPar
 
 opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
 opsChainP' p op = do
@@ -231,6 +230,6 @@ typP = typOpsP <|> typAtomP
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
-  tvars' <- option [] (forallKwP >> some (fst <$> tvarP) <* dot)
+  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
   monotype <- local (\s -> s { tvars = S.fromList tvars' }) typP
   pure (TypeScheme tvars' monotype)

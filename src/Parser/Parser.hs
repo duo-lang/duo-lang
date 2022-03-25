@@ -24,7 +24,7 @@ import Syntax.CST.Types
 subtypingProblemP :: Parser (TypeScheme, TypeScheme)
 subtypingProblemP = do
   t1 <- typeSchemeP
-  _ <- subtypeSym
+  _ <- symbolP SymSubtype
   t2 <- typeSchemeP
   return (t1,t2)
 

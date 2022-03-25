@@ -7,24 +7,16 @@ import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 import Text.Megaparsec.Pos
 
-import Pretty.Pretty
-import Pretty.Constraints ()
-import Utils
 import Errors
+import Pretty.Common
+import Pretty.Constraints ()
+import Pretty.Pretty
 import Syntax.Common
-import Syntax.Primitives (primOpKeyword, primTypeKeyword)
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
 ---------------------------------------------------------------------------------
-
-prettyMaybeLoc :: Maybe Loc -> Doc Annotation
-prettyMaybeLoc Nothing = mempty
-prettyMaybeLoc (Just loc) = prettyAnn loc <> ": "
-
-instance PrettyAnn PrdCns where
-  prettyAnn Prd = "Prd"
-  prettyAnn Cns = "Cns"
 
 instance PrettyAnn ParserError where
   prettyAnn (MkParserError loc txt) = prettyAnn loc <+> prettyAnn txt

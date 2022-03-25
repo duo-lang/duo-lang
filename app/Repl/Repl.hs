@@ -20,7 +20,7 @@ import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program ( Declaration(..) )
-import Syntax.Environment (Environment)
+import Driver.Environment (Environment)
 import Syntax.Common
 import Driver.Driver
 import Translate.Desugar

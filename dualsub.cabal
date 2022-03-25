@@ -65,6 +65,7 @@ library
   exposed-modules:
       Driver.Definition
       Driver.Driver
+      Driver.Environment
       Errors
       Eval.Definition
       Eval.Eval
@@ -77,6 +78,7 @@ library
       Parser.Terms
       Parser.Types
       Pretty.Pretty
+      Pretty.Common
       Pretty.Constraints
       Pretty.Terms
       Pretty.Types
@@ -86,23 +88,22 @@ library
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.AST.Types
+      Syntax.AST.Zonking
       Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names
       Syntax.Common.Phases
       Syntax.Common.Polarity
+      Syntax.Common.Primitives
       Syntax.Common.PrdCns
       Syntax.Common.Types
       Syntax.Common.XData
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
-      Syntax.Environment
-      Syntax.Primitives
       Syntax.Lowering.Program
       Syntax.Lowering.Terms
       Syntax.Lowering.Types
-      Syntax.Zonking
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize

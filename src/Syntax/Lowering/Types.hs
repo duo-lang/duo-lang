@@ -6,20 +6,18 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-import Errors
 import Driver.Definition
+import Driver.Environment (Environment(..))
+import Errors
 import Syntax.Common
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types ( freeTypeVars)
 import Syntax.CST.Types
-import Syntax.Environment (Environment(..))
 import Data.List
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> AST)
 ---------------------------------------------------------------------------------
-
-
 
 lowerTypeScheme :: PolarityRep pol -> TypeScheme -> DriverM (AST.TypeScheme pol)
 lowerTypeScheme rep (TypeScheme tvars monotype) = do

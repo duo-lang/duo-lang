@@ -1,4 +1,4 @@
-module Syntax.Primitives where
+module Syntax.Common.Primitives where
 
 import Data.Map (Map, fromList)
 import Syntax.Common.PrdCns

@@ -16,6 +16,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 
 import Driver.Definition
+import Driver.Environment (Environment(..))    
 import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
@@ -35,8 +36,7 @@ import Syntax.AST.Program
     ( Program,
       Declaration(..)
     )
-import Syntax.Environment (Environment(..))    
-import Syntax.Zonking (zonkType)
+import Syntax.AST.Zonking (zonkType)
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )

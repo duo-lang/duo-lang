@@ -5,6 +5,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 
+import Driver.Definition
+import Driver.Environment
 import Parser.Parser
 import Parser.Types (typP)
 import Pretty.Errors ()
@@ -12,11 +14,9 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.AST.Types
 import Syntax.AST.Types qualified as AST
-import Syntax.Environment
 import Syntax.Common
 import Syntax.Lowering.Types
 import TestUtils (getEnvironment)
-import Driver.Definition
 
 ds :: Environment Inferred ->  DriverState
 ds env = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } env

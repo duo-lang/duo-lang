@@ -7,7 +7,6 @@ import Data.List.NonEmpty (NonEmpty)
 
 import Syntax.Common
 import Utils
-import Syntax.Primitives (PrimitiveType, PrimitiveOp)
 
 ----------------------------------------------------------------------------------
 -- Errors

@@ -9,9 +9,9 @@ module Translate.Focusing
 
 import Data.Text qualified as T
 
+import Driver.Environment (Environment(..))
 import Syntax.AST.Program ( Declaration(..), Program )
 import Syntax.Common
-import Syntax.Environment (Environment(..))
 import Syntax.AST.Terms
     ( Command(..),
       Term(..),
@@ -19,8 +19,6 @@ import Syntax.AST.Terms
       Substitution,
       commandClosing,
       shiftCmd, PrdCnsTerm(..))
-import Syntax.Primitives
-
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues

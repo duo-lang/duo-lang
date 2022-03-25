@@ -7,8 +7,6 @@ import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
 
-import Syntax.Common
-
 ---------------------------------------------------------------------------------
 -- Annotations
 ---------------------------------------------------------------------------------
@@ -132,15 +130,6 @@ intercalateX  x xs = cat (punctuate x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
-instance PrettyAnn XtorName where
-  prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
-
-instance PrettyAnn FreeVarName where
-  prettyAnn (MkFreeVarName nm) = prettyAnn nm
-
-instance PrettyAnn (Maybe FreeVarName) where
-  prettyAnn Nothing = "_"
-  prettyAnn (Just fv) = prettyAnn fv
 
 -- | This identity wrapper is used to indicate that we want to transform the element to
 -- a named representation before prettyprinting it.

@@ -5,10 +5,10 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
+import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.AST.Types
 import Syntax.Common
-import Syntax.Primitives
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -45,16 +45,6 @@ parSym :: Doc Annotation
 parSym = annKeyword "⅋"
 
 ---------------------------------------------------------------------------------
--- Prettyprinting of Kinds
----------------------------------------------------------------------------------
-
-instance PrettyAnn MonoKind where
-  prettyAnn (CBox CBV) = "CBV"
-  prettyAnn (CBox CBN) = "CBN"
-  prettyAnn (CRep I64) = "I64Rep"
-  prettyAnn (CRep F64) = "F64Rep"
-
----------------------------------------------------------------------------------
 -- Prettyprinting of types
 ---------------------------------------------------------------------------------
 
@@ -70,21 +60,6 @@ resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
 resugarType (TyNominal _ _ (MkTypeName "Fun") [tl] [tr]) = Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
 resugarType (TyNominal _ _ (MkTypeName "Par") [][t1,t2]) = Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
 resugarType _ = Nothing
-
-instance PrettyAnn Polarity where
-  prettyAnn Pos = "Pos"
-  prettyAnn Neg = "Neg"
-
-instance PrettyAnn Variance where
-  prettyAnn Covariant = "+"
-  prettyAnn Contravariant = "-"
-
-instance PrettyAnn TVar where
-  prettyAnn (MkTVar tv) = pretty tv
-
-instance PrettyAnn PrimitiveType where
-  prettyAnn I64 = "I64"
-  prettyAnn F64 = "F64"
 
 instance PrettyAnn (Typ pol) where
   -- Sugared types
@@ -136,7 +111,3 @@ instance PrettyAnn (TypeScheme pol) where
     prettyAnn ty
   prettyAnn (TypeScheme tvs ty) =
     forallSym <+> sep (prettyAnn <$> tvs) <> "." <+> prettyAnn ty
-
-instance PrettyAnn TypeName where
-  prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
-

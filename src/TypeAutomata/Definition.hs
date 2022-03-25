@@ -12,7 +12,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
 import Syntax.Common
-import Syntax.Primitives (PrimitiveType)
 
 --------------------------------------------------------------------------------
 -- # Type Automata

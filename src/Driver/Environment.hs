@@ -1,4 +1,4 @@
-module Syntax.Environment where
+module Driver.Environment where
 
 import Data.Map (Map)
 import Data.Map qualified as M

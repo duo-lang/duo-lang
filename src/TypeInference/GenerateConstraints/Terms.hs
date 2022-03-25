@@ -12,13 +12,12 @@ import Pretty.Types ()
 import Pretty.Constraints ()
 import Pretty.Pretty ( ppPrint )
 import Syntax.AST.Terms
-import Syntax.Common
+import Syntax.Common hiding (primOps)
 import Syntax.AST.Types
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils
 import Lookup
-import Syntax.Primitives (typeOfLiteral, primOpKeyword, primTypeKeyword)
 import TypeInference.GenerateConstraints.Primitives (primOps)
 
 ---------------------------------------------------------------------------------------------

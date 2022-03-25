@@ -5,18 +5,17 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 
+import Driver.Definition
+import Driver.Environment (Environment(..))
 import Errors
+import Parser.Parser ( runFileParser, programP )
 import Syntax.Lowering.Terms (lowerTerm, lowerCommand)
 import Syntax.Lowering.Types (lowerTypeScheme, lowerXTorSig)
-import Driver.Definition
-import Parser.Parser ( runFileParser, programP )
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
-import Syntax.Environment (Environment(..))
-import Syntax.AST.Types (DataDecl(..))
 import Utils (Loc)
 
 

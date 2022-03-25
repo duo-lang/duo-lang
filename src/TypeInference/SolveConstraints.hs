@@ -11,10 +11,10 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 
+import Driver.Environment (Environment)
 import Errors
 import Syntax.AST.Types
 import Syntax.Common
-import Syntax.Environment (Environment)
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
