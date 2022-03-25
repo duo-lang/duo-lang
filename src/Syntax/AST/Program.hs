@@ -22,7 +22,7 @@ data Declaration (ext :: Phase) where
   PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
   CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                                   -> Declaration ext
   DataDecl       :: DeclExt ext -> DataDecl                                                                     -> Declaration ext
-  XtorDecl       :: DeclExt ext -> DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Declaration ext
+  XtorDecl       :: DeclExt ext -> DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> EvaluationOrder   -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                                   -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                                         -> Declaration ext
   

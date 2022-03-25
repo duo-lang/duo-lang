@@ -3,7 +3,7 @@ import Peano;
 import Bool;
 import Function;
 
-data List(+a : CBV) : CBV {
+data List : (+a : CBV) -> CBV {
     Nil,
     Cons(a, List(a))
 };

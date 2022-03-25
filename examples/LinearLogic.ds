@@ -1,35 +1,35 @@
 import Function;
 
 -- Positive Disjunction and its Unit
-data Plus(+a : CBV, +b : CBV) : CBV {
+data Plus : (+a : CBV, +b : CBV) -> CBV {
     Left(a),
     Right(b)
 };
 
-data Void : CBV {};
+data Void {};
 
 -- Positive Conjunction and its Unit
-data Tensor(+a : CBV, +b : CBV) : CBV {
+data Tensor : (+a : CBV, +b : CBV) -> CBV {
     MkTensor(a, b)
 };
 
 def fst[*] := \p => case p of { MkTensor(x,y) => x};
 def snd[*] := \p => case p of { MkTensor(x,y) => y};
 
-data Unit : CBV { MkUnit };
+data Unit { MkUnit };
 
 -- Negative Conjunction and its Unit
-codata With(+a : CBV, +b : CBV) : CBN {
+codata With : (+a : CBV, +b : CBV) -> CBN {
     Proj1[a],
     Proj2[a]
 };
 
 def pair[*] := \x y => cocase { Proj1[*] => x, Proj2[*] => y};
 
-codata UnitN : CBV {};
+codata UnitN {};
 
 -- Negative Disjunction and its Unit
-codata Par(+a : CBV, +b : CBV) : CBN {
+codata Par : (+a : CBV, +b : CBV) -> CBN {
     MkPar[a,b]
 };
 

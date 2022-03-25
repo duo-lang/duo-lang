@@ -1,6 +1,6 @@
 -- Function Type
 
-codata Fun(-a : CBV, +b : CBV) : CBN {
+codata Fun : (-a : CBV, +b : CBV) -> CBN {
     Ap(a)[b]
 };
 

@@ -1,7 +1,7 @@
 -- The type of infinite Streams
 import Function;
 
-codata Stream(+a : CBV) : CBV {
+codata Stream : (+a : CBV) -> CBV {
     Head[a],
     Tail[Stream(a)]
 };

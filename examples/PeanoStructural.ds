@@ -4,8 +4,8 @@ import Function;
 import Bool;
 
 -- The type of Peano natural numbers.
-constructor Z : CBV;
-constructor S(CBV) : CBV;
+constructor Z;
+constructor S(CBV);
 
 def rec add[*] :=
   \n m => case n of { Z => m

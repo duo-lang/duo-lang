@@ -1,8 +1,9 @@
 module Parser.Types
   ( -- Kind Parser
     kindP
-    , callingConventionP
-    , polyKindP
+  , callingConventionP
+  , evalOrderP
+  , polyKindP
     -- Type Parsers
   , typeSchemeP
   , typP
@@ -48,11 +49,16 @@ varianceP Contravariant = void minusSym
 
 
 polyKindP :: Parser PolyKind
-polyKindP = do
-  (contra, cov) <- tparamsP
-  _ <- colon
-  ret <- evalOrderP
-  pure (MkPolyKind contra cov ret)
+polyKindP = f <|> g
+  where
+    f = do
+      eo <- evalOrderP
+      pure (MkPolyKind [] [] eo)
+    g = do
+      (contra, cov) <- tparamsP
+      _ <- thinRightarrow
+      ret <- evalOrderP
+      pure (MkPolyKind contra cov ret)
 
 tParamP :: Variance -> Parser (TVar, Kind)
 tParamP v = do

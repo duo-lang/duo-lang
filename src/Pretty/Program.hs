@@ -24,7 +24,7 @@ instance PrettyAnn DataCodata where
 
 instance PrettyAnn PolyKind where
   prettyAnn MkPolyKind { contravariant, covariant, returnKind } =
-    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> colon <+> prettyAnn returnKind
+    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> annSymbol "->" <+> prettyAnn returnKind
 
 instance PrettyAnn EvaluationOrder where
   prettyAnn CBV = annKeyword "CBV"
@@ -44,6 +44,7 @@ instance PrettyAnn DataDecl where
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
+    colon <+>
     prettyAnn knd <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
@@ -69,7 +70,7 @@ prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "def" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
 
-prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> CallingConvention -> Doc Annotation
+prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, CallingConvention)] -> EvaluationOrder -> Doc Annotation
 prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 

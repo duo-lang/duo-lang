@@ -108,13 +108,10 @@ dataDeclP = do
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
-    knd <- polyKindP
-    if refined == Refined && not (null (allTypeVars knd)) then
-      region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
-    else
-      do
-        let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
-        (xtors, _pos) <- braces $ xtorP `sepBy` comma
+    knd <- optional (try colon >> polyKindP)
+    case knd of
+      Nothing -> do
+        (xtors, _pos) <- braces $ xtorDeclP `sepBy` comma
         endPos <- semi
         let decl = NominalDecl
               { data_refined = refined
@@ -123,8 +120,23 @@ dataDeclP = do
               , data_kind = knd
               , data_xtors = combineXtors xtors
               }
-
         pure (DataDecl (Loc startPos endPos) decl)
+      Just knd -> do
+        if refined == Refined && not (null (allTypeVars knd)) then
+          region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
+        else
+          do
+            let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
+            (xtors, _pos) <- braces $ xtorP `sepBy` comma
+            endPos <- semi
+            let decl = NominalDecl
+                  { data_refined = refined
+                  , data_name = tn
+                  , data_polarity = dataCodata
+                  , data_kind = Just knd
+                  , data_xtors = combineXtors xtors
+                  }
+            pure (DataDecl (Loc startPos endPos) decl)
 
 ---------------------------------------------------------------------------------
 -- Xtor Declaration Parser
@@ -140,8 +152,7 @@ xtorDeclarationP = do
   dc <- ctorDtorP
   (xt, _) <- xtorName
   (args, _) <- argListsP callingConventionP
-  _ <- colon
-  ret <- callingConventionP
+  ret <- optional (try colon >> evalOrderP)
   endPos <- semi
   pure (XtorDecl (Loc startPos endPos) dc xt args ret)
 
