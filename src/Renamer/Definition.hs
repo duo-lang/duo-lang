@@ -2,7 +2,6 @@ module Renamer.Definition where
 
 import Control.Monad.Except (throwError)
 import Control.Monad.State
-import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.List (find)
@@ -14,14 +13,10 @@ import Driver.Environment
 import Pretty.Pretty
 import Syntax.Common
 import qualified Syntax.AST.Types as AST
+import qualified Syntax.CST.Program as CST
+import qualified Syntax.CST.Types as CST
 import Utils
 import Errors
-
-------------------------------------------------------------------------------
--- Symbol Table
-------------------------------------------------------------------------------
-
-type SymbolTable = Map (XtorName, DataCodata) (NominalStructural, Arity)
 
 ------------------------------------------------------------------------------
 -- Renamer Monad
@@ -34,13 +29,13 @@ type RenamerM a = DriverM a
 ------------------------------------------------------------------------------
 
 getSymbolTable :: RenamerM SymbolTable
-getSymbolTable = gets (xtorMap . driverEnv)
+getSymbolTable = gets (symbolTable . driverEnv)
 
 
 lookupXtor :: Loc -> (XtorName, DataCodata) -> RenamerM (NominalStructural, Arity)
 lookupXtor loc xs@(xtor,dc) = do
-  xtorMap <- getSymbolTable
-  case M.lookup xs xtorMap of
+  symbolTable <- getSymbolTable
+  case M.lookup xs (xtorMap symbolTable) of
     Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in environment: " <> ppPrint xtor)
     Just ns -> pure ns
 
@@ -57,6 +52,12 @@ lookupTypeConstructorAritiy tn = do
 ------------------------------------------------------------------------------
 -- Deprecated stuff
 ------------------------------------------------------------------------------
+
+updateSymbolTable :: (SymbolTable -> SymbolTable) -> RenamerM ()
+updateSymbolTable f = do
+    env <- getDriverEnv
+    let newEnv = env { symbolTable = f (symbolTable env)}
+    modify (\state -> state { driverEnv = newEnv })
 
 getDriverEnv :: RenamerM (Environment Inferred)
 getDriverEnv = gets driverEnv
@@ -77,3 +78,20 @@ findModule (MkModuleName mod) loc = do
   case concat fps of
     [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
     (fp:_) -> return fp
+
+
+createSymbolTable :: CST.Program  -> SymbolTable
+createSymbolTable [] = mempty
+createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
+  let st = createSymbolTable decls
+  in st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
+createSymbolTable ((CST.DataDecl _ dd):decls) =
+  let ns = case CST.data_refined dd of
+               Refined -> Refinement
+               NotRefined -> Nominal
+      st = createSymbolTable decls
+      xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
+  in st { xtorMap  = M.union xtors (xtorMap st) }
+createSymbolTable (_:decls) = createSymbolTable decls
+
+

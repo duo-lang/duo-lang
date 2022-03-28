@@ -5,7 +5,7 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 
-import Driver.Environment (Environment(..))
+import Driver.Environment
 import Errors
 import Renamer.Definition
 import Renamer.Terms (lowerTerm, lowerCommand)
@@ -17,8 +17,6 @@ import Syntax.AST.Program qualified as AST
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
 import Utils (Loc)
-
-
 
 lowerXtors :: [CST.XtorSig]
            -> RenamerM ([AST.XtorSig Pos], [AST.XtorSig Neg])
@@ -41,7 +39,6 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
         , data_xtors = ([], [])
         }
 
-  let prevDeclEnv = declEnv env
   let newEnv = env { declEnv = (loc, prelim_dd) : declEnv env }
   setEnvironment newEnv
 
@@ -53,9 +50,8 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
 
   -- HACK: insert final data declaration into environment
   let dcl = prelim_dd { AST.data_xtors = xtors}
-  let newEnv = env { declEnv = (loc, dcl) : prevDeclEnv
-                   , xtorMap = M.union (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)]) (xtorMap env)}
-  setEnvironment newEnv
+  let newXtors = (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)])
+  updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
 
   pure dcl
 
@@ -68,22 +64,23 @@ lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
 lowerDecl :: CST.Declaration -> RenamerM (AST.Declaration Parsed)
-lowerDecl (CST.PrdCnsDecl loc Prd isrec fv annot tm) = AST.PrdCnsDecl loc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
-lowerDecl (CST.PrdCnsDecl loc Cns isrec fv annot tm) = AST.PrdCnsDecl loc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
-lowerDecl (CST.CmdDecl loc fv cmd)          = AST.CmdDecl loc fv <$> (lowerCommand cmd)
-lowerDecl (CST.DataDecl loc dd)             = do
+lowerDecl (CST.PrdCnsDecl loc Prd isrec fv annot tm) =
+  AST.PrdCnsDecl loc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
+lowerDecl (CST.PrdCnsDecl loc Cns isrec fv annot tm) =
+  AST.PrdCnsDecl loc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
+lowerDecl (CST.CmdDecl loc fv cmd) =
+  AST.CmdDecl loc fv <$> (lowerCommand cmd)
+lowerDecl (CST.DataDecl loc dd) = do
   lowered <- lowerDataDecl loc dd
-  env <- getDriverEnv
+
   let ns = case CST.data_refined dd of
                  Refined -> Refinement
                  NotRefined -> Nominal
-  let newEnv = env { xtorMap = M.union (M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]) (xtorMap env)}
-  setEnvironment newEnv
+  let newXtors = M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]
+  updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
-  env <- getDriverEnv
-  let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
-  setEnvironment newEnv
+  updateSymbolTable (\st -> st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)})
   let ret' = case ret of
                Just eo -> eo
                Nothing -> case dc of Data -> CBV; Codata -> CBN
@@ -91,45 +88,21 @@ lowerDecl (CST.XtorDecl loc dc xt args ret) = do
 lowerDecl (CST.ImportDecl loc mod) = do
   fp <- findModule mod loc
   oldEnv <- getDriverEnv
-  newEnv <- lowerProgramFromDisk fp
-  setEnvironment (oldEnv <> newEnv)
+  newSymbolTable <- lowerProgramFromDisk fp
+  setEnvironment (oldEnv { symbolTable = newSymbolTable <> (symbolTable oldEnv)})
   pure $ AST.ImportDecl loc mod
-lowerDecl (CST.SetDecl loc txt)             = pure $ AST.SetDecl loc txt
-lowerDecl (CST.TyOpDecl loc op prec assoc tyname) = pure $ AST.TyOpDecl loc op prec assoc tyname
-lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
+lowerDecl (CST.SetDecl loc txt) =
+  pure $ AST.SetDecl loc txt
+lowerDecl (CST.TyOpDecl loc op prec assoc tyname) =
+  pure $ AST.TyOpDecl loc op prec assoc tyname
+lowerDecl CST.ParseErrorDecl =
+  throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
 lowerProgram :: CST.Program -> RenamerM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl
 
-
-createSymbolTable :: CST.Program  -> Environment Inferred
-createSymbolTable [] = mempty
-createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
-  let x = createSymbolTable decls
-  in x { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap x)}
-createSymbolTable ((CST.DataDecl loc dd):decls) =
-  let ns = case CST.data_refined dd of
-               Refined -> Refinement
-               NotRefined -> Nominal
-      x = createSymbolTable decls
-      xtors = M.fromList [((CST.sig_name xt, CST.data_polarity dd), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- CST.data_xtors dd]
-  -- HACK: The type parameter arities of imported types need to be known in lowering,
-  -- hence we add a partial AST.NominalDecl without constructors for now
-  in x { declEnv = (loc, AST.NominalDecl
-        { data_refined = CST.data_refined dd
-        , data_name = CST.data_name dd
-        , data_polarity = CST.data_polarity dd
-        , data_kind = case CST.data_kind dd of
-          Nothing -> MkPolyKind [] [] (case CST.data_polarity dd of { Data -> CBV; Codata -> CBN })
-          Just knd -> knd
-        , data_xtors = ([], [])
-        }) : declEnv x,
-         xtorMap  = M.union xtors (xtorMap x)}
-createSymbolTable (_:decls) = createSymbolTable decls
-
-
 lowerProgramFromDisk :: FilePath
-                     -> RenamerM (Environment Inferred)
+                     -> RenamerM SymbolTable
 lowerProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file

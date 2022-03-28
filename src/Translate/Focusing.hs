@@ -224,11 +224,11 @@ focusProgram :: EvaluationOrder -> Program Compiled -> Program Compiled
 focusProgram eo = fmap (focusDecl eo)
 
 focusEnvironment :: EvaluationOrder -> Environment Compiled -> Environment Compiled
-focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, xtorMap }) =
+focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, symbolTable }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> prdEnv
       , cnsEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> cnsEnv
       , cmdEnv = (\(cmd,loc) -> (focusCmd cc cmd,loc)) <$> cmdEnv
       , declEnv = declEnv
-      , xtorMap = xtorMap
+      , symbolTable = symbolTable
       }

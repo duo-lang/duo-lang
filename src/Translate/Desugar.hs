@@ -120,17 +120,17 @@ desugarDecl (DataDecl _ decl)                   = DataDecl () decl
 desugarDecl (XtorDecl _ dc xt args ret)         = XtorDecl () dc xt args ret
 desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
-desugarDecl (TyOpDecl _ op prec assoc ty)             = TyOpDecl () op prec assoc ty
+desugarDecl (TyOpDecl _ op prec assoc ty)       = TyOpDecl () op prec assoc ty
 
 desugarProgram :: Program Inferred -> Program Compiled
 desugarProgram ps = desugarDecl <$> ps
 
 desugarEnvironment :: Environment Inferred -> Environment Compiled
-desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, xtorMap }) =
+desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv, symbolTable }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> prdEnv
       , cnsEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> cnsEnv
       , cmdEnv = (\(cmd,loc) -> (desugarCmd cmd,loc)) <$> cmdEnv
       , declEnv = declEnv
-      , xtorMap = xtorMap
+      , symbolTable = symbolTable
       }
