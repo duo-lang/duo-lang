@@ -1,0 +1,33 @@
+import Function;
+
+data F64 {
+    MkF64(#F64)
+};
+
+def addf[*] : F64 -> F64 -> F64 := \x => \y =>
+    case x of {
+        MkF64(x) => case y of {
+            MkF64(y) => mu k. Add#F64(x, y)[mu z. MkF64(z) >> k]
+        }
+    };
+
+def subf[*] : F64 -> F64 -> F64 := \x => \y =>
+    case x of {
+        MkF64(x) => case y of {
+            MkF64(y) => mu k. Sub#F64(x, y)[mu z. MkF64(z) >> k]
+        }
+    };
+
+def mulf[*] : F64 -> F64 -> F64 := \x => \y =>
+    case x of {
+        MkF64(x) => case y of {
+            MkF64(y) => mu k. Mul#F64(x, y)[mu z. MkF64(z) >> k]
+        }
+    };
+
+def divf[*] : F64 -> F64 -> F64 := \x => \y =>
+    case x of {
+        MkF64(x) => case y of {
+            MkF64(y) => mu k. Div#F64(x, y)[mu z. MkF64(z) >> k]
+        }
+    };
