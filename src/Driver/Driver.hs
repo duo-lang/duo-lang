@@ -16,14 +16,15 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as T
 
 import Driver.Definition
-import Driver.Environment (Environment(..))    
+import Driver.Environment 
 import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
+import Renamer.Program (lowerProgram)
+import Renamer.SymbolTable
 import Syntax.AST.Terms
 import Syntax.Common
-import Syntax.Lowering.Program
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Types
     ( TypeScheme,
@@ -150,8 +151,9 @@ inferDecl (DataDecl loc dcl) = do
       let ns = case data_refined dcl of
                       Refined -> Refinement
                       NotRefined -> Nominal
+      let newXtors = M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]
       let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                       , xtorMap = M.union (M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]) (xtorMap env)}
+                       , symbolTable = (symbolTable env) { xtorMap = M.union  newXtors (xtorMap (symbolTable env)) }}
       setEnvironment newEnv
       return (DataDecl loc dcl)
 --
@@ -159,7 +161,7 @@ inferDecl (DataDecl loc dcl) = do
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
   env <- gets driverEnv
-  let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
+  let newEnv = env { symbolTable = (symbolTable env) { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symbolTable env)) }}
   setEnvironment newEnv
   pure $ XtorDecl loc dc xt args ret
 --

@@ -8,7 +8,7 @@ import Driver.Environment
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
-import Syntax.Lowering.Types
+import Renamer.Types
 import Syntax.Common
 import TestUtils (getEnvironment)
 import TypeAutomata.Subsume (subsume)

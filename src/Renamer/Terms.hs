@@ -1,37 +1,23 @@
-module Syntax.Lowering.Terms (lowerTerm, lowerCommand) where
+module Renamer.Terms (lowerTerm, lowerCommand) where
 
-import Control.Monad.State
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Text.Megaparsec.Pos (SourcePos)
 
-import Driver.Definition
-import Driver.Environment (Environment(..))
 import Errors
-import Pretty.Pretty
+import Renamer.Definition
 import Syntax.AST.Terms qualified as AST
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
 
 ---------------------------------------------------------------------------------
--- Helper Functions
----------------------------------------------------------------------------------
-
-lookupXtor :: Loc -> (XtorName, DataCodata) -> DriverM (NominalStructural, Arity)
-lookupXtor loc xs@(xtor,dc) = do
-  xtorMap <- gets (xtorMap . driverEnv)
-  case M.lookup xs xtorMap of
-    Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in environment: " <> ppPrint xtor)
-    Just ns -> pure ns
-
----------------------------------------------------------------------------------
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> DriverM ()
+checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> RenamerM ()
 checkXtorArity loc (xt, dc) arityUsed = do
   (_,aritySpecified) <- lookupXtor loc (xt, dc)
   if (arityUsed /= aritySpecified)
@@ -43,7 +29,7 @@ checkXtorArity loc (xt, dc) arityUsed = do
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-lowerSubstitution :: CST.Substitution -> DriverM (AST.Substitution Parsed)
+lowerSubstitution :: CST.Substitution -> RenamerM (AST.Substitution Parsed)
 lowerSubstitution [] = pure []
 lowerSubstitution (CST.PrdTerm tm:tms) = do
   tm' <- lowerTerm PrdRep tm
@@ -55,7 +41,7 @@ lowerSubstitution (CST.CnsTerm tm:tms) = do
   pure (AST.CnsTerm tm':subst)
 
 
-lowerSubstitutionI :: CST.SubstitutionI -> DriverM (AST.SubstitutionI Parsed Prd)
+lowerSubstitutionI :: CST.SubstitutionI -> RenamerM (AST.SubstitutionI Parsed Prd)
 lowerSubstitutionI (subst1, _, subst2) = do
   subst1' <- lowerSubstitution subst1
   subst2' <- lowerSubstitution subst2
@@ -63,7 +49,7 @@ lowerSubstitutionI (subst1, _, subst2) = do
 
 
 
-lowerTermCase :: DataCodata -> CST.TermCase -> DriverM (AST.TermCase Parsed)
+lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM (AST.TermCase Parsed)
 lowerTermCase dc (loc, xtor, bs, tm) = do
   tm' <- lowerTerm PrdRep tm
   checkXtorArity loc (xtor, dc) (fst <$> bs)
@@ -73,11 +59,11 @@ lowerTermCase dc (loc, xtor, bs, tm) = do
                       , tmcase_term = AST.termClosing bs tm'
                       }
 
-termCasesToNS :: [CST.TermCase] -> DataCodata -> DriverM NominalStructural
+termCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
 termCasesToNS [] _ = pure Structural
 termCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTermCaseI :: DataCodata -> CST.TermCaseI -> DriverM (AST.TermCaseI Parsed)
+lowerTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM (AST.TermCaseI Parsed)
 lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
   tm' <- lowerTerm PrdRep tm
   checkXtorArity loc (xtor,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
@@ -90,11 +76,11 @@ lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
                        , tmcasei_term = AST.termClosing (bs1 ++ [(Cns, MkFreeVarName "*")] ++ bs2) tm'
                        }
 
-termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> DriverM NominalStructural
+termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> RenamerM NominalStructural
 termCasesIToNS [] _ = pure Structural
 termCasesIToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerCommandCase :: DataCodata -> CST.CommandCase -> DriverM (AST.CmdCase Parsed)
+lowerCommandCase :: DataCodata -> CST.CommandCase -> RenamerM (AST.CmdCase Parsed)
 lowerCommandCase dc (loc, xtor, bs, cmd) = do
   cmd' <- lowerCommand cmd
   checkXtorArity loc (xtor,dc) (fst <$> bs)
@@ -105,11 +91,11 @@ lowerCommandCase dc (loc, xtor, bs, cmd) = do
                      }
 
 -- TODO: Check that all command cases use the same nominal/structural variant.
-commandCasesToNS :: [CST.CommandCase] -> DataCodata -> DriverM NominalStructural
+commandCasesToNS :: [CST.CommandCase] -> DataCodata -> RenamerM NominalStructural
 commandCasesToNS [] _ = pure Structural
 commandCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTerm :: PrdCnsRep pc -> CST.Term -> DriverM (AST.Term pc Parsed)
+lowerTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (AST.Term pc Parsed)
 lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
 lowerTerm PrdRep (CST.Xtor loc xtor subst)     = do
   (ns, _) <- lookupXtor loc (xtor, Data)
@@ -167,18 +153,18 @@ lowerTerm CnsRep (CST.PrimLit loc _)         = throwError (OtherError (Just loc)
 
 
 
-lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> DriverM CST.Term
+lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> RenamerM CST.Term
 lowerDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
 lowerDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = lowerDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
 
 -- | Lower a multi-lambda abstraction
-lowerMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> DriverM (CST.Term)
+lowerMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> RenamerM (CST.Term)
 lowerMultiLambda _ [] tm = pure tm
 lowerMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> lowerMultiLambda loc fvs tm
 
 -- | Lower a lambda abstraction.
-lowerLambda :: Loc -> FreeVarName -> CST.Term -> DriverM (AST.Term Prd Parsed)
+lowerLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (AST.Term Prd Parsed)
 lowerLambda loc var tm = do
   tm' <- lowerTerm PrdRep tm
   pure $ AST.Cocase loc Nominal [ AST.MkTermCaseI loc (MkXtorName "Ap")
@@ -187,20 +173,20 @@ lowerLambda loc var tm = do
                                 ]
 
 -- | Lower a natural number literal.
-lowerNatLit :: Loc -> NominalStructural -> Int -> DriverM (AST.Term Prd Parsed)
+lowerNatLit :: Loc -> NominalStructural -> Int -> RenamerM (AST.Term Prd Parsed)
 lowerNatLit loc ns 0 = pure $ AST.Xtor loc PrdRep ns (MkXtorName "Z") []
 lowerNatLit loc ns n = do
   n' <- lowerNatLit loc ns (n-1)
   pure $ AST.Xtor loc PrdRep ns (MkXtorName "S") [AST.PrdTerm n']
 
 -- | Lower an application.
-lowerApp :: Loc -> CST.Term -> CST.Term -> DriverM (AST.Term Prd Parsed)
+lowerApp :: Loc -> CST.Term -> CST.Term -> RenamerM (AST.Term Prd Parsed)
 lowerApp loc fun arg = do
   fun' <- lowerTerm PrdRep fun
   arg' <- lowerTerm PrdRep arg
   pure $ AST.Dtor loc Nominal (MkXtorName "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
 
-lowerCommand :: CST.Command -> DriverM (AST.Command Parsed)
+lowerCommand :: CST.Command -> RenamerM (AST.Command Parsed)
 lowerCommand (CST.Apply loc tm1 tm2)       = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2
 lowerCommand (CST.Print loc tm cmd)        = AST.Print loc <$> lowerTerm PrdRep tm <*> lowerCommand cmd
 lowerCommand (CST.Read loc tm)             = AST.Read loc <$> lowerTerm CnsRep tm
@@ -216,7 +202,7 @@ lowerCommand (CST.PrimOp loc pt op subst)  = do
 -- Check Arity of PrimOp
 ---------------------------------------------------------------------------------
 
-checkPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> Arity -> DriverM ()
+checkPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> Arity -> RenamerM ()
 checkPrimOpArity loc primOp arityUsed = do
   case M.lookup primOp primOps of
     Nothing -> throwError (LowerError (Just loc) (UndefinedPrimOp primOp))

@@ -5,7 +5,9 @@ import Control.Monad.State ( gets, MonadIO(liftIO) )
 import Data.Text (Text)
 import Data.Text qualified as T
 
+import Driver.Driver
 import Parser.Parser ( runInteractiveParser, declarationP )
+import Renamer.Program
 import Repl.Repl
     ( ReplState(replEnv, typeInfOpts),
       Repl,
@@ -13,8 +15,6 @@ import Repl.Repl
       Option(..),
       fromRight,
       modifyEnvironment )
-import Syntax.Lowering.Program
-import Driver.Driver
 
 letCmd :: Text -> Repl ()
 letCmd s = do

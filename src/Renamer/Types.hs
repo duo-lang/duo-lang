@@ -1,14 +1,13 @@
-module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
+module Renamer.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Control.Monad.Except (throwError)
-import Control.Monad.State
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-import Driver.Definition
-import Driver.Environment (Environment(..))
 import Errors
+import Renamer.Definition
+import Renamer.SymbolTable
 import Syntax.Common
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types ( freeTypeVars)
@@ -19,14 +18,14 @@ import Data.List
 -- Lowering & Polarization (CST -> AST)
 ---------------------------------------------------------------------------------
 
-lowerTypeScheme :: PolarityRep pol -> TypeScheme -> DriverM (AST.TypeScheme pol)
+lowerTypeScheme :: PolarityRep pol -> TypeScheme -> RenamerM (AST.TypeScheme pol)
 lowerTypeScheme rep (TypeScheme tvars monotype) = do
     monotype <- lowerTyp rep monotype
     if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList tvars)
         then pure (AST.TypeScheme tvars monotype)
         else throwError (LowerError Nothing MissingVarsInTypeScheme)
 
-lowerTyp :: PolarityRep pol -> Typ -> DriverM (AST.Typ pol)
+lowerTyp :: PolarityRep pol -> Typ -> RenamerM (AST.Typ pol)
 lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
 lowerTyp rep (TyXData Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
@@ -47,40 +46,31 @@ lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
 lowerTyp rep (TyParens typ) = lowerTyp rep typ
 lowerTyp rep (TyPrim pt) = pure $ AST.TyPrim rep pt
 
-lowerTypeArgs :: PolarityRep pol -> TypeName -> [Typ] -> DriverM ([AST.Typ (FlipPol pol)], [AST.Typ pol])
+lowerTypeArgs :: PolarityRep pol -> TypeName -> [Typ] -> RenamerM ([AST.Typ (FlipPol pol)], [AST.Typ pol])
 lowerTypeArgs rep tn args = do
-    (n_contra, n_cov) <- lookupTypeConstructorAritiy tn
-    let (contra, cov) = splitAt n_contra args
-    if n_contra /= length contra || n_cov /= length cov then
+    MkPolyKind { contravariant, covariant } <- lookupTypeConstructorAritiy tn
+    let (contra, cov) = splitAt (length contravariant) args
+    if (length contravariant) /= length contra || (length covariant) /= length cov then
         throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
     else do
         contra <- sequence (lowerTyp (flipPolarityRep rep) <$> contra)
         cov <- sequence (lowerTyp rep <$> cov)
         pure (contra, cov)
 
--- | Find the number of (contravariant, covariant) type parameters
-lookupTypeConstructorAritiy :: TypeName -> DriverM (Int, Int)
-lookupTypeConstructorAritiy tn = do
-    MkEnvironment {..} <- gets driverEnv
-    let env = snd <$> declEnv
-    case find (\AST.NominalDecl{..} -> data_name == tn) env of
-        Just AST.NominalDecl{..} -> pure (length (contravariant data_kind), length (covariant data_kind))
-        Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
-
-lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> DriverM [AST.XtorSig pol]
+lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> RenamerM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs
 
-lowerXTorSig :: PolarityRep pol -> XtorSig -> DriverM (AST.XtorSig pol)
+lowerXTorSig :: PolarityRep pol -> XtorSig -> RenamerM (AST.XtorSig pol)
 lowerXTorSig rep (MkXtorSig name ctx) = AST.MkXtorSig name <$> lowerLinearContext rep ctx
 
-lowerLinearContext :: PolarityRep pol -> LinearContext -> DriverM (AST.LinearContext pol)
+lowerLinearContext :: PolarityRep pol -> LinearContext -> RenamerM (AST.LinearContext pol)
 lowerLinearContext rep ctx = sequence $ lowerPrdCnsTyp rep <$> ctx
 
-lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> DriverM (AST.PrdCnsType pol)
+lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> RenamerM (AST.PrdCnsType pol)
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdCnsType PrdRep <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.PrdCnsType CnsRep <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> DriverM (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> RenamerM (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -89,12 +79,7 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-data TyOpDesugaring where
-    UnionDesugaring :: TyOpDesugaring
-    InterDesugaring :: TyOpDesugaring
-    NominalDesugaring :: TypeName -> TyOpDesugaring
-
-desugaring :: PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> DriverM (AST.Typ pol)
+desugaring :: PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> RenamerM (AST.Typ pol)
 desugaring PosRep UnionDesugaring tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
@@ -114,60 +99,12 @@ desugaring PosRep InterDesugaring _ _ =
 desugaring rep (NominalDesugaring tyname) tl tr = do
     lowerTyp rep (TyNominal tyname [tl, tr])
 
-data TyOp = MkTyOp
-    {
-        symbol :: BinOp,
-        prec :: Precedence,
-        assoc :: Associativity,
-        desugar :: TyOpDesugaring
-    }
-
-
-
-
--- | Type operator for the function type
-functionTyOp :: TyOp
-functionTyOp = MkTyOp
-  { symbol = CustomOp (MkTyOpName "->")
-  , prec = MkPrecedence 0
-  , assoc = RightAssoc
-  , desugar = NominalDesugaring (MkTypeName "Fun")
-  }
-
--- | Type operator for the union type
-unionTyOp :: TyOp
-unionTyOp = MkTyOp
-  { symbol = UnionOp
-  , prec = MkPrecedence 1
-  , assoc = LeftAssoc
-  , desugar = UnionDesugaring
-  }
-
--- | Type operator for the intersection type
-interTyOp :: TyOp
-interTyOp = MkTyOp
-  { symbol = InterOp
-  , prec = MkPrecedence 2
-  , assoc = LeftAssoc
-  , desugar = InterDesugaring
-  }
-
--- | Type operator for the Par type
-parTyOp :: TyOp
-parTyOp = MkTyOp
-  { symbol = CustomOp (MkTyOpName "⅋")
-  , prec = MkPrecedence 3
-  , assoc = LeftAssoc
-  , desugar = NominalDesugaring (MkTypeName "Par")
-  }
-
-tyops :: [TyOp]
-tyops = [ functionTyOp, unionTyOp, interTyOp, parTyOp ]
-
-lookupTyOp :: BinOp -> DriverM TyOp
-lookupTyOp op = case find (\tyop -> symbol tyop == op) tyops of
-    Nothing -> throwError (LowerError Nothing (UnknownOperator (T.pack (show op))))
-    Just tyop -> pure tyop
+lookupTyOp :: BinOp -> RenamerM TyOp
+lookupTyOp op = do
+    tyops <- tyOps <$> getSymbolTable
+    case find (\tyop -> symbol tyop == op) tyops of
+      Nothing -> throwError (LowerError Nothing (UnknownOperator (T.pack (show op))))
+      Just tyop -> pure tyop
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes
@@ -186,7 +123,7 @@ lookupTyOp op = case find (\tyop -> symbol tyop == op) tyops of
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> NonEmpty (BinOp, Typ) -> DriverM Typ
+associateOps :: Typ -> NonEmpty (BinOp, Typ) -> RenamerM Typ
 associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
 associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     op1 <- lookupTyOp s1
@@ -201,7 +138,7 @@ associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
     else
         throwError (OtherError Nothing "Unhandled case reached. This is a bug the operator precedence parser")
 
-lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> DriverM (AST.Typ pol)
+lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> RenamerM (AST.Typ pol)
 lowerBinOp rep lhs s rhs = do
     op <- lookupTyOp s
     desugaring rep (desugar op) lhs rhs

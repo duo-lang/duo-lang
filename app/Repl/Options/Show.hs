@@ -22,8 +22,8 @@ import Repl.Repl
       Repl )
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
+import Renamer.Program    
 import Syntax.AST.Types ( DataDecl(data_name) )
-import Syntax.Lowering.Program
 import Syntax.Common
 import Driver.Definition
 import Utils (trim)

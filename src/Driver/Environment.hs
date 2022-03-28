@@ -3,6 +3,7 @@ module Driver.Environment where
 import Data.Map (Map)
 import Data.Map qualified as M
 
+import Renamer.SymbolTable
 import Syntax.Common
 import Syntax.AST.Terms
 import Syntax.AST.Types
@@ -17,19 +18,19 @@ data Environment (ph :: Phase) = MkEnvironment
   , cnsEnv :: Map FreeVarName (Term Cns ph, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command ph, Loc)
   , declEnv :: [(Loc,DataDecl)]
-  , xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
+  , symbolTable :: SymbolTable
   }
 
 instance Show (Environment ph) where
   show _ = "<Environment>"
 
 instance Semigroup (Environment ph) where
-  (MkEnvironment prdEnv1 cnsEnv1 cmdEnv1 declEnv1 xtorMap1) <> (MkEnvironment prdEnv2 cnsEnv2 cmdEnv2 declEnv2 xtorMap2) =
+  (MkEnvironment prdEnv1 cnsEnv1 cmdEnv1 declEnv1 symbolTable1) <> (MkEnvironment prdEnv2 cnsEnv2 cmdEnv2 declEnv2 symbolTable2) =
     MkEnvironment { prdEnv = M.union prdEnv1 prdEnv2
                   , cnsEnv = M.union cnsEnv1 cnsEnv2
                   , cmdEnv = M.union cmdEnv1 cmdEnv2
                   , declEnv = declEnv1 ++ declEnv2
-                  , xtorMap = M.union xtorMap1 xtorMap2
+                  , symbolTable = symbolTable1 <> symbolTable2
                   }
 
 instance Monoid (Environment ph) where
@@ -38,5 +39,5 @@ instance Monoid (Environment ph) where
     , cnsEnv = M.empty
     , cmdEnv = M.empty
     , declEnv = []
-    , xtorMap = M.empty
+    , symbolTable = mempty
     }
