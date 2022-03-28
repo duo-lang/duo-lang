@@ -396,7 +396,7 @@ operators = enumFromTo minBound maxBound
 -- Check if the string is in the list of reserved operators.
 -- Reserved operators cannot be used as custom operators
 checkReservedOp :: Text -> Parser ()
-checkReservedOp str | str `elem` (T.pack . show <$> operators) = fail . T.unpack $ "Operator " <> str <> " cannot be used as a custom operator."
+checkReservedOp str | any ((flip T.isInfixOf) str) (T.pack . show <$> operators) = fail . T.unpack $ "Operator " <> str <> " cannot be used as a custom operator."
                     | otherwise = return ()
 
 -------------------------------------------------------------------------------------------

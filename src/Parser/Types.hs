@@ -182,7 +182,7 @@ primitiveTypeP =
 -- Type Parser
 ---------------------------------------------------------------------------------
 
--- | Parse atomic types
+-- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser Typ
 typAtomP = (TyParens . fst <$> parens typP)
   <|> nominalTypeP
@@ -196,32 +196,29 @@ typAtomP = (TyParens . fst <$> parens typP)
   <|> TyPrim <$> primitiveTypeP
   <|> typeVariableP
 
-tyOpP :: Parser BinOp
-tyOpP = interOp <|> unionOp <|> customOp
+tyBinOpP :: Parser BinOp
+tyBinOpP = try (interOp <|> unionOp <|> customOp)
   where
     interOp  = InterOp <$ symbolP SymIntersection
     unionOp  = UnionOp <$ symbolP SymUnion
     customOp = tyOpNameP >>= (\(op,_) -> pure (CustomOp op))
 
-opsChainP' :: Parser a -> Parser b -> Parser [(b, a)]
-opsChainP' p op = do
-  let fst = try ((,) <$> op <*> p)
-  let rest = opsChainP' p op
-  ((:) <$> fst <*> rest) <|> pure []
 
-opsChainP :: Parser a -> Parser b -> Parser (a, NonEmpty (b, a))
-opsChainP p op = do
-  (fst, (o, snd)) <- try (((,) <$> p) <*> (((,) <$> op) <*> p))
-  rest <- opsChainP' p op
-  pure (fst, (o, snd) :| rest)
-
--- | Parse a chain of type operators
-typOpsP :: Parser Typ
-typOpsP = uncurry TyBinOpChain <$> opsChainP typAtomP tyOpP
+tyOpChainP :: Parser (NonEmpty (BinOp, Typ))
+tyOpChainP = do
+  lst <- some ((,) <$> tyBinOpP <*> typAtomP)
+  case lst of
+    [] -> error "Cannot occur, \"some\" parses non-empty list"
+    (x:xs) -> pure (x :| xs)
 
 -- | Parse a type
 typP :: Parser Typ
-typP = typOpsP <|> typAtomP
+typP = do
+  fst <- typAtomP
+  maybeChain <- optional tyOpChainP
+  case maybeChain of
+    Nothing -> pure fst
+    Just chain -> pure (TyBinOpChain fst chain)
 
 
 ---------------------------------------------------------------------------------
