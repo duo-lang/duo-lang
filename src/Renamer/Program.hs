@@ -5,9 +5,9 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 
-import Driver.Definition
 import Driver.Environment (Environment(..))
 import Errors
+import Renamer.Definition
 import Renamer.Terms (lowerTerm, lowerCommand)
 import Renamer.Types (lowerTypeScheme, lowerXTorSig)
 import Parser.Parser ( runFileParser, programP )
@@ -20,16 +20,17 @@ import Utils (Loc)
 
 
 
-lowerXtors :: [CST.XtorSig] -> DriverM ([AST.XtorSig Pos], [AST.XtorSig Neg])
+lowerXtors :: [CST.XtorSig]
+           -> RenamerM ([AST.XtorSig Pos], [AST.XtorSig Neg])
 lowerXtors sigs = do
     posSigs <- sequence $ lowerXTorSig PosRep <$> sigs
     negSigs <- sequence $ lowerXTorSig NegRep <$> sigs
     pure (posSigs, negSigs)
 
-lowerDataDecl :: Loc -> CST.DataDecl -> DriverM AST.DataDecl
+lowerDataDecl :: Loc -> CST.DataDecl -> RenamerM AST.DataDecl
 lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   -- HACK: Insert preliminary data declaration information (needed to lower type constructor applications)
-  env <- gets driverEnv
+  env <- getDriverEnv
   let prelim_dd = AST.NominalDecl
         { data_refined = data_refined
         , data_name = data_name
@@ -58,21 +59,21 @@ lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data
 
   pure dcl
 
-lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> DriverM (AST.TypeScheme (PrdCnsToPol pc))
+lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> RenamerM (AST.TypeScheme (PrdCnsToPol pc))
 lowerAnnot PrdRep ts = lowerTypeScheme PosRep ts
 lowerAnnot CnsRep ts = lowerTypeScheme NegRep ts
 
-lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> DriverM (Maybe (AST.TypeScheme (PrdCnsToPol pc)))
+lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> RenamerM (Maybe (AST.TypeScheme (PrdCnsToPol pc)))
 lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
-lowerDecl :: CST.Declaration -> DriverM (AST.Declaration Parsed)
+lowerDecl :: CST.Declaration -> RenamerM (AST.Declaration Parsed)
 lowerDecl (CST.PrdCnsDecl loc Prd isrec fv annot tm) = AST.PrdCnsDecl loc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
 lowerDecl (CST.PrdCnsDecl loc Cns isrec fv annot tm) = AST.PrdCnsDecl loc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
 lowerDecl (CST.CmdDecl loc fv cmd)          = AST.CmdDecl loc fv <$> (lowerCommand cmd)
 lowerDecl (CST.DataDecl loc dd)             = do
   lowered <- lowerDataDecl loc dd
-  env <- gets driverEnv
+  env <- getDriverEnv
   let ns = case CST.data_refined dd of
                  Refined -> Refinement
                  NotRefined -> Nominal
@@ -80,7 +81,7 @@ lowerDecl (CST.DataDecl loc dd)             = do
   setEnvironment newEnv
   pure $ AST.DataDecl loc lowered
 lowerDecl (CST.XtorDecl loc dc xt args ret) = do
-  env <- gets driverEnv
+  env <- getDriverEnv
   let newEnv = env { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap env)}
   setEnvironment newEnv
   let ret' = case ret of
@@ -89,7 +90,7 @@ lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   pure $ AST.XtorDecl loc dc xt args ret'
 lowerDecl (CST.ImportDecl loc mod) = do
   fp <- findModule mod loc
-  oldEnv <- gets driverEnv
+  oldEnv <- getDriverEnv
   newEnv <- lowerProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
   pure $ AST.ImportDecl loc mod
@@ -97,7 +98,7 @@ lowerDecl (CST.SetDecl loc txt)             = pure $ AST.SetDecl loc txt
 lowerDecl (CST.TyOpDecl loc op prec assoc tyname) = pure $ AST.TyOpDecl loc op prec assoc tyname
 lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
-lowerProgram :: CST.Program -> DriverM (AST.Program Parsed)
+lowerProgram :: CST.Program -> RenamerM (AST.Program Parsed)
 lowerProgram = sequence . fmap lowerDecl
 
 
@@ -128,7 +129,7 @@ createSymbolTable (_:decls) = createSymbolTable decls
 
 
 lowerProgramFromDisk :: FilePath
-                     -> DriverM (Environment Inferred)
+                     -> RenamerM (Environment Inferred)
 lowerProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file

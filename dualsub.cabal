@@ -85,6 +85,7 @@ library
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
+      Renamer.Definition
       Renamer.Program
       Renamer.Terms
       Renamer.Types
