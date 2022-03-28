@@ -47,9 +47,9 @@ lowerTyp rep (TyPrim pt) = pure $ AST.TyPrim rep pt
 
 lowerTypeArgs :: PolarityRep pol -> TypeName -> [Typ] -> RenamerM ([AST.Typ (FlipPol pol)], [AST.Typ pol])
 lowerTypeArgs rep tn args = do
-    (n_contra, n_cov) <- lookupTypeConstructorAritiy tn
-    let (contra, cov) = splitAt n_contra args
-    if n_contra /= length contra || n_cov /= length cov then
+    MkPolyKind { contravariant, covariant } <- lookupTypeConstructorAritiy tn
+    let (contra, cov) = splitAt (length contravariant) args
+    if (length contravariant) /= length contra || (length covariant) /= length cov then
         throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
     else do
         contra <- sequence (lowerTyp (flipPolarityRep rep) <$> contra)

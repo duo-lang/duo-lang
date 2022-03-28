@@ -27,32 +27,28 @@ lowerXtors sigs = do
 
 lowerDataDecl :: Loc -> CST.DataDecl -> RenamerM AST.DataDecl
 lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
-  -- HACK: Insert preliminary data declaration information (needed to lower type constructor applications)
-  env <- getDriverEnv
-  let prelim_dd = AST.NominalDecl
-        { data_refined = data_refined
-        , data_name = data_name
-        , data_polarity = data_polarity
-        , data_kind = case data_kind of
-            Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
-            Just knd -> knd
-        , data_xtors = ([], [])
-        }
-
-  let newEnv = env { declEnv = (loc, prelim_dd) : declEnv env }
-  setEnvironment newEnv
-
+  -- Default the kind if none was specified:
+  let polyKind = case data_kind of
+                    Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                    Just knd -> knd
+  -- Insert the tycon arity into the environment
+  updateSymbolTable (\st -> st { tyConMap = M.insert data_name (data_refined, polyKind) (tyConMap st)})
+  -- Lower the xtors
   xtors <- lowerXtors data_xtors
-
   let ns = case data_refined of
                   Refined -> Refinement
                   NotRefined -> Nominal
-
-  -- HACK: insert final data declaration into environment
-  let dcl = prelim_dd { AST.data_xtors = xtors}
-  let newXtors = (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors dcl)])
+  -- Create the new data declaration
+  let dcl = AST.NominalDecl
+                { data_refined = data_refined
+                , data_name = data_name
+                , data_polarity = data_polarity
+                , data_kind = polyKind
+                , data_xtors = xtors
+                }
+  -- Insert the xtors into the environment
+  let newXtors = (M.fromList [((AST.sig_name xt,data_polarity), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst xtors])
   updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
-
   pure dcl
 
 lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> RenamerM (AST.TypeScheme (PrdCnsToPol pc))
@@ -87,9 +83,8 @@ lowerDecl (CST.XtorDecl loc dc xt args ret) = do
   pure $ AST.XtorDecl loc dc xt args ret'
 lowerDecl (CST.ImportDecl loc mod) = do
   fp <- findModule mod loc
-  oldEnv <- getDriverEnv
   newSymbolTable <- lowerProgramFromDisk fp
-  setEnvironment (oldEnv { symbolTable = newSymbolTable <> (symbolTable oldEnv)})
+  updateSymbolTable (\st -> st <> newSymbolTable)
   pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt) =
   pure $ AST.SetDecl loc txt
