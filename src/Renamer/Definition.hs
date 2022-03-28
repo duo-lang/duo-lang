@@ -10,9 +10,8 @@ import System.Directory ( doesFileExist )
 import Driver.Definition
 import Driver.Environment
 import Pretty.Pretty
+import Renamer.SymbolTable
 import Syntax.Common
-import qualified Syntax.CST.Program as CST
-import qualified Syntax.CST.Types as CST
 import Utils
 import Errors
 
@@ -70,24 +69,5 @@ findModule (MkModuleName mod) loc = do
     [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
     (fp:_) -> return fp
 
-
-createSymbolTable :: CST.Program  -> SymbolTable
-createSymbolTable [] = mempty
-createSymbolTable ((CST.XtorDecl _ dc xt args _):decls) =
-  let st = createSymbolTable decls
-  in st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
-createSymbolTable ((CST.DataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }):decls) =
-  -- Create the default polykind
-  let polyKind = case data_kind of
-                    Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
-                    Just knd -> knd
-      ns = case data_refined of
-               Refined -> Refinement
-               NotRefined -> Nominal
-      st = createSymbolTable decls
-      xtors = M.fromList [((CST.sig_name xt, data_polarity), (ns, CST.linearContextToArity (CST.sig_args xt)))| xt <- data_xtors]
-  in st { xtorMap  = M.union xtors (xtorMap st)
-        , tyConMap = M.insert data_name (data_refined, polyKind)(tyConMap st)}
-createSymbolTable (_:decls) = createSymbolTable decls
 
 

@@ -21,7 +21,8 @@ import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
-import Renamer.Program
+import Renamer.Program (lowerProgram)
+import Renamer.SymbolTable
 import Syntax.AST.Terms
 import Syntax.Common
 import Syntax.CST.Program qualified as CST

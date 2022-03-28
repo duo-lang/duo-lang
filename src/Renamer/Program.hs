@@ -5,9 +5,9 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 
-import Driver.Environment
 import Errors
 import Renamer.Definition
+import Renamer.SymbolTable
 import Renamer.Terms (lowerTerm, lowerCommand)
 import Renamer.Types (lowerTypeScheme, lowerXTorSig)
 import Parser.Parser ( runFileParser, programP )
@@ -26,7 +26,7 @@ lowerXtors sigs = do
     pure (posSigs, negSigs)
 
 lowerDataDecl :: Loc -> CST.DataDecl -> RenamerM AST.DataDecl
-lowerDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+lowerDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   -- Default the kind if none was specified:
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)

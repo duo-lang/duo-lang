@@ -3,29 +3,11 @@ module Driver.Environment where
 import Data.Map (Map)
 import Data.Map qualified as M
 
+import Renamer.SymbolTable
 import Syntax.Common
 import Syntax.AST.Terms
 import Syntax.AST.Types
 import Utils
-
----------------------------------------------------------------------------------
--- Symbol Table
----------------------------------------------------------------------------------
-
-data SymbolTable = MkSymbolTable
-  { xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
-  , tyConMap :: Map TypeName (IsRefined, PolyKind)
-  }
-
-instance Show SymbolTable where
-  show _ = "<SymbolTable>"
-
-instance Semigroup SymbolTable where
-  (MkSymbolTable xtormap1 tyConMap1) <> (MkSymbolTable xtormap2 tyConMap2) =
-    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2)
-
-instance Monoid SymbolTable where
-  mempty = MkSymbolTable M.empty M.empty
 
 ---------------------------------------------------------------------------------
 -- Environment

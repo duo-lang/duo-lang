@@ -87,6 +87,7 @@ library
       Pretty.TypeAutomata
       Renamer.Definition
       Renamer.Program
+      Renamer.SymbolTable
       Renamer.Terms
       Renamer.Types
       Syntax.AST.Program
