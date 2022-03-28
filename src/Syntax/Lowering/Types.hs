@@ -89,15 +89,6 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-data Associativity where
-  LeftAssoc :: Associativity
-  RightAssoc :: Associativity
-  deriving (Eq, Show, Ord)
-
-data Precedence = MkPrecedence Int
-  deriving (Eq, Show, Ord)
-
-
 data TyOpDesugaring where
     UnionDesugaring :: TyOpDesugaring
     InterDesugaring :: TyOpDesugaring

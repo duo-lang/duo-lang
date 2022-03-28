@@ -146,5 +146,12 @@
     "description": [
       "A toplevel command declaration"
     ]
+  },
+  "type operator": {
+    "prefix": [
+      "type",
+      "operator"
+    ],
+    "body": [ "type operator ${1:op} ${2|leftassoc,rightassoc|} at ${3:precedence} := ${0:typename};"]
   }
 }

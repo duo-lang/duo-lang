@@ -54,6 +54,10 @@ defDeclarationP = do
   try (void (keywordP KwDef))
   recoverDeclaration $ cmdDeclarationP startPos <|> prdCnsDeclarationP startPos Prd <|> prdCnsDeclarationP startPos Cns
 
+---------------------------------------------------------------------------------
+-- Import Declaration
+---------------------------------------------------------------------------------
+
 importDeclP :: Parser Declaration
 importDeclP = do
   startPos <- getSourcePos
@@ -61,6 +65,10 @@ importDeclP = do
   (mn, _) <- moduleNameP
   endPos <- symbolP SymSemi
   return (ImportDecl (Loc startPos endPos) mn)
+
+---------------------------------------------------------------------------------
+-- Set Option Declaration
+---------------------------------------------------------------------------------
 
 setDeclP :: Parser Declaration
 setDeclP = do
@@ -71,13 +79,42 @@ setDeclP = do
   return (SetDecl (Loc startPos endPos) txt)
 
 ---------------------------------------------------------------------------------
+-- Type Operator Declaration
+---------------------------------------------------------------------------------
+
+precedenceP :: Parser Precedence
+precedenceP = do
+  (n,_) <- natP
+  pure (MkPrecedence n)
+
+assocP :: Parser Associativity
+assocP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|> (keywordP KwRightAssoc >> pure RightAssoc)
+
+-- | Parses a type operator declaration of the form
+--       "type operator -> at 5 := Fun;"
+typeOperatorDeclP :: Parser Declaration
+typeOperatorDeclP = do
+  startPos <- getSourcePos
+  try (void (keywordP KwType))
+  recoverDeclaration $ do
+    _ <- keywordP KwOperator
+    (sym,_) <- tyOpNameP
+    assoc <- assocP
+    _ <- keywordP KwAt
+    prec <- precedenceP
+    _ <- symbolP SymColoneq
+    (tyname,_) <- typeNameP
+    endPos <- symbolP SymSemi
+    pure (TyOpDecl (Loc startPos endPos) sym prec assoc tyname)
+
+---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
-  (xt, _pos) <- xtorName
-  (args,_) <- argListsP typP
+  (xt, _pos) <- xtorName <?> "constructor/destructor name"
+  (args,_) <- argListsP typP <?> "argument list"
   return (xt, args )
 
 
@@ -162,6 +199,7 @@ xtorDeclarationP = do
 
 declarationP :: Parser Declaration
 declarationP =
+  typeOperatorDeclP <|>
   defDeclarationP <|>
   importDeclP <|>
   setDeclP <|>

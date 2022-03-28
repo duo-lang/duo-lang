@@ -55,6 +55,12 @@ prettyCCList [] = mempty
 prettyCCList ((Prd, cc):xs) = (parens   $ prettyAnn cc) <> prettyCCList xs
 prettyCCList ((Cns, cc):xs) = (brackets $ prettyAnn cc) <> prettyCCList xs
 
+prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
+prettyTyOpDecl op assoc prec ty =
+  annKeyword "type" <+> annKeyword "operator" <+>
+  prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
+  annSymbol ":=" <+> prettyAnn ty <> semi
+
 instance PrettyAnn (Declaration ext) where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
@@ -68,6 +74,9 @@ instance PrettyAnn (Declaration ext) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (SetDecl _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (TyOpDecl _ op prec assoc ty) =
+    prettyTyOpDecl op assoc prec ty
+    
 
 instance PrettyAnn (NamedRep (Declaration ext)) where
   prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
@@ -82,6 +91,8 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (NamedRep (SetDecl _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (NamedRep (TyOpDecl _ op prec assoc ty)) =
+    prettyTyOpDecl op assoc prec ty
 
 instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)

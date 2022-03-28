@@ -6,6 +6,7 @@ data Plus : (+a : CBV, +b : CBV) -> CBV {
     Right(b)
 };
 
+
 data Void {};
 
 -- Positive Conjunction and its Unit
@@ -24,6 +25,8 @@ codata With : (+a : CBV, +b : CBV) -> CBN {
     Proj2[a]
 };
 
+type operator & leftassoc at 5 := With;
+
 def pair[*] := \x y => cocase { Proj1[*] => x, Proj2[*] => y};
 
 codata UnitN {};
@@ -32,6 +35,8 @@ codata UnitN {};
 codata Par : (+a : CBV, +b : CBV) -> CBN {
     MkPar[a,b]
 };
+
+type operator ⅋ leftassoc at 5 := Par;
 
 def return[*] : forall a. a -> Bot ⅋ a :=
   \x => cocase { MkPar[err,*] => x };
