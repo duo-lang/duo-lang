@@ -1,31 +1,17 @@
 module Renamer.Terms (lowerTerm, lowerCommand) where
 
-import Control.Monad.State
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Text.Megaparsec.Pos (SourcePos)
 
-import Driver.Environment (Environment(..))
 import Errors
-import Pretty.Pretty
 import Renamer.Definition
 import Syntax.AST.Terms qualified as AST
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-
----------------------------------------------------------------------------------
--- Helper Functions
----------------------------------------------------------------------------------
-
-lookupXtor :: Loc -> (XtorName, DataCodata) -> RenamerM (NominalStructural, Arity)
-lookupXtor loc xs@(xtor,dc) = do
-  xtorMap <- getXtorMap
-  case M.lookup xs xtorMap of
-    Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in environment: " <> ppPrint xtor)
-    Just ns -> pure ns
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor

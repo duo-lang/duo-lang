@@ -1,12 +1,10 @@
 module Renamer.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Control.Monad.Except (throwError)
-import Control.Monad.State
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-import Driver.Environment (Environment(..))
 import Errors
 import Renamer.Definition
 import Syntax.Common
@@ -57,15 +55,6 @@ lowerTypeArgs rep tn args = do
         contra <- sequence (lowerTyp (flipPolarityRep rep) <$> contra)
         cov <- sequence (lowerTyp rep <$> cov)
         pure (contra, cov)
-
--- | Find the number of (contravariant, covariant) type parameters
-lookupTypeConstructorAritiy :: TypeName -> RenamerM (Int, Int)
-lookupTypeConstructorAritiy tn = do
-    MkEnvironment {..} <- getDriverEnv
-    let env = snd <$> declEnv
-    case find (\AST.NominalDecl{..} -> data_name == tn) env of
-        Just AST.NominalDecl{..} -> pure (length (contravariant data_kind), length (covariant data_kind))
-        Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
 
 lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> RenamerM [AST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs
