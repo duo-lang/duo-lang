@@ -93,14 +93,15 @@ typeOperatorDeclP :: Parser Declaration
 typeOperatorDeclP = do
   startPos <- getSourcePos
   try (void (keywordP KwType))
-  _ <- keywordP KwOperator
-  (sym,_) <- tyOpNameP
-  _ <- keywordP KwAt
-  prec <- precedenceP
-  _ <- symbolP SymColoneq
-  (tyname,_) <- typeNameP
-  endPos <- symbolP SymSemi
-  pure (TyOpDecl (Loc startPos endPos) sym prec tyname)
+  recoverDeclaration $ do
+    _ <- keywordP KwOperator
+    (sym,_) <- tyOpNameP
+    _ <- keywordP KwAt
+    prec <- precedenceP
+    _ <- symbolP SymColoneq
+    (tyname,_) <- typeNameP
+    endPos <- symbolP SymSemi
+    pure (TyOpDecl (Loc startPos endPos) sym prec tyname)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser

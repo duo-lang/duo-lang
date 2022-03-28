@@ -133,7 +133,7 @@ operatorP = f <|> g
     -- as an operator, but it is also a reserved symbol.
     f = symbolP SymSimpleRightArrow >>= \pos -> pure ("->",pos)
     g = do
-      (name, pos) <- lexeme $ T.pack <$> many symbolChar
+      (name, pos) <- lexeme $ T.pack <$> many (symbolChar <|> punctuationChar)
       checkReservedOp name
       pure (name, pos)
 
