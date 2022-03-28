@@ -7,6 +7,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
 import Renamer.Definition
+import Renamer.SymbolTable
 import Syntax.Common
 import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types ( freeTypeVars)
@@ -78,11 +79,6 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-data TyOpDesugaring where
-    UnionDesugaring :: TyOpDesugaring
-    InterDesugaring :: TyOpDesugaring
-    NominalDesugaring :: TypeName -> TyOpDesugaring
-
 desugaring :: PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> RenamerM (AST.Typ pol)
 desugaring PosRep UnionDesugaring tl tr = do
     tl <- lowerTyp PosRep tl
@@ -103,60 +99,12 @@ desugaring PosRep InterDesugaring _ _ =
 desugaring rep (NominalDesugaring tyname) tl tr = do
     lowerTyp rep (TyNominal tyname [tl, tr])
 
-data TyOp = MkTyOp
-    {
-        symbol :: BinOp,
-        prec :: Precedence,
-        assoc :: Associativity,
-        desugar :: TyOpDesugaring
-    }
-
-
-
-
--- | Type operator for the function type
-functionTyOp :: TyOp
-functionTyOp = MkTyOp
-  { symbol = CustomOp (MkTyOpName "->")
-  , prec = MkPrecedence 0
-  , assoc = RightAssoc
-  , desugar = NominalDesugaring (MkTypeName "Fun")
-  }
-
--- | Type operator for the union type
-unionTyOp :: TyOp
-unionTyOp = MkTyOp
-  { symbol = UnionOp
-  , prec = MkPrecedence 1
-  , assoc = LeftAssoc
-  , desugar = UnionDesugaring
-  }
-
--- | Type operator for the intersection type
-interTyOp :: TyOp
-interTyOp = MkTyOp
-  { symbol = InterOp
-  , prec = MkPrecedence 2
-  , assoc = LeftAssoc
-  , desugar = InterDesugaring
-  }
-
--- | Type operator for the Par type
-parTyOp :: TyOp
-parTyOp = MkTyOp
-  { symbol = CustomOp (MkTyOpName "⅋")
-  , prec = MkPrecedence 3
-  , assoc = LeftAssoc
-  , desugar = NominalDesugaring (MkTypeName "Par")
-  }
-
-tyops :: [TyOp]
-tyops = [ functionTyOp, unionTyOp, interTyOp, parTyOp ]
-
 lookupTyOp :: BinOp -> RenamerM TyOp
-lookupTyOp op = case find (\tyop -> symbol tyop == op) tyops of
-    Nothing -> throwError (LowerError Nothing (UnknownOperator (T.pack (show op))))
-    Just tyop -> pure tyop
+lookupTyOp op = do
+    tyops <- tyOps <$> getSymbolTable
+    case find (\tyop -> symbol tyop == op) tyops of
+      Nothing -> throwError (LowerError Nothing (UnknownOperator (T.pack (show op))))
+      Just tyop -> pure tyop
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes

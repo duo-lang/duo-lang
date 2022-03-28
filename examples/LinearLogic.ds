@@ -36,7 +36,7 @@ codata Par : (+a : CBV, +b : CBV) -> CBN {
     MkPar[a,b]
 };
 
-type operator ⅋ leftassoc at 5 := Par;
+type operator ⅋ leftassoc at 3 := Par;
 
 def return[*] : forall a. a -> Bot ⅋ a :=
   \x => cocase { MkPar[err,*] => x };

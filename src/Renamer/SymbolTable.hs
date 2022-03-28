@@ -8,23 +8,59 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 
 ---------------------------------------------------------------------------------
+-- Type Operators
+---------------------------------------------------------------------------------
+
+data TyOpDesugaring where
+    UnionDesugaring :: TyOpDesugaring
+    InterDesugaring :: TyOpDesugaring
+    NominalDesugaring :: TypeName -> TyOpDesugaring
+
+data TyOp = MkTyOp
+    {
+        symbol :: BinOp,
+        prec :: Precedence,
+        assoc :: Associativity,
+        desugar :: TyOpDesugaring
+    }
+
+-- | Type operator for the union type
+unionTyOp :: TyOp
+unionTyOp = MkTyOp
+  { symbol = UnionOp
+  , prec = MkPrecedence 1
+  , assoc = LeftAssoc
+  , desugar = UnionDesugaring
+  }
+
+-- | Type operator for the intersection type
+interTyOp :: TyOp
+interTyOp = MkTyOp
+  { symbol = InterOp
+  , prec = MkPrecedence 2
+  , assoc = LeftAssoc
+  , desugar = InterDesugaring
+  }
+
+---------------------------------------------------------------------------------
 -- Symbol Table
 ---------------------------------------------------------------------------------
 
 data SymbolTable = MkSymbolTable
   { xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
   , tyConMap :: Map TypeName (IsRefined, PolyKind)
+  , tyOps :: [TyOp]
   }
 
 instance Show SymbolTable where
   show _ = "<SymbolTable>"
 
 instance Semigroup SymbolTable where
-  (MkSymbolTable xtormap1 tyConMap1) <> (MkSymbolTable xtormap2 tyConMap2) =
-    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2)
+  (MkSymbolTable xtormap1 tyConMap1 tyOps1) <> (MkSymbolTable xtormap2 tyConMap2 tyOps2) =
+    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2) (tyOps1 ++ tyOps2)
 
 instance Monoid SymbolTable where
-  mempty = MkSymbolTable M.empty M.empty
+  mempty = MkSymbolTable M.empty M.empty [unionTyOp, interTyOp]
 
 ---------------------------------------------------------------------------------
 -- Creating a SymbolTable
@@ -47,4 +83,12 @@ createSymbolTable ((DataDecl _ NominalDecl { data_refined, data_name, data_polar
       xtors = M.fromList [((sig_name xt, data_polarity), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors]
   in st { xtorMap  = M.union xtors (xtorMap st)
         , tyConMap = M.insert data_name (data_refined, polyKind)(tyConMap st)}
+createSymbolTable ((TyOpDecl _ op prec assoc ty):decls) =
+    let st = createSymbolTable decls
+        tyOp = MkTyOp { symbol = CustomOp op
+                      , prec = prec
+                      , assoc = assoc
+                      , desugar = NominalDesugaring ty
+                      }
+    in st { tyOps = tyOp : (tyOps st) }
 createSymbolTable (_:decls) = createSymbolTable decls

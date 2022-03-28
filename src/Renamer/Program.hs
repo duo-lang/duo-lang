@@ -88,7 +88,13 @@ lowerDecl (CST.ImportDecl loc mod) = do
   pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt) =
   pure $ AST.SetDecl loc txt
-lowerDecl (CST.TyOpDecl loc op prec assoc tyname) =
+lowerDecl (CST.TyOpDecl loc op prec assoc tyname) = do
+  let tyOp = MkTyOp { symbol = CustomOp op
+                    , prec = prec
+                    , assoc = assoc
+                    , desugar = NominalDesugaring tyname
+                    }
+  updateSymbolTable (\st -> st { tyOps = tyOp : (tyOps st)})
   pure $ AST.TyOpDecl loc op prec assoc tyname
 lowerDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
