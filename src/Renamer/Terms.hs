@@ -1,4 +1,4 @@
-module Syntax.Lowering.Terms (lowerTerm, lowerCommand) where
+module Renamer.Terms (lowerTerm, lowerCommand) where
 
 import Control.Monad.State
 import Control.Monad.Except (throwError)

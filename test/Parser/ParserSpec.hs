@@ -12,10 +12,10 @@ import Parser.Types (typP)
 import Pretty.Errors ()
 import Pretty.Terms ()
 import Pretty.Types ()
+import Renamer.Types
 import Syntax.AST.Types
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
-import Syntax.Lowering.Types
 import TestUtils (getEnvironment)
 
 ds :: Environment Inferred ->  DriverState

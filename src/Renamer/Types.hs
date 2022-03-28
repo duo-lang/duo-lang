@@ -1,4 +1,4 @@
-module Syntax.Lowering.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
+module Renamer.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Control.Monad.Except (throwError)
 import Control.Monad.State

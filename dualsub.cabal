@@ -85,6 +85,9 @@ library
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
+      Renamer.Program
+      Renamer.Terms
+      Renamer.Types
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.AST.Types
@@ -101,9 +104,6 @@ library
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
-      Syntax.Lowering.Program
-      Syntax.Lowering.Terms
-      Syntax.Lowering.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize
