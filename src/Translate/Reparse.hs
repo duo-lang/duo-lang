@@ -120,7 +120,7 @@ reparseDecl (DataDecl _ decl)                 = DataDecl defaultLoc decl
 reparseDecl (XtorDecl _ dc xt args ret)       = XtorDecl defaultLoc dc xt args ret
 reparseDecl (ImportDecl _ mn)                 = ImportDecl defaultLoc mn
 reparseDecl (SetDecl _ txt)                   = SetDecl defaultLoc txt
-reparseDecl (TyOpDecl _ op prec ty)           = TyOpDecl defaultLoc op prec ty
+reparseDecl (TyOpDecl _ op prec assoc ty)     = TyOpDecl defaultLoc op prec assoc ty
 
 reparseProgram :: Program ext -> Program Parsed
 reparseProgram = fmap reparseDecl

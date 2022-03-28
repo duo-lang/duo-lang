@@ -179,8 +179,8 @@ inferDecl (SetDecl _ txt) = case T.unpack txt of
 --
 -- TyOpDecl
 --
-inferDecl (TyOpDecl loc op prec ty) = do
-  pure (TyOpDecl loc op prec ty)
+inferDecl (TyOpDecl loc op prec assoc ty) = do
+  pure (TyOpDecl loc op prec assoc ty)
 
 ---------------------------------------------------------------------------------
 -- Infer programs

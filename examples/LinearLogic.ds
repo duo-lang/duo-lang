@@ -25,7 +25,7 @@ codata With : (+a : CBV, +b : CBV) -> CBN {
     Proj2[a]
 };
 
-type operator & at 5 := With;
+type operator & leftassoc at 5 := With;
 
 def pair[*] := \x y => cocase { Proj1[*] => x, Proj2[*] => y};
 
@@ -36,7 +36,7 @@ codata Par : (+a : CBV, +b : CBV) -> CBN {
     MkPar[a,b]
 };
 
-type operator ⅋ at 5 := Par;
+type operator ⅋ leftassoc at 5 := Par;
 
 def return[*] : forall a. a -> Bot ⅋ a :=
   \x => cocase { MkPar[err,*] => x };

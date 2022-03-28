@@ -94,7 +94,7 @@ lowerDecl (CST.ImportDecl loc mod) = do
   setEnvironment (oldEnv <> newEnv)
   pure $ AST.ImportDecl loc mod
 lowerDecl (CST.SetDecl loc txt)             = pure $ AST.SetDecl loc txt
-lowerDecl (CST.TyOpDecl loc op prec tyname) = pure $ AST.TyOpDecl loc op prec tyname
+lowerDecl (CST.TyOpDecl loc op prec assoc tyname) = pure $ AST.TyOpDecl loc op prec assoc tyname
 lowerDecl CST.ParseErrorDecl                = throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
 lowerProgram :: CST.Program -> DriverM (AST.Program Parsed)

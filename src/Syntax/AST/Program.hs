@@ -25,7 +25,7 @@ data Declaration (ext :: Phase) where
   XtorDecl       :: DeclExt ext -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration ext
   ImportDecl     :: DeclExt ext -> ModuleName                                                                   -> Declaration ext
   SetDecl        :: DeclExt ext -> Text                                                                         -> Declaration ext
-  TyOpDecl       :: DeclExt ext -> TyOpName -> Precedence -> TypeName                                           -> Declaration ext
+  TyOpDecl       :: DeclExt ext -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration ext
   
 
 instance (Show (DeclExt ext), Show (Term Prd ext), Show (Term Cns ext), Show (Command ext)) => Show (Declaration ext) where
@@ -36,6 +36,6 @@ instance (Show (DeclExt ext), Show (Term Prd ext), Show (Term Cns ext), Show (Co
   show (XtorDecl ext dc xt args res) = "XtorDecl: " ++ show ext ++ show dc ++ show xt ++ show args ++ show res
   show (ImportDecl ext mn) = "ImportDecl: " ++ show ext ++ show mn
   show (SetDecl ext txt) = "SetDecl: " ++ show ext ++ show txt
-  show (TyOpDecl ext op prec ty) = "TyOpDecl: " ++ show ext ++ show op ++ show prec ++ show ty
+  show (TyOpDecl ext op prec assoc ty) = "TyOpDecl: " ++ show ext ++ show op ++ show prec ++ show assoc ++ show ty
   
 type Program ext = [Declaration ext]

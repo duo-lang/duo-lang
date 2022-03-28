@@ -197,6 +197,8 @@ data Keyword where
   KwI64Rep      :: Keyword
   KwOperator    :: Keyword
   KwAt          :: Keyword
+  KwLeftAssoc   :: Keyword
+  KwRightAssoc  :: Keyword
   -- Command Keywords
   KwDone        :: Keyword
   KwPrint       :: Keyword
@@ -232,6 +234,8 @@ instance Show Keyword where
   show KwI64Rep      = "I64Rep"
   show KwOperator    = "operator"
   show KwAt          = "at"
+  show KwLeftAssoc   = "leftassoc"
+  show KwRightAssoc  = "rightassoc"
   -- Command Keywords
   show KwDone        = "Done"
   show KwPrint       = "Print"
@@ -270,6 +274,8 @@ isDeclarationKw KwF64Rep      = False
 isDeclarationKw KwI64Rep      = False
 isDeclarationKw KwOperator    = False
 isDeclarationKw KwAt          = False
+isDeclarationKw KwLeftAssoc   = False
+isDeclarationKw KwRightAssoc  = False
 -- Command Keywords
 isDeclarationKw KwDone        = False
 isDeclarationKw KwPrint       = False

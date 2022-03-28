@@ -87,6 +87,9 @@ precedenceP = do
   (n,_) <- natP
   pure (MkPrecedence n)
 
+assocP :: Parser Associativity
+assocP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|> (keywordP KwRightAssoc >> pure RightAssoc)
+
 -- | Parses a type operator declaration of the form
 --       "type operator -> at 5 := Fun;"
 typeOperatorDeclP :: Parser Declaration
@@ -96,12 +99,13 @@ typeOperatorDeclP = do
   recoverDeclaration $ do
     _ <- keywordP KwOperator
     (sym,_) <- tyOpNameP
+    assoc <- assocP
     _ <- keywordP KwAt
     prec <- precedenceP
     _ <- symbolP SymColoneq
     (tyname,_) <- typeNameP
     endPos <- symbolP SymSemi
-    pure (TyOpDecl (Loc startPos endPos) sym prec tyname)
+    pure (TyOpDecl (Loc startPos endPos) sym prec assoc tyname)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser

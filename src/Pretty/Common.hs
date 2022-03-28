@@ -48,6 +48,10 @@ instance PrettyAnn TypeName where
 instance PrettyAnn Precedence where
   prettyAnn (MkPrecedence i) = pretty i
 
+instance PrettyAnn Associativity where
+  prettyAnn LeftAssoc = "leftassoc"
+  prettyAnn RightAssoc = "rightassoc"
+
 ---------------------------------------------------------------------------------
 -- Producer/Consumer and Arity
 ---------------------------------------------------------------------------------
