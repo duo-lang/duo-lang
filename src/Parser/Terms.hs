@@ -71,13 +71,23 @@ natLitP ns = do
   (num, endPos) <- natP <* notFollowedBy (symbolP SymHash)
   return (CST.NatLit (Loc startPos endPos) ns num, endPos)
 
-primitiveLitP :: Parser (CST.Term, SourcePos)
-primitiveLitP = do
+f64LitP :: Parser (CST.Term, SourcePos)
+f64LitP = do
   startPos <- getSourcePos
-  lit <- try (F64Lit . fst <$> floatP <* keywordP KwF64)
-     <|> I64Lit . fst <$> intP <* keywordP KwI64
-  endPos <- getSourcePos
-  pure (CST.PrimLit (Loc startPos endPos) lit, endPos)
+  (double, endPos) <- try $ do
+    (double,_) <- floatP
+    endPos <- keywordP KwF64
+    pure (double, endPos)
+  pure (CST.PrimLitF64 (Loc startPos endPos) double, endPos)
+
+i64LitP :: Parser (CST.Term, SourcePos)
+i64LitP = do
+  startPos <- getSourcePos
+  (int, endPos) <- try $ do
+    (int,_) <- intP
+    endPos <- keywordP KwI64
+    pure (int, endPos)
+  pure (CST.PrimLitI64 (Loc startPos endPos) int, endPos)
 
 --------------------------------------------------------------------------------------------
 -- Mu abstractions
@@ -306,7 +316,8 @@ termParensP = do
 --      | \x => t
 termBotP :: Parser (CST.Term, SourcePos)
 termBotP = freeVar <|>
-  try primitiveLitP <|>
+  i64LitP <|>
+  f64LitP <|>
   natLitP Structural <|>
   natLitP Nominal <|>
   xtorP <|>
