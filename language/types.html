@@ -148,22 +148,40 @@
 Strict languages like OCaml, SML or F# choose a call-by-value (CBV) evaluation strategy, whereas non-strict languages choose either
 call-by-name (CBN) or call-by-need.
 DualSub is not comitted to either strategy.
-Instead, the evaluation order is controlled at the level of kinds.
-Currently, only call-by-value and call-by-name are supported.</p>
-<table><thead><tr><th>Kind</th><th>Explanation</th></tr></thead><tbody>
+Instead, the user can choose between two different evaluation strategies for each type individually.
+The two evaluation strategies are:</p>
+<table><thead><tr><th>Evaluation Order</th><th>Explanation</th></tr></thead><tbody>
 <tr><td>CBV</td><td>Call-by-value</td></tr>
 <tr><td>CBN</td><td>Call-by-name</td></tr>
 </tbody></table>
+<p>The different evaluation strategies are reflected in the kinds of types.
+Instead of having only one inhabitated kind, usually written <code>*</code> in the type theory literature, there are several different kinds which classify inhabitated types.
+These inhabitated kinds are called &quot;MonoKind&quot;. Currently there are four different MonoKinds, one for each of boxed values of CBV and CBN types, and one for each of the primitive unboxed types.</p>
+<table><thead><tr><th>MonoKind</th><th>Explanation</th></tr></thead><tbody>
+<tr><td>CBV</td><td>The kind of boxed CBV types</td></tr>
+<tr><td>CBN</td><td>The kind of boxed CBN types</td></tr>
+<tr><td>I64Rep</td><td>The kind of the unboxed #I64 type</td></tr>
+<tr><td>F64Rep</td><td>The kind of the unboxed #F64 type</td></tr>
+</tbody></table>
+<p>Higher kinds are the kinds given to type constructors.
+Since the only available type constructors in DualSub construct CBV or CBN types, they follow the following restricted grammar.
+Each argument in a PolyKind has a variance, either <code>+</code> for covariant arguments or <code>-</code> for contravariant arguments, a type variable <code>a</code>, and a
+MonoKind of type type variable, <code>mk</code>.</p>
+<table><thead><tr><th>PolyKind</th><th>Explanation</th></tr></thead><tbody>
+<tr><td>(+-a : mk)* -&gt; eo</td><td>Polykind</td></tr>
+<tr><td>CBV</td><td>Syntactic sugar for () -&gt; CBV</td></tr>
+<tr><td>CBN</td><td>Syntactic sugar for () -&gt; CBN</td></tr>
+</tbody></table>
 <h2 id="builtin-types"><a class="header" href="#builtin-types">Builtin Types</a></h2>
-<p>There are three builtin types which correspond to the numeric types supported by most modern architectures.
-They are given in the following table.</p>
+<p>There are two builtin types which correspond to numeric types supported by most modern architectures.
+The builtin types are given in the following table.</p>
 <table><thead><tr><th>Type</th><th>Kind</th><th>Explanation</th></tr></thead><tbody>
-<tr><td>UnboxedI64</td><td>KindI64</td><td>Unboxed signed 64-Bit integers</td></tr>
-<tr><td>UnboxedU64</td><td>KindU64</td><td>Unboxed unsigned 64-Bit integers</td></tr>
-<tr><td>UnboxedF64</td><td>KindF64</td><td>Unboxed 64-Bit precision floating point numbers</td></tr>
+<tr><td>#I64</td><td>I64Rep</td><td>Unboxed signed 64-Bit integers</td></tr>
+<tr><td>#F64</td><td>F64Rep</td><td>Unboxed 64-Bit precision floating point numbers</td></tr>
 </tbody></table>
 <p>Each Builtin type has its own kind, which reflects the fact that these types are unboxed.
-Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.</p>
+Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.
+The standard library provides wrappers in the <code>I64.ds</code> and <code>F64.ds</code> modules which provide the boxed variants of the builtin unboxed types.</p>
 <h2 id="nominal-types"><a class="header" href="#nominal-types">Nominal Types</a></h2>
 <p>DualSub has two different variants of nominal types; nominal data types and nominal codata types.</p>
 <h4 id="nominal-data-types"><a class="header" href="#nominal-data-types">Nominal Data Types</a></h4>
@@ -180,7 +198,7 @@ data Void : CBV {};
 </code></pre>
 <p>When we declare parameterized data types, we have to declare both the kind of the type parameter, and its variance.
 For example, we can declare the type of lists of CBV types.</p>
-<pre><code>data List(+a : CBV) : CBV {
+<pre><code>data List : (+a : CBV) -&gt; CBV {
     Nil,
     Cons(a, List(a))
 };
@@ -198,14 +216,14 @@ The destructor <code>Head</code> returns the first element of the stream, and th
 };
 </code></pre>
 <p>Codata types can also be parameterized, similar to the List example of the previous section.</p>
-<pre><code>codata Stream(+a : CBV) : CBN {
+<pre><code>codata Stream : (+a : CBV) -&gt; CBN {
     Head[a],
     Tail[Stream(a)]
 };
 </code></pre>
 <p>Codata types make it possible to define the function type, instead of having a builtin function type like most functional programming languages.
 The declaration of the function type looks like this.</p>
-<pre><code>codata Fun(-a : CBV, +b CBV) : CBN {
+<pre><code>codata Fun : (-a : CBV, +b CBV) -&gt; CBN {
     Ap(a)[b]
 }
 </code></pre>

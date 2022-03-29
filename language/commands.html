@@ -149,7 +149,7 @@ The entry point to a program, the main function, is also a command.</p>
 <p>The simplest command is called <code>Done</code>, which is used to terminate the program.</p>
 <h4 id="example-1"><a class="header" href="#example-1">Example 1:</a></h4>
 <p>We can write a simple command which just exits directly after it is called.</p>
-<pre><code>cmd exitAtOnce := Done;
+<pre><code>def exitAtOnce := Done;
 </code></pre>
 <h2 id="the-apply-command"><a class="header" href="#the-apply-command">The Apply Command</a></h2>
 <p>The most important command is called &quot;Apply&quot;.
@@ -159,18 +159,18 @@ Apply intuitively just combines a producer with a consumer of the same type.</p>
 <p>We use the <code>&gt;&gt;</code> symbol to express a cut, and write the producer on the left side of it, and the consumer on the right hand side.</p>
 <h4 id="example-1-1"><a class="header" href="#example-1-1">Example 1:</a></h4>
 <p>The following program cuts the producer <code>True</code> against a pattern match on booleans, and then exits the program.</p>
-<pre><code>cmd exit :=  True &gt;&gt; match { True =&gt; Done; False =&gt; Done };
+<pre><code>def exit :=  True &gt;&gt; match { True =&gt; Done; False =&gt; Done };
 </code></pre>
 <h2 id="io-actions"><a class="header" href="#io-actions">IO Actions</a></h2>
 <p>There currently are only two IO actions provided; <code>Print</code> and <code>Read</code>.</p>
 <p>The following program uses both to read in two numbers from the console, and to print the output back to the console.</p>
 <pre><code>import Prelude;
 
-prd rec addA := \x =&gt; \y =&gt; case x of { Z =&gt; y
+def rec addA[*] := \x =&gt; \y =&gt; case x of { Z =&gt; y
                                       , S(z) =&gt; addA z S(y)
 					        };
 
-cmd main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
+def main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
 </code></pre>
 
                     </main>

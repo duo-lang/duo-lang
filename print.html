@@ -222,22 +222,40 @@ The advanced features are implemented using a language server, and require the <
 Strict languages like OCaml, SML or F# choose a call-by-value (CBV) evaluation strategy, whereas non-strict languages choose either
 call-by-name (CBN) or call-by-need.
 DualSub is not comitted to either strategy.
-Instead, the evaluation order is controlled at the level of kinds.
-Currently, only call-by-value and call-by-name are supported.</p>
-<table><thead><tr><th>Kind</th><th>Explanation</th></tr></thead><tbody>
+Instead, the user can choose between two different evaluation strategies for each type individually.
+The two evaluation strategies are:</p>
+<table><thead><tr><th>Evaluation Order</th><th>Explanation</th></tr></thead><tbody>
 <tr><td>CBV</td><td>Call-by-value</td></tr>
 <tr><td>CBN</td><td>Call-by-name</td></tr>
 </tbody></table>
+<p>The different evaluation strategies are reflected in the kinds of types.
+Instead of having only one inhabitated kind, usually written <code>*</code> in the type theory literature, there are several different kinds which classify inhabitated types.
+These inhabitated kinds are called &quot;MonoKind&quot;. Currently there are four different MonoKinds, one for each of boxed values of CBV and CBN types, and one for each of the primitive unboxed types.</p>
+<table><thead><tr><th>MonoKind</th><th>Explanation</th></tr></thead><tbody>
+<tr><td>CBV</td><td>The kind of boxed CBV types</td></tr>
+<tr><td>CBN</td><td>The kind of boxed CBN types</td></tr>
+<tr><td>I64Rep</td><td>The kind of the unboxed #I64 type</td></tr>
+<tr><td>F64Rep</td><td>The kind of the unboxed #F64 type</td></tr>
+</tbody></table>
+<p>Higher kinds are the kinds given to type constructors.
+Since the only available type constructors in DualSub construct CBV or CBN types, they follow the following restricted grammar.
+Each argument in a PolyKind has a variance, either <code>+</code> for covariant arguments or <code>-</code> for contravariant arguments, a type variable <code>a</code>, and a
+MonoKind of type type variable, <code>mk</code>.</p>
+<table><thead><tr><th>PolyKind</th><th>Explanation</th></tr></thead><tbody>
+<tr><td>(+-a : mk)* -&gt; eo</td><td>Polykind</td></tr>
+<tr><td>CBV</td><td>Syntactic sugar for () -&gt; CBV</td></tr>
+<tr><td>CBN</td><td>Syntactic sugar for () -&gt; CBN</td></tr>
+</tbody></table>
 <h2 id="builtin-types"><a class="header" href="#builtin-types">Builtin Types</a></h2>
-<p>There are three builtin types which correspond to the numeric types supported by most modern architectures.
-They are given in the following table.</p>
+<p>There are two builtin types which correspond to numeric types supported by most modern architectures.
+The builtin types are given in the following table.</p>
 <table><thead><tr><th>Type</th><th>Kind</th><th>Explanation</th></tr></thead><tbody>
-<tr><td>UnboxedI64</td><td>KindI64</td><td>Unboxed signed 64-Bit integers</td></tr>
-<tr><td>UnboxedU64</td><td>KindU64</td><td>Unboxed unsigned 64-Bit integers</td></tr>
-<tr><td>UnboxedF64</td><td>KindF64</td><td>Unboxed 64-Bit precision floating point numbers</td></tr>
+<tr><td>#I64</td><td>I64Rep</td><td>Unboxed signed 64-Bit integers</td></tr>
+<tr><td>#F64</td><td>F64Rep</td><td>Unboxed 64-Bit precision floating point numbers</td></tr>
 </tbody></table>
 <p>Each Builtin type has its own kind, which reflects the fact that these types are unboxed.
-Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.</p>
+Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.
+The standard library provides wrappers in the <code>I64.ds</code> and <code>F64.ds</code> modules which provide the boxed variants of the builtin unboxed types.</p>
 <h2 id="nominal-types"><a class="header" href="#nominal-types">Nominal Types</a></h2>
 <p>DualSub has two different variants of nominal types; nominal data types and nominal codata types.</p>
 <h4 id="nominal-data-types"><a class="header" href="#nominal-data-types">Nominal Data Types</a></h4>
@@ -254,7 +272,7 @@ data Void : CBV {};
 </code></pre>
 <p>When we declare parameterized data types, we have to declare both the kind of the type parameter, and its variance.
 For example, we can declare the type of lists of CBV types.</p>
-<pre><code>data List(+a : CBV) : CBV {
+<pre><code>data List : (+a : CBV) -&gt; CBV {
     Nil,
     Cons(a, List(a))
 };
@@ -272,14 +290,14 @@ The destructor <code>Head</code> returns the first element of the stream, and th
 };
 </code></pre>
 <p>Codata types can also be parameterized, similar to the List example of the previous section.</p>
-<pre><code>codata Stream(+a : CBV) : CBN {
+<pre><code>codata Stream : (+a : CBV) -&gt; CBN {
     Head[a],
     Tail[Stream(a)]
 };
 </code></pre>
 <p>Codata types make it possible to define the function type, instead of having a builtin function type like most functional programming languages.
 The declaration of the function type looks like this.</p>
-<pre><code>codata Fun(-a : CBV, +b CBV) : CBN {
+<pre><code>codata Fun : (-a : CBV, +b CBV) -&gt; CBN {
     Ap(a)[b]
 }
 </code></pre>
@@ -347,21 +365,21 @@ In distinction to lambda calculus, the term language of natural deduction, we ha
 <strong>producers</strong> and <strong>consumers</strong> of each type.
 In addition, there is a third syntactic category, commands.
 Commands are executable pieces of code.
-For example, it is possible to define producers, consumers and commands at the toplevel of the program, using <code>prd</code>, <code>cns</code> and <code>cmd</code> declarations:</p>
-<pre><code>prd someProducer := ...;
-cns someConsumer := ...;
-cmd someCommand := ...;
+For example, it is possible to define producers, consumers and commands at the toplevel of the program:</p>
+<pre><code>def someProducer[*] := ...;
+def someConsumer(*) := ...;
+def someCommand := ...;
 </code></pre>
 <p>Toplevel declarations of consumers and producers can additionally be annotated with a type scheme.</p>
-<pre><code>prd someProducer : ... := ...;
-cns someConsumer : ... := ...;
+<pre><code>def someProducer[*] : ... := ...;
+def someConsumer(*) : ... := ...;
 </code></pre>
 <p>For example, the polymorphic identity function is defined like so:</p>
-<pre><code>prd id : forall (a : CBV). a -&gt; a :=
+<pre><code>def id[*] : forall (a : CBV). a -&gt; a :=
   \x =&gt; x;
 </code></pre>
 <p>If a function is used recursively in its own body, the <code>rec</code> keyword is necessary:</p>
-<pre><code>prd rec add := \x y =&gt; case x of {
+<pre><code>def rec add[*] := \x y =&gt; case x of {
     Z =&gt; y,
     S(x) =&gt; S(add x y)
 }
@@ -377,15 +395,15 @@ cns someConsumer : ... := ...;
 <h2 id="core-constructs"><a class="header" href="#core-constructs">Core constructs</a></h2>
 <p>DualSub supports control operators in the form of the \(\mu\) and \(\tilde\mu\) constructs of the \(\lambda\mu\tilde\mu\) calculus.
 Both constructs use identical syntax.</p>
-<pre><code>prd ex1 := mu x. Done;
-cns ex2 := mu x. Done;
+<pre><code>def ex1[*] := mu x. Done;
+def ex2(*) := mu x. Done;
 </code></pre>
 <h2 id="producer-introduction-rules"><a class="header" href="#producer-introduction-rules">Producer Introduction Rules</a></h2>
 <p>The rules for data and codata types are given separately</p>
 <h4 id="data-types"><a class="header" href="#data-types">Data Types</a></h4>
 <p>Introduction rules for producers of codata types are just uses of the corresponding constructors:</p>
 <pre><code>data Nat : CBV { Z, S(Nat) };
-prd ex1 := S(Z);
+def ex1[*] := S(Z);
 </code></pre>
 <h4 id="codata-types"><a class="header" href="#codata-types">Codata Types</a></h4>
 <p>Introduction rules for producers of codata types consists of copattern matching.</p>
@@ -394,12 +412,12 @@ prd ex1 := S(Z);
     PiRight[b]
 };
 
-prd ex1 : Pair(Nat,Bool):= comatch
+def ex1[*] : Pair(Nat,Bool):= cocase
   { PiLeft[*] =&gt; 5,
     PiRight[*] =&gt; True
   };
 
-prd ex2 : Pair(Nat,Bool):= comatch
+def ex2[*] : Pair(Nat,Bool):= cocase
   { PiLeft[k] =&gt; 5 &gt;&gt; k,
     PiRight[k] =&gt; True &gt;&gt; k
   };
@@ -408,14 +426,14 @@ prd ex2 : Pair(Nat,Bool):= comatch
 <p>The rules for data and codata types are given separately</p>
 <h4 id="data-types-1"><a class="header" href="#data-types-1">Data Types</a></h4>
 <p>A consumer of a data type is introduced using pattern matching</p>
-<pre><code>cns ex1 := match {
+<pre><code>def ex1(*) := case {
     Z =&gt; Done,
     S(x) =&gt; Done
 };
 </code></pre>
 <h4 id="codata-types-1"><a class="header" href="#codata-types-1">Codata Types</a></h4>
 <p>Introduction rules for consumers of codata types use one of the available destructors.</p>
-<pre><code>cns ex1 : NatStream := Head[mu x.Done];
+<pre><code>def ex1(*) : NatStream := Head[mu x.Done];
 </code></pre>
 <h2 id="producer-elimination-rules"><a class="header" href="#producer-elimination-rules">Producer Elimination Rules</a></h2>
 <p>The rules for data and codata types are given separately</p>
@@ -436,7 +454,7 @@ The entry point to a program, the main function, is also a command.</p>
 <p>The simplest command is called <code>Done</code>, which is used to terminate the program.</p>
 <h4 id="example-1"><a class="header" href="#example-1">Example 1:</a></h4>
 <p>We can write a simple command which just exits directly after it is called.</p>
-<pre><code>cmd exitAtOnce := Done;
+<pre><code>def exitAtOnce := Done;
 </code></pre>
 <h2 id="the-apply-command"><a class="header" href="#the-apply-command">The Apply Command</a></h2>
 <p>The most important command is called &quot;Apply&quot;.
@@ -446,18 +464,18 @@ Apply intuitively just combines a producer with a consumer of the same type.</p>
 <p>We use the <code>&gt;&gt;</code> symbol to express a cut, and write the producer on the left side of it, and the consumer on the right hand side.</p>
 <h4 id="example-1-1"><a class="header" href="#example-1-1">Example 1:</a></h4>
 <p>The following program cuts the producer <code>True</code> against a pattern match on booleans, and then exits the program.</p>
-<pre><code>cmd exit :=  True &gt;&gt; match { True =&gt; Done; False =&gt; Done };
+<pre><code>def exit :=  True &gt;&gt; match { True =&gt; Done; False =&gt; Done };
 </code></pre>
 <h2 id="io-actions"><a class="header" href="#io-actions">IO Actions</a></h2>
 <p>There currently are only two IO actions provided; <code>Print</code> and <code>Read</code>.</p>
 <p>The following program uses both to read in two numbers from the console, and to print the output back to the console.</p>
 <pre><code>import Prelude;
 
-prd rec addA := \x =&gt; \y =&gt; case x of { Z =&gt; y
+def rec addA[*] := \x =&gt; \y =&gt; case x of { Z =&gt; y
                                       , S(z) =&gt; addA z S(y)
 					        };
 
-cmd main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
+def main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lsp-features"><a class="header" href="#lsp-features">LSP Features</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h1>
