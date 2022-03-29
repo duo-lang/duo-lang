@@ -9,16 +9,18 @@ import Data.IORef (readIORef, modifyIORef)
 import Data.List (sortBy )
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Text qualified as T
 import Data.Text (Text)
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
-import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
+import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap, sendInfo )
 import LSP.MegaparsecToLSP
 import System.Log.Logger ( debugM )
 
 import Driver.Environment
 import Pretty.Pretty ( ppPrint )
+import Pretty.Common ()
 import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as Terms
@@ -32,12 +34,14 @@ import Utils (Loc)
 
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
-  let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
-  liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri)
+  let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _)) = req
+  liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri <> " at: " <> show pos)
   MkLSPConfig ref <- getConfig
   cache <- liftIO $ readIORef ref
   case M.lookup uri cache of
-    Nothing -> responder (Right Nothing)
+    Nothing -> do
+      sendInfo ("Hover Cache not initialized for: " <> T.pack (show uri))
+      responder (Right Nothing)
     Just cache -> responder (Right (lookupInHoverMap pos cache))
 
 
@@ -85,67 +89,122 @@ lookupInHoverMap pos map =
       [] -> Nothing
       ((_,ho):_) -> Just ho
 
+---------------------------------------------------------------------------------
+-- Generating HoverMaps
+---------------------------------------------------------------------------------
+
+-- | A class for generating HoverMaps
+class ToHoverMap a where
+  toHoverMap :: a -> HoverMap
+
+mkHover :: Text -> Range ->  Hover
+mkHover txt rng = Hover (HoverContents (MarkupContent MkPlainText txt)) (Just rng)
+
+mkHoverMap :: Loc -> Text -> HoverMap
+mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 
 ---------------------------------------------------------------------------------
 -- Converting Terms to a HoverMap
 ---------------------------------------------------------------------------------
 
-typeAnnotToHoverMap :: (Loc, Typ pol) -> HoverMap
-typeAnnotToHoverMap (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
+instance ToHoverMap (TermCase Inferred) where
+  toHoverMap (MkTermCase _ _ _ tm) = toHoverMap tm
+
+instance ToHoverMap (TermCaseI Inferred) where
+  toHoverMap (MkTermCaseI _ _ _ tm) = toHoverMap tm
+
+instance ToHoverMap (CmdCase Inferred) where
+  toHoverMap (MkCmdCase {cmdcase_cmd}) = toHoverMap cmdcase_cmd
 
 
+boundVarToHoverMap :: Loc -> Typ pol -> HoverMap
+boundVarToHoverMap loc ty = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = "Bound variable\nType: " <> (ppPrint ty)
 
-termCaseToHoverMap :: TermCase Inferred -> HoverMap
-termCaseToHoverMap (MkTermCase _ _ _ tm) = termToHoverMap tm
+freeVarToHoverMap :: Loc -> Typ pol -> HoverMap
+freeVarToHoverMap loc ty = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = "Free variable\nType: " <> (ppPrint ty)
 
-termCaseIToHoverMap :: TermCaseI Inferred -> HoverMap
-termCaseIToHoverMap (MkTermCaseI _ _ _ tm) = termToHoverMap tm
+xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xtorToHoverMap loc pc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = case pc of
+      PrdRep -> (ppPrint ns) <> " constructor (Right-Intro)\nType: " <> (ppPrint ty)
+      CnsRep -> (ppPrint ns) <> " destructor (Left-Intro)\nType: "  <> (ppPrint ty)
 
-termToHoverMap :: Term pc Inferred -> HoverMap
-termToHoverMap (BoundVar ext PrdRep _)            = typeAnnotToHoverMap ext
-termToHoverMap (BoundVar ext CnsRep _)            = typeAnnotToHoverMap ext
-termToHoverMap (FreeVar ext PrdRep _)             = typeAnnotToHoverMap ext
-termToHoverMap (FreeVar ext CnsRep _)             = typeAnnotToHoverMap ext
-termToHoverMap (Xtor ext PrdRep _ _ args)         = M.unions [typeAnnotToHoverMap ext, xtorArgsToHoverMap args]
-termToHoverMap (Xtor ext CnsRep _ _ args)         = M.unions [typeAnnotToHoverMap ext, xtorArgsToHoverMap args]
-termToHoverMap (XMatch ext PrdRep _ cases)        = M.unions $ typeAnnotToHoverMap ext : (cmdcaseToHoverMap <$> cases)
-termToHoverMap (XMatch ext CnsRep _ cases)        = M.unions $ typeAnnotToHoverMap ext : (cmdcaseToHoverMap <$> cases)
-termToHoverMap (MuAbs ext PrdRep _ cmd)           = M.unions [typeAnnotToHoverMap ext, commandToHoverMap cmd]
-termToHoverMap (MuAbs ext CnsRep _ cmd)           = M.unions [typeAnnotToHoverMap ext, commandToHoverMap cmd]
-termToHoverMap (Dtor ext _ _ e (subst1,_,subst2)) = M.unions $ [typeAnnotToHoverMap ext] <> (pctermToHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
-termToHoverMap (Case ext _ e cases)               = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseToHoverMap <$> cases) <> [termToHoverMap e]
-termToHoverMap (Cocase ext _ cocases)             = M.unions $ [typeAnnotToHoverMap ext] <> (termCaseIToHoverMap <$> cocases)
-termToHoverMap (PrimLit ext _)                    = typeAnnotToHoverMap ext
+xcaseToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = case pc of
+      PrdRep -> (ppPrint ns) <> " cocase (Right-Intro)\nType: " <> (ppPrint ty)
+      CnsRep -> (ppPrint ns) <> " case (Left-Intro)\nType: " <> (ppPrint ty)
 
-pctermToHoverMap :: PrdCnsTerm Inferred -> HoverMap
-pctermToHoverMap (PrdTerm tm) = termToHoverMap tm
-pctermToHoverMap (CnsTerm tm) = termToHoverMap tm
+muAbsToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> HoverMap
+muAbsToHoverMap loc pc ty = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = case pc of
+      PrdRep -> "μ-Abstraction\nType: " <> (ppPrint ty)
+      CnsRep -> "~μ-Abstraction\nType: " <> (ppPrint ty)
+
+dtorToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+dtorToHoverMap loc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> " destructor application (Right-Elim)\nType: " <> (ppPrint ty)
+
+caseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+caseToHoverMap loc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> " case-of (Right-Elim)\nType: " <> (ppPrint ty)
+
+cocaseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+cocaseToHoverMap loc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> " cocase (Right-Intro)\nType: " <> (ppPrint ty)
+
+instance ToHoverMap (Term pc Inferred) where
+  toHoverMap (BoundVar (loc, ty) _ _)           = boundVarToHoverMap loc ty
+  toHoverMap (FreeVar (loc, ty) _ _)            = freeVarToHoverMap loc ty
+  toHoverMap (Xtor (loc, ty) pc ns _ args)      = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
+  toHoverMap (XMatch (loc,ty) pc ns cases)      = M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
+  toHoverMap (MuAbs (loc,ty) pc _ cmd)          = M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
+  toHoverMap (Dtor (loc,ty) ns _ e (s1,_,s2))   = M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
+  toHoverMap (Case (loc,ty) ns e cases)         = M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
+  toHoverMap (Cocase (loc,ty) ns cocases)       = M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
+  toHoverMap (PrimLitI64 (loc,ty) _)            = mkHoverMap loc ("Raw #I64 Literal\nType: " <> ppPrint ty)
+  toHoverMap (PrimLitF64 (loc,ty) _)            = mkHoverMap loc ("Raw #F64 Literal\nType: " <> ppPrint ty)
+
+instance ToHoverMap (PrdCnsTerm Inferred) where
+  toHoverMap (PrdTerm tm) = toHoverMap tm
+  toHoverMap (CnsTerm tm) = toHoverMap tm
 
 applyToHoverMap :: Range -> Maybe MonoKind -> HoverMap
 applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
-commandToHoverMap :: Terms.Command Inferred -> HoverMap
-commandToHoverMap (Apply loc kind prd cns) = M.unions [termToHoverMap prd, termToHoverMap cns, applyToHoverMap (locToRange loc) kind]
-commandToHoverMap (Print _ prd cmd)        = M.unions [termToHoverMap prd, commandToHoverMap cmd]
-commandToHoverMap (Read _ cns)             = termToHoverMap cns
-commandToHoverMap (Call _ _)               = M.empty
-commandToHoverMap (Done _)                 = M.empty
-commandToHoverMap PrimOp {}                = M.empty
+instance ToHoverMap (Terms.Command Inferred) where
+  toHoverMap (Apply loc kind prd cns) = M.unions [toHoverMap prd, toHoverMap cns, applyToHoverMap (locToRange loc) kind]
+  toHoverMap (Print _ prd cmd)        = M.unions [toHoverMap prd, toHoverMap cmd]
+  toHoverMap (Read _ cns)             = toHoverMap cns
+  toHoverMap (Call _ _)               = M.empty
+  toHoverMap (Done _)                 = M.empty
+  toHoverMap PrimOp {}                = M.empty
 
-xtorArgsToHoverMap :: Substitution Inferred -> HoverMap
-xtorArgsToHoverMap subst = M.unions (pctermToHoverMap <$> subst)
-
-cmdcaseToHoverMap :: CmdCase Inferred -> HoverMap
-cmdcaseToHoverMap (MkCmdCase {cmdcase_cmd}) = commandToHoverMap cmdcase_cmd
-
+instance ToHoverMap (Substitution Inferred) where
+  toHoverMap subst = M.unions (toHoverMap <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Converting an environment to a HoverMap
 ---------------------------------------------------------------------------------
-
-mkHover :: Text -> Range ->  Hover
-mkHover txt rng = Hover (HoverContents (MarkupContent MkPlainText txt)) (Just rng)
 
 prdEnvToHoverMap :: Map FreeVarName (Term Prd Inferred, Loc, TypeScheme Pos) -> HoverMap
 prdEnvToHoverMap = M.unions . fmap f . M.toList
@@ -153,7 +212,7 @@ prdEnvToHoverMap = M.unions . fmap f . M.toList
     f (_,(e,loc,ty)) =
       let
         outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover = termToHoverMap e
+        termHover = toHoverMap e
       in
         M.union outerHover termHover
 
@@ -163,7 +222,7 @@ cnsEnvToHoverMap = M.unions . fmap f . M.toList
     f (_,(e,loc,ty)) =
       let
         outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover = termToHoverMap e
+        termHover = toHoverMap e
       in
         M.union outerHover termHover
 
@@ -171,7 +230,7 @@ cnsEnvToHoverMap = M.unions . fmap f . M.toList
 cmdEnvToHoverMap :: Map FreeVarName (Terms.Command Inferred, Loc) -> HoverMap
 cmdEnvToHoverMap = M.unions. fmap f . M.toList
   where
-    f (_, (cmd,_)) = commandToHoverMap cmd
+    f (_, (cmd,_)) = toHoverMap cmd
 
 declEnvToHoverMap :: Environment Inferred -> [(Loc,DataDecl)] -> HoverMap
 declEnvToHoverMap env ls =

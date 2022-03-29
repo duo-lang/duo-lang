@@ -13,16 +13,6 @@ primTypeKeyword :: PrimitiveType -> String
 primTypeKeyword I64 = "#I64"
 primTypeKeyword F64 = "#F64"
 
--- | A primitive literal
-data PrimitiveLiteral =
-      I64Lit Integer
-    | F64Lit Double
-    deriving (Show, Eq, Ord)
-
-typeOfLiteral :: PrimitiveLiteral -> PrimitiveType
-typeOfLiteral (I64Lit _) = I64
-typeOfLiteral (F64Lit _) = F64
-
 data PrimitiveOp = Add | Sub | Mul | Div | Mod
   deriving (Show, Eq, Ord)
 

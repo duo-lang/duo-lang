@@ -148,8 +148,10 @@ lowerTerm CnsRep (CST.FunApp loc _fun _arg)    = throwError (OtherError (Just lo
 lowerTerm rep    (CST.MultiLambda loc fvs tm)  = lowerMultiLambda loc fvs tm >>= lowerTerm rep
 lowerTerm PrdRep (CST.Lambda loc fv tm)        = lowerLambda loc fv tm
 lowerTerm CnsRep (CST.Lambda loc _fv _tm)      = throwError (OtherError (Just loc) "Cannot lower Lambda to a consumer.")
-lowerTerm PrdRep (CST.PrimLit loc lit)         = pure $ AST.PrimLit loc lit
-lowerTerm CnsRep (CST.PrimLit loc _)         = throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
+lowerTerm PrdRep (CST.PrimLitI64 loc i)        = pure $ AST.PrimLitI64 loc i
+lowerTerm CnsRep (CST.PrimLitI64 loc _)        = throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
+lowerTerm PrdRep (CST.PrimLitF64 loc d)        = pure $ AST.PrimLitF64 loc d
+lowerTerm CnsRep (CST.PrimLitF64 loc _)        = throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
 
 
 

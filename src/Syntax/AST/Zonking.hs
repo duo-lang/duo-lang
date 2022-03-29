@@ -63,7 +63,8 @@ zonkTerm bisubst (Case (loc,ty) ns prd cases) =
     Case (loc, zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
 zonkTerm bisubst (Cocase (loc,ty) ns cases) =
     Cocase (loc, zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
-zonkTerm _ lit@PrimLit{} = lit
+zonkTerm _ lit@PrimLitI64{} = lit
+zonkTerm _ lit@PrimLitF64{} = lit
 
 zonkPCTerm :: Bisubstitution -> PrdCnsTerm Inferred -> PrdCnsTerm Inferred
 zonkPCTerm bisubst (PrdTerm tm) = PrdTerm (zonkTerm bisubst tm)

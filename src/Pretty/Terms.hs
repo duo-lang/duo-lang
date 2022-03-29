@@ -119,7 +119,8 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (Cocase _ _ cocases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
-  prettyAnn (PrimLit _ lit) = prettyAnn lit
+  prettyAnn (PrimLitI64 _ i) = annLiteral (prettyAnn i <> "#I64")
+  prettyAnn (PrimLitF64 _ f) = annLiteral (prettyAnn f <> "#F64")
 
 instance PrettyAnn (Command ext) where
   prettyAnn (Done _)= annKeyword "Done"
