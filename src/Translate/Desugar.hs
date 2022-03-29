@@ -29,7 +29,8 @@ isDesugaredTerm FreeVar {} = True
 isDesugaredTerm (Xtor _ _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
-isDesugaredTerm PrimLit{} = True
+isDesugaredTerm PrimLitI64{} = True
+isDesugaredTerm PrimLitF64{} = True
 -- Non-core terms
 isDesugaredTerm Dtor{} = False
 isDesugaredTerm Case {} = False
@@ -63,7 +64,8 @@ desugarTerm (FreeVar _ pc fv) = FreeVar () pc fv
 desugarTerm (Xtor _ pc ns xt args) = Xtor () pc ns xt (desugarPCTerm <$> args)
 desugarTerm (MuAbs _ pc bs cmd) = MuAbs () pc bs (desugarCmd cmd)
 desugarTerm (XMatch _ pc ns cases) = XMatch () pc ns (desugarCmdCase <$> cases)
-desugarTerm (PrimLit _ lit) = PrimLit () lit
+desugarTerm (PrimLitI64 _ i) = PrimLitI64 () i
+desugarTerm (PrimLitF64 _ d) = PrimLitF64 () d
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
 desugarTerm (Dtor _ ns xt t (args1,PrdRep,args2)) =

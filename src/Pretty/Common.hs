@@ -90,10 +90,6 @@ instance PrettyAnn PrimitiveType where
   prettyAnn I64 = "I64"
   prettyAnn F64 = "F64"
 
-instance PrettyAnn PrimitiveLiteral where
-  prettyAnn (I64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#I64"
-  prettyAnn (F64Lit n) = annLiteral (prettyAnn n) <> annTypeName "#F64"
-
 ---------------------------------------------------------------------------------
 -- Kinds
 ---------------------------------------------------------------------------------

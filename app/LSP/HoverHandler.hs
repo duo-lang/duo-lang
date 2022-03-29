@@ -165,7 +165,8 @@ instance ToHoverMap (Term pc Inferred) where
   toHoverMap (Dtor ext _ _ e (subst1,_,subst2)) = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
   toHoverMap (Case ext _ e cases)               = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cases) <> [toHoverMap e]
   toHoverMap (Cocase ext _ cocases)             = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cocases)
-  toHoverMap (PrimLit ext _)                    = typeAnnotToHoverMap ext
+  toHoverMap (PrimLitI64 (loc,ty) _)            = mkHoverMap loc ("Raw #I64 Literal\nType: " <> ppPrint ty)
+  toHoverMap (PrimLitF64 (loc,ty) _)            = mkHoverMap loc ("Raw #F64 Literal\nType: " <> ppPrint ty)
 
 instance ToHoverMap (PrdCnsTerm Inferred) where
   toHoverMap (PrdTerm tm) = toHoverMap tm

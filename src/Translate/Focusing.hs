@@ -55,7 +55,8 @@ isFocusedTerm _  fv@FreeVar {}            = Just fv
 isFocusedTerm eo (Xtor _ pc ns xt subst)  = Xtor () pc ns xt <$> isValueSubst eo subst
 isFocusedTerm eo (XMatch _ x y  cases)    = XMatch () x y <$> (sequence (isFocusedCmdCase eo <$> cases))
 isFocusedTerm eo (MuAbs _ pc v cmd)       = MuAbs () pc v <$> isFocusedCmd eo cmd
-isFocusedTerm _  lit@PrimLit{}            = Just lit
+isFocusedTerm _  lit@PrimLitI64{}         = Just lit
+isFocusedTerm _  lit@PrimLitF64{}         = Just lit
 isFocusedTerm _  _ = error "isFocusedTerm should only be called on core terms."
 
 isFocusedCmdCase :: EvaluationOrder -> CmdCase Compiled -> Maybe (CmdCase Compiled)

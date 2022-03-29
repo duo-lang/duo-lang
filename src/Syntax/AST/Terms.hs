@@ -168,8 +168,9 @@ data Term (pc :: PrdCns) (ext :: Phase) where
   -- cocase { ... }
   --
   Cocase :: TermExt Prd ext -> NominalStructural -> [TermCaseI ext] -> Term Prd ext
-  -- | A primitive literal
-  PrimLit :: TermExt Prd ext -> PrimitiveLiteral -> Term Prd ext
+  -- | Primitive literals
+  PrimLitI64 :: TermExt Prd ext -> Integer -> Term Prd ext
+  PrimLitF64 :: TermExt Prd ext -> Double -> Term Prd ext
 
 deriving instance (Eq (Term pc Parsed))
 deriving instance (Eq (Term Prd Inferred))
@@ -199,7 +200,8 @@ getTypeTerm (MuAbs    ext rep _ _)  = case rep of
 getTypeTerm (Dtor (_,ty) _ _ _ _) = ty
 getTypeTerm (Case (_,ty) _ _ _)  = ty
 getTypeTerm (Cocase (_,ty) _ _)  = ty
-getTypeTerm (PrimLit (_, ty) _) = ty
+getTypeTerm (PrimLitI64 (_, ty) _) = ty
+getTypeTerm (PrimLitF64 (_, ty) _) = ty
 
 getTypArgs :: Substitution Inferred -> LinearContext Pos
 getTypArgs subst = getTypArgs' <$> subst
@@ -269,7 +271,8 @@ termOpeningRec k args (Case _ ns t cases) =
   Case () ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
 termOpeningRec k args (Cocase _ ns cocases) =
   Cocase () ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
-termOpeningRec _ _ lit@PrimLit{} = lit
+termOpeningRec _ _ lit@PrimLitI64{} = lit
+termOpeningRec _ _ lit@PrimLitF64{} = lit
 
 
 commandOpeningRec :: Int -> Substitution Compiled -> Command Compiled -> Command Compiled
@@ -317,7 +320,8 @@ termClosingRec k args (Case ext ns t cases) =
   Case ext ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
 termClosingRec k args (Cocase ext ns cocases) =
   Cocase ext ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
-termClosingRec _ _ lit@PrimLit{} = lit
+termClosingRec _ _ lit@PrimLitI64{} = lit
+termClosingRec _ _ lit@PrimLitF64{} = lit
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
 commandClosingRec _ _ (Done ext) = Done ext
@@ -377,7 +381,8 @@ termLocallyClosedRec env (Case _ _ e cases) = do
   sequence_ (termCaseLocallyClosedRec env <$> cases)
 termLocallyClosedRec env (Cocase _ _ cases) =
   sequence_ (termCaseILocallyClosedRec env <$> cases)
-termLocallyClosedRec _ (PrimLit _ _) = Right ()
+termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
+termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
 termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase ext -> Either Error ()
 termCaseLocallyClosedRec env (MkTermCase _ _ args e) = do
@@ -461,7 +466,8 @@ openTermComplete (Dtor _ ns xt t (args1,pcrep,args2)) =
   Dtor () ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
 openTermComplete (Case _ ns t cases) = Case () ns (openTermComplete t) (openTermCase <$> cases)
 openTermComplete (Cocase _ ns cocases) = Cocase () ns (openTermCaseI <$> cocases)
-openTermComplete (PrimLit _ lit) = PrimLit () lit
+openTermComplete (PrimLitI64 _ i) = PrimLitI64 () i
+openTermComplete (PrimLitF64 _ d) = PrimLitF64 () d
 
 openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ kind t1 t2) = Apply () kind (openTermComplete t1) (openTermComplete t2)
@@ -493,7 +499,8 @@ shiftTermRec n (Dtor ext ns xt e (args1,pcrep,args2)) =
   Dtor ext ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep,shiftPCTermRec n <$> args2)
 shiftTermRec n (Case ext ns e cases) = Case ext ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
 shiftTermRec n (Cocase ext ns cases) = Cocase ext ns (shiftTermCaseIRec n <$> cases)
-shiftTermRec _ lit@PrimLit{} = lit
+shiftTermRec _ lit@PrimLitI64{} = lit
+shiftTermRec _ lit@PrimLitF64{} = lit
 
 shiftTermCaseRec :: Int -> TermCase ext -> TermCase ext
 shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)
@@ -540,7 +547,8 @@ removeNamesTerm (Dtor ext ns xt e (args1,pcrep,args2)) =
   Dtor ext ns xt (removeNamesTerm e) (removeNamesPrdCnsTerm <$> args1,pcrep,removeNamesPrdCnsTerm <$> args2)
 removeNamesTerm (Case ext ns e cases) = Case ext ns (removeNamesTerm e) (removeNamesTermCase <$> cases)
 removeNamesTerm (Cocase ext ns cases) = Cocase ext ns (removeNamesTermCaseI <$> cases)
-removeNamesTerm lit@PrimLit{} = lit
+removeNamesTerm lit@PrimLitI64{} = lit
+removeNamesTerm lit@PrimLitF64{} = lit
 
 removeNamesTermCase :: TermCase ext -> TermCase ext
 removeNamesTermCase (MkTermCase ext xt args e)   = MkTermCase ext xt ((\(pc,_) -> (pc,Nothing)) <$> args) (removeNamesTerm e)
