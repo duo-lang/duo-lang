@@ -24,7 +24,7 @@ newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
 -- Doc comments
 ---------------------------------------------------------------------------------
 
-newtype DocComment = MkDocComment { unDocComment :: Text }
+newtype DocComment = MkDocComment { unDocComment :: Text } deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
 -- Type operators

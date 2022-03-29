@@ -21,14 +21,18 @@ recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
 
 
+---------------------------------------------------------------------------------
+-- Producer/Consumer/Command Declarations
+---------------------------------------------------------------------------------
+
 isRecP :: Parser IsRec
 isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
 
 annotP :: Parser (Maybe TypeScheme)
 annotP = optional (try (notFollowedBy (symbolP SymColoneq) *> symbolP SymColon) >> typeSchemeP)
 
-prdCnsDeclarationP :: SourcePos -> PrdCns -> Parser Declaration
-prdCnsDeclarationP startPos pc = do
+prdCnsDeclarationP :: Maybe DocComment -> SourcePos -> PrdCns -> Parser Declaration
+prdCnsDeclarationP doc startPos pc = do
     (isRec, v) <- try $ do
       isRec <- isRecP
       (v, _pos) <- freeVarNameP
@@ -38,58 +42,57 @@ prdCnsDeclarationP startPos pc = do
     _ <- symbolP SymColoneq
     (tm,_) <- termP
     endPos <- symbolP SymSemi
-    pure (PrdCnsDecl (Loc startPos endPos) pc isRec v annot tm)
+    pure (PrdCnsDecl doc (Loc startPos endPos) pc isRec v annot tm)
 
-cmdDeclarationP :: SourcePos -> Parser Declaration
-cmdDeclarationP startPos = do
+cmdDeclarationP :: Maybe DocComment -> SourcePos -> Parser Declaration
+cmdDeclarationP doc startPos = do
     v <- try $ do
       (v, _pos) <- freeVarNameP
       _ <- symbolP SymColoneq
       pure v
     (cmd,_) <- commandP
     endPos <- symbolP SymSemi
-    pure (CmdDecl (Loc startPos endPos) v cmd)
+    pure (CmdDecl doc (Loc startPos endPos) v cmd)
 
-defDeclarationP :: Parser Declaration
-defDeclarationP = do
+defDeclarationP :: Maybe DocComment -> Parser Declaration
+defDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwDef))
-  recoverDeclaration $ cmdDeclarationP startPos <|> prdCnsDeclarationP startPos Prd <|> prdCnsDeclarationP startPos Cns
+  recoverDeclaration $ cmdDeclarationP doc startPos <|> prdCnsDeclarationP doc startPos Prd <|> prdCnsDeclarationP doc startPos Cns
 
 ---------------------------------------------------------------------------------
 -- Import Declaration
 ---------------------------------------------------------------------------------
 
-importDeclP :: Parser Declaration
-importDeclP = do
+importDeclP :: Maybe DocComment -> Parser Declaration
+importDeclP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwImport))
   (mn, _) <- moduleNameP
   endPos <- symbolP SymSemi
-  return (ImportDecl (Loc startPos endPos) mn)
+  return (ImportDecl doc (Loc startPos endPos) mn)
 
 ---------------------------------------------------------------------------------
 -- Set Option Declaration
 ---------------------------------------------------------------------------------
 
-setDeclP :: Parser Declaration
-setDeclP = do
+setDeclP :: Maybe DocComment -> Parser Declaration
+setDeclP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwSet))
   (txt,_) <- allCaseId
   endPos <- symbolP SymSemi
-  return (SetDecl (Loc startPos endPos) txt)
+  return (SetDecl doc (Loc startPos endPos) txt)
 
 ---------------------------------------------------------------------------------
 -- Type Operator Declaration
 ---------------------------------------------------------------------------------
 
 
-
 -- | Parses a type operator declaration of the form
 --       "type operator -> at 5 := Fun;"
-typeOperatorDeclP :: Parser Declaration
-typeOperatorDeclP = do
+typeOperatorDeclP :: Maybe DocComment -> Parser Declaration
+typeOperatorDeclP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwType))
   recoverDeclaration $ do
@@ -101,7 +104,7 @@ typeOperatorDeclP = do
     _ <- symbolP SymColoneq
     (tyname,_) <- typeNameP
     endPos <- symbolP SymSemi
-    pure (TyOpDecl (Loc startPos endPos) sym prec assoc tyname)
+    pure (TyOpDecl doc (Loc startPos endPos) sym prec assoc tyname)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
@@ -134,8 +137,8 @@ dataCodataPrefixP = do
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
 
-dataDeclP :: Parser Declaration
-dataDeclP = do
+dataDeclP :: Maybe DocComment -> Parser Declaration
+dataDeclP dc = do
   o <- getOffset
   startPos <- getSourcePos
   (refined, dataCodata) <- dataCodataPrefixP
@@ -153,7 +156,7 @@ dataDeclP = do
               , data_kind = knd
               , data_xtors = combineXtors xtors
               }
-        pure (DataDecl (Loc startPos endPos) decl)
+        pure (DataDecl dc (Loc startPos endPos) decl)
       Just knd -> do
         if refined == Refined && not (null (allTypeVars knd)) then
           region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
@@ -169,7 +172,7 @@ dataDeclP = do
                   , data_kind = Just knd
                   , data_xtors = combineXtors xtors
                   }
-            pure (DataDecl (Loc startPos endPos) decl)
+            pure (DataDecl dc (Loc startPos endPos) decl)
 
 ---------------------------------------------------------------------------------
 -- Xtor Declaration Parser
@@ -179,28 +182,34 @@ dataDeclP = do
 ctorDtorP :: Parser DataCodata
 ctorDtorP = (keywordP KwConstructor >> pure Data) <|> (keywordP KwDestructor >> pure Codata)
 
-xtorDeclarationP :: Parser Declaration
-xtorDeclarationP = do
+xtorDeclarationP :: Maybe DocComment -> Parser Declaration
+xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
   (args, _) <- argListsP monoKindP
   ret <- optional (try (symbolP SymColon) >> evalOrderP)
   endPos <- symbolP SymSemi
-  pure (XtorDecl (Loc startPos endPos) dc xt args ret)
+  pure (XtorDecl doc (Loc startPos endPos) dc xt args ret)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
+docDeclarationP :: Maybe DocComment -> Parser Declaration
+docDeclarationP doc =
+  typeOperatorDeclP doc <|>
+  defDeclarationP doc <|>
+  importDeclP doc <|>
+  setDeclP doc <|>
+  dataDeclP doc <|>
+  xtorDeclarationP doc
+
 declarationP :: Parser Declaration
-declarationP =
-  typeOperatorDeclP <|>
-  defDeclarationP <|>
-  importDeclP <|>
-  setDeclP <|>
-  dataDeclP <|>
-  xtorDeclarationP
+declarationP = do
+  doc <- optional (fst <$> docCommentP)
+  docDeclarationP doc
+
 
 programP :: Parser Program
 programP = do

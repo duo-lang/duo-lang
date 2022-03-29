@@ -1,5 +1,7 @@
 module Parser.Lexer
-  ( sc
+  ( -- Space Consumer and Comments
+    sc
+  , docCommentP
     -- Literals
   , natP
   , intP
