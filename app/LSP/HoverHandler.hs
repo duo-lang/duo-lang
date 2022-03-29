@@ -89,22 +89,23 @@ lookupInHoverMap pos map =
       [] -> Nothing
       ((_,ho):_) -> Just ho
 
+---------------------------------------------------------------------------------
+-- Generating HoverMaps
+---------------------------------------------------------------------------------
+
+-- | A class for generating HoverMaps
+class ToHoverMap a where
+  toHoverMap :: a -> HoverMap
+
+mkHover :: Text -> Range ->  Hover
+mkHover txt rng = Hover (HoverContents (MarkupContent MkPlainText txt)) (Just rng)
+
+mkHoverMap :: Loc -> Text -> HoverMap
+mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 
 ---------------------------------------------------------------------------------
 -- Converting Terms to a HoverMap
 ---------------------------------------------------------------------------------
-
-class ToHoverMap a where
-  toHoverMap :: a -> HoverMap
-
-typeAnnotToHoverMap :: (Loc, Typ pol) -> HoverMap
-typeAnnotToHoverMap (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-
-xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
-xtorToHoverMap loc pc ty ns = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
-  where
-    msg :: Text
-    msg = (ppPrint ns) <> (case pc of PrdRep -> " constructor"; CnsRep -> " Destructor") <> "\n" <> "Type: " <> (ppPrint ty)
 
 instance ToHoverMap (TermCase Inferred) where
   toHoverMap (MkTermCase _ _ _ tm) = toHoverMap tm
@@ -115,9 +116,32 @@ instance ToHoverMap (TermCaseI Inferred) where
 instance ToHoverMap (CmdCase Inferred) where
   toHoverMap (MkCmdCase {cmdcase_cmd}) = toHoverMap cmdcase_cmd
 
+
+typeAnnotToHoverMap :: (Loc, Typ pol) -> HoverMap
+typeAnnotToHoverMap (loc, ty) = mkHoverMap loc (ppPrint ty)
+
+boundVarToHoverMap :: Loc -> Typ pol -> HoverMap
+boundVarToHoverMap loc ty = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = "Bound variable\n" <> "Type: " <> (ppPrint ty)
+
+freeVarToHoverMap :: Loc -> Typ pol -> HoverMap
+freeVarToHoverMap loc ty = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = "Free variable\n" <> "Type: " <> (ppPrint ty)
+
+xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xtorToHoverMap loc pc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> (case pc of PrdRep -> " constructor"; CnsRep -> " destructor") <> "\n" <> "Type: " <> (ppPrint ty)
+
+
 instance ToHoverMap (Term pc Inferred) where
-  toHoverMap (BoundVar ext _ _)                 = typeAnnotToHoverMap ext
-  toHoverMap (FreeVar ext _ _)                  = typeAnnotToHoverMap ext
+  toHoverMap (BoundVar (loc, ty) _ _)           = boundVarToHoverMap loc ty
+  toHoverMap (FreeVar (loc, ty) _ _)            = freeVarToHoverMap loc ty
   toHoverMap (Xtor (loc, ty) pc ns _ args)      = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
   toHoverMap (XMatch ext _ _ cases)             = M.unions $ typeAnnotToHoverMap ext : (toHoverMap <$> cases)
   toHoverMap (MuAbs ext _ _ cmd)                = M.unions [typeAnnotToHoverMap ext, toHoverMap cmd]
@@ -148,9 +172,6 @@ instance ToHoverMap (Substitution Inferred) where
 ---------------------------------------------------------------------------------
 -- Converting an environment to a HoverMap
 ---------------------------------------------------------------------------------
-
-mkHover :: Text -> Range ->  Hover
-mkHover txt rng = Hover (HoverContents (MarkupContent MkPlainText txt)) (Just rng)
 
 prdEnvToHoverMap :: Map FreeVarName (Term Prd Inferred, Loc, TypeScheme Pos) -> HoverMap
 prdEnvToHoverMap = M.unions . fmap f . M.toList
