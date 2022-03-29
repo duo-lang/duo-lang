@@ -70,12 +70,17 @@ prettyPrdCnsRep PrdRep = "[*]"
 prettyPrdCnsRep CnsRep = "(*)"
 
 ---------------------------------------------------------------------------------
--- Data/Codata
+-- Data/Codata and Nominal/Structural/Refinement
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn DataCodata where
   prettyAnn Data = annKeyword "data"
   prettyAnn Codata = annKeyword "codata"
+
+instance PrettyAnn NominalStructural where
+  prettyAnn Nominal = "Nominal"
+  prettyAnn Structural = "Structural"
+  prettyAnn Refinement = "Refinement"
 
 ---------------------------------------------------------------------------------
 -- Primitives

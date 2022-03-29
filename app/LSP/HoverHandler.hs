@@ -20,6 +20,7 @@ import System.Log.Logger ( debugM )
 
 import Driver.Environment
 import Pretty.Pretty ( ppPrint )
+import Pretty.Common ()
 import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as Terms
@@ -99,6 +100,12 @@ class ToHoverMap a where
 typeAnnotToHoverMap :: (Loc, Typ pol) -> HoverMap
 typeAnnotToHoverMap (loc, ty) = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
 
+xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xtorToHoverMap loc pc ty ns = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> (case pc of PrdRep -> " constructor"; CnsRep -> " Destructor") <> "\n" <> "Type: " <> (ppPrint ty)
+
 instance ToHoverMap (TermCase Inferred) where
   toHoverMap (MkTermCase _ _ _ tm) = toHoverMap tm
 
@@ -111,7 +118,7 @@ instance ToHoverMap (CmdCase Inferred) where
 instance ToHoverMap (Term pc Inferred) where
   toHoverMap (BoundVar ext _ _)                 = typeAnnotToHoverMap ext
   toHoverMap (FreeVar ext _ _)                  = typeAnnotToHoverMap ext
-  toHoverMap (Xtor ext _ _ _ args)              = M.unions [typeAnnotToHoverMap ext, toHoverMap args]
+  toHoverMap (Xtor (loc, ty) pc ns _ args)      = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
   toHoverMap (XMatch ext _ _ cases)             = M.unions $ typeAnnotToHoverMap ext : (toHoverMap <$> cases)
   toHoverMap (MuAbs ext _ _ cmd)                = M.unions [typeAnnotToHoverMap ext, toHoverMap cmd]
   toHoverMap (Dtor ext _ _ e (subst1,_,subst2)) = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
