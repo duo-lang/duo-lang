@@ -156,13 +156,19 @@ muAbsToHoverMap loc pc ty = mkHoverMap loc msg
       PrdRep -> "μ-Abstraction\nType: " <> (ppPrint ty)
       CnsRep -> "~μ-Abstraction\nType: " <> (ppPrint ty)
 
+dtorToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+dtorToHoverMap loc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> " destructor application (Right-Elim)\nType: " <> (ppPrint ty)
+
 instance ToHoverMap (Term pc Inferred) where
   toHoverMap (BoundVar (loc, ty) _ _)           = boundVarToHoverMap loc ty
   toHoverMap (FreeVar (loc, ty) _ _)            = freeVarToHoverMap loc ty
   toHoverMap (Xtor (loc, ty) pc ns _ args)      = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
   toHoverMap (XMatch (loc,ty) pc ns cases)      = M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (MuAbs (loc,ty) pc _ cmd)          = M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
-  toHoverMap (Dtor ext _ _ e (subst1,_,subst2)) = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
+  toHoverMap (Dtor (loc,ty) ns _ e (s1,_,s2))   = M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
   toHoverMap (Case ext _ e cases)               = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cases) <> [toHoverMap e]
   toHoverMap (Cocase ext _ cocases)             = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 (loc,ty) _)            = mkHoverMap loc ("Raw #I64 Literal\nType: " <> ppPrint ty)
