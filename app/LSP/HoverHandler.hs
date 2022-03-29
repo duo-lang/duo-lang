@@ -117,9 +117,6 @@ instance ToHoverMap (CmdCase Inferred) where
   toHoverMap (MkCmdCase {cmdcase_cmd}) = toHoverMap cmdcase_cmd
 
 
-typeAnnotToHoverMap :: (Loc, Typ pol) -> HoverMap
-typeAnnotToHoverMap (loc, ty) = mkHoverMap loc (ppPrint ty)
-
 boundVarToHoverMap :: Loc -> Typ pol -> HoverMap
 boundVarToHoverMap loc ty = mkHoverMap loc msg
   where
@@ -162,6 +159,18 @@ dtorToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = (ppPrint ns) <> " destructor application (Right-Elim)\nType: " <> (ppPrint ty)
 
+caseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+caseToHoverMap loc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> " case-of (Right-Elim)\nType: " <> (ppPrint ty)
+
+cocaseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+cocaseToHoverMap loc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = (ppPrint ns) <> " cocase (Right-Intro)\nType: " <> (ppPrint ty)
+
 instance ToHoverMap (Term pc Inferred) where
   toHoverMap (BoundVar (loc, ty) _ _)           = boundVarToHoverMap loc ty
   toHoverMap (FreeVar (loc, ty) _ _)            = freeVarToHoverMap loc ty
@@ -169,8 +178,8 @@ instance ToHoverMap (Term pc Inferred) where
   toHoverMap (XMatch (loc,ty) pc ns cases)      = M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (MuAbs (loc,ty) pc _ cmd)          = M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
   toHoverMap (Dtor (loc,ty) ns _ e (s1,_,s2))   = M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
-  toHoverMap (Case ext _ e cases)               = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cases) <> [toHoverMap e]
-  toHoverMap (Cocase ext _ cocases)             = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cocases)
+  toHoverMap (Case (loc,ty) ns e cases)         = M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
+  toHoverMap (Cocase (loc,ty) ns cocases)       = M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 (loc,ty) _)            = mkHoverMap loc ("Raw #I64 Literal\nType: " <> ppPrint ty)
   toHoverMap (PrimLitF64 (loc,ty) _)            = mkHoverMap loc ("Raw #F64 Literal\nType: " <> ppPrint ty)
 
