@@ -2,38 +2,39 @@
 
 import Function;
 
+-- | The type of Booleans
 data Bool : CBV {
     True,
     False
 };
 
--- Boolean negation.
+-- | Boolean negation.
 def not[*] : Bool -> Bool :=
   \b => case b of { True => False,
                     False => True
                   };
 
--- Boolean if-then-else
+-- | Boolean if-then-else
 def ifthenelse[*] : forall a. Bool -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
--- Boolean conjunction
+-- | Boolean conjunction
 def and[*] : Bool -> Bool -> Bool :=
   \b1 b2 => ifthenelse b1 b2 False;
 
--- Boolean disjunction
+-- | Boolean disjunction
 def or[*] : Bool -> Bool -> Bool :=
   \b1 b2 => ifthenelse b1 True b2;
 
--- Boolean nand
+-- | Boolean nand
 def nand[*] : Bool -> Bool -> Bool :=
   \b1 b2 => not (and b1 b2);
 
--- Boolean nor
+-- | Boolean nor
 def nor[*] : Bool -> Bool -> Bool :=
   \b1 b2 => not (or b1 b2);
 
--- Boolean implication
+-- | Boolean implication
 def impl[*] : Bool -> Bool -> Bool :=
   \b1 b2 => case b1 of {
       True => b2,

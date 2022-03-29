@@ -6,6 +6,7 @@ module Parser.Program
 import Control.Monad (void)
 import Control.Monad.Reader ( MonadReader(local) )
 import Text.Megaparsec hiding (State)
+import Text.Megaparsec.Char (eol)
 
 import Parser.Common
 import Parser.Definition
@@ -207,7 +208,7 @@ docDeclarationP doc =
 
 declarationP :: Parser Declaration
 declarationP = do
-  doc <- optional (fst <$> docCommentP)
+  doc <- optional ((fst <$> docCommentP) <* eol)
   docDeclarationP doc
 
 
