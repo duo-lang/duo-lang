@@ -9,11 +9,12 @@ import Data.IORef (readIORef, modifyIORef)
 import Data.List (sortBy )
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Text qualified as T
 import Data.Text (Text)
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
-import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap )
+import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap, sendInfo )
 import LSP.MegaparsecToLSP
 import System.Log.Logger ( debugM )
 
@@ -32,12 +33,14 @@ import Utils (Loc)
 
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
-  let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _workDone)) = req
-  liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri)
+  let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _)) = req
+  liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri <> " at: " <> show pos)
   MkLSPConfig ref <- getConfig
   cache <- liftIO $ readIORef ref
   case M.lookup uri cache of
-    Nothing -> responder (Right Nothing)
+    Nothing -> do
+      sendInfo ("Hover Cache not initialized for: " <> T.pack (show uri))
+      responder (Right Nothing)
     Just cache -> responder (Right (lookupInHoverMap pos cache))
 
 
