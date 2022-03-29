@@ -136,14 +136,23 @@ xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMa
 xtorToHoverMap loc pc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = (ppPrint ns) <> (case pc of PrdRep -> " constructor"; CnsRep -> " destructor") <> "\n" <> "Type: " <> (ppPrint ty)
+    msg = case pc of
+      PrdRep -> (ppPrint ns) <> " constructor (Right-Intro)\n Type: " <> (ppPrint ty)
+      CnsRep -> (ppPrint ns) <> " destructor (Left-Intro)\n Type: "  <> (ppPrint ty)
 
+xcaseToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = case pc of
+      PrdRep -> (ppPrint ns) <> " cocase (Right-Intro)\n Type: " <> (ppPrint ty)
+      CnsRep -> (ppPrint ns) <> " case (Left-Intro)\n Type: " <> (ppPrint ty)
 
 instance ToHoverMap (Term pc Inferred) where
   toHoverMap (BoundVar (loc, ty) _ _)           = boundVarToHoverMap loc ty
   toHoverMap (FreeVar (loc, ty) _ _)            = freeVarToHoverMap loc ty
   toHoverMap (Xtor (loc, ty) pc ns _ args)      = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
-  toHoverMap (XMatch ext _ _ cases)             = M.unions $ typeAnnotToHoverMap ext : (toHoverMap <$> cases)
+  toHoverMap (XMatch (loc,ty) pc ns cases)      = M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (MuAbs ext _ _ cmd)                = M.unions [typeAnnotToHoverMap ext, toHoverMap cmd]
   toHoverMap (Dtor ext _ _ e (subst1,_,subst2)) = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> (PrdTerm e:(subst1 ++ subst2)))
   toHoverMap (Case ext _ e cases)               = M.unions $ [typeAnnotToHoverMap ext] <> (toHoverMap <$> cases) <> [toHoverMap e]
