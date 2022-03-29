@@ -5,14 +5,11 @@ module Parser.Lexer
   , intP
   , uintP
   , floatP
-    -- Names
+    -- Identifier
+  , lowerCaseId
+  , upperCaseId
+  , operatorP
   , allCaseId
-  , freeVarName
-  , tvarP
-  , xtorName
-  , typeNameP
-  , tyOpNameP
-  , moduleNameP
   -- Keywords
   , Keyword(..)
   , keywordP
@@ -138,36 +135,6 @@ operatorP = f <|> g
       pure (name, pos)
 
 ---
-
-freeVarName :: Parser (FreeVarName, SourcePos)
-freeVarName = try $ do
-  (name, pos) <- lowerCaseId
-  return (MkFreeVarName name, pos)
-
-tvarP :: Parser (TVar, SourcePos)
-tvarP = try $ do
-  (name, pos) <- lowerCaseId
-  return (MkTVar name, pos)
-
-xtorName :: Parser (XtorName, SourcePos)
-xtorName = try $ do
-  (name, pos) <- upperCaseId
-  return (MkXtorName name, pos)
-
-typeNameP :: Parser (TypeName, SourcePos)
-typeNameP = try $ do
-  (name, pos) <- upperCaseId
-  return (MkTypeName name, pos)
-
-moduleNameP :: Parser (ModuleName, SourcePos)
-moduleNameP = try $ do
-  (name, pos) <- upperCaseId
-  return (MkModuleName name, pos)
-
-tyOpNameP :: Parser (TyOpName, SourcePos)
-tyOpNameP = try $ do
-  (name, pos) <- operatorP
-  return (MkTyOpName name, pos)
 
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()

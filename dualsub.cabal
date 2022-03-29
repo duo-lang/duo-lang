@@ -71,6 +71,7 @@ library
       Eval.Eval
       Eval.Primitives
       Lookup
+      Parser.Common
       Parser.Definition
       Parser.Lexer
       Parser.Parser

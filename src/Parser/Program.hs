@@ -7,6 +7,7 @@ import Control.Monad (void)
 import Control.Monad.Reader ( MonadReader(local) )
 import Text.Megaparsec hiding (State)
 
+import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Parser.Terms
@@ -18,9 +19,6 @@ import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
-
-isRecP :: Parser IsRec
-isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
 
 annotP :: Parser (Maybe TypeScheme)
 annotP = optional (try (notFollowedBy (symbolP SymColoneq) *> symbolP SymColon) >> typeSchemeP)
@@ -82,13 +80,7 @@ setDeclP = do
 -- Type Operator Declaration
 ---------------------------------------------------------------------------------
 
-precedenceP :: Parser Precedence
-precedenceP = do
-  (n,_) <- natP
-  pure (MkPrecedence n)
 
-assocP :: Parser Associativity
-assocP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|> (keywordP KwRightAssoc >> pure RightAssoc)
 
 -- | Parses a type operator declaration of the form
 --       "type operator -> at 5 := Fun;"

@@ -9,6 +9,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (keys)
 import Text.Megaparsec hiding (State)
 
+import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
