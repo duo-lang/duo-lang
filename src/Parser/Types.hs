@@ -76,7 +76,7 @@ xdataTypeP Codata = fst <$> braces (do
 -- - "Head[Nat]"
 xtorSignatureP :: Parser XtorSig
 xtorSignatureP = do
-  (xt, _pos) <- xtorName
+  (xt, _pos) <- xtorNameP
   MkXtorSig xt <$> linearContextP
 
 ---------------------------------------------------------------------------------

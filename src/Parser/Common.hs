@@ -1,4 +1,20 @@
-module Parser.Common where
+module Parser.Common
+  ( -- Names
+    freeVarNameP
+  , tvarP
+  , xtorNameP
+  , typeNameP
+  , moduleNameP
+    -- Type Operators
+  , tyOpNameP
+  , tyBinOpP
+  , precedenceP
+  , associativityP
+    -- Kinds
+  , evalOrderP
+  , monoKindP
+  , polyKindP
+  ) where
 
 import Control.Monad (void)
 import Text.Megaparsec
@@ -11,8 +27,8 @@ import Syntax.Common
 -- Names
 ---------------------------------------------------------------------------------
 
-freeVarName :: Parser (FreeVarName, SourcePos)
-freeVarName = try $ do
+freeVarNameP :: Parser (FreeVarName, SourcePos)
+freeVarNameP = try $ do
   (name, pos) <- lowerCaseId
   return (MkFreeVarName name, pos)
 
@@ -21,8 +37,8 @@ tvarP = try $ do
   (name, pos) <- lowerCaseId
   return (MkTVar name, pos)
 
-xtorName :: Parser (XtorName, SourcePos)
-xtorName = try $ do
+xtorNameP :: Parser (XtorName, SourcePos)
+xtorNameP = try $ do
   (name, pos) <- upperCaseId
   return (MkXtorName name, pos)
 
@@ -57,15 +73,10 @@ precedenceP = do
   (n,_) <- natP
   pure (MkPrecedence n)
 
-assocP :: Parser Associativity
-assocP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|> (keywordP KwRightAssoc >> pure RightAssoc)
+associativityP :: Parser Associativity
+associativityP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|>
+                 (keywordP KwRightAssoc >> pure RightAssoc)
 
----------------------------------------------------------------------------------
--- Varia
----------------------------------------------------------------------------------
-
-isRecP :: Parser IsRec
-isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
 
 ---------------------------------------------------------------------------------
 -- EvaluationOrder and MonoKinds

@@ -20,6 +20,10 @@ import Utils
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
 
+
+isRecP :: Parser IsRec
+isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
+
 annotP :: Parser (Maybe TypeScheme)
 annotP = optional (try (notFollowedBy (symbolP SymColoneq) *> symbolP SymColon) >> typeSchemeP)
 
@@ -27,7 +31,7 @@ prdCnsDeclarationP :: SourcePos -> PrdCns -> Parser Declaration
 prdCnsDeclarationP startPos pc = do
     (isRec, v) <- try $ do
       isRec <- isRecP
-      (v, _pos) <- freeVarName
+      (v, _pos) <- freeVarNameP
       _ <- (case pc of Prd -> brackets (symbolP SymImplicit); Cns -> parens (symbolP SymImplicit))
       pure (isRec, v)
     annot <- annotP
@@ -39,7 +43,7 @@ prdCnsDeclarationP startPos pc = do
 cmdDeclarationP :: SourcePos -> Parser Declaration
 cmdDeclarationP startPos = do
     v <- try $ do
-      (v, _pos) <- freeVarName
+      (v, _pos) <- freeVarNameP
       _ <- symbolP SymColoneq
       pure v
     (cmd,_) <- commandP
@@ -91,7 +95,7 @@ typeOperatorDeclP = do
   recoverDeclaration $ do
     _ <- keywordP KwOperator
     (sym,_) <- tyOpNameP
-    assoc <- assocP
+    assoc <- associativityP
     _ <- keywordP KwAt
     prec <- precedenceP
     _ <- symbolP SymColoneq
@@ -105,7 +109,7 @@ typeOperatorDeclP = do
 
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
-  (xt, _pos) <- xtorName <?> "constructor/destructor name"
+  (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
   (args,_) <- argListsP typP <?> "argument list"
   return (xt, args )
 
@@ -179,7 +183,7 @@ xtorDeclarationP :: Parser Declaration
 xtorDeclarationP = do
   startPos <- getSourcePos
   dc <- ctorDtorP
-  (xt, _) <- xtorName
+  (xt, _) <- xtorNameP
   (args, _) <- argListsP monoKindP
   ret <- optional (try (symbolP SymColon) >> evalOrderP)
   endPos <- symbolP SymSemi
