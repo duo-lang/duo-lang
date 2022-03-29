@@ -115,13 +115,13 @@ reparseCommand :: Command ext -> Command Parsed
 reparseCommand cmd = evalState (createNamesCommand cmd) names
 
 reparseDecl :: Declaration ext -> Declaration Parsed
-reparseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl defaultLoc rep isRec fv ts (reparseTerm tm)
-reparseDecl (CmdDecl _ fv cmd)                = CmdDecl defaultLoc fv (reparseCommand cmd)
-reparseDecl (DataDecl _ decl)                 = DataDecl defaultLoc decl
-reparseDecl (XtorDecl _ dc xt args ret)       = XtorDecl defaultLoc dc xt args ret
-reparseDecl (ImportDecl _ mn)                 = ImportDecl defaultLoc mn
-reparseDecl (SetDecl _ txt)                   = SetDecl defaultLoc txt
-reparseDecl (TyOpDecl _ op prec assoc ty)     = TyOpDecl defaultLoc op prec assoc ty
+reparseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl (Nothing, defaultLoc) rep isRec fv ts (reparseTerm tm)
+reparseDecl (CmdDecl _ fv cmd)                = CmdDecl (Nothing, defaultLoc) fv (reparseCommand cmd)
+reparseDecl (DataDecl _ decl)                 = DataDecl (Nothing, defaultLoc) decl
+reparseDecl (XtorDecl _ dc xt args ret)       = XtorDecl (Nothing, defaultLoc) dc xt args ret
+reparseDecl (ImportDecl _ mn)                 = ImportDecl (Nothing, defaultLoc) mn
+reparseDecl (SetDecl _ txt)                   = SetDecl (Nothing, defaultLoc) txt
+reparseDecl (TyOpDecl _ op prec assoc ty)     = TyOpDecl (Nothing, defaultLoc) op prec assoc ty
 
 reparseProgram :: Program ext -> Program Parsed
 reparseProgram = fmap reparseDecl

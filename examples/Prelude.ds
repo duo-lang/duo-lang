@@ -4,5 +4,5 @@ def impossible := Done;
 def impossible[*] := mu k. impossible;
 def impossible(*) := mu x. impossible;
 
--- Generic print consumer
+-- | Generic print consumer
 def print(*) := mu x.Print(x); Done;

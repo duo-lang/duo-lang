@@ -68,10 +68,10 @@ instance Monoid SymbolTable where
 
 createSymbolTable :: Program  -> SymbolTable
 createSymbolTable [] = mempty
-createSymbolTable ((XtorDecl _ dc xt args _):decls) =
+createSymbolTable ((XtorDecl _ _ dc xt args _):decls) =
   let st = createSymbolTable decls
   in st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
-createSymbolTable ((DataDecl _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }):decls) =
+createSymbolTable ((DataDecl _ _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }):decls) =
   -- Create the default polykind
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
@@ -83,7 +83,7 @@ createSymbolTable ((DataDecl _ NominalDecl { data_refined, data_name, data_polar
       xtors = M.fromList [((sig_name xt, data_polarity), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors]
   in st { xtorMap  = M.union xtors (xtorMap st)
         , tyConMap = M.insert data_name (data_refined, polyKind)(tyConMap st)}
-createSymbolTable ((TyOpDecl _ op prec assoc ty):decls) =
+createSymbolTable ((TyOpDecl _ _ op prec assoc ty):decls) =
     let st = createSymbolTable decls
         tyOp = MkTyOp { symbol = CustomOp op
                       , prec = prec

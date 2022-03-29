@@ -12,14 +12,14 @@ import Utils
 ---------------------------------------------------------------------------------
 
 data Declaration where
-  PrdCnsDecl     :: Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
-  CmdDecl        :: Loc -> FreeVarName -> Command                                                       -> Declaration
-  DataDecl       :: Loc -> DataDecl                                                                     -> Declaration
-  XtorDecl       :: Loc -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder      -> Declaration
-  ImportDecl     :: Loc -> ModuleName                                                                   -> Declaration
-  SetDecl        :: Loc -> Text                                                                         -> Declaration
-  TyOpDecl       :: Loc -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
-  ParseErrorDecl ::                                                                                        Declaration
+  PrdCnsDecl     :: Maybe DocComment -> Loc -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
+  CmdDecl        :: Maybe DocComment -> Loc -> FreeVarName -> Command                                                       -> Declaration
+  DataDecl       :: Maybe DocComment -> Loc -> DataDecl                                                                     -> Declaration
+  XtorDecl       :: Maybe DocComment -> Loc -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder      -> Declaration
+  ImportDecl     :: Maybe DocComment -> Loc -> ModuleName                                                                   -> Declaration
+  SetDecl        :: Maybe DocComment -> Loc -> Text                                                                         -> Declaration
+  TyOpDecl       :: Maybe DocComment -> Loc -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
+  ParseErrorDecl ::                                                                                                            Declaration
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"

@@ -12,7 +12,7 @@ The simplest command is called `Done`, which is used to terminate the program.
 We can write a simple command which just exits directly after it is called.
 
 ```
-cmd exitAtOnce := Done;
+def exitAtOnce := Done;
 ```
 
 ## The Apply Command
@@ -30,7 +30,7 @@ We use the `>>` symbol to express a cut, and write the producer on the left side
 The following program cuts the producer `True` against a pattern match on booleans, and then exits the program.
 
 ```
-cmd exit :=  True >> match { True => Done; False => Done };
+def exit :=  True >> match { True => Done; False => Done };
 ```
 
 ## IO Actions
@@ -42,9 +42,9 @@ The following program uses both to read in two numbers from the console, and to 
 ```
 import Prelude;
 
-prd rec addA := \x => \y => case x of { Z => y
+def rec addA[*] := \x => \y => case x of { Z => y
                                       , S(z) => addA z S(y)
 					        };
 
-cmd main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
+def main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
 ```

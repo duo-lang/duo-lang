@@ -78,7 +78,7 @@ inferDecl :: Declaration Parsed
 --
 -- PrdCnsDecl
 --
-inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
+inferDecl (PrdCnsDecl (doc,loc) pc isRec fv annot term) = do
   infopts <- gets driverOpts
   env <- gets driverEnv
   -- 1. Generate the constraints.
@@ -112,15 +112,15 @@ inferDecl (PrdCnsDecl loc pc isRec fv annot term) = do
     PrdRep -> do
       let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, ty) (prdEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec fv (Just ty) tmInferred)
+      return (PrdCnsDecl (doc,loc) pc isRec fv (Just ty) tmInferred)
     CnsRep -> do
       let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc pc isRec fv (Just ty) tmInferred)
+      return (PrdCnsDecl (doc,loc) pc isRec fv (Just ty) tmInferred)
 --
 -- CmdDecl
 --
-inferDecl (CmdDecl loc v cmd) = do
+inferDecl (CmdDecl (doc,loc) v cmd) = do
   env <- gets driverEnv
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
@@ -133,11 +133,11 @@ inferDecl (CmdDecl loc v cmd) = do
   env <- gets driverEnv
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
-  return (CmdDecl loc v cmdInferred)
+  return (CmdDecl (doc,loc) v cmdInferred)
 --
 -- DataDecl
 --
-inferDecl (DataDecl loc dcl) = do
+inferDecl (DataDecl (doc,loc) dcl) = do
   -- Insert into environment
   env <- gets driverEnv
   let tn = data_name dcl
@@ -146,7 +146,7 @@ inferDecl (DataDecl loc dcl) = do
         -- HACK: inserting in the environment has already been done in lowering
         -- because the declarations are already needed for lowering
         -- In that case we make sure we don't insert twice
-        return (DataDecl loc dcl)
+        return (DataDecl (doc,loc) dcl)
     Nothing -> do
       let ns = case data_refined dcl of
                       Refined -> Refinement
@@ -155,7 +155,7 @@ inferDecl (DataDecl loc dcl) = do
       let newEnv = env { declEnv = (loc,dcl) : declEnv env
                        , symbolTable = (symbolTable env) { xtorMap = M.union  newXtors (xtorMap (symbolTable env)) }}
       setEnvironment newEnv
-      return (DataDecl loc dcl)
+      return (DataDecl (doc,loc) dcl)
 --
 -- XtorDecl
 --
@@ -167,12 +167,12 @@ inferDecl (XtorDecl loc dc xt args ret) = do
 --
 -- ImportDecl
 --
-inferDecl (ImportDecl loc mod) = do
+inferDecl (ImportDecl (doc,loc) mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
   newEnv <- fst <$> inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
-  return (ImportDecl loc mod)
+  return (ImportDecl (doc,loc) mod)
 --
 -- SetDecl
 --
@@ -181,8 +181,8 @@ inferDecl (SetDecl _ txt) = case T.unpack txt of
 --
 -- TyOpDecl
 --
-inferDecl (TyOpDecl loc op prec assoc ty) = do
-  pure (TyOpDecl loc op prec assoc ty)
+inferDecl (TyOpDecl (doc,loc) op prec assoc ty) = do
+  pure (TyOpDecl (doc,loc) op prec assoc ty)
 
 ---------------------------------------------------------------------------------
 -- Infer programs

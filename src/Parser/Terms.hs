@@ -9,6 +9,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (keys)
 import Text.Megaparsec hiding (State)
 
+import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
@@ -38,10 +39,10 @@ substitutionIP = do
 --------------------------------------------------------------------------------------------
 
 bindingSiteP :: Parser (CST.BindingSite, SourcePos)
-bindingSiteP = argListsP (fst <$> freeVarName)
+bindingSiteP = argListsP (fst <$> freeVarNameP)
 
 bindingSiteIP :: Parser (CST.BindingSiteI, SourcePos)
-bindingSiteIP = argListsIP Cns (fst <$> freeVarName)
+bindingSiteIP = argListsIP Cns (fst <$> freeVarNameP)
 
 --------------------------------------------------------------------------------------------
 -- Free Variables and Xtors
@@ -50,13 +51,13 @@ bindingSiteIP = argListsIP Cns (fst <$> freeVarName)
 freeVar :: Parser (CST.Term, SourcePos)
 freeVar = do
   startPos <- getSourcePos
-  (v, endPos) <- freeVarName
+  (v, endPos) <- freeVarNameP
   return (CST.Var (Loc startPos endPos) v, endPos)
 
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName
+  (xt, _pos) <- xtorNameP
   (subst, endPos) <- substitutionP
   return (CST.Xtor (Loc startPos endPos) xt subst, endPos)
 
@@ -97,7 +98,7 @@ muAbstraction :: Parser (CST.Term, SourcePos)
 muAbstraction = do
   startPos <- getSourcePos
   _ <- keywordP KwMu
-  (v, _pos) <- freeVarName
+  (v, _pos) <- freeVarNameP
   _ <- symbolP SymDot
   (cmd, endPos) <- cstcommandP
   return (CST.MuAbs (Loc startPos endPos) v cmd, endPos)
@@ -138,7 +139,7 @@ readCmdP = do
 commandVar :: Parser (CST.Command, SourcePos)
 commandVar = do
   startPos <- getSourcePos
-  (nm, endPos) <- freeVarName
+  (nm, endPos) <- freeVarNameP
   return (CST.Call (Loc startPos endPos) nm, endPos)
 
 commandParensP :: Parser (CST.Command, SourcePos)
@@ -252,7 +253,7 @@ cocaseRestP' startPos = do
 cmdcaseP :: Parser (CST.CommandCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName
+  (xt, _pos) <- xtorNameP
   (args,_) <- bindingSiteP
   _ <- symbolP SymDoubleRightArrow
   (cmd, endPos) <- cstcommandP
@@ -267,7 +268,7 @@ cmdcaseP = do
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP = do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorName
+  (xt, _pos) <- xtorNameP
   (args,_) <- bindingSiteP
   _ <- symbolP SymDoubleRightArrow
   (res, endPos) <- termTopP
@@ -282,7 +283,7 @@ termCaseP = do
 termCaseIP :: Parser (CST.TermCaseI, SourcePos)
 termCaseIP = do
   startPos <- getSourcePos
-  (xt, _) <- xtorName
+  (xt, _) <- xtorNameP
   (bs, _) <- bindingSiteIP
   _ <- symbolP SymDoubleRightArrow
   (res, endPos) <- termTopP
@@ -296,7 +297,7 @@ lambdaP :: Parser (CST.Term, SourcePos)
 lambdaP = do
   startPos <- getSourcePos
   _ <- symbolP SymBackslash
-  bvars <- some $ fst <$> freeVarName
+  bvars <- some $ fst <$> freeVarNameP
   _ <- symbolP SymDoubleRightArrow
   (tm, endPos) <- termTopP
   return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)
@@ -358,7 +359,7 @@ termMiddleP = applicationP -- applicationP handles the case of 0-ary application
 -- | Parses "D(t,..*.,t)"
 destructorP :: Parser (XtorName, CST.SubstitutionI, SourcePos)
 destructorP = do
-  (xt, _) <- xtorName
+  (xt, _) <- xtorNameP
   (substi, endPos) <- substitutionIP
   return (xt, substi, endPos)
 

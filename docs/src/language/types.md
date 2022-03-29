@@ -6,28 +6,49 @@ Most languages choose one evaluation strategy.
 Strict languages like OCaml, SML or F# choose a call-by-value (CBV) evaluation strategy, whereas non-strict languages choose either
 call-by-name (CBN) or call-by-need.
 DualSub is not comitted to either strategy.
-Instead, the evaluation order is controlled at the level of kinds.
-Currently, only call-by-value and call-by-name are supported.
+Instead, the user can choose between two different evaluation strategies for each type individually.
+The two evaluation strategies are:
 
-| Kind | Explanation    |
-|------|----------------|
-| CBV  | Call-by-value  |
-| CBN  | Call-by-name   |
+| Evaluation Order | Explanation    |
+|------------------|----------------|
+| CBV              | Call-by-value  |
+| CBN              | Call-by-name   |
 
+The different evaluation strategies are reflected in the kinds of types.
+Instead of having only one inhabitated kind, usually written `*` in the type theory literature, there are several different kinds which classify inhabitated types.
+These inhabitated kinds are called "MonoKind". Currently there are four different MonoKinds, one for each of boxed values of CBV and CBN types, and one for each of the primitive unboxed types.
+
+| MonoKind         | Explanation                       |
+|------------------|-----------------------------------|
+| CBV              | The kind of boxed CBV types       |
+| CBN              | The kind of boxed CBN types       |
+| I64Rep           | The kind of the unboxed #I64 type | 
+| F64Rep           | The kind of the unboxed #F64 type |
+
+Higher kinds are the kinds given to type constructors.
+Since the only available type constructors in DualSub construct CBV or CBN types, they follow the following restricted grammar.
+Each argument in a PolyKind has a variance, either `+` for covariant arguments or `-` for contravariant arguments, a type variable `a`, and a
+MonoKind of type type variable, `mk`.
+
+| PolyKind          | Explanation                       |
+|-------------------|-----------------------------------|
+| (+-a : mk)* -> eo | Polykind                          |
+| CBV               | Syntactic sugar for () -> CBV     |
+| CBN               | Syntactic sugar for () -> CBN     |
 
 ## Builtin Types
 
-There are three builtin types which correspond to the numeric types supported by most modern architectures.
-They are given in the following table.
+There are two builtin types which correspond to numeric types supported by most modern architectures.
+The builtin types are given in the following table.
 
 | Type       | Kind    | Explanation                                     |
 |------------|---------|-------------------------------------------------|
-| UnboxedI64 | KindI64 | Unboxed signed 64-Bit integers                  |
-| UnboxedU64 | KindU64 | Unboxed unsigned 64-Bit integers                |
-| UnboxedF64 | KindF64 | Unboxed 64-Bit precision floating point numbers |
+| #I64       | I64Rep  | Unboxed signed 64-Bit integers                  |
+| #F64       | F64Rep  | Unboxed 64-Bit precision floating point numbers |
 
 Each Builtin type has its own kind, which reflects the fact that these types are unboxed.
 Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.
+The standard library provides wrappers in the `I64.ds` and `F64.ds` modules which provide the boxed variants of the builtin unboxed types.
 
 ## Nominal Types
 
@@ -56,7 +77,7 @@ When we declare parameterized data types, we have to declare both the kind of th
 For example, we can declare the type of lists of CBV types.
 
 ```
-data List(+a : CBV) : CBV {
+data List : (+a : CBV) -> CBV {
     Nil,
     Cons(a, List(a))
 };
@@ -83,7 +104,7 @@ codata NatStream : CBN {
 Codata types can also be parameterized, similar to the List example of the previous section.
 
 ```
-codata Stream(+a : CBV) : CBN {
+codata Stream : (+a : CBV) -> CBN {
     Head[a],
     Tail[Stream(a)]
 };
@@ -93,7 +114,7 @@ Codata types make it possible to define the function type, instead of having a b
 The declaration of the function type looks like this.
 
 ```
-codata Fun(-a : CBV, +b CBV) : CBN {
+codata Fun : (-a : CBV, +b CBV) -> CBN {
     Ap(a)[b]
 }
 ```

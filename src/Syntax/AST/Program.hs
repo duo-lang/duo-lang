@@ -14,8 +14,8 @@ import Utils ( Loc )
 ---------------------------------------------------------------------------------
 
 type family DeclExt (ext :: Phase) :: Type where
-  DeclExt Parsed = Loc
-  DeclExt Inferred = Loc
+  DeclExt Parsed = (Maybe DocComment, Loc)
+  DeclExt Inferred = (Maybe DocComment, Loc)
   DeclExt Compiled = ()
 
 data Declaration (ext :: Phase) where

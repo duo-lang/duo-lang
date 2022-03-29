@@ -1,18 +1,17 @@
 module Parser.Lexer
-  ( sc
+  ( -- Space Consumer and Comments
+    sc
+  , docCommentP
     -- Literals
   , natP
   , intP
   , uintP
   , floatP
-    -- Names
+    -- Identifier
+  , lowerCaseId
+  , upperCaseId
+  , operatorP
   , allCaseId
-  , freeVarName
-  , tvarP
-  , xtorName
-  , typeNameP
-  , tyOpNameP
-  , moduleNameP
   -- Keywords
   , Keyword(..)
   , keywordP
@@ -67,8 +66,26 @@ import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 --
 -------------------------------------------------------------------------------------------
 
+-- | Parses comments starting with "--", but not doccomments starting with "-- |"
+commentP :: Parser ()
+commentP = do
+  try $ do
+    _ <- string "--"
+    notFollowedBy (string " |")
+  _ <- (takeWhileP (Just "character") (/= '\n'))
+  pure ()
+
+-- | Parses a doc comment starting with "-- |" until the end of the line, and does
+-- not consume the trailing "\n"
+docCommentP :: Parser (DocComment, SourcePos)
+docCommentP = do
+  _ <- string "-- |"
+  comment <- takeWhileP (Just "character") (/= '\n')
+  endPos <- getSourcePos
+  pure (MkDocComment comment, endPos)
+
 sc :: Parser ()
-sc = L.space space1 (L.skipLineComment "--") empty
+sc = L.space space1 commentP empty
 
 -------------------------------------------------------------------------------------------
 -- Helper functions
@@ -138,36 +155,6 @@ operatorP = f <|> g
       pure (name, pos)
 
 ---
-
-freeVarName :: Parser (FreeVarName, SourcePos)
-freeVarName = try $ do
-  (name, pos) <- lowerCaseId
-  return (MkFreeVarName name, pos)
-
-tvarP :: Parser (TVar, SourcePos)
-tvarP = try $ do
-  (name, pos) <- lowerCaseId
-  return (MkTVar name, pos)
-
-xtorName :: Parser (XtorName, SourcePos)
-xtorName = try $ do
-  (name, pos) <- upperCaseId
-  return (MkXtorName name, pos)
-
-typeNameP :: Parser (TypeName, SourcePos)
-typeNameP = try $ do
-  (name, pos) <- upperCaseId
-  return (MkTypeName name, pos)
-
-moduleNameP :: Parser (ModuleName, SourcePos)
-moduleNameP = try $ do
-  (name, pos) <- upperCaseId
-  return (MkModuleName name, pos)
-
-tyOpNameP :: Parser (TyOpName, SourcePos)
-tyOpNameP = try $ do
-  (name, pos) <- operatorP
-  return (MkTyOpName name, pos)
 
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
@@ -309,7 +296,7 @@ keywordP kw = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = asum ([keywordP kw | kw <- declKeywords] ++ [eof >> getSourcePos])
+  let endP = asum ([keywordP kw | kw <- declKeywords] ++ [eof >> getSourcePos, snd <$> docCommentP])
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

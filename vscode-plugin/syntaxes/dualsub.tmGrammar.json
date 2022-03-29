@@ -34,7 +34,7 @@
         "patterns": [
             {
               "match": "--.*$\n?",
-              "name": "comment.line.number-sign.syntax"
+              "name": "comment.line.double-dash.syntax"
             }
           ]
       },
