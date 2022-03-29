@@ -64,8 +64,26 @@ import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 --
 -------------------------------------------------------------------------------------------
 
+-- | Parses comments starting with "--", but not doccomments starting with "-- |"
+commentP :: Parser ()
+commentP = do
+  try $ do
+    _ <- string "--"
+    notFollowedBy (string " |")
+  _ <- (takeWhileP (Just "character") (/= '\n'))
+  pure ()
+
+-- | Parses a doc comment starting with "-- |" until the end of the line, and does
+-- not consume the trailing "\n"
+docCommentP :: Parser (DocComment, SourcePos)
+docCommentP = do
+  _ <- string "-- |"
+  comment <- takeWhileP (Just "character") (/= '\n')
+  endPos <- getSourcePos
+  pure (MkDocComment comment, endPos)
+
 sc :: Parser ()
-sc = L.space space1 (L.skipLineComment "--") empty
+sc = L.space space1 commentP empty
 
 -------------------------------------------------------------------------------------------
 -- Helper functions
@@ -276,7 +294,7 @@ keywordP kw = do
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
-  let endP = asum ([keywordP kw | kw <- declKeywords] ++ [eof >> getSourcePos])
+  let endP = asum ([keywordP kw | kw <- declKeywords] ++ [eof >> getSourcePos, snd <$> docCommentP])
   _ <- manyTill anySingle (lookAhead endP)
   return ()
 

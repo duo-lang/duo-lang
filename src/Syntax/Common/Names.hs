@@ -21,6 +21,12 @@ newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord,
 newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
+-- Doc comments
+---------------------------------------------------------------------------------
+
+newtype DocComment = MkDocComment { unDocComment :: Text }
+
+---------------------------------------------------------------------------------
 -- Type operators
 ---------------------------------------------------------------------------------
 
