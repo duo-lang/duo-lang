@@ -13,6 +13,7 @@ import qualified Syntax.AST.Types as AST
 import Syntax.AST.Types ( freeTypeVars)
 import Syntax.CST.Types
 import Data.List
+import Utils (Loc(..))
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> AST)
@@ -26,29 +27,29 @@ lowerTypeScheme rep (TypeScheme tvars monotype) = do
         else throwError (LowerError Nothing MissingVarsInTypeScheme)
 
 lowerTyp :: PolarityRep pol -> Typ -> RenamerM (AST.Typ pol)
-lowerTyp rep (TyVar v) = pure $ AST.TyVar rep Nothing v
-lowerTyp rep (TyXData Data name sigs) = do
+lowerTyp rep (TyVar _loc v) = pure $ AST.TyVar rep Nothing v
+lowerTyp rep (TyXData _loc Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
     pure $ AST.TyData rep name sigs
-lowerTyp rep (TyXData Codata name sigs) = do
+lowerTyp rep (TyXData _loc Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ AST.TyCodata rep name sigs
-lowerTyp rep (TyNominal name args) = do
-    (conArgs, covArgs) <- lowerTypeArgs rep name args
+lowerTyp rep (TyNominal loc name args) = do
+    (conArgs, covArgs) <- lowerTypeArgs loc rep name args
     pure $ AST.TyNominal rep Nothing name conArgs covArgs
-lowerTyp rep (TyRec v typ) = AST.TyRec rep v <$> lowerTyp rep typ
-lowerTyp PosRep TyTop = throwError (LowerError Nothing TopInPosPolarity)
-lowerTyp NegRep TyTop = pure desugarTopType
-lowerTyp PosRep TyBot = pure desugarBotType
-lowerTyp NegRep TyBot = throwError (LowerError Nothing BotInNegPolarity)
+lowerTyp rep (TyRec _loc v typ) = AST.TyRec rep v <$> lowerTyp rep typ
+lowerTyp PosRep (TyTop loc) = throwError (LowerError (Just loc) TopInPosPolarity)
+lowerTyp NegRep (TyTop _loc) = pure desugarTopType
+lowerTyp PosRep (TyBot _loc) = pure desugarBotType
+lowerTyp NegRep (TyBot loc) = throwError (LowerError (Just loc) BotInNegPolarity)
 lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
-lowerTyp rep (TyBinOp fst op snd) = lowerBinOp rep fst op snd
-lowerTyp rep (TyParens typ) = lowerTyp rep typ
-lowerTyp rep (TyPrim pt) = pure $ AST.TyPrim rep pt
+lowerTyp rep (TyBinOp loc fst op snd) = lowerBinOp loc rep fst op snd
+lowerTyp rep (TyParens _loc typ) = lowerTyp rep typ
+lowerTyp rep (TyPrim _loc pt) = pure $ AST.TyPrim rep pt
 
-lowerTypeArgs :: PolarityRep pol -> TypeName -> [Typ] -> RenamerM ([AST.Typ (FlipPol pol)], [AST.Typ pol])
-lowerTypeArgs rep tn args = do
-    MkPolyKind { contravariant, covariant } <- lookupTypeConstructorAritiy tn
+lowerTypeArgs :: Loc -> PolarityRep pol -> TypeName -> [Typ] -> RenamerM ([AST.Typ (FlipPol pol)], [AST.Typ pol])
+lowerTypeArgs loc rep tn args = do
+    MkPolyKind { contravariant, covariant } <- lookupTypeConstructorAritiy loc tn
     let (contra, cov) = splitAt (length contravariant) args
     if (length contravariant) /= length contra || (length covariant) /= length cov then
         throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
@@ -70,7 +71,7 @@ lowerPrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> RenamerM (AST.PrdCnsType pol)
 lowerPrdCnsTyp rep (PrdType typ) = AST.PrdCnsType PrdRep <$> lowerTyp rep typ
 lowerPrdCnsTyp rep (CnsType typ) = AST.PrdCnsType CnsRep <$> lowerTyp (flipPolarityRep rep) typ
 
-lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(BinOp, Typ) -> RenamerM (AST.Typ pol)
+lowerBinOpChain :: PolarityRep pol -> Typ -> NonEmpty(Loc, BinOp, Typ) -> RenamerM (AST.Typ pol)
 lowerBinOpChain rep fst rest = do
     op <- associateOps fst rest
     lowerTyp rep op
@@ -79,25 +80,25 @@ lowerBinOpChain rep fst rest = do
 -- Operator Desugaring
 ---------------------------------------------------------------------------------
 
-desugaring :: PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> RenamerM (AST.Typ pol)
-desugaring PosRep UnionDesugaring tl tr = do
+desugaring :: Loc -> PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> RenamerM (AST.Typ pol)
+desugaring _loc PosRep UnionDesugaring tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
     case tl of
         AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
         _ -> pure $ AST.TySet PosRep Nothing [tl, tr]
-desugaring NegRep UnionDesugaring _ _ =
-    throwError (LowerError Nothing UnionInNegPolarity)
-desugaring NegRep InterDesugaring tl tr = do
+desugaring loc NegRep UnionDesugaring _ _ =
+    throwError (LowerError (Just loc) UnionInNegPolarity)
+desugaring _loc NegRep InterDesugaring tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
     case tl of
         AST.TySet rep k ts -> pure $ AST.TySet rep k (ts ++ [tr])
         _ -> pure $ AST.TySet NegRep Nothing [tl, tr]
-desugaring PosRep InterDesugaring _ _ =
-    throwError (LowerError Nothing IntersectionInPosPolarity)
-desugaring rep (NominalDesugaring tyname) tl tr = do
-    lowerTyp rep (TyNominal tyname [tl, tr])
+desugaring loc PosRep InterDesugaring _ _ =
+    throwError (LowerError (Just loc) IntersectionInPosPolarity)
+desugaring loc rep (NominalDesugaring tyname) tl tr = do
+    lowerTyp rep (TyNominal loc tyname [tl, tr])
 
 lookupTyOp :: BinOp -> RenamerM TyOp
 lookupTyOp op = do
@@ -123,25 +124,25 @@ lookupTyOp op = do
 --
 --   * \<1\> has a higher priority and \<1\> is left associative:
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
-associateOps :: Typ -> NonEmpty (BinOp, Typ) -> RenamerM Typ
-associateOps lhs ((s, rhs) :| []) = pure $ TyBinOp lhs s rhs
-associateOps lhs ((s1, rhs1) :| next@(s2, _rhs2) : rest) = do
+associateOps :: Typ -> NonEmpty (Loc, BinOp, Typ) -> RenamerM Typ
+associateOps lhs ((loc, s, rhs) :| []) = pure $ TyBinOp loc lhs s rhs
+associateOps lhs ((loc1, s1, rhs1) :| next@(_, s2, _rhs2) : rest) = do
     op1 <- lookupTyOp s1
     op2 <- lookupTyOp s2
     if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
-        pure $ TyBinOp lhs s1 rhs
+        pure $ TyBinOp loc1 lhs s1 rhs
     else if assoc op1 == LeftAssoc
     then do
-        associateOps (TyBinOp lhs s1 rhs1) (next :| rest)
+        associateOps (TyBinOp loc1 lhs s1 rhs1) (next :| rest)
     else
         throwError (OtherError Nothing "Unhandled case reached. This is a bug the operator precedence parser")
 
-lowerBinOp :: PolarityRep pol -> Typ -> BinOp -> Typ -> RenamerM (AST.Typ pol)
-lowerBinOp rep lhs s rhs = do
+lowerBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> RenamerM (AST.Typ pol)
+lowerBinOp loc rep lhs s rhs = do
     op <- lookupTyOp s
-    desugaring rep (desugar op) lhs rhs
+    desugaring loc rep (desugar op) lhs rhs
 
 ---------------------------------------------------------------------------------
 -- Syntactic Sugar
