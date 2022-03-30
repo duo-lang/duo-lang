@@ -146,6 +146,7 @@ executable dualsub
   main-is: Main.hs
   other-modules:
       Compile
+      Deps
       LSP.LSP
       LSP.Definition
       LSP.CodeActionHandler

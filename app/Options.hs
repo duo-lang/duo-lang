@@ -10,6 +10,7 @@ data Options where
     OptRepl :: Options
     OptLSP :: Maybe FilePath -> Options
     OptCompile :: FilePath -> Options
+    OptDeps :: FilePath -> Options
     OptVersion :: Options
 
 ---------------------------------------------------------------------------------
@@ -70,6 +71,25 @@ compileParserInfo = info (helper <*> compileParser) mods
                 ]
 
 ---------------------------------------------------------------------------------
+-- Commandline options for computing a dependency graph
+---------------------------------------------------------------------------------
+
+depsParser :: Parser Options
+depsParser = OptDeps <$> argument str mods
+  where
+    mods = fold [ metavar "TARGET"
+                , help "Filepath of the source file."
+                ]
+
+depsParserInfo :: ParserInfo Options
+depsParserInfo = info (helper <*> depsParser) mods
+  where
+    mods = fold [ fullDesc
+                , header "dualsub deps - Compute dependency graphs"
+                , progDesc "Compute the dependency graph for a DualSub module."
+                ]
+
+---------------------------------------------------------------------------------
 -- Commandline option for showing the current version
 ---------------------------------------------------------------------------------
 
@@ -83,6 +103,7 @@ versionParser = const OptVersion <$> flag' () (long "version" <> short 'v' <> he
 commandParser :: Parser Options
 commandParser = subparser $ fold [ command "repl" replParserInfo
                                  , command "compile" compileParserInfo
+                                 , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
                                  ]
 
