@@ -9,12 +9,13 @@ module Driver.DepGraph
   , printCompilationOrder
   ) where
 
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Control.Monad.Except
 import Data.Graph.Inductive.Basic (hasLoop)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Graph.Inductive.Query.TransClos (tc)
---import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed,Dotted), StyleItem(SItem))
 import Data.GraphViz
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
@@ -22,9 +23,13 @@ import Data.GraphViz
     ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Text.Lazy (pack)
 
+import Parser.Definition
+import Parser.Program
+import Pretty.Pretty
 import Driver.Definition
 import Syntax.Common
 import Errors
+import Utils
 
 -- | A dependency Graph which represents the structure of imports.
 type DepGraph = Gr ModuleName ()
@@ -34,7 +39,18 @@ type CompilationOrder = [ModuleName]
 
 -- | Create the dependency graph by recursively following import statements.
 createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph = undefined
+createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] [] empty
+
+createDepGraph' :: [ModuleName] -> [ModuleName] -> DepGraph -> DriverM DepGraph
+createDepGraph' [] _cache depGraph = pure depGraph
+createDepGraph' (mn:mns) cache depGraph | mn `elem` cache = createDepGraph' mns cache depGraph
+                                        | otherwise = do
+                                          fp <- findModule mn defaultLoc
+                                          file <- liftIO $ T.readFile fp
+                                          decls <- runFileParser fp programP file
+                                          undefined
+
+
 
 -- | Throws an error if the dependency graph contains a cycle of imports.
 checkRecursiveImports :: DepGraph -> DriverM ()
@@ -47,7 +63,7 @@ checkRecursiveImports depgraph = case hasLoop (tc depgraph) of
 topologicalSort :: DepGraph -> DriverM CompilationOrder
 topologicalSort depGraph = do
     checkRecursiveImports depGraph
-    undefined
+    pure []
 
 
 ---------------------------------------------------------------------------------
@@ -75,6 +91,7 @@ printDepGraph depGraph = liftIO $ do
     dotInstalled <- isGraphvizInstalled
     if dotInstalled
         then do
+          createDirectoryIfMissing True graphDir
           let depGraphDot = depGraphToDot depGraph
           _ <- runGraphviz depGraphDot Jpeg (graphDir </> fileName <.> jpg)
           _ <- runGraphviz depGraphDot (XDot Nothing) (graphDir </> fileName <.> xdot)
@@ -88,4 +105,6 @@ printDepGraph depGraph = liftIO $ do
 ---------------------------------------------------------------------------------
 
 printCompilationOrder :: MonadIO m => CompilationOrder -> m ()
-printCompilationOrder = undefined
+printCompilationOrder compilationOrder = liftIO $ do
+  forM_ (zip [(1 :: Int)..] compilationOrder) $ \(n,mn) -> do
+    putStrLn ("[" ++ show n ++ "] " ++ (ppPrintString mn))
