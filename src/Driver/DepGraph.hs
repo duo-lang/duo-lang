@@ -18,6 +18,7 @@ import Data.Graph.Inductive.Basic (hasLoop)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
 import Data.Graph.Inductive.Query.TransClos (tc)
+import Data.Graph.Inductive.Query.DFS (topsort')
 import Data.GraphViz
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
@@ -97,7 +98,7 @@ checkRecursiveImports depgraph = case hasLoop (tc depgraph) of
 topologicalSort :: DepGraph -> DriverM CompilationOrder
 topologicalSort depGraph = do
     checkRecursiveImports depGraph
-    pure []
+    pure $ reverse $ topsort' depGraph
 
 
 ---------------------------------------------------------------------------------
