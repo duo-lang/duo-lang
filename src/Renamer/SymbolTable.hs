@@ -6,6 +6,7 @@ import Data.Map qualified as M
 import Syntax.Common
 import Syntax.CST.Program
 import Syntax.CST.Types
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Type Operators
@@ -50,17 +51,18 @@ data SymbolTable = MkSymbolTable
   { xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
   , tyConMap :: Map TypeName (IsRefined, PolyKind)
   , tyOps :: [TyOp]
+  , imports :: [(ModuleName, Loc)]
   }
 
 instance Show SymbolTable where
   show _ = "<SymbolTable>"
 
 instance Semigroup SymbolTable where
-  (MkSymbolTable xtormap1 tyConMap1 tyOps1) <> (MkSymbolTable xtormap2 tyConMap2 tyOps2) =
-    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2) (tyOps1 ++ tyOps2)
+  (MkSymbolTable xtormap1 tyConMap1 tyOps1 imports1) <> (MkSymbolTable xtormap2 tyConMap2 tyOps2 imports2) =
+    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2) (tyOps1 ++ tyOps2) (imports1 ++ imports2)
 
 instance Monoid SymbolTable where
-  mempty = MkSymbolTable M.empty M.empty [unionTyOp, interTyOp]
+  mempty = MkSymbolTable M.empty M.empty [unionTyOp, interTyOp] []
 
 ---------------------------------------------------------------------------------
 -- Creating a SymbolTable
@@ -91,4 +93,7 @@ createSymbolTable ((TyOpDecl _ _ op prec assoc ty):decls) =
                       , desugar = NominalDesugaring ty
                       }
     in st { tyOps = tyOp : (tyOps st) }
+createSymbolTable ((ImportDecl _ loc mn): decls) =
+  let st = createSymbolTable decls
+  in st { imports = (mn,loc):(imports st) }
 createSymbolTable (_:decls) = createSymbolTable decls
