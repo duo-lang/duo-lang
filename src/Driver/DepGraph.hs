@@ -9,6 +9,8 @@ module Driver.DepGraph
   , printCompilationOrder
   ) where
 
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Control.Monad.Except
@@ -27,6 +29,7 @@ import Parser.Definition
 import Parser.Program
 import Pretty.Pretty
 import Driver.Definition
+import Renamer.SymbolTable
 import Syntax.Common
 import Errors
 import Utils
@@ -37,18 +40,49 @@ type DepGraph = Gr ModuleName ()
 -- | Order in which modules should be compiled. (=Topological sorting of DepGraph)
 type CompilationOrder = [ModuleName]
 
+---------------------------------------------------------------------------------
+-- Creating a dependency graph
+---------------------------------------------------------------------------------
+
 -- | Create the dependency graph by recursively following import statements.
 createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] [] empty
+createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] [] empty defaultModuleNameMap
 
-createDepGraph' :: [ModuleName] -> [ModuleName] -> DepGraph -> DriverM DepGraph
-createDepGraph' [] _cache depGraph = pure depGraph
-createDepGraph' (mn:mns) cache depGraph | mn `elem` cache = createDepGraph' mns cache depGraph
-                                        | otherwise = do
-                                          fp <- findModule mn defaultLoc
-                                          file <- liftIO $ T.readFile fp
-                                          decls <- runFileParser fp programP file
-                                          undefined
+type ModuleNameMap = (Int, Map ModuleName Node)
+
+defaultModuleNameMap :: ModuleNameMap
+defaultModuleNameMap = (0, M.empty)
+
+lookupModule :: ModuleNameMap -> ModuleName -> (Node, ModuleNameMap)
+lookupModule (counter,map) mn = case M.lookup mn map of
+  Nothing -> (counter, (counter + 1, M.insert mn counter map))
+  Just nd -> (nd     , (counter    ,                     map))
+
+lookupModules :: ModuleNameMap -> [ModuleName] -> ([Node], ModuleNameMap)
+lookupModules mnm [] = ([],mnm)
+lookupModules mnm (mn:mns) =
+  let 
+    (nodes,mnm') = lookupModules mnm mns
+    (node, mnm'') = lookupModule mnm' mn
+  in
+    (node:nodes,mnm'')
+
+
+createDepGraph' :: [ModuleName] -> [ModuleName] -> DepGraph -> ModuleNameMap -> DriverM DepGraph
+createDepGraph' [] _cache depGraph _mnm = pure depGraph
+createDepGraph' (mn:mns) cache depGraph mnm | mn `elem` cache = createDepGraph' mns cache depGraph mnm
+                                            | otherwise = do
+                                                fp <- findModule mn defaultLoc
+                                                file <- liftIO $ T.readFile fp
+                                                decls <- runFileParser fp programP file
+                                                let importedModules = imports (createSymbolTable decls)
+                                                let (nodes, mnm') = lookupModules mnm (mn:(fst <$> importedModules))
+                                                let newNodes :: [(Node, ModuleName)] = zip nodes (mn:(fst <$> importedModules))
+                                                let depGraph' = insNodes newNodes depGraph
+                                                let newEdges :: [(Node, Node, ())] = [(head nodes, nd, ()) | nd <- tail nodes]
+                                                let depGraph'' = insEdges newEdges depGraph'
+                                                createDepGraph' ((fst <$> importedModules) ++ mns) (mn:cache) depGraph'' mnm'
+
 
 
 
