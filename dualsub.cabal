@@ -64,6 +64,7 @@ library
   import: shared-build-depends
   exposed-modules:
       Driver.Definition
+      Driver.DepGraph
       Driver.Driver
       Driver.Environment
       Errors
