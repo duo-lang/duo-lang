@@ -6,6 +6,7 @@ module Driver.DepGraph
   , createDepGraph
   , topologicalSort
   , printDepGraph
+  , printCompilationOrder
   ) where
 
 import Control.Monad.Except
@@ -32,7 +33,7 @@ type DepGraph = Gr ModuleName ()
 type CompilationOrder = [ModuleName]
 
 -- | Create the dependency graph by recursively following import statements.
-createDepGraph :: ModuleName -> DriverM DepGraph
+createDepGraph :: FilePath -> DriverM DepGraph
 createDepGraph = undefined
 
 -- | Throws an error if the dependency graph contains a cycle of imports.
@@ -81,3 +82,10 @@ printDepGraph depGraph = liftIO $ do
           putStrLn (fileUri ++ currentDir </> graphDir </> fileName <.> jpg)
         else do
           putStrLn "Cannot generate graphs: graphviz executable not found in path."
+
+---------------------------------------------------------------------------------
+-- Prettyprinting Compilation Order
+---------------------------------------------------------------------------------
+
+printCompilationOrder :: MonadIO m => CompilationOrder -> m ()
+printCompilationOrder = undefined
