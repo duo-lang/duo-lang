@@ -47,7 +47,7 @@ type CompilationOrder = [ModuleName]
 
 -- | Create the dependency graph by recursively following import statements.
 createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] [] empty defaultModuleNameMap
+createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] empty defaultModuleNameMap
 
 type ModuleNameMap = (Int, Map ModuleName Node)
 
@@ -69,20 +69,20 @@ lookupModules mnm (mn:mns) =
     (node:nodes,mnm'')
 
 
-createDepGraph' :: [ModuleName] -> [ModuleName] -> DepGraph -> ModuleNameMap -> DriverM DepGraph
-createDepGraph' [] _cache depGraph _mnm = pure depGraph
-createDepGraph' (mn:mns) cache depGraph mnm | mn `elem` cache = createDepGraph' mns cache depGraph mnm
-                                            | otherwise = do
-                                                fp <- findModule mn defaultLoc
-                                                file <- liftIO $ T.readFile fp
-                                                decls <- runFileParser fp programP file
-                                                let importedModules = imports (createSymbolTable decls)
-                                                let (nodes, mnm') = lookupModules mnm (mn:(fst <$> importedModules))
-                                                let newNodes :: [(Node, ModuleName)] = zip nodes (mn:(fst <$> importedModules))
-                                                let depGraph' = insNodes newNodes depGraph
-                                                let newEdges :: [(Node, Node, ())] = [(head nodes, nd, ()) | nd <- tail nodes]
-                                                let depGraph'' = insEdges newEdges depGraph'
-                                                createDepGraph' ((fst <$> importedModules) ++ mns) (mn:cache) depGraph'' mnm'
+createDepGraph' :: [ModuleName] -> DepGraph -> ModuleNameMap -> DriverM DepGraph
+createDepGraph' [] depGraph _mnm = pure depGraph
+createDepGraph' (mn:mns) depGraph mnm | mn `M.member` (snd mnm) = createDepGraph' mns depGraph mnm
+                                      | otherwise = do
+                                          fp <- findModule mn defaultLoc
+                                          file <- liftIO $ T.readFile fp
+                                          decls <- runFileParser fp programP file
+                                          let importedModules = imports (createSymbolTable decls)
+                                          let (nodes, mnm') = lookupModules mnm (mn:(fst <$> importedModules))
+                                          let newNodes :: [(Node, ModuleName)] = zip nodes (mn:(fst <$> importedModules))
+                                          let depGraph' = insNodes newNodes depGraph
+                                          let newEdges :: [(Node, Node, ())] = [(head nodes, nd, ()) | nd <- tail nodes]
+                                          let depGraph'' = insEdges newEdges depGraph'
+                                          createDepGraph' ((fst <$> importedModules) ++ mns) depGraph'' mnm'
 
 
 
