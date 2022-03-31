@@ -24,7 +24,7 @@ ds env = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } e
 parseType :: Environment Inferred -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
 parseType env pol input expected = do
   it ("Parsing of " ++ T.unpack input ++ " works") $ do
-    let parseResult = runInteractiveParser typP input
+    let parseResult = runInteractiveParser (fst <$> typP) input
     case parseResult of
       Left _err -> expectationFailure "Could not parse example type"
       Right result -> do
@@ -38,8 +38,8 @@ parseType env pol input expected = do
 parseTypeIdentical :: Environment Inferred -> PolarityRep pol -> Text -> Text -> Spec
 parseTypeIdentical env pol input1 input2 =
   it ("Parsing of " ++ T.unpack input1 ++ " yields the same result as parsing " ++ T.unpack input2) $ do
-    let parseResult1 = runInteractiveParser typP input1
-    let parseResult2 = runInteractiveParser typP input2
+    let parseResult1 = runInteractiveParser (fst <$> typP) input1
+    let parseResult2 = runInteractiveParser (fst <$> typP) input2
     case (parseResult1, parseResult2) of
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"

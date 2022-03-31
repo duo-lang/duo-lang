@@ -5,7 +5,7 @@
 -- Welcome to this tutorial and short tour of the features of DualSub.
 --
 -- In order to try out the examples, install dualsub and start a REPL session with `dualsub repl`,
--- and enter `:load tutorial.txt` to start following along.
+-- and enter `:load tutorial.ds` to start following along.
 
 -- ------------------------------------------------------------------------
 -- 1.1 Data Types and Pattern matching.
