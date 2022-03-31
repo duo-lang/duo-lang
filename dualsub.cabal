@@ -64,6 +64,7 @@ library
   import: shared-build-depends
   exposed-modules:
       Driver.Definition
+      Driver.DepGraph
       Driver.Driver
       Driver.Environment
       Errors
@@ -145,6 +146,7 @@ executable dualsub
   main-is: Main.hs
   other-modules:
       Compile
+      Deps
       LSP.LSP
       LSP.Definition
       LSP.CodeActionHandler
