@@ -22,8 +22,6 @@ import Data.Graph.Inductive.Query.DFS (topsort')
 import Data.GraphViz
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
-import Data.GraphViz
-    ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
 import Data.Text.Lazy (pack)
 
 import Parser.Definition
