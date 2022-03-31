@@ -61,12 +61,12 @@ tyOpNameP = try $ do
   (name, pos) <- operatorP
   return (MkTyOpName name, pos)
 
-tyBinOpP :: Parser BinOp
+tyBinOpP :: Parser (BinOp, SourcePos)
 tyBinOpP = try (interOp <|> unionOp <|> customOp)
   where
-    interOp  = InterOp <$ symbolP SymIntersection
-    unionOp  = UnionOp <$ symbolP SymUnion
-    customOp = tyOpNameP >>= (\(op,_) -> pure (CustomOp op))
+    interOp  = symbolP SymIntersection >>= \pos -> pure (InterOp, pos)
+    unionOp  = symbolP SymUnion >>= \pos -> pure (UnionOp, pos)
+    customOp = tyOpNameP >>= (\(op,pos) -> pure (CustomOp op, pos))
 
 precedenceP :: Parser Precedence
 precedenceP = do
