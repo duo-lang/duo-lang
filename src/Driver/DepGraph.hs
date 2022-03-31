@@ -36,7 +36,18 @@ import Errors
 import Utils
 
 -- | A dependency Graph which represents the structure of imports.
-type DepGraph = Gr ModuleName ()
+data DepGraph = MkDepGraph { graph :: Gr ModuleName ()
+                           , node_supply :: Int
+                           , name_map :: Map ModuleName Node
+                           , visited :: [ModuleName]
+                           }
+
+defaultDepGraph :: DepGraph
+defaultDepGraph = MkDepGraph { graph = empty
+                             , node_supply = 0
+                             , name_map = M.empty
+                             , visited = []
+                             }
 
 -- | Order in which modules should be compiled. (=Topological sorting of DepGraph)
 type CompilationOrder = [ModuleName]
@@ -47,49 +58,48 @@ type CompilationOrder = [ModuleName]
 
 -- | Create the dependency graph by recursively following import statements.
 createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] empty defaultModuleNameMap
+createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] defaultDepGraph
 
-type ModuleNameMap = (Int, Map ModuleName Node)
+lookupOrInsert :: DepGraph -> ModuleName -> (Node, DepGraph)
+lookupOrInsert depGraph@MkDepGraph {..} mn = case M.lookup mn name_map of
+  Nothing -> (node_supply, depGraph { graph = insNode (node_supply, mn) graph
+                                    , node_supply = node_supply + 1
+                                    , name_map = M.insert mn node_supply name_map })
+  Just nd -> (nd, depGraph)
 
-defaultModuleNameMap :: ModuleNameMap
-defaultModuleNameMap = (0, M.empty)
-
-lookupModule :: ModuleNameMap -> ModuleName -> (Node, ModuleNameMap)
-lookupModule (counter,map) mn = case M.lookup mn map of
-  Nothing -> (counter, (counter + 1, M.insert mn counter map))
-  Just nd -> (nd     , (counter    ,                     map))
-
-lookupModules :: ModuleNameMap -> [ModuleName] -> ([Node], ModuleNameMap)
-lookupModules mnm [] = ([],mnm)
-lookupModules mnm (mn:mns) =
+lookupOrInserts :: DepGraph -> [ModuleName] -> ([Node], DepGraph)
+lookupOrInserts depGraph [] = ([],depGraph)
+lookupOrInserts depGraph (mn:mns) =
   let 
-    (nodes,mnm') = lookupModules mnm mns
-    (node, mnm'') = lookupModule mnm' mn
+    (nodes,depGraph') = lookupOrInserts depGraph mns
+    (node, depGraph'') = lookupOrInsert depGraph' mn
   in
-    (node:nodes,mnm'')
+    (node:nodes,depGraph'')
 
 
-createDepGraph' :: [ModuleName] -> DepGraph -> ModuleNameMap -> DriverM DepGraph
-createDepGraph' [] depGraph _mnm = pure depGraph
-createDepGraph' (mn:mns) depGraph mnm | mn `M.member` (snd mnm) = createDepGraph' mns depGraph mnm
-                                      | otherwise = do
-                                          fp <- findModule mn defaultLoc
-                                          file <- liftIO $ T.readFile fp
-                                          decls <- runFileParser fp programP file
-                                          let importedModules = imports (createSymbolTable decls)
-                                          let (nodes, mnm') = lookupModules mnm (mn:(fst <$> importedModules))
-                                          let newNodes :: [(Node, ModuleName)] = zip nodes (mn:(fst <$> importedModules))
-                                          let depGraph' = insNodes newNodes depGraph
-                                          let newEdges :: [(Node, Node, ())] = [(head nodes, nd, ()) | nd <- tail nodes]
-                                          let depGraph'' = insEdges newEdges depGraph'
-                                          createDepGraph' ((fst <$> importedModules) ++ mns) depGraph'' mnm'
+createDepGraph' :: [ModuleName] -> DepGraph -> DriverM DepGraph
+createDepGraph' [] depGraph = pure depGraph
+createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGraph' mns depGraph
+                                  | otherwise = do
+                                      -- We have to insert the current modulename
+                                      let (this, depGraph') = lookupOrInsert depGraph mn
+                                      fp <- findModule mn defaultLoc
+                                      file <- liftIO $ T.readFile fp
+                                      decls <- runFileParser fp programP file
+                                      let importedModules :: [ModuleName] = fst <$> imports (createSymbolTable decls)
+                                      -- We have to insert all the imported module names
+                                      let (nodes, depGraph'') = lookupOrInserts depGraph' importedModules
+                                      -- We have to insert the edges
+                                      let newEdges :: [(Node, Node, ())] = [(this, imported, ()) | imported <- nodes]
+                                      let depGraph''' = depGraph'' { graph = insEdges newEdges (graph depGraph''), visited = mn : (visited depGraph'')}
+                                      createDepGraph' (importedModules ++ mns) depGraph'''
 
 
 
 
 -- | Throws an error if the dependency graph contains a cycle of imports.
 checkRecursiveImports :: DepGraph -> DriverM ()
-checkRecursiveImports depgraph = case hasLoop (tc depgraph) of
+checkRecursiveImports depgraph = case hasLoop (tc (graph depgraph)) of
     True -> throwError (OtherError Nothing "Imports contain a loop")
     False -> pure ()
 
@@ -98,7 +108,7 @@ checkRecursiveImports depgraph = case hasLoop (tc depgraph) of
 topologicalSort :: DepGraph -> DriverM CompilationOrder
 topologicalSort depGraph = do
     checkRecursiveImports depGraph
-    pure $ reverse $ topsort' depGraph
+    pure $ reverse $ topsort' (graph depGraph)
 
 
 ---------------------------------------------------------------------------------
@@ -106,7 +116,7 @@ topologicalSort depGraph = do
 ---------------------------------------------------------------------------------
 
 depGraphToDot :: DepGraph -> DotGraph Node
-depGraphToDot depgraph = graphToDot depGraphParams depgraph
+depGraphToDot depgraph = graphToDot depGraphParams (graph depgraph)
 
 depGraphParams :: GraphvizParams Node ModuleName () () ModuleName
 depGraphParams = defaultParams
