@@ -114,7 +114,7 @@ typeOperatorDeclP doc = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  (args,_) <- argListsP typP <?> "argument list"
+  (args,_) <- argListsP (fst <$> typP) <?> "argument list"
   return (xt, args )
 
 
