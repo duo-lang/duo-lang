@@ -2,10 +2,10 @@ module Renamer.Types (lowerTyp, lowerTypeScheme, lowerXTorSig) where
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
+import Pretty.Pretty
 import Renamer.Definition
 import Renamer.SymbolTable
 import Syntax.Common
@@ -100,11 +100,11 @@ desugaring loc PosRep InterDesugaring _ _ =
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
     lowerTyp rep (TyNominal loc tyname [tl, tr])
 
-lookupTyOp :: BinOp -> RenamerM TyOp
-lookupTyOp op = do
+lookupTyOp :: Loc -> BinOp -> RenamerM TyOp
+lookupTyOp loc op = do
     tyops <- tyOps <$> getSymbolTable
     case find (\tyop -> symbol tyop == op) tyops of
-      Nothing -> throwError (LowerError Nothing (UnknownOperator (T.pack (show op))))
+      Nothing -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)))
       Just tyop -> pure tyop
 
 -- | Operator precedence parsing
@@ -126,9 +126,9 @@ lookupTyOp op = do
 --     create the node @τ0 \<1\> τ1@ as @r@, then parse @r \<2\> ... \<n\>@
 associateOps :: Typ -> NonEmpty (Loc, BinOp, Typ) -> RenamerM Typ
 associateOps lhs ((loc, s, rhs) :| []) = pure $ TyBinOp loc lhs s rhs
-associateOps lhs ((loc1, s1, rhs1) :| next@(_, s2, _rhs2) : rest) = do
-    op1 <- lookupTyOp s1
-    op2 <- lookupTyOp s2
+associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
+    op1 <- lookupTyOp loc1 s1
+    op2 <- lookupTyOp loc2 s2
     if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
@@ -141,7 +141,7 @@ associateOps lhs ((loc1, s1, rhs1) :| next@(_, s2, _rhs2) : rest) = do
 
 lowerBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> RenamerM (AST.Typ pol)
 lowerBinOp loc rep lhs s rhs = do
-    op <- lookupTyOp s
+    op <- lookupTyOp loc s
     desugaring loc rep (desugar op) lhs rhs
 
 ---------------------------------------------------------------------------------
