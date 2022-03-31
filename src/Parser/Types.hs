@@ -162,8 +162,8 @@ tyTopP = do
 tyBotP :: Parser Typ
 tyBotP = do
   startPos <- getSourcePos
-  endPos <- keywordP KwTop
-  pure $ TyTop (Loc startPos endPos)
+  endPos <- keywordP KwBot
+  pure $ TyBot (Loc startPos endPos)
 
 -- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser Typ
