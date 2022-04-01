@@ -65,8 +65,9 @@ isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocus
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: EvaluationOrder -> Command Compiled -> Maybe (Command Compiled)
 isFocusedCmd eo (Apply _ _ prd cns)    = Apply () (Just (CBox eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
-isFocusedCmd _  (Done _)               = Just (Done ())
-isFocusedCmd _  (Call _ fv)            = Just (Call () fv)
+isFocusedCmd _  (ExitSuccess _)        = Just (ExitSuccess ())
+isFocusedCmd _  (ExitFailure _)        = Just (ExitFailure ())
+isFocusedCmd _  (Jump _ fv)            = Just (Jump () fv)
 isFocusedCmd eo (Print _ prd cmd)      = Print () <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read _ cns)           = Read () <$> isValueTerm eo CnsRep cns
 isFocusedCmd eo (PrimOp _ pt op subst) = PrimOp () pt op <$> isValueSubst eo subst
@@ -93,7 +94,8 @@ isFocusedCmd eo (PrimOp _ pt op subst) = PrimOp () pt op <$> isValueSubst eo sub
 -- Commands:
 --
 -- [[prd >> cns]]  := [[prd]] >> [[cns]]
--- [[Done]]        := Done
+-- [[ExitSuccess]] := ExitSuccess
+-- [[ExitFailure]] := ExitFailure
 -- [[Print(prd)]]  := ??? Unsure!
 --
 -- The `focusXtor` and `focusXtor'` function work together to focus a
@@ -198,8 +200,9 @@ focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: EvaluationOrder -> Command Compiled -> Command Compiled
 focusCmd eo (Apply _ _ prd cns) = Apply () (Just (CBox eo)) (focusTerm eo prd) (focusTerm eo cns)
-focusCmd _  (Done _) = Done ()
-focusCmd _  (Call _ fv) = Call () fv
+focusCmd _  (ExitSuccess _) = ExitSuccess ()
+focusCmd _  (ExitFailure _) = ExitFailure ()
+focusCmd _  (Jump _ fv) = Jump () fv
 focusCmd eo (Print _ (isValueTerm eo PrdRep -> Just prd) cmd) = Print () prd (focusCmd eo cmd)
 focusCmd eo (Print _ prd cmd) = Apply () (Just (CBox eo)) (focusTerm eo prd)
                                                           (MuAbs () CnsRep Nothing (Print () (BoundVar () PrdRep (0,0)) (focusCmd eo cmd)))

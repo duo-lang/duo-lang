@@ -1,8 +1,8 @@
 -- Standard Prelude
 
-def impossible := Done;
+def impossible := ExitSuccess;
 def impossible[*] := mu k. impossible;
 def impossible(*) := mu x. impossible;
 
 -- | Generic print consumer
-def print(*) := mu x.Print(x); Done;
+def print(*) := mu x.Print(x); ExitSuccess;

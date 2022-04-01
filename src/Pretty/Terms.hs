@@ -123,10 +123,11 @@ instance PrettyAnn (Term pc ext) where
   prettyAnn (PrimLitF64 _ f) = annLiteral (prettyAnn f <> "#F64")
 
 instance PrettyAnn (Command ext) where
-  prettyAnn (Done _)= annKeyword "Done"
+  prettyAnn (ExitSuccess _)= annKeyword "ExitSuccess"
+  prettyAnn (ExitFailure _)= annKeyword "ExitFailure"
   prettyAnn (Print _ t cmd) = annKeyword "Print" <> parens (prettyAnn t) <> semi <+> prettyAnn cmd
   prettyAnn (Read _ cns) = annKeyword "Read" <> brackets (prettyAnn cns)
-  prettyAnn (Call _ nm) = prettyAnn nm
+  prettyAnn (Jump _ nm) = prettyAnn nm
   prettyAnn (Apply _ _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
   prettyAnn (PrimOp _ pt op subst) = annKeyword (prettyAnn (primOpKeyword op)) <> annTypeName (prettyAnn (primTypeKeyword pt)) <> prettyAnn subst
 

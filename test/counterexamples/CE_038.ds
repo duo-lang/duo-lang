@@ -2,5 +2,5 @@
 destructor A(CBV) : CBV;
 
 def foo[*] := cocase {
-    A => Done
+    A => ExitSuccess
 };

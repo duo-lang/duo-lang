@@ -22,14 +22,15 @@ import Eval.Primitives
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
-evalTermOnce (Done _) = return Nothing
+evalTermOnce (ExitSuccess _) = return Nothing
+evalTermOnce (ExitFailure _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
   liftIO $ ppPrintIO prd
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
   return (Just (Apply () (Just (CBox CBV)) tm cns))
-evalTermOnce (Call _ fv) = do
+evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]

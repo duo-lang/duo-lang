@@ -195,8 +195,9 @@ instance ToHoverMap (Terms.Command Inferred) where
   toHoverMap (Apply loc kind prd cns) = M.unions [toHoverMap prd, toHoverMap cns, applyToHoverMap (locToRange loc) kind]
   toHoverMap (Print _ prd cmd)        = M.unions [toHoverMap prd, toHoverMap cmd]
   toHoverMap (Read _ cns)             = toHoverMap cns
-  toHoverMap (Call _ _)               = M.empty
-  toHoverMap (Done _)                 = M.empty
+  toHoverMap (Jump _ _)               = M.empty
+  toHoverMap (ExitSuccess _)          = M.empty
+  toHoverMap (ExitFailure _)          = M.empty
   toHoverMap PrimOp {}                = M.empty
 
 instance ToHoverMap (Substitution Inferred) where

@@ -227,8 +227,9 @@ data Command (ext :: Phase) where
   Apply  :: CommandExt ext -> Maybe MonoKind -> Term Prd ext -> Term Cns ext -> Command ext
   Print  :: CommandExt ext -> Term Prd ext -> Command ext -> Command ext
   Read   :: CommandExt ext -> Term Cns ext -> Command ext
-  Call   :: CommandExt ext -> FreeVarName -> Command ext
-  Done   :: CommandExt ext -> Command ext
+  Jump   :: CommandExt ext -> FreeVarName -> Command ext
+  ExitSuccess :: CommandExt ext -> Command ext
+  ExitFailure :: CommandExt ext -> Command ext
   PrimOp :: CommandExt ext -> PrimitiveType -> PrimitiveOp -> Substitution ext -> Command ext
 
 deriving instance (Eq (Command Parsed))
@@ -276,10 +277,11 @@ termOpeningRec _ _ lit@PrimLitF64{} = lit
 
 
 commandOpeningRec :: Int -> Substitution Compiled -> Command Compiled -> Command Compiled
-commandOpeningRec _ _ (Done _) = Done ()
+commandOpeningRec _ _ (ExitSuccess _) = ExitSuccess ()
+commandOpeningRec _ _ (ExitFailure _) = ExitFailure ()
 commandOpeningRec k args (Print _ t cmd) = Print () (termOpeningRec k args t) (commandOpeningRec k args cmd)
 commandOpeningRec k args (Read _ cns) = Read () (termOpeningRec k args cns)
-commandOpeningRec _ _ (Call _ fv) = Call () fv
+commandOpeningRec _ _ (Jump _ fv) = Jump () fv
 commandOpeningRec k args (Apply _ kind t1 t2) = Apply () kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp _ pt op subst) = PrimOp () pt op (pctermOpeningRec k args <$> subst)
 
@@ -324,8 +326,9 @@ termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command ext -> Command ext
-commandClosingRec _ _ (Done ext) = Done ext
-commandClosingRec _ _ (Call ext fv) = Call ext fv
+commandClosingRec _ _ (ExitSuccess ext) = ExitSuccess ext
+commandClosingRec _ _ (ExitFailure ext) = ExitFailure ext
+commandClosingRec _ _ (Jump ext fv) = Jump ext fv
 commandClosingRec k args (Print ext t cmd) = Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) = Read ext (termClosingRec k args cns)
 commandClosingRec k args (Apply ext kind t1 t2) = Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
@@ -394,8 +397,9 @@ termCaseILocallyClosedRec env (MkTermCaseI _ _ (as1, (), as2) e) =
   termLocallyClosedRec (newArgs:env) e
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command ext -> Either Error ()
-commandLocallyClosedRec _ (Done _) = Right ()
-commandLocallyClosedRec _ (Call _ _) = Right ()
+commandLocallyClosedRec _ (ExitSuccess _) = Right ()
+commandLocallyClosedRec _ (ExitFailure _) = Right ()
+commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
@@ -473,8 +477,9 @@ openCommandComplete :: Command ext -> Command Compiled
 openCommandComplete (Apply _ kind t1 t2) = Apply () kind (openTermComplete t1) (openTermComplete t2)
 openCommandComplete (Print _ t cmd) = Print () (openTermComplete t) (openCommandComplete cmd)
 openCommandComplete (Read _ cns) = Read () (openTermComplete cns)
-openCommandComplete (Call _ fv) = Call () fv
-openCommandComplete (Done _) = Done ()
+openCommandComplete (Jump _ fv) = Jump () fv
+openCommandComplete (ExitSuccess _) = ExitSuccess ()
+openCommandComplete (ExitFailure _) = ExitFailure ()
 openCommandComplete (PrimOp _ pt op subst) = PrimOp () pt op (openPCTermComplete <$> subst)
 
 ---------------------------------------------------------------------------------
@@ -513,10 +518,11 @@ shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdR
 
 shiftCmdRec :: Int -> Command ext -> Command ext
 shiftCmdRec n (Apply ext kind prd cns) = Apply ext kind (shiftTermRec n prd) (shiftTermRec n cns)
-shiftCmdRec _ (Done ext) = Done ext
+shiftCmdRec _ (ExitSuccess ext) = ExitSuccess ext
+shiftCmdRec _ (ExitFailure ext) = ExitFailure ext
 shiftCmdRec n (Print ext prd cmd) = Print ext (shiftTermRec n prd) (shiftCmdRec n cmd)
 shiftCmdRec n (Read ext cns) = Read ext (shiftTermRec n cns)
-shiftCmdRec _ (Call ext fv) = Call ext fv
+shiftCmdRec _ (Jump ext fv) = Jump ext fv
 shiftCmdRec n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
@@ -565,6 +571,7 @@ removeNamesCmd :: Command ext -> Command ext
 removeNamesCmd (Apply ext kind prd cns) = Apply ext kind (removeNamesTerm prd) (removeNamesTerm cns)
 removeNamesCmd (Print ext prd cmd) = Print ext (removeNamesTerm prd) (removeNamesCmd cmd)
 removeNamesCmd (Read ext cns) = Read ext (removeNamesTerm cns)
-removeNamesCmd (Call ext fv) = Call ext fv
-removeNamesCmd (Done ext) = Done ext
+removeNamesCmd (Jump ext fv) = Jump ext fv
+removeNamesCmd (ExitSuccess ext) = ExitSuccess ext
+removeNamesCmd (ExitFailure ext) = ExitFailure ext
 removeNamesCmd (PrimOp ext pt op subst) = PrimOp ext pt op (removeNamesPrdCnsTerm <$> subst)

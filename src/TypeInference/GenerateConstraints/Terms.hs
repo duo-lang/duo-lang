@@ -547,11 +547,12 @@ genConstraintsTerm (PrimLitI64 loc i) = pure $ PrimLitI64 (loc, TyPrim PosRep I6
 genConstraintsTerm (PrimLitF64 loc d) = pure $ PrimLitF64 (loc, TyPrim PosRep F64) d
 
 genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
-genConstraintsCommand (Done loc) = return (Done loc)
-genConstraintsCommand (Call loc fv) = do
+genConstraintsCommand (ExitSuccess loc) = return (ExitSuccess loc)
+genConstraintsCommand (ExitFailure loc) = return (ExitFailure loc)
+genConstraintsCommand (Jump loc fv) = do
   -- Ensure that the referenced command is in scope
   _ <- lookupCommand fv
-  return (Call loc fv)
+  return (Jump loc fv)
 genConstraintsCommand (Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd

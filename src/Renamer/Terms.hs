@@ -192,8 +192,9 @@ lowerCommand :: CST.Command -> RenamerM (AST.Command Parsed)
 lowerCommand (CST.Apply loc tm1 tm2)       = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2
 lowerCommand (CST.Print loc tm cmd)        = AST.Print loc <$> lowerTerm PrdRep tm <*> lowerCommand cmd
 lowerCommand (CST.Read loc tm)             = AST.Read loc <$> lowerTerm CnsRep tm
-lowerCommand (CST.Call loc fv)             = pure $ AST.Call loc fv
-lowerCommand (CST.Done loc)                = pure $ AST.Done loc
+lowerCommand (CST.Jump loc fv)             = pure $ AST.Jump loc fv
+lowerCommand (CST.ExitSuccess loc)         = pure $ AST.ExitSuccess loc
+lowerCommand (CST.ExitFailure loc)         = pure $ AST.ExitFailure loc
 lowerCommand (CST.CommandParens _loc cmd)  = lowerCommand cmd
 lowerCommand (CST.PrimOp loc pt op subst)  = do
   let arity = CST.substitutionToArity subst

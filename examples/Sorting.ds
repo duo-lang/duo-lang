@@ -88,4 +88,4 @@ def rec compare[*] : Nat -> Nat -> Ordering :=
 
 def testlist[*] := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
-def main := Print(sort compare testlist); Done;
+def main := Print(sort compare testlist); ExitSuccess;

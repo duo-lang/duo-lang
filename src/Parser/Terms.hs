@@ -114,11 +114,17 @@ applyCmdP = do
   (cns, endPos) <- termTopP
   return (CST.Apply (Loc startPos endPos) prd cns, endPos)
 
-doneCmdP :: Parser (CST.Command, SourcePos)
-doneCmdP = do
+exitSuccessCmdP :: Parser (CST.Command, SourcePos)
+exitSuccessCmdP = do
   startPos <- getSourcePos
-  endPos <- keywordP KwDone
-  return (CST.Done (Loc startPos endPos), endPos)
+  endPos <- keywordP KwExitSuccess
+  return (CST.ExitSuccess (Loc startPos endPos), endPos)
+
+exitFailureCmdP :: Parser (CST.Command, SourcePos)
+exitFailureCmdP = do
+  startPos <- getSourcePos
+  endPos <- keywordP KwExitFailure
+  return (CST.ExitFailure (Loc startPos endPos), endPos)
 
 printCmdP :: Parser (CST.Command, SourcePos)
 printCmdP = do
@@ -140,7 +146,7 @@ commandVar :: Parser (CST.Command, SourcePos)
 commandVar = do
   startPos <- getSourcePos
   (nm, endPos) <- freeVarNameP
-  return (CST.Call (Loc startPos endPos) nm, endPos)
+  return (CST.Jump (Loc startPos endPos) nm, endPos)
 
 commandParensP :: Parser (CST.Command, SourcePos)
 commandParensP = do
@@ -158,7 +164,8 @@ primitiveCmdP = do
 cstcommandP :: Parser (CST.Command, SourcePos)
 cstcommandP =
   try commandParensP
-  <|> doneCmdP
+  <|> exitSuccessCmdP
+  <|> exitFailureCmdP
   <|> printCmdP
   <|> readCmdP
   <|> primitiveCmdP

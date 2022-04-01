@@ -14,11 +14,11 @@ def main :=
     Print(div x y);
     Print(mul x y);
     Print(mod x y);
-    Done;
+    ExitSuccess;
 
 def mainf :=
     Print(addf xf yf);
     Print(subf xf yf);
     Print(divf xf yf);
     Print(mulf xf yf);
-    Done;
+    ExitSuccess;
