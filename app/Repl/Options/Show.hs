@@ -35,7 +35,7 @@ showCmd "" = do
   loadedFiles <- gets loadedFiles
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  let ds = DriverState opts oldEnv
+  let ds = DriverState opts oldEnv mempty
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
     decls' <- liftIO $ execDriverM ds $ lowerProgram decls

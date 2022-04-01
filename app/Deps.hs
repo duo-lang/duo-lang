@@ -17,7 +17,7 @@ runDeps fp = do
             printCompilationOrder compilationOrder
 
 createDeps :: FilePath -> IO (Either Error (DepGraph,CompilationOrder))
-createDeps fp = fmap fst <$> execDriverM (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty) (createDeps' fp)
+createDeps fp = fmap fst <$> execDriverM (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty) (createDeps' fp)
 
 createDeps' :: FilePath -> DriverM (DepGraph, CompilationOrder)
 createDeps' fp = do

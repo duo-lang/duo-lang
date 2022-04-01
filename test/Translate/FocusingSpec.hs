@@ -15,7 +15,7 @@ import Translate.Reparse
 
 
 driverState :: DriverState
-driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty
+driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty
 
 testHelper :: FilePath -> EvaluationOrder -> SpecWith ()
 testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ do

@@ -9,6 +9,7 @@ import System.Directory ( doesFileExist )
 import Driver.Environment
 import Errors
 import Pretty.Errors ( printLocatedError )
+import Renamer.SymbolTable
 import Syntax.Common
 import Utils
 
@@ -38,6 +39,7 @@ defaultInferenceOptions = InferenceOptions
 data DriverState = DriverState
   { driverOpts :: InferenceOptions
   , driverEnv :: Environment Inferred
+  , driverSymbols :: SymbolTable
   }
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
@@ -52,6 +54,9 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 
 setEnvironment :: Environment Inferred -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
+
+setSymboltable :: SymbolTable -> DriverM ()
+setSymboltable st = modify (\state -> state { driverSymbols = st })
 
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()

@@ -6,22 +6,22 @@ import Data.Text qualified as T
 
 
 import Driver.Definition
-import Driver.Environment
 import Parser.Parser
 import Parser.Types (typP)
 import Pretty.Errors ()
 import Pretty.Terms ()
 import Pretty.Types ()
 import Renamer.Types
+import Renamer.SymbolTable
 import Syntax.AST.Types
 import Syntax.AST.Types qualified as AST
 import Syntax.Common
-import TestUtils (getEnvironment)
+import TestUtils (getSymbolTable)
 
-ds :: Environment Inferred ->  DriverState
-ds env = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } env
+ds :: SymbolTable ->  DriverState
+ds st = DriverState defaultInferenceOptions mempty st
 
-parseType :: Environment Inferred -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
+parseType :: SymbolTable -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
 parseType env pol input expected = do
   it ("Parsing of " ++ T.unpack input ++ " works") $ do
     let parseResult = runInteractiveParser (fst <$> typP) input
@@ -35,7 +35,7 @@ parseType env pol input expected = do
             PosRep -> result `shouldBe` expected
             NegRep -> result `shouldBe` expected
 
-parseTypeIdentical :: Environment Inferred -> PolarityRep pol -> Text -> Text -> Spec
+parseTypeIdentical :: SymbolTable -> PolarityRep pol -> Text -> Text -> Spec
 parseTypeIdentical env pol input1 input2 =
   it ("Parsing of " ++ T.unpack input1 ++ " yields the same result as parsing " ++ T.unpack input2) $ do
     let parseResult1 = runInteractiveParser (fst <$> typP) input1
@@ -53,7 +53,7 @@ parseTypeIdentical env pol input1 input2 =
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
 
-parseTypeSchemeIdentical :: Environment Inferred -> PolarityRep pol -> Text -> Text -> Spec
+parseTypeSchemeIdentical :: SymbolTable -> PolarityRep pol -> Text -> Text -> Spec
 parseTypeSchemeIdentical env pol input1 input2 = do
   it ("Parsing of " ++ T.unpack input1 ++ " yields the same result as parsing " ++ T.unpack input2) $ do
     let parseResult1 = runInteractiveParser typeSchemeP input1
@@ -81,10 +81,15 @@ mkNat rep = TyNominal rep Nothing (MkTypeName "Nat") [] []
 spec :: Spec
 spec = do
   describe "Check type parsing" $ do
-    eenv <- runIO $ getEnvironment "examples/Peano.ds" defaultInferenceOptions { infOptsLibPath = ["examples"] }
-    let env = case eenv of
+    eenv1 <- runIO $ getSymbolTable "examples/Peano.ds"
+    eenv2 <- runIO $ getSymbolTable "examples/Function.ds"
+    let env1 = case eenv1 of
                 Left _ -> error "Could not load Peano.ds"
-                Right env -> env
+                Right env1 -> env1
+    let env2 = case eenv2 of
+                Left _ -> error "Could not load Function.ds"
+                Right env2 -> env2
+    let env = env1 <> env2
     parseType env PosRep
                  "< Nat | >"
                  (TyData PosRep (Just $ MkTypeName "Nat") [])

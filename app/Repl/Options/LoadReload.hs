@@ -35,7 +35,7 @@ loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
   opts <- gets typeInfOpts
-  res <- liftIO $ inferProgramIO (DriverState opts mempty) decls
+  res <- liftIO $ inferProgramIO (DriverState opts mempty mempty) decls
   case res of
     Left err -> printLocatedError err
     Right (newEnv,_) -> do

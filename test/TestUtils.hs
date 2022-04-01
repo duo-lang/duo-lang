@@ -8,6 +8,7 @@ import Driver.Driver
 import Driver.Environment
 import Errors
 import Parser.Parser
+import Renamer.SymbolTable
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program
 import Syntax.Common
@@ -35,7 +36,7 @@ getRenamedDeclarations fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      renameProgramIO (DriverState infopts mempty) decls
+      renameProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
 getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error (Program Inferred))
@@ -43,7 +44,7 @@ getTypecheckedDecls fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> inferProgramIO (DriverState infopts mempty) decls
+      fmap snd <$> inferProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
 getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment Inferred))
@@ -51,6 +52,12 @@ getEnvironment fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap fst <$> inferProgramIO (DriverState infopts mempty) decls
+      fmap fst <$> inferProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
+getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
+getSymbolTable fp = do
+  decls <- getParsedDeclarations fp
+  case decls of
+    Right decls -> pure (Right (createSymbolTable decls))
+    Left err -> return (Left err)

@@ -8,7 +8,6 @@ import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 
 import Driver.Definition
-import Driver.Environment
 import Pretty.Pretty
 import Renamer.SymbolTable
 import Syntax.Common
@@ -26,7 +25,7 @@ type RenamerM a = DriverM a
 ------------------------------------------------------------------------------
 
 getSymbolTable :: RenamerM SymbolTable
-getSymbolTable = gets (symbolTable . driverEnv)
+getSymbolTable = gets driverSymbols
 
 
 lookupXtor :: Loc -> (XtorName, DataCodata) -> RenamerM (NominalStructural, Arity)
@@ -50,9 +49,9 @@ lookupTypeConstructorAritiy loc tn = do
 
 updateSymbolTable :: (SymbolTable -> SymbolTable) -> RenamerM ()
 updateSymbolTable f = do
-    env <- gets driverEnv
-    let newEnv = env { symbolTable = f (symbolTable env)}
-    modify (\state -> state { driverEnv = newEnv })
+    symbolTable <- gets driverSymbols
+    let newSymbolTable = f symbolTable
+    modify (\state -> state { driverSymbols = newSymbolTable })
 
 
 -- | Given the Library Paths contained in the inference options and a module name,

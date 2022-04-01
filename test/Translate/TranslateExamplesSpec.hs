@@ -15,7 +15,7 @@ import Driver.Driver
 import TestUtils
 
 driverState :: DriverState
-driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty
+driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty
 
 spec :: Spec
 spec = do
