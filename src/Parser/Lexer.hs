@@ -187,7 +187,8 @@ data Keyword where
   KwLeftAssoc   :: Keyword
   KwRightAssoc  :: Keyword
   -- Command Keywords
-  KwDone        :: Keyword
+  KwExitSuccess :: Keyword
+  KwExitFailure :: Keyword
   KwPrint       :: Keyword
   KwRead        :: Keyword
   -- Declaration Keywords
@@ -224,7 +225,8 @@ instance Show Keyword where
   show KwLeftAssoc   = "leftassoc"
   show KwRightAssoc  = "rightassoc"
   -- Command Keywords
-  show KwDone        = "Done"
+  show KwExitSuccess = "ExitSuccess"
+  show KwExitFailure = "ExitFailure"
   show KwPrint       = "Print"
   show KwRead        = "Read"
   -- Declaration Keywords
@@ -264,7 +266,8 @@ isDeclarationKw KwAt          = False
 isDeclarationKw KwLeftAssoc   = False
 isDeclarationKw KwRightAssoc  = False
 -- Command Keywords
-isDeclarationKw KwDone        = False
+isDeclarationKw KwExitSuccess = False
+isDeclarationKw KwExitFailure = False
 isDeclarationKw KwPrint       = False
 isDeclarationKw KwRead        = False
 -- Declaration Keywords

@@ -67,8 +67,9 @@ createNamesTerm (PrimLitI64 _ i) = pure (PrimLitI64 defaultLoc i)
 createNamesTerm (PrimLitF64 _ d) = pure (PrimLitF64 defaultLoc d)
 
 createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
-createNamesCommand (Done _) = return $ Done defaultLoc
-createNamesCommand (Call _ fv) = return $ Call defaultLoc fv
+createNamesCommand (ExitSuccess _) = return $ ExitSuccess defaultLoc
+createNamesCommand (ExitFailure _) = return $ ExitFailure defaultLoc
+createNamesCommand (Jump _ fv) = return $ Jump defaultLoc fv
 createNamesCommand (Apply _ kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns

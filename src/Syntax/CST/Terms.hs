@@ -93,8 +93,9 @@ data Command where
   Apply :: Loc -> Term -> Term -> Command
   Print :: Loc -> Term -> Command -> Command
   Read  :: Loc -> Term -> Command
-  Call  :: Loc -> FreeVarName -> Command
-  Done  :: Loc -> Command
+  Jump  :: Loc -> FreeVarName -> Command
+  ExitSuccess  :: Loc -> Command
+  ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
   -- Sugar Nodes
   CommandParens :: Loc -> Command -> Command

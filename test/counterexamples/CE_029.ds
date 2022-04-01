@@ -2,4 +2,4 @@
 
 destructor A : CBV;
 
-def test[*] := case { A => Done };
+def test[*] := case { A => ExitSuccess };

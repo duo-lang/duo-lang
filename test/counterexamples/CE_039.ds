@@ -2,5 +2,5 @@
 constructor A(CBV) : CBV;
 
 def foo(*) := case {
-    A(x,y) => Done
+    A(x,y) => ExitSuccess
 };

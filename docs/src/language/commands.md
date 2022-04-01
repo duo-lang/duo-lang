@@ -3,16 +3,16 @@
 Commands are the syntactic category that actually gets executed when you run a program.
 The entry point to a program, the main function, is also a command.
 
-## The Done Command
+## The Exit Commands
 
-The simplest command is called `Done`, which is used to terminate the program.
+The simplest commands are called `ExitSuccess` and `ExitFailure`, which are used to terminate the program.
 
 #### Example 1:
 
 We can write a simple command which just exits directly after it is called.
 
 ```
-def exitAtOnce := Done;
+def exitAtOnce := ExitSuccess;
 ```
 
 ## The Apply Command
@@ -30,7 +30,7 @@ We use the `>>` symbol to express a cut, and write the producer on the left side
 The following program cuts the producer `True` against a pattern match on booleans, and then exits the program.
 
 ```
-def exit :=  True >> match { True => Done; False => Done };
+def exit :=  True >> match { True => ExitSuccess; False => ExitSuccess };
 ```
 
 ## IO Actions
@@ -46,5 +46,5 @@ def rec addA[*] := \x => \y => case x of { Z => y
                                       , S(z) => addA z S(y)
 					        };
 
-def main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
+def main := Read[ mu x. Read[mu y. Print(addA x y);ExitSuccess]];
 ```

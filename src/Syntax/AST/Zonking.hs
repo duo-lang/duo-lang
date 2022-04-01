@@ -83,6 +83,7 @@ zonkCommand :: Bisubstitution -> Command Inferred -> Command Inferred
 zonkCommand bisubst (Apply ext kind prd cns) = Apply ext kind (zonkTerm bisubst prd) (zonkTerm bisubst cns)
 zonkCommand bisubst (Print ext prd cmd) = Print ext (zonkTerm bisubst prd) (zonkCommand bisubst cmd)
 zonkCommand bisubst (Read ext cns) = Read ext (zonkTerm bisubst cns)
-zonkCommand _       (Call ext fv) = Call ext fv
-zonkCommand _       (Done ext) = Done ext
+zonkCommand _       (Jump ext fv) = Jump ext fv
+zonkCommand _       (ExitSuccess ext) = ExitSuccess ext
+zonkCommand _       (ExitFailure ext) = ExitFailure ext
 zonkCommand bisubst (PrimOp ext pt op subst) = PrimOp ext pt op (zonkPCTerm bisubst <$> subst)

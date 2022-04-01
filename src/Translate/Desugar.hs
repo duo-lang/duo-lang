@@ -40,8 +40,9 @@ isDesugaredCommand :: Command Inferred -> Bool
 isDesugaredCommand (Apply _ _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
 isDesugaredCommand (Print _ prd cmd) = isDesugaredTerm prd && isDesugaredCommand cmd
 isDesugaredCommand (Read _ cns) = isDesugaredTerm cns
-isDesugaredCommand (Call _ _) = True
-isDesugaredCommand (Done _) = True
+isDesugaredCommand (Jump _ _) = True
+isDesugaredCommand (ExitSuccess _) = True
+isDesugaredCommand (ExitFailure _) = True
 isDesugaredCommand (PrimOp _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
@@ -107,8 +108,9 @@ desugarCmd :: Command Inferred -> Command Compiled
 desugarCmd (Apply _ kind prd cns) = Apply () kind (desugarTerm prd) (desugarTerm cns)
 desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (Read _ cns) = Read () (desugarTerm cns)
-desugarCmd (Call _ fv) = Call () fv
-desugarCmd (Done _) = Done ()
+desugarCmd (Jump _ fv) = Jump () fv
+desugarCmd (ExitSuccess _) = ExitSuccess ()
+desugarCmd (ExitFailure _) = ExitFailure ()
 desugarCmd (PrimOp _ pt op subst) = PrimOp () pt op (desugarPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
