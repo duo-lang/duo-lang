@@ -140,6 +140,7 @@ inferDecl (CmdDecl (doc,loc) v cmd) = do
 inferDecl (DataDecl (doc,loc) dcl) = do
   -- Insert into environment
   env <- gets driverEnv
+  st <- gets driverSymbols
   let tn = data_name dcl
   case find (\NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
     Just _ ->
@@ -152,17 +153,18 @@ inferDecl (DataDecl (doc,loc) dcl) = do
                       Refined -> Refinement
                       NotRefined -> Nominal
       let newXtors = M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]
-      let newEnv = env { declEnv = (loc,dcl) : declEnv env
-                       , symbolTable = (symbolTable env) { xtorMap = M.union  newXtors (xtorMap (symbolTable env)) }}
+      let newEnv = env { declEnv = (loc,dcl) : declEnv env }
+      let newSt  = st { xtorMap = M.union  newXtors (xtorMap st) }
       setEnvironment newEnv
+      setSymboltable newSt
       return (DataDecl (doc,loc) dcl)
 --
 -- XtorDecl
 --
 inferDecl (XtorDecl loc dc xt args ret) = do
-  env <- gets driverEnv
-  let newEnv = env { symbolTable = (symbolTable env) { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap (symbolTable env)) }}
-  setEnvironment newEnv
+  symbolTable <- gets driverSymbols
+  let newSymbolTable = symbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap symbolTable) }
+  setSymboltable newSymbolTable
   pure $ XtorDecl loc dc xt args ret
 --
 -- ImportDecl
@@ -194,7 +196,7 @@ inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file
   -- Use inference options of parent? Probably not?
-  x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty) decls
+  x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty mempty) decls
   case x of
      Left err -> throwError err
      Right env -> return env

@@ -14,7 +14,7 @@ import TestUtils (getEnvironment)
 import TypeAutomata.Subsume (subsume)
 
 ds :: Environment Inferred -> DriverState
-ds env = DriverState defaultInferenceOptions env
+ds env = DriverState defaultInferenceOptions env mempty
 
 subsumptionCheckPos :: Environment Inferred -> Bool -> Text -> Text -> Spec
 subsumptionCheckPos env bspec s1 s2 = do

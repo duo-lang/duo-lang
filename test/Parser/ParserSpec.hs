@@ -19,7 +19,7 @@ import Syntax.Common
 import TestUtils (getEnvironment)
 
 ds :: Environment Inferred ->  DriverState
-ds env = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } env
+ds env = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } env mempty
 
 parseType :: Environment Inferred -> PolarityRep pol -> Text -> AST.Typ pol -> Spec
 parseType env pol input expected = do

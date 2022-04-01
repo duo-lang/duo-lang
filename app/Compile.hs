@@ -18,7 +18,9 @@ import Translate.Focusing (focusCmd, focusEnvironment)
 
 driverState :: DriverState
 driverState = DriverState { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"]}
-                          , driverEnv = mempty }
+                          , driverEnv = mempty 
+                          , driverSymbols = mempty
+                          }
 
 runCompile :: FilePath -> IO ()
 runCompile fp = do

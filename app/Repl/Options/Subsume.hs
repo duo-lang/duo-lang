@@ -18,7 +18,7 @@ subCmd :: Text -> Repl ()
 subCmd s = do
   env <- gets replEnv
   opts <- gets typeInfOpts
-  let ds = DriverState opts env
+  let ds = DriverState opts env mempty
   (t1,t2) <- parseInteractive subtypingProblemP s
   t1' <- liftIO $ execDriverM ds $ lowerTypeScheme PosRep t1
   t2' <- liftIO $ execDriverM ds $ lowerTypeScheme PosRep t2

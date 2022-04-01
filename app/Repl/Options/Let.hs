@@ -21,7 +21,7 @@ letCmd s = do
   decl <- fromRight (runExcept (runInteractiveParser declarationP s))
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  let ds = DriverState opts oldEnv
+  let ds = DriverState opts oldEnv mempty
   newEnv <- liftIO $ execDriverM ds (lowerDecl decl >>= \x -> inferDecl x)
   case newEnv of
     Left err -> prettyText (T.pack $ show err)
