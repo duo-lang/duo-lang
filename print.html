@@ -395,8 +395,8 @@ def someConsumer(*) : ... := ...;
 <h2 id="core-constructs"><a class="header" href="#core-constructs">Core constructs</a></h2>
 <p>DualSub supports control operators in the form of the \(\mu\) and \(\tilde\mu\) constructs of the \(\lambda\mu\tilde\mu\) calculus.
 Both constructs use identical syntax.</p>
-<pre><code>def ex1[*] := mu x. Done;
-def ex2(*) := mu x. Done;
+<pre><code>def ex1[*] := mu x. ExitSuccess;
+def ex2(*) := mu x. ExitSuccess;
 </code></pre>
 <h2 id="producer-introduction-rules"><a class="header" href="#producer-introduction-rules">Producer Introduction Rules</a></h2>
 <p>The rules for data and codata types are given separately</p>
@@ -427,13 +427,13 @@ def ex2[*] : Pair(Nat,Bool):= cocase
 <h4 id="data-types-1"><a class="header" href="#data-types-1">Data Types</a></h4>
 <p>A consumer of a data type is introduced using pattern matching</p>
 <pre><code>def ex1(*) := case {
-    Z =&gt; Done,
-    S(x) =&gt; Done
+    Z =&gt; ExitSuccess,
+    S(x) =&gt; ExitSuccess
 };
 </code></pre>
 <h4 id="codata-types-1"><a class="header" href="#codata-types-1">Codata Types</a></h4>
 <p>Introduction rules for consumers of codata types use one of the available destructors.</p>
-<pre><code>def ex1(*) : NatStream := Head[mu x.Done];
+<pre><code>def ex1(*) : NatStream := Head[mu x.ExitSuccess];
 </code></pre>
 <h2 id="producer-elimination-rules"><a class="header" href="#producer-elimination-rules">Producer Elimination Rules</a></h2>
 <p>The rules for data and codata types are given separately</p>
@@ -450,11 +450,11 @@ def ex2[*] : Pair(Nat,Bool):= cocase
 <div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
 <p>Commands are the syntactic category that actually gets executed when you run a program.
 The entry point to a program, the main function, is also a command.</p>
-<h2 id="the-done-command"><a class="header" href="#the-done-command">The Done Command</a></h2>
-<p>The simplest command is called <code>Done</code>, which is used to terminate the program.</p>
+<h2 id="the-exit-commands"><a class="header" href="#the-exit-commands">The Exit Commands</a></h2>
+<p>The simplest commands are called <code>ExitSuccess</code> and <code>ExitFailure</code>, which are used to terminate the program.</p>
 <h4 id="example-1"><a class="header" href="#example-1">Example 1:</a></h4>
 <p>We can write a simple command which just exits directly after it is called.</p>
-<pre><code>def exitAtOnce := Done;
+<pre><code>def exitAtOnce := ExitSuccess;
 </code></pre>
 <h2 id="the-apply-command"><a class="header" href="#the-apply-command">The Apply Command</a></h2>
 <p>The most important command is called &quot;Apply&quot;.
@@ -464,7 +464,7 @@ Apply intuitively just combines a producer with a consumer of the same type.</p>
 <p>We use the <code>&gt;&gt;</code> symbol to express a cut, and write the producer on the left side of it, and the consumer on the right hand side.</p>
 <h4 id="example-1-1"><a class="header" href="#example-1-1">Example 1:</a></h4>
 <p>The following program cuts the producer <code>True</code> against a pattern match on booleans, and then exits the program.</p>
-<pre><code>def exit :=  True &gt;&gt; match { True =&gt; Done; False =&gt; Done };
+<pre><code>def exit :=  True &gt;&gt; match { True =&gt; ExitSuccess; False =&gt; ExitSuccess };
 </code></pre>
 <h2 id="io-actions"><a class="header" href="#io-actions">IO Actions</a></h2>
 <p>There currently are only two IO actions provided; <code>Print</code> and <code>Read</code>.</p>
@@ -475,7 +475,7 @@ def rec addA[*] := \x =&gt; \y =&gt; case x of { Z =&gt; y
                                       , S(z) =&gt; addA z S(y)
 					        };
 
-def main := Read[ mu x. Read[mu y. Print(addA x y);Done]];
+def main := Read[ mu x. Read[mu y. Print(addA x y);ExitSuccess]];
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lsp-features"><a class="header" href="#lsp-features">LSP Features</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h1>

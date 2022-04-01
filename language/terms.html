@@ -178,8 +178,8 @@ def someConsumer(*) : ... := ...;
 <h2 id="core-constructs"><a class="header" href="#core-constructs">Core constructs</a></h2>
 <p>DualSub supports control operators in the form of the \(\mu\) and \(\tilde\mu\) constructs of the \(\lambda\mu\tilde\mu\) calculus.
 Both constructs use identical syntax.</p>
-<pre><code>def ex1[*] := mu x. Done;
-def ex2(*) := mu x. Done;
+<pre><code>def ex1[*] := mu x. ExitSuccess;
+def ex2(*) := mu x. ExitSuccess;
 </code></pre>
 <h2 id="producer-introduction-rules"><a class="header" href="#producer-introduction-rules">Producer Introduction Rules</a></h2>
 <p>The rules for data and codata types are given separately</p>
@@ -210,13 +210,13 @@ def ex2[*] : Pair(Nat,Bool):= cocase
 <h4 id="data-types-1"><a class="header" href="#data-types-1">Data Types</a></h4>
 <p>A consumer of a data type is introduced using pattern matching</p>
 <pre><code>def ex1(*) := case {
-    Z =&gt; Done,
-    S(x) =&gt; Done
+    Z =&gt; ExitSuccess,
+    S(x) =&gt; ExitSuccess
 };
 </code></pre>
 <h4 id="codata-types-1"><a class="header" href="#codata-types-1">Codata Types</a></h4>
 <p>Introduction rules for consumers of codata types use one of the available destructors.</p>
-<pre><code>def ex1(*) : NatStream := Head[mu x.Done];
+<pre><code>def ex1(*) : NatStream := Head[mu x.ExitSuccess];
 </code></pre>
 <h2 id="producer-elimination-rules"><a class="header" href="#producer-elimination-rules">Producer Elimination Rules</a></h2>
 <p>The rules for data and codata types are given separately</p>
