@@ -8,15 +8,16 @@ import Driver.Environment
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
+import Renamer.SymbolTable
 import Renamer.Types
 import Syntax.Common
-import TestUtils (getEnvironment)
+import TestUtils (getSymbolTable)
 import TypeAutomata.Subsume (subsume)
 
-ds :: Environment Inferred -> DriverState
-ds env = DriverState defaultInferenceOptions env mempty
+ds :: SymbolTable -> DriverState
+ds st = DriverState defaultInferenceOptions mempty st
 
-subsumptionCheckPos :: Environment Inferred -> Bool -> Text -> Text -> Spec
+subsumptionCheckPos :: SymbolTable -> Bool -> Text -> Text -> Spec
 subsumptionCheckPos env bspec s1 s2 = do
   it (ppPrintString s1 <> " should " <> (if bspec then "" else "not ") <> "subsume " <> ppPrintString s2) $ do
     let parseResult1 = runInteractiveParser typeSchemeP s1
@@ -38,11 +39,11 @@ subsumptionCheckPos env bspec s1 s2 = do
 spec :: Spec
 spec = do
   describe "Subsumption between typeschemes works" $ do
-    eenv <- runIO $ getEnvironment "examples/Peano.ds" defaultInferenceOptions { infOptsLibPath = ["examples"] }
+    eenv <- runIO $ getSymbolTable "examples/Peano.ds"
     let env' = case eenv of
                 Left _ -> error "Could not load Peano.ds"
                 Right env -> env
-    eenv' <- runIO $ getEnvironment "examples/Bool.ds" defaultInferenceOptions { infOptsLibPath = ["examples"] }
+    eenv' <- runIO $ getSymbolTable "examples/Bool.ds"
     let env'' = case eenv' of
                 Left _ -> error "Could not load Bool.ds"
                 Right env -> env

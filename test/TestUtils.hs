@@ -8,6 +8,7 @@ import Driver.Driver
 import Driver.Environment
 import Errors
 import Parser.Parser
+import Renamer.SymbolTable
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program
 import Syntax.Common
@@ -54,3 +55,9 @@ getEnvironment fp infopts = do
       fmap fst <$> inferProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
+getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
+getSymbolTable fp = do
+  decls <- getParsedDeclarations fp
+  case decls of
+    Right decls -> pure (Right (createSymbolTable decls))
+    Left err -> return (Left err)
