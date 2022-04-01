@@ -1,7 +1,6 @@
 module Syntax.Common (
   module Syntax.Common.Kinds,
   module Syntax.Common.Names,
-  module Syntax.Common.Phases,
   module Syntax.Common.Polarity,
   module Syntax.Common.Primitives,
   module Syntax.Common.PrdCns,
@@ -11,7 +10,6 @@ module Syntax.Common (
 
 import Syntax.Common.Kinds
 import Syntax.Common.Names
-import Syntax.Common.Phases
 import Syntax.Common.Polarity
 import Syntax.Common.Primitives
 import Syntax.Common.PrdCns
