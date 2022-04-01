@@ -73,8 +73,8 @@ checkAnnot tyInferred (Just tyAnnotated) loc = do
 -- Infer Declarations
 ---------------------------------------------------------------------------------
 
-inferDecl :: Declaration Parsed
-           -> DriverM (Declaration Inferred)
+inferDecl :: Declaration
+           -> DriverM Declaration
 --
 -- PrdCnsDecl
 --
@@ -191,7 +191,7 @@ inferDecl (TyOpDecl (doc,loc) op prec assoc ty) = do
 ---------------------------------------------------------------------------------
 
 inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment Inferred, Program Inferred)
+                     -> DriverM (Environment, Program)
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file
@@ -202,31 +202,31 @@ inferProgramFromDisk fp = do
      Right env -> return env
 
 inferProgram :: [CST.Declaration]
-             -> DriverM (Program Inferred)
+             -> DriverM Program
 inferProgram decls = do
   decls <- renameProgram decls
   forM decls inferDecl
 
 renameProgram :: [CST.Declaration]
-              -> DriverM (Program Parsed)
+              -> DriverM Program
 renameProgram decls = lowerProgram decls
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]
-                -> IO (Either Error (Program Parsed))
+                -> IO (Either Error Program)
 renameProgramIO state decls = do
   x <- execDriverM state (renameProgram decls)
   case x of
       Left err -> return (Left err)
       Right (res,_) -> return (Right res)
 
-inferProgram' :: Program Parsed
-              -> DriverM (Program Inferred)
+inferProgram' :: Program
+              -> DriverM Program
 inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
-                -> IO (Either Error (Environment Inferred, Program Inferred))
+                -> IO (Either Error (Environment, Program))
 inferProgramIO state decls = do
   x <- execDriverM state (inferProgram decls)
   case x of
@@ -234,8 +234,8 @@ inferProgramIO state decls = do
       Right (res,x) -> return (Right ((driverEnv x), res))
 
 inferProgramIO' :: DriverState -- ^ Initial State
-                -> Program Parsed
-                -> IO (Either Error (Environment Inferred, Program Inferred))
+                -> Program
+                -> IO (Either Error (Environment, Program))
 inferProgramIO' state decls = do
   x <- execDriverM state (inferProgram' decls)
   case x of

@@ -59,7 +59,7 @@ lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> RenamerM (Maybe (AS
 lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
-lowerDecl :: CST.Declaration -> RenamerM (AST.Declaration Parsed)
+lowerDecl :: CST.Declaration -> RenamerM AST.Declaration
 lowerDecl (CST.PrdCnsDecl doc loc Prd isrec fv annot tm) =
   AST.PrdCnsDecl (doc, loc) PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
 lowerDecl (CST.PrdCnsDecl doc loc Cns isrec fv annot tm) =
@@ -99,7 +99,7 @@ lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
 lowerDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
-lowerProgram :: CST.Program -> RenamerM (AST.Program Parsed)
+lowerProgram :: CST.Program -> RenamerM AST.Program
 lowerProgram = sequence . fmap lowerDecl
 
 lowerProgramFromDisk :: FilePath

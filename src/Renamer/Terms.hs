@@ -29,7 +29,7 @@ checkXtorArity loc (xt, dc) arityUsed = do
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-lowerSubstitution :: CST.Substitution -> RenamerM (AST.Substitution Parsed)
+lowerSubstitution :: CST.Substitution -> RenamerM AST.Substitution
 lowerSubstitution [] = pure []
 lowerSubstitution (CST.PrdTerm tm:tms) = do
   tm' <- lowerTerm PrdRep tm
@@ -41,7 +41,7 @@ lowerSubstitution (CST.CnsTerm tm:tms) = do
   pure (AST.CnsTerm tm':subst)
 
 
-lowerSubstitutionI :: CST.SubstitutionI -> RenamerM (AST.SubstitutionI Parsed Prd)
+lowerSubstitutionI :: CST.SubstitutionI -> RenamerM (AST.SubstitutionI Prd)
 lowerSubstitutionI (subst1, _, subst2) = do
   subst1' <- lowerSubstitution subst1
   subst2' <- lowerSubstitution subst2
@@ -49,7 +49,7 @@ lowerSubstitutionI (subst1, _, subst2) = do
 
 
 
-lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM (AST.TermCase Parsed)
+lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM AST.TermCase
 lowerTermCase dc (loc, xtor, bs, tm) = do
   tm' <- lowerTerm PrdRep tm
   checkXtorArity loc (xtor, dc) (fst <$> bs)
@@ -63,7 +63,7 @@ termCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
 termCasesToNS [] _ = pure Structural
 termCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM (AST.TermCaseI Parsed)
+lowerTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM AST.TermCaseI
 lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
   tm' <- lowerTerm PrdRep tm
   checkXtorArity loc (xtor,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
@@ -80,7 +80,7 @@ termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> RenamerM NominalStructural
 termCasesIToNS [] _ = pure Structural
 termCasesIToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerCommandCase :: DataCodata -> CST.CommandCase -> RenamerM (AST.CmdCase Parsed)
+lowerCommandCase :: DataCodata -> CST.CommandCase -> RenamerM AST.CmdCase
 lowerCommandCase dc (loc, xtor, bs, cmd) = do
   cmd' <- lowerCommand cmd
   checkXtorArity loc (xtor,dc) (fst <$> bs)
@@ -95,7 +95,7 @@ commandCasesToNS :: [CST.CommandCase] -> DataCodata -> RenamerM NominalStructura
 commandCasesToNS [] _ = pure Structural
 commandCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (AST.Term pc Parsed)
+lowerTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (AST.Term pc)
 lowerTerm rep    (CST.Var loc v)               = pure $ AST.FreeVar loc rep v
 lowerTerm PrdRep (CST.Xtor loc xtor subst)     = do
   (ns, _) <- lookupXtor loc (xtor, Data)
@@ -166,7 +166,7 @@ lowerMultiLambda _ [] tm = pure tm
 lowerMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> lowerMultiLambda loc fvs tm
 
 -- | Lower a lambda abstraction.
-lowerLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (AST.Term Prd Parsed)
+lowerLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (AST.Term Prd)
 lowerLambda loc var tm = do
   tm' <- lowerTerm PrdRep tm
   pure $ AST.Cocase loc Nominal [ AST.MkTermCaseI loc (MkXtorName "Ap")
@@ -175,20 +175,20 @@ lowerLambda loc var tm = do
                                 ]
 
 -- | Lower a natural number literal.
-lowerNatLit :: Loc -> NominalStructural -> Int -> RenamerM (AST.Term Prd Parsed)
+lowerNatLit :: Loc -> NominalStructural -> Int -> RenamerM (AST.Term Prd)
 lowerNatLit loc ns 0 = pure $ AST.Xtor loc PrdRep ns (MkXtorName "Z") []
 lowerNatLit loc ns n = do
   n' <- lowerNatLit loc ns (n-1)
   pure $ AST.Xtor loc PrdRep ns (MkXtorName "S") [AST.PrdTerm n']
 
 -- | Lower an application.
-lowerApp :: Loc -> CST.Term -> CST.Term -> RenamerM (AST.Term Prd Parsed)
+lowerApp :: Loc -> CST.Term -> CST.Term -> RenamerM (AST.Term Prd)
 lowerApp loc fun arg = do
   fun' <- lowerTerm PrdRep fun
   arg' <- lowerTerm PrdRep arg
   pure $ AST.Dtor loc Nominal (MkXtorName "Ap") fun' ([AST.PrdTerm arg'],PrdRep,[])
 
-lowerCommand :: CST.Command -> RenamerM (AST.Command Parsed)
+lowerCommand :: CST.Command -> RenamerM AST.Command
 lowerCommand (CST.Apply loc tm1 tm2)       = AST.Apply loc Nothing <$> lowerTerm PrdRep tm1 <*> lowerTerm CnsRep tm2
 lowerCommand (CST.Print loc tm cmd)        = AST.Print loc <$> lowerTerm PrdRep tm <*> lowerCommand cmd
 lowerCommand (CST.Read loc tm)             = AST.Read loc <$> lowerTerm CnsRep tm

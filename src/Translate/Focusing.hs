@@ -25,7 +25,7 @@ import Syntax.AST.Terms
 ---------------------------------------------------------------------------------
 
 -- | Check whether given sterms is substitutable.
-isValueTerm :: EvaluationOrder -> PrdCnsRep pc -> Term pc Compiled -> Maybe (Term pc Compiled)
+isValueTerm :: EvaluationOrder -> PrdCnsRep pc -> Term pc -> Maybe (Term pc)
 isValueTerm CBV PrdRep FreeVar {}        = Nothing
 isValueTerm CBN PrdRep fv@(FreeVar {})   = Just fv
 isValueTerm CBV CnsRep fv@(FreeVar {})   = Just fv
@@ -40,16 +40,16 @@ isValueTerm CBN PrdRep (MuAbs _ pc v cmd) = do
 isValueTerm CBN CnsRep MuAbs {}          = Nothing              -- CBN: So Mu~ is not a value.
 isValueTerm eo  _      tm                = isFocusedTerm eo tm
 
-isValuePCTerm :: EvaluationOrder -> PrdCnsTerm Compiled -> Maybe (PrdCnsTerm Compiled)
+isValuePCTerm :: EvaluationOrder -> PrdCnsTerm -> Maybe PrdCnsTerm
 isValuePCTerm eo (PrdTerm tm) = PrdTerm <$> isValueTerm eo PrdRep tm
 isValuePCTerm eo (CnsTerm tm) = CnsTerm <$> isValueTerm eo CnsRep tm
 
 -- | Check whether all arguments in the given argument list are substitutable.
-isValueSubst :: EvaluationOrder -> Substitution Compiled -> Maybe (Substitution Compiled)
+isValueSubst :: EvaluationOrder -> Substitution -> Maybe Substitution
 isValueSubst eo subst = sequence (isValuePCTerm eo <$> subst)
 
 -- | Check whether given term follows the focusing discipline.
-isFocusedTerm :: EvaluationOrder -> Term pc Compiled -> Maybe (Term pc Compiled)
+isFocusedTerm :: EvaluationOrder -> Term pc -> Maybe (Term pc)
 isFocusedTerm _  bv@BoundVar {}           = Just bv
 isFocusedTerm _  fv@FreeVar {}            = Just fv
 isFocusedTerm eo (Xtor _ pc ns xt subst)  = Xtor () pc ns xt <$> isValueSubst eo subst
@@ -59,11 +59,11 @@ isFocusedTerm _  lit@PrimLitI64{}         = Just lit
 isFocusedTerm _  lit@PrimLitF64{}         = Just lit
 isFocusedTerm _  _ = error "isFocusedTerm should only be called on core terms."
 
-isFocusedCmdCase :: EvaluationOrder -> CmdCase Compiled -> Maybe (CmdCase Compiled)
+isFocusedCmdCase :: EvaluationOrder -> CmdCase -> Maybe CmdCase
 isFocusedCmdCase eo (MkCmdCase _ xt args cmd) = MkCmdCase () xt args <$> isFocusedCmd eo cmd
 
 -- | Check whether given command follows the focusing discipline.
-isFocusedCmd :: EvaluationOrder -> Command Compiled -> Maybe (Command Compiled)
+isFocusedCmd :: EvaluationOrder -> Command -> Maybe Command
 isFocusedCmd eo (Apply _ _ prd cns)    = Apply () (Just (CBox eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (ExitSuccess _)        = Just (ExitSuccess ())
 isFocusedCmd _  (ExitFailure _)        = Just (ExitFailure ())
@@ -126,7 +126,7 @@ isFocusedCmd eo (PrimOp _ pt op subst) = PrimOp () pt op <$> isValueSubst eo sub
 -- focusXtor' _ _ (c:ts) Ts := (mu beta_i. focusXtor' _ _ ts (beta_i:Ts)) >> [[c]]
 ---------------------------------------------------------------------------------
 
-focusTerm :: EvaluationOrder  -> Term pc Compiled -> Term pc Compiled
+focusTerm :: EvaluationOrder  -> Term pc -> Term pc
 -- If the term is already focused, we don't want to do anything
 focusTerm eo (isFocusedTerm eo -> Just tm) = tm
 focusTerm _  (BoundVar _ rep var)          = BoundVar () rep var
@@ -148,12 +148,12 @@ betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
-focusXtor :: EvaluationOrder -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution Compiled -> Term pc Compiled
+focusXtor :: EvaluationOrder -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
 focusXtor eo PrdRep ns xt subst = MuAbs () PrdRep Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd (focusXtor' eo PrdRep ns xt subst [])))
 focusXtor eo CnsRep ns xt subst = MuAbs () CnsRep Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd (focusXtor' eo CnsRep ns xt subst [])))
 
 
-focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> NominalStructural -> XtorName -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
+focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusXtor' eo CnsRep ns xt [] pcterms' = Apply () (Just (CBox eo)) (FreeVar () PrdRep alphaVar)
                                                                    (Xtor () CnsRep ns xt (reverse pcterms'))
 focusXtor' eo PrdRep ns xt [] pcterms' = Apply () (Just (CBox eo)) (Xtor () PrdRep ns xt (reverse pcterms'))
@@ -174,12 +174,12 @@ focusXtor' eo pc     ns xt (CnsTerm                                 cns:pcterms)
 
 
 
-focusCmdCase :: EvaluationOrder -> CmdCase Compiled -> CmdCase Compiled
+focusCmdCase :: EvaluationOrder -> CmdCase -> CmdCase
 focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
     MkCmdCase () cmdcase_name ((\(pc,_) -> (pc, Nothing)) <$> cmdcase_args) (focusCmd eo cmdcase_cmd)
 
 
-focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm Compiled] -> [PrdCnsTerm Compiled] -> Command Compiled
+focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusPrimOp _  (pt, op) [] pcterms' = PrimOp () pt op (reverse pcterms')
 focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
@@ -198,7 +198,7 @@ focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
-focusCmd :: EvaluationOrder -> Command Compiled -> Command Compiled
+focusCmd :: EvaluationOrder -> Command -> Command
 focusCmd eo (Apply _ _ prd cns) = Apply () (Just (CBox eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (ExitSuccess _) = ExitSuccess ()
 focusCmd _  (ExitFailure _) = ExitFailure ()
@@ -215,7 +215,7 @@ focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
 
-focusDecl :: EvaluationOrder -> Declaration Compiled -> Declaration Compiled
+focusDecl :: EvaluationOrder -> Declaration -> Declaration
 focusDecl eo (PrdCnsDecl _ pc isRec name annot prd) = PrdCnsDecl () pc isRec name annot (focusTerm eo prd)
 focusDecl eo (CmdDecl _ name cmd)             = CmdDecl () name (focusCmd eo cmd)
 focusDecl _  decl@DataDecl {}                 = decl
@@ -224,10 +224,10 @@ focusDecl _  decl@ImportDecl {}               = decl
 focusDecl _  decl@SetDecl {}                  = decl
 focusDecl _  decl@TyOpDecl {}                 = decl
 
-focusProgram :: EvaluationOrder -> Program Compiled -> Program Compiled
+focusProgram :: EvaluationOrder -> Program -> Program
 focusProgram eo = fmap (focusDecl eo)
 
-focusEnvironment :: EvaluationOrder -> Environment Compiled -> Environment Compiled
+focusEnvironment :: EvaluationOrder -> Environment -> Environment
 focusEnvironment cc (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (focusTerm cc tm,loc,tys)) <$> prdEnv

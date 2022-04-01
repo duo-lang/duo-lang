@@ -61,7 +61,7 @@ prettyTyOpDecl op assoc prec ty =
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
   annSymbol ":=" <+> prettyAnn ty <> semi
 
-instance PrettyAnn (Declaration ext) where
+instance PrettyAnn Declaration where
   prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
   prettyAnn (CmdDecl _ fv cm) =
@@ -78,7 +78,7 @@ instance PrettyAnn (Declaration ext) where
     prettyTyOpDecl op assoc prec ty
     
 
-instance PrettyAnn (NamedRep (Declaration ext)) where
+instance PrettyAnn (NamedRep Declaration) where
   prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openTermComplete tm))
   prettyAnn (NamedRep (CmdDecl _ fv cm)) =
@@ -94,10 +94,7 @@ instance PrettyAnn (NamedRep (Declaration ext)) where
   prettyAnn (NamedRep (TyOpDecl _ op prec assoc ty)) =
     prettyTyOpDecl op assoc prec ty
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
-  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
-
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------

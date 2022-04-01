@@ -24,13 +24,13 @@ import TypeInference.GenerateConstraints.Primitives (primOps)
 -- Substitutions and Linear Contexts
 ---------------------------------------------------------------------------------------------
 
-genConstraintsPCTerm :: PrdCnsTerm Parsed
-                     -> GenM (PrdCnsTerm Inferred)
+genConstraintsPCTerm :: PrdCnsTerm
+                     -> GenM PrdCnsTerm
 genConstraintsPCTerm (PrdTerm tm) = PrdTerm <$> genConstraintsTerm tm
 genConstraintsPCTerm (CnsTerm tm) = CnsTerm <$> genConstraintsTerm tm
 
-genConstraintsSubst :: Substitution Parsed
-                   -> GenM (Substitution Inferred)
+genConstraintsSubst :: Substitution
+                    -> GenM Substitution
 genConstraintsSubst subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
@@ -73,8 +73,8 @@ splitContext n CnsRep sig = case splitAt n sig of
 ---------------------------------------------------------------------------------------------
 
 -- | Generate the constraints for a given Term.
-genConstraintsTerm :: Term pc Parsed
-                    -> GenM (Term pc Inferred)
+genConstraintsTerm :: Term pc
+                    -> GenM (Term pc)
 --
 -- Bound variables:
 --
@@ -546,7 +546,7 @@ genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = x
 genConstraintsTerm (PrimLitI64 loc i) = pure $ PrimLitI64 (loc, TyPrim PosRep I64) i
 genConstraintsTerm (PrimLitF64 loc d) = pure $ PrimLitF64 (loc, TyPrim PosRep F64) d
 
-genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
+genConstraintsCommand :: Command -> GenM Command
 genConstraintsCommand (ExitSuccess loc) = return (ExitSuccess loc)
 genConstraintsCommand (ExitFailure loc) = return (ExitFailure loc)
 genConstraintsCommand (Jump loc fv) = do
@@ -581,8 +581,8 @@ genConstraintsCommand (PrimOp loc pt op subst) = do
 
 genConstraintsTermRecursive :: Loc
                             -> FreeVarName
-                            -> PrdCnsRep pc -> Term pc Parsed
-                            -> GenM (Term pc Inferred)
+                            -> PrdCnsRep pc -> Term pc
+                            -> GenM (Term pc)
 genConstraintsTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
   tm <- withTerm PrdRep fv (FreeVar (loc, x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsTerm tm)

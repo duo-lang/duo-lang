@@ -6,10 +6,10 @@ import Syntax.AST.Terms
 import Eval.Definition
 import Errors (throwEvalError)
 
-applyPrdToCns :: Term Prd Compiled -> Term Cns Compiled -> EvalM (Maybe (Command Compiled))
+applyPrdToCns :: Term Prd -> Term Cns -> EvalM (Maybe Command)
 applyPrdToCns x k = pure $ Just $ Apply () (Just $ CBox CBV) x k
 
-evalPrimOp :: PrimitiveType -> PrimitiveOp -> Substitution Compiled -> EvalM (Maybe (Command Compiled))
+evalPrimOp :: PrimitiveType -> PrimitiveOp -> Substitution -> EvalM (Maybe Command)
 -- I64
 evalPrimOp I64 Add [PrdTerm (PrimLitI64 _ x), PrdTerm (PrimLitI64 _ y), CnsTerm k] = applyPrdToCns (PrimLitI64 () (x + y)) k
 evalPrimOp I64 Sub [PrdTerm (PrimLitI64 _ x), PrdTerm (PrimLitI64 _ y), CnsTerm k] = applyPrdToCns (PrimLitI64 () (x - y)) k

@@ -35,9 +35,9 @@ createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(
                                                        }
 
 
-type SolverM a = (ReaderT (Environment Inferred, ()) (StateT SolverState (Except Error))) a
+type SolverM a = (ReaderT (Environment, ()) (StateT SolverState (Except Error))) a
 
-runSolverM :: SolverM a -> Environment Inferred -> SolverState -> Either Error (a, SolverState)
+runSolverM :: SolverM a -> Environment -> SolverState -> Either Error (a, SolverState)
 runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 ------------------------------------------------------------------------------
@@ -328,7 +328,7 @@ subConstraints (SubType _ t1@TyCodata{} t2@TyPrim{}) = do
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Environment Inferred ->  Either Error SolverResult
+solveConstraints :: ConstraintSet -> Environment ->  Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
   pure (MkSolverResult (sst_bounds solverState))

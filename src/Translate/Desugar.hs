@@ -18,11 +18,11 @@ import Syntax.AST.Program ( Declaration(..), Program)
 -- Check if term is desugared
 ---------------------------------------------------------------------------------
 
-isDesugaredPCTerm :: PrdCnsTerm Inferred -> Bool
+isDesugaredPCTerm :: PrdCnsTerm -> Bool
 isDesugaredPCTerm (PrdTerm tm) = isDesugaredTerm tm
 isDesugaredPCTerm (CnsTerm tm) = isDesugaredTerm tm
 
-isDesugaredTerm :: Term pc Inferred -> Bool
+isDesugaredTerm :: Term pc -> Bool
 -- Core terms
 isDesugaredTerm BoundVar {} = True
 isDesugaredTerm FreeVar {} = True
@@ -36,7 +36,7 @@ isDesugaredTerm Dtor{} = False
 isDesugaredTerm Case {} = False
 isDesugaredTerm Cocase {} = False
 
-isDesugaredCommand :: Command Inferred -> Bool
+isDesugaredCommand :: Command -> Bool
 isDesugaredCommand (Apply _ _ prd cns) = isDesugaredTerm prd && isDesugaredTerm cns
 isDesugaredCommand (Print _ prd cmd) = isDesugaredTerm prd && isDesugaredCommand cmd
 isDesugaredCommand (Read _ cns) = isDesugaredTerm cns
@@ -55,11 +55,11 @@ resVar :: FreeVarName
 resVar = MkFreeVarName "$result"
 
 
-desugarPCTerm :: PrdCnsTerm Inferred -> PrdCnsTerm Compiled
+desugarPCTerm :: PrdCnsTerm -> PrdCnsTerm
 desugarPCTerm (PrdTerm tm) = PrdTerm $ desugarTerm tm
 desugarPCTerm (CnsTerm tm) = CnsTerm $ desugarTerm tm
 
-desugarTerm :: Term pc Inferred -> Term pc Compiled
+desugarTerm :: Term pc -> Term pc
 desugarTerm (BoundVar _ pc idx) = BoundVar () pc idx
 desugarTerm (FreeVar _ pc fv) = FreeVar () pc fv
 desugarTerm (Xtor _ pc ns xt args) = Xtor () pc ns xt (desugarPCTerm <$> args)
@@ -101,10 +101,10 @@ desugarTerm (Cocase _ ns cocases) =
   in
     XMatch () PrdRep ns $ desugarComatchCase <$> cocases
 
-desugarCmdCase :: CmdCase Inferred -> CmdCase Compiled
+desugarCmdCase :: CmdCase -> CmdCase
 desugarCmdCase (MkCmdCase _ xt args cmd) = MkCmdCase () xt args (desugarCmd cmd)
 
-desugarCmd :: Command Inferred -> Command Compiled
+desugarCmd :: Command -> Command
 desugarCmd (Apply _ kind prd cns) = Apply () kind (desugarTerm prd) (desugarTerm cns)
 desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (Read _ cns) = Read () (desugarTerm cns)
@@ -117,7 +117,7 @@ desugarCmd (PrimOp _ pt op subst) = PrimOp () pt op (desugarPCTerm <$> subst)
 -- Translate Program
 ---------------------------------------------------------------------------------
 
-desugarDecl :: Declaration Inferred -> Declaration Compiled
+desugarDecl :: Declaration -> Declaration
 desugarDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (desugarTerm tm)
 desugarDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (desugarCmd cmd)
 desugarDecl (DataDecl _ decl)                   = DataDecl () decl
@@ -126,10 +126,10 @@ desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
 desugarDecl (SetDecl _ txt)                     = SetDecl () txt
 desugarDecl (TyOpDecl _ op prec assoc ty)       = TyOpDecl () op prec assoc ty
 
-desugarProgram :: Program Inferred -> Program Compiled
+desugarProgram :: Program -> Program
 desugarProgram ps = desugarDecl <$> ps
 
-desugarEnvironment :: Environment Inferred -> Environment Compiled
+desugarEnvironment :: Environment -> Environment
 desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) =
     MkEnvironment
       { prdEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> prdEnv

@@ -34,11 +34,11 @@ fresh Cns = do
   modify (second tail)
   pure (Just var)
 
-createNamesPCTerm :: PrdCnsTerm ext -> CreateNameM (PrdCnsTerm Parsed)
+createNamesPCTerm :: PrdCnsTerm -> CreateNameM PrdCnsTerm
 createNamesPCTerm (PrdTerm tm) = PrdTerm <$> createNamesTerm tm
 createNamesPCTerm (CnsTerm tm) = CnsTerm <$> createNamesTerm tm
 
-createNamesTerm :: Term pc ext -> CreateNameM (Term pc Parsed)
+createNamesTerm :: Term pc -> CreateNameM (Term pc)
 createNamesTerm (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
 createNamesTerm (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
 createNamesTerm (Xtor _ pc ns xt subst) = do
@@ -66,7 +66,7 @@ createNamesTerm (Cocase _ ns cases) = do
 createNamesTerm (PrimLitI64 _ i) = pure (PrimLitI64 defaultLoc i)
 createNamesTerm (PrimLitF64 _ d) = pure (PrimLitF64 defaultLoc d)
 
-createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
+createNamesCommand :: Command -> CreateNameM Command
 createNamesCommand (ExitSuccess _) = return $ ExitSuccess defaultLoc
 createNamesCommand (ExitFailure _) = return $ ExitFailure defaultLoc
 createNamesCommand (Jump _ fv) = return $ Jump defaultLoc fv
@@ -85,19 +85,19 @@ createNamesCommand (PrimOp _ pt pop subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
   return (PrimOp defaultLoc pt pop subst')
 
-createNamesCmdCase :: CmdCase ext -> CreateNameM (CmdCase Parsed)
+createNamesCmdCase :: CmdCase -> CreateNameM CmdCase
 createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
   cmd' <- createNamesCommand cmdcase_cmd
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
   return $ MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesTermCase :: TermCase ext -> CreateNameM (TermCase Parsed)
+createNamesTermCase :: TermCase -> CreateNameM TermCase
 createNamesTermCase (MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
   return $ MkTermCase defaultLoc xt args' e'
 
-createNamesTermCaseI :: TermCaseI ext -> CreateNameM (TermCaseI Parsed)
+createNamesTermCaseI :: TermCaseI -> CreateNameM TermCaseI
 createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
@@ -109,13 +109,13 @@ createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-reparseTerm :: Term pc ext -> Term pc Parsed
+reparseTerm :: Term pc -> Term pc
 reparseTerm tm = evalState (createNamesTerm tm) names
 
-reparseCommand :: Command ext -> Command Parsed
+reparseCommand :: Command -> Command
 reparseCommand cmd = evalState (createNamesCommand cmd) names
 
-reparseDecl :: Declaration ext -> Declaration Parsed
+reparseDecl :: Declaration -> Declaration
 reparseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl (Nothing, defaultLoc) rep isRec fv ts (reparseTerm tm)
 reparseDecl (CmdDecl _ fv cmd)                = CmdDecl (Nothing, defaultLoc) fv (reparseCommand cmd)
 reparseDecl (DataDecl _ decl)                 = DataDecl (Nothing, defaultLoc) decl
@@ -124,5 +124,5 @@ reparseDecl (ImportDecl _ mn)                 = ImportDecl (Nothing, defaultLoc)
 reparseDecl (SetDecl _ txt)                   = SetDecl (Nothing, defaultLoc) txt
 reparseDecl (TyOpDecl _ op prec assoc ty)     = TyOpDecl (Nothing, defaultLoc) op prec assoc ty
 
-reparseProgram :: Program ext -> Program Parsed
+reparseProgram :: Program -> Program
 reparseProgram = fmap reparseDecl

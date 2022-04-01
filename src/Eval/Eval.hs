@@ -21,7 +21,7 @@ import Eval.Primitives
 ---------------------------------------------------------------------------------
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalTermOnce :: Command Compiled -> EvalM (Maybe (Command Compiled))
+evalTermOnce :: Command -> EvalM (Maybe Command)
 evalTermOnce (ExitSuccess _) = return Nothing
 evalTermOnce (ExitFailure _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
@@ -37,7 +37,7 @@ evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command 
 evalTermOnce (Apply _ (Just kind) prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
-evalApplyOnce :: MonoKind -> Term Prd Compiled -> Term Cns Compiled -> EvalM  (Maybe (Command Compiled))
+evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
 -- Free variables have to be looked up in the environment.
 evalApplyOnce kind (FreeVar _ PrdRep fv) cns = do
   (prd,_) <- lookupTerm PrdRep fv
@@ -72,7 +72,7 @@ evalApplyOnce _ Xtor{} Xtor{} = throwEvalError ["Cannot evaluate constructor app
 evalApplyOnce _ _ _ = throwEvalError ["Cannot evaluate, probably an asymmetric term..."]
 
 -- | Return just the final evaluation result
-evalM :: Command Compiled -> EvalM (Command Compiled)
+evalM :: Command -> EvalM Command
 evalM cmd = do
   cmd' <- evalTermOnce cmd
   case cmd' of
@@ -80,10 +80,10 @@ evalM cmd = do
     Just cmd' -> evalM cmd'
 
 -- | Return all intermediate evaluation results
-evalStepsM :: Command Compiled -> EvalM [Command Compiled]
+evalStepsM :: Command -> EvalM [Command]
 evalStepsM cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: [Command Compiled] -> Command Compiled -> EvalM [Command Compiled]
+    evalSteps' :: [Command] -> Command -> EvalM [Command]
     evalSteps' cmds cmd = do
       cmd' <- evalTermOnce cmd
       case cmd' of
@@ -94,8 +94,8 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-eval :: Command Compiled -> Environment Compiled -> IO (Either Error (Command Compiled))
+eval :: Command -> Environment -> IO (Either Error Command)
 eval cmd env = runEval (evalM cmd) env
 
-evalSteps :: Command Compiled -> Environment Compiled -> IO (Either Error [Command Compiled])
+evalSteps :: Command -> Environment -> IO (Either Error [Command])
 evalSteps cmd env = runEval (evalStepsM cmd) env
