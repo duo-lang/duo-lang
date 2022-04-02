@@ -15,6 +15,7 @@ import Syntax.Common
 import Syntax.AST.Terms
 import Eval.Definition
 import Eval.Primitives
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -29,7 +30,7 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
-  return (Just (Apply () (Just (CBox CBV)) tm cns))
+  return (Just (Apply defaultLoc (Just (CBox CBV)) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
@@ -39,33 +40,33 @@ evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
 evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
 -- Free variables have to be looked up in the environment.
-evalApplyOnce kind (FreeVar _ PrdRep fv) cns = do
+evalApplyOnce kind (FreeVar _ PrdRep _ fv) cns = do
   (prd,_) <- lookupTerm PrdRep fv
-  return (Just (Apply () (Just kind) prd cns))
-evalApplyOnce kind prd (FreeVar _ CnsRep fv) = do
+  return (Just (Apply defaultLoc (Just kind) prd cns))
+evalApplyOnce kind prd (FreeVar _ CnsRep _ fv) = do
   (cns,_) <- lookupTerm CnsRep fv
-  return (Just (Apply () (Just kind) prd cns))
+  return (Just (Apply defaultLoc (Just kind) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
-evalApplyOnce _ prd@(Xtor _ PrdRep _ xt args) cns@(XMatch _ CnsRep _ cases) = do
+evalApplyOnce _ prd@(Xtor _ PrdRep _ _ xt args) cns@(XMatch _ CnsRep _ _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply () Nothing prd cns) argTypes args
+  checkArgs (Apply defaultLoc Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(Xtor _ CnsRep _ xt args) = do
+evalApplyOnce _ prd@(XMatch _ PrdRep _ _ cases) cns@(Xtor _ CnsRep _ _ xt args) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply () Nothing prd cns) argTypes args
+  checkArgs (Apply defaultLoc Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
-evalApplyOnce (CBox CBV) (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
+evalApplyOnce (CBox CBV) (MuAbs _ PrdRep _ _ cmd) cns@(MuAbs _ CnsRep _ _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce (CRep _) (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
+evalApplyOnce (CRep _) (MuAbs _ PrdRep _ _ cmd) cns@(MuAbs _ CnsRep _ _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce (CBox CBN) prd@(MuAbs _ PrdRep _ _) (MuAbs _ CnsRep _ cmd) =
+evalApplyOnce (CBox CBN) prd@(MuAbs _ PrdRep _ _ _) (MuAbs _ CnsRep _ _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))
-evalApplyOnce _ (MuAbs _ PrdRep _ cmd) cns = return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce _ prd (MuAbs _ CnsRep _ cmd) = return (Just (commandOpening [PrdTerm prd] cmd))
+evalApplyOnce _ (MuAbs _ PrdRep _ _ cmd) cns = return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce _ prd (MuAbs _ CnsRep _ _ cmd) = return (Just (commandOpening [PrdTerm prd] cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
-evalApplyOnce _ (BoundVar _ PrdRep i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
-evalApplyOnce _ _ (BoundVar _ CnsRep i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
+evalApplyOnce _ (BoundVar _ PrdRep _ i) _ = throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
+evalApplyOnce _ _ (BoundVar _ CnsRep _ i) = throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
 -- Match applied to Match, or Xtor to Xtor can't evaluate
 evalApplyOnce _ XMatch{} XMatch{} = throwEvalError ["Cannot evaluate match applied to match"]
 evalApplyOnce _ Xtor{} Xtor{} = throwEvalError ["Cannot evaluate constructor applied to destructor"]
