@@ -150,24 +150,28 @@ deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
 deriving instance Show (Term Cns)
 
-getTypeTerm :: forall pc. Term pc -> Maybe (Typ (PrdCnsToPol pc))
-getTypeTerm (BoundVar _ _ annot _)   = annot
-getTypeTerm (FreeVar  _ _ annot _)   = annot
-getTypeTerm (Xtor _ _ annot _ _ _)   = annot
-getTypeTerm (XMatch _ _ annot _ _)   = annot
-getTypeTerm (MuAbs _ _ annot _ _)    = annot
-getTypeTerm (Dtor _ _ annot _ _ _ _) = annot
-getTypeTerm (Case _ annot _ _ _)     = annot
-getTypeTerm (Cocase _ annot _ _)     = annot
-getTypeTerm (PrimLitI64 _ _)         = Just (TyPrim PosRep I64)
-getTypeTerm (PrimLitF64 _ _)         = Just (TyPrim PosRep F64)
+getTypeTerm' :: forall pc. Term pc -> Maybe (Typ (PrdCnsToPol pc))
+getTypeTerm' (BoundVar _ _ annot _)   = annot
+getTypeTerm' (FreeVar  _ _ annot _)   = annot
+getTypeTerm' (Xtor _ _ annot _ _ _)   = annot
+getTypeTerm' (XMatch _ _ annot _ _)   = annot
+getTypeTerm' (MuAbs _ _ annot _ _)    = annot
+getTypeTerm' (Dtor _ _ annot _ _ _ _) = annot
+getTypeTerm' (Case _ annot _ _ _)     = annot
+getTypeTerm' (Cocase _ annot _ _)     = annot
+getTypeTerm' (PrimLitI64 _ _)         = Just (TyPrim PosRep I64)
+getTypeTerm' (PrimLitF64 _ _)         = Just (TyPrim PosRep F64)
+
+getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
+getTypeTerm tm = case getTypeTerm' tm of
+  Nothing -> error "Boom"
+  Just typ -> typ
 
 getTypArgs :: Substitution -> LinearContext Pos
-getTypArgs = undefined
--- getTypArgs subst = getTypArgs' <$> subst
---   where
---     getTypArgs' (PrdTerm tm) = PrdCnsType PrdRep $ getTypeTerm tm
---     getTypArgs' (CnsTerm tm) = PrdCnsType CnsRep $ getTypeTerm tm
+getTypArgs subst = getTypArgs'' <$> subst
+   where
+     getTypArgs'' (PrdTerm tm) = PrdCnsType PrdRep $ getTypeTerm tm
+     getTypArgs'' (CnsTerm tm) = PrdCnsType CnsRep $ getTypeTerm tm
 
 
 ---------------------------------------------------------------------------------
