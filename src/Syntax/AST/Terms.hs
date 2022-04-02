@@ -1,4 +1,23 @@
-module Syntax.AST.Terms where
+module Syntax.AST.Terms
+  ( -- Terms
+    Term(..)
+  , PrdCnsTerm(..)
+  , Substitution
+  , SubstitutionI
+  , TermCase(..)
+  , TermCaseI(..)
+  , CmdCase(..)
+  , Command(..)
+  -- Functions
+  , openTermComplete
+  , openCommandComplete
+  , commandClosing
+  , shiftCmd
+  , getTypeTerm
+  , getTypArgs
+  , commandOpening
+  , termLocallyClosed
+  ) where
 
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
@@ -289,9 +308,6 @@ commandClosingRec k args (Read ext cns) = Read ext (termClosingRec k args cns)
 commandClosingRec k args (Apply ext kind t1 t2) = Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext pt op subst) = PrimOp ext pt op (pctermClosingRec k args <$> subst)
 
-termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
-termClosing = termClosingRec 0
-
 commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
 
@@ -362,9 +378,6 @@ commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClos
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
-
-commandLocallyClosed :: Command -> Either Error ()
-commandLocallyClosed = commandLocallyClosedRec []
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -481,10 +494,6 @@ shiftCmdRec n (Print ext prd cmd) = Print ext (shiftTermRec n prd) (shiftCmdRec 
 shiftCmdRec n (Read ext cns) = Read ext (shiftTermRec n cns)
 shiftCmdRec _ (Jump ext fv) = Jump ext fv
 shiftCmdRec n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec n <$> subst)
-
--- | Shift all unbound BoundVars up by one.
-shiftTerm :: Term pc -> Term pc
-shiftTerm = shiftTermRec 0
 
 -- | Shift all unbound BoundVars up by one.
 shiftCmd :: Command -> Command
