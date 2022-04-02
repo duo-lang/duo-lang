@@ -61,11 +61,11 @@ lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
 lowerDecl :: CST.Declaration -> RenamerM AST.Declaration
 lowerDecl (CST.PrdCnsDecl doc loc Prd isrec fv annot tm) =
-  AST.PrdCnsDecl (doc, loc) PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
+  AST.PrdCnsDecl loc doc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
 lowerDecl (CST.PrdCnsDecl doc loc Cns isrec fv annot tm) =
-  AST.PrdCnsDecl (doc, loc) CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
+  AST.PrdCnsDecl loc doc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
 lowerDecl (CST.CmdDecl doc loc fv cmd) =
-  AST.CmdDecl (doc, loc) fv <$> (lowerCommand cmd)
+  AST.CmdDecl loc doc fv <$> (lowerCommand cmd)
 lowerDecl (CST.DataDecl doc loc dd) = do
   lowered <- lowerDataDecl loc dd
 
@@ -74,20 +74,20 @@ lowerDecl (CST.DataDecl doc loc dd) = do
                  NotRefined -> Nominal
   let newXtors = M.fromList [((AST.sig_name xt, CST.data_polarity dd), (ns, AST.linearContextToArity (AST.sig_args xt)))| xt <- fst (AST.data_xtors lowered)]
   updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
-  pure $ AST.DataDecl (doc,loc) lowered
+  pure $ AST.DataDecl loc doc lowered
 lowerDecl (CST.XtorDecl doc loc dc xt args ret) = do
   updateSymbolTable (\st -> st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)})
   let ret' = case ret of
                Just eo -> eo
                Nothing -> case dc of Data -> CBV; Codata -> CBN
-  pure $ AST.XtorDecl (doc, loc) dc xt args ret'
+  pure $ AST.XtorDecl loc doc dc xt args ret'
 lowerDecl (CST.ImportDecl doc loc mod) = do
   fp <- findModule mod loc
   newSymbolTable <- lowerProgramFromDisk fp
   updateSymbolTable (\st -> st <> newSymbolTable)
-  pure $ AST.ImportDecl (doc, loc) mod
+  pure $ AST.ImportDecl loc doc mod
 lowerDecl (CST.SetDecl doc loc txt) =
-  pure $ AST.SetDecl (doc, loc) txt
+  pure $ AST.SetDecl loc doc txt
 lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
   let tyOp = MkTyOp { symbol = CustomOp op
                     , prec = prec
@@ -95,7 +95,7 @@ lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
                     , desugar = NominalDesugaring tyname
                     }
   updateSymbolTable (\st -> st { tyOps = tyOp : (tyOps st)})
-  pure $ AST.TyOpDecl (doc, loc) op prec assoc tyname
+  pure $ AST.TyOpDecl loc doc op prec assoc tyname
 lowerDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
