@@ -10,7 +10,8 @@ import Errors
 import Parser.Parser
 import Renamer.SymbolTable
 import Syntax.CST.Program qualified as CST
-import Syntax.AST.Program
+import Syntax.AST.Program qualified as AST
+import Syntax.RST.Program qualified as RST
 import Syntax.Common
 
 
@@ -31,7 +32,7 @@ getParsedDeclarations fp = do
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error Program)
+getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error RST.Program)
 getRenamedDeclarations fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
@@ -39,7 +40,7 @@ getRenamedDeclarations fp infopts = do
       renameProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
-getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error Program)
+getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error AST.Program)
 getTypecheckedDecls fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of

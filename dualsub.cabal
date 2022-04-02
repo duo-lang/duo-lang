@@ -94,7 +94,6 @@ library
       Renamer.Types
       Syntax.AST.Program
       Syntax.AST.Terms
-      Syntax.AST.Types
       Syntax.AST.Zonking
       Syntax.Common
       Syntax.Common.Kinds
@@ -128,10 +127,11 @@ library
       TypeInference.SolveConstraints
       TypeInference.Constraints
       TypeTranslation
-      Utils
       Translate.Desugar
       Translate.Focusing
       Translate.Reparse
+      Translate.ForgetTypes
+      Utils
   other-modules:
       Paths_dualsub
   hs-source-dirs:

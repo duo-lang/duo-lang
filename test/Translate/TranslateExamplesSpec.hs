@@ -8,9 +8,10 @@ import Pretty.Terms ()
 import Pretty.Errors ()
 import Pretty.Program ()
 import Syntax.Common
-import Syntax.AST.Program
+import Syntax.RST.Program qualified as RST
 import Translate.Desugar
 import Translate.Reparse
+import Translate.ForgetTypes
 import Driver.Driver
 import TestUtils
 
@@ -27,7 +28,7 @@ spec = do
           case decls of
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-              let desugaredDecls :: Program = reparseProgram $ desugarProgram decls
+              let desugaredDecls :: RST.Program = forgetTypesProgram $ reparseProgram $ desugarProgram decls
               res <- runIO $ inferProgramIO' driverState desugaredDecls
               case res of
                 Left err -> do

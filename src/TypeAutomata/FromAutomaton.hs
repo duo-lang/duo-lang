@@ -1,7 +1,7 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.Common
-import Syntax.AST.Types
+import Syntax.RST.Types
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import TypeAutomata.BicliqueDecomp

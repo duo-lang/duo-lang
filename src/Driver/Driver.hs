@@ -23,21 +23,15 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
 import Renamer.Program (lowerProgram)
 import Renamer.SymbolTable
-import Syntax.AST.Terms
+
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
-import Syntax.AST.Types
-    ( TypeScheme,
-      generalize,
-      DataDecl(..),
-      XtorSig (sig_name, sig_args),
-      linearContextToArity
-    )
-import Syntax.AST.Program
-    ( Program,
-      Declaration(..)
-    )
+import Syntax.AST.Program qualified as AST
+import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Zonking (zonkType)
+import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Types qualified as RST
+import Syntax.RST.Program qualified as RST
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
@@ -51,10 +45,10 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc )
 import Data.List
 
-checkAnnot :: TypeScheme pol -- ^ Inferred type
-           -> Maybe (TypeScheme pol) -- ^ Annotated type
+checkAnnot :: RST.TypeScheme pol -- ^ Inferred type
+           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
-           -> DriverM (TypeScheme pol)
+           -> DriverM (RST.TypeScheme pol)
 checkAnnot tyInferred Nothing _ = return tyInferred
 checkAnnot tyInferred (Just tyAnnotated) loc = do
   let isSubsumed = subsume tyInferred tyAnnotated
@@ -73,12 +67,12 @@ checkAnnot tyInferred (Just tyAnnotated) loc = do
 -- Infer Declarations
 ---------------------------------------------------------------------------------
 
-inferDecl :: Declaration
-           -> DriverM Declaration
+inferDecl :: RST.Declaration
+           -> DriverM AST.Declaration
 --
 -- PrdCnsDecl
 --
-inferDecl (PrdCnsDecl loc doc pc isRec fv annot term) = do
+inferDecl (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   infopts <- gets driverOpts
   env <- gets driverEnv
   -- 1. Generate the constraints.
@@ -94,16 +88,16 @@ inferDecl (PrdCnsDecl loc doc pc isRec fv annot term) = do
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
-  let typ = zonkType bisubst (getTypeTerm tmInferred)
+  let typ = zonkType bisubst (AST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
       printGraphs <- gets (infOptsPrintGraphs . driverOpts)
-      tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName fv))
+      tys <- simplify (RST.generalize typ) printGraphs (T.unpack (unFreeVarName fv))
       guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
-    False -> return (generalize typ)
+    False -> return (RST.generalize typ)
   -- 6. Check type annotation.
   ty <- checkAnnot typSimplified annot loc
   -- 7. Insert into environment
@@ -112,15 +106,15 @@ inferDecl (PrdCnsDecl loc doc pc isRec fv annot term) = do
     PrdRep -> do
       let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, ty) (prdEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
+      return (AST.PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
     CnsRep -> do
       let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
+      return (AST.PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
 --
 -- CmdDecl
 --
-inferDecl (CmdDecl loc doc v cmd) = do
+inferDecl (RST.CmdDecl loc doc v cmd) = do
   env <- gets driverEnv
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
@@ -133,65 +127,65 @@ inferDecl (CmdDecl loc doc v cmd) = do
   env <- gets driverEnv
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
-  return (CmdDecl loc doc v cmdInferred)
+  return (AST.CmdDecl loc doc v cmdInferred)
 --
 -- DataDecl
 --
-inferDecl (DataDecl loc doc dcl) = do
+inferDecl (RST.DataDecl loc doc dcl) = do
   -- Insert into environment
   env <- gets driverEnv
   st <- gets driverSymbols
-  let tn = data_name dcl
-  case find (\NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
+  let tn = RST.data_name dcl
+  case find (\RST.NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
     Just _ ->
         -- HACK: inserting in the environment has already been done in lowering
         -- because the declarations are already needed for lowering
         -- In that case we make sure we don't insert twice
-        return (DataDecl loc doc dcl)
+        return (AST.DataDecl loc doc dcl)
     Nothing -> do
-      let ns = case data_refined dcl of
+      let ns = case RST.data_refined dcl of
                       Refined -> Refinement
                       NotRefined -> Nominal
-      let newXtors = M.fromList [((sig_name xt, data_polarity dcl), (ns,linearContextToArity (sig_args xt)))| xt <- fst (data_xtors dcl)]
+      let newXtors = M.fromList [((RST.sig_name xt, RST.data_polarity dcl), (ns,RST.linearContextToArity (RST.sig_args xt)))| xt <- fst (RST.data_xtors dcl)]
       let newEnv = env { declEnv = (loc,dcl) : declEnv env }
       let newSt  = st { xtorMap = M.union  newXtors (xtorMap st) }
       setEnvironment newEnv
       setSymboltable newSt
-      return (DataDecl loc doc dcl)
+      return (AST.DataDecl loc doc dcl)
 --
 -- XtorDecl
 --
-inferDecl (XtorDecl loc doc dc xt args ret) = do
+inferDecl (RST.XtorDecl loc doc dc xt args ret) = do
   symbolTable <- gets driverSymbols
   let newSymbolTable = symbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap symbolTable) }
   setSymboltable newSymbolTable
-  pure $ XtorDecl loc doc dc xt args ret
+  pure $ AST.XtorDecl loc doc dc xt args ret
 --
 -- ImportDecl
 --
-inferDecl (ImportDecl loc doc mod) = do
+inferDecl (RST.ImportDecl loc doc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
   newEnv <- fst <$> inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
-  return (ImportDecl loc doc mod)
+  return (AST.ImportDecl loc doc mod)
 --
 -- SetDecl
 --
-inferDecl (SetDecl _ _ txt) = case T.unpack txt of
+inferDecl (RST.SetDecl _ _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
 --
 -- TyOpDecl
 --
-inferDecl (TyOpDecl loc doc op prec assoc ty) = do
-  pure (TyOpDecl loc doc op prec assoc ty)
+inferDecl (RST.TyOpDecl loc doc op prec assoc ty) = do
+  pure (AST.TyOpDecl loc doc op prec assoc ty)
 
 ---------------------------------------------------------------------------------
 -- Infer programs
 ---------------------------------------------------------------------------------
 
 inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment, Program)
+                     -> DriverM (Environment, AST.Program)
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file
@@ -202,31 +196,31 @@ inferProgramFromDisk fp = do
      Right env -> return env
 
 inferProgram :: [CST.Declaration]
-             -> DriverM Program
+             -> DriverM AST.Program
 inferProgram decls = do
   decls <- renameProgram decls
   forM decls inferDecl
 
 renameProgram :: [CST.Declaration]
-              -> DriverM Program
+              -> DriverM RST.Program
 renameProgram decls = lowerProgram decls
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]
-                -> IO (Either Error Program)
+                -> IO (Either Error RST.Program)
 renameProgramIO state decls = do
   x <- execDriverM state (renameProgram decls)
   case x of
       Left err -> return (Left err)
       Right (res,_) -> return (Right res)
 
-inferProgram' :: Program
-              -> DriverM Program
+inferProgram' :: RST.Program
+              -> DriverM AST.Program
 inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
-                -> IO (Either Error (Environment, Program))
+                -> IO (Either Error (Environment, AST.Program))
 inferProgramIO state decls = do
   x <- execDriverM state (inferProgram decls)
   case x of
@@ -234,8 +228,8 @@ inferProgramIO state decls = do
       Right (res,x) -> return (Right ((driverEnv x), res))
 
 inferProgramIO' :: DriverState -- ^ Initial State
-                -> Program
-                -> IO (Either Error (Environment, Program))
+                -> RST.Program
+                -> IO (Either Error (Environment, AST.Program))
 inferProgramIO' state decls = do
   x <- execDriverM state (inferProgram' decls)
   case x of

@@ -15,7 +15,7 @@ import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.AST.Program
     ( Declaration(PrdCnsDecl,CmdDecl))
 import Driver.Environment (Environment(prdEnv, cnsEnv, cmdEnv))
-import Syntax.AST.Types ( TypeScheme )
+import Syntax.RST.Types ( TypeScheme )
 import Syntax.Common
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax

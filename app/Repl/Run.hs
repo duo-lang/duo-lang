@@ -34,7 +34,7 @@ import Repl.Repl
       cmd )
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.AST.Types ( DataDecl(data_name))
+import Syntax.RST.Types ( DataDecl(data_name))
 import Syntax.Common
 
 ------------------------------------------------------------------------------

@@ -7,7 +7,7 @@ import Data.Text qualified as T
 import Utils
 import Errors
 import Syntax.Common
-import Syntax.AST.Types
+import Syntax.RST.Types
 
 ---------------------------------------------------------------------------------
 -- Variable representation
