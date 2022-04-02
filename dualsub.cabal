@@ -107,6 +107,9 @@ library
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
+      Syntax.RST.Program
+      Syntax.RST.Terms
+      Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize
