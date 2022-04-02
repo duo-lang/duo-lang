@@ -26,9 +26,9 @@ isDesugaredTerm :: Term pc -> Bool
 -- Core terms
 isDesugaredTerm BoundVar {} = True
 isDesugaredTerm FreeVar {} = True
-isDesugaredTerm (Xtor _ _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
-isDesugaredTerm (MuAbs _ _ _ cmd) = isDesugaredCommand cmd
-isDesugaredTerm (XMatch _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
+isDesugaredTerm (Xtor _ _ _ _ _ subst) = and (isDesugaredPCTerm <$> subst)
+isDesugaredTerm (MuAbs _ _ _ _ cmd) = isDesugaredCommand cmd
+isDesugaredTerm (XMatch _ _ _ _ cases) = and ((\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
 isDesugaredTerm PrimLitI64{} = True
 isDesugaredTerm PrimLitF64{} = True
 -- Non-core terms
@@ -60,71 +60,83 @@ desugarPCTerm (PrdTerm tm) = PrdTerm $ desugarTerm tm
 desugarPCTerm (CnsTerm tm) = CnsTerm $ desugarTerm tm
 
 desugarTerm :: Term pc -> Term pc
-desugarTerm (BoundVar _ pc idx) = BoundVar () pc idx
-desugarTerm (FreeVar _ pc fv) = FreeVar () pc fv
-desugarTerm (Xtor _ pc ns xt args) = Xtor () pc ns xt (desugarPCTerm <$> args)
-desugarTerm (MuAbs _ pc bs cmd) = MuAbs () pc bs (desugarCmd cmd)
-desugarTerm (XMatch _ pc ns cases) = XMatch () pc ns (desugarCmdCase <$> cases)
-desugarTerm (PrimLitI64 _ i) = PrimLitI64 () i
-desugarTerm (PrimLitF64 _ d) = PrimLitF64 () d
+desugarTerm (BoundVar loc pc annot idx) =
+  BoundVar loc pc annot idx
+desugarTerm (FreeVar loc pc annot fv) =
+  FreeVar loc pc annot fv
+desugarTerm (Xtor loc pc annot ns xt args) =
+  Xtor loc pc annot ns xt (desugarPCTerm <$> args)
+desugarTerm (MuAbs loc pc annot bs cmd) =
+  MuAbs loc pc annot bs (desugarCmd cmd)
+desugarTerm (XMatch loc pc annot ns cases) =
+  XMatch loc pc annot ns (desugarCmdCase <$> cases)
+desugarTerm (PrimLitI64 loc i) = PrimLitI64 loc i
+desugarTerm (PrimLitF64 loc d) = PrimLitF64 loc d
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
-desugarTerm (Dtor _ ns xt t (args1,PrdRep,args2)) =
+desugarTerm (Dtor loc pc annot ns xt t (args1,PrdRep,args2)) =
   let
-    args = (desugarPCTerm <$> args1) ++ [CnsTerm $ FreeVar () CnsRep resVar] ++ (desugarPCTerm <$> args2)
-    cmd = Apply () Nothing (desugarTerm t)
-                           (Xtor () CnsRep ns xt args)
+    args = (desugarPCTerm <$> args1) ++ [CnsTerm $ FreeVar loc CnsRep Nothing resVar] ++ (desugarPCTerm <$> args2)
+    cmd = Apply loc Nothing (desugarTerm t)
+                           (Xtor loc CnsRep Nothing ns xt args)
   in
-    MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
-desugarTerm (Dtor _ ns xt t (args1,CnsRep,args2)) =
+    MuAbs loc PrdRep Nothing Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
+desugarTerm (Dtor loc pc rep ns xt t (args1,CnsRep,args2)) =
   let
-    args = (desugarPCTerm <$> args1) ++ [PrdTerm $ FreeVar () PrdRep resVar] ++ (desugarPCTerm <$> args2)
-    cmd = Apply () Nothing (desugarTerm t)
-                           (Xtor () CnsRep ns xt args)
+    args = (desugarPCTerm <$> args1) ++ [PrdTerm $ FreeVar loc PrdRep Nothing resVar] ++ (desugarPCTerm <$> args2)
+    cmd = Apply loc Nothing (desugarTerm t)
+                           (Xtor loc CnsRep Nothing ns xt args)
   in
-    MuAbs () CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd cmd
+    MuAbs loc CnsRep Nothing Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
-desugarTerm (Case _ ns t cases)   =
+desugarTerm (Case loc annot ns t cases)   =
   let
-    desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase () xt args  $ Apply () Nothing (desugarTerm t) (FreeVar () CnsRep resVar)
-    cmd = Apply () Nothing (desugarTerm t) (XMatch () CnsRep ns  (desugarMatchCase <$> cases))
+    desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase loc xt args  $ Apply loc Nothing (desugarTerm t) (FreeVar loc CnsRep Nothing resVar)
+    cmd = Apply loc Nothing (desugarTerm t) (XMatch loc CnsRep Nothing ns  (desugarMatchCase <$> cases))
   in
-    MuAbs () PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
+    MuAbs loc PrdRep Nothing Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 -- we want to desugar comatch { D(args) => e }
 -- comatch { D(args)[k] => (desugar e) >> k }
-desugarTerm (Cocase _ ns cocases) =
+desugarTerm (Cocase loc annot ns cocases) =
   let
     desugarComatchCase (MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in
-      MkCmdCase () xt args $ Apply () Nothing (desugarTerm t) (BoundVar () CnsRep (0,length as1))
+      MkCmdCase loc xt args $ Apply loc Nothing (desugarTerm t) (BoundVar loc CnsRep Nothing (0,length as1))
   in
-    XMatch () PrdRep ns $ desugarComatchCase <$> cocases
+    XMatch loc PrdRep Nothing ns $ desugarComatchCase <$> cocases
 
 desugarCmdCase :: CmdCase -> CmdCase
-desugarCmdCase (MkCmdCase _ xt args cmd) = MkCmdCase () xt args (desugarCmd cmd)
+desugarCmdCase (MkCmdCase loc xt args cmd) = MkCmdCase loc xt args (desugarCmd cmd)
 
 desugarCmd :: Command -> Command
-desugarCmd (Apply _ kind prd cns) = Apply () kind (desugarTerm prd) (desugarTerm cns)
-desugarCmd (Print _ prd cmd) = Print () (desugarTerm prd) (desugarCmd cmd)
-desugarCmd (Read _ cns) = Read () (desugarTerm cns)
-desugarCmd (Jump _ fv) = Jump () fv
-desugarCmd (ExitSuccess _) = ExitSuccess ()
-desugarCmd (ExitFailure _) = ExitFailure ()
-desugarCmd (PrimOp _ pt op subst) = PrimOp () pt op (desugarPCTerm <$> subst)
+desugarCmd (Apply loc kind prd cns) = Apply loc kind (desugarTerm prd) (desugarTerm cns)
+desugarCmd (Print loc prd cmd) = Print loc (desugarTerm prd) (desugarCmd cmd)
+desugarCmd (Read loc cns) = Read loc (desugarTerm cns)
+desugarCmd (Jump loc fv) = Jump loc fv
+desugarCmd (ExitSuccess loc) = ExitSuccess loc
+desugarCmd (ExitFailure loc) = ExitFailure loc
+desugarCmd (PrimOp loc pt op subst) = PrimOp loc pt op (desugarPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Translate Program
 ---------------------------------------------------------------------------------
 
 desugarDecl :: Declaration -> Declaration
-desugarDecl (PrdCnsDecl _ pc isRec fv annot tm) = PrdCnsDecl () pc isRec fv annot (desugarTerm tm)
-desugarDecl (CmdDecl _ fv cmd)                  = CmdDecl () fv (desugarCmd cmd)
-desugarDecl (DataDecl _ decl)                   = DataDecl () decl
-desugarDecl (XtorDecl _ dc xt args ret)         = XtorDecl () dc xt args ret
-desugarDecl (ImportDecl _ mn)                   = ImportDecl () mn
-desugarDecl (SetDecl _ txt)                     = SetDecl () txt
-desugarDecl (TyOpDecl _ op prec assoc ty)       = TyOpDecl () op prec assoc ty
+desugarDecl (PrdCnsDecl loc doc pc isRec fv annot tm) =
+  PrdCnsDecl loc doc pc isRec fv annot (desugarTerm tm)
+desugarDecl (CmdDecl loc doc fv cmd) =
+  CmdDecl loc doc fv (desugarCmd cmd)
+desugarDecl (DataDecl loc doc decl) =
+  DataDecl loc doc decl
+desugarDecl (XtorDecl loc doc dc xt args ret) =
+  XtorDecl loc doc dc xt args ret
+desugarDecl (ImportDecl loc doc mn) =
+  ImportDecl loc doc mn
+desugarDecl (SetDecl loc doc txt) =
+  SetDecl loc doc txt
+desugarDecl (TyOpDecl loc doc op prec assoc ty) =
+  TyOpDecl loc doc op prec assoc ty
 
 desugarProgram :: Program -> Program
 desugarProgram ps = desugarDecl <$> ps
