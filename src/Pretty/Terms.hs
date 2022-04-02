@@ -142,8 +142,8 @@ isNumSTermAST (AST.Xtor _ PrdRep _ Nominal (MkXtorName "S") [AST.PrdTerm n]) = c
 isNumSTermAST _ = Nothing
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep _ Nominal (MkXtorName "Z") []) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep _ Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
@@ -182,29 +182,29 @@ instance PrettyAnn (AST.Term pc) where
 instance PrettyAnn (RST.Term pc) where
   prettyAnn (isNumSTermRST -> Just n) =
     pretty n
-  prettyAnn (RST.BoundVar _ _ _ (i,j)) =
+  prettyAnn (RST.BoundVar _ _ (i,j)) =
     parens (pretty i <> "," <> pretty j)
-  prettyAnn (RST.FreeVar _ _ _ v) =
+  prettyAnn (RST.FreeVar _ _ v) =
     prettyAnn v
-  prettyAnn (RST.Xtor _ _ _ _ xt args) =
+  prettyAnn (RST.Xtor _ _ _ xt args) =
     prettyAnn xt <> prettyAnn args
-  prettyAnn (RST.XMatch _ PrdRep _ _ cases) =
+  prettyAnn (RST.XMatch _ PrdRep _ cases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (RST.XMatch _ CnsRep _ _ cases) =
+  prettyAnn (RST.XMatch _ CnsRep _ cases) =
     annKeyword "case"   <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (RST.MuAbs _ pc _ a cmd) =
+  prettyAnn (RST.MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
-  prettyAnn (RST.Dtor _ _ _ _ xt t substi) =
+  prettyAnn (RST.Dtor _ _ _ xt t substi) =
       parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
-  prettyAnn (RST.Case _ _ _ t cases) =
+  prettyAnn (RST.Case _ _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+>
     annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (RST.Cocase _ _ _ cocases) =
+  prettyAnn (RST.Cocase _ _ cocases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
   prettyAnn (RST.PrimLitI64 _ i) = annLiteral (prettyAnn i <> "#I64")
@@ -225,7 +225,7 @@ instance PrettyAnn RST.Command where
   prettyAnn (RST.Print _ t cmd) = annKeyword "Print" <> parens (prettyAnn t) <> semi <+> prettyAnn cmd
   prettyAnn (RST.Read _ cns) = annKeyword "Read" <> brackets (prettyAnn cns)
   prettyAnn (RST.Jump _ nm) = prettyAnn nm
-  prettyAnn (RST.Apply _ _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
+  prettyAnn (RST.Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
   prettyAnn (RST.PrimOp _ pt op subst) = annKeyword (prettyAnn (primOpKeyword op)) <> annTypeName (prettyAnn (primTypeKeyword pt)) <> prettyAnn subst
 
 instance PrettyAnn (NamedRep (AST.Term pc)) where

@@ -20,7 +20,6 @@ import Data.Maybe (fromJust, isJust)
 
 import Utils
 import Syntax.Common
-import Syntax.RST.Types
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -126,34 +125,34 @@ deriving instance Show CmdCase
 -- The `bs` parameter is used to store additional information at binding sites.
 data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
-  BoundVar :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> Index -> Term pc
+  BoundVar :: Loc -> PrdCnsRep pc -> Index -> Term pc
   -- | A free variable in the locally nameless system.
-  FreeVar :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> FreeVarName -> Term pc
+  FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> NominalStructural -> [CmdCase] -> Term pc
+  XMatch :: Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> Maybe FreeVarName -> Command -> Term pc
+  MuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
   --
   -- Syntactic Sugar
   --
-  Dtor :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
+  Dtor :: Loc -> PrdCnsRep pc -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
   -- | A pattern match:
   --
   -- case e of { ... }
   --
-  Case :: Loc -> Maybe (Typ Pos) -> NominalStructural -> Term Prd -> [TermCase] -> Term Prd
+  Case :: Loc -> NominalStructural -> Term Prd -> [TermCase] -> Term Prd
   -- | A copattern match:
   --
   -- cocase { ... }
   --
-  Cocase :: Loc -> Maybe (Typ Pos) -> NominalStructural -> [TermCaseI] -> Term Prd
+  Cocase :: Loc -> NominalStructural -> [TermCaseI] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -173,7 +172,7 @@ data Command where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply  :: Loc -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
+  Apply  :: Loc -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
@@ -194,29 +193,29 @@ pctermOpeningRec k subst (PrdTerm tm) = PrdTerm $ termOpeningRec k subst tm
 pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
-termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, subst !! j) of
+termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, subst !! j) of
                                                                       (PrdRep, PrdTerm tm) -> tm
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       _                    -> error "termOpeningRec BOOM"
                                                    | otherwise = bv
-termOpeningRec _ _ fv@(FreeVar _ _ _ _)       = fv
-termOpeningRec k args (Xtor loc rep annot ns xt subst) =
-  Xtor loc rep annot ns xt (pctermOpeningRec k args <$> subst)
-termOpeningRec k args (XMatch loc rep annot ns cases) =
-  XMatch loc rep annot ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
-termOpeningRec k args (MuAbs loc rep annot fv cmd) =
-  MuAbs loc rep annot fv (commandOpeningRec (k+1) args cmd)
+termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
+termOpeningRec k args (Xtor loc rep ns xt subst) =
+  Xtor loc rep ns xt (pctermOpeningRec k args <$> subst)
+termOpeningRec k args (XMatch loc rep ns cases) =
+  XMatch loc rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
+termOpeningRec k args (MuAbs loc rep fv cmd) =
+  MuAbs loc rep fv (commandOpeningRec (k+1) args cmd)
 -- ATerms
-termOpeningRec k args (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
+termOpeningRec k args (Dtor loc rep ns xt t (args1,pcrep,args2)) =
   let
     args1' = pctermOpeningRec k args <$> args1
     args2' = pctermOpeningRec k args <$> args2
   in
-    Dtor loc rep annot ns xt (termOpeningRec k args t) (args1', pcrep, args2')
-termOpeningRec k args (Case loc annot ns t cases) =
-  Case loc annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
-termOpeningRec k args (Cocase loc annot ns cocases) =
-  Cocase loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+    Dtor loc rep ns xt (termOpeningRec k args t) (args1', pcrep, args2')
+termOpeningRec k args (Case loc ns t cases) =
+  Case loc ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
+termOpeningRec k args (Cocase loc ns cocases) =
+  Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
 
@@ -227,7 +226,7 @@ commandOpeningRec _ _ (ExitFailure loc) = ExitFailure loc
 commandOpeningRec k args (Print loc t cmd) = Print loc (termOpeningRec k args t) (commandOpeningRec k args cmd)
 commandOpeningRec k args (Read loc cns) = Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) = Jump loc fv
-commandOpeningRec k args (Apply loc kind t1 t2) = Apply loc kind (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec k args (Apply loc t1 t2) = Apply loc (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc pt op subst) = PrimOp loc pt op (pctermOpeningRec k args <$> subst)
 
 commandOpening :: Substitution -> Command -> Command
@@ -245,28 +244,28 @@ pctermClosingRec k vars (PrdTerm tm) = PrdTerm $ termClosingRec k vars tm
 pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
 termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
-termClosingRec _ _ bv@(BoundVar _ _ _ _) = bv
-termClosingRec k vars (FreeVar loc PrdRep annot v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep annot (k, fromJust ((Prd,v) `elemIndex` vars))
-                                                   | otherwise = FreeVar loc PrdRep annot v
-termClosingRec k vars (FreeVar loc CnsRep annot v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep annot (k, fromJust ((Cns,v) `elemIndex` vars))
-                                                   | otherwise = FreeVar loc CnsRep annot v
-termClosingRec k vars (Xtor loc pc annot ns xt subst) =
-  Xtor loc pc annot ns xt (pctermClosingRec k vars <$> subst)
-termClosingRec k vars (XMatch loc pc annot sn cases) =
-  XMatch loc pc annot sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
-termClosingRec k vars (MuAbs loc pc annot fv cmd) =
-  MuAbs loc pc annot fv (commandClosingRec (k+1) vars cmd)
+termClosingRec _ _ bv@(BoundVar _ _ _) = bv
+termClosingRec k vars (FreeVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
+                                             | otherwise = FreeVar loc PrdRep v
+termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
+                                             | otherwise = FreeVar loc CnsRep v
+termClosingRec k vars (Xtor loc pc ns xt subst) =
+  Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
+termClosingRec k vars (XMatch loc pc sn cases) =
+  XMatch loc pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
+termClosingRec k vars (MuAbs loc pc fv cmd) =
+  MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
 -- ATerms
-termClosingRec k args (Dtor loc pc annot ns xt t (args1,pcrep,args2)) =
+termClosingRec k args (Dtor loc pc ns xt t (args1,pcrep,args2)) =
   let
     args1' = pctermClosingRec k args <$> args1
     args2' = pctermClosingRec k args <$> args2
   in
-    Dtor loc pc annot ns xt (termClosingRec k args t) (args1', pcrep, args2')
-termClosingRec k args (Case loc annot ns t cases) =
-  Case loc annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
-termClosingRec k args (Cocase loc annot ns cocases) =
-  Cocase loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+    Dtor loc pc ns xt (termClosingRec k args t) (args1', pcrep, args2')
+termClosingRec k args (Case loc ns t cases) =
+  Case loc ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
+termClosingRec k args (Cocase loc ns cocases) =
+  Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
@@ -276,7 +275,7 @@ commandClosingRec _ _ (ExitFailure ext) = ExitFailure ext
 commandClosingRec _ _ (Jump ext fv) = Jump ext fv
 commandClosingRec k args (Print ext t cmd) = Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) = Read ext (termClosingRec k args cns)
-commandClosingRec k args (Apply ext kind t1 t2) = Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext pt op subst) = PrimOp ext pt op (pctermClosingRec k args <$> subst)
 
 termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
@@ -297,9 +296,9 @@ freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> Substitution
 freeVarNamesToXtorArgs bs = f <$> bs
   where
     f (Prd, Nothing) = error "Create Names first!"
-    f (Prd, Just fv) = PrdTerm $ FreeVar defaultLoc PrdRep Nothing fv
+    f (Prd, Just fv) = PrdTerm $ FreeVar defaultLoc PrdRep fv
     f (Cns, Nothing) = error "Create Names first!"
-    f (Cns, Just fv) = CnsTerm $ FreeVar defaultLoc CnsRep Nothing fv
+    f (Cns, Just fv) = CnsTerm $ FreeVar defaultLoc CnsRep fv
 
 openTermCase :: TermCase -> TermCase
 openTermCase MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
@@ -330,24 +329,33 @@ openPCTermComplete (PrdTerm tm) = PrdTerm $ openTermComplete tm
 openPCTermComplete (CnsTerm tm) = CnsTerm $ openTermComplete tm
 
 openTermComplete :: Term pc -> Term pc
-openTermComplete (BoundVar loc pc annot idx) = BoundVar loc pc annot idx
-openTermComplete (FreeVar loc pc annot v) = FreeVar loc pc annot v
-openTermComplete (Xtor loc pc annot ns xt args) = Xtor loc pc annot ns xt (openPCTermComplete <$> args)
-openTermComplete (XMatch loc pc annot ns cases) = XMatch loc pc annot ns (openCmdCase <$> cases)
-openTermComplete (MuAbs loc PrdRep annot (Just fv) cmd) =
-  MuAbs loc PrdRep annot (Just fv) (commandOpening [CnsTerm (FreeVar defaultLoc CnsRep Nothing fv)] (openCommandComplete cmd))
-openTermComplete (MuAbs loc CnsRep annot (Just fv) cmd) =
-  MuAbs loc CnsRep annot (Just fv) (commandOpening [PrdTerm (FreeVar defaultLoc PrdRep Nothing fv)] (openCommandComplete cmd))
-openTermComplete (MuAbs _ _ _ Nothing _) = error "Create names first!"
-openTermComplete (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
-  Dtor loc rep annot ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
-openTermComplete (Case loc annot ns t cases) = Case loc annot ns (openTermComplete t) (openTermCase <$> cases)
-openTermComplete (Cocase loc annot ns cocases) = Cocase loc annot ns (openTermCaseI <$> cocases)
-openTermComplete (PrimLitI64 loc i) = PrimLitI64 loc i
-openTermComplete (PrimLitF64 loc d) = PrimLitF64 loc d
+openTermComplete (BoundVar loc pc idx) =
+  BoundVar loc pc idx
+openTermComplete (FreeVar loc pc v) =
+  FreeVar loc pc v
+openTermComplete (Xtor loc pc ns xt args) =
+  Xtor loc pc ns xt (openPCTermComplete <$> args)
+openTermComplete (XMatch loc pc ns cases) =
+  XMatch loc pc ns (openCmdCase <$> cases)
+openTermComplete (MuAbs loc PrdRep (Just fv) cmd) =
+  MuAbs loc PrdRep (Just fv) (commandOpening [CnsTerm (FreeVar defaultLoc CnsRep fv)] (openCommandComplete cmd))
+openTermComplete (MuAbs loc CnsRep (Just fv) cmd) =
+  MuAbs loc CnsRep (Just fv) (commandOpening [PrdTerm (FreeVar defaultLoc PrdRep fv)] (openCommandComplete cmd))
+openTermComplete (MuAbs _ _ Nothing _) =
+  error "Create names first!"
+openTermComplete (Dtor loc rep ns xt t (args1,pcrep,args2)) =
+  Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
+openTermComplete (Case loc ns t cases) =
+  Case loc ns (openTermComplete t) (openTermCase <$> cases)
+openTermComplete (Cocase loc ns cocases) =
+  Cocase loc ns (openTermCaseI <$> cocases)
+openTermComplete (PrimLitI64 loc i) =
+  PrimLitI64 loc i
+openTermComplete (PrimLitF64 loc d) =
+  PrimLitF64 loc d
 
 openCommandComplete :: Command -> Command
-openCommandComplete (Apply loc kind t1 t2) = Apply loc kind (openTermComplete t1) (openTermComplete t2)
+openCommandComplete (Apply loc t1 t2) = Apply loc (openTermComplete t1) (openTermComplete t2)
 openCommandComplete (Print loc t cmd) = Print loc (openTermComplete t) (openCommandComplete cmd)
 openCommandComplete (Read loc cns) = Read loc (openTermComplete cns)
 openCommandComplete (Jump loc fv) = Jump loc fv
