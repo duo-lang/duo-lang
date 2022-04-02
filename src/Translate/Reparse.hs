@@ -34,70 +34,80 @@ fresh Cns = do
   modify (second tail)
   pure (Just var)
 
-createNamesPCTerm :: PrdCnsTerm ext -> CreateNameM (PrdCnsTerm Parsed)
+createNamesPCTerm :: PrdCnsTerm -> CreateNameM PrdCnsTerm
 createNamesPCTerm (PrdTerm tm) = PrdTerm <$> createNamesTerm tm
 createNamesPCTerm (CnsTerm tm) = CnsTerm <$> createNamesTerm tm
 
-createNamesTerm :: Term pc ext -> CreateNameM (Term pc Parsed)
-createNamesTerm (BoundVar _ pc idx) = return $ BoundVar defaultLoc pc idx
-createNamesTerm (FreeVar _ pc nm)   = return $ FreeVar defaultLoc pc nm
-createNamesTerm (Xtor _ pc ns xt subst) = do
-  subst' <- sequence $ createNamesPCTerm <$> subst
-  return $ Xtor defaultLoc pc ns xt subst'
-createNamesTerm (XMatch _ pc ns cases) = do
-  cases' <- sequence $ createNamesCmdCase <$> cases
-  return $ XMatch defaultLoc pc ns cases'
-createNamesTerm (MuAbs _ pc _ cmd) = do
+createNamesSubstitution :: Substitution  -> CreateNameM Substitution
+createNamesSubstitution = mapM createNamesPCTerm
+
+createNamesTerm :: Term pc -> CreateNameM (Term pc)
+createNamesTerm (BoundVar loc pc annot idx) =
+  pure $ BoundVar loc pc annot idx
+createNamesTerm (FreeVar loc pc annot nm) =
+  pure $ FreeVar loc pc annot nm
+createNamesTerm (Xtor loc pc annot ns xt subst) = do
+  subst' <- createNamesSubstitution subst
+  pure $ Xtor loc pc annot ns xt subst'
+createNamesTerm (XMatch loc pc annot ns cases) = do
+  cases' <- mapM createNamesCmdCase cases
+  pure $ XMatch loc pc annot ns cases'
+createNamesTerm (MuAbs loc pc annot _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
-  return $ MuAbs defaultLoc pc var cmd'
-createNamesTerm (Dtor _ ns xt e (args1,pcrep,args2)) = do
+  pure $ MuAbs loc pc annot var cmd'
+createNamesTerm (Dtor loc pc annot ns xt e (subst1,pcrep,subst2)) = do
   e' <- createNamesTerm e
-  args1' <- sequence (createNamesPCTerm <$> args1)
-  args2' <- sequence (createNamesPCTerm <$> args2)
-  return $ Dtor defaultLoc ns xt e' (args1',pcrep,args2')
-createNamesTerm (Case _ ns e cases) = do
+  subst1' <- createNamesSubstitution subst1
+  subst2' <- createNamesSubstitution subst2
+  pure $ Dtor loc pc annot ns xt e' (subst1',pcrep,subst2')
+createNamesTerm (Case loc annot ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
-  return $ Case defaultLoc ns e' cases'
-createNamesTerm (Cocase _ ns cases) = do
+  pure $ Case loc annot ns e' cases'
+createNamesTerm (Cocase loc annot ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
-  return $ Cocase defaultLoc ns cases'
-createNamesTerm (PrimLitI64 _ i) = pure (PrimLitI64 defaultLoc i)
-createNamesTerm (PrimLitF64 _ d) = pure (PrimLitF64 defaultLoc d)
+  pure $ Cocase loc annot ns cases'
+createNamesTerm (PrimLitI64 loc i) =
+  pure (PrimLitI64 loc i)
+createNamesTerm (PrimLitF64 loc d) =
+  pure (PrimLitF64 loc d)
 
-createNamesCommand :: Command ext -> CreateNameM (Command Parsed)
-createNamesCommand (ExitSuccess _) = return $ ExitSuccess defaultLoc
-createNamesCommand (ExitFailure _) = return $ ExitFailure defaultLoc
-createNamesCommand (Jump _ fv) = return $ Jump defaultLoc fv
-createNamesCommand (Apply _ kind prd cns) = do
+createNamesCommand :: Command -> CreateNameM Command
+createNamesCommand (ExitSuccess loc) =
+  pure $ ExitSuccess loc
+createNamesCommand (ExitFailure loc) =
+  pure $ ExitFailure loc
+createNamesCommand (Jump loc fv) =
+  pure $ Jump loc fv
+createNamesCommand (Apply loc kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
-  return (Apply defaultLoc kind prd' cns')
-createNamesCommand (Print _ prd cmd) = do
+  pure $ Apply loc kind prd' cns'
+createNamesCommand (Print loc prd cmd) = do
   prd' <- createNamesTerm prd
   cmd' <- createNamesCommand cmd
-  return (Print defaultLoc prd' cmd')
-createNamesCommand (Read _ cns) = do
+  pure $ Print loc prd' cmd'
+createNamesCommand (Read loc cns) = do
   cns' <- createNamesTerm cns
-  return (Read defaultLoc cns')
-createNamesCommand (PrimOp _ pt pop subst) = do
+  pure $ Read loc cns'
+createNamesCommand (PrimOp loc pt pop subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  return (PrimOp defaultLoc pt pop subst')
+  pure $ PrimOp loc pt pop subst'
 
-createNamesCmdCase :: CmdCase ext -> CreateNameM (CmdCase Parsed)
+createNamesCmdCase :: CmdCase -> CreateNameM CmdCase
 createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
   cmd' <- createNamesCommand cmdcase_cmd
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
   return $ MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesTermCase :: TermCase ext -> CreateNameM (TermCase Parsed)
+createNamesTermCase :: TermCase -> CreateNameM TermCase
 createNamesTermCase (MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
   return $ MkTermCase defaultLoc xt args' e'
 
-createNamesTermCaseI :: TermCaseI ext -> CreateNameM (TermCaseI Parsed)
+createNamesTermCaseI :: TermCaseI -> CreateNameM TermCaseI
 createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
@@ -109,20 +119,27 @@ createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-reparseTerm :: Term pc ext -> Term pc Parsed
+reparseTerm :: Term pc -> Term pc
 reparseTerm tm = evalState (createNamesTerm tm) names
 
-reparseCommand :: Command ext -> Command Parsed
+reparseCommand :: Command -> Command
 reparseCommand cmd = evalState (createNamesCommand cmd) names
 
-reparseDecl :: Declaration ext -> Declaration Parsed
-reparseDecl (PrdCnsDecl _ rep isRec fv ts tm) = PrdCnsDecl (Nothing, defaultLoc) rep isRec fv ts (reparseTerm tm)
-reparseDecl (CmdDecl _ fv cmd)                = CmdDecl (Nothing, defaultLoc) fv (reparseCommand cmd)
-reparseDecl (DataDecl _ decl)                 = DataDecl (Nothing, defaultLoc) decl
-reparseDecl (XtorDecl _ dc xt args ret)       = XtorDecl (Nothing, defaultLoc) dc xt args ret
-reparseDecl (ImportDecl _ mn)                 = ImportDecl (Nothing, defaultLoc) mn
-reparseDecl (SetDecl _ txt)                   = SetDecl (Nothing, defaultLoc) txt
-reparseDecl (TyOpDecl _ op prec assoc ty)     = TyOpDecl (Nothing, defaultLoc) op prec assoc ty
+reparseDecl :: Declaration -> Declaration
+reparseDecl (PrdCnsDecl loc doc rep isRec fv ts tm) =
+  PrdCnsDecl loc doc rep isRec fv ts (reparseTerm tm)
+reparseDecl (CmdDecl loc doc fv cmd) =
+  CmdDecl loc doc fv (reparseCommand cmd)
+reparseDecl (DataDecl loc doc decl) =
+  DataDecl loc doc decl
+reparseDecl (XtorDecl loc doc dc xt args ret) =
+  XtorDecl loc doc dc xt args ret
+reparseDecl (ImportDecl loc doc mn) =
+  ImportDecl loc doc mn
+reparseDecl (SetDecl loc doc txt) =
+  SetDecl loc doc txt
+reparseDecl (TyOpDecl loc doc op prec assoc ty) =
+  TyOpDecl loc doc op prec assoc ty
 
-reparseProgram :: Program ext -> Program Parsed
+reparseProgram :: Program -> Program
 reparseProgram = fmap reparseDecl

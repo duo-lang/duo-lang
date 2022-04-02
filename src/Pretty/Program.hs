@@ -61,50 +61,47 @@ prettyTyOpDecl op assoc prec ty =
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
   annSymbol ":=" <+> prettyAnn ty <> semi
 
-instance PrettyAnn (Declaration ext) where
-  prettyAnn (PrdCnsDecl _ pc isRec fv annot tm) =
+instance PrettyAnn Declaration where
+  prettyAnn (PrdCnsDecl _ _ pc isRec fv annot tm) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
-  prettyAnn (CmdDecl _ fv cm) =
+  prettyAnn (CmdDecl _ _ fv cm) =
     prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (DataDecl _ decl) =
+  prettyAnn (DataDecl _ _ decl) =
     prettyAnn decl
-  prettyAnn (XtorDecl _ dc xt args ret) =
+  prettyAnn (XtorDecl _ _ dc xt args ret) =
     prettyXtorDecl dc xt args ret
-  prettyAnn (ImportDecl _ mod) =
+  prettyAnn (ImportDecl _ _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (SetDecl _ txt) =
+  prettyAnn (SetDecl _ _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (TyOpDecl _ op prec assoc ty) =
+  prettyAnn (TyOpDecl _ _ op prec assoc ty) =
     prettyTyOpDecl op assoc prec ty
     
 
-instance PrettyAnn (NamedRep (Declaration ext)) where
-  prettyAnn (NamedRep (PrdCnsDecl _ pc isRec fv annot tm)) =
+instance PrettyAnn (NamedRep Declaration) where
+  prettyAnn (NamedRep (PrdCnsDecl _ _ pc isRec fv annot tm)) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openTermComplete tm))
-  prettyAnn (NamedRep (CmdDecl _ fv cm)) =
+  prettyAnn (NamedRep (CmdDecl _ _ fv cm)) =
     prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
-  prettyAnn (NamedRep (DataDecl _ decl)) =
+  prettyAnn (NamedRep (DataDecl _ _ decl)) =
     prettyAnn decl
-  prettyAnn (NamedRep (XtorDecl _ dc xt args ret)) =
+  prettyAnn (NamedRep (XtorDecl _ _ dc xt args ret)) =
     prettyXtorDecl dc xt args ret
-  prettyAnn (NamedRep (ImportDecl _ mod)) =
+  prettyAnn (NamedRep (ImportDecl _ _ mod)) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (SetDecl _ txt)) =
+  prettyAnn (NamedRep (SetDecl _ _ txt)) =
     annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (NamedRep (TyOpDecl _ op prec assoc ty)) =
+  prettyAnn (NamedRep (TyOpDecl _ _ op prec assoc ty)) =
     prettyTyOpDecl op assoc prec ty
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration Parsed] where
-  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
-
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration Inferred] where
+instance {-# OVERLAPPING #-} PrettyAnn [Declaration] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (Environment ph) where
+instance PrettyAnn Environment where
   prettyAnn MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv } =
     vsep [ppPrds,ppCns,ppCmds, ppDecls ]
     where

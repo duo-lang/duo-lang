@@ -44,7 +44,7 @@ runCompile fp = do
                       Nothing -> putStrLn "Program does not contain a \"main\" function."
                       Just (cmd,_) -> do
                         let compiledCmd = focusCmd CBV (desugarCmd cmd)
-                        let compiledEnv :: Environment Compiled = focusEnvironment CBV (desugarEnvironment env)
+                        let compiledEnv :: Environment = focusEnvironment CBV (desugarEnvironment env)
                         evalCmd <- liftIO $ eval compiledCmd compiledEnv
                         case evalCmd of
                           Left err -> ppPrintIO err

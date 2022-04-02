@@ -38,7 +38,7 @@ defaultInferenceOptions = InferenceOptions
 
 data DriverState = DriverState
   { driverOpts :: InferenceOptions
-  , driverEnv :: Environment Inferred
+  , driverEnv :: Environment
   , driverSymbols :: SymbolTable
   }
 
@@ -52,7 +52,7 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 -- Utility functions
 ---------------------------------------------------------------------------------
 
-setEnvironment :: Environment Inferred -> DriverM ()
+setEnvironment :: Environment -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
 
 setSymboltable :: SymbolTable -> DriverM ()

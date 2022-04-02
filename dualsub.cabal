@@ -99,7 +99,6 @@ library
       Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names
-      Syntax.Common.Phases
       Syntax.Common.Polarity
       Syntax.Common.Primitives
       Syntax.Common.PrdCns

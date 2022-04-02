@@ -24,13 +24,13 @@ import TypeInference.GenerateConstraints.Primitives (primOps)
 -- Substitutions and Linear Contexts
 ---------------------------------------------------------------------------------------------
 
-genConstraintsPCTerm :: PrdCnsTerm Parsed
-                     -> GenM (PrdCnsTerm Inferred)
+genConstraintsPCTerm :: PrdCnsTerm
+                     -> GenM PrdCnsTerm
 genConstraintsPCTerm (PrdTerm tm) = PrdTerm <$> genConstraintsTerm tm
 genConstraintsPCTerm (CnsTerm tm) = CnsTerm <$> genConstraintsTerm tm
 
-genConstraintsSubst :: Substitution Parsed
-                   -> GenM (Substitution Inferred)
+genConstraintsSubst :: Substitution
+                    -> GenM Substitution
 genConstraintsSubst subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
@@ -73,16 +73,16 @@ splitContext n CnsRep sig = case splitAt n sig of
 ---------------------------------------------------------------------------------------------
 
 -- | Generate the constraints for a given Term.
-genConstraintsTerm :: Term pc Parsed
-                    -> GenM (Term pc Inferred)
+genConstraintsTerm :: Term pc
+                    -> GenM (Term pc)
 --
 -- Bound variables:
 --
 -- Bound variables can be looked up in the context.
 --
-genConstraintsTerm (BoundVar loc rep idx) = do
+genConstraintsTerm (BoundVar loc rep _ idx) = do
   ty <- lookupContext rep idx
-  return (BoundVar (loc, ty) rep idx)
+  return (BoundVar loc rep (Just ty) idx)
 --
 -- Free variables:
 --
@@ -90,23 +90,23 @@ genConstraintsTerm (BoundVar loc rep idx) = do
 -- where they correspond to typing schemes. This typing
 -- scheme has to be instantiated with fresh unification variables.
 --
-genConstraintsTerm (FreeVar loc rep v) = do
+genConstraintsTerm (FreeVar loc rep _ v) = do
   tys <- snd <$> lookupTerm rep v
   ty <- instantiateTypeScheme v loc tys
-  return (FreeVar (loc, ty) rep v)
+  return (FreeVar loc rep (Just ty) v)
 --
 -- Structural Xtors:
 --
-genConstraintsTerm (Xtor loc rep Structural xt subst) = do
+genConstraintsTerm (Xtor loc rep _ Structural xt subst) = do
   inferredSubst <- genConstraintsSubst subst
   let substTypes = getTypArgs inferredSubst
   case rep of
-    PrdRep -> return $ Xtor (loc, TyData   PosRep Nothing [MkXtorSig xt substTypes]) rep Structural xt inferredSubst
-    CnsRep -> return $ Xtor (loc, TyCodata NegRep Nothing [MkXtorSig xt substTypes]) rep Structural xt inferredSubst
+    PrdRep -> return $ Xtor loc rep (Just (TyData   PosRep Nothing [MkXtorSig xt substTypes])) Structural xt inferredSubst
+    CnsRep -> return $ Xtor loc rep (Just (TyCodata NegRep Nothing [MkXtorSig xt substTypes])) Structural xt inferredSubst
 --
 -- Nominal Xtors
 --
-genConstraintsTerm (Xtor loc rep Nominal xt subst) = do
+genConstraintsTerm (Xtor loc rep _ Nominal xt subst) = do
   -- First we infer the types of the arguments.
   substInferred <- genConstraintsSubst subst
   let substTypes = getTypArgs substInferred
@@ -121,12 +121,12 @@ genConstraintsTerm (Xtor loc rep Nominal xt subst) = do
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (Xtor (loc, TyNominal PosRep Nothing (data_name decl) conArgs covArgs) rep Nominal xt substInferred)
-    CnsRep -> return (Xtor (loc, TyNominal NegRep Nothing (data_name decl) conArgs covArgs) rep Nominal xt substInferred)
+    PrdRep -> return (Xtor loc rep (Just (TyNominal PosRep Nothing (data_name decl) conArgs covArgs)) Nominal xt substInferred)
+    CnsRep -> return (Xtor loc rep (Just (TyNominal NegRep Nothing (data_name decl) conArgs covArgs)) Nominal xt substInferred)
 --
 -- Refinement Xtors
 --
-genConstraintsTerm (Xtor loc rep Refinement xt subst) = do
+genConstraintsTerm (Xtor loc rep _ Refinement xt subst) = do
   -- First we infer the types of the arguments.
   substInferred <- genConstraintsSubst subst
   let substTypes = getTypArgs substInferred
@@ -138,12 +138,12 @@ genConstraintsTerm (Xtor loc rep Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (Xtor (loc, TyData   PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep Refinement xt substInferred)
-    CnsRep -> return (Xtor (loc, TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) rep Refinement xt substInferred)
+    PrdRep -> return (Xtor loc rep (Just (TyData   PosRep (Just (data_name decl)) [MkXtorSig xt substTypes])) Refinement xt substInferred)
+    CnsRep -> return (Xtor loc rep (Just (TyCodata NegRep (Just (data_name decl)) [MkXtorSig xt substTypes])) Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
-genConstraintsTerm (XMatch loc rep Structural cases) = do
+genConstraintsTerm (XMatch loc rep _ Structural cases) = do
   inferredCases <- forM cases (\MkCmdCase{cmdcase_args, cmdcase_name, cmdcase_ext, cmdcase_cmd} -> do
                       -- Generate positive and negative unification variables for all variables
                       -- bound in the pattern.
@@ -154,16 +154,16 @@ genConstraintsTerm (XMatch loc rep Structural cases) = do
                       return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
-    PrdRep -> return $ XMatch (loc, TyCodata PosRep Nothing (snd <$> inferredCases)) rep Structural (fst <$> inferredCases)
-    CnsRep -> return $ XMatch (loc, TyData   NegRep Nothing (snd <$> inferredCases)) rep Structural (fst <$> inferredCases)
+    PrdRep -> return $ XMatch loc rep (Just (TyCodata PosRep Nothing (snd <$> inferredCases))) Structural (fst <$> inferredCases)
+    CnsRep -> return $ XMatch loc rep (Just (TyData   NegRep Nothing (snd <$> inferredCases))) Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
 --
-genConstraintsTerm (XMatch _ _ Nominal []) =
+genConstraintsTerm (XMatch _ _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
-genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
+genConstraintsTerm (XMatch loc rep _ Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (cmdcase_name pmcase)
   -- We check that all cases in the pattern match belong to the type declaration.
@@ -185,16 +185,16 @@ genConstraintsTerm (XMatch loc rep Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name negTypes'))
   case rep of
-    PrdRep -> return $ XMatch (loc, TyNominal PosRep Nothing (data_name decl) conArgs covArgs) rep Nominal (fst <$> inferredCases)
-    CnsRep -> return $ XMatch (loc, TyNominal NegRep Nothing (data_name decl) conArgs covArgs) rep Nominal (fst <$> inferredCases)
+    PrdRep -> return $ XMatch loc rep (Just (TyNominal PosRep Nothing (data_name decl) conArgs covArgs)) Nominal (fst <$> inferredCases)
+    CnsRep -> return $ XMatch loc rep (Just (TyNominal NegRep Nothing (data_name decl) conArgs covArgs)) Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
-genConstraintsTerm (XMatch _ _ Refinement []) =
+genConstraintsTerm (XMatch _ _ _ Refinement []) =
   -- We know that empty matches cannot be parsed as Refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A refinement match needs to have at least one case."]
-genConstraintsTerm (XMatch loc rep Refinement cases@(pmcase:_)) = do
+genConstraintsTerm (XMatch loc rep _ Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (cmdcase_name pmcase)
   -- We check that all cases in the pattern match belong to the type declaration.
@@ -216,25 +216,25 @@ genConstraintsTerm (XMatch loc rep Refinement cases@(pmcase:_)) = do
                        -- and greatest type translation.
                        return (MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
   case rep of
-    PrdRep -> return $ XMatch (loc, TyCodata PosRep (Just (data_name decl)) (snd <$> inferredCases)) rep Refinement (fst <$> inferredCases)
-    CnsRep -> return $ XMatch (loc, TyData   NegRep (Just (data_name decl)) (snd <$> inferredCases)) rep Refinement (fst <$> inferredCases)
+    PrdRep -> return $ XMatch loc rep (Just (TyCodata PosRep (Just (data_name decl)) (snd <$> inferredCases))) Refinement (fst <$> inferredCases)
+    CnsRep -> return $ XMatch loc rep (Just (TyData   NegRep (Just (data_name decl)) (snd <$> inferredCases))) Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --
-genConstraintsTerm (MuAbs loc PrdRep bs cmd) = do
+genConstraintsTerm (MuAbs loc PrdRep _ bs cmd) = do
   (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmdInferred <- withContext [PrdCnsType CnsRep uvneg] (genConstraintsCommand cmd)
-  return (MuAbs (loc, uvpos) PrdRep bs cmdInferred)
-genConstraintsTerm (MuAbs loc CnsRep bs cmd) = do
+  return (MuAbs loc PrdRep (Just uvpos) bs cmdInferred)
+genConstraintsTerm (MuAbs loc CnsRep _ bs cmd) = do
   (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmdInferred <- withContext [PrdCnsType PrdRep uvpos] (genConstraintsCommand cmd)
-  return (MuAbs (loc, uvneg) CnsRep bs cmdInferred)
+  return (MuAbs loc CnsRep (Just uvneg) bs cmdInferred)
 --
 -- Structural Destructor Application (Syntactic Sugar):
 --
 -- e.'D subst
 --
-genConstraintsTerm (Dtor loc Structural xt destructee (subst1,PrdRep,subst2)) = do
+genConstraintsTerm (Dtor loc _ _ Structural xt destructee (subst1,PrdRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -248,8 +248,8 @@ genConstraintsTerm (Dtor loc Structural xt destructee (subst1,PrdRep,subst2)) = 
   let codataType = TyCodata NegRep Nothing [MkXtorSig xt lctxt]
   -- The type of the destructee must be a subtype of the Destructor type just generated.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
-  return (Dtor (loc,retTypePos) Structural xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
-genConstraintsTerm (Dtor loc Structural xt destructee (subst1,CnsRep,subst2)) = do
+  return (Dtor loc PrdRep (Just retTypePos) Structural xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
+genConstraintsTerm (Dtor loc _ _ Structural xt destructee (subst1,CnsRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -263,13 +263,13 @@ genConstraintsTerm (Dtor loc Structural xt destructee (subst1,CnsRep,subst2)) = 
   let codataType = TyCodata NegRep Nothing [MkXtorSig xt lctxt]
   -- The type of the destructee must be a subtype of the Destructor type just generated.
   addConstraint (SubType (DtorApConstraint loc) (getTypeTerm destructeeInferred) codataType)
-  return (Dtor (loc,retTypeNeg) Structural xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
+  return (Dtor loc CnsRep (Just retTypeNeg) Structural xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
 --
 -- Nominal Destructor Application (Syntactic Sugar):
 --
 -- e.D subst
 --
-genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,PrdRep,subst2)) = do
+genConstraintsTerm (Dtor loc _ _ Nominal xt destructee (subst1,PrdRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -290,8 +290,8 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,PrdRep,subst2)) = do
   (tys1, retType, tys2) <- splitContext (length subst1) CnsRep sig_args'
   -- The argument types must be subtypes of the types declared in the xtorSig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-  return (Dtor (loc,retType) Nominal xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
-genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,CnsRep,subst2)) = do
+  return (Dtor loc PrdRep (Just retType) Nominal xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
+genConstraintsTerm (Dtor loc _ _ Nominal xt destructee (subst1,CnsRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -312,12 +312,12 @@ genConstraintsTerm (Dtor loc Nominal xt destructee (subst1,CnsRep,subst2)) = do
   (tys1,retType, tys2) <- splitContext (length subst1) PrdRep sig_args'
   -- The argument types must be subtypes of the types declared in the xtorSig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-  return (Dtor (loc,retType) Nominal xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
+  return (Dtor loc CnsRep (Just retType) Nominal xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
 --
 -- Refinement Destructor Application (Syntactic Sugar):
 --
 -- e.D subst
-genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,PrdRep,subst2)) = do
+genConstraintsTerm (Dtor loc _ _ Refinement xt destructee (subst1,PrdRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -340,8 +340,8 @@ genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,PrdRep,subst2)) = 
   (tys1,_retType, tys2) <- splitContext (length subst1) CnsRep (sig_args xtorSigTranslated)
   -- The argument types must be subtypes of the greatest translation of the xtor sig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-  return (Dtor (loc,retTypePos) Refinement xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
-genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,CnsRep,subst2)) = do
+  return (Dtor loc PrdRep (Just retTypePos) Refinement xt destructeeInferred (subst1Inferred,PrdRep,subst2Inferred))
+genConstraintsTerm (Dtor loc _ _ Refinement xt destructee (subst1,CnsRep,subst2)) = do
   -- Infer the types of the arguments to the destructor.
   subst1Inferred <- genConstraintsSubst subst1
   subst2Inferred <- genConstraintsSubst subst2
@@ -364,14 +364,14 @@ genConstraintsTerm (Dtor loc Refinement xt destructee (subst1,CnsRep,subst2)) = 
   (tys1,_retType, tys2) <- splitContext (length subst1) PrdRep (sig_args xtorSigTranslated)
   -- The argument types must be subtypes of the greatest translation of the xtor sig.
   genConstraintsCtxts (getTypArgs (subst1Inferred ++ subst2Inferred)) (tys1 ++ tys2) (DtorArgsConstraint loc)
-  return (Dtor (loc,retTypeNeg) Refinement xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
+  return (Dtor loc CnsRep (Just retTypeNeg) Refinement xt destructeeInferred (subst1Inferred,CnsRep,subst2Inferred))
 --
 --
 -- Structural Match (Syntactic Sugar):
 --
 -- case e of { 'X(xs) => e' }
 --
-genConstraintsTerm (Case loc Structural destructee cases) = do
+genConstraintsTerm (Case loc _ Structural destructee cases) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Generate a unification variable for the return type of the pattern match
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
@@ -386,17 +386,17 @@ genConstraintsTerm (Case loc Structural destructee cases) = do
     return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred, MkXtorSig tmcase_name argtsNeg)
   -- The type of the pattern match destructee must be a subtype of the type generated by the match.
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyData NegRep Nothing (snd <$> casesInferred)))
-  return (Case (loc, retTypePos) Structural destructeeInferred (fst <$> casesInferred))
+  return (Case loc (Just retTypePos) Structural destructeeInferred (fst <$> casesInferred))
 --
 -- Nominal Match (Syntactic Sugar):
 --
 -- case e of { X(xs) => e' }
 --
-genConstraintsTerm (Case _ Nominal _ []) =
+genConstraintsTerm (Case _ _ Nominal _ []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
-genConstraintsTerm (Case loc Nominal destructee cases@(MkTermCase { tmcase_name = xtn }:_)) = do
+genConstraintsTerm (Case loc _ Nominal destructee cases@(MkTermCase { tmcase_name = xtn }:_)) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
@@ -420,17 +420,17 @@ genConstraintsTerm (Case loc Nominal destructee cases@(MkTermCase { tmcase_name 
     -- The term must have a subtype of the pattern match return type
     addConstraint (SubType (CaseConstraint tmcase_ext) (getTypeTerm tmcase_termInferred) retTypeNeg)
     return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred)
-  return (Case (loc,retTypePos) Nominal destructeeInferred casesInferred)
+  return (Case loc (Just retTypePos) Nominal destructeeInferred casesInferred)
 --
 -- Refinement Match (Syntactic Sugar):
 --
 -- case e of { X(xs) => e' }
 --
-genConstraintsTerm (Case _ Refinement _ []) =
+genConstraintsTerm (Case _ _ Refinement _ []) =
   -- We know that empty matches cannot be parsed as refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A refinement match needs to have at least one case."]
-genConstraintsTerm (Case loc Refinement destructee cases@(MkTermCase { tmcase_name = xtn }:_)) = do
+genConstraintsTerm (Case loc _ Refinement destructee cases@(MkTermCase { tmcase_name = xtn }:_)) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
@@ -455,13 +455,13 @@ genConstraintsTerm (Case loc Refinement destructee cases@(MkTermCase { tmcase_na
     return (MkTermCase tmcase_ext tmcase_name tmcase_args tmcase_termInferred, MkXtorSig tmcase_name argtsNeg)
   --  The destructee must have a subtype of the refinement type constructed from the cases.
   addConstraint (SubType (PatternMatchConstraint loc) (getTypeTerm destructeeInferred) (TyData NegRep (Just data_name) (snd <$> casesInferred)))
-  return (Case (loc,retTypePos) Refinement destructeeInferred (fst <$> casesInferred))
+  return (Case loc (Just retTypePos) Refinement destructeeInferred (fst <$> casesInferred))
 --
 -- Structural Comatch (Syntactic Sugar):
 --
 -- cocase { 'X(xs) => e' }
 --
-genConstraintsTerm (Cocase loc Structural cocases) = do
+genConstraintsTerm (Cocase loc _ Structural cocases) = do
   cocasesInferred <- forM cocases $ \MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
     -- Generate unification variables for each case arg
     (argtsPos1,argtsNeg1) <- freshTVars as1
@@ -472,15 +472,15 @@ genConstraintsTerm (Cocase loc Structural cocases) = do
     -- Hence, the "*" type variable just serves as a placeholder to ensure that the arguments have the correct De-Bruijn indices.
     tmcasei_termInferred <- withContext (argtsPos1 ++ [PrdCnsType CnsRep (TyVar NegRep Nothing (MkTVar "*"))] ++ argtsPos2) (genConstraintsTerm tmcasei_term)
     return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
-  return (Cocase (loc,TyCodata PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
+  return (Cocase loc (Just (TyCodata PosRep Nothing (snd <$> cocasesInferred))) Structural (fst <$> cocasesInferred))
 --
 -- Nominal Comatch (Syntactic Sugar):
 --
 -- cocase { X(xs) => e' }
 --
-genConstraintsTerm (Cocase _ Nominal []) =
+genConstraintsTerm (Cocase _ _ Nominal []) =
   throwGenError ["Unreachable: A nominal comatch needs to have at least one case."]
-genConstraintsTerm (Cocase loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}:_)) = do
+genConstraintsTerm (Cocase loc _ Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}:_)) = do
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
   -- We check that all cases in the copattern match belong to the type declaration.
@@ -501,15 +501,15 @@ genConstraintsTerm (Cocase loc Nominal cocases@(MkTermCaseI {tmcasei_name = xtn}
     -- The term must have a subtype of the copattern match return type
     addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
     return (MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred)
-  return (Cocase (loc, TyNominal PosRep Nothing data_name conArgs covArgs) Nominal cocasesInferred)
+  return (Cocase loc (Just (TyNominal PosRep Nothing data_name conArgs covArgs)) Nominal cocasesInferred)
 --
 -- Refinement Comatch (Syntactic Sugar):
 --
 -- cocase { X(xs) => e' }
 --
-genConstraintsTerm (Cocase _ Refinement []) =
+genConstraintsTerm (Cocase _ _ Refinement []) =
   throwGenError ["Unreachable: A refinement comatch needs to have at least one case."]
-genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = xtn}:_)) = do
+genConstraintsTerm (Cocase loc _ Refinement cocases@(MkTermCaseI {tmcasei_name = xtn}:_)) = do
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
   -- We check that all cases in the pattern match belong to the type declaration.
@@ -542,11 +542,11 @@ genConstraintsTerm (Cocase loc Refinement cocases@(MkTermCaseI {tmcasei_name = x
     addConstraint (SubType (CaseConstraint loc) (getTypeTerm tmcasei_termInferred) retType)
     return (MkTermCaseI tmcasei_ext tmcasei_name (as1, (), as2) tmcasei_termInferred,
       MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
-  return (Cocase (loc, TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
-genConstraintsTerm (PrimLitI64 loc i) = pure $ PrimLitI64 (loc, TyPrim PosRep I64) i
-genConstraintsTerm (PrimLitF64 loc d) = pure $ PrimLitF64 (loc, TyPrim PosRep F64) d
+  return (Cocase loc (Just (TyCodata  PosRep (Just data_name) (snd <$> cocasesInferred))) Refinement (fst <$> cocasesInferred))
+genConstraintsTerm (PrimLitI64 loc i) = pure $ PrimLitI64 loc i
+genConstraintsTerm (PrimLitF64 loc d) = pure $ PrimLitF64 loc d
 
-genConstraintsCommand :: Command Parsed -> GenM (Command Inferred)
+genConstraintsCommand :: Command -> GenM Command
 genConstraintsCommand (ExitSuccess loc) = return (ExitSuccess loc)
 genConstraintsCommand (ExitFailure loc) = return (ExitFailure loc)
 genConstraintsCommand (Jump loc fv) = do
@@ -581,15 +581,15 @@ genConstraintsCommand (PrimOp loc pt op subst) = do
 
 genConstraintsTermRecursive :: Loc
                             -> FreeVarName
-                            -> PrdCnsRep pc -> Term pc Parsed
-                            -> GenM (Term pc Inferred)
+                            -> PrdCnsRep pc -> Term pc
+                            -> GenM (Term pc)
 genConstraintsTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm PrdRep fv (FreeVar (loc, x) PrdRep fv) loc (TypeScheme [] x) (genConstraintsTerm tm)
+  tm <- withTerm PrdRep fv (FreeVar loc PrdRep (Just x) fv) loc (TypeScheme [] x) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint (getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm CnsRep fv (FreeVar (loc,y) CnsRep fv) loc (TypeScheme [] y) (genConstraintsTerm tm)
+  tm <- withTerm CnsRep fv (FreeVar loc CnsRep (Just y) fv) loc (TypeScheme [] y) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint x (getTypeTerm tm))
   return tm

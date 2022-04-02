@@ -1,7 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.AST.Program where
 
-import Data.Kind (Type)  
 import Data.Text (Text)
 
 import Syntax.Common
@@ -13,29 +12,24 @@ import Utils ( Loc )
 -- Declarations
 ---------------------------------------------------------------------------------
 
-type family DeclExt (ext :: Phase) :: Type where
-  DeclExt Parsed = (Maybe DocComment, Loc)
-  DeclExt Inferred = (Maybe DocComment, Loc)
-  DeclExt Compiled = ()
-
-data Declaration (ext :: Phase) where
-  PrdCnsDecl     :: DeclExt ext -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc ext -> Declaration ext
-  CmdDecl        :: DeclExt ext -> FreeVarName -> Command ext                                                   -> Declaration ext
-  DataDecl       :: DeclExt ext -> DataDecl                                                                     -> Declaration ext
-  XtorDecl       :: DeclExt ext -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration ext
-  ImportDecl     :: DeclExt ext -> ModuleName                                                                   -> Declaration ext
-  SetDecl        :: DeclExt ext -> Text                                                                         -> Declaration ext
-  TyOpDecl       :: DeclExt ext -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration ext
+data Declaration where
+  PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc -> Declaration
+  CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Command                                                       -> Declaration
+  DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
+  XtorDecl       :: Loc -> Maybe DocComment -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration
+  ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
+  SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
+  TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
   
 
-instance (Show (DeclExt ext), Show (Term Prd ext), Show (Term Cns ext), Show (Command ext)) => Show (Declaration ext) where
-  show (PrdCnsDecl ext PrdRep isrec fv annot tm) = "PrdDecl: " ++ show ext ++ show isrec ++ show fv ++ show annot ++ show tm
-  show (PrdCnsDecl ext CnsRep isrec fv annot tm) = "CnsDecl: " ++ show ext ++ show isrec ++ show fv ++ show annot ++ show tm
-  show (CmdDecl ext fv cmd) = "CmdDecl: " ++ show ext ++ show fv ++ show cmd
-  show (DataDecl ext dcl)= "DataDecl: " ++ show ext ++ show dcl
-  show (XtorDecl ext dc xt args res) = "XtorDecl: " ++ show ext ++ show dc ++ show xt ++ show args ++ show res
-  show (ImportDecl ext mn) = "ImportDecl: " ++ show ext ++ show mn
-  show (SetDecl ext txt) = "SetDecl: " ++ show ext ++ show txt
-  show (TyOpDecl ext op prec assoc ty) = "TyOpDecl: " ++ show ext ++ show op ++ show prec ++ show assoc ++ show ty
+instance Show Declaration where
+  show (PrdCnsDecl loc doc PrdRep isrec fv annot tm) = "PrdDecl: " ++ show loc ++ show doc ++ show isrec ++ show fv ++ show annot ++ show tm
+  show (PrdCnsDecl loc doc CnsRep isrec fv annot tm) = "CnsDecl: " ++ show loc ++ show doc ++ show isrec ++ show fv ++ show annot ++ show tm
+  show (CmdDecl loc doc fv cmd) = "CmdDecl: " ++ show loc ++ show doc ++ show fv ++ show cmd
+  show (DataDecl loc doc dcl)= "DataDecl: " ++ show loc ++ show doc ++ show dcl
+  show (XtorDecl loc doc dc xt args res) = "XtorDecl: " ++ show loc ++ show doc ++ show dc ++ show xt ++ show args ++ show res
+  show (ImportDecl loc doc mn) = "ImportDecl: " ++ show loc ++ show doc ++ show mn
+  show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt
+  show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
   
-type Program ext = [Declaration ext]
+type Program = [Declaration]

@@ -31,7 +31,7 @@ getParsedDeclarations fp = do
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error (Program Parsed))
+getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error Program)
 getRenamedDeclarations fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
@@ -39,7 +39,7 @@ getRenamedDeclarations fp infopts = do
       renameProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
-getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error (Program Inferred))
+getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error Program)
 getTypecheckedDecls fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of
@@ -47,7 +47,7 @@ getTypecheckedDecls fp infopts = do
       fmap snd <$> inferProgramIO (DriverState infopts mempty mempty) decls
     Left err -> return (Left err)
 
-getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error (Environment Inferred))
+getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error Environment)
 getEnvironment fp infopts = do
   decls <- getParsedDeclarations fp
   case decls of

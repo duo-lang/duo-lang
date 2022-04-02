@@ -73,12 +73,12 @@ checkAnnot tyInferred (Just tyAnnotated) loc = do
 -- Infer Declarations
 ---------------------------------------------------------------------------------
 
-inferDecl :: Declaration Parsed
-           -> DriverM (Declaration Inferred)
+inferDecl :: Declaration
+           -> DriverM Declaration
 --
 -- PrdCnsDecl
 --
-inferDecl (PrdCnsDecl (doc,loc) pc isRec fv annot term) = do
+inferDecl (PrdCnsDecl loc doc pc isRec fv annot term) = do
   infopts <- gets driverOpts
   env <- gets driverEnv
   -- 1. Generate the constraints.
@@ -112,15 +112,15 @@ inferDecl (PrdCnsDecl (doc,loc) pc isRec fv annot term) = do
     PrdRep -> do
       let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, ty) (prdEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl (doc,loc) pc isRec fv (Just ty) tmInferred)
+      return (PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
     CnsRep -> do
       let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (PrdCnsDecl (doc,loc) pc isRec fv (Just ty) tmInferred)
+      return (PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
 --
 -- CmdDecl
 --
-inferDecl (CmdDecl (doc,loc) v cmd) = do
+inferDecl (CmdDecl loc doc v cmd) = do
   env <- gets driverEnv
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
@@ -133,11 +133,11 @@ inferDecl (CmdDecl (doc,loc) v cmd) = do
   env <- gets driverEnv
   let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   setEnvironment newEnv
-  return (CmdDecl (doc,loc) v cmdInferred)
+  return (CmdDecl loc doc v cmdInferred)
 --
 -- DataDecl
 --
-inferDecl (DataDecl (doc,loc) dcl) = do
+inferDecl (DataDecl loc doc dcl) = do
   -- Insert into environment
   env <- gets driverEnv
   st <- gets driverSymbols
@@ -147,7 +147,7 @@ inferDecl (DataDecl (doc,loc) dcl) = do
         -- HACK: inserting in the environment has already been done in lowering
         -- because the declarations are already needed for lowering
         -- In that case we make sure we don't insert twice
-        return (DataDecl (doc,loc) dcl)
+        return (DataDecl loc doc dcl)
     Nothing -> do
       let ns = case data_refined dcl of
                       Refined -> Refinement
@@ -157,41 +157,41 @@ inferDecl (DataDecl (doc,loc) dcl) = do
       let newSt  = st { xtorMap = M.union  newXtors (xtorMap st) }
       setEnvironment newEnv
       setSymboltable newSt
-      return (DataDecl (doc,loc) dcl)
+      return (DataDecl loc doc dcl)
 --
 -- XtorDecl
 --
-inferDecl (XtorDecl loc dc xt args ret) = do
+inferDecl (XtorDecl loc doc dc xt args ret) = do
   symbolTable <- gets driverSymbols
   let newSymbolTable = symbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap symbolTable) }
   setSymboltable newSymbolTable
-  pure $ XtorDecl loc dc xt args ret
+  pure $ XtorDecl loc doc dc xt args ret
 --
 -- ImportDecl
 --
-inferDecl (ImportDecl (doc,loc) mod) = do
+inferDecl (ImportDecl loc doc mod) = do
   fp <- findModule mod loc
   oldEnv <- gets driverEnv
   newEnv <- fst <$> inferProgramFromDisk fp
   setEnvironment (oldEnv <> newEnv)
-  return (ImportDecl (doc,loc) mod)
+  return (ImportDecl loc doc mod)
 --
 -- SetDecl
 --
-inferDecl (SetDecl _ txt) = case T.unpack txt of
+inferDecl (SetDecl _ _ txt) = case T.unpack txt of
   _ -> throwOtherError ["Unknown option: " <> txt]
 --
 -- TyOpDecl
 --
-inferDecl (TyOpDecl (doc,loc) op prec assoc ty) = do
-  pure (TyOpDecl (doc,loc) op prec assoc ty)
+inferDecl (TyOpDecl loc doc op prec assoc ty) = do
+  pure (TyOpDecl loc doc op prec assoc ty)
 
 ---------------------------------------------------------------------------------
 -- Infer programs
 ---------------------------------------------------------------------------------
 
 inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment Inferred, Program Inferred)
+                     -> DriverM (Environment, Program)
 inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file
@@ -202,31 +202,31 @@ inferProgramFromDisk fp = do
      Right env -> return env
 
 inferProgram :: [CST.Declaration]
-             -> DriverM (Program Inferred)
+             -> DriverM Program
 inferProgram decls = do
   decls <- renameProgram decls
   forM decls inferDecl
 
 renameProgram :: [CST.Declaration]
-              -> DriverM (Program Parsed)
+              -> DriverM Program
 renameProgram decls = lowerProgram decls
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]
-                -> IO (Either Error (Program Parsed))
+                -> IO (Either Error Program)
 renameProgramIO state decls = do
   x <- execDriverM state (renameProgram decls)
   case x of
       Left err -> return (Left err)
       Right (res,_) -> return (Right res)
 
-inferProgram' :: Program Parsed
-              -> DriverM (Program Inferred)
+inferProgram' :: Program
+              -> DriverM Program
 inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
-                -> IO (Either Error (Environment Inferred, Program Inferred))
+                -> IO (Either Error (Environment, Program))
 inferProgramIO state decls = do
   x <- execDriverM state (inferProgram decls)
   case x of
@@ -234,8 +234,8 @@ inferProgramIO state decls = do
       Right (res,x) -> return (Right ((driverEnv x), res))
 
 inferProgramIO' :: DriverState -- ^ Initial State
-                -> Program Parsed
-                -> IO (Either Error (Environment Inferred, Program Inferred))
+                -> Program
+                -> IO (Either Error (Environment, Program))
 inferProgramIO' state decls = do
   x <- execDriverM state (inferProgram' decls)
   case x of

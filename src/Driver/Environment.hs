@@ -3,27 +3,26 @@ module Driver.Environment where
 import Data.Map (Map)
 import Data.Map qualified as M
 
-import Renamer.SymbolTable
 import Syntax.Common
-import Syntax.AST.Terms
-import Syntax.AST.Types
-import Utils
+import Syntax.AST.Terms ( Command, Term )
+import Syntax.AST.Types ( DataDecl, TypeScheme )
+import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
 -- Environment
 ---------------------------------------------------------------------------------
 
-data Environment (ph :: Phase) = MkEnvironment
-  { prdEnv :: Map FreeVarName (Term Prd ph, Loc, TypeScheme Pos)
-  , cnsEnv :: Map FreeVarName (Term Cns ph, Loc, TypeScheme Neg)
-  , cmdEnv :: Map FreeVarName (Command ph, Loc)
+data Environment = MkEnvironment
+  { prdEnv :: Map FreeVarName (Term Prd, Loc, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command, Loc)
   , declEnv :: [(Loc,DataDecl)]
   }
 
-instance Show (Environment ph) where
+instance Show Environment where
   show _ = "<Environment>"
 
-instance Semigroup (Environment ph) where
+instance Semigroup Environment where
   (MkEnvironment prdEnv1 cnsEnv1 cmdEnv1 declEnv1) <> (MkEnvironment prdEnv2 cnsEnv2 cmdEnv2 declEnv2) =
     MkEnvironment { prdEnv = M.union prdEnv1 prdEnv2
                   , cnsEnv = M.union cnsEnv1 cnsEnv2
@@ -31,7 +30,7 @@ instance Semigroup (Environment ph) where
                   , declEnv = declEnv1 ++ declEnv2
                   }
 
-instance Monoid (Environment ph) where
+instance Monoid Environment where
   mempty = MkEnvironment
     { prdEnv = M.empty
     , cnsEnv = M.empty

@@ -29,15 +29,15 @@ import Utils
 -- (2) MonadReader (Environment ph, a)
 ---------------------------------------------------------------------------------
 
-type EnvReader ph a m = (MonadError Error m, MonadReader (Environment ph, a) m)
+type EnvReader a m = (MonadError Error m, MonadReader (Environment, a) m)
 
 ---------------------------------------------------------------------------------
 -- Lookup Terms
 ---------------------------------------------------------------------------------
 
 -- | Lookup the term and the type of a term bound in the environment.
-lookupTerm :: EnvReader ph a m
-           => PrdCnsRep pc -> FreeVarName -> m (Term pc ph, TypeScheme (PrdCnsToPol pc))
+lookupTerm :: EnvReader a m
+           => PrdCnsRep pc -> FreeVarName -> m (Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
@@ -54,7 +54,7 @@ lookupTerm CnsRep fv = do
 ---------------------------------------------------------------------------------
 
 -- | Lookup a command in the environment.
-lookupCommand :: EnvReader ph a m => FreeVarName -> m (Command ph)
+lookupCommand :: EnvReader a m => FreeVarName -> m Command
 lookupCommand fv = do
   env <- asks fst
   case M.lookup fv (cmdEnv env) of
@@ -66,7 +66,7 @@ lookupCommand fv = do
 ---------------------------------------------------------------------------------
 
 -- | Find the type declaration belonging to a given Xtor Name.
-lookupDataDecl :: EnvReader ph a m
+lookupDataDecl :: EnvReader a m
                => XtorName -> m DataDecl
 lookupDataDecl xt = do
   let containsXtor :: XtorSig Pos -> Bool
@@ -80,7 +80,7 @@ lookupDataDecl xt = do
     Just decl -> return decl
 
 -- | Find the type declaration belonging to a given TypeName.
-lookupTypeName :: EnvReader ph a m
+lookupTypeName :: EnvReader a m
                => TypeName -> m DataDecl
 lookupTypeName tn = do
   env <- asks $ fmap snd . declEnv . fst
@@ -89,7 +89,7 @@ lookupTypeName tn = do
     Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
 
 -- | Find the XtorSig belonging to a given XtorName.
-lookupXtorSig :: EnvReader ph a m
+lookupXtorSig :: EnvReader a m
               => XtorName -> PolarityRep pol -> m (XtorSig pol)
 lookupXtorSig xtn PosRep = do
   decl <- lookupDataDecl xtn
@@ -106,8 +106,8 @@ lookupXtorSig xtn NegRep = do
 -- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
 
-withTerm :: EnvReader ph a m
-         => PrdCnsRep pc -> FreeVarName -> Term pc ph -> Loc -> TypeScheme (PrdCnsToPol pc)
+withTerm :: EnvReader a m
+         => PrdCnsRep pc -> FreeVarName -> Term pc -> Loc -> TypeScheme (PrdCnsToPol pc)
          -> (m b -> m b)
 withTerm PrdRep fv tm loc tys m = do
   let modifyEnv (env@MkEnvironment { prdEnv }, rest) =
