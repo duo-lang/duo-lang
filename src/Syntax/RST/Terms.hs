@@ -1,11 +1,24 @@
-module Syntax.RST.Terms where
+module Syntax.RST.Terms
+  ( -- Terms
+    Term(..)
+  , PrdCnsTerm(..)
+  , Substitution
+  , SubstitutionI
+  , TermCase(..)
+  , TermCaseI(..)
+  , CmdCase(..)
+  , Command(..)
+   -- Functions
+  , openTermComplete
+  , openCommandComplete
+  , termClosing
+  , commandClosing
+  ) where
 
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
-import Data.Text qualified as T
 
 import Utils
-import Errors
 import Syntax.Common
 import Syntax.RST.Types
 
@@ -272,76 +285,6 @@ termClosing = termClosingRec 0
 commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
 
----------------------------------------------------------------------------------
--- Check for locally closedness
----------------------------------------------------------------------------------
-
-checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError Nothing $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
-                             | otherwise = checkIfBoundInner (env !! i) rep (i,j)
-
-checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBoundInner vars PrdRep idx@(_,j) =
-  if j < length vars
-    then case vars !! j of
-      (Prd,_) -> return ()
-      (Cns,_) -> Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
-    else Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
-checkIfBoundInner vars CnsRep idx@(_,j) =
-  if j < length vars
-    then case vars !! j of
-      (Cns,_) -> return ()
-      (Prd,_) -> Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
-    else Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
-
-pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm -> Either Error ()
-pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm
-pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
-
-termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
-termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
-termLocallyClosedRec _ (FreeVar _ _ _ _) = Right ()
-termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
-  sequence_ (pctermLocallyClosedRec env <$> subst)
-termLocallyClosedRec env (XMatch _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> cmdcase_args) : env) cmdcase_cmd) <$> cases)
-termLocallyClosedRec env (MuAbs _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
-termLocallyClosedRec env (MuAbs _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
-termLocallyClosedRec env (Dtor _ _ _ _ _ e (args1,_,args2)) = do
-  termLocallyClosedRec env e
-  sequence_ (pctermLocallyClosedRec env <$> args1)
-  sequence_ (pctermLocallyClosedRec env <$> args2)
-termLocallyClosedRec env (Case _ _ _ e cases) = do
-  termLocallyClosedRec env e
-  sequence_ (termCaseLocallyClosedRec env <$> cases)
-termLocallyClosedRec env (Cocase _ _ _ cases) =
-  sequence_ (termCaseILocallyClosedRec env <$> cases)
-termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
-termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
-
-termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase -> Either Error ()
-termCaseLocallyClosedRec env (MkTermCase _ _ args e) = do
-  termLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) e
-
-termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI -> Either Error ()
-termCaseILocallyClosedRec env (MkTermCaseI _ _ (as1, (), as2) e) =
-  let newArgs = (\(x,_) -> (x,())) <$> as1 ++ [(Cns, Nothing)] ++ as2 in
-  termLocallyClosedRec (newArgs:env) e
-
-commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
-commandLocallyClosedRec _ (ExitSuccess _) = Right ()
-commandLocallyClosedRec _ (ExitFailure _) = Right ()
-commandLocallyClosedRec _ (Jump _ _) = Right ()
-commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
-commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
-commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
-
-termLocallyClosed :: Term pc -> Either Error ()
-termLocallyClosed = termLocallyClosedRec []
-
-commandLocallyClosed :: Command -> Either Error ()
-commandLocallyClosed = commandLocallyClosedRec []
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -411,58 +354,3 @@ openCommandComplete (Jump loc fv) = Jump loc fv
 openCommandComplete (ExitSuccess loc) = ExitSuccess loc
 openCommandComplete (ExitFailure loc) = ExitFailure loc
 openCommandComplete (PrimOp loc pt op subst) = PrimOp loc pt op (openPCTermComplete <$> subst)
-
----------------------------------------------------------------------------------
--- Shifting
---
--- Used in program transformations like focusing.
----------------------------------------------------------------------------------
-
-shiftPCTermRec :: Int -> PrdCnsTerm -> PrdCnsTerm
-shiftPCTermRec n (PrdTerm tm) = PrdTerm $ shiftTermRec n tm
-shiftPCTermRec n (CnsTerm tm) = CnsTerm $ shiftTermRec n tm
-
-shiftTermRec :: Int -> Term pc -> Term pc
-shiftTermRec _ var@FreeVar {} = var
-shiftTermRec n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar loc pcrep annot (i + 1, j)
-                                                | otherwise = BoundVar loc pcrep annot (i    , j)
-shiftTermRec n (Xtor loc pcrep annot ns xt subst) =
-    Xtor loc pcrep annot ns xt (shiftPCTermRec n <$> subst)
-shiftTermRec n (XMatch loc pcrep annot ns cases) =
-  XMatch loc pcrep annot ns (shiftCmdCaseRec (n + 1) <$> cases)
-shiftTermRec n (MuAbs loc pcrep annot bs cmd) =
-  MuAbs loc pcrep annot bs (shiftCmdRec (n + 1) cmd)
-shiftTermRec n (Dtor loc pcrep annot ns xt e (args1,pcrep',args2)) =
-  Dtor loc pcrep annot ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2)
-shiftTermRec n (Case loc annot ns e cases) =
-  Case loc annot ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
-shiftTermRec n (Cocase loc annot ns cases) =
-  Cocase loc annot ns (shiftTermCaseIRec n <$> cases)
-shiftTermRec _ lit@PrimLitI64{} = lit
-shiftTermRec _ lit@PrimLitF64{} = lit
-
-shiftTermCaseRec :: Int -> TermCase -> TermCase
-shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)
-
-shiftTermCaseIRec :: Int -> TermCaseI -> TermCaseI
-shiftTermCaseIRec n (MkTermCaseI ext xt args e) = MkTermCaseI ext xt args (shiftTermRec n e)
-
-shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
-shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
-
-shiftCmdRec :: Int -> Command -> Command
-shiftCmdRec n (Apply ext kind prd cns) = Apply ext kind (shiftTermRec n prd) (shiftTermRec n cns)
-shiftCmdRec _ (ExitSuccess ext) = ExitSuccess ext
-shiftCmdRec _ (ExitFailure ext) = ExitFailure ext
-shiftCmdRec n (Print ext prd cmd) = Print ext (shiftTermRec n prd) (shiftCmdRec n cmd)
-shiftCmdRec n (Read ext cns) = Read ext (shiftTermRec n cns)
-shiftCmdRec _ (Jump ext fv) = Jump ext fv
-shiftCmdRec n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec n <$> subst)
-
--- | Shift all unbound BoundVars up by one.
-shiftTerm :: Term pc -> Term pc
-shiftTerm = shiftTermRec 0
-
--- | Shift all unbound BoundVars up by one.
-shiftCmd :: Command -> Command
-shiftCmd = shiftCmdRec 0
