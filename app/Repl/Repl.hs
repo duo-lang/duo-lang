@@ -34,7 +34,7 @@ import Utils (trimStr, defaultLoc)
 data EvalSteps = Steps | NoSteps
 
 data ReplState = ReplState
-  { replEnv :: Environment Inferred
+  { replEnv :: Environment
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvaluationOrder
@@ -57,7 +57,7 @@ initialReplState = ReplState { replEnv = mempty
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment Inferred -> Environment Inferred) -> Repl ()
+modifyEnvironment :: (Environment -> Environment) -> Repl ()
 modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
@@ -103,7 +103,7 @@ cmd s = do
   opts <- gets typeInfOpts
   inferredCmd <- liftIO $ inferProgramIO (DriverState opts oldEnv mempty) [CST.CmdDecl Nothing defaultLoc (MkFreeVarName "main") comLoc]
   case inferredCmd of
-    Right (_,[CmdDecl _ _ inferredCmd]) -> do
+    Right (_,[CmdDecl _ _ _ inferredCmd]) -> do
       evalOrder <- gets evalOrder
       env <- gets replEnv
       steps <- gets steps
