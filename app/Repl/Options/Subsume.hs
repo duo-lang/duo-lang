@@ -24,7 +24,7 @@ subCmd s = do
   t2' <- liftIO $ execDriverM ds $ lowerTypeScheme PosRep t2
   case (t1', t2') of
      (Right (res1,_), Right (res2,_)) -> do
-       res <- fromRight (subsume res1 res2)
+       res <- fromRight (subsume PosRep res1 res2)
        prettyRepl res
      (_,_) -> fail "SubtypingProblemP: Cannot lower types."
 

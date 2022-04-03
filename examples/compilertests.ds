@@ -31,6 +31,12 @@ constructor FF;
 constructor Succ(CBV);
 constructor Zero;
 
+-- Check subsumption for negative typeschemes
+def subsumptionEx1(*) : < TT > := case { TT => ExitSuccess, FF => ExitSuccess};
+def subsumptionEx2(*) : Nat := mu n. ExitSuccess; 
+
+
+
 def fix[*] := cocase { Ap(f)[k] =>
              cocase { Ap(x)[k] => f >>
                Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] } >>

@@ -44,13 +44,14 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc )
 import Data.List
 
-checkAnnot :: RST.TypeScheme pol -- ^ Inferred type
+checkAnnot :: PolarityRep pol
+           -> RST.TypeScheme pol -- ^ Inferred type
            -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (RST.TypeScheme pol)
-checkAnnot tyInferred Nothing _ = return tyInferred
-checkAnnot tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume tyInferred tyAnnotated
+checkAnnot _ tyInferred Nothing _ = return tyInferred
+checkAnnot rep tyInferred (Just tyAnnotated) loc = do
+  let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc err)
       (Right True) -> return tyAnnotated
@@ -98,7 +99,7 @@ inferDecl (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
       return tys
     False -> return (RST.generalize typ)
   -- 6. Check type annotation.
-  ty <- checkAnnot typSimplified annot loc
+  ty <- checkAnnot (prdCnsToPol pc) typSimplified annot loc
   -- 7. Insert into environment
   env <- gets driverEnv
   case pc of

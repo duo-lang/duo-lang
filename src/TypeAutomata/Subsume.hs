@@ -1,8 +1,4 @@
-module TypeAutomata.Subsume
-  ( isSubtype
-  , typeAutEqual
-  , subsume
-  ) where
+module TypeAutomata.Subsume ( subsume ) where
 
 import Data.Graph.Inductive.Graph
 
@@ -84,8 +80,10 @@ typeAutEqualM (gr1, n) (gr2, m) = do
     Just m' -> do
       guard (m == m')
 
-subsume :: TypeScheme pol -> TypeScheme pol -> Either Error Bool
-subsume ty1 ty2 = do
+subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either Error Bool
+subsume polrep ty1 ty2 = do
   aut1 <- (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut ty1
   aut2 <- (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut ty2
-  return (isSubtype aut1 aut2)
+  case polrep of
+    PosRep -> pure (isSubtype aut1 aut2)
+    NegRep -> pure (isSubtype aut2 aut1)

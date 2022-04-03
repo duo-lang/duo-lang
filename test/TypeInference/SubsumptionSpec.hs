@@ -31,7 +31,7 @@ subsumptionCheckPos env bspec s1 s2 = do
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
           (Right (r1,_), Right (r2,_)) -> do
-            let Right b = subsume r1 r2
+            let Right b = subsume PosRep r1 r2
             b `shouldBe` bspec
 
 
