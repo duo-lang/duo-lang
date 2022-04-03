@@ -12,10 +12,10 @@ import Pretty.Common
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
-import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
 import Syntax.Common
 import Driver.Environment
+import Translate.ForgetTypes (forgetTypesDecl)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -64,20 +64,7 @@ prettyTyOpDecl op assoc prec ty =
   annSymbol ":=" <+> prettyAnn ty <> semi
 
 instance PrettyAnn AST.Declaration where
-  prettyAnn (AST.PrdCnsDecl _ _ pc isRec fv annot tm) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
-  prettyAnn (AST.CmdDecl _ _ fv cm) =
-    prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (AST.DataDecl _ _ decl) =
-    prettyAnn decl
-  prettyAnn (AST.XtorDecl _ _ dc xt args ret) =
-    prettyXtorDecl dc xt args ret
-  prettyAnn (AST.ImportDecl _ _ mod) =
-    annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (AST.SetDecl _ _ txt) =
-    annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (AST.TyOpDecl _ _ op prec assoc ty) =
-    prettyTyOpDecl op assoc prec ty
+  prettyAnn decl = prettyAnn (forgetTypesDecl decl)
     
 instance PrettyAnn RST.Declaration where
   prettyAnn (RST.PrdCnsDecl _ _ pc isRec fv annot tm) =
@@ -96,20 +83,7 @@ instance PrettyAnn RST.Declaration where
     prettyTyOpDecl op assoc prec ty
 
 instance PrettyAnn (NamedRep AST.Declaration) where
-  prettyAnn (NamedRep (AST.PrdCnsDecl _ _ pc isRec fv annot tm)) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (AST.openTermComplete tm))
-  prettyAnn (NamedRep (AST.CmdDecl _ _ fv cm)) =
-    prettyCmdDecl fv (prettyAnn (AST.openCommandComplete cm))
-  prettyAnn (NamedRep (AST.DataDecl _ _ decl)) =
-    prettyAnn decl
-  prettyAnn (NamedRep (AST.XtorDecl _ _ dc xt args ret)) =
-    prettyXtorDecl dc xt args ret
-  prettyAnn (NamedRep (AST.ImportDecl _ _ mod)) =
-    annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (AST.SetDecl _ _ txt)) =
-    annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (NamedRep (AST.TyOpDecl _ _ op prec assoc ty)) =
-    prettyTyOpDecl op assoc prec ty
+  prettyAnn (NamedRep decl) = prettyAnn (NamedRep (forgetTypesDecl decl))
 
 instance PrettyAnn (NamedRep RST.Declaration) where
   prettyAnn (NamedRep (RST.PrdCnsDecl _ _ pc isRec fv annot tm)) =

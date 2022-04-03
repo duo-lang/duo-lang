@@ -9,8 +9,6 @@ module Syntax.AST.Terms
   , CmdCase(..)
   , Command(..)
   -- Functions
-  , openTermComplete
-  , openCommandComplete
   , commandClosing
   , shiftCmd
   , getTypeTerm
@@ -378,75 +376,6 @@ commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClos
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
-
----------------------------------------------------------------------------------
--- These functions  translate a locally nameless term into a named representation.
---
--- Use only for prettyprinting! These functions only "undo" the steps in the parser
--- and do not fulfil any semantic properties w.r.t shadowing etc.!
----------------------------------------------------------------------------------
-
-freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> Substitution
-freeVarNamesToXtorArgs bs = f <$> bs
-  where
-    f (Prd, Nothing) = error "Create Names first!"
-    f (Prd, Just fv) = PrdTerm $ FreeVar defaultLoc PrdRep Nothing fv
-    f (Cns, Nothing) = error "Create Names first!"
-    f (Cns, Just fv) = CnsTerm $ FreeVar defaultLoc CnsRep Nothing fv
-
-openTermCase :: TermCase -> TermCase
-openTermCase MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
-    MkTermCase { tmcase_ext = tmcase_ext
-               , tmcase_name = tmcase_name
-               , tmcase_args = tmcase_args
-               , tmcase_term = termOpening (freeVarNamesToXtorArgs tmcase_args) (openTermComplete tmcase_term)
-               }
-
-openTermCaseI :: TermCaseI -> TermCaseI
-openTermCaseI MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
-  MkTermCaseI { tmcasei_ext = tmcasei_ext
-              , tmcasei_name = tmcasei_name
-              , tmcasei_args = (as1, (), as2)
-              , tmcasei_term = termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
-              }
-
-openCmdCase :: CmdCase -> CmdCase
-openCmdCase MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
-  MkCmdCase { cmdcase_ext = cmdcase_ext
-            , cmdcase_name = cmdcase_name
-            , cmdcase_args = cmdcase_args
-            , cmdcase_cmd = commandOpening (freeVarNamesToXtorArgs cmdcase_args) (openCommandComplete cmdcase_cmd)
-            }
-
-openPCTermComplete :: PrdCnsTerm -> PrdCnsTerm
-openPCTermComplete (PrdTerm tm) = PrdTerm $ openTermComplete tm
-openPCTermComplete (CnsTerm tm) = CnsTerm $ openTermComplete tm
-
-openTermComplete :: Term pc -> Term pc
-openTermComplete (BoundVar loc pc annot idx) = BoundVar loc pc annot idx
-openTermComplete (FreeVar loc pc annot v) = FreeVar loc pc annot v
-openTermComplete (Xtor loc pc annot ns xt args) = Xtor loc pc annot ns xt (openPCTermComplete <$> args)
-openTermComplete (XMatch loc pc annot ns cases) = XMatch loc pc annot ns (openCmdCase <$> cases)
-openTermComplete (MuAbs loc PrdRep annot (Just fv) cmd) =
-  MuAbs loc PrdRep annot (Just fv) (commandOpening [CnsTerm (FreeVar defaultLoc CnsRep Nothing fv)] (openCommandComplete cmd))
-openTermComplete (MuAbs loc CnsRep annot (Just fv) cmd) =
-  MuAbs loc CnsRep annot (Just fv) (commandOpening [PrdTerm (FreeVar defaultLoc PrdRep Nothing fv)] (openCommandComplete cmd))
-openTermComplete (MuAbs _ _ _ Nothing _) = error "Create names first!"
-openTermComplete (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
-  Dtor loc rep annot ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
-openTermComplete (Case loc annot ns t cases) = Case loc annot ns (openTermComplete t) (openTermCase <$> cases)
-openTermComplete (Cocase loc annot ns cocases) = Cocase loc annot ns (openTermCaseI <$> cocases)
-openTermComplete (PrimLitI64 loc i) = PrimLitI64 loc i
-openTermComplete (PrimLitF64 loc d) = PrimLitF64 loc d
-
-openCommandComplete :: Command -> Command
-openCommandComplete (Apply loc kind t1 t2) = Apply loc kind (openTermComplete t1) (openTermComplete t2)
-openCommandComplete (Print loc t cmd) = Print loc (openTermComplete t) (openCommandComplete cmd)
-openCommandComplete (Read loc cns) = Read loc (openTermComplete cns)
-openCommandComplete (Jump loc fv) = Jump loc fv
-openCommandComplete (ExitSuccess loc) = ExitSuccess loc
-openCommandComplete (ExitFailure loc) = ExitFailure loc
-openCommandComplete (PrimOp loc pt op subst) = PrimOp loc pt op (openPCTermComplete <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Shifting
