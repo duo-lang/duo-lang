@@ -260,9 +260,6 @@ commandOpeningRec k args (PrimOp loc pt op subst) = PrimOp loc pt op (pctermOpen
 commandOpening :: Substitution -> Command -> Command
 commandOpening = commandOpeningRec 0
 
-termOpening :: Substitution -> Term pc -> Term pc
-termOpening = termOpeningRec 0
-
 ---------------------------------------------------------------------------------
 -- Variable Closing
 ---------------------------------------------------------------------------------

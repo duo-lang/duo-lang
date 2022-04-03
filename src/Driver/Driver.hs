@@ -29,7 +29,6 @@ import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Zonking (zonkType)
-import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import TypeAutomata.Simplify

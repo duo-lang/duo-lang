@@ -12,7 +12,6 @@ import Renamer.SymbolTable
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.RST.Program qualified as RST
-import Syntax.Common
 
 
 getAvailableCounterExamples :: IO [FilePath]

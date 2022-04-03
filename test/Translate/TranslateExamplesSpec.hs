@@ -7,7 +7,6 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
 import Pretty.Program ()
-import Syntax.Common
 import Syntax.RST.Program qualified as RST
 import Translate.Desugar
 import Translate.Reparse
