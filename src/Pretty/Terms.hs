@@ -6,30 +6,41 @@ import Prettyprinter
 
 import Pretty.Common ()
 import Pretty.Pretty
-import Syntax.AST.Terms
+import Syntax.AST.Terms qualified as AST
+import Syntax.RST.Terms qualified as RST
 import Syntax.Common
 import Data.Bifunctor
+import Translate.ForgetTypes
 
 ---------------------------------------------------------------------------------
 -- Pattern match cases and cocases
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn CmdCase where
-  prettyAnn MkCmdCase{ cmdcase_name, cmdcase_args, cmdcase_cmd } =
+instance PrettyAnn AST.CmdCase where
+  prettyAnn cmdcase = prettyAnn (forgetTypesCmdCase cmdcase)
+
+instance PrettyAnn RST.CmdCase where
+  prettyAnn RST.MkCmdCase{ cmdcase_name, cmdcase_args, cmdcase_cmd } =
       prettyAnn cmdcase_name <>
       printCasesArgs cmdcase_args <+>
       annSymbol "=>" <+>
       prettyAnn cmdcase_cmd
 
-instance PrettyAnn TermCase where
-  prettyAnn MkTermCase{ tmcase_name, tmcase_args, tmcase_term } =
+instance PrettyAnn AST.TermCase where
+  prettyAnn termcase = prettyAnn (forgetTypesTermCase termcase)
+
+instance PrettyAnn RST.TermCase where
+  prettyAnn RST.MkTermCase{ tmcase_name, tmcase_args, tmcase_term } =
       prettyAnn tmcase_name <>
       printCasesArgs tmcase_args <+>
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
-instance PrettyAnn TermCaseI where
-  prettyAnn MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
+instance PrettyAnn AST.TermCaseI where
+  prettyAnn termcasei = prettyAnn (forgetTypesTermCaseI termcasei)
+
+instance PrettyAnn RST.TermCaseI where
+  prettyAnn RST.MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
     prettyAnn tmcasei_name <>
     printCasesArgs as1 <>
     pretty ("[*]" :: String) <>
@@ -60,83 +71,103 @@ splitOnChange f (a : as) = helper f (f a) as [a] []
 -- Substitutions
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn PrdCnsTerm where
-  prettyAnn (PrdTerm tm) = prettyAnn tm
-  prettyAnn (CnsTerm tm) = prettyAnn tm
+instance PrettyAnn AST.PrdCnsTerm where
+  prettyAnn pcterm = prettyAnn (forgetTypesPCTerm pcterm)
 
-splitSubst :: Substitution -> [NonEmpty PrdCnsTerm]
-splitSubst = NE.groupBy f
+instance PrettyAnn RST.PrdCnsTerm where
+  prettyAnn (RST.PrdTerm tm) = prettyAnn tm
+  prettyAnn (RST.CnsTerm tm) = prettyAnn tm
+
+splitSubstRST :: RST.Substitution -> [NonEmpty RST.PrdCnsTerm]
+splitSubstRST = NE.groupBy f
   where
-    f :: PrdCnsTerm -> PrdCnsTerm -> Bool
-    f (PrdTerm _) (PrdTerm _) = True
-    f (CnsTerm _) (CnsTerm _) = True
+    f :: RST.PrdCnsTerm -> RST.PrdCnsTerm -> Bool
+    f (RST.PrdTerm _) (RST.PrdTerm _) = True
+    f (RST.CnsTerm _) (RST.CnsTerm _) = True
     f _ _ = False
+    
+printSegmentRST :: NonEmpty RST.PrdCnsTerm -> Doc Annotation
+printSegmentRST (RST.PrdTerm e :| rest) = parens'   comma (prettyAnn <$> RST.PrdTerm e : rest)
+printSegmentRST (RST.CnsTerm e :| rest) = brackets' comma (prettyAnn <$> RST.CnsTerm e : rest)
 
-printSegment :: NonEmpty PrdCnsTerm -> Doc Annotation
-printSegment (PrdTerm e :| rest) = parens'   comma (prettyAnn <$> PrdTerm e : rest)
-printSegment (CnsTerm e :| rest) = brackets' comma (prettyAnn <$> CnsTerm e : rest)
+instance {-# OVERLAPPING #-} PrettyAnn AST.Substitution where
+  prettyAnn subst = prettyAnn (forgetTypesSubst subst)
 
+instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
+  prettyAnn subst = mconcat (printSegmentRST <$> splitSubstRST subst)
 
-instance {-# OVERLAPPING #-} PrettyAnn Substitution where
-  prettyAnn subst = mconcat (printSegment <$> splitSubst subst)
+instance PrettyAnn (AST.SubstitutionI pc) where
+  prettyAnn substi = prettyAnn (forgetTypesSubstI substi)
 
-instance PrettyAnn (SubstitutionI pc) where
+instance PrettyAnn (RST.SubstitutionI pc) where
   prettyAnn (subst1, PrdRep, subst2) = prettyAnn subst1 <> pretty ("[*]" :: String) <> prettyAnn subst2
   prettyAnn (subst1, CnsRep, subst2) = prettyAnn subst1 <> pretty ("(*)" :: String) <> prettyAnn subst2
-
+  
 ---------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------
 
-isNumSTerm :: Term pc -> Maybe Int
-isNumSTerm (Xtor _ PrdRep _ Nominal (MkXtorName "Z") []) = Just 0
-isNumSTerm (Xtor _ PrdRep _ Nominal (MkXtorName "S") [PrdTerm n]) = case isNumSTerm n of
+isNumSTermRST :: RST.Term pc -> Maybe Int
+isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
-isNumSTerm _ = Nothing
+isNumSTermRST _ = Nothing
 
-instance PrettyAnn (Term pc) where
-  prettyAnn (isNumSTerm -> Just n) =
+instance PrettyAnn (AST.Term pc) where
+  prettyAnn tm = prettyAnn (forgetTypesTerm tm)
+
+instance PrettyAnn (RST.Term pc) where
+  prettyAnn (isNumSTermRST -> Just n) =
     pretty n
-  prettyAnn (BoundVar _ _ _ (i,j)) =
+  prettyAnn (RST.BoundVar _ _ (i,j)) =
     parens (pretty i <> "," <> pretty j)
-  prettyAnn (FreeVar _ _ _ v) =
+  prettyAnn (RST.FreeVar _ _ v) =
     prettyAnn v
-  prettyAnn (Xtor _ _ _ _ xt args) =
+  prettyAnn (RST.Xtor _ _ _ xt args) =
     prettyAnn xt <> prettyAnn args
-  prettyAnn (XMatch _ PrdRep _ _ cases) =
+  prettyAnn (RST.XMatch _ PrdRep _ cases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (XMatch _ CnsRep _ _ cases) =
+  prettyAnn (RST.XMatch _ CnsRep _ cases) =
     annKeyword "case"   <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (MuAbs _ pc _ a cmd) =
+  prettyAnn (RST.MuAbs _ pc a cmd) =
     annKeyword (case pc of {PrdRep -> "mu"; CnsRep -> "mu"}) <+>
     prettyAnn a <> "." <> parens (prettyAnn cmd)
-  prettyAnn (Dtor _ _ _ _ xt t substi) =
+  prettyAnn (RST.Dtor _ _ _ xt t substi) =
       parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
-  prettyAnn (Case _ _ _ t cases) =
+  prettyAnn (RST.Case _ _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+>
     annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (Cocase _ _ _ cocases) =
+  prettyAnn (RST.Cocase _ _ cocases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
-  prettyAnn (PrimLitI64 _ i) = annLiteral (prettyAnn i <> "#I64")
-  prettyAnn (PrimLitF64 _ f) = annLiteral (prettyAnn f <> "#F64")
+  prettyAnn (RST.PrimLitI64 _ i) = annLiteral (prettyAnn i <> "#I64")
+  prettyAnn (RST.PrimLitF64 _ f) = annLiteral (prettyAnn f <> "#F64")
 
-instance PrettyAnn Command where
-  prettyAnn (ExitSuccess _)= annKeyword "ExitSuccess"
-  prettyAnn (ExitFailure _)= annKeyword "ExitFailure"
-  prettyAnn (Print _ t cmd) = annKeyword "Print" <> parens (prettyAnn t) <> semi <+> prettyAnn cmd
-  prettyAnn (Read _ cns) = annKeyword "Read" <> brackets (prettyAnn cns)
-  prettyAnn (Jump _ nm) = prettyAnn nm
-  prettyAnn (Apply _ _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
-  prettyAnn (PrimOp _ pt op subst) = annKeyword (prettyAnn (primOpKeyword op)) <> annTypeName (prettyAnn (primTypeKeyword pt)) <> prettyAnn subst
+instance PrettyAnn AST.Command where
+  prettyAnn cmd = prettyAnn (forgetTypesCommand cmd)
 
-instance PrettyAnn (NamedRep (Term pc)) where
-  prettyAnn (NamedRep tm) = prettyAnn (openTermComplete tm)
+instance PrettyAnn RST.Command where
+  prettyAnn (RST.ExitSuccess _)= annKeyword "ExitSuccess"
+  prettyAnn (RST.ExitFailure _)= annKeyword "ExitFailure"
+  prettyAnn (RST.Print _ t cmd) = annKeyword "Print" <> parens (prettyAnn t) <> semi <+> prettyAnn cmd
+  prettyAnn (RST.Read _ cns) = annKeyword "Read" <> brackets (prettyAnn cns)
+  prettyAnn (RST.Jump _ nm) = prettyAnn nm
+  prettyAnn (RST.Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
+  prettyAnn (RST.PrimOp _ pt op subst) = annKeyword (prettyAnn (primOpKeyword op)) <> annTypeName (prettyAnn (primTypeKeyword pt)) <> prettyAnn subst
 
-instance PrettyAnn (NamedRep Command) where
-  prettyAnn (NamedRep cmd) = prettyAnn (openCommandComplete cmd)
+instance PrettyAnn (NamedRep (AST.Term pc)) where
+  prettyAnn (NamedRep tm) = prettyAnn (NamedRep (forgetTypesTerm tm))
+
+instance PrettyAnn (NamedRep (RST.Term pc)) where
+  prettyAnn (NamedRep tm) = prettyAnn (RST.openTermComplete tm)
+
+instance PrettyAnn (NamedRep AST.Command) where
+  prettyAnn (NamedRep cmd) = prettyAnn (NamedRep (forgetTypesCommand cmd))
+
+instance PrettyAnn (NamedRep RST.Command) where
+  prettyAnn (NamedRep cmd) = prettyAnn (RST.openCommandComplete cmd)

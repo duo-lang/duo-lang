@@ -8,7 +8,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Syntax.AST.Types
+import Syntax.RST.Types
 import Syntax.Common
 import Syntax.AST.Zonking ( Bisubstitution(..) )
 import TypeInference.Constraints

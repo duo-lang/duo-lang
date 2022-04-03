@@ -5,7 +5,7 @@ import Data.Map qualified as M
 
 import Syntax.Common
 import Syntax.AST.Terms ( Command, Term )
-import Syntax.AST.Types ( DataDecl, TypeScheme )
+import Syntax.RST.Types ( DataDecl, TypeScheme )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------

@@ -5,7 +5,7 @@ import Data.Map qualified as M
 
 import Syntax.Common
 import Syntax.AST.Terms
-import Syntax.AST.Types
+import Syntax.RST.Types
 
 --------------------------------------------------------------------------------
 -- Bisubstitution

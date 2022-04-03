@@ -19,7 +19,7 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Types ()
 import Driver.Environment
-import Syntax.AST.Types
+import Syntax.RST.Types
 import Syntax.Common
 
 ---------------------------------------------------------------------------------------------

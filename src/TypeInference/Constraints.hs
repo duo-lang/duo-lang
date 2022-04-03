@@ -3,7 +3,7 @@ module TypeInference.Constraints where
 import Data.Map (Map)
 
 import Syntax.Common
-import Syntax.AST.Types ( Typ )
+import Syntax.RST.Types ( Typ )
 import Utils ( Loc )
 
 

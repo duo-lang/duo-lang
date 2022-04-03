@@ -13,8 +13,8 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Renamer.Types
 import Renamer.SymbolTable
-import Syntax.AST.Types
-import Syntax.AST.Types qualified as AST
+import Syntax.RST.Types
+import Syntax.RST.Types qualified as AST
 import Syntax.Common
 import TestUtils (getSymbolTable)
 

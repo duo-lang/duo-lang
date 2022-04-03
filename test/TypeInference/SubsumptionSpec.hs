@@ -4,7 +4,6 @@ import Data.Text (Text)
 import Test.Hspec
 
 import Driver.Definition
-import Driver.Environment 
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()

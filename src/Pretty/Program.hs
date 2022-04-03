@@ -9,18 +9,20 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
-import Syntax.AST.Types
-import Syntax.AST.Terms
-import Syntax.AST.Program
+import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Program qualified as RST
+import Syntax.RST.Types qualified as RST
+import Syntax.AST.Program qualified as AST
 import Syntax.Common
 import Driver.Environment
+import Translate.ForgetTypes (forgetTypesDecl)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn DataDecl where
-  prettyAnn (NominalDecl ref tn dc knd xtors) =
+instance PrettyAnn RST.DataDecl where
+  prettyAnn (RST.NominalDecl ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
@@ -31,11 +33,11 @@ instance PrettyAnn DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
     semi
 
-prettyAnnot :: Maybe (TypeScheme pol) -> Doc Annotation
+prettyAnnot :: Maybe (RST.TypeScheme pol) -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdCnsDecl :: PrettyAnn a => PrdCnsRep pc -> IsRec -> a -> Maybe (TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyPrdCnsDecl :: PrettyAnn a => PrdCnsRep pc -> IsRec -> a -> Maybe (RST.TypeScheme pol) -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
   annKeyword "def" <+> "rec" <+> prettyAnn fv <> prettyPrdCnsRep pc <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
@@ -61,40 +63,48 @@ prettyTyOpDecl op assoc prec ty =
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
   annSymbol ":=" <+> prettyAnn ty <> semi
 
-instance PrettyAnn Declaration where
-  prettyAnn (PrdCnsDecl _ _ pc isRec fv annot tm) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
-  prettyAnn (CmdDecl _ _ fv cm) =
-    prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (DataDecl _ _ decl) =
-    prettyAnn decl
-  prettyAnn (XtorDecl _ _ dc xt args ret) =
-    prettyXtorDecl dc xt args ret
-  prettyAnn (ImportDecl _ _ mod) =
-    annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (SetDecl _ _ txt) =
-    annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (TyOpDecl _ _ op prec assoc ty) =
-    prettyTyOpDecl op assoc prec ty
+instance PrettyAnn AST.Declaration where
+  prettyAnn decl = prettyAnn (forgetTypesDecl decl)
     
-
-instance PrettyAnn (NamedRep Declaration) where
-  prettyAnn (NamedRep (PrdCnsDecl _ _ pc isRec fv annot tm)) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (openTermComplete tm))
-  prettyAnn (NamedRep (CmdDecl _ _ fv cm)) =
-    prettyCmdDecl fv (prettyAnn (openCommandComplete cm))
-  prettyAnn (NamedRep (DataDecl _ _ decl)) =
+instance PrettyAnn RST.Declaration where
+  prettyAnn (RST.PrdCnsDecl _ _ pc isRec fv annot tm) =
+    prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
+  prettyAnn (RST.CmdDecl _ _ fv cm) =
+    prettyCmdDecl fv (prettyAnn cm)
+  prettyAnn (RST.DataDecl _ _ decl) =
     prettyAnn decl
-  prettyAnn (NamedRep (XtorDecl _ _ dc xt args ret)) =
+  prettyAnn (RST.XtorDecl _ _ dc xt args ret) =
     prettyXtorDecl dc xt args ret
-  prettyAnn (NamedRep (ImportDecl _ _ mod)) =
+  prettyAnn (RST.ImportDecl _ _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (SetDecl _ _ txt)) =
+  prettyAnn (RST.SetDecl _ _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (NamedRep (TyOpDecl _ _ op prec assoc ty)) =
+  prettyAnn (RST.TyOpDecl _ _ op prec assoc ty) =
     prettyTyOpDecl op assoc prec ty
 
-instance {-# OVERLAPPING #-} PrettyAnn [Declaration] where
+instance PrettyAnn (NamedRep AST.Declaration) where
+  prettyAnn (NamedRep decl) = prettyAnn (NamedRep (forgetTypesDecl decl))
+
+instance PrettyAnn (NamedRep RST.Declaration) where
+  prettyAnn (NamedRep (RST.PrdCnsDecl _ _ pc isRec fv annot tm)) =
+    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (RST.openTermComplete tm))
+  prettyAnn (NamedRep (RST.CmdDecl _ _ fv cm)) =
+    prettyCmdDecl fv (prettyAnn (RST.openCommandComplete cm))
+  prettyAnn (NamedRep (RST.DataDecl _ _ decl)) =
+    prettyAnn decl
+  prettyAnn (NamedRep (RST.XtorDecl _ _ dc xt args ret)) =
+    prettyXtorDecl dc xt args ret
+  prettyAnn (NamedRep (RST.ImportDecl _ _ mod)) =
+    annKeyword "import" <+> prettyAnn mod <> semi
+  prettyAnn (NamedRep (RST.SetDecl _ _ txt)) =
+    annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (NamedRep (RST.TyOpDecl _ _ op prec assoc ty)) =
+    prettyTyOpDecl op assoc prec ty
+
+instance {-# OVERLAPPING #-} PrettyAnn [AST.Declaration] where
+  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
+
+instance {-# OVERLAPPING #-} PrettyAnn [RST.Declaration] where
   prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
 
 ---------------------------------------------------------------------------------

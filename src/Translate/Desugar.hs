@@ -74,14 +74,14 @@ desugarTerm (PrimLitI64 loc i) = PrimLitI64 loc i
 desugarTerm (PrimLitF64 loc d) = PrimLitF64 loc d
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
-desugarTerm (Dtor loc pc annot ns xt t (args1,PrdRep,args2)) =
+desugarTerm (Dtor loc _ _ ns xt t (args1,PrdRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [CnsTerm $ FreeVar loc CnsRep Nothing resVar] ++ (desugarPCTerm <$> args2)
     cmd = Apply loc Nothing (desugarTerm t)
                            (Xtor loc CnsRep Nothing ns xt args)
   in
     MuAbs loc PrdRep Nothing Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
-desugarTerm (Dtor loc pc rep ns xt t (args1,CnsRep,args2)) =
+desugarTerm (Dtor loc _ _ ns xt t (args1,CnsRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [PrdTerm $ FreeVar loc PrdRep Nothing resVar] ++ (desugarPCTerm <$> args2)
     cmd = Apply loc Nothing (desugarTerm t)
@@ -90,7 +90,7 @@ desugarTerm (Dtor loc pc rep ns xt t (args1,CnsRep,args2)) =
     MuAbs loc CnsRep Nothing Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
-desugarTerm (Case loc annot ns t cases)   =
+desugarTerm (Case loc _ ns t cases)   =
   let
     desugarMatchCase (MkTermCase _ xt args t) = MkCmdCase loc xt args  $ Apply loc Nothing (desugarTerm t) (FreeVar loc CnsRep Nothing resVar)
     cmd = Apply loc Nothing (desugarTerm t) (XMatch loc CnsRep Nothing ns  (desugarMatchCase <$> cases))
@@ -98,7 +98,7 @@ desugarTerm (Case loc annot ns t cases)   =
     MuAbs loc PrdRep Nothing Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 -- we want to desugar comatch { D(args) => e }
 -- comatch { D(args)[k] => (desugar e) >> k }
-desugarTerm (Cocase loc annot ns cocases) =
+desugarTerm (Cocase loc _ ns cocases) =
   let
     desugarComatchCase (MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in

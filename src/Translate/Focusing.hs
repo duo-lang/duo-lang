@@ -128,10 +128,10 @@ isFocusedCmd eo (PrimOp loc pt op subst)   = PrimOp loc pt op <$> isValueSubst e
 
 focusTerm :: EvaluationOrder  -> Term pc -> Term pc
 -- If the term is already focused, we don't want to do anything
-focusTerm eo (isFocusedTerm eo -> Just tm) = tm
+focusTerm eo (isFocusedTerm eo -> Just tm)         = tm
 focusTerm _  (BoundVar loc rep annot var)          = BoundVar loc rep annot var
 focusTerm _  (FreeVar loc rep annot var)           = FreeVar loc rep annot var
-focusTerm eo (Xtor loc pcrep annot ns xt subst)    = focusXtor eo pcrep ns xt subst
+focusTerm eo (Xtor _ pcrep _ ns xt subst)          = focusXtor eo pcrep ns xt subst
 focusTerm eo (XMatch loc rep annot ns cases)       = XMatch loc rep annot ns (focusCmdCase eo <$> cases)
 focusTerm eo (MuAbs loc rep annot v cmd)           = MuAbs loc rep annot v (focusCmd eo cmd)
 focusTerm _ _                                      = error "focusTerm should only be called on Core terms"

@@ -6,7 +6,7 @@ import Data.Map qualified as M
 
 import Pretty.Pretty
 import Pretty.Types ()
-import Syntax.AST.Types
+import Syntax.RST.Types
 import Syntax.Common
 import Syntax.AST.Zonking (Bisubstitution(..))
 import TypeInference.Constraints
