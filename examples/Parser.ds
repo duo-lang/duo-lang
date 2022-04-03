@@ -1,0 +1,95 @@
+import Bool;
+import Function;
+import List;
+import Peano;
+import Prelude;
+
+-- a backtracking parser combinator library
+
+data Unit : CBV {
+    MkUnit
+};
+
+data ParseResult : CBV {
+    PR(List(Nat))[Unit]
+};
+
+-- a parser consumes a List(Nat) and produces two continuations:
+-- a success continuation of type ParseResult and a failure continuation.
+-- the ParseResult contains the remaining input and, crucially, 
+-- another "backtracking" continuation
+codata Parser :  CBN {
+    Parse(List(Nat))[ParseResult,Unit]
+}; 
+
+def lit[*] : Nat -> Parser := \n => cocase {
+    Parse(xs)[s,f] => xs >> case {
+        Nil => MkUnit >> f,
+        Cons(y, ys) => nateq y n >> case {
+            True => PR(ys)[f] >> s,
+            False => MkUnit >> f
+        } 
+    } 
+} ; 
+ 
+def success[*] : Parser := cocase {
+    Parse(xs)[s,f] => PR(xs)[f] >> s
+};
+
+def failure[*] : Parser := cocase {
+    Parse(xs)[s,f] => MkUnit >> f
+};
+
+def seq[*] : Parser -> Parser -> Parser := \p1 p2 => cocase {
+    Parse(xs)[s,f] => p1 >> Parse(xs)[ case { PR(l)[f2] => p2 >> Parse(l)[s,f2] } ,f] 
+};
+
+def alt[*] : Parser -> Parser -> Parser := \p1 p2 => cocase {
+    Parse(xs)[s,f] => p1 >> Parse(xs)[s, mu q. p2 >> Parse(xs)[s,f] ]
+};
+
+def rec many1[*] : Parser -> Parser := \p => cocase {
+    Parse(xs)[s,f] => p >> Parse(xs)[case { PR(l)[f2] => alt success (many1 p) >> Parse(l)[s,f2]}, f]
+};
+
+def many[*] : Parser -> Parser := \p => alt success (many1 p);
+
+
+def l1[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Nil)));
+def l2[*] : List(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
+
+def parseOne[*] : Parser := lit 1;
+ 
+
+def test1 := parseOne >> Parse(l1)[print,print] ;
+def test2 := parseOne >> Parse(l2)[print,print] ;
+
+def parseOneTwo[*] : Parser := seq (lit 1) (lit 2);
+
+def test3 := parseOneTwo >> Parse(l1)[print,print] ;
+def test4 := parseOneTwo >> Parse(l2)[print,print] ;
+
+def parseTwoOrOne[*] : Parser := seq (alt (lit 2) (lit 1)) (lit 2);
+
+def test5 := parseTwoOrOne >> Parse(l1)[print,print] ;
+def test6 := parseTwoOrOne >> Parse(l2)[print,print] ;
+
+def parseOnes[*] : Parser := seq (alt (seq (lit 1) (lit 1)) (lit 1)) (lit 1);
+
+def l3[*] : List(Nat) := Cons(1,Cons(1,Cons(1,Nil)));
+
+def test7 := parseOnes >> Parse(l3)[print,print] ;
+
+def parseOneTwoThree[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
+def parseOneTwoFour[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 4);
+
+-- (123 | 12 | 35)^* 5
+def parseComplicated[*] : Parser := seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5);
+
+def l4[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
+def l5[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
+def l6[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
+
+def test8  := parseComplicated >> Parse(l4)[print,print] ;
+def test9  := parseComplicated >> Parse(l5)[print,print] ;
+def test10 := parseComplicated >> Parse(l6)[print,print] ;
