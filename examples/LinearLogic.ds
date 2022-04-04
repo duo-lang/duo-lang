@@ -4,7 +4,8 @@ import Function;
 data Plus : (+a : CBV, +b : CBV) -> CBV {
     Left(a),
     Right(b)
-};
+}; 
+
 
 
 data Void {};
@@ -45,3 +46,15 @@ def throw[*] : forall a. a -> a ⅋ Bot :=
   \x => cocase { MkPar[*,res] => x };
 
 codata VoidN : CBV { MkVoidN };
+
+-- positive negation
+-- not sure whether a should be CBV or CBN...
+data Not : (+a : CBV) -> CBV {
+  Not[a]
+}; 
+
+def handle1[*] : forall a b. a ⅋ b -> Not(a) -> b := 
+  \f e => mu x. e >> case { Not[e2] => f >> MkPar[e2,x]}; 
+
+def handle2[*] : forall a b. a ⅋ b -> Not(b) -> a := 
+  \f e => mu x. e >> case { Not[e2] => f >> MkPar[x,e2]}; 
