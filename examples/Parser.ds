@@ -121,14 +121,14 @@ def lit2(*) : Parser2 :=  case {
 -- cofunction and par types:
 
 codata Parser3 :  CBN {
-    Parse3(List(Nat),Unit ⅋ (Unit @ List(Nat) ))
-    --Parse3(List(Nat))[Unit ⅋ (Unit @ List(Nat) ) ]
+    Parse3(List(Nat))[Unit ⅋ (Unit @ List(Nat) ) ]
+    
     --    Parse(List(Nat))[ParseResult,Unit]
 }; 
 
 
 def lit3[*] : Nat -> Parser3 := \n => cocase {
-    Parse3(xs,m) => xs >> case {
+    Parse3(xs)[m] => xs >> case {
         Nil =>  throw MkUnit >> m,
         Cons(y, ys) => nateq y n >> case {
             True => return CoAp(ys)[mu z.throw z >> m] >> m,
@@ -138,7 +138,7 @@ def lit3[*] : Nat -> Parser3 := \n => cocase {
 } ; 
 
 def success3[*] : Parser3 := cocase {
-    Parse3(xs,m) => return CoAp(xs)[mu z.throw z >> m]  >> m
+    Parse3(xs)[m] => return CoAp(xs)[mu z.throw z >> m]  >> m
 };
 
 def failure3[*] : Parser3 := cocase {
@@ -147,7 +147,12 @@ def failure3[*] : Parser3 := cocase {
 
 def seq3[*] : Parser3 -> Parser3 -> Parser3 := \p1 p2 => cocase {
     --Parse(xs)[m] => p1 >> Parse(xs)[ case { PR(l)[f2] => p2 >> Parse(l)[s,f2] } ,f] 
-    Parse3(xs)[m] => p1 >> Parse3(xs)[  MkPar[case { MkUnit => impossible} ,impossible] ] 
+    Parse3(xs)[m] => 
+      p1 >> 
+        Parse3(xs)[  MkPar[case { MkUnit => throw MkUnit >> m} ,
+                           case { CoAp(l)[f] => p2 >> Parse3(l)[MkPar[f,case {CoAp(l2)[f2] => cocase { MkPar[a,b] => impossible } >> m}]] }] ] 
+                           -- expected Unit @ List(Nat) consumer
+                           -- m: Unit ⅋ (Unit @ List(Nat) ) consumer
 };
 
 
