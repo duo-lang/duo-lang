@@ -41,12 +41,12 @@ lookupTerm :: EnvReader a m
 lookupTerm PrdRep fv = do
   env <- asks fst
   case M.lookup fv (prdEnv env) of
-    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in environment."]
+    Nothing -> throwOtherError ["Unbound free producer variable " <> ppPrint fv <> " is not contained in environment."]
     Just (res1,_,res2) -> return (res1,res2)
 lookupTerm CnsRep fv = do
   env <- asks fst
   case M.lookup fv (cnsEnv env) of
-    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in the environment."]
+    Nothing -> throwOtherError ["Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment."]
     Just (res1,_,res2) -> return (res1,res2)
 
 ---------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ lookupCommand :: EnvReader a m => FreeVarName -> m Command
 lookupCommand fv = do
   env <- asks fst
   case M.lookup fv (cmdEnv env) of
-    Nothing -> throwOtherError ["Unbound free variable " <> ppPrint fv <> " is not contained in environment."]
+    Nothing -> throwOtherError ["Unbound free command variable " <> ppPrint fv <> " is not contained in environment."]
     Just (res, _) -> return res
 
 ---------------------------------------------------------------------------------
