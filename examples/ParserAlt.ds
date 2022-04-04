@@ -52,10 +52,10 @@ def rec many1[*] : Parser -> Parser := \p => cocase {
 
 def many[*] : Parser -> Parser := \p => alt success (many1 p);
 
--- (123 | 12 | 35)^* 5
 def parseOneTwo[*] : Parser := seq (lit 1) (lit 2);
 def parseOneTwoThree[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
 
+-- (123 | 12 | 35)^* 5 6
 def parseComplicated[*] : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
 
 def l4[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
