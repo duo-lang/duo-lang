@@ -239,7 +239,7 @@ instance Show Keyword where
   show KwCodata      = "codata"
   show KwSet         = "set"
   show KwImport      = "import"
-  
+
 
 -- | These keywords start a new declaration at the toplevel and
 --   are used to restart parsing after a parse error has been
@@ -443,19 +443,19 @@ bracketsListIP p = brackets $ do
   return (fsts, snds)
 
 -- | Parse a sequence of producer/consumer argument lists
-argListsP ::  Parser a -> Parser ([(PrdCns,a)], SourcePos)
-argListsP p = do
+argListsP ::  Bool -> Parser a -> Parser ([(PrdCns,a)], SourcePos)
+argListsP backtrack p = do
   endPos <- getSourcePos
-  xs <- many (try (parensListP p) <|> try (bracketsListP p))
+  xs <- if backtrack then many ( try (parensListP p) <|> try (bracketsListP p)) else many ( parensListP p <|> bracketsListP p)
   case xs of
     [] -> return ([], endPos)
     xs -> return (concat (fst <$> xs), snd (last xs))
 
 argListsIP :: PrdCns -> Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
 argListsIP mode p = do
-  (fsts,_) <- argListsP p
+  (fsts,_) <- argListsP True p
   ((middle1, middle2),_) <- (if mode == Prd then parensListIP else bracketsListIP) p
-  (lasts,endPos) <- argListsP p
+  (lasts,endPos) <- argListsP False p
   return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
 
 
