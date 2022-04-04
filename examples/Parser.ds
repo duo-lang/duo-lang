@@ -3,7 +3,8 @@ import Function;
 import List;
 import Peano;
 import Prelude;
-
+import Cofunction;
+import LinearLogic;
 -- a backtracking parser combinator library
 
 data Unit : CBV {
@@ -14,6 +15,7 @@ data ParseResult : CBV {
     PR(List(Nat))[Unit]
 };
 
+
 -- a parser consumes a List(Nat) and produces two continuations:
 -- a success continuation of type ParseResult and a failure continuation.
 -- the ParseResult contains the remaining input and, crucially, 
@@ -21,6 +23,7 @@ data ParseResult : CBV {
 codata Parser :  CBN {
     Parse(List(Nat))[ParseResult,Unit]
 }; 
+
 
 def lit[*] : Nat -> Parser := \n => cocase {
     Parse(xs)[s,f] => xs >> case {
@@ -31,10 +34,12 @@ def lit[*] : Nat -> Parser := \n => cocase {
         } 
     } 
 } ; 
- 
+
+
 def success[*] : Parser := cocase {
     Parse(xs)[s,f] => PR(xs)[f] >> s
 };
+
 
 def failure[*] : Parser := cocase {
     Parse(xs)[s,f] => MkUnit >> f
@@ -93,3 +98,56 @@ def l6[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
 def test8  := parseComplicated >> Parse(l4)[print,print] ;
 def test9  := parseComplicated >> Parse(l5)[print,print] ;
 def test10 := parseComplicated >> Parse(l6)[print,print] ;
+
+
+-- instead of modeling the parser as a codata producer, we could
+-- also model it as a data consumer. Is this better in any way?
+data Parser2 :  CBV {
+    Parse2(List(Nat))[ParseResult,Unit]
+
+}; 
+
+def lit2(*) : Parser2 :=  case {
+    Parse2(xs)[s,f] => xs >> case {
+        Nil => MkUnit >> f,
+        Cons(y, ys) => nateq y 0 >> case {
+            True => PR(ys)[f] >> s,
+            False => MkUnit >> f
+        } 
+    } 
+} ; 
+
+-- Third version: Formulate parser using fancy
+-- cofunction and par types:
+
+codata Parser3 :  CBN {
+    Parse3(List(Nat),Unit ⅋ (Unit @ List(Nat) ))
+    --Parse3(List(Nat))[Unit ⅋ (Unit @ List(Nat) ) ]
+    --    Parse(List(Nat))[ParseResult,Unit]
+}; 
+
+
+def lit3[*] : Nat -> Parser3 := \n => cocase {
+    Parse3(xs,m) => xs >> case {
+        Nil =>  throw MkUnit >> m,
+        Cons(y, ys) => nateq y n >> case {
+            True => return CoAp(ys)[mu z.throw z >> m] >> m,
+            False => throw MkUnit >> m
+        }            
+    } 
+} ; 
+
+def success3[*] : Parser3 := cocase {
+    Parse3(xs,m) => return CoAp(xs)[mu z.throw z >> m]  >> m
+};
+
+def failure3[*] : Parser3 := cocase {
+    Parse3(xs)[*] => throw MkUnit 
+};
+
+def seq3[*] : Parser3 -> Parser3 -> Parser3 := \p1 p2 => cocase {
+    --Parse(xs)[m] => p1 >> Parse(xs)[ case { PR(l)[f2] => p2 >> Parse(l)[s,f2] } ,f] 
+    Parse3(xs)[m] => p1 >> Parse3(xs)[  MkPar[case { MkUnit => impossible} ,impossible] ] 
+};
+
+
