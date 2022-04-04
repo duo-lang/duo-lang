@@ -7,9 +7,6 @@ import Cofunction;
 import LinearLogic;
 -- a backtracking parser combinator library
 
-data Unit : CBV {
-    MkUnit
-};
 
 data ParseResult : CBV {
     PR(List(Nat))[Unit]
@@ -88,17 +85,22 @@ def test7 := parseOnes >> Parse(l3)[print,print] ;
 def parseOneTwoThree[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
 def parseOneTwoFour[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 4);
 
--- (123 | 12 | 35)^* 5
-def parseComplicated[*] : Parser := seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5);
+-- ( 123 | 12 | 35)^* 5 6
+def parseComplicated[*] : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
 
 def l4[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
 def l5[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
 def l6[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
+def l7[*] : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
+def l8[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
+def l9[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
 def test8  := parseComplicated >> Parse(l4)[print,print] ;
 def test9  := parseComplicated >> Parse(l5)[print,print] ;
 def test10 := parseComplicated >> Parse(l6)[print,print] ;
-
+def test11 := parseComplicated >> Parse(l7)[print,print] ;
+def test12 := parseComplicated >> Parse(l8)[print,print] ;
+def test13 := parseComplicated >> Parse(l9)[print,print] ;
 
 -- instead of modeling the parser as a codata producer, we could
 -- also model it as a data consumer. Is this better in any way?
@@ -116,43 +118,4 @@ def lit2(*) : Parser2 :=  case {
         } 
     } 
 } ; 
-
--- Third version: Formulate parser using fancy
--- cofunction and par types:
-
-codata Parser3 :  CBN {
-    Parse3(List(Nat))[Unit ⅋ (Unit @ List(Nat) ) ]
-    
-    --    Parse(List(Nat))[ParseResult,Unit]
-}; 
-
-
-def lit3[*] : Nat -> Parser3 := \n => cocase {
-    Parse3(xs)[m] => xs >> case {
-        Nil =>  throw MkUnit >> m,
-        Cons(y, ys) => nateq y n >> case {
-            True => return CoAp(ys)[mu z.throw z >> m] >> m,
-            False => throw MkUnit >> m
-        }            
-    } 
-} ; 
-
-def success3[*] : Parser3 := cocase {
-    Parse3(xs)[m] => return CoAp(xs)[mu z.throw z >> m]  >> m
-};
-
-def failure3[*] : Parser3 := cocase {
-    Parse3(xs)[*] => throw MkUnit 
-};
-
-def seq3[*] : Parser3 -> Parser3 -> Parser3 := \p1 p2 => cocase {
-    --Parse(xs)[m] => p1 >> Parse(xs)[ case { PR(l)[f2] => p2 >> Parse(l)[s,f2] } ,f] 
-    Parse3(xs)[m] => 
-      p1 >> 
-        Parse3(xs)[  MkPar[case { MkUnit => throw MkUnit >> m} ,
-                           case { CoAp(l)[f] => p2 >> Parse3(l)[MkPar[f,case {CoAp(l2)[f2] => cocase { MkPar[a,b] => impossible } >> m}]] }] ] 
-                           -- expected Unit @ List(Nat) consumer
-                           -- m: Unit ⅋ (Unit @ List(Nat) ) consumer
-};
-
 
