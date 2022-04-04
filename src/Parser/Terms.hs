@@ -27,7 +27,7 @@ mkTerm (Cns, tm) = CST.CnsTerm tm
 -- | Parse a substitution, consisting of lists of producers and consumers.
 -- E.g.: "[cns,cns](prd)[cns](prd,prd)"
 substitutionP :: Parser (CST.Substitution, SourcePos)
-substitutionP = first (fmap mkTerm) <$> argListsP (fst <$> termTopP)
+substitutionP = first (fmap mkTerm) <$> argListsP False (fst <$> termTopP)
 
 substitutionIP :: Parser (CST.SubstitutionI, SourcePos)
 substitutionIP = do
@@ -39,7 +39,7 @@ substitutionIP = do
 --------------------------------------------------------------------------------------------
 
 bindingSiteP :: Parser (CST.BindingSite, SourcePos)
-bindingSiteP = argListsP (fst <$> freeVarNameP)
+bindingSiteP = argListsP False (fst <$> freeVarNameP)
 
 bindingSiteIP :: Parser (CST.BindingSiteI, SourcePos)
 bindingSiteIP = argListsIP Cns (fst <$> freeVarNameP)

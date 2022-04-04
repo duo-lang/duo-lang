@@ -114,7 +114,7 @@ typeOperatorDeclP doc = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  (args,_) <- argListsP (fst <$> typP) <?> "argument list"
+  (args,_) <- argListsP False (fst <$> typP) <?> "argument list"
   return (xt, args )
 
 
@@ -188,7 +188,7 @@ xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
-  (args, _) <- argListsP monoKindP
+  (args, _) <- argListsP False monoKindP
   ret <- optional (try (symbolP SymColon) >> evalOrderP)
   endPos <- symbolP SymSemi
   pure (XtorDecl doc (Loc startPos endPos) dc xt args ret)
