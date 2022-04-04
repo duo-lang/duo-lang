@@ -5,10 +5,6 @@ import Peano;
 import LinearLogic;
 import Prelude;
 
-data Not : (-a : CBV) -> CBV {
-    MkNot[a]
-};
-
 data Ordering {
     LT,
     EQ,
