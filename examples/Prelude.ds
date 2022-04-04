@@ -6,3 +6,7 @@ def impossible(*) := mu x. impossible;
 
 -- | Generic print consumer
 def print(*) := mu x.Print(x); ExitSuccess;
+
+data Unit : CBV {
+    MkUnit
+};
