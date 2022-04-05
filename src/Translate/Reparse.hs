@@ -1,5 +1,6 @@
 module Translate.Reparse
   ( reparseTerm
+  , reparsePrdCnsTerm
   , reparseCommand
   , reparseDecl
   , reparseProgram
@@ -103,13 +104,13 @@ createNamesCmdCase (RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) =
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
   return $ RST.MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesTermCase :: RST.TermCase -> CreateNameM RST.TermCase
+createNamesTermCase :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
 createNamesTermCase (RST.MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
   return $ RST.MkTermCase defaultLoc xt args' e'
 
-createNamesTermCaseI :: RST.TermCaseI -> CreateNameM RST.TermCaseI
+createNamesTermCaseI :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
 createNamesTermCaseI (RST.MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
@@ -120,6 +121,9 @@ createNamesTermCaseI (RST.MkTermCaseI _ xt (as1, (), as2) e) = do
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
+
+reparsePrdCnsTerm :: RST.PrdCnsTerm -> RST.PrdCnsTerm
+reparsePrdCnsTerm = undefined
 
 reparseTerm :: RST.Term pc -> RST.Term pc
 reparseTerm tm = evalState (createNamesTerm tm) names
