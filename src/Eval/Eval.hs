@@ -6,7 +6,6 @@ module Eval.Eval
 import Control.Monad.Except
 import Data.Text qualified as T
 
-import Driver.Environment (Environment)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
@@ -25,7 +24,7 @@ evalTermOnce :: Command -> EvalM (Maybe Command)
 evalTermOnce (ExitSuccess _) = return Nothing
 evalTermOnce (ExitFailure _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
-  liftIO $ undefined -- TODO: ppPrintIO prd 
+  liftIO $ ppPrintIO prd 
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt

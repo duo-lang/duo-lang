@@ -3,6 +3,7 @@ module Eval.Definition where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Map (Map)
+import Data.Map qualified as M
 import Data.List (find)
 import Text.Read (readMaybe)
 
@@ -42,7 +43,7 @@ checkArgs _md [] [] = return ()
 checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
 checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
 checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
-                                   ,  undefined -- TODO: ppPrint cmd
+                                   ,  ppPrint cmd
                                    , "Argument lengths don't coincide."
                                    ]
 
@@ -62,7 +63,20 @@ readInt = do
     Just i         -> pure (convertInt i)
 
 lookupCommand :: FreeVarName -> EvalM Command
-lookupCommand = undefined
+lookupCommand fv = do
+  (_,_,env) <- ask
+  case M.lookup fv env of
+    Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
+    Just cmd -> pure cmd
 
 lookupTerm :: PrdCnsRep pc -> FreeVarName -> EvalM (Term pc)
-lookupTerm = undefined
+lookupTerm PrdRep fv = do
+  (env,_,_) <- ask
+  case M.lookup fv env of
+    Nothing -> throwEvalError ["Producer " <> ppPrint fv <> " not in environment."]
+    Just prd -> pure prd
+lookupTerm CnsRep fv = do
+  (_,env,_) <- ask
+  case M.lookup fv env of
+    Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
+    Just prd -> pure prd

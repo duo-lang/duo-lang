@@ -8,6 +8,7 @@ import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Terms qualified as RST
+import Syntax.Core.Terms qualified as Core
 import Syntax.Common
 import Data.Bifunctor
 import Translate.ForgetTypes
@@ -114,6 +115,9 @@ isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = cas
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
 
+instance PrettyAnn (Core.Term pc) where
+  prettyAnn = undefined
+
 instance PrettyAnn (AST.Term pc) where
   prettyAnn tm = prettyAnn (forgetTypesTerm tm)
 
@@ -147,6 +151,12 @@ instance PrettyAnn (RST.Term pc) where
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cocases)))))
   prettyAnn (RST.PrimLitI64 _ i) = annLiteral (prettyAnn i <> "#I64")
   prettyAnn (RST.PrimLitF64 _ f) = annLiteral (prettyAnn f <> "#F64")
+
+---------------------------------------------------------------------------------
+-- Commands
+---------------------------------------------------------------------------------
+instance PrettyAnn Core.Command where
+  prettyAnn = undefined
 
 instance PrettyAnn AST.Command where
   prettyAnn cmd = prettyAnn (forgetTypesCommand cmd)

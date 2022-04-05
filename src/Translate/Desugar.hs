@@ -10,7 +10,7 @@ module Translate.Desugar
   where
 
 import Driver.Environment (Environment(..))
-import Eval.Definition (EvalEnv(..))
+import Eval.Definition (EvalEnv)
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
 import Syntax.Core.Program qualified as Core
@@ -163,7 +163,7 @@ desugarProgram :: AST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps
 
 desugarEnvironment :: Environment -> EvalEnv
-desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) = (prd,cns,cmd)
+desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv }) = (prd,cns,cmd)
   where 
     prd = (\(tm,_,_) -> (desugarTerm tm)) <$> prdEnv
     cns = (\(tm,_,_) -> (desugarTerm tm)) <$> cnsEnv
