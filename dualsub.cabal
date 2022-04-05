@@ -103,6 +103,8 @@ library
       Syntax.Common.PrdCns
       Syntax.Common.Types
       Syntax.Common.XData
+      Syntax.Core.Terms
+      Syntax.Core.Program
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
