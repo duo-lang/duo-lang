@@ -10,8 +10,11 @@ module Translate.Desugar
   where
 
 import Driver.Environment (Environment(..))
+import Eval.Definition (EvalEnv(..))
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
+import Syntax.Core.Program qualified as Core
+import Syntax.Core.Terms qualified as Core
 import Syntax.Common
 
 
@@ -63,107 +66,105 @@ resVar :: FreeVarName
 resVar = MkFreeVarName "$result"
 
 
-desugarPCTerm :: AST.PrdCnsTerm -> AST.PrdCnsTerm
-desugarPCTerm (AST.PrdTerm tm) = AST.PrdTerm $ desugarTerm tm
-desugarPCTerm (AST.CnsTerm tm) = AST.CnsTerm $ desugarTerm tm
+desugarPCTerm :: AST.PrdCnsTerm -> Core.PrdCnsTerm
+desugarPCTerm (AST.PrdTerm tm) = Core.PrdTerm $ desugarTerm tm
+desugarPCTerm (AST.CnsTerm tm) = Core.CnsTerm $ desugarTerm tm
 
-desugarTerm :: AST.Term pc -> AST.Term pc
-desugarTerm (AST.BoundVar loc pc annot idx) =
-  AST.BoundVar loc pc annot idx
-desugarTerm (AST.FreeVar loc pc annot fv) =
-  AST.FreeVar loc pc annot fv
-desugarTerm (AST.Xtor loc pc annot ns xt args) =
-  AST.Xtor loc pc annot ns xt (desugarPCTerm <$> args)
-desugarTerm (AST.MuAbs loc pc annot bs cmd) =
-  AST.MuAbs loc pc annot bs (desugarCmd cmd)
-desugarTerm (AST.XMatch loc pc annot ns cases) =
-  AST.XMatch loc pc annot ns (desugarCmdCase <$> cases)
+desugarTerm :: AST.Term pc -> Core.Term pc
+desugarTerm (AST.BoundVar loc pc _annot idx) =
+  Core.BoundVar loc pc idx
+desugarTerm (AST.FreeVar loc pc _annot fv) =
+  Core.FreeVar loc pc fv
+desugarTerm (AST.Xtor loc pc _annot ns xt args) =
+  Core.Xtor loc pc ns xt (desugarPCTerm <$> args)
+desugarTerm (AST.MuAbs loc pc _annot bs cmd) =
+  Core.MuAbs loc pc bs (desugarCmd cmd)
+desugarTerm (AST.XMatch loc pc _annot ns cases) =
+  Core.XMatch loc pc ns (desugarCmdCase <$> cases)
 desugarTerm (AST.PrimLitI64 loc i) =
-  AST.PrimLitI64 loc i
+  Core.PrimLitI64 loc i
 desugarTerm (AST.PrimLitF64 loc d) =
-  AST.PrimLitF64 loc d
+  Core.PrimLitF64 loc d
 -- we want to desugar e.D(args')
 -- Mu k.[(desugar e) >> D (desugar <$> args')[k] ]
 desugarTerm (AST.Dtor loc _ _ ns xt t (args1,PrdRep,args2)) =
   let
-    args = (desugarPCTerm <$> args1) ++ [AST.CnsTerm $ AST.FreeVar loc CnsRep Nothing resVar] ++ (desugarPCTerm <$> args2)
-    cmd = AST.Apply loc Nothing (desugarTerm t)
-                           (AST.Xtor loc CnsRep Nothing ns xt args)
+    args = (desugarPCTerm <$> args1) ++ [Core.CnsTerm $ Core.FreeVar loc CnsRep resVar] ++ (desugarPCTerm <$> args2)
+    cmd = Core.Apply loc Nothing (desugarTerm t)
+                           (Core.Xtor loc CnsRep ns xt args)
   in
-    AST.MuAbs loc PrdRep Nothing Nothing $ AST.commandClosing [(Cns, resVar)] $ AST.shiftCmd cmd
+    Core.MuAbs loc PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
 desugarTerm (AST.Dtor loc _ _ ns xt t (args1,CnsRep,args2)) =
   let
-    args = (desugarPCTerm <$> args1) ++ [AST.PrdTerm $ AST.FreeVar loc PrdRep Nothing resVar] ++ (desugarPCTerm <$> args2)
-    cmd = AST.Apply loc Nothing (desugarTerm t)
-                                (AST.Xtor loc CnsRep Nothing ns xt args)
+    args = (desugarPCTerm <$> args1) ++ [Core.PrdTerm $ Core.FreeVar loc PrdRep resVar] ++ (desugarPCTerm <$> args2)
+    cmd = Core.Apply loc Nothing (desugarTerm t)
+                                (Core.Xtor loc CnsRep ns xt args)
   in
-    AST.MuAbs loc CnsRep Nothing Nothing $ AST.commandClosing [(Prd, resVar)] $ AST.shiftCmd cmd
+    Core.MuAbs loc CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
 desugarTerm (AST.Case loc _ ns t cases)   =
   let
-    desugarMatchCase (AST.MkTermCase _ xt args t) = AST.MkCmdCase loc xt args  $ AST.Apply loc Nothing (desugarTerm t) (AST.FreeVar loc CnsRep Nothing resVar)
-    cmd = AST.Apply loc Nothing (desugarTerm t) (AST.XMatch loc CnsRep Nothing ns  (desugarMatchCase <$> cases))
+    desugarMatchCase (AST.MkTermCase _ xt args t) = Core.MkCmdCase loc xt args  $ Core.Apply loc Nothing (desugarTerm t) (Core.FreeVar loc CnsRep resVar)
+    cmd = Core.Apply loc Nothing (desugarTerm t) (Core.XMatch loc CnsRep ns  (desugarMatchCase <$> cases))
   in
-    AST.MuAbs loc PrdRep Nothing Nothing $ AST.commandClosing [(Cns, resVar)] $ AST.shiftCmd cmd
+    Core.MuAbs loc PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
 -- we want to desugar comatch { D(args) => e }
 -- comatch { D(args)[k] => (desugar e) >> k }
 desugarTerm (AST.Cocase loc _ ns cocases) =
   let
     desugarComatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in
-      AST.MkCmdCase loc xt args $ AST.Apply loc Nothing (desugarTerm t) (AST.BoundVar loc CnsRep Nothing (0,length as1))
+      Core.MkCmdCase loc xt args $ Core.Apply loc Nothing (desugarTerm t) (Core.BoundVar loc CnsRep (0,length as1))
   in
-    AST.XMatch loc PrdRep Nothing ns $ desugarComatchCase <$> cocases
+    Core.XMatch loc PrdRep ns $ desugarComatchCase <$> cocases
 
-desugarCmdCase :: AST.CmdCase -> AST.CmdCase
+desugarCmdCase :: AST.CmdCase -> Core.CmdCase
 desugarCmdCase (AST.MkCmdCase loc xt args cmd) = 
-  AST.MkCmdCase loc xt args (desugarCmd cmd)
+  Core.MkCmdCase loc xt args (desugarCmd cmd)
 
-desugarCmd :: AST.Command -> AST.Command
+desugarCmd :: AST.Command -> Core.Command
 desugarCmd (AST.Apply loc kind prd cns) =
-  AST.Apply loc kind (desugarTerm prd) (desugarTerm cns)
+  Core.Apply loc kind (desugarTerm prd) (desugarTerm cns)
 desugarCmd (AST.Print loc prd cmd) =
-  AST.Print loc (desugarTerm prd) (desugarCmd cmd)
+  Core.Print loc (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (AST.Read loc cns) =
-  AST.Read loc (desugarTerm cns)
+  Core.Read loc (desugarTerm cns)
 desugarCmd (AST.Jump loc fv) =
-  AST.Jump loc fv
+  Core.Jump loc fv
 desugarCmd (AST.ExitSuccess loc) =
-  AST.ExitSuccess loc
+  Core.ExitSuccess loc
 desugarCmd (AST.ExitFailure loc) =
-  AST.ExitFailure loc
+  Core.ExitFailure loc
 desugarCmd (AST.PrimOp loc pt op subst) =
-  AST.PrimOp loc pt op (desugarPCTerm <$> subst)
+  Core.PrimOp loc pt op (desugarPCTerm <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Translate Program
 ---------------------------------------------------------------------------------
 
-desugarDecl :: AST.Declaration -> AST.Declaration
+desugarDecl :: AST.Declaration -> Core.Declaration
 desugarDecl (AST.PrdCnsDecl loc doc pc isRec fv annot tm) =
-  AST.PrdCnsDecl loc doc pc isRec fv annot (desugarTerm tm)
+  Core.PrdCnsDecl loc doc pc isRec fv annot (desugarTerm tm)
 desugarDecl (AST.CmdDecl loc doc fv cmd) =
-  AST.CmdDecl loc doc fv (desugarCmd cmd)
+  Core.CmdDecl loc doc fv (desugarCmd cmd)
 desugarDecl (AST.DataDecl loc doc decl) =
-  AST.DataDecl loc doc decl
+  Core.DataDecl loc doc decl
 desugarDecl (AST.XtorDecl loc doc dc xt args ret) =
-  AST.XtorDecl loc doc dc xt args ret
+  Core.XtorDecl loc doc dc xt args ret
 desugarDecl (AST.ImportDecl loc doc mn) =
-  AST.ImportDecl loc doc mn
+  Core.ImportDecl loc doc mn
 desugarDecl (AST.SetDecl loc doc txt) =
-  AST.SetDecl loc doc txt
+  Core.SetDecl loc doc txt
 desugarDecl (AST.TyOpDecl loc doc op prec assoc ty) =
-  AST.TyOpDecl loc doc op prec assoc ty
+  Core.TyOpDecl loc doc op prec assoc ty
 
-desugarProgram :: AST.Program -> AST.Program
+desugarProgram :: AST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps
 
-desugarEnvironment :: Environment -> Environment
-desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) =
-    MkEnvironment
-      { prdEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> prdEnv
-      , cnsEnv = (\(tm,loc,tys) -> (desugarTerm tm,loc,tys)) <$> cnsEnv
-      , cmdEnv = (\(cmd,loc) -> (desugarCmd cmd,loc)) <$> cmdEnv
-      , declEnv = declEnv
-      }
+desugarEnvironment :: Environment -> EvalEnv
+desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv }) = (prd,cns,cmd)
+  where 
+    prd = (\(tm,_,_) -> (desugarTerm tm)) <$> prdEnv
+    cns = (\(tm,_,_) -> (desugarTerm tm)) <$> cnsEnv
+    cmd = (\(cmd,_) -> (desugarCmd cmd)) <$> cmdEnv
