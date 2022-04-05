@@ -204,6 +204,6 @@ publishErrors uri = do
           case res of
             Left err -> do
               sendLocatedError (toNormalizedUri uri) err
-            Right (env,_) -> do
-              updateHoverCache uri env
+            Right (_,prog) -> do
+              updateHoverCache uri prog
 
