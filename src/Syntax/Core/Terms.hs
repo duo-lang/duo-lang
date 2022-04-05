@@ -12,6 +12,8 @@ module Syntax.Core.Terms
   , termLocallyClosed
   ) where
 
+import Data.List (elemIndex)
+import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
 
 import Utils
@@ -72,6 +74,8 @@ deriving instance Show CmdCase
 data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
   BoundVar :: Loc -> PrdCnsRep pc -> Index -> Term pc
+  -- | A free variable in the locally nameless system.
+  FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
   Xtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
@@ -127,6 +131,7 @@ termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, sub
                                                                      (CnsRep, CnsTerm tm) -> tm
                                                                      _                    -> error "termOpeningRec BOOM"
                                                   | otherwise = bv
+termOpeningRec _ _ fv@FreeVar{} = fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
   Xtor loc rep ns xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XMatch loc rep ns cases) =
@@ -159,6 +164,10 @@ pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
 termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 termClosingRec _ _ bv@BoundVar{} = bv
+termClosingRec k vars (FreeVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
+                                             | otherwise = FreeVar loc PrdRep v
+termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
+                                             | otherwise = FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc pc ns xt subst) =
   Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XMatch loc pc sn cases) =
@@ -208,6 +217,7 @@ pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 
 termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
+termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XMatch _ _ _ cases) = do
@@ -242,6 +252,7 @@ shiftPCTermRec n (CnsTerm tm) = CnsTerm $ shiftTermRec n tm
 shiftTermRec :: Int -> Term pc -> Term pc
 shiftTermRec n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 1, j)
                                           | otherwise = BoundVar loc pcrep (i    , j)
+shiftTermRec _ var@FreeVar {} = var
 shiftTermRec n (Xtor loc pcrep ns xt subst) =
     Xtor loc pcrep ns xt (shiftPCTermRec n <$> subst)
 shiftTermRec n (XMatch loc pcrep ns cases) =
