@@ -108,7 +108,7 @@ cmd s = do
       env <- gets replEnv
       steps <- gets steps
       let compiledCmd = focusCmd evalOrder (desugarCmd inferredCmd)
-      let compiledEnv = undefined -- TODO: focusEnvironment evalOrder (desugarEnvironment env)
+      let compiledEnv = focusEnvironment evalOrder (desugarEnvironment env)
       case steps of
         NoSteps -> do
           resE <- liftIO $ eval compiledCmd compiledEnv
