@@ -4,7 +4,7 @@ module LSP.CodeActionHandler (codeActionHandler) where
 import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
-import Data.Map qualified as M
+import Control.Monad (join)
 import Data.Maybe ( fromMaybe, isNothing )
 import System.Log.Logger ( debugM )
 import Data.HashMap.Strict qualified as Map
@@ -12,13 +12,11 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
-import Syntax.AST.Program
-    ( Declaration(PrdCnsDecl,CmdDecl))
-import Driver.Environment (Environment(prdEnv, cnsEnv, cmdEnv))
 import Syntax.RST.Types ( TypeScheme )
 import Syntax.Common
 import Syntax.AST.Terms ( Term )
 import Syntax.AST.Terms qualified as Syntax
+import Syntax.AST.Program
 import Driver.Driver
     ( defaultInferenceOptions,
       inferProgramIO,
@@ -54,30 +52,27 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
       case res of
         Left _err -> do
           responder (Right (List []))
-        Right (env,_) -> do
-          responder (Right (generateCodeActions ident range env))
+        Right (_,prog) -> do
+          responder (Right (generateCodeActions ident range prog))
 
-generateCodeActions :: TextDocumentIdentifier -> Range -> Environment -> List (Command  |? CodeAction)
-generateCodeActions ident (Range {_start= start}) env = do
-  -- Producer declarations
-  let prds = M.toList $ prdEnv env
-  let desugarActionsPrd  = [ generateDesugarCodeAction PrdRep ident prd | prd@(_,(tm,loc,_)) <- prds, not (isDesugaredTerm tm), lookupPos start loc]
-  let cbvFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBV prd | prd@(_,(tm,loc,_)) <- prds, isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
-  let cbnFocusActionsPrd = [ generateFocusCodeAction PrdRep ident CBN prd | prd@(_,(tm,loc,_)) <- prds, isDesugaredTerm tm, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
-  -- Consumer declarations
-  let cnss = M.toList $ cnsEnv env
-  let desugarActionsCns  = [ generateDesugarCodeAction CnsRep ident cns | cns@(_,(tm,loc,_)) <- cnss, not (isDesugaredTerm tm), lookupPos start loc]
-  let cbvFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBV cns | cns@(_,(tm,loc,_)) <- cnss, isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
-  let cbnFocusActionsCns = [ generateFocusCodeAction CnsRep ident CBN cns | cns@(_,(tm,loc,_)) <- cnss, isDesugaredTerm tm, isNothing (isFocusedTerm CBN (desugarTerm tm)), lookupPos start loc]
-  -- Command declarations
-  let cmds = M.toList $ cmdEnv env
-  let desugarActionsCmd  = [ generateCmdDesugarCodeAction ident cmd | cmd@(_,(command, loc)) <- cmds , not (isDesugaredCommand command), lookupPos start loc]
-  let cbvFocusActionsCmd = [ generateCmdFocusCodeAction ident CBV cmd | cmd@(_,(command,loc)) <- cmds, isDesugaredCommand command, isNothing (isFocusedCmd CBV (desugarCmd command)), lookupPos start loc]
-  let cbnFocusActionsCmd = [ generateCmdFocusCodeAction ident CBN cmd | cmd@(_,(command,loc)) <- cmds, isDesugaredCommand command, isNothing (isFocusedCmd CBN (desugarCmd command)), lookupPos start loc]
-  List $ mconcat [ desugarActionsPrd, cbvFocusActionsPrd, cbnFocusActionsPrd
-                 , desugarActionsCns, cbvFocusActionsCns, cbnFocusActionsCns
-                 , desugarActionsCmd, cbvFocusActionsCmd, cbnFocusActionsCmd
-                 ]
+generateCodeActions :: TextDocumentIdentifier -> Range -> Program -> List (Command  |? CodeAction)
+generateCodeActions ident rng program = List (join ls)
+  where
+    ls = generateCodeAction ident rng <$> program
+
+
+generateCodeAction :: TextDocumentIdentifier -> Range -> Declaration -> [Command |? CodeAction]
+generateCodeAction ident (Range {_start = start }) (PrdCnsDecl loc _doc rep _isrec fv (Just tys) tm) = desugar ++ cbvfocus ++ cbnfocus
+  where
+    desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
+    cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+    cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+generateCodeAction ident (Range {_start = start}) (CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
+  where
+    desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN (desugarCmd cmd)), lookupPos start loc]
+    cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN (desugarCmd cmd)), lookupPos start loc]
+generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions
