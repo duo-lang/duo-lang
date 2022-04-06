@@ -1,15 +1,13 @@
-module Translate.Reparse
-  ( reparseTerm
-  , reparseCommand
-  , reparseDecl
-  , reparseProgram
-  ) where
+module Translate.Reparse where
+
 
 import Control.Monad.State
 import Data.Bifunctor
 import Data.Text qualified as T
 
 import Syntax.Common
+import Syntax.CST.Program qualified as CST
+import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
@@ -204,27 +202,69 @@ createNamesTermCaseI (RST.MkTermCaseI _ xt (as1, (), as2) e) = do
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-reparseTerm :: RST.Term pc -> RST.Term pc
-reparseTerm tm = evalState (createNamesTerm tm) names
+isNumSTermRST :: RST.Term pc -> Maybe Int
+isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+  Nothing -> Nothing
+  Just n -> Just (n + 1)
+isNumSTermRST _ = Nothing
 
-reparseCommand :: RST.Command -> RST.Command
-reparseCommand cmd = evalState (createNamesCommand cmd) names
 
-reparseDecl :: RST.Declaration -> RST.Declaration
+embedTerm :: RST.Term pc -> CST.Term
+embedTerm = undefined
+
+embedCommand :: RST.Command -> CST.Command
+embedCommand = undefined
+
+embedDecl :: RST.Declaration -> CST.Declaration
+embedDecl = undefined
+
+unsafe :: a -> b
+unsafe = undefined
+---------------------------------------------------------------------------------
+-- CreateNames Monad
+---------------------------------------------------------------------------------
+
+reparseTerm :: RST.Term pc -> CST.Term
+reparseTerm tm = embedTerm (openTermComplete (evalState (createNamesTerm tm) names))
+
+reparsePCTerm :: RST.PrdCnsTerm -> CST.PrdCnsTerm
+reparsePCTerm (RST.PrdTerm tm) = CST.PrdTerm (reparseTerm tm)
+reparsePCTerm (RST.CnsTerm tm) = CST.CnsTerm (reparseTerm tm)
+
+reparseSubst :: RST.Substitution -> CST.Substitution
+reparseSubst = fmap reparsePCTerm
+
+reparseSubstI :: RST.SubstitutionI pc -> CST.Substitution
+reparseSubstI = undefined
+
+reparseCommand :: RST.Command -> CST.Command
+reparseCommand cmd = embedCommand (openCommandComplete (evalState (createNamesCommand cmd) names))
+
+reparseCmdCase :: RST.CmdCase -> CST.CmdCase
+reparseCmdCase = undefined
+
+reparseTermCase :: RST.TermCase pc -> CST.TermCase
+reparseTermCase = undefined
+
+reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCaseI
+reparseTermCaseI = undefined
+
+reparseDecl :: RST.Declaration -> CST.Declaration
 reparseDecl (RST.PrdCnsDecl loc doc rep isRec fv ts tm) =
-  RST.PrdCnsDecl loc doc rep isRec fv ts (reparseTerm tm)
+  CST.PrdCnsDecl doc loc (case rep of PrdRep -> Prd; CnsRep -> Cns) isRec fv (unsafe ts) (reparseTerm tm)
 reparseDecl (RST.CmdDecl loc doc fv cmd) =
-  RST.CmdDecl loc doc fv (reparseCommand cmd)
+  CST.CmdDecl doc loc fv (reparseCommand cmd)
 reparseDecl (RST.DataDecl loc doc decl) =
-  RST.DataDecl loc doc decl
+  CST.DataDecl doc loc (unsafe decl)
 reparseDecl (RST.XtorDecl loc doc dc xt args ret) =
-  RST.XtorDecl loc doc dc xt args ret
+  CST.XtorDecl doc loc dc xt args (Just ret)
 reparseDecl (RST.ImportDecl loc doc mn) =
-  RST.ImportDecl loc doc mn
+  CST.ImportDecl doc loc mn
 reparseDecl (RST.SetDecl loc doc txt) =
-  RST.SetDecl loc doc txt
+  CST.SetDecl doc loc txt
 reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
-  RST.TyOpDecl loc doc op prec assoc ty
+  CST.TyOpDecl doc loc op prec assoc ty
 
-reparseProgram :: RST.Program -> RST.Program
+reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl

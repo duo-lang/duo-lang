@@ -9,7 +9,6 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
-import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.AST.Program qualified as AST
