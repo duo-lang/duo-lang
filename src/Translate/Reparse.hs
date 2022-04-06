@@ -223,9 +223,41 @@ isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = cas
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
 
+  
+  
+    -- Case :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
+  -- -- | A copattern match:
+  -- --
+  -- -- cocase { ... }
+  -- --
+  -- Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
+  -- -- | Primitive literals
+  -- PrimLitI64 :: Loc -> Integer -> Term Prd
+  -- PrimLitF64 :: Loc -> Double -> Term Prd
 
 embedTerm :: RST.Term pc -> CST.Term
-embedTerm = undefined
+embedTerm (RST.BoundVar _ _ _) =
+  error "Should have been removed by opening"
+embedTerm (RST.FreeVar loc _ fv) =
+  CST.Var loc fv
+embedTerm (RST.Xtor loc _ _ xt subst) =
+  CST.Xtor loc xt (embedSubst subst)
+embedTerm (RST.XMatch loc PrdRep _ cases) =
+  CST.XMatch loc Codata (embedCmdCase <$> cases)
+embedTerm (RST.XMatch loc CnsRep _ cases) =
+  CST.XMatch loc Data (embedCmdCase <$> cases)
+embedTerm (RST.MuAbs loc _ fv cmd) =
+  CST.MuAbs loc (fromJust fv) (embedCommand cmd)
+embedTerm (RST.Dtor loc _ _ xt tm substi) =
+  CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)
+embedTerm (RST.Case loc _ tm cases) =
+  CST.Case loc (embedTerm tm) (embedTermCase <$> cases)
+embedTerm (RST.Cocase loc _ cases) =
+  CST.Cocase loc (embedTermCaseI <$> cases)
+embedTerm (RST.PrimLitI64 loc i) =
+  CST.PrimLitI64 loc i
+embedTerm (RST.PrimLitF64 loc d) =
+  CST.PrimLitF64 loc d
 
 embedPCTerm :: RST.PrdCnsTerm -> CST.PrdCnsTerm
 embedPCTerm (RST.PrdTerm tm) = CST.PrdTerm (embedTerm tm)
@@ -233,6 +265,10 @@ embedPCTerm (RST.CnsTerm tm) = CST.CnsTerm (embedTerm tm)
 
 embedSubst :: RST.Substitution -> CST.Substitution
 embedSubst = fmap embedPCTerm
+
+embedSubstI :: RST.SubstitutionI pc -> CST.SubstitutionI
+embedSubstI (subst1,PrdRep,subst2) = (embedSubst subst1, Prd, embedSubst subst2)
+embedSubstI (subst1,CnsRep,subst2) = (embedSubst subst1, Cns, embedSubst subst2)
 
 embedCommand :: RST.Command -> CST.Command
 embedCommand (RST.Apply loc prd cns) =
