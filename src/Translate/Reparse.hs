@@ -10,8 +10,8 @@ import Data.Bifunctor
 import Data.Text qualified as T
 
 import Syntax.Common
-import Syntax.AST.Program
-import Syntax.AST.Terms
+import Syntax.AST.Program qualified as AST
+import Syntax.AST.Terms qualified as AST
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -34,112 +34,112 @@ fresh Cns = do
   modify (second tail)
   pure (Just var)
 
-createNamesPCTerm :: PrdCnsTerm -> CreateNameM PrdCnsTerm
-createNamesPCTerm (PrdTerm tm) = PrdTerm <$> createNamesTerm tm
-createNamesPCTerm (CnsTerm tm) = CnsTerm <$> createNamesTerm tm
+createNamesPCTerm :: AST.PrdCnsTerm -> CreateNameM AST.PrdCnsTerm
+createNamesPCTerm (AST.PrdTerm tm) = AST.PrdTerm <$> createNamesTerm tm
+createNamesPCTerm (AST.CnsTerm tm) = AST.CnsTerm <$> createNamesTerm tm
 
-createNamesSubstitution :: Substitution  -> CreateNameM Substitution
+createNamesSubstitution :: AST.Substitution  -> CreateNameM AST.Substitution
 createNamesSubstitution = mapM createNamesPCTerm
 
-createNamesTerm :: Term pc -> CreateNameM (Term pc)
-createNamesTerm (BoundVar loc pc annot idx) =
-  pure $ BoundVar loc pc annot idx
-createNamesTerm (FreeVar loc pc annot nm) =
-  pure $ FreeVar loc pc annot nm
-createNamesTerm (Xtor loc pc annot ns xt subst) = do
+createNamesTerm :: AST.Term pc -> CreateNameM (AST.Term pc)
+createNamesTerm (AST.BoundVar loc pc annot idx) =
+  pure $ AST.BoundVar loc pc annot idx
+createNamesTerm (AST.FreeVar loc pc annot nm) =
+  pure $ AST.FreeVar loc pc annot nm
+createNamesTerm (AST.Xtor loc pc annot ns xt subst) = do
   subst' <- createNamesSubstitution subst
-  pure $ Xtor loc pc annot ns xt subst'
-createNamesTerm (XMatch loc pc annot ns cases) = do
+  pure $ AST.Xtor loc pc annot ns xt subst'
+createNamesTerm (AST.XMatch loc pc annot ns cases) = do
   cases' <- mapM createNamesCmdCase cases
-  pure $ XMatch loc pc annot ns cases'
-createNamesTerm (MuAbs loc pc annot _ cmd) = do
+  pure $ AST.XMatch loc pc annot ns cases'
+createNamesTerm (AST.MuAbs loc pc annot _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
-  pure $ MuAbs loc pc annot var cmd'
-createNamesTerm (Dtor loc pc annot ns xt e (subst1,pcrep,subst2)) = do
+  pure $ AST.MuAbs loc pc annot var cmd'
+createNamesTerm (AST.Dtor loc pc annot ns xt e (subst1,pcrep,subst2)) = do
   e' <- createNamesTerm e
   subst1' <- createNamesSubstitution subst1
   subst2' <- createNamesSubstitution subst2
-  pure $ Dtor loc pc annot ns xt e' (subst1',pcrep,subst2')
-createNamesTerm (Case loc annot ns e cases) = do
+  pure $ AST.Dtor loc pc annot ns xt e' (subst1',pcrep,subst2')
+createNamesTerm (AST.Case loc annot ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
-  pure $ Case loc annot ns e' cases'
-createNamesTerm (Cocase loc annot ns cases) = do
+  pure $ AST.Case loc annot ns e' cases'
+createNamesTerm (AST.Cocase loc annot ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
-  pure $ Cocase loc annot ns cases'
-createNamesTerm (PrimLitI64 loc i) =
-  pure (PrimLitI64 loc i)
-createNamesTerm (PrimLitF64 loc d) =
-  pure (PrimLitF64 loc d)
+  pure $ AST.Cocase loc annot ns cases'
+createNamesTerm (AST.PrimLitI64 loc i) =
+  pure (AST.PrimLitI64 loc i)
+createNamesTerm (AST.PrimLitF64 loc d) =
+  pure (AST.PrimLitF64 loc d)
 
-createNamesCommand :: Command -> CreateNameM Command
-createNamesCommand (ExitSuccess loc) =
-  pure $ ExitSuccess loc
-createNamesCommand (ExitFailure loc) =
-  pure $ ExitFailure loc
-createNamesCommand (Jump loc fv) =
-  pure $ Jump loc fv
-createNamesCommand (Apply loc kind prd cns) = do
+createNamesCommand :: AST.Command -> CreateNameM AST.Command
+createNamesCommand (AST.ExitSuccess loc) =
+  pure $ AST.ExitSuccess loc
+createNamesCommand (AST.ExitFailure loc) =
+  pure $ AST.ExitFailure loc
+createNamesCommand (AST.Jump loc fv) =
+  pure $ AST.Jump loc fv
+createNamesCommand (AST.Apply loc kind prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
-  pure $ Apply loc kind prd' cns'
-createNamesCommand (Print loc prd cmd) = do
+  pure $ AST.Apply loc kind prd' cns'
+createNamesCommand (AST.Print loc prd cmd) = do
   prd' <- createNamesTerm prd
   cmd' <- createNamesCommand cmd
-  pure $ Print loc prd' cmd'
-createNamesCommand (Read loc cns) = do
+  pure $ AST.Print loc prd' cmd'
+createNamesCommand (AST.Read loc cns) = do
   cns' <- createNamesTerm cns
-  pure $ Read loc cns'
-createNamesCommand (PrimOp loc pt pop subst) = do
+  pure $ AST.Read loc cns'
+createNamesCommand (AST.PrimOp loc pt pop subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  pure $ PrimOp loc pt pop subst'
+  pure $ AST.PrimOp loc pt pop subst'
 
-createNamesCmdCase :: CmdCase -> CreateNameM CmdCase
-createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
+createNamesCmdCase :: AST.CmdCase -> CreateNameM AST.CmdCase
+createNamesCmdCase (AST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
   cmd' <- createNamesCommand cmdcase_cmd
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
-  return $ MkCmdCase defaultLoc cmdcase_name args cmd'
+  return $ AST.MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesTermCase :: TermCase pc -> CreateNameM (TermCase pc)
-createNamesTermCase (MkTermCase _ xt args e) = do
+createNamesTermCase :: AST.TermCase pc -> CreateNameM (AST.TermCase pc)
+createNamesTermCase (AST.MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
-  return $ MkTermCase defaultLoc xt args' e'
+  return $ AST.MkTermCase defaultLoc xt args' e'
 
-createNamesTermCaseI :: TermCaseI pc -> CreateNameM (TermCaseI pc)
-createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
+createNamesTermCaseI :: AST.TermCaseI pc -> CreateNameM (AST.TermCaseI pc)
+createNamesTermCaseI (AST.MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
   as1' <- sequence $ f <$> as1
   as2' <- sequence $ f <$> as2
-  return $ MkTermCaseI defaultLoc xt (as1', (), as2') e'
+  return $ AST.MkTermCaseI defaultLoc xt (as1', (), as2') e'
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-reparseTerm :: Term pc -> Term pc
+reparseTerm :: AST.Term pc -> AST.Term pc
 reparseTerm tm = evalState (createNamesTerm tm) names
 
-reparseCommand :: Command -> Command
+reparseCommand :: AST.Command -> AST.Command
 reparseCommand cmd = evalState (createNamesCommand cmd) names
 
-reparseDecl :: Declaration -> Declaration
-reparseDecl (PrdCnsDecl loc doc rep isRec fv ts tm) =
-  PrdCnsDecl loc doc rep isRec fv ts (reparseTerm tm)
-reparseDecl (CmdDecl loc doc fv cmd) =
-  CmdDecl loc doc fv (reparseCommand cmd)
-reparseDecl (DataDecl loc doc decl) =
-  DataDecl loc doc decl
-reparseDecl (XtorDecl loc doc dc xt args ret) =
-  XtorDecl loc doc dc xt args ret
-reparseDecl (ImportDecl loc doc mn) =
-  ImportDecl loc doc mn
-reparseDecl (SetDecl loc doc txt) =
-  SetDecl loc doc txt
-reparseDecl (TyOpDecl loc doc op prec assoc ty) =
-  TyOpDecl loc doc op prec assoc ty
+reparseDecl :: AST.Declaration -> AST.Declaration
+reparseDecl (AST.PrdCnsDecl loc doc rep isRec fv ts tm) =
+  AST.PrdCnsDecl loc doc rep isRec fv ts (reparseTerm tm)
+reparseDecl (AST.CmdDecl loc doc fv cmd) =
+  AST.CmdDecl loc doc fv (reparseCommand cmd)
+reparseDecl (AST.DataDecl loc doc decl) =
+  AST.DataDecl loc doc decl
+reparseDecl (AST.XtorDecl loc doc dc xt args ret) =
+  AST.XtorDecl loc doc dc xt args ret
+reparseDecl (AST.ImportDecl loc doc mn) =
+  AST.ImportDecl loc doc mn
+reparseDecl (AST.SetDecl loc doc txt) =
+  AST.SetDecl loc doc txt
+reparseDecl (AST.TyOpDecl loc doc op prec assoc ty) =
+  AST.TyOpDecl loc doc op prec assoc ty
 
-reparseProgram :: Program -> Program
+reparseProgram :: AST.Program -> AST.Program
 reparseProgram = fmap reparseDecl
