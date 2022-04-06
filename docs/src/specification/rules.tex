@@ -4,6 +4,7 @@
 \usepackage{amssymb}
 \usepackage{stmaryrd}
 \usepackage{mathtools}
+\usepackage{xcolor}
 
 \newcommand{\translate}[1]{\llbracket #1 \rrbracket}
 \newcommand{\C}{\mathcal{C}}
@@ -15,22 +16,55 @@
 \newcommand{\prdpat}[2]{\C\Gamma(#1)\Delta \Rightarrow #2 }
 \newcommand{\cnspat}[2]{\C\Gamma[#1]\Delta \Rightarrow #2 }
 
+\newcommand{\nonterminal}[1]{\langle #1 \rangle}
+\newcommand{\terminal}[1]{\colorbox{lightgray}{#1}}
 \newcommand{\cut}[2]{\langle\ #1\ |\ #2\ \rangle}
+
 \begin{document}
 
-\section{Data Types}
+\section{Specification of DualSub}
 
 The expression $\translate{X}$ marks translation of the 4-calculi formalism into the introduction calculus.
 The meta-variable $\sigma$ stands for a list of applications $(prd)$ and $[cns]$.
 The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
 
+\subsection{Lexical structure}
+\[
+  \begin{array}{lclr}
+    \nonterminal{var} & \Coloneqq & [a..z][a..zA..Z0..9] & \emph{Variables} \\
+    \nonterminal{tyvar} & \Coloneqq & [a..z][a..zA..Z0..9] & \emph{Type Variables} \\
+    \nonterminal{tyname} & \Coloneqq & [A..Z][a..zA..Z0..9] & \emph{Type Names} \\
+    \nonterminal{xtorname} & \Coloneqq & [A..Z][a..zA..Z0..9] & \emph{Xtor Names} \\
+  \end{array}
+\]
 
-\subsection{Right-Introduction}
+\subsection{Core constructs}
+\[
+  \begin{array}{lclr}
+    \nonterminal{prd} & \Coloneqq & \nonterminal{var} & \emph{Variable} \\
+    & | & \terminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{cmd} & \textit{Mu Abstraction} \\
+    \nonterminal{cns} & | & \nonterminal{var} & \textit{Variable} \\
+    & | & \terminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{cmd} & \textit{Mu Abstraction} \\
+    \nonterminal{cmd} & | & \nonterminal{prd} \terminal{$\gg$} \nonterminal{cns} & \textit{Cut} \\[0.2cm]
+    \nonterminal{subst} & \Coloneqq & (\terminal{(}\nonterminal{prd}^{\ast}\terminal{)}\ |\ \terminal{[}\nonterminal{cns}^{\ast}\terminal{]}^{\ast})^{\ast}
+  \end{array}
+\]
+
+\subsection{Data types}
+\subsubsection{Right-Introduction}
+
+\[
+  \begin{array}{lclr}
+    \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst} & \emph{Constructor} \\
+  \end{array}
+\]
+
 \begin{align*}
   \translate{\C\sigma} \coloneqq \C\translate{\sigma}
 \end{align*}
 
-\subsection{Right-Elimination}
+\subsubsection{Right-Elimination}
+
 
 \begin{align*}
   \translate{\caseof{prd}{\pat{prd'}}} &\coloneqq \mu k.\cut{\translate{prd}}{\case{\pat{\cut{\translate{prd'}}{k}}}}\\
@@ -40,7 +74,7 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
   \translate{\caseof{prd}{\cnspat{*}{prd'}}} &\coloneqq \cut{\translate{prd}}{\case{\cnspat{k}{\cut{\translate{prd'}}{k}}}} \\
 \end{align*}
 
-\subsection{Left-Introduction}
+\subsubsection{Left-Introduction}
 
 \begin{align*}
   \translate{\case{\pat{cmd}}} &\coloneqq \case{\pat{\translate{cmd}}} \\
@@ -48,7 +82,7 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
   \translate{\case{\cnspat{*}{prd}}} &\coloneqq \case{\cnspat{k}{\cut{\translate{prd}}{k}}} \\
 \end{align*}
 
-\subsection{Left-Elimination}
+\subsubsection{Left-Elimination}
 
 \begin{align*}
   \translate{\C\sigma;cns} &\coloneqq \cut{\C\translate{\sigma}}{\translate{cns}} \\
@@ -56,6 +90,7 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
   \translate{\C\sigma[*]\tau;cns} &\coloneqq \mu k.\cut{\C\translate{\sigma}[k]\translate{\tau}}{\translate{cns}} \\
 \end{align*}
 
+\subsection{Codata types}
 \end{document}
 
 
