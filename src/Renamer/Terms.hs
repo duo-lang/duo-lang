@@ -80,7 +80,7 @@ termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> RenamerM NominalStructural
 termCasesIToNS [] _ = pure Structural
 termCasesIToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerCommandCase :: DataCodata -> CST.CommandCase -> RenamerM RST.CmdCase
+lowerCommandCase :: DataCodata -> CST.CmdCase -> RenamerM RST.CmdCase
 lowerCommandCase dc (loc, xtor, bs, cmd) = do
   cmd' <- lowerCommand cmd
   checkXtorArity loc (xtor,dc) (fst <$> bs)
@@ -91,7 +91,7 @@ lowerCommandCase dc (loc, xtor, bs, cmd) = do
                      }
 
 -- TODO: Check that all command cases use the same nominal/structural variant.
-commandCasesToNS :: [CST.CommandCase] -> DataCodata -> RenamerM NominalStructural
+commandCasesToNS :: [CST.CmdCase] -> DataCodata -> RenamerM NominalStructural
 commandCasesToNS [] _ = pure Structural
 commandCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 

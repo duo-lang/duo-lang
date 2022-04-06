@@ -257,7 +257,7 @@ cocaseRestP' startPos = do
 -- XMatches
 --------------------------------------------------------------------------------------------
 
-cmdcaseP :: Parser (CST.CommandCase, SourcePos)
+cmdcaseP :: Parser (CST.CmdCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP

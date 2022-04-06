@@ -37,7 +37,7 @@ type BindingSiteI = (BindingSite, (), BindingSite)
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
-type CommandCase = (Loc, XtorName, BindingSite,  Command)
+type CmdCase = (Loc, XtorName, BindingSite,  Command)
 type TermCase    = (Loc, XtorName, BindingSite,  Term)
 type TermCaseI   = (Loc, XtorName, BindingSiteI, Term)
 
@@ -49,7 +49,7 @@ data Term where
     -- AST Nodes
     Var :: Loc -> FreeVarName -> Term
     Xtor :: Loc -> XtorName -> Substitution -> Term
-    XMatch :: Loc -> DataCodata -> [CommandCase] -> Term
+    XMatch :: Loc -> DataCodata -> [CmdCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Command -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     Case :: Loc -> Term -> [TermCase] -> Term
