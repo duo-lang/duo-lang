@@ -50,25 +50,26 @@ lowerSubstitutionI (subst1, _, subst2) = do
 
 
 lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM (RST.TermCase Prd)
-lowerTermCase dc (loc, xtor, bs, tm) = do
-  tm' <- lowerTerm PrdRep tm
-  checkXtorArity loc (xtor, dc) (fst <$> bs)
-  pure RST.MkTermCase { tmcase_ext = loc
-                      , tmcase_name = xtor
-                      , tmcase_args = second Just <$> bs
-                      , tmcase_term = RST.termClosing bs tm'
+lowerTermCase dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
+  tm' <- lowerTerm PrdRep tmcase_term
+  checkXtorArity tmcase_ext (tmcase_name, dc) (fst <$> tmcase_args)
+  pure RST.MkTermCase { tmcase_ext = tmcase_ext
+                      , tmcase_name = tmcase_name
+                      , tmcase_args = second Just <$> tmcase_args
+                      , tmcase_term = RST.termClosing tmcase_args tm'
                       }
 
 termCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
 termCasesToNS [] _ = pure Structural
-termCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
+termCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc =
+  fst <$> lookupXtor tmcase_ext (tmcase_name, dc)
 
 lowerTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM (RST.TermCaseI Prd)
-lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
-  tm' <- lowerTerm PrdRep tm
-  checkXtorArity loc (xtor,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
-  pure RST.MkTermCaseI { tmcasei_ext = loc
-                       , tmcasei_name = xtor
+lowerTermCaseI dc (CST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (bs1,(),bs2), tmcasei_term }) = do
+  tm' <- lowerTerm PrdRep tmcasei_term
+  checkXtorArity tmcasei_ext (tmcasei_name,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
+  pure RST.MkTermCaseI { tmcasei_ext = tmcasei_ext
+                       , tmcasei_name = tmcasei_name
                        , tmcasei_args = (second Just <$> bs1, (), second Just <$> bs2)
                        -- HACK: We want to ensure that the implicit argument gets the intuitive De-Bruijn index.
                        -- termClosing doesn't support implicit arguments yet. We can emulate it for now by passing
@@ -78,22 +79,24 @@ lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
 
 termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> RenamerM NominalStructural
 termCasesIToNS [] _ = pure Structural
-termCasesIToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
+termCasesIToNS ((CST.MkTermCaseI { tmcasei_ext, tmcasei_name }):_) dc =
+  fst <$> lookupXtor tmcasei_ext (tmcasei_name, dc)
 
 lowerCommandCase :: DataCodata -> CST.CmdCase -> RenamerM RST.CmdCase
-lowerCommandCase dc (loc, xtor, bs, cmd) = do
-  cmd' <- lowerCommand cmd
-  checkXtorArity loc (xtor,dc) (fst <$> bs)
-  pure RST.MkCmdCase { cmdcase_ext = loc
-                     , cmdcase_name = xtor
-                     , cmdcase_args = second Just <$> bs
-                     , cmdcase_cmd = RST.commandClosing bs cmd'
+lowerCommandCase dc (CST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd}) = do
+  cmd' <- lowerCommand cmdcase_cmd
+  checkXtorArity cmdcase_ext (cmdcase_name,dc) (fst <$> cmdcase_args)
+  pure RST.MkCmdCase { cmdcase_ext = cmdcase_ext
+                     , cmdcase_name = cmdcase_name
+                     , cmdcase_args = second Just <$> cmdcase_args
+                     , cmdcase_cmd = RST.commandClosing cmdcase_args cmd'
                      }
 
 -- TODO: Check that all command cases use the same nominal/structural variant.
 commandCasesToNS :: [CST.CmdCase] -> DataCodata -> RenamerM NominalStructural
 commandCasesToNS [] _ = pure Structural
-commandCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
+commandCasesToNS ((CST.MkCmdCase { cmdcase_ext, cmdcase_name }):_) dc =
+  fst <$> lookupXtor cmdcase_ext (cmdcase_name, dc)
 
 lowerTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
 lowerTerm rep    (CST.Var loc v) =

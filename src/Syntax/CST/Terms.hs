@@ -37,9 +37,35 @@ type BindingSiteI = (BindingSite, (), BindingSite)
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
-type CmdCase = (Loc, XtorName, BindingSite,  Command)
-type TermCase    = (Loc, XtorName, BindingSite,  Term)
-type TermCaseI   = (Loc, XtorName, BindingSiteI, Term)
+data TermCase  = MkTermCase
+  { tmcase_ext  :: Loc
+  , tmcase_name :: XtorName
+  , tmcase_args :: BindingSite
+  , tmcase_term :: Term
+  }
+
+deriving instance Show TermCase
+deriving instance Eq TermCase
+
+data TermCaseI = MkTermCaseI
+  { tmcasei_ext  :: Loc
+  , tmcasei_name :: XtorName
+  , tmcasei_args :: BindingSiteI
+  , tmcasei_term :: Term
+  }
+
+deriving instance Show TermCaseI
+deriving instance Eq TermCaseI
+
+data CmdCase = MkCmdCase
+  { cmdcase_ext  :: Loc
+  , cmdcase_name :: XtorName
+  , cmdcase_args :: BindingSite
+  , cmdcase_cmd  :: Command
+  }
+
+deriving instance Show CmdCase
+deriving instance Eq CmdCase
 
 --------------------------------------------------------------------------------------------
 -- Terms
