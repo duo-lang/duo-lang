@@ -73,10 +73,10 @@ zonkPCTerm bisubst (CnsTerm tm) = CnsTerm (zonkTerm bisubst tm)
 zonkCmdCase :: Bisubstitution -> CmdCase -> CmdCase
 zonkCmdCase bisubst (MkCmdCase loc nm args cmd) = MkCmdCase loc nm args (zonkCommand bisubst cmd)
 
-zonkTermCase :: Bisubstitution -> TermCase -> TermCase
+zonkTermCase :: Bisubstitution -> TermCase pc -> TermCase pc
 zonkTermCase bisubst (MkTermCase loc nm args tm) = MkTermCase loc nm args (zonkTerm bisubst tm)
 
-zonkTermCaseI :: Bisubstitution -> TermCaseI -> TermCaseI
+zonkTermCaseI :: Bisubstitution -> TermCaseI pc -> TermCaseI pc
 zonkTermCaseI bisubst (MkTermCaseI loc nm args tm) = MkTermCaseI loc nm args (zonkTerm bisubst tm)
 
 zonkCommand :: Bisubstitution -> Command -> Command

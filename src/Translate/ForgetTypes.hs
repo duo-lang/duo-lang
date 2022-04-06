@@ -25,7 +25,7 @@ forgetTypesCmdCase AST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdc
       , cmdcase_cmd = forgetTypesCommand cmdcase_cmd 
       }
 
-forgetTypesTermCase :: AST.TermCase  -> RST.TermCase
+forgetTypesTermCase :: AST.TermCase pc -> RST.TermCase pc
 forgetTypesTermCase AST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
     RST.MkTermCase
       { tmcase_ext = tmcase_ext
@@ -34,7 +34,7 @@ forgetTypesTermCase AST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcas
       , tmcase_term = forgetTypesTerm tmcase_term 
       }
 
-forgetTypesTermCaseI :: AST.TermCaseI  -> RST.TermCaseI
+forgetTypesTermCaseI :: AST.TermCaseI pc -> RST.TermCaseI pc
 forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } =
     RST.MkTermCaseI
       { tmcasei_ext = tmcasei_ext
