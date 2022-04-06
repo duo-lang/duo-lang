@@ -15,6 +15,7 @@ module Translate.Reparse
 import Control.Monad.State
 import Data.Bifunctor
 import Data.Text qualified as T
+import Data.Maybe (fromJust)
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
@@ -226,17 +227,51 @@ isNumSTermRST _ = Nothing
 embedTerm :: RST.Term pc -> CST.Term
 embedTerm = undefined
 
+embedPCTerm :: RST.PrdCnsTerm -> CST.PrdCnsTerm
+embedPCTerm (RST.PrdTerm tm) = CST.PrdTerm (embedTerm tm)
+embedPCTerm (RST.CnsTerm tm) = CST.CnsTerm (embedTerm tm)
+
+embedSubst :: RST.Substitution -> CST.Substitution
+embedSubst = fmap embedPCTerm
+
 embedCommand :: RST.Command -> CST.Command
-embedCommand = undefined
+embedCommand (RST.Apply loc prd cns) =
+  CST.Apply loc (embedTerm prd) (embedTerm cns)
+embedCommand (RST.Print loc tm cmd) =
+  CST.Print loc (embedTerm tm) (embedCommand cmd)
+embedCommand (RST.Read loc cns) =
+  CST.Read loc (embedTerm cns)
+embedCommand (RST.Jump loc fv) =
+  CST.Jump loc fv
+embedCommand (RST.ExitSuccess loc) =
+  CST.ExitSuccess loc
+embedCommand (RST.ExitFailure loc) =
+  CST.ExitFailure loc
+embedCommand (RST.PrimOp loc ty op subst) =
+  CST.PrimOp loc ty op (embedSubst subst)
 
 embedCmdCase :: RST.CmdCase -> CST.CmdCase
-embedCmdCase = undefined
+embedCmdCase RST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+  CST.MkCmdCase { cmdcase_ext = cmdcase_ext
+                , cmdcase_name = cmdcase_name
+                , cmdcase_args = second fromJust <$> cmdcase_args
+                , cmdcase_cmd = embedCommand cmdcase_cmd
+                }
 
 embedTermCase :: RST.TermCase pc -> CST.TermCase
-embedTermCase = undefined
+embedTermCase RST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
+  CST.MkTermCase { tmcase_ext = tmcase_ext
+                 , tmcase_name = tmcase_name
+                 , tmcase_args = second fromJust <$> tmcase_args
+                 , tmcase_term = embedTerm tmcase_term}
 
 embedTermCaseI :: RST.TermCaseI pc -> CST.TermCaseI
-embedTermCaseI = undefined
+embedTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1,rep, as2), tmcasei_term } =
+  CST.MkTermCaseI { tmcasei_ext = tmcasei_ext
+                  , tmcasei_name = tmcasei_name
+                  , tmcasei_args = (second fromJust <$> as1, rep, second fromJust <$> as2)
+                  , tmcasei_term = embedTerm tmcasei_term}
+
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType = undefined
