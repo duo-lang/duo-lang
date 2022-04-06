@@ -5,6 +5,7 @@
 \usepackage{stmaryrd}
 \usepackage{mathtools}
 \usepackage{xcolor}
+\usepackage{csquotes}
 
 \newcommand{\translate}[1]{\llbracket #1 \rrbracket}
 \newcommand{\C}{\mathcal{C}}
@@ -41,30 +42,93 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
 \subsection{Core constructs}
 \[
   \begin{array}{lclr}
-    \nonterminal{prd} & \Coloneqq & \nonterminal{var} & \emph{Variable} \\
-    & | & \terminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{cmd} & \textit{Mu Abstraction} \\
-    \nonterminal{cns} & | & \nonterminal{var} & \textit{Variable} \\
-    & | & \terminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{cmd} & \textit{Mu Abstraction} \\
-    \nonterminal{cmd} & | & \nonterminal{prd} \terminal{$\gg$} \nonterminal{cns} & \textit{Cut} \\[0.2cm]
-    \nonterminal{subst} & \Coloneqq & (\terminal{(}\nonterminal{prd}^{\ast}\terminal{)}\ |\ \terminal{[}\nonterminal{cns}^{\ast}\terminal{]}^{\ast})^{\ast}
+    \nonterminal{prd} & \Coloneqq & \nonterminal{var} & \emph{FreeVar/BoundVar Prd} \\
+    & | & \terminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{cmd} & \textit{MuAbs Prd} \\
+    \nonterminal{cns} & | & \nonterminal{var} & \textit{FreeVar/BoundVar Cns} \\
+    & | & \terminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{cmd} & \textit{MuAbs Cns} \\
+    \nonterminal{cmd} & | & \nonterminal{prd} \terminal{$\gg$} \nonterminal{cns} & \textit{Apply} \\[0.2cm]
+    \nonterminal{subst} & \Coloneqq & (\terminal{(}\nonterminal{prd}^{\ast}\terminal{)}\ |\ \terminal{[}\nonterminal{cns}^{\ast}\terminal{]}^{\ast})^{\ast} & \emph{Substitution} \\
+    \nonterminal{ctxt} & \Coloneqq & (\terminal{(}\nonterminal{var}^{\ast}\terminal{)}\ |\ \terminal{[}\nonterminal{var}^{\ast}\terminal{]}^{\ast})^{\ast} & \emph{LinearContext}
   \end{array}
 \]
 
-\subsection{Data types}
-\subsubsection{Right-Introduction}
+\subsection{Cases and cocases}
 
 \[
   \begin{array}{lclr}
-    \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst} & \emph{Constructor} \\
+    \nonterminal{\textit{prd-case}} & \Coloneqq & \nonterminal{xtorname} \nonterminal{ctxt} \terminal{$\Rightarrow$} \nonterminal{prd} & \emph{Termcase Prd} \\
+    \nonterminal{\textit{cns-case}} & \Coloneqq & \nonterminal{xtorname} \nonterminal{ctxt} \terminal{$\Rightarrow$} \nonterminal{cns} & \emph{Termcase Cns} \\
+    \nonterminal{\textit{cmd-case}} & \Coloneqq & \nonterminal{xtorname} \nonterminal{ctxt} \terminal{$\Rightarrow$} \nonterminal{cmd} & \emph{Cmdcase} \\
+    \nonterminal{\textit{prd-case-i}} & \Coloneqq & \nonterminal{xtorname} \nonterminal{ctxt}\terminal{$[\ast]$}\nonterminal{ctxt} \terminal{$\Rightarrow$} \nonterminal{prd} & \emph{TermcaseI Prd} \\
+    \nonterminal{\textit{cns-case-i}} & \Coloneqq & \nonterminal{xtorname} \nonterminal{ctxt}\terminal{$(\ast)$}\nonterminal{ctxt} \terminal{$\Rightarrow$} \nonterminal{cns} & \emph{TermaseI Cns} \\[0.2cm]
   \end{array}
 \]
+
+
+\subsection{Data types}
+
+\[
+  \begin{array}{lclr}
+    \multicolumn{4}{c}{\text{Right Introduction}} \\
+    \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst} & \emph{Xtor Prd} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Right Eliminiation}} \\
+    \nonterminal{prd} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case}}^{\ast} \terminal{\}} & \emph{Case} \\
+    \nonterminal{cns} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    \nonterminal{cmd} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    & | & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    & | & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Left Introduction}} \\    
+    \nonterminal{cns} & \Coloneqq & \terminal{case}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{XMatch Cns} \\
+    & | & \terminal{case}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    & | & \terminal{case}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Left Elimination}} \\
+    \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst}\terminal{$[\ast]$}\nonterminal{subst}\terminal{;}\nonterminal{cns} & \emph{N/A} \\
+    \nonterminal{cns} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst}\terminal{$(\ast)$}\nonterminal{subst}\terminal{;}\nonterminal{cns} & \emph{N/A} \\
+  \end{array}
+\]
+
+\subsection{Codata types}
+\[
+  \begin{array}{lclr}
+    \multicolumn{4}{c}{\text{Left Introduction}} \\
+    \nonterminal{cns} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst} & \emph{Xtor Cns} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Left Eliminiation}} \\
+    \nonterminal{prd} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    \nonterminal{cns} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    \nonterminal{cmd} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    & | & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\
+    & | & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Right Introduction}} \\    
+    \nonterminal{prd} & \Coloneqq & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{XMatch Prd} \\
+    & | & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{Cocase} \\
+    & | & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Right Elimination}} \\
+    \nonterminal{prd} & \Coloneqq & \nonterminal{prd}\terminal{.}\nonterminal{xtorname}\nonterminal{subst}\terminal{$[\ast]$}\nonterminal{subst} & \emph{Dtor Prd} \\
+    \nonterminal{cns} & \Coloneqq & \nonterminal{prd}\terminal{.}\nonterminal{xtorname}\nonterminal{subst}\terminal{$(\ast)$}\nonterminal{subst} & \emph{Dtor Cns} \\
+  \end{array}
+\]
+
+\subsection{Primitives}
+\[
+  \begin{array}{lclr}
+    \nonterminal{prd} & \Coloneqq & \nonterminal{floatlit}\terminal{$\#F64$} & \emph{PrimLitF64} \\
+    & | & \nonterminal{intlit}\terminal{$\#I64$} & \emph{PrimLitI64}
+  \end{array}
+\]
+\subsection{Syntax Sugar}
+
+\[
+  \begin{array}{lclr}
+    \nonterminal{prd} & \Coloneqq & \terminal{$\backslash$} \nonterminal{var}^{\ast}\terminal{$\Rightarrow$} \nonterminal{prd} & \emph{MultiLambda} \\
+    & | & \nonterminal{prd} \nonterminal{prd} & \emph{FunApp}
+  \end{array}
+\]
+
+\section{Translation}
 
 \begin{align*}
   \translate{\C\sigma} \coloneqq \C\translate{\sigma}
 \end{align*}
-
-\subsubsection{Right-Elimination}
-
 
 \begin{align*}
   \translate{\caseof{prd}{\pat{prd'}}} &\coloneqq \mu k.\cut{\translate{prd}}{\case{\pat{\cut{\translate{prd'}}{k}}}}\\
@@ -74,15 +138,11 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
   \translate{\caseof{prd}{\cnspat{*}{prd'}}} &\coloneqq \cut{\translate{prd}}{\case{\cnspat{k}{\cut{\translate{prd'}}{k}}}} \\
 \end{align*}
 
-\subsubsection{Left-Introduction}
-
 \begin{align*}
   \translate{\case{\pat{cmd}}} &\coloneqq \case{\pat{\translate{cmd}}} \\
   \translate{\case{\prdpat{*}{cns}}} &\coloneqq \case{\prdpat{x}{\cut{x}{\translate{cns}}}} \\
   \translate{\case{\cnspat{*}{prd}}} &\coloneqq \case{\cnspat{k}{\cut{\translate{prd}}{k}}} \\
 \end{align*}
-
-\subsubsection{Left-Elimination}
 
 \begin{align*}
   \translate{\C\sigma;cns} &\coloneqq \cut{\C\translate{\sigma}}{\translate{cns}} \\
@@ -90,7 +150,4 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
   \translate{\C\sigma[*]\tau;cns} &\coloneqq \mu k.\cut{\C\translate{\sigma}[k]\translate{\tau}}{\translate{cns}} \\
 \end{align*}
 
-\subsection{Codata types}
 \end{document}
-
-
