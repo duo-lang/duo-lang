@@ -82,30 +82,12 @@ instance PrettyAnn RST.Declaration where
   prettyAnn (RST.TyOpDecl _ _ op prec assoc ty) =
     prettyTyOpDecl op assoc prec ty
 
-instance PrettyAnn (NamedRep AST.Declaration) where
-  prettyAnn (NamedRep decl) = prettyAnn (NamedRep (forgetTypesDecl decl))
-
-instance PrettyAnn (NamedRep RST.Declaration) where
-  prettyAnn (NamedRep (RST.PrdCnsDecl _ _ pc isRec fv annot tm)) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn (RST.openTermComplete tm))
-  prettyAnn (NamedRep (RST.CmdDecl _ _ fv cm)) =
-    prettyCmdDecl fv (prettyAnn (RST.openCommandComplete cm))
-  prettyAnn (NamedRep (RST.DataDecl _ _ decl)) =
-    prettyAnn decl
-  prettyAnn (NamedRep (RST.XtorDecl _ _ dc xt args ret)) =
-    prettyXtorDecl dc xt args ret
-  prettyAnn (NamedRep (RST.ImportDecl _ _ mod)) =
-    annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (NamedRep (RST.SetDecl _ _ txt)) =
-    annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (NamedRep (RST.TyOpDecl _ _ op prec assoc ty)) =
-    prettyTyOpDecl op assoc prec ty
 
 instance {-# OVERLAPPING #-} PrettyAnn [AST.Declaration] where
-  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
+  prettyAnn decls = vsep (prettyAnn <$> decls)
 
 instance {-# OVERLAPPING #-} PrettyAnn [RST.Declaration] where
-  prettyAnn decls = vsep (prettyAnn . NamedRep <$> decls)
+  prettyAnn decls = vsep (prettyAnn <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments

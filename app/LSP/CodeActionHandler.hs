@@ -25,7 +25,7 @@ import Driver.Driver
 import Utils
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import Pretty.Pretty ( ppPrint, NamedRep(NamedRep) )
+import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
 import Translate.Desugar (desugarTerm, desugarCmd, isDesugaredTerm, isDesugaredCommand)
@@ -93,9 +93,9 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
 generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl :: NamedRep Declaration = case pc of
-                PrdRep -> NamedRep $ PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
-                CnsRep -> NamedRep $ PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
+    newDecl :: Declaration = case pc of
+                PrdRep -> PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
+                CnsRep -> PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Just ty) (reparseTerm (focusTerm eo (desugarTerm tm)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -118,7 +118,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (Syntax.Command, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = NamedRep $ CmdDecl defaultLoc Nothing name (reparseCommand (focusCmd eo (desugarCmd cmd)))
+    newDecl = CmdDecl defaultLoc Nothing name (reparseCommand (focusCmd eo (desugarCmd cmd)))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -145,7 +145,7 @@ generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "
 generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
   let
-    newDecl = NamedRep $ reparseDecl $ PrdCnsDecl defaultLoc Nothing rep Recursive name (Just ty) (desugarTerm tm)
+    newDecl = reparseDecl $ PrdCnsDecl defaultLoc Nothing rep Recursive name (Just ty) (desugarTerm tm)
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in
@@ -167,7 +167,7 @@ generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "D
 generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (Syntax.Command, Loc)) -> WorkspaceEdit
 generateCmdDesugarEdit (TextDocumentIdentifier uri) (name, (cmd,loc)) =
   let
-    newDecl = NamedRep $ reparseDecl $ CmdDecl defaultLoc Nothing name (desugarCmd cmd)
+    newDecl = reparseDecl $ CmdDecl defaultLoc Nothing name (desugarCmd cmd)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange loc, _newText= replacement }
   in

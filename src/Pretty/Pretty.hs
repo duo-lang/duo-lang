@@ -130,11 +130,6 @@ intercalateX  x xs = cat (punctuate x xs)
 intercalateComma :: [Doc ann] -> Doc ann
 intercalateComma xs = cat (punctuate comma xs)
 
-
--- | This identity wrapper is used to indicate that we want to transform the element to
--- a named representation before prettyprinting it.
-newtype NamedRep a = NamedRep a
-
 -- | Layout of lists. Produces the following layout:
 --
 --   l x1

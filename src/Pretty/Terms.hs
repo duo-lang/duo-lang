@@ -159,15 +159,3 @@ instance PrettyAnn RST.Command where
   prettyAnn (RST.Jump _ nm) = prettyAnn nm
   prettyAnn (RST.Apply _ t1 t2) = group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
   prettyAnn (RST.PrimOp _ pt op subst) = annKeyword (prettyAnn (primOpKeyword op)) <> annTypeName (prettyAnn (primTypeKeyword pt)) <> prettyAnn subst
-
-instance PrettyAnn (NamedRep (AST.Term pc)) where
-  prettyAnn (NamedRep tm) = prettyAnn (NamedRep (forgetTypesTerm tm))
-
-instance PrettyAnn (NamedRep (RST.Term pc)) where
-  prettyAnn (NamedRep tm) = prettyAnn (RST.openTermComplete tm)
-
-instance PrettyAnn (NamedRep AST.Command) where
-  prettyAnn (NamedRep cmd) = prettyAnn (NamedRep (forgetTypesCommand cmd))
-
-instance PrettyAnn (NamedRep RST.Command) where
-  prettyAnn (NamedRep cmd) = prettyAnn (RST.openCommandComplete cmd)
