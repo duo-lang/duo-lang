@@ -105,10 +105,10 @@ mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 -- Converting Terms to a HoverMap
 ---------------------------------------------------------------------------------
 
-instance ToHoverMap TermCase where
+instance ToHoverMap (TermCase pc) where
   toHoverMap (MkTermCase _ _ _ tm) = toHoverMap tm
 
-instance ToHoverMap TermCaseI where
+instance ToHoverMap (TermCaseI pc) where
   toHoverMap (MkTermCaseI _ _ _ tm) = toHoverMap tm
 
 instance ToHoverMap CmdCase where

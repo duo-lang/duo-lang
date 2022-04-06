@@ -101,13 +101,13 @@ createNamesCmdCase (MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
   return $ MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesTermCase :: TermCase -> CreateNameM TermCase
+createNamesTermCase :: TermCase pc -> CreateNameM (TermCase pc)
 createNamesTermCase (MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
   return $ MkTermCase defaultLoc xt args' e'
 
-createNamesTermCaseI :: TermCaseI -> CreateNameM TermCaseI
+createNamesTermCaseI :: TermCaseI pc -> CreateNameM (TermCaseI pc)
 createNamesTermCaseI (MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
