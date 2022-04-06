@@ -11,7 +11,6 @@ import Translate.Desugar
 import Syntax.Common
 import Syntax.RST.Program qualified as RST
 import Translate.Focusing
-import Translate.Reparse
 import Translate.ForgetTypes
 
 
@@ -24,7 +23,7 @@ testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ e
   case decls of
     Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
     Right decls -> do
-      let focusedDecls :: RST.Program = forgetTypesProgram $ reparseProgram $ focusProgram cbx (desugarProgram decls)
+      let focusedDecls :: RST.Program = forgetTypesProgram $ focusProgram cbx (desugarProgram decls)
       res <- runIO $ inferProgramIO' driverState focusedDecls
       case res of
         Left err -> do

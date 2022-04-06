@@ -10,9 +10,94 @@ import Data.Bifunctor
 import Data.Text qualified as T
 
 import Syntax.Common
-import Syntax.AST.Program qualified as AST
-import Syntax.AST.Terms qualified as AST
+import Syntax.RST.Program qualified as RST
+import Syntax.RST.Terms qualified as RST
 import Utils
+
+---------------------------------------------------------------------------------
+-- These functions  translate a locally nameless term into a named representation.
+--
+-- Use only for prettyprinting! These functions only "undo" the steps in the parser
+-- and do not fulfil any semantic properties w.r.t shadowing etc.!
+---------------------------------------------------------------------------------
+
+freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> RST.Substitution
+freeVarNamesToXtorArgs bs = f <$> bs
+  where
+    f (Prd, Nothing) = error "Create Names first!"
+    f (Prd, Just fv) = RST.PrdTerm $ RST.FreeVar defaultLoc PrdRep fv
+    f (Cns, Nothing) = error "Create Names first!"
+    f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
+
+openTermCase :: RST.TermCase pc -> RST.TermCase pc
+openTermCase RST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
+    RST.MkTermCase { tmcase_ext = tmcase_ext
+                   , tmcase_name = tmcase_name
+                   , tmcase_args = tmcase_args
+                   , tmcase_term = RST.termOpening (freeVarNamesToXtorArgs tmcase_args) (openTermComplete tmcase_term)
+                   }
+
+openTermCaseI :: RST.TermCaseI pc -> RST.TermCaseI pc
+openTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
+  RST.MkTermCaseI { tmcasei_ext = tmcasei_ext
+                  , tmcasei_name = tmcasei_name
+                  , tmcasei_args = (as1, (), as2)
+                  , tmcasei_term = RST.termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
+                  }
+
+openCmdCase :: RST.CmdCase -> RST.CmdCase
+openCmdCase RST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+  RST.MkCmdCase { cmdcase_ext = cmdcase_ext
+                , cmdcase_name = cmdcase_name
+                , cmdcase_args = cmdcase_args
+                , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs cmdcase_args) (openCommandComplete cmdcase_cmd)
+                }
+
+openPCTermComplete :: RST.PrdCnsTerm -> RST.PrdCnsTerm
+openPCTermComplete (RST.PrdTerm tm) = RST.PrdTerm $ openTermComplete tm
+openPCTermComplete (RST.CnsTerm tm) = RST.CnsTerm $ openTermComplete tm
+
+openTermComplete :: RST.Term pc -> RST.Term pc
+openTermComplete (RST.BoundVar loc pc idx) =
+  RST.BoundVar loc pc idx
+openTermComplete (RST.FreeVar loc pc v) =
+  RST.FreeVar loc pc v
+openTermComplete (RST.Xtor loc pc ns xt args) =
+  RST.Xtor loc pc ns xt (openPCTermComplete <$> args)
+openTermComplete (RST.XMatch loc pc ns cases) =
+  RST.XMatch loc pc ns (openCmdCase <$> cases)
+openTermComplete (RST.MuAbs loc PrdRep (Just fv) cmd) =
+  RST.MuAbs loc PrdRep (Just fv) (RST.commandOpening [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] (openCommandComplete cmd))
+openTermComplete (RST.MuAbs loc CnsRep (Just fv) cmd) =
+  RST.MuAbs loc CnsRep (Just fv) (RST.commandOpening [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] (openCommandComplete cmd))
+openTermComplete (RST.MuAbs _ _ Nothing _) =
+  error "Create names first!"
+openTermComplete (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
+  RST.Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
+openTermComplete (RST.Case loc ns t cases) =
+  RST.Case loc ns (openTermComplete t) (openTermCase <$> cases)
+openTermComplete (RST.Cocase loc ns cocases) =
+  RST.Cocase loc ns (openTermCaseI <$> cocases)
+openTermComplete (RST.PrimLitI64 loc i) =
+  RST.PrimLitI64 loc i
+openTermComplete (RST.PrimLitF64 loc d) =
+  RST.PrimLitF64 loc d
+
+openCommandComplete :: RST.Command -> RST.Command
+openCommandComplete (RST.Apply loc t1 t2) =
+  RST.Apply loc (openTermComplete t1) (openTermComplete t2)
+openCommandComplete (RST.Print loc t cmd) =
+  RST.Print loc (openTermComplete t) (openCommandComplete cmd)
+openCommandComplete (RST.Read loc cns) =
+  RST.Read loc (openTermComplete cns)
+openCommandComplete (RST.Jump loc fv) =
+  RST.Jump loc fv
+openCommandComplete (RST.ExitSuccess loc) =
+  RST.ExitSuccess loc
+openCommandComplete (RST.ExitFailure loc) =
+  RST.ExitFailure loc
+openCommandComplete (RST.PrimOp loc pt op subst) =
+  RST.PrimOp loc pt op (openPCTermComplete <$> subst)
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
@@ -34,112 +119,112 @@ fresh Cns = do
   modify (second tail)
   pure (Just var)
 
-createNamesPCTerm :: AST.PrdCnsTerm -> CreateNameM AST.PrdCnsTerm
-createNamesPCTerm (AST.PrdTerm tm) = AST.PrdTerm <$> createNamesTerm tm
-createNamesPCTerm (AST.CnsTerm tm) = AST.CnsTerm <$> createNamesTerm tm
+createNamesPCTerm :: RST.PrdCnsTerm -> CreateNameM RST.PrdCnsTerm
+createNamesPCTerm (RST.PrdTerm tm) = RST.PrdTerm <$> createNamesTerm tm
+createNamesPCTerm (RST.CnsTerm tm) = RST.CnsTerm <$> createNamesTerm tm
 
-createNamesSubstitution :: AST.Substitution  -> CreateNameM AST.Substitution
+createNamesSubstitution :: RST.Substitution  -> CreateNameM RST.Substitution
 createNamesSubstitution = mapM createNamesPCTerm
 
-createNamesTerm :: AST.Term pc -> CreateNameM (AST.Term pc)
-createNamesTerm (AST.BoundVar loc pc annot idx) =
-  pure $ AST.BoundVar loc pc annot idx
-createNamesTerm (AST.FreeVar loc pc annot nm) =
-  pure $ AST.FreeVar loc pc annot nm
-createNamesTerm (AST.Xtor loc pc annot ns xt subst) = do
+createNamesTerm :: RST.Term pc -> CreateNameM (RST.Term pc)
+createNamesTerm (RST.BoundVar loc pc idx) =
+  pure $ RST.BoundVar loc pc idx
+createNamesTerm (RST.FreeVar loc pc nm) =
+  pure $ RST.FreeVar loc pc nm
+createNamesTerm (RST.Xtor loc pc ns xt subst) = do
   subst' <- createNamesSubstitution subst
-  pure $ AST.Xtor loc pc annot ns xt subst'
-createNamesTerm (AST.XMatch loc pc annot ns cases) = do
+  pure $ RST.Xtor loc pc ns xt subst'
+createNamesTerm (RST.XMatch loc pc ns cases) = do
   cases' <- mapM createNamesCmdCase cases
-  pure $ AST.XMatch loc pc annot ns cases'
-createNamesTerm (AST.MuAbs loc pc annot _ cmd) = do
+  pure $ RST.XMatch loc pc ns cases'
+createNamesTerm (RST.MuAbs loc pc _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
-  pure $ AST.MuAbs loc pc annot var cmd'
-createNamesTerm (AST.Dtor loc pc annot ns xt e (subst1,pcrep,subst2)) = do
+  pure $ RST.MuAbs loc pc var cmd'
+createNamesTerm (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
   e' <- createNamesTerm e
   subst1' <- createNamesSubstitution subst1
   subst2' <- createNamesSubstitution subst2
-  pure $ AST.Dtor loc pc annot ns xt e' (subst1',pcrep,subst2')
-createNamesTerm (AST.Case loc annot ns e cases) = do
+  pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
+createNamesTerm (RST.Case loc ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
-  pure $ AST.Case loc annot ns e' cases'
-createNamesTerm (AST.Cocase loc annot ns cases) = do
+  pure $ RST.Case loc ns e' cases'
+createNamesTerm (RST.Cocase loc ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
-  pure $ AST.Cocase loc annot ns cases'
-createNamesTerm (AST.PrimLitI64 loc i) =
-  pure (AST.PrimLitI64 loc i)
-createNamesTerm (AST.PrimLitF64 loc d) =
-  pure (AST.PrimLitF64 loc d)
+  pure $ RST.Cocase loc ns cases'
+createNamesTerm (RST.PrimLitI64 loc i) =
+  pure (RST.PrimLitI64 loc i)
+createNamesTerm (RST.PrimLitF64 loc d) =
+  pure (RST.PrimLitF64 loc d)
 
-createNamesCommand :: AST.Command -> CreateNameM AST.Command
-createNamesCommand (AST.ExitSuccess loc) =
-  pure $ AST.ExitSuccess loc
-createNamesCommand (AST.ExitFailure loc) =
-  pure $ AST.ExitFailure loc
-createNamesCommand (AST.Jump loc fv) =
-  pure $ AST.Jump loc fv
-createNamesCommand (AST.Apply loc kind prd cns) = do
+createNamesCommand :: RST.Command -> CreateNameM RST.Command
+createNamesCommand (RST.ExitSuccess loc) =
+  pure $ RST.ExitSuccess loc
+createNamesCommand (RST.ExitFailure loc) =
+  pure $ RST.ExitFailure loc
+createNamesCommand (RST.Jump loc fv) =
+  pure $ RST.Jump loc fv
+createNamesCommand (RST.Apply loc prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
-  pure $ AST.Apply loc kind prd' cns'
-createNamesCommand (AST.Print loc prd cmd) = do
+  pure $ RST.Apply loc prd' cns'
+createNamesCommand (RST.Print loc prd cmd) = do
   prd' <- createNamesTerm prd
   cmd' <- createNamesCommand cmd
-  pure $ AST.Print loc prd' cmd'
-createNamesCommand (AST.Read loc cns) = do
+  pure $ RST.Print loc prd' cmd'
+createNamesCommand (RST.Read loc cns) = do
   cns' <- createNamesTerm cns
-  pure $ AST.Read loc cns'
-createNamesCommand (AST.PrimOp loc pt pop subst) = do
+  pure $ RST.Read loc cns'
+createNamesCommand (RST.PrimOp loc pt pop subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  pure $ AST.PrimOp loc pt pop subst'
+  pure $ RST.PrimOp loc pt pop subst'
 
-createNamesCmdCase :: AST.CmdCase -> CreateNameM AST.CmdCase
-createNamesCmdCase (AST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
+createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
+createNamesCmdCase (RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
   cmd' <- createNamesCommand cmdcase_cmd
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
-  return $ AST.MkCmdCase defaultLoc cmdcase_name args cmd'
+  return $ RST.MkCmdCase defaultLoc cmdcase_name args cmd'
 
-createNamesTermCase :: AST.TermCase pc -> CreateNameM (AST.TermCase pc)
-createNamesTermCase (AST.MkTermCase _ xt args e) = do
+createNamesTermCase :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
+createNamesTermCase (RST.MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
-  return $ AST.MkTermCase defaultLoc xt args' e'
+  return $ RST.MkTermCase defaultLoc xt args' e'
 
-createNamesTermCaseI :: AST.TermCaseI pc -> CreateNameM (AST.TermCaseI pc)
-createNamesTermCaseI (AST.MkTermCaseI _ xt (as1, (), as2) e) = do
+createNamesTermCaseI :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
+createNamesTermCaseI (RST.MkTermCaseI _ xt (as1, (), as2) e) = do
   e' <- createNamesTerm e
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
   as1' <- sequence $ f <$> as1
   as2' <- sequence $ f <$> as2
-  return $ AST.MkTermCaseI defaultLoc xt (as1', (), as2') e'
+  return $ RST.MkTermCaseI defaultLoc xt (as1', (), as2') e'
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-reparseTerm :: AST.Term pc -> AST.Term pc
+reparseTerm :: RST.Term pc -> RST.Term pc
 reparseTerm tm = evalState (createNamesTerm tm) names
 
-reparseCommand :: AST.Command -> AST.Command
+reparseCommand :: RST.Command -> RST.Command
 reparseCommand cmd = evalState (createNamesCommand cmd) names
 
-reparseDecl :: AST.Declaration -> AST.Declaration
-reparseDecl (AST.PrdCnsDecl loc doc rep isRec fv ts tm) =
-  AST.PrdCnsDecl loc doc rep isRec fv ts (reparseTerm tm)
-reparseDecl (AST.CmdDecl loc doc fv cmd) =
-  AST.CmdDecl loc doc fv (reparseCommand cmd)
-reparseDecl (AST.DataDecl loc doc decl) =
-  AST.DataDecl loc doc decl
-reparseDecl (AST.XtorDecl loc doc dc xt args ret) =
-  AST.XtorDecl loc doc dc xt args ret
-reparseDecl (AST.ImportDecl loc doc mn) =
-  AST.ImportDecl loc doc mn
-reparseDecl (AST.SetDecl loc doc txt) =
-  AST.SetDecl loc doc txt
-reparseDecl (AST.TyOpDecl loc doc op prec assoc ty) =
-  AST.TyOpDecl loc doc op prec assoc ty
+reparseDecl :: RST.Declaration -> RST.Declaration
+reparseDecl (RST.PrdCnsDecl loc doc rep isRec fv ts tm) =
+  RST.PrdCnsDecl loc doc rep isRec fv ts (reparseTerm tm)
+reparseDecl (RST.CmdDecl loc doc fv cmd) =
+  RST.CmdDecl loc doc fv (reparseCommand cmd)
+reparseDecl (RST.DataDecl loc doc decl) =
+  RST.DataDecl loc doc decl
+reparseDecl (RST.XtorDecl loc doc dc xt args ret) =
+  RST.XtorDecl loc doc dc xt args ret
+reparseDecl (RST.ImportDecl loc doc mn) =
+  RST.ImportDecl loc doc mn
+reparseDecl (RST.SetDecl loc doc txt) =
+  RST.SetDecl loc doc txt
+reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
+  RST.TyOpDecl loc doc op prec assoc ty
 
-reparseProgram :: AST.Program -> AST.Program
+reparseProgram :: RST.Program -> RST.Program
 reparseProgram = fmap reparseDecl
