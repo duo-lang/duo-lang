@@ -108,6 +108,8 @@ instance PrettyAnn Variance where
   prettyAnn Contravariant = annSymbol "-"
 
 instance PrettyAnn PolyKind where
+  prettyAnn MkPolyKind { kindArgs = [], returnKind } =
+    prettyAnn returnKind
   prettyAnn MkPolyKind { kindArgs, returnKind } =
     parens' comma (prettyTParam <$> kindArgs) <+>
     annSymbol "->" <+>
