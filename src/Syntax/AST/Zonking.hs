@@ -59,10 +59,10 @@ zonkTerm bisubst (MuAbs loc rep ty fv cmd) =
     MuAbs loc rep (zonkType bisubst ty) fv (zonkCommand bisubst cmd)
 zonkTerm bisubst (Dtor loc rep ty ns xt prd (subst1,pcrep,subst2)) =
     Dtor loc rep (zonkType bisubst ty) ns xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
-zonkTerm bisubst (CasePrdPrd loc ty ns prd cases) =
-    CasePrdPrd loc (zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
-zonkTerm bisubst (Cocase loc ty ns cases) =
-    Cocase loc (zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
+zonkTerm bisubst (Case loc rep ty ns prd cases) =
+    Case loc rep (zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
+zonkTerm bisubst (CocasePrdI loc ty ns cases) =
+    CocasePrdI loc (zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
 zonkTerm _ lit@PrimLitI64{} = lit
 zonkTerm _ lit@PrimLitF64{} = lit
 

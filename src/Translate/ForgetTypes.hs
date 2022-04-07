@@ -4,6 +4,7 @@ import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
+import Syntax.Common (PrdCnsRep(PrdRep))
 
 
 forgetTypesSubst :: AST.Substitution  -> RST.Substitution 
@@ -56,14 +57,22 @@ forgetTypesTerm (AST.MuAbs loc pc _annot bs cmd) =
     RST.MuAbs loc pc bs (forgetTypesCommand cmd)
 forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =
     RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
-forgetTypesTerm (AST.CasePrdPrd loc _annot ns tm cases) =
+forgetTypesTerm (AST.Case loc PrdRep _annot ns tm cases) =
     RST.Case loc ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.Cocase loc _annot ns cases) =
+forgetTypesTerm (AST.CocasePrdI loc _annot ns cases) =
     RST.Cocase loc ns (forgetTypesTermCaseI <$> cases)
 forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 forgetTypesTerm (AST.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
+forgetTypesTerm (AST.CaseCnsPrdI loc annot ns tmcasesI) = error "not yet implemented"
+forgetTypesTerm (AST.CaseCnsCnsI loc annot ns tmcasesI) = error "not yet implemented"
+forgetTypesTerm (AST.Semicolon loc rep annot ns xt (args1,pcrep,args2) t) = error "not yet implemented"
+forgetTypesTerm (AST.CocaseCns loc rep annot ns t tmcasesI) = error "not yet implemented" 
+forgetTypesTerm (AST.CocasePrdI loc annot ns tmcasesI) = error "not yet implemented"
+
+
+
 
 forgetTypesCommand :: AST.Command -> RST.Command
 forgetTypesCommand (AST.Apply loc _kind prd cns) =
