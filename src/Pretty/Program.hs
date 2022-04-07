@@ -16,6 +16,7 @@ import Syntax.Core.Program qualified as Core
 import Syntax.Common
 import Driver.Environment
 import Translate.ForgetTypes (forgetTypesDecl)
+import Translate.EmbedCore
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -64,7 +65,7 @@ prettyTyOpDecl op assoc prec ty =
   annSymbol ":=" <+> prettyAnn ty <> semi
 
 instance PrettyAnn Core.Declaration where
-  prettyAnn = undefined
+  prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
 instance PrettyAnn AST.Declaration where
   prettyAnn decl = prettyAnn (forgetTypesDecl decl)

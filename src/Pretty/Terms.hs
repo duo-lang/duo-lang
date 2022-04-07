@@ -12,6 +12,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Data.Bifunctor
+import Translate.EmbedCore
 import Translate.ForgetTypes
 import Translate.Reparse
 
@@ -22,7 +23,7 @@ import Translate.Reparse
 -- CmdCase
 
 instance PrettyAnn Core.CmdCase where
-  prettyAnn cmdcase = undefined
+  prettyAnn cmdcase = prettyAnn (embedCmdCase cmdcase)
 
 instance PrettyAnn AST.CmdCase where
   prettyAnn cmdcase = prettyAnn (forgetTypesCmdCase cmdcase)
@@ -150,7 +151,7 @@ instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
 
 instance PrettyAnn (Core.Term pc) where
-  prettyAnn = undefined
+  prettyAnn tm = prettyAnn (embedCoreTerm tm)
 
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
@@ -221,7 +222,7 @@ instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)
 
 instance PrettyAnn Core.Command where
-  prettyAnn = undefined
+  prettyAnn cmd = prettyAnn (embedCoreCommand cmd)
 
 instance PrettyAnn CST.Command where
   prettyAnn (CST.ExitSuccess _)=
