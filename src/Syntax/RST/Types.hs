@@ -5,6 +5,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 
 import Syntax.Common
+import Utils
 
 ------------------------------------------------------------------------------
 -- CovContraList
@@ -117,7 +118,8 @@ getPolarity (TyPrim rep _)          = rep
 ------------------------------------------------------------------------------
 
 data TypeScheme (pol :: Polarity) = TypeScheme
-  { ts_vars :: [TVar]
+  { ts_loc :: Loc
+  , ts_vars :: [TVar]
   , ts_monotype :: Typ pol
   }
 
@@ -156,7 +158,7 @@ freeTypeVars = nub . freeTypeVars'
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme (freeTypeVars ty) ty
+generalize ty = TypeScheme defaultLoc (freeTypeVars ty) ty
 
 ------------------------------------------------------------------------------
 -- Substitution

@@ -46,7 +46,8 @@ linearContextToArity = map f
     f (CnsType _) = Cns
 
 data TypeScheme = TypeScheme
-  { ts_vars :: [TVar]
+  { ts_loc :: Loc
+  , ts_vars :: [TVar]
   , ts_monotype :: Typ
   }
   deriving Show

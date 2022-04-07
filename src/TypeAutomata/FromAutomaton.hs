@@ -54,7 +54,10 @@ autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
-  return $ TypeScheme (tvars startState) monotype
+  pure TypeScheme { ts_loc = defaultLoc
+                  , ts_vars = tvars startState
+                  , ts_monotype = monotype
+                  }
 
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =

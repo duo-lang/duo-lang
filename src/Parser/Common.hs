@@ -16,7 +16,6 @@ module Parser.Common
   , polyKindP
   ) where
 
-import Control.Monad
 import Text.Megaparsec
 
 import Parser.Definition

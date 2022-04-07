@@ -209,6 +209,7 @@ typP = do
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
+  startPos <- getSourcePos
   tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
-  (monotype,_) <- local (\s -> s { tvars = S.fromList tvars' }) typP
-  pure (TypeScheme tvars' monotype)
+  (monotype,endPos) <- local (\s -> s { tvars = S.fromList tvars' }) typP
+  pure (TypeScheme (Loc startPos endPos) tvars' monotype)
