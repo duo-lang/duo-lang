@@ -117,7 +117,7 @@ genConstraintsTerm (RST.Xtor loc rep Nominal xt subst) = do
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
+  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
   -- Then we generate constraints between the inferred types of the substitution
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
@@ -179,8 +179,8 @@ genConstraintsTerm (RST.XMatch loc rep Nominal cases@(pmcase:_)) = do
                    posTypes <- sig_args <$> lookupXtorSig cmdcase_name PosRep
                    negTypes <- sig_args <$> lookupXtorSig cmdcase_name NegRep
                    -- Substitute fresh unification variables for type parameters
-                   let posTypes' = substituteContext tyParamsMap posTypes
-                   let negTypes' = substituteContext tyParamsMap negTypes
+                   let posTypes' = zonk tyParamsMap posTypes
+                   let negTypes' = zonk tyParamsMap negTypes
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
@@ -282,7 +282,7 @@ genConstraintsTerm (RST.Dtor loc _ Nominal xt destructee (subst1,PrdRep,subst2))
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
+  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
   let ty = TyNominal NegRep Nothing (data_name decl) args
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (AST.getTypeTerm destructeeInferred) ty)
@@ -304,7 +304,7 @@ genConstraintsTerm (RST.Dtor loc _ Nominal xt destructee (subst1,CnsRep,subst2))
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
+  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
   let ty = TyNominal NegRep Nothing (data_name decl) args
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (AST.getTypeTerm destructeeInferred) ty)
@@ -415,7 +415,7 @@ genConstraintsTerm (RST.Case loc Nominal destructee cases@(RST.MkTermCase { tmca
     -- We look up the argument types of the xtor
     posTypes <- sig_args <$> lookupXtorSig tmcase_name PosRep
     -- Substitute fresh unification variables for type parameters
-    let posTypes' = substituteContext tyParamsMap posTypes
+    let posTypes' = zonk tyParamsMap posTypes
     -- Type case term using new type vars
     tmcase_termInferred <- withContext posTypes' (genConstraintsTerm tmcase_term)
     -- The term must have a subtype of the pattern match return type
@@ -494,7 +494,7 @@ genConstraintsTerm (RST.Cocase loc Nominal cocases@(RST.MkTermCaseI {tmcasei_nam
     -- We look up the argument types of the xtor
     posTypes <- sig_args <$> lookupXtorSig tmcasei_name PosRep
     -- Substitute fresh unification variables for type parameters
-    let posTypes' = substituteContext tyParamsMap posTypes
+    let posTypes' = zonk tyParamsMap posTypes
     -- Split the args accordingly:
     (ctxt1,retType, ctxt2) <- splitContext (length as1) CnsRep posTypes'
     -- Type case term using new type vars
@@ -586,11 +586,11 @@ genConstraintsTermRecursive :: Loc
                             -> GenM (AST.Term pc)
 genConstraintsTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme [] x) (genConstraintsTerm tm)
+  tm <- withTerm PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint (AST.getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme [] y) (genConstraintsTerm tm)
+  tm <- withTerm CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint x (AST.getTypeTerm tm))
   return tm

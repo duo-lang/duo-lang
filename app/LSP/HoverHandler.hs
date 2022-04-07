@@ -180,7 +180,6 @@ instance ToHoverMap (Term pc) where
   toHoverMap (Cocase loc ty ns cocases)       = M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 loc _)            = mkHoverMap loc "Raw #I64 Literal"
   toHoverMap (PrimLitF64 loc _)            = mkHoverMap loc "Raw #F64 Literal"
-  toHoverMap _ = M.empty
 
 instance ToHoverMap PrdCnsTerm where
   toHoverMap (PrdTerm tm) = toHoverMap tm

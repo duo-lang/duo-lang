@@ -53,25 +53,6 @@ parseTypeIdentical env pol input1 input2 =
             PosRep -> r1 `shouldBe` r2
             NegRep -> r1 `shouldBe` r2
 
-parseTypeSchemeIdentical :: SymbolTable -> PolarityRep pol -> Text -> Text -> Spec
-parseTypeSchemeIdentical env pol input1 input2 = do
-  it ("Parsing of " ++ T.unpack input1 ++ " yields the same result as parsing " ++ T.unpack input2) $ do
-    let parseResult1 = runInteractiveParser typeSchemeP input1
-    let parseResult2 = runInteractiveParser typeSchemeP input2
-    case (parseResult1, parseResult2) of
-      (Left _err, _) -> expectationFailure "Could not parse left example"
-      (_, Left _err) -> expectationFailure "Could not parse right example"
-      (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) (lowerTypeScheme pol r1)
-        lowerResult2 <- execDriverM (ds env) (lowerTypeScheme pol r2)
-        case (lowerResult1, lowerResult2) of
-          (Left _err, _) -> expectationFailure "Could not lower left example"
-          (_, Left _err) -> expectationFailure "Could not lower right example"
-          (Right (r1,_), Right (r2,_)) -> case pol of -- Necessary to provide Show instance for (TypScheme pol)
-            PosRep -> r1 `shouldBe` r2
-            NegRep -> r1 `shouldBe` r2
-
-
 mkFun :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol -> Typ pol
 mkFun rep t1 t2 = (TyNominal rep Nothing (MkTypeName "Fun") [ContravariantType t1, CovariantType t2])
 
@@ -143,8 +124,3 @@ spec = do
 
     parseTypeIdentical env PosRep "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
     parseTypeIdentical env NegRep "Nat -> Nat -> Nat" "Nat -> (Nat -> Nat)"
-
-    parseTypeSchemeIdentical env PosRep "forall a b c d e f. a /\\ b -> c /\\ d -> e \\/ f" "forall a b c d e f. (a /\\ b) -> ((c /\\ d) -> (e \\/ f))"
-    parseTypeSchemeIdentical env NegRep "forall a b c d e f. a \\/ b -> c \\/ d -> e /\\ f" "forall a b c d e f. (a \\/ b) -> ((c \\/ d) -> (e /\\ f))"
-    parseTypeSchemeIdentical env PosRep "forall a b c. a \\/ b \\/ c" "forall a b c. (a \\/ b) \\/ c"
-    parseTypeSchemeIdentical env NegRep "forall a b c. a /\\ b /\\ c" "forall a b c. (a /\\ b) /\\ c"

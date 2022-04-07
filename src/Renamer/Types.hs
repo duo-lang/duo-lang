@@ -20,11 +20,11 @@ import Utils (Loc(..))
 ---------------------------------------------------------------------------------
 
 lowerTypeScheme :: PolarityRep pol -> TypeScheme -> RenamerM (RST.TypeScheme pol)
-lowerTypeScheme rep (TypeScheme tvars monotype) = do
-    monotype <- lowerTyp rep monotype
-    if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList tvars)
-        then pure (RST.TypeScheme tvars monotype)
-        else throwError (LowerError Nothing MissingVarsInTypeScheme)
+lowerTypeScheme rep (TypeScheme { ts_loc, ts_vars, ts_monotype }) = do
+    monotype <- lowerTyp rep ts_monotype
+    if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList ts_vars)
+        then pure (RST.TypeScheme ts_loc ts_vars monotype)
+        else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
 lowerTyp :: PolarityRep pol -> Typ -> RenamerM (RST.Typ pol)
 lowerTyp rep (TyVar _loc v) = pure $ RST.TyVar rep Nothing v
@@ -53,7 +53,7 @@ lowerTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> [Typ] -> Rena
 lowerTypeArgs loc rep tn args = do
     MkPolyKind { kindArgs } <- lookupTypeConstructorAritiy loc tn
     if (length args) /= length kindArgs  then
-        throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
+        throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
             f :: ((Variance, TVar, MonoKind), Typ) -> RenamerM (RST.VariantType pol)

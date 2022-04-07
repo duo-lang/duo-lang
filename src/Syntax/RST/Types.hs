@@ -3,8 +3,10 @@ module Syntax.RST.Types where
 import Data.List (nub)
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Kind ( Type )
 
 import Syntax.Common
+import Utils
 
 ------------------------------------------------------------------------------
 -- CovContraList
@@ -117,7 +119,8 @@ getPolarity (TyPrim rep _)          = rep
 ------------------------------------------------------------------------------
 
 data TypeScheme (pol :: Polarity) = TypeScheme
-  { ts_vars :: [TVar]
+  { ts_loc :: Loc
+  , ts_vars :: [TVar]
   , ts_monotype :: Typ pol
   }
 
@@ -156,47 +159,57 @@ freeTypeVars = nub . freeTypeVars'
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme (freeTypeVars ty) ty
+generalize ty = TypeScheme defaultLoc (freeTypeVars ty) ty
 
 ------------------------------------------------------------------------------
--- Substitution
+-- Bisubstitution and Zonking
 ------------------------------------------------------------------------------
+
+data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg) }
+
+-- | Class of types for which a Bisubstitution can be applied.
+class Zonk (a :: Type) where
+  zonk :: Bisubstitution -> a -> a
+
+instance Zonk (Typ pol) where
+  zonk bisubst ty@(TyVar PosRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
+     Nothing -> ty -- Recursive variable!
+     Just (tyPos,_) -> tyPos
+  zonk bisubst ty@(TyVar NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
+     Nothing -> ty -- Recursive variable!
+     Just (_,tyNeg) -> tyNeg
+  zonk bisubst (TyData rep tn xtors) =
+     TyData rep tn (zonk bisubst <$> xtors)
+  zonk bisubst (TyCodata rep tn xtors) =
+     TyCodata rep tn (zonk bisubst <$> xtors)
+  zonk bisubst (TyNominal rep kind tn args) =
+     TyNominal rep kind tn (zonk bisubst <$> args)
+  zonk bisubst (TySet rep kind tys) =
+     TySet rep kind (zonk bisubst <$> tys)
+  zonk bisubst (TyRec rep tv ty) =
+     TyRec rep tv (zonk bisubst ty)
+  zonk _ t@TyPrim {} = t
+
+instance Zonk (VariantType pol) where
+  zonk bisubst (CovariantType ty) = CovariantType (zonk bisubst ty)
+  zonk bisubst (ContravariantType ty) = ContravariantType (zonk bisubst ty)
+
+instance Zonk (XtorSig pol) where
+  zonk bisubst (MkXtorSig name ctxt) =
+    MkXtorSig name (zonk bisubst ctxt)
+
+instance Zonk (LinearContext pol) where
+  zonk bisubst = fmap (zonk bisubst)
+
+instance Zonk (PrdCnsType pol) where
+  zonk bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk bisubst ty)
+
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
-unfoldRecType recty@(TyRec PosRep var ty) = substituteType (M.fromList [(var,(recty, error "unfoldRecType"))]) ty
-unfoldRecType recty@(TyRec NegRep var ty) = substituteType (M.fromList [(var,(error "unfoldRecType",recty))]) ty
+unfoldRecType recty@(TyRec PosRep var ty) = zonk (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
+unfoldRecType recty@(TyRec NegRep var ty) = zonk (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
-
-substituteType :: Map TVar (Typ Pos, Typ Neg) -> Typ pol -> Typ pol
-substituteType m var@(TyVar PosRep _ tv) =
-  case M.lookup tv m of
-    Nothing -> var
-    Just (ty,_) -> ty
-substituteType m var@(TyVar NegRep _ tv) =
-  case M.lookup tv m of
-    Nothing -> var
-    Just (_,ty) -> ty
--- Other cases
-substituteType m (TyData polrep mtn args) = TyData polrep mtn (substituteXtorSig m <$> args)
-substituteType m (TyCodata polrep mtn args) = TyCodata polrep mtn (substituteXtorSig m <$> args)
-substituteType m (TyNominal rep kind nm args) = TyNominal rep kind nm (substituteVariantType m <$> args)
-substituteType m (TySet rep kind args) = TySet rep kind (substituteType m <$> args)
-substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
-substituteType _ t@(TyPrim _ _) = t
-
-substituteVariantType :: Map TVar (Typ Pos, Typ Neg) -> VariantType pol -> VariantType pol
-substituteVariantType m (CovariantType ty) = CovariantType (substituteType m ty)
-substituteVariantType m (ContravariantType ty) = ContravariantType (substituteType m ty)
-
-substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
-substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteContext m sig_args)
-
-substituteContext :: Map TVar (Typ Pos, Typ Neg) -> LinearContext pol -> LinearContext pol
-substituteContext m ctxt = substitutePCType m <$> ctxt
-
-substitutePCType :: Map TVar (Typ Pos, Typ Neg) -> PrdCnsType pol -> PrdCnsType pol
-substitutePCType m (PrdCnsType pc ty)= PrdCnsType pc $ substituteType m ty
 
 ------------------------------------------------------------------------------
 -- Data Type declarations

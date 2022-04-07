@@ -47,7 +47,6 @@ import Syntax.Common
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
-import Data.Map
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -118,7 +117,7 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Map TVar (Typ Pos, Typ Neg))
+freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution)
 freshTVarsForTypeParams rep dd = do
   let MkPolyKind { kindArgs } = data_kind dd
   let tn = data_name dd
@@ -139,10 +138,10 @@ freshTVarsForTypeParams rep dd = do
       (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-   paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Map TVar (Typ Pos, Typ Neg)
+   paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
-     M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars)
+     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -178,7 +177,7 @@ lookupContext rep (i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
-  return $ substituteType (M.fromList freshVars) ts_monotype
+  pure $ zonk (MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint

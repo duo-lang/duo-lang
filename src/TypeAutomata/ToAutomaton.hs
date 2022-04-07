@@ -209,9 +209,9 @@ insertType (TyPrim rep pt) = do
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
-typeToAut (TypeScheme tvars ty) = do
-  (start, aut) <- runTypeAutTvars tvars (insertType ty)
-  return TypeAut { ta_pol = getPolarity ty
+typeToAut (TypeScheme { ts_vars, ts_monotype }) = do
+  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
+  return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut
                  }

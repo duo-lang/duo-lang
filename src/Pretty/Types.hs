@@ -113,7 +113,10 @@ instance PrettyAnn (XtorSig a) where
   prettyAnn (MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
 
 instance PrettyAnn (TypeScheme pol) where
-  prettyAnn (TypeScheme [] ty) =
-    prettyAnn ty
-  prettyAnn (TypeScheme tvs ty) =
-    forallSym <+> sep (prettyAnn <$> tvs) <> "." <+> prettyAnn ty
+  prettyAnn (TypeScheme { ts_vars = [], ts_monotype }) =
+    prettyAnn ts_monotype
+  prettyAnn (TypeScheme { ts_vars, ts_monotype }) =
+    forallSym <+>
+    sep (prettyAnn <$> ts_vars ) <>
+    "." <+>
+    prettyAnn ts_monotype
