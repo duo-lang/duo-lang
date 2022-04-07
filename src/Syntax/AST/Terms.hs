@@ -213,6 +213,12 @@ instance Zonk (Term pc) where
     Case loc rep (zonk bisubst ty) ns (zonk bisubst prd) (zonk bisubst <$> cases)
   zonk bisubst (CocasePrdI loc ty ns cases) =
     CocasePrdI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (CaseCnsPrdI loc ty ns cases) = CaseCnsPrdI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (CaseCnsCnsI loc ty ns cases)= CaseCnsCnsI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (Semicolon loc rep ty ns xt (subst1,pcrep,subst2) t) = Semicolon loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2) (zonk bisubst t)
+  zonk bisubst (CocaseCnsI loc ty ns cases) = CocaseCnsI loc (zonk bisubst ty) ns (zonk bisubst <$> cases) 
+  zonk bisubst (CocaseCns loc rep ty ns t cases) = CocaseCns loc rep (zonk bisubst ty) ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  
   zonk _ lit@PrimLitI64{} = lit
   zonk _ lit@PrimLitF64{} = lit
 
@@ -283,6 +289,12 @@ instance Zonk Command where
     ExitFailure ext
   zonk bisubst (PrimOp ext pt op subst) =
     PrimOp ext pt op (zonk bisubst <$> subst)
+  zonk bisubst (CasePrdCmd loc ns t cases) = CasePrdCmd loc ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  zonk bisubst (CasePrdPrdI loc ns t cases) = CasePrdPrdI loc ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  zonk bisubst (CasePrdCnsI loc ns t cases) = CasePrdCnsI loc ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  zonk bisubst (CocaseCnsCmd loc ns t cases) = CocaseCnsCmd loc ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  zonk bisubst (CocaseCnsPrdI loc ns t cases) = CocaseCnsPrdI loc ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  zonk bisubst (CocaseCnsCnsI loc ns t cases) = CocaseCnsCnsI loc ns (zonk bisubst t) (zonk bisubst <$> cases) 
 
 deriving instance Eq Command
 deriving instance Show Command
@@ -485,7 +497,8 @@ termLocallyClosedRec env (Semicolon _ _ _ _ _ (args1,_,args2) t) = do
   sequence_ (pctermLocallyClosedRec env <$> args2)
 termLocallyClosedRec env (CocaseCnsI _ _ _ tmcasesI) = 
   sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
-termLocallyClosedRec env (CocaseCns _ _ _ _ t tmcasesI) = 
+termLocallyClosedRec env (CocaseCns _ _ _ _ t tmcasesI) = do 
+  termLocallyClosedRec env t
   sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
   
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
