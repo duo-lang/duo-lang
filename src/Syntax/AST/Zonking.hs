@@ -45,24 +45,24 @@ zonkXtorSig bisubst (MkXtorSig name ctxt) =
 ---------------------------------------------------------------------------------
 -- Zonking of Terms
 ---------------------------------------------------------------------------------
-
+--zonkType :: Bisubstitution -> Typ pol -> Typ pol
 zonkTerm :: Bisubstitution -> Term pc -> Term pc
 zonkTerm bisubst (BoundVar loc rep ty idx) =
-    BoundVar loc rep (zonkType bisubst <$> ty) idx
+    BoundVar loc rep (zonkType bisubst ty) idx
 zonkTerm bisubst (FreeVar loc rep ty nm)  =
-    FreeVar loc rep (zonkType bisubst <$> ty) nm
+    FreeVar loc rep (zonkType bisubst ty) nm
 zonkTerm bisubst (Xtor loc rep ty ns xt subst) =
-    Xtor loc rep (zonkType bisubst <$> ty) ns xt (zonkPCTerm bisubst <$> subst)
+    Xtor loc rep (zonkType bisubst ty) ns xt (zonkPCTerm bisubst <$> subst)
 zonkTerm bisubst (XMatch loc rep ty ns cases) =
-    XMatch loc rep (zonkType bisubst <$> ty) ns (zonkCmdCase bisubst <$> cases)
+    XMatch loc rep (zonkType bisubst ty) ns (zonkCmdCase bisubst <$> cases)
 zonkTerm bisubst (MuAbs loc rep ty fv cmd) =
-    MuAbs loc rep (zonkType bisubst <$> ty) fv (zonkCommand bisubst cmd)
+    MuAbs loc rep (zonkType bisubst ty) fv (zonkCommand bisubst cmd)
 zonkTerm bisubst (Dtor loc rep ty ns xt prd (subst1,pcrep,subst2)) =
-    Dtor loc rep (zonkType bisubst <$> ty) ns xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
-zonkTerm bisubst (Case loc ty ns prd cases) =
-    Case loc (zonkType bisubst <$> ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
+    Dtor loc rep (zonkType bisubst ty) ns xt (zonkTerm bisubst prd) (zonkPCTerm bisubst <$> subst1,pcrep,zonkPCTerm bisubst <$> subst2)
+zonkTerm bisubst (CasePrdPrd loc ty ns prd cases) =
+    CasePrdPrd loc (zonkType bisubst ty) ns (zonkTerm bisubst prd) (zonkTermCase bisubst <$> cases)
 zonkTerm bisubst (Cocase loc ty ns cases) =
-    Cocase loc (zonkType bisubst <$> ty) ns (zonkTermCaseI bisubst <$> cases)
+    Cocase loc (zonkType bisubst ty) ns (zonkTermCaseI bisubst <$> cases)
 zonkTerm _ lit@PrimLitI64{} = lit
 zonkTerm _ lit@PrimLitF64{} = lit
 

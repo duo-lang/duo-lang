@@ -40,7 +40,7 @@ isDesugaredTerm AST.PrimLitI64{} = True
 isDesugaredTerm AST.PrimLitF64{} = True
 -- Non-core terms
 isDesugaredTerm AST.Dtor{} = False
-isDesugaredTerm AST.Case {} = False
+isDesugaredTerm AST.CasePrdPrd {} = False
 isDesugaredTerm AST.Cocase {} = False
 
 isDesugaredCommand :: AST.Command -> Bool
@@ -103,7 +103,7 @@ desugarTerm (AST.Dtor loc _ _ ns xt t (args1,CnsRep,args2)) =
     Core.MuAbs loc CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd cmd
 -- we want to desugar match t { C (args) => e1 }
 -- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
-desugarTerm (AST.Case loc _ ns t cases)   =
+desugarTerm (AST.CasePrdPrd loc _ ns t cases)   =
   let
     desugarMatchCase (AST.MkTermCase _ xt args t) = Core.MkCmdCase loc xt args  $ Core.Apply loc Nothing (desugarTerm t) (Core.FreeVar loc CnsRep resVar)
     cmd = Core.Apply loc Nothing (desugarTerm t) (Core.XMatch loc CnsRep ns  (desugarMatchCase <$> cases))
