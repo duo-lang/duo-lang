@@ -53,7 +53,7 @@ lowerTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> [Typ] -> Rena
 lowerTypeArgs loc rep tn args = do
     MkPolyKind { kindArgs } <- lookupTypeConstructorAritiy loc tn
     if (length args) /= length kindArgs  then
-        throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
+        throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
             f :: ((Variance, TVar, MonoKind), Typ) -> RenamerM (RST.VariantType pol)
