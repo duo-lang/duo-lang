@@ -24,13 +24,21 @@ zonkType bisubst ty@(TyVar PosRep _ tv) = case M.lookup tv (uvarSubst bisubst) o
 zonkType bisubst ty@(TyVar NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
     Nothing -> ty -- Recursive variable!
     Just (_,tyNeg) -> tyNeg
-zonkType bisubst (TyData rep tn xtors) = TyData rep tn (zonkXtorSig bisubst <$> xtors)
-zonkType bisubst (TyCodata rep tn xtors) = TyCodata rep tn (zonkXtorSig bisubst <$> xtors)
-zonkType bisubst (TyNominal rep kind tn contra_args cov_args) =
-    TyNominal rep kind tn (zonkType bisubst <$> contra_args) (zonkType bisubst <$> cov_args)
-zonkType bisubst (TySet rep kind tys) = TySet rep kind (zonkType bisubst <$> tys)
-zonkType bisubst (TyRec rep tv ty) = TyRec rep tv (zonkType bisubst ty)
-zonkType _ t@(TyPrim _ _) = t
+zonkType bisubst (TyData rep tn xtors) =
+    TyData rep tn (zonkXtorSig bisubst <$> xtors)
+zonkType bisubst (TyCodata rep tn xtors) =
+    TyCodata rep tn (zonkXtorSig bisubst <$> xtors)
+zonkType bisubst (TyNominal rep kind tn args) =
+    TyNominal rep kind tn (zonkVariantType bisubst <$> args)
+zonkType bisubst (TySet rep kind tys) =
+    TySet rep kind (zonkType bisubst <$> tys)
+zonkType bisubst (TyRec rep tv ty) =
+    TyRec rep tv (zonkType bisubst ty)
+zonkType _ t@TyPrim {} = t
+
+zonkVariantType :: Bisubstitution -> VariantType pol -> VariantType pol
+zonkVariantType bisubst (CovariantType ty) = CovariantType (zonkType bisubst ty)
+zonkVariantType bisubst (ContravariantType ty) = ContravariantType (zonkType bisubst ty)
 
 zonkPrdCnsType :: Bisubstitution -> PrdCnsType pol -> PrdCnsType pol
 zonkPrdCnsType bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonkType bisubst ty)

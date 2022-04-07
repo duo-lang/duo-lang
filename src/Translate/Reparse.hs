@@ -309,6 +309,13 @@ embedXtorSig RST.MkXtorSig { sig_name, sig_args } =
                 , sig_args = embedPrdCnsType <$> sig_args
                 }
 
+embedVariantTypes :: [RST.VariantType pol] -> [CST.Typ]
+embedVariantTypes = fmap embedVariantType
+
+embedVariantType :: RST.VariantType pol -> CST.Typ
+embedVariantType (RST.CovariantType ty) = embedType ty
+embedVariantType (RST.ContravariantType ty) = embedType ty
+
 embedType :: RST.Typ pol -> CST.Typ
 embedType (RST.TyVar _ _ tv)=
   CST.TyVar defaultLoc tv
@@ -316,8 +323,8 @@ embedType (RST.TyData _ tn xtors) =
   CST.TyXData defaultLoc Data tn (embedXtorSig <$> xtors)
 embedType (RST.TyCodata _ tn xtors) =
   CST.TyXData defaultLoc Codata tn (embedXtorSig <$> xtors)
-embedType (RST.TyNominal _ _ nm tys1 tys2) =
-  CST.TyNominal defaultLoc nm ((embedType <$> tys1) ++ (embedType <$> tys2))
+embedType (RST.TyNominal _ _ nm args) =
+  CST.TyNominal defaultLoc nm (embedVariantTypes args)
 embedType (RST.TySet PosRep _ []) =
   CST.TyTop defaultLoc
 embedType (RST.TySet PosRep _ [ty1,ty2]) =

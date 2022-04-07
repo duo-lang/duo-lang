@@ -108,8 +108,10 @@ instance PrettyAnn Variance where
   prettyAnn Contravariant = annSymbol "-"
 
 instance PrettyAnn PolyKind where
-  prettyAnn MkPolyKind { contravariant, covariant, returnKind } =
-    parens' comma ((prettyTParam Contravariant <$> contravariant) ++ (prettyTParam Covariant <$> covariant)) <+> annSymbol "->" <+> prettyAnn returnKind
+  prettyAnn MkPolyKind { kindArgs, returnKind } =
+    parens' comma (prettyTParam <$> kindArgs) <+>
+    annSymbol "->" <+>
+    prettyAnn returnKind
 
-prettyTParam :: Variance -> (TVar, MonoKind) -> Doc Annotation
-prettyTParam v (tv, k) = prettyAnn v <> prettyAnn tv <+> ":" <+> prettyAnn k
+prettyTParam :: (Variance, TVar, MonoKind) -> Doc Annotation
+prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> ":" <+> prettyAnn k

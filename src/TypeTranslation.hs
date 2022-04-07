@@ -87,7 +87,7 @@ translateXtorSigUpper' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
-translateTypeUpper' (TyNominal NegRep _ tn _ _) = do
+translateTypeUpper' (TyNominal NegRep _ tn _) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
@@ -128,7 +128,7 @@ translateXtorSigLower' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
-translateTypeLower' (TyNominal pr _ tn _ _) = do
+translateTypeLower' (TyNominal pr _ tn _) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do

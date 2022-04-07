@@ -118,13 +118,12 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([Typ (FlipPol pol)], [Typ pol], Map TVar (Typ Pos, Typ Neg))
+freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Map TVar (Typ Pos, Typ Neg))
 freshTVarsForTypeParams rep dd = do
-    let MkPolyKind { contravariant, covariant } = data_kind dd
+    let MkPolyKind { kindArgs } = data_kind dd
     let tn = data_name dd
-    con' <- freshTVars tn (fst <$> contravariant)
-    cov' <- freshTVars tn (fst <$> covariant)
-    let map = paramsMap dd (con', cov')
+    vars <- freshTVars tn ((\(_,var,_) -> var) <$> kindArgs)
+    let map = paramsMap dd vars
     case rep of
       PosRep -> pure (snd <$> con', fst <$> cov', map)
       NegRep -> pure (fst <$> con', snd <$> cov', map)
@@ -136,9 +135,9 @@ freshTVarsForTypeParams rep dd = do
       (tp, tn) <- freshTVar (TypeParameter tn v)
       pure $ (tp, tn) : vs'
 
-    paramsMap :: DataDecl -> ([(Typ Pos, Typ Neg)], [(Typ Pos, Typ Neg)]) -> Map TVar (Typ Pos, Typ Neg)
-    paramsMap dd (freshCon, freshCov) =
-        let (MkPolyKind con cov _) = data_kind dd in
+    paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Map TVar (Typ Pos, Typ Neg)
+    paramsMap dd freshVars =
+        --let (MkPolyKind con cov _) = data_kind dd in
         fromList (zip (fst <$> con) freshCon ++ zip (fst <$> cov) freshCov)
 
 ---------------------------------------------------------------------------------------------
