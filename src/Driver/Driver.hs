@@ -28,7 +28,6 @@ import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
-import Syntax.AST.Zonking (zonkType)
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import TypeAutomata.Simplify
@@ -88,7 +87,7 @@ inferDecl (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
-  let typ = zonkType bisubst (AST.getTypeTerm tmInferred)
+  let typ = RST.zonk bisubst (AST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
