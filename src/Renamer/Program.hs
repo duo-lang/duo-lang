@@ -29,7 +29,7 @@ lowerDataDecl :: Loc -> CST.DataDecl -> RenamerM RST.DataDecl
 lowerDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   -- Default the kind if none was specified:
   let polyKind = case data_kind of
-                    Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                    Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   -- Insert the tycon arity into the environment
   updateSymbolTable (\st -> st { tyConMap = M.insert data_name (data_refined, polyKind) (tyConMap st)})

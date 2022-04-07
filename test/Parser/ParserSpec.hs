@@ -73,10 +73,10 @@ parseTypeSchemeIdentical env pol input1 input2 = do
 
 
 mkFun :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol -> Typ pol
-mkFun rep t1 t2 = (TyNominal rep Nothing (MkTypeName "Fun") [t1] [t2])
+mkFun rep t1 t2 = (TyNominal rep Nothing (MkTypeName "Fun") [ContravariantType t1, CovariantType t2])
 
 mkNat :: PolarityRep pol -> Typ pol
-mkNat rep = TyNominal rep Nothing (MkTypeName "Nat") [] []
+mkNat rep = TyNominal rep Nothing (MkTypeName "Nat") []
 
 spec :: Spec
 spec = do

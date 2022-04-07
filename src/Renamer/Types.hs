@@ -49,16 +49,16 @@ lowerTyp rep (TyPrim _loc pt) = pure $ RST.TyPrim rep pt
 
 
 
-lowerTypeArgs :: Loc -> PolarityRep pol -> TypeName -> [Typ] -> RenamerM [VariantType pol])
+lowerTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> [Typ] -> RenamerM [RST.VariantType pol]
 lowerTypeArgs loc rep tn args = do
     MkPolyKind { kindArgs } <- lookupTypeConstructorAritiy loc tn
     if (length args) /= length kindArgs  then
         throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
     else do
         let
-            f :: ((Variance, TyVar, EvaluationOrder), Typ) -> RenamerM (VariantType pol)
-            f ((Covariant,_,_),ty) = CovariantType <$> lowerTyp rep ty
-            f ((Contravariant,_,_),ty) = ContravariantType <$> lowerTyp rep ty
+            f :: ((Variance, TVar, MonoKind), Typ) -> RenamerM (RST.VariantType pol)
+            f ((Covariant,_,_),ty) = RST.CovariantType <$> lowerTyp rep ty
+            f ((Contravariant,_,_),ty) = RST.ContravariantType <$> lowerTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)
         
 
