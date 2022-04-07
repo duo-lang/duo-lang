@@ -134,34 +134,35 @@ deriving instance Show CmdCase
 -- The `bs` parameter is used to store additional information at binding sites.
 data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
-  BoundVar :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> Index -> Term pc
+  BoundVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Index -> Term pc
   -- | A free variable in the locally nameless system.
-  FreeVar :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> FreeVarName -> Term pc
+  FreeVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> NominalStructural -> [CmdCase] -> Term pc
+  XMatch :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> Maybe FreeVarName -> Command -> Term pc
+  MuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
   --
   -- Syntactic Sugar
   --
-  Dtor :: Loc -> PrdCnsRep pc -> Maybe (Typ (PrdCnsToPol pc)) -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
+  Dtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
   -- | A pattern match:
   --
   -- case e of { ... }
   --
-  Case :: Loc -> Maybe (Typ Pos) -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
+  CasePrdPrd :: Loc -> Typ Pos -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
+
   -- | A copattern match:
   --
   -- cocase { ... }
   --
-  Cocase :: Loc -> Maybe (Typ Pos) -> NominalStructural -> [TermCaseI Prd] -> Term Prd
+  Cocase :: Loc -> Typ Pos -> NominalStructural -> [TermCaseI Prd] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -171,22 +172,17 @@ deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
 deriving instance Show (Term Cns)
 
-getTypeTerm' :: forall pc. Term pc -> Maybe (Typ (PrdCnsToPol pc))
-getTypeTerm' (BoundVar _ _ annot _)   = annot
-getTypeTerm' (FreeVar  _ _ annot _)   = annot
-getTypeTerm' (Xtor _ _ annot _ _ _)   = annot
-getTypeTerm' (XMatch _ _ annot _ _)   = annot
-getTypeTerm' (MuAbs _ _ annot _ _)    = annot
-getTypeTerm' (Dtor _ _ annot _ _ _ _) = annot
-getTypeTerm' (Case _ annot _ _ _)     = annot
-getTypeTerm' (Cocase _ annot _ _)     = annot
-getTypeTerm' (PrimLitI64 _ _)         = Just (TyPrim PosRep I64)
-getTypeTerm' (PrimLitF64 _ _)         = Just (TyPrim PosRep F64)
-
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
-getTypeTerm tm = case getTypeTerm' tm of
-  Nothing -> error "Boom"
-  Just typ -> typ
+getTypeTerm (BoundVar _ _ annot _)   = annot
+getTypeTerm (FreeVar  _ _ annot _)   = annot
+getTypeTerm (Xtor _ _ annot _ _ _)   = annot
+getTypeTerm (XMatch _ _ annot _ _)   = annot
+getTypeTerm (MuAbs _ _ annot _ _)    = annot
+getTypeTerm (Dtor _ _ annot _ _ _ _) = annot
+getTypeTerm (CasePrdPrd _ annot _ _ _)     = annot
+getTypeTerm (Cocase _ annot _ _)     = annot
+getTypeTerm (PrimLitI64 _ _)         = TyPrim PosRep I64
+getTypeTerm (PrimLitF64 _ _)         = TyPrim PosRep F64
 
 getTypArgs :: Substitution -> LinearContext Pos
 getTypArgs subst = getTypArgs'' <$> subst
@@ -244,8 +240,8 @@ termOpeningRec k args (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
     args2' = pctermOpeningRec k args <$> args2
   in
     Dtor loc rep annot ns xt (termOpeningRec k args t) (args1', pcrep, args2')
-termOpeningRec k args (Case loc annot ns t cases) =
-  Case loc annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
+termOpeningRec k args (CasePrdPrd loc annot ns t cases) =
+  CasePrdPrd loc annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
 termOpeningRec k args (Cocase loc annot ns cocases) =
   Cocase loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
@@ -291,8 +287,8 @@ termClosingRec k args (Dtor loc pc annot ns xt t (args1,pcrep,args2)) =
     args2' = pctermClosingRec k args <$> args2
   in
     Dtor loc pc annot ns xt (termClosingRec k args t) (args1', pcrep, args2')
-termClosingRec k args (Case loc annot ns t cases) =
-  Case loc annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
+termClosingRec k args (CasePrdPrd loc annot ns t cases) =
+  CasePrdPrd loc annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
 termClosingRec k args (Cocase loc annot ns cocases) =
   Cocase loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
 termClosingRec _ _ lit@PrimLitI64{} = lit
@@ -349,7 +345,7 @@ termLocallyClosedRec env (Dtor _ _ _ _ _ e (args1,_,args2)) = do
   termLocallyClosedRec env e
   sequence_ (pctermLocallyClosedRec env <$> args1)
   sequence_ (pctermLocallyClosedRec env <$> args2)
-termLocallyClosedRec env (Case _ _ _ e cases) = do
+termLocallyClosedRec env (CasePrdPrd _ _ _ e cases) = do
   termLocallyClosedRec env e
   sequence_ (termCaseLocallyClosedRec env <$> cases)
 termLocallyClosedRec env (Cocase _ _ _ cases) =
@@ -400,8 +396,8 @@ shiftTermRec n (MuAbs loc pcrep annot bs cmd) =
   MuAbs loc pcrep annot bs (shiftCmdRec (n + 1) cmd)
 shiftTermRec n (Dtor loc pcrep annot ns xt e (args1,pcrep',args2)) =
   Dtor loc pcrep annot ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2)
-shiftTermRec n (Case loc annot ns e cases) =
-  Case loc annot ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
+shiftTermRec n (CasePrdPrd loc annot ns e cases) =
+  CasePrdPrd loc annot ns (shiftTermRec n e) (shiftTermCaseRec n <$> cases)
 shiftTermRec n (Cocase loc annot ns cases) =
   Cocase loc annot ns (shiftTermCaseIRec n <$> cases)
 shiftTermRec _ lit@PrimLitI64{} = lit
