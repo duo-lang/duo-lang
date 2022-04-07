@@ -35,8 +35,8 @@ lowerTyp rep (TyXData _loc Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodata rep name sigs
 lowerTyp rep (TyNominal loc name args) = do
-    (conArgs, covArgs) <- lowerTypeArgs loc rep name args
-    pure $ RST.TyNominal rep Nothing name conArgs covArgs
+    args' <- lowerTypeArgs loc rep name args
+    pure $ RST.TyNominal rep Nothing name args'
 lowerTyp rep (TyRec _loc v typ) = RST.TyRec rep v <$> lowerTyp rep typ
 lowerTyp PosRep (TyTop loc) = throwError (LowerError (Just loc) TopInPosPolarity)
 lowerTyp NegRep (TyTop _loc) = pure desugarTopType
@@ -47,16 +47,20 @@ lowerTyp rep (TyBinOp loc fst op snd) = lowerBinOp loc rep fst op snd
 lowerTyp rep (TyParens _loc typ) = lowerTyp rep typ
 lowerTyp rep (TyPrim _loc pt) = pure $ RST.TyPrim rep pt
 
-lowerTypeArgs :: Loc -> PolarityRep pol -> TypeName -> [Typ] -> RenamerM ([RST.Typ (FlipPol pol)], [RST.Typ pol])
+
+
+lowerTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> [Typ] -> RenamerM [RST.VariantType pol]
 lowerTypeArgs loc rep tn args = do
-    MkPolyKind { contravariant, covariant } <- lookupTypeConstructorAritiy loc tn
-    let (contra, cov) = splitAt (length contravariant) args
-    if (length contravariant) /= length contra || (length covariant) /= length cov then
+    MkPolyKind { kindArgs } <- lookupTypeConstructorAritiy loc tn
+    if (length args) /= length kindArgs  then
         throwOtherError ["Type constructor " <> unTypeName tn <> " must be fully applied"]
     else do
-        contra <- sequence (lowerTyp (flipPolarityRep rep) <$> contra)
-        cov <- sequence (lowerTyp rep <$> cov)
-        pure (contra, cov)
+        let
+            f :: ((Variance, TVar, MonoKind), Typ) -> RenamerM (RST.VariantType pol)
+            f ((Covariant,_,_),ty) = RST.CovariantType <$> lowerTyp rep ty
+            f ((Contravariant,_,_),ty) = RST.ContravariantType <$> lowerTyp (flipPolarityRep rep) ty
+        sequence (f <$> zip kindArgs args)
+        
 
 lowerXTorSigs :: PolarityRep pol -> [XtorSig] -> RenamerM [RST.XtorSig pol]
 lowerXTorSigs rep sigs = sequence $ lowerXTorSig rep <$> sigs

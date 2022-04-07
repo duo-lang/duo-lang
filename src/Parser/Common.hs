@@ -16,7 +16,7 @@ module Parser.Common
   , polyKindP
   ) where
 
-import Control.Monad (void)
+import Control.Monad
 import Text.Megaparsec
 
 import Parser.Definition
@@ -95,40 +95,25 @@ monoKindP = CBox <$> evalOrderP
 -- PolyKinds
 ---------------------------------------------------------------------------------
 
-varianceP :: Variance -> Parser ()
-varianceP Covariant = void (symbolP SymPlus)
-varianceP Contravariant = void (symbolP SymMinus)
+varianceP :: Parser Variance
+varianceP = (symbolP SymPlus *> pure Covariant) <|> (symbolP SymMinus *> pure Contravariant)
 
 polyKindP :: Parser PolyKind
 polyKindP = f <|> g
   where
     f = do
       eo <- evalOrderP
-      pure (MkPolyKind [] [] eo)
+      pure (MkPolyKind [] eo)
     g = do
-      (contra, cov) <- tparamsP
+      (kindArgs,_) <- parens (tParamP `sepBy` symbolP SymComma)
       _ <- symbolP SymSimpleRightArrow
       ret <- evalOrderP
-      pure (MkPolyKind contra cov ret)
+      pure (MkPolyKind kindArgs ret)
 
-tParamP :: Variance -> Parser (TVar, MonoKind)
-tParamP v = do
-  _ <- varianceP v
+tParamP :: Parser (Variance, TVar, MonoKind)
+tParamP = do
+  v <- varianceP
   (tvar,_) <- tvarP
   _ <- symbolP SymColon
   kind <- monoKindP
-  pure (tvar, kind)
-
-tparamsP :: Parser ([(TVar, MonoKind)],[(TVar, MonoKind)])
-tparamsP =
-  (fst <$> parens inner) <|> pure ([],[])
-  where
-    inner = do
-      con_ps <- tParamP Contravariant `sepBy` try (symbolP SymComma <* notFollowedBy (varianceP Covariant))
-      if null con_ps then
-        (\x -> ([], x)) <$> tParamP Covariant `sepBy` symbolP SymComma
-      else do
-        cov_ps <-
-          try (symbolP SymComma) *> tParamP Covariant `sepBy` symbolP SymComma
-          <|> pure []
-        pure (con_ps, cov_ps)
+  pure (v, tvar, kind)

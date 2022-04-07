@@ -36,8 +36,7 @@ data MonoKind
 ------------------------------------------------------------------------------
 
 data PolyKind =
-  MkPolyKind { contravariant :: [(TVar, MonoKind)]
-             , covariant :: [(TVar, MonoKind)]
+  MkPolyKind { kindArgs :: [(Variance, TVar, MonoKind)]
              , returnKind :: EvaluationOrder
              }
 
@@ -45,5 +44,5 @@ deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
 
 allTypeVars :: PolyKind -> Set TVar
-allTypeVars (MkPolyKind { contravariant, covariant }) =
-  S.fromList ((fst <$> contravariant) ++ (fst <$> covariant))
+allTypeVars (MkPolyKind { kindArgs }) =
+  S.fromList ((\(_,var,_) -> var) <$> kindArgs)

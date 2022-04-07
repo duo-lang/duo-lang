@@ -7,6 +7,25 @@ import qualified Data.Map as M
 import Syntax.Common
 
 ------------------------------------------------------------------------------
+-- CovContraList
+------------------------------------------------------------------------------
+
+data VariantType (pol :: Polarity) where
+  CovariantType :: Typ pol -> VariantType pol
+  ContravariantType :: Typ (FlipPol pol) -> VariantType pol
+
+deriving instance Eq (VariantType Pos)
+deriving instance Eq (VariantType Neg)
+deriving instance Ord (VariantType Pos)
+deriving instance Ord (VariantType Neg)
+deriving instance Show (VariantType Pos)
+deriving instance Show (VariantType Neg)
+
+toVariance :: VariantType pol -> Variance
+toVariance (CovariantType _) = Covariant
+toVariance (ContravariantType _) = Contravariant
+
+------------------------------------------------------------------------------
 -- LinearContexts
 ------------------------------------------------------------------------------
 
@@ -71,7 +90,7 @@ data Typ (pol :: Polarity) where
   TyData   :: PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
   TyCodata :: PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: PolarityRep pol -> Maybe MonoKind -> TypeName -> [Typ (FlipPol pol)] -> [Typ pol] -> Typ pol
+  TyNominal :: PolarityRep pol -> Maybe MonoKind -> TypeName -> [VariantType pol] -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: PolarityRep pol -> Maybe MonoKind -> [Typ pol] -> Typ pol
   TyRec :: PolarityRep pol -> TVar -> Typ pol -> Typ pol
@@ -88,7 +107,7 @@ getPolarity :: Typ pol -> PolarityRep pol
 getPolarity (TyVar rep _ _)         = rep
 getPolarity (TyData rep _ _)        = rep
 getPolarity (TyCodata rep _ _)      = rep
-getPolarity (TyNominal rep _ _ _ _) = rep
+getPolarity (TyNominal rep _ _ _)   = rep
 getPolarity (TySet rep _ _)         = rep
 getPolarity (TyRec rep _ _)         = rep
 getPolarity (TyPrim rep _)          = rep
@@ -116,13 +135,17 @@ freeTypeVars = nub . freeTypeVars'
     freeTypeVars' (TyVar _ _ tv) = [tv]
     freeTypeVars' (TySet _ _ ts) = concatMap freeTypeVars' ts
     freeTypeVars' (TyRec _ v t)  = filter (/= v) (freeTypeVars' t)
-    freeTypeVars' (TyNominal _ _ _ conArgs covArgs) = concatMap freeTypeVars conArgs ++ concatMap freeTypeVars covArgs
+    freeTypeVars' (TyNominal _ _ _ args) = concatMap freeTypeVarsVarCov args
     freeTypeVars' (TyData _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
     freeTypeVars' (TyCodata _ _ xtors) = concatMap freeTypeVarsXtorSig xtors
     freeTypeVars' (TyPrim _ _) = []
 
     freeTypeVarsPC :: PrdCnsType pol -> [TVar]
     freeTypeVarsPC (PrdCnsType _ ty) = freeTypeVars' ty
+
+    freeTypeVarsVarCov :: VariantType pol -> [TVar]
+    freeTypeVarsVarCov (CovariantType ty)       = freeTypeVars' ty
+    freeTypeVarsVarCov (ContravariantType ty) = freeTypeVars' ty
 
     freeTypeVarsCtxt :: LinearContext pol -> [TVar]
     freeTypeVarsCtxt ctxt = concat (freeTypeVarsPC <$> ctxt)
@@ -157,10 +180,14 @@ substituteType m var@(TyVar NegRep _ tv) =
 -- Other cases
 substituteType m (TyData polrep mtn args) = TyData polrep mtn (substituteXtorSig m <$> args)
 substituteType m (TyCodata polrep mtn args) = TyCodata polrep mtn (substituteXtorSig m <$> args)
-substituteType m (TyNominal rep kind nm args_cov args_contra) = TyNominal rep kind nm (substituteType m <$> args_cov) (substituteType m <$> args_contra)
+substituteType m (TyNominal rep kind nm args) = TyNominal rep kind nm (substituteVariantType m <$> args)
 substituteType m (TySet rep kind args) = TySet rep kind (substituteType m <$> args)
 substituteType m (TyRec rep tv arg) = TyRec rep tv (substituteType m arg)
 substituteType _ t@(TyPrim _ _) = t
+
+substituteVariantType :: Map TVar (Typ Pos, Typ Neg) -> VariantType pol -> VariantType pol
+substituteVariantType m (CovariantType ty) = CovariantType (substituteType m ty)
+substituteVariantType m (ContravariantType ty) = ContravariantType (substituteType m ty)
 
 substituteXtorSig :: Map TVar (Typ Pos, Typ Neg) -> XtorSig pol -> XtorSig pol
 substituteXtorSig m MkXtorSig { sig_name, sig_args } =  MkXtorSig sig_name (substituteContext m sig_args)

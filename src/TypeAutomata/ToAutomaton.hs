@@ -162,6 +162,14 @@ insertXtors dc pol mtn xtors = do
 insertPCType :: PrdCnsType pol -> TTA Node
 insertPCType (PrdCnsType _ ty) = insertType ty
 
+insertVariantType :: VariantType pol -> TTA (Node, Variance)
+insertVariantType (CovariantType ty) = do
+  node <- insertType ty
+  pure (node, Covariant)
+insertVariantType (ContravariantType ty) = do
+  node <- insertType ty
+  pure (node, Contravariant)
+
 insertType :: Typ pol -> TTA Node
 insertType (TyVar rep _ tv) = lookupTVar rep tv
 insertType (TySet rep _ tys) = do
@@ -181,14 +189,12 @@ insertType (TyRec rep rv ty) = do
   return newNode
 insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep _ tn contraArgs covArgs) = do
+insertType (TyNominal rep _ tn args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, length contraArgs, length covArgs) })
-  contraArgNodes <- forM contraArgs insertType
-  covArgNodes <- forM covArgs insertType
-  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn Contravariant i)) <$> enumerate contraArgNodes)
-  insertEdges ((\(i, n) -> (newNode, n, TypeArgEdge tn Covariant (length contraArgNodes + i))) <$> enumerate covArgNodes)
+  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, toVariance <$> args) })
+  argNodes <- forM args insertVariantType
+  insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode
 insertType (TyPrim rep pt) = do
   let pol = polarityRepToPol rep
