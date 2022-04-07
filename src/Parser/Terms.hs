@@ -257,14 +257,17 @@ cocaseRestP' startPos = do
 -- XMatches
 --------------------------------------------------------------------------------------------
 
-cmdcaseP :: Parser (CST.CommandCase, SourcePos)
+cmdcaseP :: Parser (CST.CmdCase, SourcePos)
 cmdcaseP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
   (args,_) <- bindingSiteP
   _ <- symbolP SymDoubleRightArrow
   (cmd, endPos) <- cstcommandP
-  let pmcase = (Loc startPos endPos, xt, args, cmd)
+  let pmcase = CST.MkCmdCase { cmdcase_ext  = Loc startPos endPos
+                             , cmdcase_name = xt
+                             , cmdcase_args = args
+                             , cmdcase_cmd  = cmd }
   return (pmcase, endPos)
 
 
@@ -279,7 +282,10 @@ termCaseP = do
   (args,_) <- bindingSiteP
   _ <- symbolP SymDoubleRightArrow
   (res, endPos) <- termTopP
-  let pmcase = (Loc startPos endPos, xt, args, res)
+  let pmcase = CST.MkTermCase { tmcase_ext = Loc startPos endPos
+                              , tmcase_name = xt
+                              , tmcase_args = args
+                              , tmcase_term = res }
   return (pmcase, endPos)
 
 
@@ -294,7 +300,11 @@ termCaseIP = do
   (bs, _) <- bindingSiteIP
   _ <- symbolP SymDoubleRightArrow
   (res, endPos) <- termTopP
-  return ((Loc startPos endPos, xt, bs, res), endPos)
+  let pmcase = CST.MkTermCaseI { tmcasei_ext = Loc startPos endPos
+                               , tmcasei_name = xt
+                               , tmcasei_args = bs
+                               , tmcasei_term = res }
+  return (pmcase, endPos)
 
 --------------------------------------------------------------------------------------------
 -- CST-Sugar

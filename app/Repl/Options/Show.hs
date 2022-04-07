@@ -11,7 +11,6 @@ import Data.Text qualified as T
 import System.Console.Repline ()
 
 import Parser.Parser ( programP )
-import Pretty.Pretty ( NamedRep(NamedRep) )
 import Pretty.Program ()
 import Repl.Repl
     ( prettyText,
@@ -46,11 +45,11 @@ showCmd str = do
   let s = MkFreeVarName (trim str)
   env <- gets replEnv
   case M.lookup s (prdEnv env) of
-    Just (prd,_,_) -> prettyRepl (NamedRep prd)
+    Just (prd,_,_) -> prettyRepl prd
     Nothing -> case M.lookup s (cnsEnv env) of
-      Just (cns,_,_) -> prettyRepl (NamedRep cns)
+      Just (cns,_,_) -> prettyRepl cns
       Nothing -> case M.lookup s (cmdEnv env) of
-        Just (cmd,_) -> prettyRepl (NamedRep cmd)
+        Just (cmd,_) -> prettyRepl cmd
         Nothing -> prettyText "Not in environment."
 
 showOption :: Option
