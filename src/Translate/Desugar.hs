@@ -136,8 +136,37 @@ desugarTerm (AST.CocasePrdI loc _ ns cocases) =
   in
     Core.XMatch loc PrdRep ns $ desugarComatchCase <$> cocases
 
+desugarTerm (AST.CocaseCnsI loc _ ns cocases) =
+  let
+    desugarComatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
+      let args = as1 ++ [(Cns,Nothing)] ++ as2 in
+      Core.MkCmdCase loc xt args $ Core.Apply loc Nothing (Core.BoundVar loc PrdRep (0,length as1)) (desugarTerm t)
+  in
+    Core.XMatch loc PrdRep ns $ desugarComatchCase <$> cocases
+
+desugarTerm (AST.CaseCnsPrdI loc _ ns tmcasesI) = undefined
+desugarTerm (AST.CaseCnsCnsI _ _ _ _) = undefined
+desugarTerm (AST.Semicolon _ _ _ _ _ _ _) = undefined
+
+desugarTerm (AST.CocaseCns loc PrdRep _ ns t tmcasesI) =
+  let
+    desugarComatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
+      let args = as1 ++ [(Prd,Nothing)] ++ as2 in
+      Core.MkCmdCase loc xt args $ Core.Apply loc Nothing (desugarTerm t) (Core.BoundVar loc CnsRep (0,length as1))
+    cmd = Core.Apply loc Nothing (Core.XMatch loc PrdRep ns  (desugarComatchCase <$> tmcasesI)) (desugarTerm t)
+  in Core.MuAbs loc PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] (Core.shiftCmd cmd)
+desugarTerm (AST.CocaseCns loc CnsRep _ ns t tmcasesI) =
+  let
+    desugarComatchCase :: AST.TermCaseI 'Cns -> Core.CmdCase
+    desugarComatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
+      let args = as1 ++ [(Prd,Nothing)] ++ as2 in
+      Core.MkCmdCase loc xt args $ Core.Apply loc Nothing (Core.BoundVar loc PrdRep (0,length as1)) (desugarTerm t)
+    cmd = Core.Apply loc Nothing (Core.XMatch loc PrdRep ns  (desugarComatchCase <$> tmcasesI)) (desugarTerm t)
+  in Core.MuAbs loc CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] (Core.shiftCmd cmd)
+
+
 desugarCmdCase :: AST.CmdCase -> Core.CmdCase
-desugarCmdCase (AST.MkCmdCase loc xt args cmd) = 
+desugarCmdCase (AST.MkCmdCase loc xt args cmd) =
   Core.MkCmdCase loc xt args (desugarCmd cmd)
 
 desugarCmd :: AST.Command -> Core.Command
@@ -181,7 +210,7 @@ desugarProgram ps = desugarDecl <$> ps
 
 desugarEnvironment :: Environment -> EvalEnv
 desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv }) = (prd,cns,cmd)
-  where 
+  where
     prd = (\(tm,_,_) -> (desugarTerm tm)) <$> prdEnv
     cns = (\(tm,_,_) -> (desugarTerm tm)) <$> cnsEnv
     cmd = (\(cmd,_) -> (desugarCmd cmd)) <$> cmdEnv
