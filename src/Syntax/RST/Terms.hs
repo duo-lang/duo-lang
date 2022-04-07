@@ -67,15 +67,17 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 --        |
 --    tmcase_name
 --
-data TermCase = MkTermCase
+data TermCase (pc :: PrdCns)= MkTermCase
   { tmcase_ext  :: Loc
   , tmcase_name :: XtorName
   , tmcase_args :: [(PrdCns, Maybe FreeVarName)]
-  , tmcase_term :: Term Prd
+  , tmcase_term :: Term pc
   }
 
-deriving instance Eq TermCase
-deriving instance Show TermCase
+deriving instance Eq (TermCase Prd)
+deriving instance Eq (TermCase Cns)
+deriving instance Show (TermCase Prd)
+deriving instance Show (TermCase Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 -- Does bind an implicit argument (in contrast to TermCase).
@@ -88,17 +90,19 @@ deriving instance Show TermCase
 --        |
 --    tmcasei_name
 --
-data TermCaseI = MkTermCaseI
+data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_ext  :: Loc
   , tmcasei_name :: XtorName
   -- | The pattern arguments
   -- The empty tuple stands for the implicit argument (*)
   , tmcasei_args :: ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)])
-  , tmcasei_term :: Term Prd
+  , tmcasei_term :: Term pc
   }
 
-deriving instance Eq TermCaseI
-deriving instance Show TermCaseI
+deriving instance Eq (TermCaseI Prd)
+deriving instance Eq (TermCaseI Cns)
+deriving instance Show (TermCaseI Prd)
+deriving instance Show (TermCaseI Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -147,12 +151,12 @@ data Term (pc :: PrdCns) where
   --
   -- case e of { ... }
   --
-  Case :: Loc -> NominalStructural -> Term Prd -> [TermCase] -> Term Prd
+  Case :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
   -- | A copattern match:
   --
   -- cocase { ... }
   --
-  Cocase :: Loc -> NominalStructural -> [TermCaseI] -> Term Prd
+  Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -300,7 +304,7 @@ freeVarNamesToXtorArgs bs = f <$> bs
     f (Cns, Nothing) = error "Create Names first!"
     f (Cns, Just fv) = CnsTerm $ FreeVar defaultLoc CnsRep fv
 
-openTermCase :: TermCase -> TermCase
+openTermCase :: TermCase pc -> TermCase pc
 openTermCase MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
     MkTermCase { tmcase_ext = tmcase_ext
                , tmcase_name = tmcase_name
@@ -308,7 +312,7 @@ openTermCase MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
                , tmcase_term = termOpening (freeVarNamesToXtorArgs tmcase_args) (openTermComplete tmcase_term)
                }
 
-openTermCaseI :: TermCaseI -> TermCaseI
+openTermCaseI :: TermCaseI pc -> TermCaseI pc
 openTermCaseI MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
   MkTermCaseI { tmcasei_ext = tmcasei_ext
               , tmcasei_name = tmcasei_name

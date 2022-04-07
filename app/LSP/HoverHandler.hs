@@ -4,10 +4,8 @@ module LSP.HoverHandler
   ) where
 
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
-import Data.Either (fromRight)
 import Data.IORef (readIORef, modifyIORef)
 import Data.List (sortBy )
-import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text (Text)
@@ -18,14 +16,14 @@ import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap, sendInfo )
 import LSP.MegaparsecToLSP
 import System.Log.Logger ( debugM )
 
-import Driver.Environment
 import Pretty.Pretty ( ppPrint )
 import Pretty.Common ()
+import Pretty.Types ()
 import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
-import Syntax.AST.Terms qualified as Terms
+import Syntax.AST.Terms qualified as AST
+import Syntax.AST.Program qualified as AST
 import Syntax.RST.Types
-import TypeTranslation
 import Utils (Loc)
 
 ---------------------------------------------------------------------------------
@@ -45,10 +43,10 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Just cache -> responder (Right (lookupInHoverMap pos cache))
 
 
-updateHoverCache :: Uri -> Environment -> LSPMonad ()
-updateHoverCache uri env = do
+updateHoverCache :: Uri -> AST.Program -> LSPMonad ()
+updateHoverCache uri prog = do
   MkLSPConfig ref <- getConfig
-  liftIO $ modifyIORef ref (M.insert uri (lookupHoverEnv env))
+  liftIO $ modifyIORef ref (M.insert uri (toHoverMap prog))
 
 ---------------------------------------------------------------------------------
 -- Computations on positions and ranges
@@ -107,10 +105,10 @@ mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 -- Converting Terms to a HoverMap
 ---------------------------------------------------------------------------------
 
-instance ToHoverMap TermCase where
+instance ToHoverMap (TermCase pc) where
   toHoverMap (MkTermCase _ _ _ tm) = toHoverMap tm
 
-instance ToHoverMap TermCaseI where
+instance ToHoverMap (TermCaseI pc) where
   toHoverMap (MkTermCaseI _ _ _ tm) = toHoverMap tm
 
 instance ToHoverMap CmdCase where
@@ -192,7 +190,7 @@ applyToHoverMap :: Range -> Maybe MonoKind -> HoverMap
 applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
-instance ToHoverMap Terms.Command where
+instance ToHoverMap AST.Command where
   toHoverMap (Apply loc kind prd cns) = M.unions [toHoverMap prd, toHoverMap cns, applyToHoverMap (locToRange loc) kind]
   toHoverMap (Print _ prd cmd)        = M.unions [toHoverMap prd, toHoverMap cmd]
   toHoverMap (Read _ cns)             = toHoverMap cns
@@ -208,52 +206,15 @@ instance ToHoverMap Substitution where
 -- Converting an environment to a HoverMap
 ---------------------------------------------------------------------------------
 
-prdEnvToHoverMap :: Map FreeVarName (Term Prd, Loc, TypeScheme Pos) -> HoverMap
-prdEnvToHoverMap = M.unions . fmap f . M.toList
-  where
-    f (_,(e,loc,ty)) =
-      let
-        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover = toHoverMap e
-      in
-        M.union outerHover termHover
+instance ToHoverMap AST.Declaration where
+  toHoverMap (AST.PrdCnsDecl _loc _doc _rep _isrec _fv Nothing tm) = toHoverMap tm
+  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Just tys) tm) = M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
+  toHoverMap (AST.CmdDecl _loc _doc _fv cmd)  = toHoverMap cmd
+  toHoverMap (AST.DataDecl _loc _doc _decl) = M.empty
+  toHoverMap (AST.XtorDecl _loc _doc _dc _xt _args _eo) = M.empty
+  toHoverMap (AST.ImportDecl _loc _doc _mn) = M.empty
+  toHoverMap (AST.SetDecl _loc _doc _txt) = M.empty
+  toHoverMap (AST.TyOpDecl _loc _doc _op _prec _assoc _tn) = M.empty
 
-cnsEnvToHoverMap :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg) -> HoverMap
-cnsEnvToHoverMap = M.unions . fmap f . M.toList
-  where
-    f (_,(e,loc,ty)) =
-      let
-        outerHover = M.fromList [(locToRange loc, mkHover (ppPrint ty) (locToRange loc))]
-        termHover = toHoverMap e
-      in
-        M.union outerHover termHover
-
-
-cmdEnvToHoverMap :: Map FreeVarName (Terms.Command, Loc) -> HoverMap
-cmdEnvToHoverMap = M.unions. fmap f . M.toList
-  where
-    f (_, (cmd,_)) = toHoverMap cmd
-
-declEnvToHoverMap :: Environment -> [(Loc,DataDecl)] -> HoverMap
-declEnvToHoverMap env ls =
-  let
-    ls' = (\(loc,decl) -> (locToRange loc, mkHover (printTranslation decl) (locToRange loc))) <$> ls
-  in
-    M.fromList ls'
-  where
-    printTranslation :: DataDecl -> Text
-    printTranslation NominalDecl{..} = case data_polarity of
-      Data   -> ppPrint $ fromRight (error "boom") $ translateTypeUpper env (TyNominal NegRep Nothing data_name [] [])
-      Codata -> ppPrint $ fromRight (error "boom") $ translateTypeLower env (TyNominal PosRep Nothing data_name [] [])
-
-lookupHoverEnv :: Environment -> HoverMap
-lookupHoverEnv env@MkEnvironment { prdEnv, cnsEnv, cmdEnv, declEnv } =
-  M.unions [ prdEnvToHoverMap prdEnv
-           , cnsEnvToHoverMap cnsEnv
-           , cmdEnvToHoverMap cmdEnv
-           , declEnvToHoverMap env declEnv
-           ]
-
-
-
-
+instance ToHoverMap AST.Program where
+  toHoverMap prog = M.unions (toHoverMap <$> prog)

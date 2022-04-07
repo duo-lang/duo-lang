@@ -27,20 +27,20 @@ instance PrettyAnn RST.CmdCase where
       annSymbol "=>" <+>
       prettyAnn cmdcase_cmd
 
-instance PrettyAnn AST.TermCase where
+instance PrettyAnn (AST.TermCase pc) where
   prettyAnn termcase = prettyAnn (forgetTypesTermCase termcase)
 
-instance PrettyAnn RST.TermCase where
+instance PrettyAnn (RST.TermCase pc) where
   prettyAnn RST.MkTermCase{ tmcase_name, tmcase_args, tmcase_term } =
       prettyAnn tmcase_name <>
       printCasesArgs tmcase_args <+>
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
-instance PrettyAnn AST.TermCaseI where
+instance PrettyAnn (AST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (forgetTypesTermCaseI termcasei)
 
-instance PrettyAnn RST.TermCaseI where
+instance PrettyAnn (RST.TermCaseI pc) where
   prettyAnn RST.MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
     prettyAnn tmcasei_name <>
     printCasesArgs as1 <>

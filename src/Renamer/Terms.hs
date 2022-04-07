@@ -49,7 +49,7 @@ lowerSubstitutionI (subst1, _, subst2) = do
 
 
 
-lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM RST.TermCase
+lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM (RST.TermCase Prd)
 lowerTermCase dc (loc, xtor, bs, tm) = do
   tm' <- lowerTerm PrdRep tm
   checkXtorArity loc (xtor, dc) (fst <$> bs)
@@ -63,7 +63,7 @@ termCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
 termCasesToNS [] _ = pure Structural
 termCasesToNS ((loc,xtor,_,_):_) dc = fst <$> lookupXtor loc (xtor, dc)
 
-lowerTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM RST.TermCaseI
+lowerTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM (RST.TermCaseI Prd)
 lowerTermCaseI dc (loc, xtor, (bs1,(),bs2), tm) = do
   tm' <- lowerTerm PrdRep tm
   checkXtorArity loc (xtor,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))

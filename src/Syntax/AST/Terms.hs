@@ -72,15 +72,17 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 --        |
 --    tmcase_name
 --
-data TermCase = MkTermCase
+data TermCase (pc :: PrdCns) = MkTermCase
   { tmcase_ext  :: Loc
   , tmcase_name :: XtorName
   , tmcase_args :: [(PrdCns, Maybe FreeVarName)]
-  , tmcase_term :: Term Prd
+  , tmcase_term :: Term pc
   }
 
-deriving instance Eq TermCase
-deriving instance Show TermCase
+deriving instance Eq (TermCase Prd)
+deriving instance Eq (TermCase Cns)
+deriving instance Show (TermCase Prd)
+deriving instance Show (TermCase Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 -- Does bind an implicit argument (in contrast to TermCase).
@@ -93,17 +95,19 @@ deriving instance Show TermCase
 --        |
 --    tmcasei_name
 --
-data TermCaseI = MkTermCaseI
+data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_ext  :: Loc
   , tmcasei_name :: XtorName
   -- | The pattern arguments
   -- The empty tuple stands for the implicit argument (*)
   , tmcasei_args :: ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)])
-  , tmcasei_term :: Term Prd
+  , tmcasei_term :: Term pc
   }
 
-deriving instance Eq TermCaseI
-deriving instance Show TermCaseI
+deriving instance Eq (TermCaseI Prd)
+deriving instance Eq (TermCaseI Cns)
+deriving instance Show (TermCaseI Prd)
+deriving instance Show (TermCaseI Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -152,12 +156,12 @@ data Term (pc :: PrdCns) where
   --
   -- case e of { ... }
   --
-  Case :: Loc -> Maybe (Typ Pos) -> NominalStructural -> Term Prd -> [TermCase] -> Term Prd
+  Case :: Loc -> Maybe (Typ Pos) -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
   -- | A copattern match:
   --
   -- cocase { ... }
   --
-  Cocase :: Loc -> Maybe (Typ Pos) -> NominalStructural -> [TermCaseI] -> Term Prd
+  Cocase :: Loc -> Maybe (Typ Pos) -> NominalStructural -> [TermCaseI Prd] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -353,11 +357,11 @@ termLocallyClosedRec env (Cocase _ _ _ cases) =
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
-termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase -> Either Error ()
+termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase pc -> Either Error ()
 termCaseLocallyClosedRec env (MkTermCase _ _ args e) = do
   termLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) e
 
-termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI -> Either Error ()
+termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI pc -> Either Error ()
 termCaseILocallyClosedRec env (MkTermCaseI _ _ (as1, (), as2) e) =
   let newArgs = (\(x,_) -> (x,())) <$> as1 ++ [(Cns, Nothing)] ++ as2 in
   termLocallyClosedRec (newArgs:env) e
@@ -403,10 +407,10 @@ shiftTermRec n (Cocase loc annot ns cases) =
 shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
 
-shiftTermCaseRec :: Int -> TermCase -> TermCase
+shiftTermCaseRec :: Int -> TermCase pc -> TermCase pc
 shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)
 
-shiftTermCaseIRec :: Int -> TermCaseI -> TermCaseI
+shiftTermCaseIRec :: Int -> TermCaseI pc -> TermCaseI pc
 shiftTermCaseIRec n (MkTermCaseI ext xt args e) = MkTermCaseI ext xt args (shiftTermRec n e)
 
 shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
