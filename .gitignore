@@ -24,3 +24,4 @@ cabal.project.local~
 graphs/
 .history
 lsplog.txt
+package-lock.json

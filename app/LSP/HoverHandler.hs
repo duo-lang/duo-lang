@@ -170,14 +170,14 @@ cocaseToHoverMap loc ty ns = mkHoverMap loc msg
     msg = (ppPrint ns) <> " cocase (Right-Intro)\nType: " <> (ppPrint ty)
 
 instance ToHoverMap (Term pc) where
-  toHoverMap (BoundVar loc _ (Just ty) _)       = boundVarToHoverMap loc ty
-  toHoverMap (FreeVar loc _ (Just ty) _)        = freeVarToHoverMap loc ty
-  toHoverMap (Xtor loc pc (Just ty) ns _ args)  = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
-  toHoverMap (XMatch loc pc (Just ty) ns cases) = M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
-  toHoverMap (MuAbs loc pc (Just ty) _ cmd)     = M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
-  toHoverMap (Dtor loc _ (Just ty) ns _ e (s1,_,s2))   = M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
-  toHoverMap (Case loc (Just ty) ns e cases)         = M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
-  toHoverMap (Cocase loc (Just ty) ns cocases)       = M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
+  toHoverMap (BoundVar loc _ ty _)       = boundVarToHoverMap loc ty
+  toHoverMap (FreeVar loc _ ty _)        = freeVarToHoverMap loc ty
+  toHoverMap (Xtor loc pc ty ns _ args)  = M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
+  toHoverMap (XMatch loc pc ty ns cases) = M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
+  toHoverMap (MuAbs loc pc ty _ cmd)     = M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
+  toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2))   = M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
+  toHoverMap (CasePrdPrd loc ty ns e cases)         = M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
+  toHoverMap (Cocase loc ty ns cocases)       = M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 loc _)            = mkHoverMap loc "Raw #I64 Literal"
   toHoverMap (PrimLitF64 loc _)            = mkHoverMap loc "Raw #F64 Literal"
   toHoverMap _ = M.empty
