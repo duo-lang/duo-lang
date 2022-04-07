@@ -2,26 +2,29 @@ module Eval.Definition where
 
 import Control.Monad.Except
 import Control.Monad.Reader
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.List (find)
 import Text.Read (readMaybe)
 
-import Driver.Environment (Environment)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.Common
-import Syntax.AST.Terms
+import Syntax.Core.Terms
 import Utils
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT (Environment, ()) (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader (Environment, ()), MonadIO)
+type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
 
-runEval :: EvalM a -> Environment -> IO (Either Error a)
-runEval e env = runExceptT (runReaderT (unEvalM e) (env, ()))
+newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT Error IO) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader EvalEnv, MonadIO)
+
+runEval :: EvalM a -> EvalEnv -> IO (Either Error a)
+runEval e env = runExceptT (runReaderT (unEvalM e) env)
 
 ---------------------------------------------------------------------------------
 -- Helper functions
@@ -40,14 +43,14 @@ checkArgs _md [] [] = return ()
 checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
 checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
 checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
-                                   , ppPrint cmd
+                                   ,  ppPrint cmd
                                    , "Argument lengths don't coincide."
                                    ]
 
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc PrdRep Nothing Nominal (MkXtorName "Z") []
-convertInt n = Xtor defaultLoc PrdRep Nothing Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc PrdRep Nominal (MkXtorName "Z") []
+convertInt n = Xtor defaultLoc PrdRep Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)
@@ -58,3 +61,22 @@ readInt = do
     Nothing        -> putStrLn "Incorrect input." >> readInt
     Just i | i < 0 -> putStrLn "Incorrect input." >> readInt
     Just i         -> pure (convertInt i)
+
+lookupCommand :: FreeVarName -> EvalM Command
+lookupCommand fv = do
+  (_,_,env) <- ask
+  case M.lookup fv env of
+    Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
+    Just cmd -> pure cmd
+
+lookupTerm :: PrdCnsRep pc -> FreeVarName -> EvalM (Term pc)
+lookupTerm PrdRep fv = do
+  (env,_,_) <- ask
+  case M.lookup fv env of
+    Nothing -> throwEvalError ["Producer " <> ppPrint fv <> " not in environment."]
+    Just prd -> pure prd
+lookupTerm CnsRep fv = do
+  (_,env,_) <- ask
+  case M.lookup fv env of
+    Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
+    Just prd -> pure prd

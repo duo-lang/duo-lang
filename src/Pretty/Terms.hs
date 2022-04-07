@@ -8,9 +8,11 @@ import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Terms qualified as RST
+import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Data.Bifunctor
+import Translate.EmbedCore
 import Translate.ForgetTypes
 import Translate.Reparse
 
@@ -20,6 +22,9 @@ import Translate.Reparse
 
 -- CmdCase
 
+instance PrettyAnn Core.CmdCase where
+  prettyAnn cmdcase = prettyAnn (embedCmdCase cmdcase)
+
 instance PrettyAnn AST.CmdCase where
   prettyAnn cmdcase = prettyAnn (forgetTypesCmdCase cmdcase)
 
@@ -27,7 +32,7 @@ instance PrettyAnn RST.CmdCase where
   prettyAnn cmdcase = prettyAnn (reparseCmdCase cmdcase)
 
 instance PrettyAnn CST.CmdCase where
-  prettyAnn CST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
+  prettyAnn CST.MkCmdCase{ cmdcase_name, cmdcase_args, cmdcase_cmd } =
       prettyAnn cmdcase_name <>
       printCasesArgs cmdcase_args <+>
       annSymbol "=>" <+>
@@ -49,7 +54,6 @@ instance PrettyAnn CST.TermCase where
       prettyAnn tmcase_term
 
 -- TermCaseI
-
 
 instance PrettyAnn (AST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (forgetTypesTermCaseI termcasei)
@@ -146,6 +150,9 @@ instance PrettyAnn (AST.Term pc) where
 instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
 
+instance PrettyAnn (Core.Term pc) where
+  prettyAnn tm = prettyAnn (embedCoreTerm tm)
+
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
     prettyAnn v
@@ -213,6 +220,9 @@ instance PrettyAnn AST.Command where
 
 instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)
+
+instance PrettyAnn Core.Command where
+  prettyAnn cmd = prettyAnn (embedCoreCommand cmd)
 
 instance PrettyAnn CST.Command where
   prettyAnn (CST.ExitSuccess _)=

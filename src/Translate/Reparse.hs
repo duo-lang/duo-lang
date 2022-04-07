@@ -1,9 +1,9 @@
 module Translate.Reparse
   ( reparseTerm
+  , reparsePCTerm
   , reparseCommand
   , reparseDecl
   , reparseProgram
-  , reparsePCTerm
   , reparseSubst
   , reparseSubstI
   , reparseCmdCase

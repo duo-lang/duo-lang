@@ -12,9 +12,11 @@ import Pretty.Common
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.AST.Program qualified as AST
+import Syntax.Core.Program qualified as Core
 import Syntax.Common
 import Driver.Environment
 import Translate.ForgetTypes (forgetTypesDecl)
+import Translate.EmbedCore
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -61,6 +63,9 @@ prettyTyOpDecl op assoc prec ty =
   annKeyword "type" <+> annKeyword "operator" <+>
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
   annSymbol ":=" <+> prettyAnn ty <> semi
+
+instance PrettyAnn Core.Declaration where
+  prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
 instance PrettyAnn AST.Declaration where
   prettyAnn decl = prettyAnn (forgetTypesDecl decl)
