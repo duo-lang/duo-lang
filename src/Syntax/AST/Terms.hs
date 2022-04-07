@@ -209,10 +209,10 @@ instance Zonk (Term pc) where
     MuAbs loc rep (zonk bisubst ty) fv (zonk bisubst cmd)
   zonk bisubst (Dtor loc rep ty ns xt prd (subst1,pcrep,subst2)) =
     Dtor loc rep (zonk bisubst ty) ns xt (zonk bisubst prd) (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2)
-  zonk bisubst (CasePrdPrd loc ty ns prd cases) =
-    CasePrdPrd loc (zonk bisubst ty) ns (zonk bisubst prd) (zonk bisubst <$> cases)
-  zonk bisubst (Cocase loc ty ns cases) =
-    Cocase loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (Case loc rep ty ns prd cases) =
+    Case loc rep (zonk bisubst ty) ns (zonk bisubst prd) (zonk bisubst <$> cases)
+  zonk bisubst (CocasePrdI loc ty ns cases) =
+    CocasePrdI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
   zonk _ lit@PrimLitI64{} = lit
   zonk _ lit@PrimLitF64{} = lit
 
