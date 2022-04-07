@@ -4,7 +4,6 @@ module Parser.Program
   ) where
 
 import Control.Monad (void)
-import Control.Monad.Reader ( MonadReader(local) )
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (eol)
 
@@ -163,7 +162,7 @@ dataDeclP dc = do
           region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
         else
           do
-            let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
+            let xtorP = xtorDeclP
             (xtors, _pos) <- braces $ xtorP `sepBy` symbolP SymComma
             endPos <- symbolP SymSemi
             let decl = NominalDecl
