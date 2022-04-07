@@ -130,6 +130,7 @@ library
       TypeInference.Constraints
       TypeTranslation
       Translate.Desugar
+      Translate.EmbedCore
       Translate.Focusing
       Translate.Reparse
       Translate.ForgetTypes

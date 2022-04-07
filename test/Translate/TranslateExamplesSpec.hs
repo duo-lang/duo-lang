@@ -9,7 +9,7 @@ import Pretty.Errors ()
 import Pretty.Program ()
 import Syntax.RST.Program qualified as RST
 import Translate.Desugar
-import Translate.ForgetTypes
+import Translate.EmbedCore
 import Driver.Driver
 import TestUtils
 
@@ -26,7 +26,7 @@ spec = do
           case decls of
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-              let desugaredDecls :: RST.Program = forgetTypesProgram $ desugarProgram decls
+              let desugaredDecls :: RST.Program = embedCoreProg $ desugarProgram decls
               res <- runIO $ inferProgramIO' driverState desugaredDecls
               case res of
                 Left err -> do

@@ -149,6 +149,9 @@ instance PrettyAnn (AST.Term pc) where
 instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
 
+instance PrettyAnn (Core.Term pc) where
+  prettyAnn = undefined
+
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
     prettyAnn v
@@ -216,6 +219,9 @@ instance PrettyAnn AST.Command where
 
 instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)
+
+instance PrettyAnn Core.Command where
+  prettyAnn = undefined
 
 instance PrettyAnn CST.Command where
   prettyAnn (CST.ExitSuccess _)=
