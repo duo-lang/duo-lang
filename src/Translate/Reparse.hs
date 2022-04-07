@@ -223,20 +223,10 @@ isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = cas
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
 
-  
-  
-    -- Case :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
-  -- -- | A copattern match:
-  -- --
-  -- -- cocase { ... }
-  -- --
-  -- Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
-  -- -- | Primitive literals
-  -- PrimLitI64 :: Loc -> Integer -> Term Prd
-  -- PrimLitF64 :: Loc -> Double -> Term Prd
-
 embedTerm :: RST.Term pc -> CST.Term
-embedTerm (RST.BoundVar _ _ _) =
+embedTerm (isNumSTermRST -> Just i) =
+  CST.NatLit defaultLoc Nominal i
+embedTerm RST.BoundVar{} =
   error "Should have been removed by opening"
 embedTerm (RST.FreeVar loc _ fv) =
   CST.Var loc fv
@@ -309,8 +299,41 @@ embedTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1,
                   , tmcasei_term = embedTerm tmcasei_term}
 
 
+embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp 
+embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
+embedPrdCnsType (RST.PrdCnsType CnsRep ty) = CST.CnsType (embedType ty)
+
+embedXtorSig :: RST.XtorSig pol -> CST.XtorSig
+embedXtorSig RST.MkXtorSig { sig_name, sig_args } =
+  CST.MkXtorSig { sig_name = sig_name
+                , sig_args = embedPrdCnsType <$> sig_args
+                }
+
 embedType :: RST.Typ pol -> CST.Typ
-embedType = undefined
+embedType (RST.TyVar _ _ tv)=
+  CST.TyVar defaultLoc tv
+embedType (RST.TyData _ tn xtors) =
+  CST.TyXData defaultLoc Data tn (embedXtorSig <$> xtors)
+embedType (RST.TyCodata _ tn xtors) =
+  CST.TyXData defaultLoc Codata tn (embedXtorSig <$> xtors)
+embedType (RST.TyNominal _ _ nm tys1 tys2) =
+  CST.TyNominal defaultLoc nm ((embedType <$> tys1) ++ (embedType <$> tys2))
+embedType (RST.TySet PosRep _ []) =
+  CST.TyTop defaultLoc
+embedType (RST.TySet PosRep _ [ty1,ty2]) =
+  CST.TyBinOp defaultLoc (embedType ty1) UnionOp (embedType ty2)
+embedType (RST.TySet PosRep knd (ty1:tys)) =
+  CST.TyBinOp defaultLoc (embedType ty1) UnionOp (embedType (RST.TySet PosRep knd tys))
+embedType (RST.TySet NegRep _ []) =
+  CST.TyBot defaultLoc
+embedType (RST.TySet NegRep _ [ty1,ty2]) =
+  CST.TyBinOp defaultLoc (embedType ty1) InterOp (embedType ty2)
+embedType (RST.TySet NegRep knd (ty1:tys)) =
+  CST.TyBinOp defaultLoc (embedType ty1) InterOp (embedType (RST.TySet NegRep knd tys))
+embedType (RST.TyRec _ tv ty) =
+  CST.TyRec defaultLoc  tv (embedType ty)
+embedType (RST.TyPrim _ pt) =
+  CST.TyPrim defaultLoc pt
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_vars, ts_monotype } =
@@ -318,8 +341,15 @@ embedTypeScheme RST.TypeScheme { ts_vars, ts_monotype } =
                  , ts_monotype = embedType ts_monotype
                  }
 
+
 embedTyDecl :: RST.DataDecl -> CST.DataDecl
-embedTyDecl = undefined
+embedTyDecl RST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } =
+  CST.NominalDecl { data_refined = data_refined
+                  , data_name = data_name
+                  , data_polarity = data_polarity
+                  , data_kind = Just data_kind
+                  , data_xtors = embedXtorSig <$> fst data_xtors
+                  }
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
