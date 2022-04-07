@@ -36,7 +36,7 @@ instance PrettyAnn NodeLabel where
       printCodat codat = mempty <+> cat (punctuate " , " (prettyAnn <$> S.toList codat)) <+> mempty
       printNominal tnSet = case S.toList tnSet of
         [] -> Nothing
-        tns -> Just (intercalateX ";" ((\(tn, _, _) -> prettyAnn tn) <$> tns))
+        tns -> Just (intercalateX ";" ((\(tn, _) -> prettyAnn tn) <$> tns))
       printPrimitives tpSet = case S.toList tpSet of
         [] -> Nothing
         tps -> Just (intercalateX ";" (prettyAnn <$> tps))

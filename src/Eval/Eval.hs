@@ -69,12 +69,12 @@ evalApplyOnce _ (BoundVar _ PrdRep i) _ =
   throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
 evalApplyOnce _ _ (BoundVar _ CnsRep i) =
   throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
--- Match applied to Match, or Xtor to Xtor can't evaluate
-evalApplyOnce _ XMatch{} XMatch{} =
-  throwEvalError ["Cannot evaluate match applied to match"]
-evalApplyOnce _ Xtor{} Xtor{} =
-  throwEvalError ["Cannot evaluate constructor applied to destructor"]
-
+-- Everything else should be excluded by typechecking
+evalApplyOnce _ prd cns =
+  throwEvalError [ "Cannot evaluate."
+                 , "Producer: " <> ppPrint prd
+                 , "Consumer:"  <> ppPrint cns
+                 ]
 
 -- | Return just the final evaluation result
 evalM :: Command -> EvalM Command

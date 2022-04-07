@@ -48,6 +48,10 @@ data PrdCnsTerm where
 deriving instance Eq PrdCnsTerm
 deriving instance Show PrdCnsTerm
 
+instance Zonk PrdCnsTerm where
+  zonk bisubst (PrdTerm tm) = PrdTerm (zonk bisubst tm)
+  zonk bisubst (CnsTerm tm) = CnsTerm (zonk bisubst tm)
+
 type Substitution = [PrdCnsTerm]
 
 -- | A SubstitutionI is like a substitution where one of the arguments has been
@@ -79,6 +83,10 @@ data TermCase (pc :: PrdCns) = MkTermCase
   , tmcase_term :: Term pc
   }
 
+instance Zonk (TermCase pc) where
+  zonk bisubst (MkTermCase loc nm args tm) =
+    MkTermCase loc nm args (zonk bisubst tm)
+
 deriving instance Eq (TermCase Prd)
 deriving instance Eq (TermCase Cns)
 deriving instance Show (TermCase Prd)
@@ -104,6 +112,10 @@ data TermCaseI (pc :: PrdCns) = MkTermCaseI
   , tmcasei_term :: Term pc
   }
 
+instance Zonk (TermCaseI pc) where
+  zonk bisubst (MkTermCaseI loc nm args tm) =
+    MkTermCaseI loc nm args (zonk bisubst tm)
+
 deriving instance Eq (TermCaseI Prd)
 deriving instance Eq (TermCaseI Cns)
 deriving instance Show (TermCaseI Prd)
@@ -122,6 +134,10 @@ data CmdCase = MkCmdCase
   , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
   , cmdcase_cmd  :: Command
   }
+
+instance Zonk CmdCase where
+  zonk bisubst (MkCmdCase loc nm args cmd) =
+    MkCmdCase loc nm args (zonk bisubst cmd)
 
 deriving instance Eq CmdCase
 deriving instance Show CmdCase
@@ -180,6 +196,26 @@ data Term (pc :: PrdCns) where
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
 
+instance Zonk (Term pc) where
+  zonk bisubst (BoundVar loc rep ty idx) =
+    BoundVar loc rep (zonk bisubst ty) idx
+  zonk bisubst (FreeVar loc rep ty nm)  =
+    FreeVar loc rep (zonk bisubst ty) nm
+  zonk bisubst (Xtor loc rep ty ns xt subst) =
+    Xtor loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst)
+  zonk bisubst (XMatch loc rep ty ns cases) =
+    XMatch loc rep (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (MuAbs loc rep ty fv cmd) =
+    MuAbs loc rep (zonk bisubst ty) fv (zonk bisubst cmd)
+  zonk bisubst (Dtor loc rep ty ns xt prd (subst1,pcrep,subst2)) =
+    Dtor loc rep (zonk bisubst ty) ns xt (zonk bisubst prd) (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2)
+  zonk bisubst (CasePrdPrd loc ty ns prd cases) =
+    CasePrdPrd loc (zonk bisubst ty) ns (zonk bisubst prd) (zonk bisubst <$> cases)
+  zonk bisubst (Cocase loc ty ns cases) =
+    Cocase loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk _ lit@PrimLitI64{} = lit
+  zonk _ lit@PrimLitF64{} = lit
+
 deriving instance Eq (Term Prd)
 deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
@@ -231,6 +267,22 @@ data Command where
   CocaseCnsCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
   CocaseCnsPrdI :: Loc -> NominalStructural -> Term Cns -> [TermCaseI Prd] -> Command
   CocaseCnsCnsI :: Loc -> NominalStructural -> Term Cns -> [TermCaseI Cns] -> Command
+
+instance Zonk Command where
+  zonk bisubst (Apply ext kind prd cns) =
+    Apply ext kind (zonk bisubst prd) (zonk bisubst cns)
+  zonk bisubst (Print ext prd cmd) =
+    Print ext (zonk bisubst prd) (zonk bisubst cmd)
+  zonk bisubst (Read ext cns) =
+    Read ext (zonk bisubst cns)
+  zonk _ (Jump ext fv) =
+    Jump ext fv
+  zonk _ (ExitSuccess ext) =
+    ExitSuccess ext
+  zonk _ (ExitFailure ext) =
+    ExitFailure ext
+  zonk bisubst (PrimOp ext pt op subst) =
+    PrimOp ext pt op (zonk bisubst <$> subst)
 
 deriving instance Eq Command
 deriving instance Show Command

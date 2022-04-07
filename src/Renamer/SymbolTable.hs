@@ -76,7 +76,7 @@ createSymbolTable ((XtorDecl _ _ dc xt args _):decls) =
 createSymbolTable ((DataDecl _ _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }):decls) =
   -- Create the default polykind
   let polyKind = case data_kind of
-                    Nothing -> MkPolyKind [] [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                    Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
       ns = case data_refined of
                Refined -> Refinement

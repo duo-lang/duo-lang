@@ -15,11 +15,11 @@ import Data.Maybe (fromJust)
 import Data.Functor.Identity
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
-import Data.Map
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
@@ -54,7 +54,10 @@ autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
-  return $ TypeScheme (tvars startState) monotype
+  pure TypeScheme { ts_loc = defaultLoc
+                  , ts_vars = tvars startState
+                  , ts_monotype = monotype
+                  }
 
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
@@ -158,17 +161,17 @@ nodeToTypeNoCache rep i = do
         return $ TyCodata rep (Just tn) sig
     -- Creating Nominal types
     let adjEdges = lsuc gr i
-    let typeArgsMap = fromList [((tn, i), t) | (t, TypeArgEdge tn _ i) <- adjEdges]
-    let unsafeLookup = \k -> case Data.Map.lookup k typeArgsMap of
+    let typeArgsMap :: Map (TypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
+    let unsafeLookup :: (TypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
           Just x -> pure x
           Nothing -> throwOtherError ["Impossible: Cannot loose type arguments in automata"]
     nominals <- do
-        forM (S.toList tns) $ \(tn, ncon, ncov) -> do
-          conNodes <- sequence [ unsafeLookup (tn, i) | i <- [0 .. ncon-1] ]
-          covNodes <- sequence [ unsafeLookup (tn, ncon + i) | i <- [0 .. ncov-1] ]
-          conArgs <- sequence (nodeToType (flipPolarityRep rep) <$> conNodes)
-          covArgs <- sequence (nodeToType rep <$> covNodes)
-          pure $ TyNominal rep Nothing tn conArgs covArgs
+        forM (S.toList tns) $ \(tn, variances) -> do
+          argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
+          let f (node, Covariant) = CovariantType <$> nodeToType rep node
+              f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+          args <- sequence (f <$> argNodes)
+          pure $ TyNominal rep Nothing tn args
     -- Creating primitive types
     let prims = TyPrim rep <$> S.toList tps
 

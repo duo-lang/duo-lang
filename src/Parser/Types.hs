@@ -9,9 +9,6 @@ module Parser.Types
   , typAtomP
   ) where
 
-import Control.Monad.State
-import Control.Monad.Reader ( asks, MonadReader(local) )
-import Data.Set qualified as S
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
 
@@ -92,9 +89,7 @@ xtorSignatureP = do
 typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
-  tvs <- asks tvars
   (tvar, endPos) <- tvarP
-  guard (tvar `S.member` tvs)
   return (TyVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
@@ -103,7 +98,7 @@ recTypeP = do
   _ <- keywordP KwRec
   (rv,_) <- tvarP
   _ <- symbolP SymDot
-  (ty, endPos) <- local (\tpr@ParseReader{ tvars } -> tpr { tvars = S.insert rv tvars }) typP
+  (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)
 
 ---------------------------------------------------------------------------------
@@ -209,6 +204,7 @@ typP = do
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
+  startPos <- getSourcePos
   tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
-  (monotype,_) <- local (\s -> s { tvars = S.fromList tvars' }) typP
-  pure (TypeScheme tvars' monotype)
+  (monotype,endPos) <- typP
+  pure (TypeScheme (Loc startPos endPos) tvars' monotype)

@@ -239,11 +239,12 @@ subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Ju
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ tn1 contra_args1 cov_args1) (TyNominal _ _ tn2 contra_args2 cov_args2)) =
+subConstraints (SubType _ (TyNominal _ _ tn1 args1) (TyNominal _ _ tn2 args2)) =
   if tn1 == tn2 then do
-    let cs1 = zipWith (SubType NominalSubConstraint) contra_args2 contra_args1
-    let cs2 = zipWith (SubType NominalSubConstraint) cov_args1 cov_args2
-    pure $ cs1 ++ cs2
+    let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
+        f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
+        f _ _ = error "cannot occur"
+    pure (zipWith f args1 args2)
   else
     throwSolverError ["The following nominal types are incompatible:"
                      , "    " <> ppPrint tn1

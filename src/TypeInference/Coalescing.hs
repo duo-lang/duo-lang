@@ -10,7 +10,6 @@ import Data.Text qualified as T
 
 import Syntax.RST.Types
 import Syntax.Common
-import Syntax.AST.Zonking ( Bisubstitution(..) )
 import TypeInference.Constraints
 
 ---------------------------------------------------------------------------------
@@ -96,10 +95,9 @@ coalesceType (TyData rep tn xtors) = do
 coalesceType (TyCodata rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata rep tn xtors')
-coalesceType (TyNominal rep kind tn contra_args cov_args) = do
-    contra_args' <- sequence $ coalesceType <$> contra_args
-    cov_args' <- sequence $ coalesceType <$> cov_args
-    return $ TyNominal rep kind tn contra_args' cov_args'
+coalesceType (TyNominal rep kind tn args) = do
+    args' <- sequence $ coalesceVariantType <$> args
+    return $ TyNominal rep kind tn args'
 coalesceType (TySet rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet rep kind tys')
@@ -114,6 +112,10 @@ coalesceType (TyRec NegRep tv ty) = do
     ty' <- local f $ coalesceType ty
     return $ TyRec NegRep tv ty'
 coalesceType t@(TyPrim _ _) = return t
+
+coalesceVariantType :: VariantType pol -> CoalesceM (VariantType pol)
+coalesceVariantType (CovariantType ty) = CovariantType <$> coalesceType ty
+coalesceVariantType (ContravariantType ty) = ContravariantType <$> coalesceType ty
 
 coalescePrdCnsType :: PrdCnsType pol -> CoalesceM (PrdCnsType pol)
 coalescePrdCnsType (PrdCnsType rep ty) = PrdCnsType rep <$> coalesceType ty

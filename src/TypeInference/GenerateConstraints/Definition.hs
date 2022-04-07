@@ -47,7 +47,6 @@ import Syntax.Common
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
-import Data.Map
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -118,28 +117,31 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: PolarityRep pol -> DataDecl -> GenM ([Typ (FlipPol pol)], [Typ pol], Map TVar (Typ Pos, Typ Neg))
+freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution)
 freshTVarsForTypeParams rep dd = do
-    let MkPolyKind { contravariant, covariant } = data_kind dd
-    let tn = data_name dd
-    con' <- freshTVars tn (fst <$> contravariant)
-    cov' <- freshTVars tn (fst <$> covariant)
-    let map = paramsMap dd (con', cov')
-    case rep of
-      PosRep -> pure (snd <$> con', fst <$> cov', map)
-      NegRep -> pure (fst <$> con', snd <$> cov', map)
+  let MkPolyKind { kindArgs } = data_kind dd
+  let tn = data_name dd
+  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+  let map = paramsMap dd vars
+  case rep of
+    PosRep -> pure (varTypes, map)
+    NegRep -> pure (varTypes, map)
   where
-    freshTVars ::  TypeName -> [TVar] -> GenM [(Typ Pos, Typ Neg)]
-    freshTVars _ [] = pure []
-    freshTVars tn (v : vs) = do
-      vs' <- freshTVars tn vs
-      (tp, tn) <- freshTVar (TypeParameter tn v)
-      pure $ (tp, tn) : vs'
+   freshTVars ::  TypeName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars _ [] = pure ([],[])
+   freshTVars tn ((tv,variance) : vs) = do
+    (vartypes,vs') <- freshTVars tn vs
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv)
+    case (variance, rep) of
+      (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
+      (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
+      (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
+      (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-    paramsMap :: DataDecl -> ([(Typ Pos, Typ Neg)], [(Typ Pos, Typ Neg)]) -> Map TVar (Typ Pos, Typ Neg)
-    paramsMap dd (freshCon, freshCov) =
-        let (MkPolyKind con cov _) = data_kind dd in
-        fromList (zip (fst <$> con) freshCon ++ zip (fst <$> cov) freshCov)
+   paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
+   paramsMap dd freshVars =
+     let MkPolyKind { kindArgs } = data_kind dd in
+     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -175,7 +177,7 @@ lookupContext rep (i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
-  return $ substituteType (M.fromList freshVars) ts_monotype
+  pure $ zonk (MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint

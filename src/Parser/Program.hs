@@ -4,7 +4,6 @@ module Parser.Program
   ) where
 
 import Control.Monad (void)
-import Control.Monad.Reader ( MonadReader(local) )
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (eol)
 
@@ -146,34 +145,22 @@ dataDeclP dc = do
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
     knd <- optional (try (symbolP SymColon) >> polyKindP)
-    case knd of
-      Nothing -> do
-        (xtors, _pos) <- braces $ xtorDeclP `sepBy` symbolP SymComma
-        endPos <- symbolP SymSemi
-        let decl = NominalDecl
+    knd' <- case knd of
+      Nothing -> pure Nothing
+      Just knd -> do
+        if refined == Refined && not (null (allTypeVars knd))
+          then region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
+          else pure (Just knd)
+    (xtors, _pos) <- braces $ xtorDeclP `sepBy` symbolP SymComma
+    endPos <- symbolP SymSemi
+    let decl = NominalDecl
               { data_refined = refined
               , data_name = tn
               , data_polarity = dataCodata
-              , data_kind = knd
+              , data_kind = knd'
               , data_xtors = combineXtors xtors
               }
-        pure (DataDecl dc (Loc startPos endPos) decl)
-      Just knd -> do
-        if refined == Refined && not (null (allTypeVars knd)) then
-          region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
-        else
-          do
-            let xtorP = local (\s -> s { tvars = allTypeVars knd }) xtorDeclP
-            (xtors, _pos) <- braces $ xtorP `sepBy` symbolP SymComma
-            endPos <- symbolP SymSemi
-            let decl = NominalDecl
-                  { data_refined = refined
-                  , data_name = tn
-                  , data_polarity = dataCodata
-                  , data_kind = Just knd
-                  , data_xtors = combineXtors xtors
-                  }
-            pure (DataDecl dc (Loc startPos endPos) decl)
+    pure (DataDecl dc (Loc startPos endPos) decl)
 
 ---------------------------------------------------------------------------------
 -- Xtor Declaration Parser

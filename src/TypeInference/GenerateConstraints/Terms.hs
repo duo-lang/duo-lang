@@ -115,15 +115,15 @@ genConstraintsTerm (RST.Xtor loc rep Nominal xt subst) = do
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+  (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
+  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
   -- Then we generate constraints between the inferred types of the substitution
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (AST.Xtor loc rep (TyNominal PosRep Nothing (data_name decl) conArgs covArgs) Nominal xt substInferred)
-    CnsRep -> return (AST.Xtor loc rep (TyNominal NegRep Nothing (data_name decl) conArgs covArgs) Nominal xt substInferred)
+    PrdRep -> return (AST.Xtor loc rep (TyNominal PosRep Nothing (data_name decl) args) Nominal xt substInferred)
+    CnsRep -> return (AST.Xtor loc rep (TyNominal NegRep Nothing (data_name decl) args) Nominal xt substInferred)
 --
 -- Refinement Xtors
 --
@@ -172,22 +172,22 @@ genConstraintsTerm (RST.XMatch loc rep Nominal cases@(pmcase:_)) = do
   -- We check that all xtors in the type declaration are matched against.
   checkExhaustiveness (RST.cmdcase_name <$> cases) decl
   -- Generate fresh unification variables for type parameters
-  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+  (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
 
   inferredCases <- forM cases (\RST.MkCmdCase {..} -> do
                    -- We lookup the types belonging to the xtor in the type declaration.
                    posTypes <- sig_args <$> lookupXtorSig cmdcase_name PosRep
                    negTypes <- sig_args <$> lookupXtorSig cmdcase_name NegRep
                    -- Substitute fresh unification variables for type parameters
-                   let posTypes' = substituteContext tyParamsMap posTypes
-                   let negTypes' = substituteContext tyParamsMap negTypes
+                   let posTypes' = zonk tyParamsMap posTypes
+                   let negTypes' = zonk tyParamsMap negTypes
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (AST.MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name negTypes'))
   case rep of
-    PrdRep -> return $ AST.XMatch loc rep (TyNominal PosRep Nothing (data_name decl) conArgs covArgs) Nominal (fst <$> inferredCases)
-    CnsRep -> return $ AST.XMatch loc rep (TyNominal NegRep Nothing (data_name decl) conArgs covArgs) Nominal (fst <$> inferredCases)
+    PrdRep -> return $ AST.XMatch loc rep (TyNominal PosRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
+    CnsRep -> return $ AST.XMatch loc rep (TyNominal NegRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
@@ -280,10 +280,10 @@ genConstraintsTerm (RST.Dtor loc _ Nominal xt destructee (subst1,PrdRep,subst2))
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
+  (args, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
-  let ty = TyNominal NegRep Nothing (data_name decl) conArgs covArgs
+  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
+  let ty = TyNominal NegRep Nothing (data_name decl) args
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (AST.getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit arguments and the implicit argument.
@@ -302,10 +302,10 @@ genConstraintsTerm (RST.Dtor loc _ Nominal xt destructee (subst1,CnsRep,subst2))
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
   -- Generate fresh unification variables for type parameters
-  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
+  (args, tyParamsMap) <- freshTVarsForTypeParams NegRep decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = substituteContext tyParamsMap (sig_args xtorSig)
-  let ty = TyNominal NegRep Nothing (data_name decl) conArgs covArgs
+  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
+  let ty = TyNominal NegRep Nothing (data_name decl) args
   -- The type of the destructee must be a subtype of the nominal type.
   addConstraint (SubType (DtorApConstraint loc) (AST.getTypeTerm destructeeInferred) ty)
   -- Split the argument list into the explicit and implicit arguments. (Implicit argument in the middle)
@@ -406,16 +406,16 @@ genConstraintsTerm (RST.Case loc Nominal destructee cases@(RST.MkTermCase { tmca
   -- We check that all xtors in the type declaration are matched against.
   checkExhaustiveness (RST.tmcase_name <$> cases) tn
   -- Generate fresh unification variables for type parameters
-  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams NegRep tn
+  (args, tyParamsMap) <- freshTVarsForTypeParams NegRep tn
   -- We check that the destructee is a subtype of the Nominal Type.
-  addConstraint (SubType (PatternMatchConstraint loc) (AST.getTypeTerm destructeeInferred) (TyNominal NegRep Nothing data_name conArgs covArgs))
+  addConstraint (SubType (PatternMatchConstraint loc) (AST.getTypeTerm destructeeInferred) (TyNominal NegRep Nothing data_name args))
   -- We generate a unification variable for the return type.
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
   casesInferred <- forM cases $ \RST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } -> do
     -- We look up the argument types of the xtor
     posTypes <- sig_args <$> lookupXtorSig tmcase_name PosRep
     -- Substitute fresh unification variables for type parameters
-    let posTypes' = substituteContext tyParamsMap posTypes
+    let posTypes' = zonk tyParamsMap posTypes
     -- Type case term using new type vars
     tmcase_termInferred <- withContext posTypes' (genConstraintsTerm tmcase_term)
     -- The term must have a subtype of the pattern match return type
@@ -489,12 +489,12 @@ genConstraintsTerm (RST.Cocase loc Nominal cocases@(RST.MkTermCaseI {tmcasei_nam
   -- We check that all xtors in the type declaration are matched against.
   checkExhaustiveness (RST.tmcasei_name <$> cocases) tn
   -- Generate fresh unification variables for type parameters
-  (conArgs, covArgs, tyParamsMap) <- freshTVarsForTypeParams PosRep tn
+  (args, tyParamsMap) <- freshTVarsForTypeParams PosRep tn
   cocasesInferred <- forM cocases $ \RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = tmcasei_args@(as1, (),_), tmcasei_term } -> do
     -- We look up the argument types of the xtor
     posTypes <- sig_args <$> lookupXtorSig tmcasei_name PosRep
     -- Substitute fresh unification variables for type parameters
-    let posTypes' = substituteContext tyParamsMap posTypes
+    let posTypes' = zonk tyParamsMap posTypes
     -- Split the args accordingly:
     (ctxt1,retType, ctxt2) <- splitContext (length as1) CnsRep posTypes'
     -- Type case term using new type vars
@@ -502,7 +502,7 @@ genConstraintsTerm (RST.Cocase loc Nominal cocases@(RST.MkTermCaseI {tmcasei_nam
     -- The term must have a subtype of the copattern match return type
     addConstraint (SubType (CaseConstraint loc) (AST.getTypeTerm tmcasei_termInferred) retType)
     return (AST.MkTermCaseI tmcasei_ext tmcasei_name tmcasei_args tmcasei_termInferred)
-  return (AST.CocasePrdI loc (TyNominal PosRep Nothing data_name conArgs covArgs) Nominal cocasesInferred)
+  return (AST.CocasePrdI loc (TyNominal PosRep Nothing data_name args) Nominal cocasesInferred)
 --
 -- Refinement Comatch (Syntactic Sugar):
 --
@@ -560,7 +560,7 @@ genConstraintsCommand (RST.Print loc prd cmd) = do
   return (AST.Print loc prd' cmd')
 genConstraintsCommand (RST.Read loc cns) = do
   cns' <- genConstraintsTerm cns
-  addConstraint (SubType (ReadConstraint loc)  (TyNominal PosRep Nothing (MkTypeName "Nat") [] []) (AST.getTypeTerm cns'))
+  addConstraint (SubType (ReadConstraint loc)  (TyNominal PosRep Nothing (MkTypeName "Nat") []) (AST.getTypeTerm cns'))
   return (AST.Read loc cns')
 genConstraintsCommand (RST.Apply loc t1 t2) = do
   t1' <- genConstraintsTerm t1
@@ -586,11 +586,11 @@ genConstraintsTermRecursive :: Loc
                             -> GenM (AST.Term pc)
 genConstraintsTermRecursive loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme [] x) (genConstraintsTerm tm)
+  tm <- withTerm PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint (AST.getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme [] y) (genConstraintsTerm tm)
+  tm <- withTerm CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint x (AST.getTypeTerm tm))
   return tm

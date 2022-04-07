@@ -56,9 +56,15 @@ instance PrettyAnn BinOp where
   prettyAnn UnionOp = unionSym
   prettyAnn InterOp = interSym
 
+instance PrettyAnn (VariantType pol) where
+  prettyAnn (CovariantType ty) = prettyAnn ty
+  prettyAnn (ContravariantType ty) = prettyAnn ty
+
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (TyNominal _ _ (MkTypeName "Fun") [tl] [tr]) = Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
-resugarType (TyNominal _ _ (MkTypeName "Par") [][t1,t2]) = Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
+resugarType (TyNominal _ _ (MkTypeName "Fun") [ContravariantType tl, CovariantType tr]) =
+  Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
+resugarType (TyNominal _ _ (MkTypeName "Par") [CovariantType t1, CovariantType t2]) =
+  Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
 resugarType _ = Nothing
 
 instance PrettyAnn (Typ pol) where
@@ -76,7 +82,7 @@ instance PrettyAnn (Typ pol) where
   -- Recursive types
   prettyAnn (TyRec _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
-  prettyAnn (TyNominal _ _ tn args_cov args_contra) = prettyAnn tn <> parens' commaSym ((prettyAnn <$> args_cov) ++ (prettyAnn <$> args_contra))
+  prettyAnn (TyNominal _ _ tn args) = prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
   -- Structural data and codata types
   prettyAnn (TyData _ Nothing xtors)   = angles' commaSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
@@ -107,7 +113,10 @@ instance PrettyAnn (XtorSig a) where
   prettyAnn (MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
 
 instance PrettyAnn (TypeScheme pol) where
-  prettyAnn (TypeScheme [] ty) =
-    prettyAnn ty
-  prettyAnn (TypeScheme tvs ty) =
-    forallSym <+> sep (prettyAnn <$> tvs) <> "." <+> prettyAnn ty
+  prettyAnn (TypeScheme { ts_vars = [], ts_monotype }) =
+    prettyAnn ts_monotype
+  prettyAnn (TypeScheme { ts_vars, ts_monotype }) =
+    forallSym <+>
+    sep (prettyAnn <$> ts_vars ) <>
+    "." <+>
+    prettyAnn ts_monotype

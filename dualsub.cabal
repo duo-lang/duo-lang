@@ -94,7 +94,6 @@ library
       Renamer.Types
       Syntax.AST.Program
       Syntax.AST.Terms
-      Syntax.AST.Zonking
       Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names
