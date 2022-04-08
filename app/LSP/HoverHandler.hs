@@ -213,18 +213,52 @@ instance ToHoverMap Substitution where
   toHoverMap subst = M.unions (toHoverMap <$> subst)
 
 ---------------------------------------------------------------------------------
--- Converting an environment to a HoverMap
+-- Converting a type to a HoverMap
+---------------------------------------------------------------------------------
+
+instance ToHoverMap (PrdCnsType pol) where
+  toHoverMap (PrdCnsType _ ty) = toHoverMap ty
+
+instance ToHoverMap (LinearContext pol) where
+  toHoverMap ctxt = M.unions $ toHoverMap <$> ctxt
+
+instance ToHoverMap (XtorSig pol) where
+  toHoverMap MkXtorSig { sig_args } = toHoverMap sig_args
+
+instance ToHoverMap (VariantType pol) where
+  toHoverMap (CovariantType ty) = toHoverMap ty
+  toHoverMap (ContravariantType ty) = toHoverMap ty
+
+instance ToHoverMap (Typ pol) where
+  toHoverMap (TyVar rep knd var) = M.empty
+  toHoverMap (TyData rep tn xtors) = M.empty
+  toHoverMap (TyCodata rep tn xtors) = M.empty
+  toHoverMap (TyNominal rep knd  tn args) = M.empty
+  toHoverMap (TySet rep knd args) = M.empty
+  toHoverMap (TyRec rep var ty) = M.empty
+  toHoverMap (TyPrim rep pty) = M.empty
+
+---------------------------------------------------------------------------------
+-- Converting a program to a HoverMap
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap AST.Declaration where
-  toHoverMap (AST.PrdCnsDecl _loc _doc _rep _isrec _fv Nothing tm) = toHoverMap tm
-  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Just tys) tm) = M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
-  toHoverMap (AST.CmdDecl _loc _doc _fv cmd)  = toHoverMap cmd
-  toHoverMap (AST.DataDecl _loc _doc _decl) = M.empty
-  toHoverMap (AST.XtorDecl _loc _doc _dc _xt _args _eo) = M.empty
-  toHoverMap (AST.ImportDecl _loc _doc _mn) = M.empty
-  toHoverMap (AST.SetDecl _loc _doc _txt) = M.empty
-  toHoverMap (AST.TyOpDecl _loc _doc _op _prec _assoc _tn) = M.empty
+  toHoverMap (AST.PrdCnsDecl _loc _doc _rep _isrec _fv Nothing tm) =
+    toHoverMap tm
+  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Just tys) tm) =
+    M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
+  toHoverMap (AST.CmdDecl _loc _doc _fv cmd)  =
+    toHoverMap cmd
+  toHoverMap (AST.DataDecl _loc _doc _decl) =
+    M.empty
+  toHoverMap (AST.XtorDecl _loc _doc _dc _xt _args _eo) =
+    M.empty
+  toHoverMap (AST.ImportDecl _loc _doc _mn) =
+    M.empty
+  toHoverMap (AST.SetDecl _loc _doc _txt) =
+    M.empty
+  toHoverMap (AST.TyOpDecl _loc _doc _op _prec _assoc _tn) =
+    M.empty
 
 instance ToHoverMap AST.Program where
   toHoverMap prog = M.unions (toHoverMap <$> prog)
