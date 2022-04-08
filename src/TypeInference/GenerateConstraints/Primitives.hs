@@ -4,9 +4,10 @@ import Data.Map
 
 import Syntax.Common
 import Syntax.RST.Types
+import Utils
 
 simplePrimBinOp :: PrimitiveType -> LinearContext Neg
-simplePrimBinOp pt = [PrdCnsType PrdRep (TyPrim NegRep pt), PrdCnsType PrdRep (TyPrim NegRep pt), PrdCnsType CnsRep (TyPrim PosRep pt)]
+simplePrimBinOp pt = [PrdCnsType PrdRep (TyPrim defaultLoc NegRep pt), PrdCnsType PrdRep (TyPrim defaultLoc NegRep pt), PrdCnsType CnsRep (TyPrim defaultLoc PosRep pt)]
 
 -- | Primitive operations and their signatures
 primOps :: Map (PrimitiveType, PrimitiveOp) (LinearContext Neg)

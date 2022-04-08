@@ -72,7 +72,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar rep Nothing <$> (S.toList $ fromJust $ M.lookup i tvMap))
+  return (TyVar defaultLoc rep Nothing <$> (S.toList $ fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -98,10 +98,10 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         return $ case typs of [t] -> PrdCnsType PrdRep t; _ -> PrdCnsType PrdRep (TySet rep Nothing typs)
+         return $ case typs of [t] -> PrdCnsType PrdRep t; _ -> PrdCnsType PrdRep (TySet defaultLoc rep Nothing typs)
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         return $ case typs of [t] -> PrdCnsType CnsRep t; _ -> PrdCnsType CnsRep (TySet (flipPolarityRep rep) Nothing typs)
+         return $ case typs of [t] -> PrdCnsType CnsRep t; _ -> PrdCnsType CnsRep (TySet defaultLoc (flipPolarityRep rep) Nothing typs)
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
@@ -109,7 +109,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache then
-    return $ TyVar rep Nothing (MkTVar ("r" <> T.pack (show i)))
+    return $ TyVar defaultLoc rep Nothing (MkTVar ("r" <> T.pack (show i)))
   else
     nodeToTypeNoCache rep i
 
@@ -133,7 +133,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Data xt
           argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyData rep Nothing sig]
+        return [TyData defaultLoc rep Nothing sig]
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
@@ -142,7 +142,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Codata xt
           argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyCodata rep Nothing sig]
+        return [TyCodata defaultLoc rep Nothing sig]
     -- Creating ref data types
     refDatL <- do
       forM refDatTypes $ \(tn,xtors) -> do
@@ -150,7 +150,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Data xt
           argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
-        return $ TyData rep (Just tn) sig
+        return $ TyData defaultLoc rep (Just tn) sig
     -- Creating ref codata types
     refCodatL <- do
       forM refCodatTypes $ \(tn,xtors) -> do
@@ -158,7 +158,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Codata xt
           argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
-        return $ TyCodata rep (Just tn) sig
+        return $ TyCodata defaultLoc rep (Just tn) sig
     -- Creating Nominal types
     let adjEdges = lsuc gr i
     let typeArgsMap :: Map (TypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
@@ -171,14 +171,14 @@ nodeToTypeNoCache rep i = do
           let f (node, Covariant) = CovariantType <$> nodeToType rep node
               f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
           args <- sequence (f <$> argNodes)
-          pure $ TyNominal rep Nothing tn args
+          pure $ TyNominal defaultLoc rep Nothing tn args
     -- Creating primitive types
-    let prims = TyPrim rep <$> S.toList tps
+    let prims = TyPrim defaultLoc rep <$> S.toList tps
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
-    return $ case typs of [t] -> t; _ -> TySet rep Nothing typs
+    return $ case typs of [t] -> t; _ -> TySet defaultLoc rep Nothing typs
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
-    then return $ TyRec rep (MkTVar ("r" <> T.pack (show i))) resType
+    then return $ TyRec defaultLoc rep (MkTVar ("r" <> T.pack (show i))) resType
     else return resType

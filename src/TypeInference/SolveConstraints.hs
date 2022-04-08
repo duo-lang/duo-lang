@@ -91,10 +91,10 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
-      (SubType _ (TyVar PosRep _ uv) ub) -> do
+      (SubType _ (TyVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType _ lb (TyVar NegRep _ uv)) -> do
+      (SubType _ lb (TyVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
       _ -> do
@@ -148,9 +148,9 @@ subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInf
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ (TySet PosRep _ tys) ty) =
+subConstraints (SubType _ (TySet _ PosRep _ tys) ty) =
   return [SubType IntersectionUnionSubConstraint ty' ty | ty' <- tys]
-subConstraints (SubType _ ty (TySet NegRep _ tys)) =
+subConstraints (SubType _ ty (TySet _ NegRep _ tys)) =
   return [SubType IntersectionUnionSubConstraint ty ty' | ty' <- tys]
 -- Recursive constraints:
 --
@@ -174,10 +174,10 @@ subConstraints (SubType _ ty' ty@TyRec{}) =
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TyData PosRep Nothing ctors1) (TyData NegRep Nothing ctors2)) = do
+subConstraints (SubType _ (TyData _ PosRep Nothing ctors1) (TyData _ NegRep Nothing ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure $ concat constraints
-subConstraints (SubType _ (TyCodata PosRep Nothing dtors1) (TyCodata NegRep Nothing dtors2)) = do
+subConstraints (SubType _ (TyCodata _ PosRep Nothing dtors1) (TyCodata _ NegRep Nothing dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
 -- Constraints between refinement data or codata types:
@@ -188,7 +188,7 @@ subConstraints (SubType _ (TyCodata PosRep Nothing dtors1) (TyCodata NegRep Noth
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ t1@(TyData PosRep (Just tn1) ctors1) t2@(TyData NegRep (Just tn2) ctors2)) = do
+subConstraints (SubType _ t1@(TyData _ PosRep (Just tn1) ctors1) t2@(TyData _ NegRep (Just tn2) ctors2)) = do
   if tn1 == tn2 then do
     constraints <- forM ctors1 (checkXtor ctors2)
     pure $ concat constraints
@@ -196,7 +196,7 @@ subConstraints (SubType _ t1@(TyData PosRep (Just tn1) ctors1) t2@(TyData NegRep
                         , "    " <> ppPrint t1
                         , "and"
                         , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata PosRep (Just tn1) dtors1) t2@(TyCodata NegRep (Just tn2) dtors2)) = do
+subConstraints (SubType _ t1@(TyCodata _ PosRep (Just tn1) dtors1) t2@(TyCodata _ NegRep (Just tn2) dtors2)) = do
   if tn1 == tn2 then do
     constraints <- forM dtors2 (checkXtor dtors1)
     pure $ concat constraints
@@ -211,22 +211,22 @@ subConstraints (SubType _ t1@(TyCodata PosRep (Just tn1) dtors1) t2@(TyCodata Ne
 --     < ctors > <: {{ TyName :>> < ctors > }}    ~>     FAIL
 --     { dtors } <: {{ TyName :>> { dtors } }}    ~>     FAIL
 --
-subConstraints (SubType _ t1@(TyData PosRep (Just _) _) t2@(TyData NegRep Nothing _)) = do
+subConstraints (SubType _ t1@(TyData _ PosRep (Just _) _) t2@(TyData _ NegRep Nothing _)) = do
   throwSolverError ["Cannot constraint refinement data type"
                    , "    " <> ppPrint t1
                    , "by structural data type"
                    , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyData PosRep Nothing _) t2@(TyData NegRep (Just _) _)) = do
+subConstraints (SubType _ t1@(TyData _ PosRep Nothing _) t2@(TyData _ NegRep (Just _) _)) = do
   throwSolverError ["Cannot constraint structural data type"
                    , "    " <> ppPrint t1
                    , "by refinement data type"
                    , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata PosRep (Just _) _) t2@(TyCodata NegRep Nothing _)) = do
+subConstraints (SubType _ t1@(TyCodata _ PosRep (Just _) _) t2@(TyCodata _ NegRep Nothing _)) = do
   throwSolverError ["Cannot constraint refinement codata type"
                    , "    " <> ppPrint t1
                    , "by structural codata type"
                    , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Just _) _)) = do
+subConstraints (SubType _ t1@(TyCodata _ PosRep Nothing _) t2@(TyCodata _ NegRep (Just _) _)) = do
   throwSolverError ["Cannot constraint structural codata type"
                    , "    " <> ppPrint t1
                    , "by refinement codata type"
@@ -239,7 +239,7 @@ subConstraints (SubType _ t1@(TyCodata PosRep Nothing _) t2@(TyCodata NegRep (Ju
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ tn1 args1) (TyNominal _ _ tn2 args2)) =
+subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) =
   if tn1 == tn2 then do
     let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
         f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
@@ -287,20 +287,20 @@ subConstraints (SubType _ t1@TyNominal{} t2@TyCodata{}) =
 -- dealt with in the function `solve`. Calling the function `subConstraints` with an
 -- atomic constraint is an implementation bug.
 --
-subConstraints (SubType _ ty1@(TyVar _ _ _ ) ty2) =
+subConstraints (SubType _ ty1@(TyVar _ _ _ _ ) ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"
                    , ppPrint ty2
                    ]
-subConstraints (SubType _ ty1 ty2@(TyVar _ _ _)) =
+subConstraints (SubType _ ty1 ty2@(TyVar _ _ _ _)) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"
                    , ppPrint ty2
                    ]
 -- Primitive types:
-subConstraints (SubType _ t1@(TyPrim _ pt1) t2@(TyPrim _ pt2)) =
+subConstraints (SubType _ t1@(TyPrim _ _ pt1) t2@(TyPrim _ _ pt2)) =
   if pt1 == pt2 then do
     pure []
   else

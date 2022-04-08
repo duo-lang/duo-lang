@@ -230,13 +230,13 @@ instance ToHoverMap (VariantType pol) where
   toHoverMap (ContravariantType ty) = toHoverMap ty
 
 instance ToHoverMap (Typ pol) where
-  toHoverMap (TyVar rep knd var) = M.empty
-  toHoverMap (TyData rep tn xtors) = M.empty
-  toHoverMap (TyCodata rep tn xtors) = M.empty
-  toHoverMap (TyNominal rep knd  tn args) = M.empty
-  toHoverMap (TySet rep knd args) = M.empty
-  toHoverMap (TyRec rep var ty) = M.empty
-  toHoverMap (TyPrim rep pty) = M.empty
+  toHoverMap (TyVar _loc rep knd var) = M.empty
+  toHoverMap (TyData _loc rep tn xtors) = M.empty
+  toHoverMap (TyCodata _loc rep tn xtors) = M.empty
+  toHoverMap (TyNominal _loc rep knd  tn args) = M.empty
+  toHoverMap (TySet _loc rep knd args) = M.empty
+  toHoverMap (TyRec _loc rep var ty) = M.empty
+  toHoverMap (TyPrim _loc rep pty) = M.empty
 
 ---------------------------------------------------------------------------------
 -- Converting a program to a HoverMap

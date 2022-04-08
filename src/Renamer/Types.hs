@@ -10,7 +10,7 @@ import Renamer.Definition
 import Renamer.SymbolTable
 import Syntax.Common
 import qualified Syntax.RST.Types as RST
-import Syntax.RST.Types ( freeTypeVars)
+import Syntax.RST.Types ( freeTVars )
 import Syntax.CST.Types
 import Data.List
 import Utils (Loc(..))
@@ -22,30 +22,39 @@ import Utils (Loc(..))
 lowerTypeScheme :: PolarityRep pol -> TypeScheme -> RenamerM (RST.TypeScheme pol)
 lowerTypeScheme rep (TypeScheme { ts_loc, ts_vars, ts_monotype }) = do
     monotype <- lowerTyp rep ts_monotype
-    if S.fromList (freeTypeVars monotype) `S.isSubsetOf` (S.fromList ts_vars)
+    if (freeTVars monotype) `S.isSubsetOf` (S.fromList ts_vars)
         then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
 lowerTyp :: PolarityRep pol -> Typ -> RenamerM (RST.Typ pol)
-lowerTyp rep (TyVar _loc v) = pure $ RST.TyVar rep Nothing v
-lowerTyp rep (TyXData _loc Data name sigs) = do
+lowerTyp rep (TyVar loc v) =
+    pure $ RST.TyVar loc rep Nothing v
+lowerTyp rep (TyXData loc Data name sigs) = do
     sigs <- lowerXTorSigs rep sigs
-    pure $ RST.TyData rep name sigs
-lowerTyp rep (TyXData _loc Codata name sigs) = do
+    pure $ RST.TyData loc rep name sigs
+lowerTyp rep (TyXData loc Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodata rep name sigs
+    pure $ RST.TyCodata loc rep name sigs
 lowerTyp rep (TyNominal loc name args) = do
     args' <- lowerTypeArgs loc rep name args
-    pure $ RST.TyNominal rep Nothing name args'
-lowerTyp rep (TyRec _loc v typ) = RST.TyRec rep v <$> lowerTyp rep typ
+    pure $ RST.TyNominal loc rep Nothing name args'
+lowerTyp rep (TyRec loc v typ) =
+    RST.TyRec loc rep v <$> lowerTyp rep typ
 lowerTyp PosRep (TyTop loc) = throwError (LowerError (Just loc) TopInPosPolarity)
-lowerTyp NegRep (TyTop _loc) = pure desugarTopType
-lowerTyp PosRep (TyBot _loc) = pure desugarBotType
-lowerTyp NegRep (TyBot loc) = throwError (LowerError (Just loc) BotInNegPolarity)
-lowerTyp rep (TyBinOpChain fst rest) = lowerBinOpChain rep fst rest
-lowerTyp rep (TyBinOp loc fst op snd) = lowerBinOp loc rep fst op snd
-lowerTyp rep (TyParens _loc typ) = lowerTyp rep typ
-lowerTyp rep (TyPrim _loc pt) = pure $ RST.TyPrim rep pt
+lowerTyp NegRep (TyTop loc) =
+    pure $ RST.TySet loc NegRep Nothing []
+lowerTyp PosRep (TyBot loc) =
+    pure $ RST.TySet loc PosRep Nothing []
+lowerTyp NegRep (TyBot loc) =
+    throwError (LowerError (Just loc) BotInNegPolarity)
+lowerTyp rep (TyBinOpChain fst rest) =
+    lowerBinOpChain rep fst rest
+lowerTyp rep (TyBinOp loc fst op snd) =
+    lowerBinOp loc rep fst op snd
+lowerTyp rep (TyParens _loc typ) =
+    lowerTyp rep typ
+lowerTyp rep (TyPrim loc pt) =
+    pure $ RST.TyPrim loc rep pt
 
 
 
@@ -85,20 +94,20 @@ lowerBinOpChain rep fst rest = do
 ---------------------------------------------------------------------------------
 
 desugaring :: Loc -> PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> RenamerM (RST.Typ pol)
-desugaring _loc PosRep UnionDesugaring tl tr = do
+desugaring loc PosRep UnionDesugaring tl tr = do
     tl <- lowerTyp PosRep tl
     tr <- lowerTyp PosRep tr
     case tl of
-        RST.TySet rep k ts -> pure $ RST.TySet rep k (ts ++ [tr])
-        _ -> pure $ RST.TySet PosRep Nothing [tl, tr]
+        RST.TySet loc rep k ts -> pure $ RST.TySet loc rep k (ts ++ [tr])
+        _ -> pure $ RST.TySet loc PosRep Nothing [tl, tr]
 desugaring loc NegRep UnionDesugaring _ _ =
     throwError (LowerError (Just loc) UnionInNegPolarity)
-desugaring _loc NegRep InterDesugaring tl tr = do
+desugaring loc NegRep InterDesugaring tl tr = do
     tl <- lowerTyp NegRep tl
     tr <- lowerTyp NegRep tr
     case tl of
-        RST.TySet rep k ts -> pure $ RST.TySet rep k (ts ++ [tr])
-        _ -> pure $ RST.TySet NegRep Nothing [tl, tr]
+        RST.TySet loc rep k ts -> pure $ RST.TySet loc rep k (ts ++ [tr])
+        _ -> pure $ RST.TySet loc NegRep Nothing [tl, tr]
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (LowerError (Just loc) IntersectionInPosPolarity)
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
@@ -147,13 +156,3 @@ lowerBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> RenamerM (RST.Typ
 lowerBinOp loc rep lhs s rhs = do
     op <- lookupTyOp loc s
     desugaring loc rep (desugar op) lhs rhs
-
----------------------------------------------------------------------------------
--- Syntactic Sugar
----------------------------------------------------------------------------------
-
-desugarTopType :: RST.Typ 'Neg
-desugarTopType = RST.TySet NegRep Nothing []
-
-desugarBotType :: RST.Typ 'Pos
-desugarBotType = RST.TySet PosRep Nothing []
