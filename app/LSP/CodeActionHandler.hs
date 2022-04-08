@@ -61,6 +61,8 @@ generateCodeActions ident rng program = List (join ls)
 
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> AST.Declaration -> [Command |? CodeAction]
+generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc doc rep isrec fv (Inferred tys) tm) | lookupPos start loc =
+  [generateAnnotCodeAction ident loc doc rep isrec fv tys tm]
 generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc _doc rep _isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
@@ -72,6 +74,32 @@ generateCodeAction ident (Range {_start = start}) (AST.CmdDecl loc _doc fv cmd) 
     cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN (desugarCmd cmd)), lookupPos start loc]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN (desugarCmd cmd)), lookupPos start loc]
 generateCodeAction _ _ _ = []
+
+---------------------------------------------------------------------------------
+-- Provide TypeAnnot Action
+---------------------------------------------------------------------------------
+
+generateAnnotCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> AST.Term pc -> Command |? CodeAction
+generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Annotate type for " <> ppPrint fv
+                                                                             , _kind = Just CodeActionQuickFix
+                                                                             , _diagnostics = Nothing
+                                                                             , _isPreferred = Nothing
+                                                                             , _disabled = Nothing
+                                                                             , _edit = Just (generateAnnotEdit uri loc doc rep isrec fv tys tm) 
+                                                                             , _command = Nothing
+                                                                             , _xdata = Nothing
+                                                                             }
+generateAnnotEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> AST.Term pc -> WorkspaceEdit
+generateAnnotEdit uri loc doc rep isrec fv tys tm  =
+  let
+    newDecl :: AST.Declaration = AST.PrdCnsDecl loc doc rep isrec fv (Annotated tys) tm
+    replacement = ppPrint newDecl
+    edit = TextEdit {_range = locToRange loc, _newText = replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
+
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions
