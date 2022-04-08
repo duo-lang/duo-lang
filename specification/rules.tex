@@ -73,17 +73,17 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
     \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst} & \emph{Xtor Prd} \\[0.2cm]
     \multicolumn{4}{c}{\text{Right Eliminiation}} \\
     \nonterminal{prd} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case}}^{\ast} \terminal{\}} & \emph{Case} \\
-    \nonterminal{cns} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    \nonterminal{cmd} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    & | & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    & | & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
-    \multicolumn{4}{c}{\text{Left Introduction}} \\    
+    \nonterminal{cns} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case}}^{\ast} \terminal{\}} & \emph{Case} \\
+    \nonterminal{cmd} & \Coloneqq & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{CasePrdCmd} \\
+    & | & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{CasePrdPrdI} \\
+    & | & \terminal{case}\ \nonterminal{prd}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{CasePrdCnsI} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Left Introduction}} \\
     \nonterminal{cns} & \Coloneqq & \terminal{case}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{XMatch Cns} \\
-    & | & \terminal{case}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    & | & \terminal{case}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
+    & | & \terminal{case}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{CaseCnsPrdI} \\
+    & | & \terminal{case}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{CaseCnsCnsI} \\[0.2cm]
     \multicolumn{4}{c}{\text{Left Elimination}} \\
-    \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst}\terminal{$[\ast]$}\nonterminal{subst}\terminal{;}\nonterminal{cns} & \emph{N/A} \\
-    \nonterminal{cns} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst}\terminal{$(\ast)$}\nonterminal{subst}\terminal{;}\nonterminal{cns} & \emph{N/A} \\
+    \nonterminal{prd} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst}\terminal{$[\ast]$}\nonterminal{subst}\terminal{;}\nonterminal{cns} & \emph{Semicolon} \\
+    \nonterminal{cns} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst}\terminal{$(\ast)$}\nonterminal{subst}\terminal{;}\nonterminal{cns} & \emph{Semicolon} \\
   \end{array}
 \]
 
@@ -93,15 +93,15 @@ The meta-variable $\Gamma$ stands for a list of bindings $(x)$ and $[k]$.
     \multicolumn{4}{c}{\text{Left Introduction}} \\
     \nonterminal{cns} & \Coloneqq & \nonterminal{xtorname}\nonterminal{subst} & \emph{Xtor Cns} \\[0.2cm]
     \multicolumn{4}{c}{\text{Left Eliminiation}} \\
-    \nonterminal{prd} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    \nonterminal{cns} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    \nonterminal{cmd} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    & | & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\
-    & | & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
-    \multicolumn{4}{c}{\text{Right Introduction}} \\    
+    \nonterminal{prd} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case}}^{\ast} \terminal{\}} & \emph{CocaseCns} \\
+    \nonterminal{cns} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case}}^{\ast} \terminal{\}} & \emph{CocaseCns} \\
+    \nonterminal{cmd} & \Coloneqq & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{CocaseCnsCmd} \\
+    & | & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{CocaseCnsPrdI} \\
+    & | & \terminal{cocase}\ \nonterminal{cns}\ \terminal{of}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{CocaseCnsCnsI} \\[0.2cm]
+    \multicolumn{4}{c}{\text{Right Introduction}} \\
     \nonterminal{prd} & \Coloneqq & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{cmd-case}}^{\ast} \terminal{\}} & \emph{XMatch Prd} \\
-    & | & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{Cocase} \\
-    & | & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{N/A} \\[0.2cm]
+    & | & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{prd-case-i}}^{\ast} \terminal{\}} & \emph{CocasePrdI} \\
+    & | & \terminal{cocase}\ \terminal{\{} \nonterminal{\textit{cns-case-i}}^{\ast} \terminal{\}} & \emph{CocaseCnsI} \\[0.2cm]
     \multicolumn{4}{c}{\text{Right Elimination}} \\
     \nonterminal{prd} & \Coloneqq & \nonterminal{prd}\terminal{.}\nonterminal{xtorname}\nonterminal{subst}\terminal{$[\ast]$}\nonterminal{subst} & \emph{Dtor Prd} \\
     \nonterminal{cns} & \Coloneqq & \nonterminal{prd}\terminal{.}\nonterminal{xtorname}\nonterminal{subst}\terminal{$(\ast)$}\nonterminal{subst} & \emph{Dtor Cns} \\
