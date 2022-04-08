@@ -229,14 +229,74 @@ instance ToHoverMap (VariantType pol) where
   toHoverMap (CovariantType ty) = toHoverMap ty
   toHoverMap (ContravariantType ty) = toHoverMap ty
 
+prettyPolRep :: PolarityRep pol -> Text
+prettyPolRep PosRep = "Positive"
+prettyPolRep NegRep = "Negative"
+
 instance ToHoverMap (Typ pol) where
-  toHoverMap (TyVar _loc rep knd var) = M.empty
-  toHoverMap (TyData _loc rep tn xtors) = M.empty
-  toHoverMap (TyCodata _loc rep tn xtors) = M.empty
-  toHoverMap (TyNominal _loc rep knd  tn args) = M.empty
-  toHoverMap (TySet _loc rep knd args) = M.empty
-  toHoverMap (TyRec _loc rep var ty) = M.empty
-  toHoverMap (TyPrim _loc rep pty) = M.empty
+  toHoverMap (TyVar loc rep _knd var) =
+    let
+      msg = T.unlines [ "Type variable " <> ppPrint var
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in 
+      mkHoverMap loc msg
+  toHoverMap (TyData loc rep Nothing xtors) =
+    let
+      msg = T.unlines [ "Structural datatype"
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> xtors))
+  toHoverMap (TyData loc rep (Just tn) xtors) =
+    let
+      msg = T.unlines [ "Refinement datatype: " <> ppPrint tn
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> xtors))
+  toHoverMap (TyCodata loc rep Nothing xtors) =
+    let
+      msg = T.unlines [ "Structural codata type"
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> xtors))
+  toHoverMap (TyCodata loc rep (Just tn) xtors) =
+    let
+      msg = T.unlines [ "Refinement codata type: " <> ppPrint tn
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> xtors))
+  toHoverMap (TyNominal loc rep _knd tn args) =
+    let
+      msg = T.unlines [ "Nominal type: " <> ppPrint tn
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> args))
+  toHoverMap (TySet loc rep _knd args) =
+    let
+      msg = T.unlines [ "Set type"
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> args))
+  toHoverMap (TyRec loc rep _var ty) =
+    let
+      msg = T.unlines [ "Recursive type"
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      M.union (mkHoverMap loc msg) (toHoverMap ty)
+  toHoverMap (TyPrim loc rep pty) =
+    let
+      msg = T.unlines [ "Primitive Type: " <> ppPrint pty
+                      , "Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      mkHoverMap loc msg
 
 instance ToHoverMap (TypeScheme pol) where
   toHoverMap (TypeScheme { ts_monotype }) = toHoverMap ts_monotype
@@ -250,7 +310,7 @@ instance ToHoverMap AST.Declaration where
     -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
     -- defaultLoc.
     M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
-  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Annotated tys) tm) =
+  toHoverMap (AST.PrdCnsDecl _loc _doc _rep _isrec _fv (Annotated tys) tm) =
     M.union (toHoverMap tm) (toHoverMap tys)
   toHoverMap (AST.CmdDecl _loc _doc _fv cmd)  =
     toHoverMap cmd
