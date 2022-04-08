@@ -12,7 +12,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
-import Syntax.RST.Types ( TypeScheme )
+import Syntax.RST.Types ( TypeScheme, TopAnnot(..) )
 import Syntax.Common
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
@@ -61,7 +61,7 @@ generateCodeActions ident rng program = List (join ls)
 
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> AST.Declaration -> [Command |? CodeAction]
-generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc _doc rep _isrec fv (Just tys) tm) = desugar ++ cbvfocus ++ cbnfocus
+generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc _doc rep _isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
     cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
@@ -93,8 +93,8 @@ generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier -
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl :: Core.Declaration = case pc of
-                PrdRep -> Core.PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Just ty) (focusTerm eo (desugarTerm tm))
-                CnsRep -> Core.PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Just ty) (focusTerm eo (desugarTerm tm))
+                PrdRep -> Core.PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Inferred ty) (focusTerm eo (desugarTerm tm))
+                CnsRep -> Core.PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Inferred ty) (focusTerm eo (desugarTerm tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -144,7 +144,7 @@ generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "
 generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
   let
-    newDecl = Core.PrdCnsDecl defaultLoc Nothing rep Recursive name (Just ty) (desugarTerm tm)
+    newDecl = Core.PrdCnsDecl defaultLoc Nothing rep Recursive name (Inferred ty) (desugarTerm tm)
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in

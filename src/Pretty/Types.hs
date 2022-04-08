@@ -61,9 +61,9 @@ instance PrettyAnn (VariantType pol) where
   prettyAnn (ContravariantType ty) = prettyAnn ty
 
 resugarType :: Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (TyNominal _ _ (MkTypeName "Fun") [ContravariantType tl, CovariantType tr]) =
+resugarType (TyNominal _ _ _ (MkTypeName "Fun") [ContravariantType tl, CovariantType tr]) =
   Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
-resugarType (TyNominal _ _ (MkTypeName "Par") [CovariantType t1, CovariantType t2]) =
+resugarType (TyNominal _ _ _ (MkTypeName "Par") [CovariantType t1, CovariantType t2]) =
   Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
 resugarType _ = Nothing
 
@@ -71,25 +71,25 @@ instance PrettyAnn (Typ pol) where
   -- Sugared types
   prettyAnn (resugarType -> Just (ty1, binOp, ty2)) = parens (ty1 <+> prettyAnn binOp <+> ty2)
   -- Lattice types
-  prettyAnn (TySet PosRep _ [])  = botSym
-  prettyAnn (TySet PosRep _ [t]) = prettyAnn t
-  prettyAnn (TySet PosRep _ tts) = parens' unionSym (map prettyAnn tts)
-  prettyAnn (TySet NegRep _ [])  = topSym
-  prettyAnn (TySet NegRep _ [t]) = prettyAnn t
-  prettyAnn (TySet NegRep _ tts) = parens' interSym (map prettyAnn tts)
+  prettyAnn (TySet _ PosRep _ [])  = botSym
+  prettyAnn (TySet _ PosRep _ [t]) = prettyAnn t
+  prettyAnn (TySet _ PosRep _ tts) = parens' unionSym (map prettyAnn tts)
+  prettyAnn (TySet _ NegRep _ [])  = topSym
+  prettyAnn (TySet _ NegRep _ [t]) = prettyAnn t
+  prettyAnn (TySet _ NegRep _ tts) = parens' interSym (map prettyAnn tts)
   -- Type Variables
-  prettyAnn (TyVar _ _ tv)       = prettyAnn tv
+  prettyAnn (TyVar _ _ _ tv)       = prettyAnn tv
   -- Recursive types
-  prettyAnn (TyRec _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
+  prettyAnn (TyRec _ _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
-  prettyAnn (TyNominal _ _ tn args) = prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
+  prettyAnn (TyNominal _ _ _ tn args) = prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
   -- Structural data and codata types
-  prettyAnn (TyData _ Nothing xtors)   = angles' commaSym  (prettyAnn <$> xtors)
-  prettyAnn (TyCodata _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
+  prettyAnn (TyData _ _ Nothing xtors)   = angles' commaSym  (prettyAnn <$> xtors)
+  prettyAnn (TyCodata _ _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (TyData _ (Just tn) xtors)   = angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (TyCodata _ (Just tn) xtors) = braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (TyPrim _ pt) = "#" <> prettyAnn pt
+  prettyAnn (TyData _ _ (Just tn) xtors)   = angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (TyCodata _ _ (Just tn) xtors) = braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (TyPrim _ _ pt) = "#" <> prettyAnn pt
 
 instance PrettyAnn (PrdCnsType pol) where
   prettyAnn (PrdCnsType _ ty) = prettyAnn ty

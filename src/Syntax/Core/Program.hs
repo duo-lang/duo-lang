@@ -4,7 +4,7 @@ import Data.Text (Text)
 
 import Syntax.Common
 import Syntax.Core.Terms( Command, Term )
-import Syntax.RST.Types (  DataDecl, TypeScheme)
+import Syntax.RST.Types (  DataDecl, TopAnnot )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -12,7 +12,7 @@ import Utils ( Loc )
 ---------------------------------------------------------------------------------
 
 data Declaration where
-  PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> Maybe (TypeScheme (PrdCnsToPol pc)) -> Term pc -> Declaration
+  PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TopAnnot (PrdCnsToPol pc) -> Term pc -> Declaration
   CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Command                                                       -> Declaration
   DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
   XtorDecl       :: Loc -> Maybe DocComment -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration

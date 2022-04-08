@@ -317,30 +317,30 @@ embedVariantType (RST.CovariantType ty) = embedType ty
 embedVariantType (RST.ContravariantType ty) = embedType ty
 
 embedType :: RST.Typ pol -> CST.Typ
-embedType (RST.TyVar _ _ tv)=
-  CST.TyVar defaultLoc tv
-embedType (RST.TyData _ tn xtors) =
-  CST.TyXData defaultLoc Data tn (embedXtorSig <$> xtors)
-embedType (RST.TyCodata _ tn xtors) =
-  CST.TyXData defaultLoc Codata tn (embedXtorSig <$> xtors)
-embedType (RST.TyNominal _ _ nm args) =
-  CST.TyNominal defaultLoc nm (embedVariantTypes args)
-embedType (RST.TySet PosRep _ []) =
-  CST.TyTop defaultLoc
-embedType (RST.TySet PosRep _ [ty1,ty2]) =
-  CST.TyBinOp defaultLoc (embedType ty1) UnionOp (embedType ty2)
-embedType (RST.TySet PosRep knd (ty1:tys)) =
-  CST.TyBinOp defaultLoc (embedType ty1) UnionOp (embedType (RST.TySet PosRep knd tys))
-embedType (RST.TySet NegRep _ []) =
-  CST.TyBot defaultLoc
-embedType (RST.TySet NegRep _ [ty1,ty2]) =
-  CST.TyBinOp defaultLoc (embedType ty1) InterOp (embedType ty2)
-embedType (RST.TySet NegRep knd (ty1:tys)) =
-  CST.TyBinOp defaultLoc (embedType ty1) InterOp (embedType (RST.TySet NegRep knd tys))
-embedType (RST.TyRec _ tv ty) =
-  CST.TyRec defaultLoc  tv (embedType ty)
-embedType (RST.TyPrim _ pt) =
-  CST.TyPrim defaultLoc pt
+embedType (RST.TyVar loc _ _ tv)=
+  CST.TyVar loc tv
+embedType (RST.TyData loc _ tn xtors) =
+  CST.TyXData loc Data tn (embedXtorSig <$> xtors)
+embedType (RST.TyCodata loc _ tn xtors) =
+  CST.TyXData loc Codata tn (embedXtorSig <$> xtors)
+embedType (RST.TyNominal loc _ _ nm args) =
+  CST.TyNominal loc nm (embedVariantTypes args)
+embedType (RST.TySet loc PosRep _ []) =
+  CST.TyTop loc
+embedType (RST.TySet loc PosRep _ [ty1,ty2]) =
+  CST.TyBinOp loc (embedType ty1) UnionOp (embedType ty2)
+embedType (RST.TySet loc PosRep knd (ty1:tys)) =
+  CST.TyBinOp loc (embedType ty1) UnionOp (embedType (RST.TySet loc PosRep knd tys))
+embedType (RST.TySet loc NegRep _ []) =
+  CST.TyBot loc
+embedType (RST.TySet loc NegRep _ [ty1,ty2]) =
+  CST.TyBinOp loc (embedType ty1) InterOp (embedType ty2)
+embedType (RST.TySet loc NegRep knd (ty1:tys)) =
+  CST.TyBinOp loc (embedType ty1) InterOp (embedType (RST.TySet loc NegRep knd tys))
+embedType (RST.TyRec loc _ tv ty) =
+  CST.TyRec loc tv (embedType ty)
+embedType (RST.TyPrim loc _ pt) =
+  CST.TyPrim loc pt
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =

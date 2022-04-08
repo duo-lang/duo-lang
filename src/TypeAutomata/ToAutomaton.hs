@@ -171,14 +171,14 @@ insertVariantType (ContravariantType ty) = do
   pure (node, Contravariant)
 
 insertType :: Typ pol -> TTA Node
-insertType (TyVar rep _ tv) = lookupTVar rep tv
-insertType (TySet rep _ tys) = do
+insertType (TyVar _ rep _ tv) = lookupTVar rep tv
+insertType (TySet _ rep _ tys) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
   ns <- mapM insertType tys
   insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   return newNode
-insertType (TyRec rep rv ty) = do
+insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol)
@@ -187,16 +187,16 @@ insertType (TyRec rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
-insertType (TyCodata polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
-insertType (TyNominal rep _ tn args) = do
+insertType (TyData _ polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
+insertType (TyCodata _ polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
+insertType (TyNominal _ rep _ tn args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, toVariance <$> args) })
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode
-insertType (TyPrim rep pt) = do
+insertType (TyPrim _ rep pt) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton pt })

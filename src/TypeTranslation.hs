@@ -21,6 +21,7 @@ import Pretty.Types ()
 import Driver.Environment
 import Syntax.RST.Types
 import Syntax.Common
+import Utils
 
 ---------------------------------------------------------------------------------------------
 -- TranslationState:
@@ -87,13 +88,13 @@ translateXtorSigUpper' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeUpper' :: Typ Neg -> TranslateM (Typ Neg)
-translateTypeUpper' (TyNominal NegRep _ tn _) = do
+translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar NegRep Nothing tv
+    return $ TyVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -101,10 +102,10 @@ translateTypeUpper' (TyNominal NegRep _ tn _) = do
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec NegRep tv $ TyData NegRep (Just tn) xtss
+        return $ TyRec defaultLoc NegRep tv $ TyData defaultLoc NegRep (Just tn) xtss
       Codata -> do
         -- Upper bound translation of codata is empty
-        return $ TyRec NegRep tv $ TyCodata NegRep (Just tn) []
+        return $ TyRec defaultLoc NegRep tv $ TyCodata defaultLoc NegRep (Just tn) []
 translateTypeUpper' tv@TyVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -128,24 +129,24 @@ translateXtorSigLower' MkXtorSig{..} = do
 
 -- | Translate a nominal type into a structural type recursively
 translateTypeLower' :: Typ Pos -> TranslateM (Typ Pos)
-translateTypeLower' (TyNominal pr _ tn _) = do
+translateTypeLower' (TyNominal _ pr _ tn _) = do
   m <- asks $ recVarMap . snd
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar pr Nothing tv
+    return $ TyVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
     case data_polarity of
       Data -> do
         -- Lower bound translation of data is empty
-        return $ TyRec pr tv $ TyData pr (Just tn) []
+        return $ TyRec defaultLoc pr tv $ TyData defaultLoc pr (Just tn) []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec pr tv $ TyCodata pr (Just tn) xtss
+        return $ TyRec defaultLoc pr tv $ TyCodata defaultLoc pr (Just tn) xtss
 translateTypeLower' tv@TyVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -168,18 +169,18 @@ cleanUpXtorSig MkXtorSig{..} = do
 cleanUpType :: Typ pol -> TranslateM (Typ pol)
 cleanUpType ty = case ty of
   -- Remove outermost recursive type if its variable is unused
-  TyRec pr tv ty' -> do
+  TyRec loc pr tv ty' -> do
     s <- gets recVarsUsed
     tyClean <- cleanUpType ty' -- propagate cleanup
-    if S.member tv s then return $ TyRec pr tv tyClean
+    if S.member tv s then return $ TyRec loc pr tv tyClean
     else return tyClean
   -- Propagate cleanup for data and codata types
-  TyData pr mtn xtss -> do
+  TyData loc pr mtn xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
-    return $ TyData pr mtn xtss'
-  TyCodata pr mtn xtss -> do
+    return $ TyData loc pr mtn xtss'
+  TyCodata loc pr mtn xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
-    return $ TyCodata pr mtn xtss'
+    return $ TyCodata loc pr mtn xtss'
   -- Type variables remain unchanged
   tv@TyVar{} -> return tv
   -- Other types imply incorrect translation

@@ -194,7 +194,6 @@ test-suite dualsub-test
     , TypeInference.ExamplesSpec
     , TypeInference.SubsumptionSpec
     , Eval.SubstitutionSpec
-    , Parser.ParserSpec
     , ParserPrettyprinter.ParserPrettyprinterSpec
     , Paths_dualsub
     , Spec

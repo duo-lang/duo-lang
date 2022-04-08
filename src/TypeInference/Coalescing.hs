@@ -11,6 +11,7 @@ import Data.Text qualified as T
 import Syntax.RST.Types
 import Syntax.Common
 import TypeInference.Constraints
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Coalescing
@@ -56,62 +57,62 @@ coalesce :: SolverResult -> Bisubstitution
 coalesce result@(MkSolverResult { tvarSolution }) = MkBisubstitution (M.fromList xs)
     where
         res = M.keys tvarSolution
-        f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar PosRep Nothing tvar
-                        , runCoalesceM result $ coalesceType $ TyVar NegRep Nothing tvar))
+        f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar defaultLoc PosRep Nothing tvar
+                        , runCoalesceM result $ coalesceType $ TyVar defaultLoc NegRep Nothing tvar))
         xs = f <$> res
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TyVar PosRep _ tv) = do
+coalesceType (TyVar _ PosRep _ tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
         then do
             recVar <- getRecVar (tv, Pos)
-            return (TyVar PosRep Nothing recVar)
+            return (TyVar defaultLoc PosRep Nothing recVar)
         else do
             VariableState { vst_lowerbounds } <- getVariableState tv
             let f (i,m) = ( i, S.insert (tv, Pos) m)
             lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
             recVarMap <- gets snd
             case M.lookup (tv, Pos) recVarMap of
-                Nothing     -> return $                      TySet PosRep Nothing (TyVar PosRep Nothing tv:lbs')
-                Just recVar -> return $ TyRec PosRep recVar (TySet PosRep Nothing (TyVar PosRep Nothing tv:lbs'))
-coalesceType (TyVar NegRep _ tv) = do
+                Nothing     -> return $                                 TySet defaultLoc PosRep Nothing (TyVar defaultLoc PosRep Nothing tv:lbs')
+                Just recVar -> return $ TyRec defaultLoc PosRep recVar (TySet defaultLoc PosRep Nothing (TyVar defaultLoc PosRep Nothing tv:lbs'))
+coalesceType (TyVar _ NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
         then do
             recVar <- getRecVar (tv, Neg)
-            return (TyVar NegRep Nothing recVar)
+            return (TyVar defaultLoc NegRep Nothing recVar)
         else do
             VariableState { vst_upperbounds } <- getVariableState tv
             let f (i,m) = ( i, S.insert (tv, Neg) m)
             ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
             recVarMap <- gets snd
             case M.lookup (tv, Neg) recVarMap of
-                Nothing     -> return $                      TySet NegRep Nothing (TyVar NegRep Nothing tv:ubs')
-                Just recVar -> return $ TyRec NegRep recVar (TySet NegRep Nothing (TyVar NegRep Nothing tv:ubs'))
-coalesceType (TyData rep tn xtors) = do
+                Nothing     -> return $                                 TySet defaultLoc NegRep Nothing (TyVar defaultLoc NegRep Nothing tv:ubs')
+                Just recVar -> return $ TyRec defaultLoc NegRep recVar (TySet defaultLoc NegRep Nothing (TyVar defaultLoc NegRep Nothing tv:ubs'))
+coalesceType (TyData loc rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyData rep tn xtors')
-coalesceType (TyCodata rep tn xtors) = do
+    return (TyData loc rep tn xtors')
+coalesceType (TyCodata loc rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodata rep tn xtors')
-coalesceType (TyNominal rep kind tn args) = do
+    return (TyCodata loc rep tn xtors')
+coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
-    return $ TyNominal rep kind tn args'
-coalesceType (TySet rep kind tys) = do
+    return $ TyNominal loc rep kind tn args'
+coalesceType (TySet loc rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
-    return (TySet rep kind tys')
-coalesceType (TyRec PosRep tv ty) = do
+    return (TySet loc rep kind tys')
+coalesceType (TyRec loc PosRep tv ty) = do
     modify (\(i,m) -> (i, M.insert (tv, Pos) tv m))
     let f = (\(x,s) -> (x, S.insert (tv,Pos) s))
     ty' <- local f $ coalesceType ty
-    return $ TyRec PosRep tv ty'
-coalesceType (TyRec NegRep tv ty) = do
+    return $ TyRec loc PosRep tv ty'
+coalesceType (TyRec loc NegRep tv ty) = do
     modify (\(i,m) -> (i, M.insert (tv, Neg) tv m))
     let f = (\(x,s) -> (x, S.insert (tv,Neg) s))
     ty' <- local f $ coalesceType ty
-    return $ TyRec NegRep tv ty'
-coalesceType t@(TyPrim _ _) = return t
+    return $ TyRec loc NegRep tv ty'
+coalesceType t@(TyPrim _ _ _) = return t
 
 coalesceVariantType :: VariantType pol -> CoalesceM (VariantType pol)
 coalesceVariantType (CovariantType ty) = CovariantType <$> coalesceType ty
