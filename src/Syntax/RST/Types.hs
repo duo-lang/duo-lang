@@ -132,6 +132,14 @@ deriving instance Ord (TypeScheme Neg)
 deriving instance Show (TypeScheme Pos)
 deriving instance Show (TypeScheme Neg)
 
+data TopAnnot (pol :: Polarity) where
+  Annotated :: TypeScheme pol -> TopAnnot pol
+  Inferred  :: TypeScheme pol -> TopAnnot pol
+
+deriving instance Show (TopAnnot Pos)
+deriving instance Show (TopAnnot Neg)
+
+
 -- | Typeclass for computing free type variables
 class FreeTVars (a :: Type) where
   freeTVars :: a -> Set TVar

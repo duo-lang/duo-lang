@@ -238,15 +238,20 @@ instance ToHoverMap (Typ pol) where
   toHoverMap (TyRec _loc rep var ty) = M.empty
   toHoverMap (TyPrim _loc rep pty) = M.empty
 
+instance ToHoverMap (TypeScheme pol) where
+  toHoverMap (TypeScheme { ts_monotype }) = toHoverMap ts_monotype
+
 ---------------------------------------------------------------------------------
 -- Converting a program to a HoverMap
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap AST.Declaration where
-  toHoverMap (AST.PrdCnsDecl _loc _doc _rep _isrec _fv Nothing tm) =
-    toHoverMap tm
-  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Just tys) tm) =
+  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Inferred tys) tm) =
+    -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
+    -- defaultLoc.
     M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
+  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Annotated tys) tm) =
+    M.union (toHoverMap tm) (toHoverMap tys)
   toHoverMap (AST.CmdDecl _loc _doc _fv cmd)  =
     toHoverMap cmd
   toHoverMap (AST.DataDecl _loc _doc _decl) =

@@ -57,8 +57,8 @@ embedCoreProg :: Core.Program -> RST.Program
 embedCoreProg = fmap embedCoreDecl
 
 embedCoreDecl :: Core.Declaration -> RST.Declaration
-embedCoreDecl (Core.PrdCnsDecl loc doc rep isRec fv tys tm) =
-    RST.PrdCnsDecl loc doc rep isRec fv tys (embedCoreTerm tm)
+embedCoreDecl (Core.PrdCnsDecl loc doc rep isRec fv _tys tm) =
+    RST.PrdCnsDecl loc doc rep isRec fv Nothing (embedCoreTerm tm)
 embedCoreDecl (Core.CmdDecl loc doc fv cmd) =
     RST.CmdDecl loc doc fv (embedCoreCommand cmd)
 embedCoreDecl (Core.DataDecl loc doc decl) =

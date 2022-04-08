@@ -4,6 +4,7 @@ import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Types qualified as RST
 import Syntax.Common (PrdCnsRep(PrdRep),PrdCnsRep(CnsRep))
 
 
@@ -73,10 +74,6 @@ forgetTypesTerm (AST.CocaseCnsI loc annot ns tmcasesI) = error "not yet implemen
 forgetTypesTerm (AST.Case loc CnsRep _annot ns tm cases) =
     error "not yet implemented"
 
-
-
-
-
 forgetTypesCommand :: AST.Command -> RST.Command
 forgetTypesCommand (AST.Apply loc _kind prd cns) =
     RST.Apply loc (forgetTypesTerm prd) (forgetTypesTerm cns)
@@ -100,9 +97,13 @@ forgetTypesCommand (AST.CocaseCnsPrdI loc ns t cases) = error "not yet implement
 forgetTypesCommand (AST.CocaseCnsCnsI loc ns t cases) = error "not yet implemented"
 
 
+forgetAnnot :: RST.TopAnnot pol -> Maybe (RST.TypeScheme pol)
+forgetAnnot (RST.Annotated tys) = Just tys
+forgetAnnot (RST.Inferred _) = Nothing
+
 forgetTypesDecl :: AST.Declaration  -> RST.Declaration 
 forgetTypesDecl (AST.PrdCnsDecl loc doc pcrep isrec fv annot tm) =
-    RST.PrdCnsDecl loc doc pcrep isrec fv annot (forgetTypesTerm tm)
+    RST.PrdCnsDecl loc doc pcrep isrec fv (forgetAnnot annot) (forgetTypesTerm tm)
 forgetTypesDecl (AST.CmdDecl loc doc fv cmd) =
     RST.CmdDecl loc doc fv (forgetTypesCommand cmd)
 forgetTypesDecl (AST.DataDecl loc doc decl) =

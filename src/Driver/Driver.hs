@@ -47,13 +47,13 @@ checkAnnot :: PolarityRep pol
            -> RST.TypeScheme pol -- ^ Inferred type
            -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
-           -> DriverM (RST.TypeScheme pol)
-checkAnnot _ tyInferred Nothing _ = return tyInferred
+           -> DriverM (RST.TopAnnot pol)
+checkAnnot _ tyInferred Nothing _ = return (RST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
   let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc err)
-      (Right True) -> return tyAnnotated
+      (Right True) -> return (RST.Annotated tyAnnotated)
       (Right False) -> do
         let err = OtherError (Just loc) $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                     , " Annotated type: " <> ppPrint tyAnnotated
@@ -103,13 +103,13 @@ inferDecl (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   env <- gets driverEnv
   case pc of
     PrdRep -> do
-      let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, ty) (prdEnv env) }
+      let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, case ty of RST.Annotated ty -> ty; RST.Inferred ty -> ty) (prdEnv env) }
       setEnvironment newEnv
-      return (AST.PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
+      return (AST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
     CnsRep -> do
-      let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, ty) (cnsEnv env) }
+      let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, case ty of RST.Annotated ty -> ty; RST.Inferred ty -> ty) (cnsEnv env) }
       setEnvironment newEnv
-      return (AST.PrdCnsDecl loc doc pc isRec fv (Just ty) tmInferred)
+      return (AST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
 --
 -- CmdDecl
 --
