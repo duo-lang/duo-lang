@@ -89,6 +89,11 @@ data Term where
     FunApp :: Loc -> Term -> Term -> Term
     MultiLambda :: Loc -> [FreeVarName] -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
+    --CaseCnsI :: Loc -> [TermCaseI] -> Term
+    --Semicolon :: Loc -> XtorName -> SubstitutionI -> Term -> Term 
+    --CocaseCns :: Loc -> Term -> [TermCaseI] -> Term
+
+
 
 deriving instance Show Term
 deriving instance Eq Term
@@ -109,6 +114,9 @@ getLoc (TermParens loc _) = loc
 getLoc (FunApp loc _ _) = loc
 getLoc (MultiLambda loc _ _) = loc
 getLoc (Lambda loc _ _) = loc
+--getLoc (CaseCnsI loc _ ) = loc 
+--getLoc (Semicolon loc _ _ _ ) = loc 
+--getLoc (CocaseCns loc _ _ ) = loc 
 
 --------------------------------------------------------------------------------------------
 -- Commands
