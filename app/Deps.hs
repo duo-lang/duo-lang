@@ -4,10 +4,11 @@ import Driver.Definition
 import Driver.DepGraph
 import Errors
 import Pretty.Pretty
+import Syntax.Common
 
-runDeps :: FilePath -> IO ()
-runDeps fp = do
-    res <- createDeps fp
+runDeps :: ModuleName -> IO ()
+runDeps mn = do
+    res <- createDeps mn
     case res of
         Left err -> ppPrintIO err
         Right (depGraph, compilationOrder) -> do
@@ -16,10 +17,10 @@ runDeps fp = do
             putStrLn "Compilation order:"
             printCompilationOrder compilationOrder
 
-createDeps :: FilePath -> IO (Either Error (DepGraph,CompilationOrder))
+createDeps :: ModuleName -> IO (Either Error (DepGraph,CompilationOrder))
 createDeps fp = fmap fst <$> execDriverM defaultDriverState (createDeps' fp)
 
-createDeps' :: FilePath -> DriverM (DepGraph, CompilationOrder)
+createDeps' :: ModuleName -> DriverM (DepGraph, CompilationOrder)
 createDeps' fp = do
     depGraph <- createDepGraph fp
     compilationOrder <- topologicalSort depGraph

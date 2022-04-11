@@ -55,8 +55,8 @@ type CompilationOrder = [ModuleName]
 ---------------------------------------------------------------------------------
 
 -- | Create the dependency graph by recursively following import statements.
-createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] defaultDepGraph
+createDepGraph :: ModuleName -> DriverM DepGraph
+createDepGraph mn = createDepGraph' [mn] defaultDepGraph
 
 lookupOrInsert :: DepGraph -> ModuleName -> (Node, DepGraph)
 lookupOrInsert depGraph@MkDepGraph {..} mn = case M.lookup mn name_map of

@@ -4,6 +4,7 @@ module Driver.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
+  , runCompilationModule
   ) where
 
 import Control.Monad.State
@@ -178,10 +179,8 @@ inferProgram decls = sequence $ inferDecl <$> decls
   
 runCompilationModule :: ModuleName -> DriverM ()
 runCompilationModule mn = do
-  -- Find the starting module
-  fp <- findModule mn defaultLoc
   -- Build the dependency graph
-  depGraph <- createDepGraph fp
+  depGraph <- createDepGraph mn
   -- Create the compilation order
   compilationOrder <- topologicalSort depGraph
   runCompilationPlan compilationOrder
