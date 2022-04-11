@@ -16,6 +16,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Utils
+import Data.Bifunctor (second)
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
@@ -42,7 +43,7 @@ prdCnsDeclarationP doc startPos pc = do
     _ <- symbolP SymColoneq
     (tm,_) <- termP
     endPos <- symbolP SymSemi
-    pure (PrdCnsDecl (Loc startPos endPos) doc pc isRec v annot tm) 
+    pure (PrdCnsDecl (Loc startPos endPos) doc pc isRec v annot tm)
 
 cmdDeclarationP :: Maybe DocComment -> SourcePos -> Parser Declaration
 cmdDeclarationP doc startPos = do
@@ -125,11 +126,19 @@ tySynP doc = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
+returnP :: Parser a -> Parser (PrdCns,a)
+returnP p = do
+  r <- optional (keywordP KwReturn)
+  b <- p
+  return $ case r of
+    Just _ -> (Cns,b)
+    Nothing -> (Prd,b)
+
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  (args,_) <- argListsP False (fst <$> typP) <?> "argument list"
-  return (xt, args )
+  args <- fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
+  return (xt, map (\(x,(y,_)) -> (x,y)) args )
 
 
 argListToLctxt :: [(PrdCns, Typ)] -> LinearContext

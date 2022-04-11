@@ -45,6 +45,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Parser.Definition
 import Syntax.Common
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
+import Debug.Trace
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -414,7 +415,7 @@ checkReservedOp str | any ((flip T.isInfixOf) str) (T.pack . show <$> operators)
 -------------------------------------------------------------------------------------------
 
 betweenP :: Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
-betweenP open close middle = do
+betweenP open close middle = trace "betweenP" $ do
   _ <- open
   res <- middle
   endPos <- close
