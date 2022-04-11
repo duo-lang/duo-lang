@@ -5,6 +5,7 @@ import Control.Monad (forM_)
 
 import Data.Either( isRight, isLeft )
 import TestUtils
+import Driver.Definition
 import Driver.Driver
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
@@ -13,7 +14,7 @@ spec = do
   describe "All the programs in the toplevel \"examples/\" folder typecheck." $ do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
-      env <- runIO $ getEnvironment example defaultInferenceOptions { infOptsLibPath = ["examples"] }
+      env <- runIO $ getEnvironment example
       it ("The file " ++ example ++ " typechecks.") $ do
         env `shouldSatisfy` isRight
 
@@ -29,5 +30,5 @@ spec = do
     examples <- runIO getAvailableCounterExamples
     forM_ examples $ \example -> do
       describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
-        env <- runIO $ getEnvironment example defaultInferenceOptions
+        env <- runIO $ getEnvironment example
         it "Doesn't typecheck" $  env `shouldSatisfy` isLeft

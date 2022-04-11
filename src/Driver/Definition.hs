@@ -11,6 +11,7 @@ import Errors
 import Pretty.Errors ( printLocatedError )
 import Renamer.SymbolTable
 import Syntax.Common
+import Syntax.AST.Program qualified as AST
 import Utils
 
 ------------------------------------------------------------------------------
@@ -40,6 +41,15 @@ data DriverState = MkDriverState
   { driverOpts :: InferenceOptions
   , driverEnv :: Environment
   , driverSymbols :: [(ModuleName, SymbolTable)]
+  , driverASTs :: [(ModuleName, AST.Program)]
+  }
+
+defaultDriverState :: DriverState
+defaultDriverState = MkDriverState
+  { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
+  , driverEnv = mempty
+  , driverSymbols = []
+  , driverASTs = []
   }
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }

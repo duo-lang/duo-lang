@@ -23,6 +23,7 @@ import Syntax.AST.Program ( Declaration(..) )
 import Driver.Environment (Environment)
 import Syntax.Common
 import Driver.Driver
+import Driver.Definition
 import Translate.Desugar
 import Translate.Focusing
 import Utils (trimStr, defaultLoc)
@@ -101,7 +102,8 @@ cmd s = do
   (comLoc,_) <- parseInteractive commandP (T.pack s)
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  inferredCmd <- liftIO $ inferProgramIO (MkDriverState opts oldEnv mempty) [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
+  let ds :: DriverState = defaultDriverState { driverOpts = opts, driverEnv = oldEnv }
+  inferredCmd <- liftIO $ inferProgramIO ds [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ _ inferredCmd]) -> do
       evalOrder <- gets evalOrder

@@ -11,11 +11,9 @@ import Syntax.CST.Program qualified as CST
 import Translate.Desugar
 import Translate.EmbedCore
 import Translate.Reparse
+import Driver.Definition
 import Driver.Driver
 import TestUtils
-
-driverState :: DriverState
-driverState = MkDriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty
 
 spec :: Spec
 spec = do
@@ -23,12 +21,12 @@ spec = do
       examples <- runIO $ getAvailableExamples "examples/"
       forM_ examples $ \example -> do
         describe ("Desugaring the program in  " ++ example ++ " typechecks.") $ do
-          decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+          decls <- runIO $ getTypecheckedDecls example
           case decls of
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
               let desugaredDecls :: CST.Program = reparseProgram $ embedCoreProg $ desugarProgram decls
-              res <- runIO $ inferProgramIO driverState desugaredDecls
+              res <- runIO $ inferProgramIO defaultDriverState desugaredDecls
               case res of
                 Left err -> do
                   let msg = unlines [ "---------------------------------"

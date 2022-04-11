@@ -6,6 +6,7 @@ import TestUtils
 import Pretty.Pretty
 import Pretty.Program ()
 
+import Driver.Definition
 import Driver.Driver
 import Translate.Desugar
 import Syntax.Common
@@ -14,17 +15,14 @@ import Translate.Focusing
 import Translate.EmbedCore
 import Translate.Reparse
 
-driverState :: DriverState
-driverState = MkDriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty
-
 testHelper :: FilePath -> EvaluationOrder -> SpecWith ()
 testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ do
-  decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+  decls <- runIO $ getTypecheckedDecls example
   case decls of
     Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
     Right decls -> do
       let focusedDecls :: CST.Program = reparseProgram $ embedCoreProg $ focusProgram cbx (desugarProgram decls)
-      res <- runIO $ inferProgramIO driverState focusedDecls
+      res <- runIO $ inferProgramIO defaultDriverState focusedDecls
       case res of
         Left err -> do
            let msg = unlines [ "---------------------------------"

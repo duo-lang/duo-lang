@@ -213,16 +213,6 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 -- Old
 ---------------------------------------------------------------------------------
 
-inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment, AST.Program)
-inferProgramFromDisk fp = do
-  file <- liftIO $ T.readFile fp
-  decls <- runFileParser fp programP file
-  -- Use inference options of parent? Probably not?
-  x <- liftIO $ inferProgramIO  (MkDriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty mempty) decls
-  case x of
-     Left err -> throwError err
-     Right env -> return env
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]

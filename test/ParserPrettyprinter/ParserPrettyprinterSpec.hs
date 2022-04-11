@@ -9,6 +9,7 @@ import Pretty.Pretty
 import Pretty.Errors ()
 import Pretty.Program ()
 import TestUtils
+import Driver.Definition
 import Driver.Driver
 
 -- Check that all the examples in `examples/..` can be:
@@ -22,7 +23,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
-        decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+        decls <- runIO $ getTypecheckedDecls example
         it "Can be parsed again." $
           case decls of
             Left err -> expectationFailure (ppPrintString err)
@@ -32,13 +33,13 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
-        decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+        decls <- runIO $ getTypecheckedDecls example
         case decls of 
             Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
             Right decls -> case (runFileParser example programP (ppPrint decls)) of
               Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
               Right decls -> do
-                res <- runIO $ inferProgramIO (MkDriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty) decls
+                res <- runIO $ inferProgramIO defaultDriverState decls
                 it "Can be parsed and typechecked again." $
                     res `shouldSatisfy` isRight
 
