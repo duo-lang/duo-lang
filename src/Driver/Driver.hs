@@ -205,9 +205,8 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       -- 4. Infer the declarations
       inferredDecls <- inferProgram renamedDecls
       -- 5. Add the renamed AST to the cache
-      pure ()
-
-
+      liftIO $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
+      addTypecheckedProgram mn inferredDecls
 
 ---------------------------------------------------------------------------------
 -- Old

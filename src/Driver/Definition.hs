@@ -2,12 +2,15 @@ module Driver.Definition where
 
 import Control.Monad.Except
 import Control.Monad.State
+import Data.List (find)
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 
+
 import Driver.Environment
 import Errors
+import Pretty.Pretty
 import Pretty.Errors ( printLocatedError )
 import Renamer.SymbolTable
 import Syntax.Common
@@ -71,6 +74,22 @@ addSymboltable mn st = modify f
 
 getSymbolTables :: DriverM [(ModuleName, SymbolTable)]
 getSymbolTables = gets driverSymbols
+
+
+-- AST Cache
+
+addTypecheckedProgram :: ModuleName -> AST.Program -> DriverM ()
+addTypecheckedProgram mn prog = modify f
+  where
+    f state@MkDriverState { driverASTs } = state { driverASTs = (mn,prog) : driverASTs }
+
+queryTypecheckedProgram :: ModuleName -> DriverM (AST.Program)
+queryTypecheckedProgram mn = do
+  cache <- gets driverASTs
+  case find (\(mn',ast) -> mn == mn') cache of
+    Nothing -> throwOtherError ["Module " <> ppPrint mn <> " not in cache."]
+    Just (_,ast) -> pure ast
+
 
 -- Environment
 
