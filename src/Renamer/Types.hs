@@ -40,8 +40,10 @@ lowerTyp rep (TyNominal loc name args) = do
     case res of
         SynonymResult typ -> case args of
             [] -> lowerTyp rep typ
-            _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments yet.")
-        NominalResult _ polykind -> do
+            _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
+        NominalResult Refined _ -> do
+            throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")
+        NominalResult NotRefined polykind -> do
             args' <- lowerTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name args'
 lowerTyp rep (TyRec loc v typ) =
