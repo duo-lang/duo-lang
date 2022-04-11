@@ -22,9 +22,10 @@ letCmd s = do
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   let ds = DriverState opts oldEnv mempty
-  newEnv <- liftIO $ execDriverM ds (renameDecl decl >>= \x -> inferDecl x)
+  newEnv <- undefined --liftIO $ execDriverM ds (renameDecl decl >>= \x -> inferDecl x)
   case newEnv of
-    Left err -> prettyText (T.pack $ show err)
+    -- TODO!
+    Left err -> prettyText (T.pack $ show "err")
     Right (_,state) -> modifyEnvironment (const (driverEnv state))
 
 letOption :: Option

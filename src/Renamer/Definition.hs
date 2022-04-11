@@ -23,8 +23,8 @@ type RenameReader = [(ModuleName, SymbolTable)]
 newtype RenamerM a = MkRenamerM { unRenamerM :: ReaderT RenameReader (Except Error) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadReader RenameReader)
 
-runRenameM :: RenameReader -> RenamerM a -> Either Error a
-runRenameM reader action = runExcept (runReaderT (unRenamerM action) reader)
+runRenamerM :: RenameReader -> RenamerM a -> Either Error a
+runRenamerM reader action = runExcept (runReaderT (unRenamerM action) reader)
 
 ------------------------------------------------------------------------------
 -- Helper Functions

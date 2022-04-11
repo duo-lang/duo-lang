@@ -3,7 +3,7 @@ module Repl.Options.Show
   , showTypeOption
   ) where
 
-import Control.Monad.State ( forM_, gets, MonadIO(liftIO) )
+import Control.Monad.State ( forM_, gets )
 import Data.List (find)
 import Data.Map qualified as M
 import Data.Text (Text)
@@ -17,30 +17,29 @@ import Repl.Repl
       prettyRepl,
       parseFile,
       Option(..),
-      ReplState(loadedFiles, replEnv, typeInfOpts),
+      ReplState(loadedFiles, replEnv),
       Repl )
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
+import Renamer.Definition
 import Renamer.Program    
 import Syntax.RST.Types ( DataDecl(data_name) )
+import Syntax.RST.Program
 import Syntax.Common
-import Driver.Definition
 import Utils (trim)
+import Errors
 
 -- Show
 
 showCmd :: Text -> Repl ()
 showCmd "" = do
   loadedFiles <- gets loadedFiles
-  oldEnv <- gets replEnv
-  opts <- gets typeInfOpts
-  let ds = DriverState opts oldEnv mempty
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
-    decls' <- liftIO $ execDriverM ds $ renameProgram decls
+    let decls' :: Either Error Program = runRenamerM [] $ renameProgram decls
     case decls' of
       Left err -> prettyText (T.pack $ show err)
-      Right (decls,_) -> prettyRepl decls
+      Right decls -> prettyRepl decls
 showCmd str = do
   let s = MkFreeVarName (trim str)
   env <- gets replEnv

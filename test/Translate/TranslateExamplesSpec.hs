@@ -7,9 +7,10 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
 import Pretty.Program ()
-import Syntax.RST.Program qualified as RST
+import Syntax.CST.Program qualified as CST
 import Translate.Desugar
 import Translate.EmbedCore
+import Translate.Reparse
 import Driver.Driver
 import TestUtils
 
@@ -26,14 +27,14 @@ spec = do
           case decls of
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-              let desugaredDecls :: RST.Program = embedCoreProg $ desugarProgram decls
-              res <- runIO $ inferProgramIO' driverState desugaredDecls
+              let desugaredDecls :: CST.Program = reparseProgram $ embedCoreProg $ desugarProgram decls
+              res <- runIO $ inferProgramIO driverState desugaredDecls
               case res of
                 Left err -> do
                   let msg = unlines [ "---------------------------------"
                                     , "Prettyprinted declarations:"
                                     , ""
-                                    ,  ppPrintString desugaredDecls
+                                    ,  ppPrintString (embedCoreProg $ desugarProgram decls)
                                     , ""
                                     , "Show instance of declarations:"
                                     , ""

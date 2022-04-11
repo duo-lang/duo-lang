@@ -4,7 +4,6 @@ module Driver.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
-  , inferProgramIO'
   , renameProgramIO
   , inferDecl
   ) where
@@ -202,21 +201,17 @@ inferProgramFromDisk fp = do
 inferProgram :: [CST.Declaration]
              -> DriverM AST.Program
 inferProgram decls = do
-  decls <- renameProgram decls
+  decls <- undefined -- renameProgram decls
   forM decls inferDecl
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]
                 -> IO (Either Error RST.Program)
 renameProgramIO state decls = do
-  x <- execDriverM state (renameProgram decls)
+  x <- execDriverM state undefined -- (renameProgram decls)
   case x of
       Left err -> return (Left err)
       Right (res,_) -> return (Right res)
-
-inferProgram' :: RST.Program
-              -> DriverM AST.Program
-inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
@@ -227,11 +222,3 @@ inferProgramIO state decls = do
       Left err -> return (Left err)
       Right (res,x) -> return (Right ((driverEnv x), res))
 
-inferProgramIO' :: DriverState -- ^ Initial State
-                -> RST.Program
-                -> IO (Either Error (Environment, AST.Program))
-inferProgramIO' state decls = do
-  x <- execDriverM state (inferProgram' decls)
-  case x of
-    Left err -> return (Left err)
-    Right (res,x) -> return (Right ((driverEnv x), res))

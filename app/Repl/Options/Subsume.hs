@@ -1,13 +1,12 @@
 module Repl.Options.Subsume (subOption) where
 
-import Control.Monad.State
 import Data.Text (Text)
 
 import Parser.Parser ( subtypingProblemP )
 import Repl.Repl
-    ( prettyRepl, ReplState(..), Repl, Option(..), fromRight, parseInteractive )
+    ( prettyRepl, Repl, Option(..), fromRight, parseInteractive )
 import TypeAutomata.Subsume (subsume)
-import Driver.Definition
+import Renamer.Definition
 import Renamer.Types
 import Syntax.Common
 
@@ -16,14 +15,11 @@ import Syntax.Common
 
 subCmd :: Text -> Repl ()
 subCmd s = do
-  env <- gets replEnv
-  opts <- gets typeInfOpts
-  let ds = DriverState opts env mempty
   (t1,t2) <- parseInteractive subtypingProblemP s
-  t1' <- liftIO $ execDriverM ds $ renameTypeScheme PosRep t1
-  t2' <- liftIO $ execDriverM ds $ renameTypeScheme PosRep t2
+  let t1' = runRenamerM [] $ renameTypeScheme PosRep t1
+  let t2' = runRenamerM [] $ renameTypeScheme PosRep t2
   case (t1', t2') of
-     (Right (res1,_), Right (res2,_)) -> do
+     (Right res1, Right res2) -> do
        res <- fromRight (subsume PosRep res1 res2)
        prettyRepl res
      (_,_) -> fail "SubtypingProblemP: Cannot lower types."
