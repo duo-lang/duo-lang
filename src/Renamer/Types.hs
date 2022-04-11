@@ -5,14 +5,12 @@ import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
-import Pretty.Pretty
 import Renamer.Definition
 import Renamer.SymbolTable
 import Syntax.Common
 import qualified Syntax.RST.Types as RST
 import Syntax.RST.Types ( freeTVars )
 import Syntax.CST.Types
-import Data.List
 import Utils (Loc(..))
 
 ---------------------------------------------------------------------------------
@@ -38,12 +36,12 @@ renameTyp rep (TyXData loc Codata name sigs) = do
 renameTyp rep (TyNominal loc name args) = do
     res <- lookupTypeConstructor loc name
     case res of
-        SynonymResult typ -> case args of
+        (_, SynonymResult typ) -> case args of
             [] -> renameTyp rep typ
             _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
-        NominalResult Refined _ -> do
+        (_, NominalResult Refined _) -> do
             throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")
-        NominalResult NotRefined polykind -> do
+        (_, NominalResult NotRefined polykind) -> do
             args' <- renameTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name args'
 renameTyp rep (TyRec loc v typ) =
@@ -120,13 +118,6 @@ desugaring loc PosRep InterDesugaring _ _ =
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
     renameTyp rep (TyNominal loc tyname [tl, tr])
 
-lookupTyOp :: Loc -> BinOp -> RenamerM TyOp
-lookupTyOp loc op = do
-    tyops <- tyOps <$> getSymbolTable
-    case find (\tyop -> symbol tyop == op) tyops of
-      Nothing -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)))
-      Just tyop -> pure tyop
-
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes
 -- according to the defined operator associativity
@@ -147,8 +138,8 @@ lookupTyOp loc op = do
 associateOps :: Typ -> NonEmpty (Loc, BinOp, Typ) -> RenamerM Typ
 associateOps lhs ((loc, s, rhs) :| []) = pure $ TyBinOp loc lhs s rhs
 associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
-    op1 <- lookupTyOp loc1 s1
-    op2 <- lookupTyOp loc2 s2
+    (_,op1) <- lookupTyOp loc1 s1
+    (_,op2) <- lookupTyOp loc2 s2
     if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
@@ -161,5 +152,5 @@ associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
 
 renameBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> RenamerM (RST.Typ pol)
 renameBinOp loc rep lhs s rhs = do
-    op <- lookupTyOp loc s
+    (_,op) <- lookupTyOp loc s
     desugaring loc rep (desugar op) lhs rhs

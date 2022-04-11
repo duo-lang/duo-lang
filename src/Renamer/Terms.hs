@@ -19,7 +19,7 @@ import Utils
 
 checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> RenamerM ()
 checkXtorArity loc (xt, dc) arityUsed = do
-  (_,aritySpecified) <- lookupXtor loc (xt, dc)
+  (_,(_,aritySpecified)) <- lookupXtor loc (xt, dc)
   if arityUsed /= aritySpecified
     then throwError (LowerError (Just loc) (XtorArityMismatch xt aritySpecified arityUsed))
     else pure ()
@@ -61,8 +61,9 @@ renameTermCase dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_
 
 termCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
 termCasesToNS [] _ = pure Structural
-termCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc =
-  fst <$> lookupXtor tmcase_ext (tmcase_name, dc)
+termCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc = do
+  (_, (ns,_)) <- lookupXtor tmcase_ext (tmcase_name, dc)
+  pure ns
 
 renameTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM (RST.TermCaseI Prd)
 renameTermCaseI dc (CST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (bs1,(),bs2), tmcasei_term }) = do
@@ -79,8 +80,9 @@ renameTermCaseI dc (CST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = 
 
 termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> RenamerM NominalStructural
 termCasesIToNS [] _ = pure Structural
-termCasesIToNS ((CST.MkTermCaseI { tmcasei_ext, tmcasei_name }):_) dc =
-  fst <$> lookupXtor tmcasei_ext (tmcasei_name, dc)
+termCasesIToNS ((CST.MkTermCaseI { tmcasei_ext, tmcasei_name }):_) dc = do
+  (_,(ns,_)) <- lookupXtor tmcasei_ext (tmcasei_name, dc)
+  pure ns
 
 renameCommandCase :: DataCodata -> CST.CmdCase -> RenamerM RST.CmdCase
 renameCommandCase dc (CST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd}) = do
@@ -95,18 +97,19 @@ renameCommandCase dc (CST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, c
 -- TODO: Check that all command cases use the same nominal/structural variant.
 commandCasesToNS :: [CST.CmdCase] -> DataCodata -> RenamerM NominalStructural
 commandCasesToNS [] _ = pure Structural
-commandCasesToNS ((CST.MkCmdCase { cmdcase_ext, cmdcase_name }):_) dc =
-  fst <$> lookupXtor cmdcase_ext (cmdcase_name, dc)
+commandCasesToNS ((CST.MkCmdCase { cmdcase_ext, cmdcase_name }):_) dc = do
+  (_,(ns,_)) <- lookupXtor cmdcase_ext (cmdcase_name, dc)
+  pure ns
 
 renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
 renameTerm rep    (CST.Var loc v) =
   pure $ RST.FreeVar loc rep v
 renameTerm PrdRep (CST.Xtor loc xtor subst) = do
-  (ns, _) <- lookupXtor loc (xtor, Data)
+  (_,(ns, _)) <- lookupXtor loc (xtor, Data)
   checkXtorArity loc (xtor,Data) (CST.substitutionToArity subst)
   RST.Xtor loc PrdRep ns xtor <$> renameSubstitution subst
 renameTerm CnsRep (CST.Xtor loc xtor subst) = do
-  (ns, _) <- lookupXtor loc (xtor, Codata)
+  (_,(ns, _)) <- lookupXtor loc (xtor, Codata)
   checkXtorArity loc (xtor,Codata) (CST.substitutionToArity subst)
   RST.Xtor loc CnsRep ns xtor <$> renameSubstitution subst
 renameTerm CnsRep (CST.XMatch loc Data cases) = do
@@ -128,7 +131,7 @@ renameTerm CnsRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
 renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
-  (ns, _) <- lookupXtor loc (xtor, Codata)
+  (_,(ns, _)) <- lookupXtor loc (xtor, Codata)
   checkXtorArity loc (xtor,Codata) (CST.substitutionIToArity subst)
   tm' <- renameTerm PrdRep tm
   subst' <- renameSubstitutionI subst
