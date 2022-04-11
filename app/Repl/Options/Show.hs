@@ -37,7 +37,7 @@ showCmd "" = do
   let ds = DriverState opts oldEnv mempty
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
-    decls' <- liftIO $ execDriverM ds $ lowerProgram decls
+    decls' <- liftIO $ execDriverM ds $ renameProgram decls
     case decls' of
       Left err -> prettyText (T.pack $ show err)
       Right (decls,_) -> prettyRepl decls

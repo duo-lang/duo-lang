@@ -25,8 +25,8 @@ subsumptionCheckPos env bspec s1 s2 = do
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) (lowerTypeScheme PosRep r1)
-        lowerResult2 <- execDriverM (ds env) (lowerTypeScheme PosRep r2)
+        lowerResult1 <- execDriverM (ds env) (renameTypeScheme PosRep r1)
+        lowerResult2 <- execDriverM (ds env) (renameTypeScheme PosRep r2)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"

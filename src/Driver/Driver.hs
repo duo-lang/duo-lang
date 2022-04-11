@@ -21,7 +21,7 @@ import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO )
-import Renamer.Program (lowerProgram)
+import Renamer.Program (renameProgram)
 import Renamer.SymbolTable
 
 import Syntax.Common
@@ -204,10 +204,6 @@ inferProgram :: [CST.Declaration]
 inferProgram decls = do
   decls <- renameProgram decls
   forM decls inferDecl
-
-renameProgram :: [CST.Declaration]
-              -> DriverM RST.Program
-renameProgram decls = lowerProgram decls
 
 renameProgramIO :: DriverState
                 -> [CST.Declaration]
