@@ -180,7 +180,7 @@ inferProgram decls = sequence $ inferDecl <$> decls
 runCompilationModule :: ModuleName -> DriverM ()
 runCompilationModule mn = do
   -- Build the dependency graph
-  depGraph <- createDepGraph mn
+  depGraph <- createDepGraph [mn]
   -- Create the compilation order
   compilationOrder <- topologicalSort depGraph
   runCompilationPlan compilationOrder
@@ -215,9 +215,17 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
                 -> IO (Either Error (Environment, AST.Program))
-inferProgramIO state decls = undefined
-  -- x <- execDriverM state (inferProgram decls)
-  -- case x of
-  --     Left err -> return (Left err)
-  --     Right (res,x) -> return (Right ((driverEnv x), res))
+inferProgramIO state decls = do
+  let action :: DriverM (AST.Program)
+      action = do
+        let st = createSymbolTable decls
+        forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
+        addSymboltable (MkModuleName "This") st
+        sts <- getSymbolTables
+        renamedDecls <- liftEitherErr defaultLoc (runRenamerM sts (renameProgram decls))
+        inferProgram renamedDecls
+  res <- execDriverM state action
+  case res of
+    Left err -> return (Left err)
+    Right (res,x) -> return (Right ((driverEnv x), res))
 
