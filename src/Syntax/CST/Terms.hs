@@ -17,6 +17,14 @@ data PrdCnsTerm where
 deriving instance Show PrdCnsTerm
 deriving instance Eq PrdCnsTerm
 
+
+data TermOrStar where
+    ToSTerm :: Term -> TermOrStar
+    ToSStar :: TermOrStar
+
+deriving instance Show TermOrStar
+deriving instance Eq TermOrStar
+
 type Substitution = [PrdCnsTerm]
 type SubstitutionI = (Substitution,PrdCns,Substitution)
 
@@ -30,8 +38,14 @@ substitutionIToArity :: SubstitutionI -> Arity
 substitutionIToArity (subst1, pc, subst2) =
   substitutionToArity subst1 ++ [case pc of Prd -> Cns; Cns -> Prd] ++ substitutionToArity subst2
 
-type BindingSite = [(PrdCns,FreeVarName)]
-type BindingSiteI = (BindingSite, (), BindingSite)
+data FVOrStar where
+    FoSFV :: FreeVarName -> FVOrStar
+    FoSStar :: FVOrStar
+
+deriving instance Show FVOrStar
+deriving instance Eq FVOrStar
+
+type BindingSite = [FVOrStar]
 
 --------------------------------------------------------------------------------------------
 -- Cases/Cocases
@@ -47,51 +61,47 @@ data TermCase  = MkTermCase
 deriving instance Show TermCase
 deriving instance Eq TermCase
 
-data TermCaseI = MkTermCaseI
-  { tmcasei_ext  :: Loc
-  , tmcasei_name :: XtorName
-  , tmcasei_args :: BindingSiteI
-  , tmcasei_term :: Term
-  }
-
-deriving instance Show TermCaseI
-deriving instance Eq TermCaseI
-
-data CmdCase = MkCmdCase
-  { cmdcase_ext  :: Loc
-  , cmdcase_name :: XtorName
-  , cmdcase_args :: BindingSite
-  , cmdcase_cmd  :: Command
-  }
-
-deriving instance Show CmdCase
-deriving instance Eq CmdCase
 
 --------------------------------------------------------------------------------------------
 -- Terms
 --------------------------------------------------------------------------------------------
 
+
+data PrimCommand where
+  -- AST Nodes
+  Print :: Loc -> Term -> Term -> PrimCommand
+  Read  :: Loc -> Term -> PrimCommand
+  ExitSuccess  :: Loc -> PrimCommand
+  ExitFailure :: Loc -> PrimCommand
+  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> [Term] -> PrimCommand
+  -- Sugar Nodes
+
+deriving instance Show PrimCommand
+deriving instance Eq PrimCommand
+
+getLocPC :: PrimCommand -> Loc 
+getLocPC (Print loc _ _) = loc 
+getLocPC (Read loc _) = loc 
+getLocPC (ExitSuccess loc) = loc 
+getLocPC (ExitFailure loc) = loc 
+getLocPC (PrimOp loc _ _ _) = loc
+
 data Term where
-    -- AST Nodes
+    PrimCmdTerm :: PrimCommand -> Term 
     Var :: Loc -> FreeVarName -> Term
-    Xtor :: Loc -> XtorName -> Substitution -> Term
-    XMatch :: Loc -> DataCodata -> [CmdCase] -> Term
-    MuAbs :: Loc -> FreeVarName -> Command -> Term
-    Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
-    Case :: Loc -> Term -> [TermCase] -> Term
-    Cocase :: Loc -> [TermCaseI] -> Term
+    XtorSemi :: Loc -> XtorName -> [Term] -> Maybe Term -> Term
+    XCase :: Loc -> DataCodata -> Maybe Term -> [TermCase] -> Term    
+    MuAbs :: Loc -> FreeVarName -> Term -> Term
+    Dtor :: Loc -> XtorName -> Term -> [TermOrStar] -> Term
     PrimLitI64 :: Loc -> Integer -> Term
     PrimLitF64 :: Loc -> Double -> Term
-    -- Sugar Nodes
-    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
+    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, [TermOrStar], SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
     MultiLambda :: Loc -> [FreeVarName] -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
-    --CaseCnsI :: Loc -> [TermCaseI] -> Term
-    --Semicolon :: Loc -> XtorName -> SubstitutionI -> Term -> Term 
-    --CocaseCns :: Loc -> Term -> [TermCaseI] -> Term
+    Apply :: Loc -> Term -> Term -> Term 
 
 
 
@@ -100,12 +110,10 @@ deriving instance Eq Term
 
 getLoc :: Term -> Loc
 getLoc (Var loc _) = loc
-getLoc (Xtor loc _ _) = loc
-getLoc (XMatch loc _ _) = loc
+getLoc (XtorSemi loc _ _ _) = loc
 getLoc (MuAbs loc _ _) = loc
 getLoc (Dtor loc _ _ _) = loc
-getLoc (Case loc _ _) = loc
-getLoc (Cocase loc _) = loc
+getLoc (XCase loc _ _ _) = loc
 getLoc (PrimLitI64 loc _) = loc
 getLoc (PrimLitF64 loc _) = loc
 getLoc (DtorChain _ tm _)  = getLoc tm
@@ -114,25 +122,5 @@ getLoc (TermParens loc _) = loc
 getLoc (FunApp loc _ _) = loc
 getLoc (MultiLambda loc _ _) = loc
 getLoc (Lambda loc _ _) = loc
---getLoc (CaseCnsI loc _ ) = loc 
---getLoc (Semicolon loc _ _ _ ) = loc 
---getLoc (CocaseCns loc _ _ ) = loc 
-
---------------------------------------------------------------------------------------------
--- Commands
---------------------------------------------------------------------------------------------
-
-data Command where
-  -- AST Nodes
-  Apply :: Loc -> Term -> Term -> Command
-  Print :: Loc -> Term -> Command -> Command
-  Read  :: Loc -> Term -> Command
-  Jump  :: Loc -> FreeVarName -> Command
-  ExitSuccess  :: Loc -> Command
-  ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
-  -- Sugar Nodes
-  CommandParens :: Loc -> Command -> Command
-
-deriving instance Show Command
-deriving instance Eq Command
+getLoc (Apply loc _ _) = loc 
+getLoc (PrimCmdTerm pc) = getLocPC pc 

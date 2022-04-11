@@ -25,7 +25,9 @@ import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
-
+import qualified Syntax.AST.Terms as AST
+import Syntax.CST.Terms (FVOrStar(FoSStar))
+import GHC.Base (NonEmpty ((:|)))
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
 --
@@ -193,7 +195,7 @@ createNamesCommand (RST.PrimOp loc pt pop subst) = do
   pure $ RST.PrimOp loc pt pop subst'
 
 createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
-createNamesCmdCase (RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd }) = do
+createNamesCmdCase RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } = do
   cmd' <- createNamesCommand cmdcase_cmd
   args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
   return $ RST.MkCmdCase defaultLoc cmdcase_name args cmd'
@@ -231,75 +233,76 @@ embedTerm RST.BoundVar{} =
 embedTerm (RST.FreeVar loc _ fv) =
   CST.Var loc fv
 embedTerm (RST.Xtor loc _ _ xt subst) =
-  CST.Xtor loc xt (embedSubst subst)
+  CST.XtorSemi loc xt (embedSubst subst) Nothing
 embedTerm (RST.XMatch loc PrdRep _ cases) =
-  CST.XMatch loc Codata (embedCmdCase <$> cases)
+  CST.XCase loc Codata Nothing (embedCmdCase <$> cases)
 embedTerm (RST.XMatch loc CnsRep _ cases) =
-  CST.XMatch loc Data (embedCmdCase <$> cases)
+  CST.XCase loc Data Nothing (embedCmdCase <$> cases)
 embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
-embedTerm (RST.Dtor loc _ _ xt tm substi) =
-  CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)
+embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
+  CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
 embedTerm (RST.Case loc _ tm cases) =
-  CST.Case loc (embedTerm tm) (embedTermCase <$> cases)
+  CST.XCase loc Data (Just $ embedTerm tm) (embedTermCase <$> cases)
 embedTerm (RST.Cocase loc _ cases) =
-  CST.Cocase loc (embedTermCaseI <$> cases)
+  CST.XCase loc Codata Nothing (embedTermCaseI <$> cases)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
 embedTerm (RST.PrimLitF64 loc d) =
   CST.PrimLitF64 loc d
 
-embedPCTerm :: RST.PrdCnsTerm -> CST.PrdCnsTerm
-embedPCTerm (RST.PrdTerm tm) = CST.PrdTerm (embedTerm tm)
-embedPCTerm (RST.CnsTerm tm) = CST.CnsTerm (embedTerm tm)
 
-embedSubst :: RST.Substitution -> CST.Substitution
+embedPCTerm :: RST.PrdCnsTerm -> CST.Term
+embedPCTerm (RST.PrdTerm tm) = embedTerm tm
+embedPCTerm (RST.CnsTerm tm) = embedTerm tm
+
+embedSubst :: RST.Substitution -> [CST.Term]
 embedSubst = fmap embedPCTerm
 
-embedSubstI :: RST.SubstitutionI pc -> CST.SubstitutionI
-embedSubstI (subst1,PrdRep,subst2) = (embedSubst subst1, Prd, embedSubst subst2)
-embedSubstI (subst1,CnsRep,subst2) = (embedSubst subst1, Cns, embedSubst subst2)
+embedSubstI :: RST.SubstitutionI pc -> [CST.TermOrStar]
+embedSubstI (subst1,PrdRep,subst2) = (CST.ToSTerm <$> embedSubst subst1) ++ [CST.ToSStar] ++  (CST.ToSTerm <$> embedSubst subst2)
+embedSubstI (subst1,CnsRep,subst2) = (CST.ToSTerm <$> embedSubst subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedSubst subst2)
 
-embedCommand :: RST.Command -> CST.Command
+embedCommand :: RST.Command -> CST.Term
 embedCommand (RST.Apply loc prd cns) =
   CST.Apply loc (embedTerm prd) (embedTerm cns)
 embedCommand (RST.Print loc tm cmd) =
-  CST.Print loc (embedTerm tm) (embedCommand cmd)
+  CST.PrimCmdTerm $ CST.Print loc (embedTerm tm) (embedCommand cmd)
 embedCommand (RST.Read loc cns) =
-  CST.Read loc (embedTerm cns)
+  CST.PrimCmdTerm $ CST.Read loc (embedTerm cns)
 embedCommand (RST.Jump loc fv) =
-  CST.Jump loc fv
+  CST.Var loc fv
 embedCommand (RST.ExitSuccess loc) =
-  CST.ExitSuccess loc
+  CST.PrimCmdTerm $ CST.ExitSuccess loc
 embedCommand (RST.ExitFailure loc) =
-  CST.ExitFailure loc
+  CST.PrimCmdTerm $ CST.ExitFailure loc
 embedCommand (RST.PrimOp loc ty op subst) =
-  CST.PrimOp loc ty op (embedSubst subst)
+  CST.PrimCmdTerm $ CST.PrimOp loc ty op (embedSubst subst)
 
-embedCmdCase :: RST.CmdCase -> CST.CmdCase
+embedCmdCase :: RST.CmdCase -> CST.TermCase
 embedCmdCase RST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
-  CST.MkCmdCase { cmdcase_ext = cmdcase_ext
-                , cmdcase_name = cmdcase_name
-                , cmdcase_args = second fromJust <$> cmdcase_args
-                , cmdcase_cmd = embedCommand cmdcase_cmd
+  CST.MkTermCase { tmcase_ext = cmdcase_ext
+                , tmcase_name = cmdcase_name
+                , tmcase_args = CST.FoSFV . fromJust . snd <$> cmdcase_args
+                , tmcase_term = embedCommand cmdcase_cmd
                 }
 
 embedTermCase :: RST.TermCase pc -> CST.TermCase
 embedTermCase RST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
   CST.MkTermCase { tmcase_ext = tmcase_ext
                  , tmcase_name = tmcase_name
-                 , tmcase_args = second fromJust <$> tmcase_args
+                 , tmcase_args = CST.FoSFV . fromJust . snd <$> tmcase_args
                  , tmcase_term = embedTerm tmcase_term}
 
-embedTermCaseI :: RST.TermCaseI pc -> CST.TermCaseI
-embedTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1,rep, as2), tmcasei_term } =
-  CST.MkTermCaseI { tmcasei_ext = tmcasei_ext
-                  , tmcasei_name = tmcasei_name
-                  , tmcasei_args = (second fromJust <$> as1, rep, second fromJust <$> as2)
-                  , tmcasei_term = embedTerm tmcasei_term}
+embedTermCaseI :: RST.TermCaseI pc -> CST.TermCase
+embedTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1,_, as2), tmcasei_term } =
+  CST.MkTermCase { tmcase_ext = tmcasei_ext
+                  , tmcase_name = tmcasei_name
+                  , tmcase_args = (CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2)
+                  , tmcase_term = embedTerm tmcasei_term}
 
 
-embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp 
+embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp
 embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
 embedPrdCnsType (RST.PrdCnsType CnsRep ty) = CST.CnsType (embedType ty)
 
@@ -377,11 +380,11 @@ reparseSubstI :: RST.SubstitutionI pc -> CST.SubstitutionI
 reparseSubstI (subst1,PrdRep,subst2) = (reparseSubst subst1,Prd,reparseSubst subst2)
 reparseSubstI (subst1,CnsRep,subst2) = (reparseSubst subst1,Cns,reparseSubst subst2)
 
-reparseCommand :: RST.Command -> CST.Command
+reparseCommand :: RST.Command -> CST.Term
 reparseCommand cmd =
   embedCommand (openCommandComplete (evalState (createNamesCommand cmd) names))
 
-reparseCmdCase :: RST.CmdCase -> CST.CmdCase
+reparseCmdCase :: RST.CmdCase -> CST.TermCase
 reparseCmdCase cmdcase =
   embedCmdCase (evalState (createNamesCmdCase cmdcase) names)
 
@@ -389,7 +392,7 @@ reparseTermCase :: RST.TermCase pc -> CST.TermCase
 reparseTermCase termcase =
   embedTermCase (evalState (createNamesTermCase termcase) names)
 
-reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCaseI
+reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
   embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
 

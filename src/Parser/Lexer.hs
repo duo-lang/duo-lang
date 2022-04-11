@@ -201,6 +201,11 @@ data Keyword where
   KwCodata      :: Keyword
   KwSet         :: Keyword
   KwImport      :: Keyword
+  KwPrd         :: Keyword 
+  KwCns         :: Keyword 
+  KwCmd         :: Keyword 
+  KwReturn      :: Keyword
+
   deriving (Eq, Ord, Enum, Bounded)
 
 instance Show Keyword where
@@ -239,6 +244,10 @@ instance Show Keyword where
   show KwCodata      = "codata"
   show KwSet         = "set"
   show KwImport      = "import"
+  show KwPrd         = "prd"
+  show KwCns         = "cns"
+  show KwCmd         = "cmd"
+  show KwReturn      = "return"
 
 
 -- | These keywords start a new declaration at the toplevel and
@@ -280,6 +289,11 @@ isDeclarationKw KwData        = True
 isDeclarationKw KwCodata      = True
 isDeclarationKw KwSet         = True
 isDeclarationKw KwImport      = True
+isDeclarationKw KwPrd         = False 
+isDeclarationKw KwCns         = False 
+isDeclarationKw KwCmd         = False 
+isDeclarationKw KwReturn      = False 
+
 
 -- | All keywords of the language
 keywords :: [Keyword]

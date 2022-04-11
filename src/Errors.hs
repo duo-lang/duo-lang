@@ -23,13 +23,16 @@ data LoweringError where
   -- Operator errors
   UnknownOperator :: Text -> LoweringError
   XtorArityMismatch :: XtorName
-                -> Arity
-                -> Arity
+                -> Int
+                -> Int
                 -> LoweringError
   UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> LoweringError
   PrimOpArityMismatch :: (PrimitiveType, PrimitiveOp)
-                -> Arity
-                -> Arity
+                -> Int
+                -> Int
+                -> LoweringError
+  CmdExpected :: Text -> LoweringError                
+  InvalidStar  :: Text
                 -> LoweringError
   deriving (Show, Eq)
 
@@ -44,6 +47,7 @@ data Error where
   TypeAutomatonError    :: Maybe Loc -> Text          -> Error
   LowerError            :: Maybe Loc -> LoweringError -> Error
   OtherError            :: Maybe Loc -> Text          -> Error
+  NoImplicitArg         :: Maybe Loc -> Text          -> Error
   deriving (Show, Eq)
 
 attachLoc :: Loc -> Error -> Error

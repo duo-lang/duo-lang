@@ -13,7 +13,7 @@ import Utils
 
 data Declaration where
   PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
-  CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Command                                                       -> Declaration
+  CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Term                                                       -> Declaration
   DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
   XtorDecl       :: Loc -> Maybe DocComment -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder      -> Declaration
   ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
