@@ -85,6 +85,8 @@ instance PrettyAnn RST.Declaration where
     annKeyword "set" <+> prettyAnn txt <> semi
   prettyAnn (RST.TyOpDecl _ _ op prec assoc ty) =
     prettyTyOpDecl op assoc prec ty
+  prettyAnn (RST.TySynDecl _ _ nm (ty,_)) =
+    annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
 
 
 instance {-# OVERLAPPING #-} PrettyAnn [AST.Declaration] where

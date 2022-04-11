@@ -267,6 +267,8 @@ desugarDecl (AST.SetDecl loc doc txt) =
   Core.SetDecl loc doc txt
 desugarDecl (AST.TyOpDecl loc doc op prec assoc ty) =
   Core.TyOpDecl loc doc op prec assoc ty
+desugarDecl (AST.TySynDecl loc doc nm ty) = 
+  Core.TySynDecl loc doc nm ty
 
 desugarProgram :: AST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps

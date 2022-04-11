@@ -5,14 +5,16 @@ import Function;
 constructor True;
 constructor False;
 
+type SBool := < True, False >;
+
 -- | Boolean negation.
-def not[*] : < False, True > -> < False, True >:=
+def not[*] : SBool -> SBool :=
   \b => case b of { True => False,
                     False => True
                   };
 
 -- | Boolean if-then-else
-def ifthenelse[*] : forall a. < False, True > -> a -> a -> a :=
+def ifthenelse[*] : forall a. SBool -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
 -- | Boolean conjunction
@@ -24,12 +26,12 @@ def or[*] :=
   \b1 b2 => ifthenelse b1 True b2;
 
 -- | Boolean nand
-def nand[*] :=
-  \b1 b2 => not (and b1 b2);
+def nand[*] : (< False , True > -> (< False , True > -> < False , True >)) := cocase {
+   Ap(x2)[*] => cocase {Ap(x1)[*] => (not.Ap( ((and.Ap( x2 )[*]).Ap( x1 )[*]) )[*])}};
 
 -- | Boolean nor
-def nor[*] :=
-  \b1 b2 => not (or b1 b2);
+def nor[*] : (< False , True > -> (< False , True > -> < False , True >)) := cocase {
+   Ap(x2)[*] => cocase {Ap(x1)[*] => (not.Ap( ((or.Ap( x2 )[*]).Ap( x1 )[*]) )[*])}};
 
 -- | Boolean implication
 def impl[*] :=

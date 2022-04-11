@@ -36,11 +36,11 @@ lookupXtor loc xs@(xtor,dc) = do
     Just ns -> pure ns
 
 -- | Find the Arity of a given typename
-lookupTypeConstructorAritiy :: Loc -> TypeName -> RenamerM (PolyKind)
-lookupTypeConstructorAritiy loc tn = do
+lookupTypeConstructor :: Loc -> TypeName -> RenamerM TyConResult
+lookupTypeConstructor loc tn = do
     symbolTable <- getSymbolTable
     case M.lookup tn (tyConMap symbolTable) of
-        Just (_,polykind) -> pure polykind
+        Just res -> pure res
         Nothing -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " not found in symbol table"))
 
 ------------------------------------------------------------------------------
