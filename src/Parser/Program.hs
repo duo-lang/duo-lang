@@ -94,9 +94,8 @@ setDeclP doc = do
 typeOperatorDeclP :: Maybe DocComment -> Parser Declaration
 typeOperatorDeclP doc = do
   startPos <- getSourcePos
-  try (void (keywordP KwType))
+  try (void (keywordP KwType *> keywordP KwOperator))
   recoverDeclaration $ do
-    _ <- keywordP KwOperator
     (sym,_) <- tyOpNameP
     assoc <- associativityP
     _ <- keywordP KwAt
@@ -105,6 +104,21 @@ typeOperatorDeclP doc = do
     (tyname,_) <- typeNameP
     endPos <- symbolP SymSemi
     pure (TyOpDecl doc (Loc startPos endPos) sym prec assoc tyname)
+
+---------------------------------------------------------------------------------
+-- Type Synonym parser
+---------------------------------------------------------------------------------
+
+tySynP :: Maybe DocComment -> Parser Declaration
+tySynP doc = do
+  startPos <- getSourcePos
+  _ <- keywordP KwType
+  recoverDeclaration $ do
+    (tn,_) <- typeNameP
+    _ <- symbolP SymColoneq
+    (ty, _) <- typP
+    endPos <- symbolP SymSemi
+    pure (TySynDecl doc (Loc startPos endPos) tn ty)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
@@ -191,7 +205,8 @@ docDeclarationP doc =
   importDeclP doc <|>
   setDeclP doc <|>
   dataDeclP doc <|>
-  xtorDeclarationP doc
+  xtorDeclarationP doc <|>
+  tySynP doc
 
 declarationP :: Parser Declaration
 declarationP = do

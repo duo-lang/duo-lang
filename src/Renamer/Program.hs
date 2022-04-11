@@ -99,6 +99,7 @@ lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
 lowerDecl (CST.TySynDecl doc loc nm ty) = do
   typ <- lowerTyp PosRep ty
   tyn <- lowerTyp NegRep ty
+  updateSymbolTable (\st -> st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st)})
   pure (RST.TySynDecl loc doc nm (typ, tyn))
 lowerDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
