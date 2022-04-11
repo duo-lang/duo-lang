@@ -9,7 +9,7 @@ import Errors
 import Renamer.Definition
 import Renamer.SymbolTable
 import Renamer.Terms (lowerTerm, lowerCommand)
-import Renamer.Types (lowerTypeScheme, lowerXTorSig)
+import Renamer.Types (lowerTypeScheme, lowerXTorSig, lowerTyp)
 import Parser.Parser ( runFileParser, programP )
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
@@ -96,6 +96,10 @@ lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
                     }
   updateSymbolTable (\st -> st { tyOps = tyOp : (tyOps st)})
   pure $ RST.TyOpDecl loc doc op prec assoc tyname
+lowerDecl (CST.TySynDecl doc loc nm ty) = do
+  typ <- lowerTyp PosRep ty
+  tyn <- lowerTyp NegRep ty
+  pure (RST.TySynDecl loc doc nm (typ, tyn))
 lowerDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 

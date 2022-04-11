@@ -71,3 +71,5 @@ embedCoreDecl (Core.SetDecl loc doc txt) =
     RST.SetDecl loc doc txt
 embedCoreDecl (Core.TyOpDecl loc doc op prec assoc ty) =
     RST.TyOpDecl loc doc op prec assoc ty
+embedCoreDecl (Core.TySynDecl loc doc nm ty) =
+    RST.TySynDecl loc doc nm ty

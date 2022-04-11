@@ -19,6 +19,7 @@ data Declaration where
   ImportDecl     :: Maybe DocComment -> Loc -> ModuleName                                                                   -> Declaration
   SetDecl        :: Maybe DocComment -> Loc -> Text                                                                         -> Declaration
   TyOpDecl       :: Maybe DocComment -> Loc -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
+  TySynDecl      :: Maybe DocComment -> Loc -> TypeName -> Typ                                                              -> Declaration
   ParseErrorDecl ::                                                                                                            Declaration
 
 instance Show Declaration where

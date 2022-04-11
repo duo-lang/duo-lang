@@ -408,6 +408,8 @@ reparseDecl (RST.SetDecl loc doc txt) =
   CST.SetDecl doc loc txt
 reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
   CST.TyOpDecl doc loc op prec assoc ty
+reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =
+  CST.TySynDecl doc loc nm (embedType ty)
 
 reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl

@@ -178,6 +178,11 @@ inferDecl (RST.SetDecl _ _ txt) = case T.unpack txt of
 --
 inferDecl (RST.TyOpDecl loc doc op prec assoc ty) = do
   pure (AST.TyOpDecl loc doc op prec assoc ty)
+--
+-- TySynDecl
+--
+inferDecl (RST.TySynDecl loc doc nm ty) = do
+  pure (AST.TySynDecl loc doc nm ty)
 
 ---------------------------------------------------------------------------------
 -- Infer programs

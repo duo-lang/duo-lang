@@ -5,7 +5,7 @@ import Data.Text (Text)
 
 import Syntax.Common
 import Syntax.AST.Terms( Command, Term )
-import Syntax.RST.Types ( DataDecl, TopAnnot)
+import Syntax.RST.Types ( DataDecl, TopAnnot, Typ )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -20,6 +20,7 @@ data Declaration where
   ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
   TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
+  TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> (Typ Pos, Typ Neg)                                               -> Declaration
   
 
 instance Show Declaration where
@@ -31,5 +32,6 @@ instance Show Declaration where
   show (ImportDecl loc doc mn) = "ImportDecl: " ++ show loc ++ show doc ++ show mn
   show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt
   show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
+  show (TySynDecl loc doc nm ty) = "TySynDecl: " ++ show loc ++ show doc ++ show nm ++ show ty
   
 type Program = [Declaration]

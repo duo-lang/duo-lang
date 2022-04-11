@@ -116,6 +116,8 @@ forgetTypesDecl (AST.SetDecl loc doc txt) =
     RST.SetDecl loc doc txt
 forgetTypesDecl (AST.TyOpDecl loc doc op prec assoc tn) =
     RST.TyOpDecl loc doc op prec assoc tn
+forgetTypesDecl (AST.TySynDecl loc doc nm ty) =
+    RST.TySynDecl loc doc nm ty
 
 forgetTypesProgram :: AST.Program -> RST.Program
 forgetTypesProgram = fmap forgetTypesDecl

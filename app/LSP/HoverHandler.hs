@@ -324,6 +324,8 @@ instance ToHoverMap AST.Declaration where
     M.empty
   toHoverMap (AST.TyOpDecl _loc _doc _op _prec _assoc _tn) =
     M.empty
+  toHoverMap (AST.TySynDecl _loc _doc _nm _ty) =
+    M.empty
 
 instance ToHoverMap AST.Program where
   toHoverMap prog = M.unions (toHoverMap <$> prog)
