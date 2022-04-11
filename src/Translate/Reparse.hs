@@ -395,21 +395,21 @@ reparseTermCaseI termcasei =
 
 reparseDecl :: RST.Declaration -> CST.Declaration
 reparseDecl (RST.PrdCnsDecl loc doc rep isRec fv ts tm) =
-  CST.PrdCnsDecl doc loc (case rep of PrdRep -> Prd; CnsRep -> Cns) isRec fv (embedTypeScheme <$> ts) (reparseTerm tm)
+  CST.PrdCnsDecl loc doc (case rep of PrdRep -> Prd; CnsRep -> Cns) isRec fv (embedTypeScheme <$> ts) (reparseTerm tm)
 reparseDecl (RST.CmdDecl loc doc fv cmd) =
-  CST.CmdDecl doc loc fv (reparseCommand cmd)
+  CST.CmdDecl loc doc fv (reparseCommand cmd)
 reparseDecl (RST.DataDecl loc doc decl) =
-  CST.DataDecl doc loc (embedTyDecl decl)
+  CST.DataDecl loc doc (embedTyDecl decl)
 reparseDecl (RST.XtorDecl loc doc dc xt args ret) =
-  CST.XtorDecl doc loc dc xt args (Just ret)
+  CST.XtorDecl loc doc dc xt args (Just ret)
 reparseDecl (RST.ImportDecl loc doc mn) =
-  CST.ImportDecl doc loc mn
+  CST.ImportDecl loc doc mn
 reparseDecl (RST.SetDecl loc doc txt) =
-  CST.SetDecl doc loc txt
+  CST.SetDecl loc doc txt
 reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
-  CST.TyOpDecl doc loc op prec assoc ty
+  CST.TyOpDecl loc doc op prec assoc ty
 reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =
-  CST.TySynDecl doc loc nm (embedType ty)
+  CST.TySynDecl loc doc nm (embedType ty)
 
 reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl

@@ -60,13 +60,13 @@ lowerMaybeAnnot _ Nothing = pure Nothing
 lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
 
 lowerDecl :: CST.Declaration -> RenamerM RST.Declaration
-lowerDecl (CST.PrdCnsDecl doc loc Prd isrec fv annot tm) =
+lowerDecl (CST.PrdCnsDecl loc doc Prd isrec fv annot tm) =
   RST.PrdCnsDecl loc doc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
-lowerDecl (CST.PrdCnsDecl doc loc Cns isrec fv annot tm) =
+lowerDecl (CST.PrdCnsDecl loc doc Cns isrec fv annot tm) =
   RST.PrdCnsDecl loc doc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
-lowerDecl (CST.CmdDecl doc loc fv cmd) =
+lowerDecl (CST.CmdDecl loc doc fv cmd) =
   RST.CmdDecl loc doc fv <$> (lowerCommand cmd)
-lowerDecl (CST.DataDecl doc loc dd) = do
+lowerDecl (CST.DataDecl loc doc dd) = do
   lowered <- lowerDataDecl loc dd
 
   let ns = case CST.data_refined dd of
@@ -75,20 +75,20 @@ lowerDecl (CST.DataDecl doc loc dd) = do
   let newXtors = M.fromList [((RST.sig_name xt, CST.data_polarity dd), (ns, RST.linearContextToArity (RST.sig_args xt)))| xt <- fst (RST.data_xtors lowered)]
   updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
   pure $ RST.DataDecl loc doc lowered
-lowerDecl (CST.XtorDecl doc loc dc xt args ret) = do
+lowerDecl (CST.XtorDecl loc doc dc xt args ret) = do
   updateSymbolTable (\st -> st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)})
   let ret' = case ret of
                Just eo -> eo
                Nothing -> case dc of Data -> CBV; Codata -> CBN
   pure $ RST.XtorDecl loc doc dc xt args ret'
-lowerDecl (CST.ImportDecl doc loc mod) = do
+lowerDecl (CST.ImportDecl loc doc mod) = do
   fp <- findModule mod loc
   newSymbolTable <- lowerProgramFromDisk fp
   updateSymbolTable (\st -> st <> newSymbolTable)
   pure $ RST.ImportDecl loc doc mod
-lowerDecl (CST.SetDecl doc loc txt) =
+lowerDecl (CST.SetDecl loc doc txt) =
   pure $ RST.SetDecl loc doc txt
-lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
+lowerDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
   let tyOp = MkTyOp { symbol = CustomOp op
                     , prec = prec
                     , assoc = assoc
@@ -96,7 +96,7 @@ lowerDecl (CST.TyOpDecl doc loc op prec assoc tyname) = do
                     }
   updateSymbolTable (\st -> st { tyOps = tyOp : (tyOps st)})
   pure $ RST.TyOpDecl loc doc op prec assoc tyname
-lowerDecl (CST.TySynDecl doc loc nm ty) = do
+lowerDecl (CST.TySynDecl loc doc nm ty) = do
   typ <- lowerTyp PosRep ty
   tyn <- lowerTyp NegRep ty
   updateSymbolTable (\st -> st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st)})

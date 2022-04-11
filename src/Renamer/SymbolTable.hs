@@ -101,7 +101,7 @@ createSymbolTable' (TyOpDecl _ _ op prec assoc ty) st =
                       , desugar = NominalDesugaring ty
                       }
     in st { tyOps = tyOp : (tyOps st) }
-createSymbolTable' (ImportDecl _ loc mn) st =
+createSymbolTable' (ImportDecl loc _ mn) st =
   st { imports = (mn,loc):(imports st) }
 createSymbolTable' (TySynDecl _ _ nm ty) st =
   st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st) }
