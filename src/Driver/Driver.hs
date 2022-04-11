@@ -4,8 +4,6 @@ module Driver.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
-  , renameProgramIO
-  , inferDecl
   ) where
 
 import Control.Monad.State
@@ -193,15 +191,6 @@ inferProgram :: [CST.Declaration]
 inferProgram decls = do
   decls <- undefined -- renameProgram decls
   forM decls inferDecl
-
-renameProgramIO :: DriverState
-                -> [CST.Declaration]
-                -> IO (Either Error RST.Program)
-renameProgramIO state decls = do
-  x <- execDriverM state undefined -- (renameProgram decls)
-  case x of
-      Left err -> return (Left err)
-      Right (res,_) -> return (Right res)
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]

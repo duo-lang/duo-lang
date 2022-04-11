@@ -31,14 +31,6 @@ getParsedDeclarations fp = do
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error RST.Program)
-getRenamedDeclarations fp infopts = do
-  decls <- getParsedDeclarations fp
-  case decls of
-    Right decls -> do
-      renameProgramIO (MkDriverState infopts mempty mempty) decls
-    Left err -> return (Left err)
-
 getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error AST.Program)
 getTypecheckedDecls fp infopts = do
   decls <- getParsedDeclarations fp

@@ -22,7 +22,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
-        decls <- runIO $ getRenamedDeclarations example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+        decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
         it "Can be parsed again." $
           case decls of
             Left err -> expectationFailure (ppPrintString err)
@@ -32,7 +32,7 @@ spec = do
     examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
-        decls <- runIO $ getRenamedDeclarations example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+        decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
         case decls of 
             Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
             Right decls -> case (runFileParser example programP (ppPrint decls)) of
