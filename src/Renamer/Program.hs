@@ -32,7 +32,7 @@ lowerDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_k
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   -- Insert the tycon arity into the environment
-  updateSymbolTable (\st -> st { tyConMap = M.insert data_name (data_refined, polyKind) (tyConMap st)})
+  updateSymbolTable (\st -> st { tyConMap = M.insert data_name (NominalResult data_refined polyKind) (tyConMap st)})
   -- Lower the xtors
   xtors <- lowerXtors data_xtors
   let ns = case data_refined of

@@ -36,8 +36,14 @@ lowerTyp rep (TyXData loc Codata name sigs) = do
     sigs <- lowerXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodata loc rep name sigs
 lowerTyp rep (TyNominal loc name args) = do
-    args' <- lowerTypeArgs loc rep name args
-    pure $ RST.TyNominal loc rep Nothing name args'
+    res <- lookupTypeConstructor loc name
+    case res of
+        SynonymResult typ -> case args of
+            [] -> lowerTyp rep typ
+            _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments yet.")
+        NominalResult _ polykind -> do
+            args' <- lowerTypeArgs loc rep name polykind args
+            pure $ RST.TyNominal loc rep Nothing name args'
 lowerTyp rep (TyRec loc v typ) =
     RST.TyRec loc rep v <$> lowerTyp rep typ
 lowerTyp PosRep (TyTop loc) = throwError (LowerError (Just loc) TopInPosPolarity)
@@ -58,9 +64,8 @@ lowerTyp rep (TyPrim loc pt) =
 
 
 
-lowerTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> [Typ] -> RenamerM [RST.VariantType pol]
-lowerTypeArgs loc rep tn args = do
-    MkPolyKind { kindArgs } <- lookupTypeConstructorAritiy loc tn
+lowerTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> RenamerM [RST.VariantType pol]
+lowerTypeArgs loc rep tn (MkPolyKind { kindArgs }) args = do
     if (length args) /= length kindArgs  then
         throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do

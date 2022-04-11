@@ -47,9 +47,13 @@ interTyOp = MkTyOp
 -- Symbol Table
 ---------------------------------------------------------------------------------
 
+data TyConResult =
+    NominalResult IsRefined PolyKind
+  | SynonymResult Typ
+
 data SymbolTable = MkSymbolTable
   { xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
-  , tyConMap :: Map TypeName (IsRefined, PolyKind)
+  , tyConMap :: Map TypeName TyConResult
   , tyOps :: [TyOp]
   , imports :: [(ModuleName, Loc)]
   }
@@ -62,7 +66,12 @@ instance Semigroup SymbolTable where
     MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2) (tyOps1 ++ tyOps2) (imports1 ++ imports2)
 
 instance Monoid SymbolTable where
-  mempty = MkSymbolTable M.empty M.empty [unionTyOp, interTyOp] []
+  mempty = MkSymbolTable
+    { xtorMap = M.empty
+    , tyConMap =  M.empty
+    , tyOps = [unionTyOp, interTyOp]
+    , imports = []
+    }
 
 ---------------------------------------------------------------------------------
 -- Creating a SymbolTable
@@ -84,7 +93,7 @@ createSymbolTable ((DataDecl _ _ NominalDecl { data_refined, data_name, data_pol
       st = createSymbolTable decls
       xtors = M.fromList [((sig_name xt, data_polarity), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors]
   in st { xtorMap  = M.union xtors (xtorMap st)
-        , tyConMap = M.insert data_name (data_refined, polyKind)(tyConMap st)}
+        , tyConMap = M.insert data_name (NominalResult data_refined polyKind) (tyConMap st)}
 createSymbolTable ((TyOpDecl _ _ op prec assoc ty):decls) =
     let st = createSymbolTable decls
         tyOp = MkTyOp { symbol = CustomOp op
@@ -96,4 +105,7 @@ createSymbolTable ((TyOpDecl _ _ op prec assoc ty):decls) =
 createSymbolTable ((ImportDecl _ loc mn): decls) =
   let st = createSymbolTable decls
   in st { imports = (mn,loc):(imports st) }
+createSymbolTable ((TySynDecl _ _ nm ty): decls) =
+  let st = createSymbolTable decls
+  in st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st) }
 createSymbolTable (_:decls) = createSymbolTable decls
