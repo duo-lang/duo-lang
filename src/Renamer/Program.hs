@@ -1,9 +1,12 @@
 module Renamer.Program (renameProgram, renameDecl) where
 
+import Control.Monad.Reader
 import Control.Monad.Except (throwError)
+import Data.Map qualified as M
 
 import Errors
 import Renamer.Definition
+import Renamer.SymbolTable
 import Renamer.Terms (renameTerm, renameCommand)
 import Renamer.Types (renameTypeScheme, renameXTorSig, renameTyp)
 import Syntax.CST.Program qualified as CST
@@ -26,8 +29,13 @@ renameDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
-  -- Lower the xtors
-  xtors <- renameXtors data_xtors
+  -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
+  let g :: TyConResult -> TyConResult
+      g (SynonymResult ty) = SynonymResult ty
+      g (NominalResult _ polykind) = NominalResult NotRefined polykind
+  let f :: [(ModuleName, SymbolTable)] -> [(ModuleName, SymbolTable)]
+      f = fmap (\(mn, st) -> (mn, st { tyConMap = M.adjust g data_name (tyConMap st) }))
+  xtors <- local f (renameXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl
                 { data_refined = data_refined
