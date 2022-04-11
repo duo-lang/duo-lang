@@ -77,12 +77,13 @@ instance Monoid SymbolTable where
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
-createSymbolTable :: Program  -> SymbolTable
-createSymbolTable [] = mempty
-createSymbolTable ((XtorDecl _ _ dc xt args _):decls) =
-  let st = createSymbolTable decls
-  in st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
-createSymbolTable ((DataDecl _ _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }):decls) =
+createSymbolTable :: Program -> SymbolTable
+createSymbolTable = foldr createSymbolTable' mempty
+
+createSymbolTable' :: Declaration -> SymbolTable -> SymbolTable
+createSymbolTable' (XtorDecl _ _ dc xt args _) st =
+  st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
+createSymbolTable' (DataDecl _ _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }) st =
   -- Create the default polykind
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
@@ -90,22 +91,18 @@ createSymbolTable ((DataDecl _ _ NominalDecl { data_refined, data_name, data_pol
       ns = case data_refined of
                Refined -> Refinement
                NotRefined -> Nominal
-      st = createSymbolTable decls
       xtors = M.fromList [((sig_name xt, data_polarity), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors]
   in st { xtorMap  = M.union xtors (xtorMap st)
         , tyConMap = M.insert data_name (NominalResult data_refined polyKind) (tyConMap st)}
-createSymbolTable ((TyOpDecl _ _ op prec assoc ty):decls) =
-    let st = createSymbolTable decls
-        tyOp = MkTyOp { symbol = CustomOp op
+createSymbolTable' (TyOpDecl _ _ op prec assoc ty) st =
+    let tyOp = MkTyOp { symbol = CustomOp op
                       , prec = prec
                       , assoc = assoc
                       , desugar = NominalDesugaring ty
                       }
     in st { tyOps = tyOp : (tyOps st) }
-createSymbolTable ((ImportDecl _ loc mn): decls) =
-  let st = createSymbolTable decls
-  in st { imports = (mn,loc):(imports st) }
-createSymbolTable ((TySynDecl _ _ nm ty): decls) =
-  let st = createSymbolTable decls
-  in st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st) }
-createSymbolTable (_:decls) = createSymbolTable decls
+createSymbolTable' (ImportDecl _ loc mn) st =
+  st { imports = (mn,loc):(imports st) }
+createSymbolTable' (TySynDecl _ _ nm ty) st =
+  st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st) }
+createSymbolTable' _decl st = st
