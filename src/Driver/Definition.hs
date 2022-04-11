@@ -36,10 +36,10 @@ defaultInferenceOptions = InferenceOptions
 -- Driver Monad
 ---------------------------------------------------------------------------------
 
-data DriverState = DriverState
+data DriverState = MkDriverState
   { driverOpts :: InferenceOptions
   , driverEnv :: Environment
-  , driverSymbols :: SymbolTable
+  , driverSymbols :: [(ModuleName, SymbolTable)]
   }
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
@@ -52,11 +52,22 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 -- Utility functions
 ---------------------------------------------------------------------------------
 
+-- Symbol tables
+
+addSymboltable :: ModuleName -> SymbolTable -> DriverM ()
+addSymboltable mn st = modify f
+  where
+    f state@MkDriverState { driverSymbols } = state { driverSymbols = (mn,st) : driverSymbols }
+
+getSymbolTables :: DriverM [(ModuleName, SymbolTable)]
+getSymbolTables = gets driverSymbols
+
+-- Environment
+
 setEnvironment :: Environment -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
 
-setSymboltable :: SymbolTable -> DriverM ()
-setSymboltable st = modify (\state -> state { driverSymbols = st })
+
 
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()

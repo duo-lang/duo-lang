@@ -132,7 +132,6 @@ inferDecl (RST.CmdDecl loc doc v cmd) = do
 inferDecl (RST.DataDecl loc doc dcl) = do
   -- Insert into environment
   env <- gets driverEnv
-  st <- gets driverSymbols
   let tn = RST.data_name dcl
   case find (\RST.NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
     Just _ ->
@@ -141,22 +140,13 @@ inferDecl (RST.DataDecl loc doc dcl) = do
         -- In that case we make sure we don't insert twice
         return (AST.DataDecl loc doc dcl)
     Nothing -> do
-      let ns = case RST.data_refined dcl of
-                      Refined -> Refinement
-                      NotRefined -> Nominal
-      let newXtors = M.fromList [((RST.sig_name xt, RST.data_polarity dcl), (ns,RST.linearContextToArity (RST.sig_args xt)))| xt <- fst (RST.data_xtors dcl)]
       let newEnv = env { declEnv = (loc,dcl) : declEnv env }
-      let newSt  = st { xtorMap = M.union  newXtors (xtorMap st) }
       setEnvironment newEnv
-      setSymboltable newSt
       return (AST.DataDecl loc doc dcl)
 --
 -- XtorDecl
 --
 inferDecl (RST.XtorDecl loc doc dc xt args ret) = do
-  symbolTable <- gets driverSymbols
-  let newSymbolTable = symbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap symbolTable) }
-  setSymboltable newSymbolTable
   pure $ AST.XtorDecl loc doc dc xt args ret
 --
 -- ImportDecl
@@ -193,7 +183,7 @@ inferProgramFromDisk fp = do
   file <- liftIO $ T.readFile fp
   decls <- runFileParser fp programP file
   -- Use inference options of parent? Probably not?
-  x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty mempty) decls
+  x <- liftIO $ inferProgramIO  (MkDriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty mempty) decls
   case x of
      Left err -> throwError err
      Right env -> return env

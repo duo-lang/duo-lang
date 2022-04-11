@@ -18,10 +18,10 @@ import Translate.Desugar (desugarCmd, desugarEnvironment)
 import Translate.Focusing (focusCmd, focusEnvironment)
 
 driverState :: DriverState
-driverState = DriverState { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"]}
-                          , driverEnv = mempty 
-                          , driverSymbols = mempty
-                          }
+driverState = MkDriverState { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"]}
+                            , driverEnv = mempty 
+                            , driverSymbols = mempty
+                            }
 
 runCompile :: FilePath -> IO ()
 runCompile fp = do

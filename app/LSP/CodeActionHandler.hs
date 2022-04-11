@@ -20,7 +20,7 @@ import Syntax.Core.Program qualified as Core
 import Driver.Driver
     ( defaultInferenceOptions,
       inferProgramIO,
-      DriverState(DriverState),
+      DriverState(MkDriverState),
       InferenceOptions(infOptsLibPath) )
 import Utils
 import Parser.Definition ( runFileParser )
@@ -47,7 +47,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty mempty) decls
+      res <- liftIO $ inferProgramIO (MkDriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty mempty) decls
       case res of
         Left _err -> do
           responder (Right (List []))

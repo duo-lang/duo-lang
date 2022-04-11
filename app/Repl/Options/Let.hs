@@ -21,7 +21,7 @@ letCmd s = do
   decl <- fromRight (runExcept (runInteractiveParser declarationP s))
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
-  let ds = DriverState opts oldEnv mempty
+  let ds = MkDriverState opts oldEnv mempty
   newEnv <- undefined --liftIO $ execDriverM ds (renameDecl decl >>= \x -> inferDecl x)
   case newEnv of
     -- TODO!

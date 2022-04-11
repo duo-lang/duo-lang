@@ -200,7 +200,7 @@ publishErrors uri = do
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
         Right decls -> do
-          res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty mempty) decls
+          res <- liftIO $ inferProgramIO (MkDriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty mempty) decls
           case res of
             Left err -> do
               sendLocatedError (toNormalizedUri uri) err
