@@ -99,6 +99,7 @@ coalesceType (TyCodata loc rep tn xtors) = do
 coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'
+coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
 coalesceType (TySet loc rep kind tys) = do
     tys' <- sequence $ coalesceType <$> tys
     return (TySet loc rep kind tys')

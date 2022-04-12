@@ -37,7 +37,9 @@ renameTyp rep (TyNominal loc name args) = do
     res <- lookupTypeConstructor loc name
     case res of
         (_, SynonymResult typ) -> case args of
-            [] -> renameTyp rep typ
+            [] -> do
+                typ' <- renameTyp rep typ
+                pure $ RST.TySyn loc rep name typ'
             _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
         (_, NominalResult Refined _) -> do
             throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")

@@ -325,6 +325,8 @@ embedType (RST.TyCodata loc _ tn xtors) =
   CST.TyXData loc Codata tn (embedXtorSig <$> xtors)
 embedType (RST.TyNominal loc _ _ nm args) =
   CST.TyNominal loc nm (embedVariantTypes args)
+embedType (RST.TySyn loc _ nm _) =
+  CST.TyNominal loc nm []
 embedType (RST.TySet loc PosRep _ []) =
   CST.TyTop loc
 embedType (RST.TySet loc PosRep _ [ty1,ty2]) =

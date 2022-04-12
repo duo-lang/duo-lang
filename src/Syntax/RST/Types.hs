@@ -94,6 +94,8 @@ data Typ (pol :: Polarity) where
   TyCodata :: Loc -> PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal :: Loc -> PolarityRep pol -> Maybe MonoKind -> TypeName -> [VariantType pol] -> Typ pol
+  -- | Type synonym
+  TySyn :: Loc -> PolarityRep pol -> TypeName -> Typ pol -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: Loc -> PolarityRep pol -> Maybe MonoKind -> [Typ pol] -> Typ pol
   TyRec :: Loc -> PolarityRep pol -> TVar -> Typ pol -> Typ pol
@@ -111,6 +113,7 @@ getPolarity (TyVar _ rep _ _)         = rep
 getPolarity (TyData _ rep _ _)        = rep
 getPolarity (TyCodata _ rep _ _)      = rep
 getPolarity (TyNominal _ rep _ _ _)   = rep
+getPolarity (TySyn _ rep _ _)         = rep
 getPolarity (TySet _ rep _ _)         = rep
 getPolarity (TyRec _ rep _ _)         = rep
 getPolarity (TyPrim _ rep _)          = rep
@@ -149,6 +152,7 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySet _ _ _ ts) = S.unions (freeTVars <$> ts)
   freeTVars (TyRec _ _ v t)  = S.delete v (freeTVars t)
   freeTVars (TyNominal _ _ _ _ args) = S.unions (freeTVars <$> args)
+  freeTVars (TySyn _ _ _ ty) = freeTVars ty
   freeTVars (TyData _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyPrim _ _ _) = S.empty
@@ -193,6 +197,8 @@ instance Zonk (Typ pol) where
      TyCodata loc rep tn (zonk bisubst <$> xtors)
   zonk bisubst (TyNominal loc rep kind tn args) =
      TyNominal loc rep kind tn (zonk bisubst <$> args)
+  zonk bisubst (TySyn loc rep nm ty) =
+     TySyn loc rep nm (zonk bisubst ty)
   zonk bisubst (TySet loc rep kind tys) =
      TySet loc rep kind (zonk bisubst <$> tys)
   zonk bisubst (TyRec loc rep tv ty) =

@@ -139,6 +139,13 @@ checkContexts (_:_) []    = throwSolverError ["checkContexts: Linear contexts ha
 -- The `subConstraints` function is the function which will produce the error if the
 -- constraint set generated from a program is not solvable.
 subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInfo]
+-- Type synonyms are unfolded and are not preserved through constraint solving.
+-- A more efficient solution to directly compare type synonyms is possible in the
+-- future.
+subConstraints (SubType annot (TySyn _ _ _ ty) ty') =
+  pure [SubType annot ty ty']
+subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
+  pure [SubType annot ty ty']
 -- Intersection and union constraints:
 --
 -- If the left hand side of the constraint is a intersection type, or the

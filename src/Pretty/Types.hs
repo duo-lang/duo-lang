@@ -83,6 +83,7 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyRec _ _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
   -- Nominal types
   prettyAnn (TyNominal _ _ _ tn args) = prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
+  prettyAnn (TySyn _ _ nm _) = prettyAnn nm
   -- Structural data and codata types
   prettyAnn (TyData _ _ Nothing xtors)   = angles' commaSym  (prettyAnn <$> xtors)
   prettyAnn (TyCodata _ _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
