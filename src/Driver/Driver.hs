@@ -4,9 +4,7 @@ module Driver.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
-  , inferProgramIO'
-  , renameProgramIO
-  , inferDecl
+  , runCompilationModule
   ) where
 
 import Control.Monad.State
@@ -17,12 +15,14 @@ import Data.Text.IO qualified as T
 
 import Driver.Definition
 import Driver.Environment 
+import Driver.DepGraph
 import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import Pretty.Pretty ( ppPrint, ppPrintIO )
-import Renamer.Program (lowerProgram)
+import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
+import Renamer.Program (renameProgram)
 import Renamer.SymbolTable
+import Renamer.Definition hiding (getSymbolTables)
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
@@ -40,7 +40,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsCommand,
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc )
+import Utils ( Loc, defaultLoc )
 import Data.List
 
 checkAnnot :: PolarityRep pol
@@ -133,7 +133,6 @@ inferDecl (RST.CmdDecl loc doc v cmd) = do
 inferDecl (RST.DataDecl loc doc dcl) = do
   -- Insert into environment
   env <- gets driverEnv
-  st <- gets driverSymbols
   let tn = RST.data_name dcl
   case find (\RST.NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
     Just _ ->
@@ -142,32 +141,19 @@ inferDecl (RST.DataDecl loc doc dcl) = do
         -- In that case we make sure we don't insert twice
         return (AST.DataDecl loc doc dcl)
     Nothing -> do
-      let ns = case RST.data_refined dcl of
-                      Refined -> Refinement
-                      NotRefined -> Nominal
-      let newXtors = M.fromList [((RST.sig_name xt, RST.data_polarity dcl), (ns,RST.linearContextToArity (RST.sig_args xt)))| xt <- fst (RST.data_xtors dcl)]
       let newEnv = env { declEnv = (loc,dcl) : declEnv env }
-      let newSt  = st { xtorMap = M.union  newXtors (xtorMap st) }
       setEnvironment newEnv
-      setSymboltable newSt
       return (AST.DataDecl loc doc dcl)
 --
 -- XtorDecl
 --
 inferDecl (RST.XtorDecl loc doc dc xt args ret) = do
-  symbolTable <- gets driverSymbols
-  let newSymbolTable = symbolTable { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap symbolTable) }
-  setSymboltable newSymbolTable
-  pure $ AST.XtorDecl loc doc dc xt args ret
+  pure (AST.XtorDecl loc doc dc xt args ret)
 --
 -- ImportDecl
 --
 inferDecl (RST.ImportDecl loc doc mod) = do
-  fp <- findModule mod loc
-  oldEnv <- gets driverEnv
-  newEnv <- fst <$> inferProgramFromDisk fp
-  setEnvironment (oldEnv <> newEnv)
-  return (AST.ImportDecl loc doc mod)
+  pure (AST.ImportDecl loc doc mod)
 --
 -- SetDecl
 --
@@ -184,58 +170,62 @@ inferDecl (RST.TyOpDecl loc doc op prec assoc ty) = do
 inferDecl (RST.TySynDecl loc doc nm ty) = do
   pure (AST.TySynDecl loc doc nm ty)
 
+inferProgram :: RST.Program -> DriverM AST.Program
+inferProgram decls = sequence $ inferDecl <$> decls
+
 ---------------------------------------------------------------------------------
 -- Infer programs
 ---------------------------------------------------------------------------------
+  
+runCompilationModule :: ModuleName -> DriverM ()
+runCompilationModule mn = do
+  -- Build the dependency graph
+  depGraph <- createDepGraph [mn]
+  -- Create the compilation order
+  compilationOrder <- topologicalSort depGraph
+  runCompilationPlan compilationOrder
+  
+runCompilationPlan :: CompilationOrder -> DriverM ()
+runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
+  where
+    compileModule :: ModuleName -> DriverM ()
+    compileModule mn = do
+      guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
+      -- 1. Find the corresponding file and parse its contents.
+      fp <- findModule mn defaultLoc
+      file <- liftIO $ T.readFile fp
+      decls <- runFileParser fp programP file
+      -- 2. Create a symbol table for the module and add it to the Driver state.
+      let st :: SymbolTable = createSymbolTable decls
+      addSymboltable mn st
+      -- 3. Rename the declarations.
+      sts <- getSymbolTables
+      renamedDecls <- liftEitherErr defaultLoc (runRenamerM sts (renameProgram decls))
+      -- 4. Infer the declarations
+      inferredDecls <- inferProgram renamedDecls
+      -- 5. Add the renamed AST to the cache
+      guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
+      addTypecheckedProgram mn inferredDecls
 
-inferProgramFromDisk :: FilePath
-                     -> DriverM (Environment, AST.Program)
-inferProgramFromDisk fp = do
-  file <- liftIO $ T.readFile fp
-  decls <- runFileParser fp programP file
-  -- Use inference options of parent? Probably not?
-  x <- liftIO $ inferProgramIO  (DriverState defaultInferenceOptions { infOptsLibPath = ["examples"] } mempty mempty) decls
-  case x of
-     Left err -> throwError err
-     Right env -> return env
+---------------------------------------------------------------------------------
+-- Old
+---------------------------------------------------------------------------------
 
-inferProgram :: [CST.Declaration]
-             -> DriverM AST.Program
-inferProgram decls = do
-  decls <- renameProgram decls
-  forM decls inferDecl
-
-renameProgram :: [CST.Declaration]
-              -> DriverM RST.Program
-renameProgram decls = lowerProgram decls
-
-renameProgramIO :: DriverState
-                -> [CST.Declaration]
-                -> IO (Either Error RST.Program)
-renameProgramIO state decls = do
-  x <- execDriverM state (renameProgram decls)
-  case x of
-      Left err -> return (Left err)
-      Right (res,_) -> return (Right res)
-
-inferProgram' :: RST.Program
-              -> DriverM AST.Program
-inferProgram' decls = forM decls inferDecl
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
                 -> IO (Either Error (Environment, AST.Program))
 inferProgramIO state decls = do
-  x <- execDriverM state (inferProgram decls)
-  case x of
-      Left err -> return (Left err)
-      Right (res,x) -> return (Right ((driverEnv x), res))
-
-inferProgramIO' :: DriverState -- ^ Initial State
-                -> RST.Program
-                -> IO (Either Error (Environment, AST.Program))
-inferProgramIO' state decls = do
-  x <- execDriverM state (inferProgram' decls)
-  case x of
+  let action :: DriverM (AST.Program)
+      action = do
+        let st = createSymbolTable decls
+        forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
+        addSymboltable (MkModuleName "This") st
+        sts <- getSymbolTables
+        renamedDecls <- liftEitherErr defaultLoc (runRenamerM sts (renameProgram decls))
+        inferProgram renamedDecls
+  res <- execDriverM state action
+  case res of
     Left err -> return (Left err)
     Right (res,x) -> return (Right ((driverEnv x), res))
+

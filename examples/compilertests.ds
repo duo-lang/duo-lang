@@ -23,7 +23,7 @@ def idPolyTwo[*] : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x)[*] => x };
 
 def id[*] : Nat -> Nat := cocase { Ap(x)[*] => x };
 
-destructor Ap(CBV)[CBV]: CBV;
+destructor ApS(CBV)[CBV]: CBV;
 destructor Ap2(CBV,CBV)[CBV] : CBV;
 destructor Ap3(CBV,CBV,CBV)[CBV] : CBV;
 constructor TT;
@@ -37,16 +37,16 @@ def subsumptionEx2(*) : Nat := mu n. ExitSuccess;
 
 
 
-def fix[*] := cocase { Ap(f)[k] =>
-             cocase { Ap(x)[k] => f >>
-               Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] } >>
-                 Ap( cocase { Ap(x)[k] => f >>
-                   Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] })[k] };
+def fix[*] := cocase { ApS(f)[k] =>
+             cocase { ApS(x)[k] => f >>
+               ApS( cocase { ApS(v)[k] => x >> ApS(x)[ApS(v)[k]] })[k] } >>
+                 ApS( cocase { ApS(x)[k] => f >>
+                   ApS( cocase { ApS(v)[k] => x >> ApS(x)[ApS(v)[k]] })[k] })[k] };
 
-def addNominal[*] := cocase { Ap2(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
-def mltNominal[*] := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]]};
+def addNominal[*] := cocase { Ap2(n,m)[k] => fix >> ApS( cocase { ApS(alpha)[k] => cocase { ApS(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> ApS(p)[mu w. S(w) >> k] }} >> k })[ApS(m)[k]] };
+def mltNominal[*] := cocase { Ap2(n,m)[k] => fix >> ApS(cocase { ApS(alpha)[k] => cocase { ApS(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> ApS(p)[mu w. addNominal >> Ap2(n,w)[k]] } } >> k })[ApS(m)[k]]};
 
-def ex1[*] : forall a. { Ap(a)[a] } := cocase { Ap(x)[k] => x >> k };
+def ex1[*] : forall a. { ApS(a)[a] } := cocase { ApS(x)[k] => x >> k };
 
 def ex2[*] : < Succ(< Zero >) > := Succ(Zero);
 
@@ -54,18 +54,18 @@ def ex3[*] : forall a. { Ap3(< TT , FF >, a, a)[a] } := cocase { Ap3(b,x,y)[k] =
 
 def ex4[*] : forall a b. { Ap3(<TT,FF>, a, b)[a \/ b] } := cocase { Ap3(b,x,y)[k] => b >> case { TT => x >> k, FF => y >> k }};
 
-def ex5[*] :  forall a b. { Ap({ Ap(a \/ b)[b] })[{ Ap(a)[b] }] } := cocase { Ap(f)[k] => (cocase { Ap(x)[k] => f >> Ap(x)[mu y. f >> Ap(y)[k]]}) >> k};
+def ex5[*] :  forall a b. { ApS({ ApS(a \/ b)[b] })[{ ApS(a)[b] }] } := cocase { ApS(f)[k] => (cocase { ApS(x)[k] => f >> ApS(x)[mu y. f >> ApS(y)[k]]}) >> k};
 
-def ex6[*] : { Ap(Bool)[Bool] } := cocase { Ap(x)[k] => x >> case { True => False >> k, False => True >> k }};
+def ex6[*] : { ApS(Bool)[Bool] } := cocase { ApS(x)[k] => x >> case { True => False >> k, False => True >> k }};
 
-def ex7[*] : { Ap(Bool)[(Bool \/ Nat)] } := cocase { Ap(x)[k] => x >> case { True => False >> k, False => Z >> k }};
+def ex7[*] : { ApS(Bool)[(Bool \/ Nat)] } := cocase { ApS(x)[k] => x >> case { True => False >> k, False => Z >> k }};
 
-def ex8[*] : { Ap(Bool)[(Nat \/ Bool)] } := cocase { Ap(x)[k] => x >> case { True => False >> k, False => Z >> k }};
+def ex8[*] : { ApS(Bool)[(Nat \/ Bool)] } := cocase { ApS(x)[k] => x >> case { True => False >> k, False => Z >> k }};
 
-def ex9[*] : { Ap2(Nat,Nat)[Nat] } := cocase { Ap2(n,m)[k] => fix >> Ap( cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> Ap(p)[mu w. S(w) >> k] }} >> k })[Ap(m)[k]] };
+def ex9[*] : { Ap2(Nat,Nat)[Nat] } := cocase { Ap2(n,m)[k] => fix >> ApS( cocase { ApS(alpha)[k] => cocase { ApS(m)[k] => m >> case { Z => n >> k, S(p) => alpha >> ApS(p)[mu w. S(w) >> k] }} >> k })[ApS(m)[k]] };
 
-def ex10[*] : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p)[mu w. addNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]]};
+def ex10[*] : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> ApS(cocase { ApS(alpha)[k] => cocase { ApS(m)[k] => m >> case { Z => Z >> k, S(p) => alpha >> ApS(p)[mu w. addNominal >> Ap2(n,w)[k]] } } >> k })[ApS(m)[k]]};
 
-def ex11[*] : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(m)[k] => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p)[mu w. mltNominal >> Ap2(n,w)[k]] } } >> k })[Ap(m)[k]] };
+def ex11[*] : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> ApS(cocase { ApS(alpha)[k] => cocase { ApS(m)[k] => m >> case { Z => S(Z) >> k, S(p) => alpha >> ApS(p)[mu w. mltNominal >> Ap2(n,w)[k]] } } >> k })[ApS(m)[k]] };
 
-def ex12[*] : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> Ap(cocase { Ap(alpha)[k] => cocase { Ap(n)[k] => cocase { Ap(m)[k] => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np)[Ap(mp)[k]] }}} >> k } >> k })[Ap(n)[Ap(m)[k]]]};
+def ex12[*] : forall t0. { Ap2((t0 /\ Nat),Nat)[(t0 \/ Nat)] } := cocase { Ap2(n,m)[k] => fix >> ApS(cocase { ApS(alpha)[k] => cocase { ApS(n)[k] => cocase { ApS(m)[k] => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> ApS(np)[ApS(mp)[k]] }}} >> k } >> k })[ApS(n)[ApS(m)[k]]]};

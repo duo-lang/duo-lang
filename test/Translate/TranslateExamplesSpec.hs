@@ -7,14 +7,13 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
 import Pretty.Program ()
-import Syntax.RST.Program qualified as RST
+import Syntax.CST.Program qualified as CST
 import Translate.Desugar
 import Translate.EmbedCore
-import Driver.Driver
+import Translate.Reparse
+import Driver.Definition (defaultDriverState)
+import Driver.Driver (inferProgramIO)
 import TestUtils
-
-driverState :: DriverState
-driverState = DriverState defaultInferenceOptions { infOptsLibPath = ["examples"]} mempty mempty
 
 spec :: Spec
 spec = do
@@ -22,18 +21,18 @@ spec = do
       examples <- runIO $ getAvailableExamples "examples/"
       forM_ examples $ \example -> do
         describe ("Desugaring the program in  " ++ example ++ " typechecks.") $ do
-          decls <- runIO $ getTypecheckedDecls example defaultInferenceOptions { infOptsLibPath = ["examples"]}
+          decls <- runIO $ getTypecheckedDecls example
           case decls of
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
-              let desugaredDecls :: RST.Program = embedCoreProg $ desugarProgram decls
-              res <- runIO $ inferProgramIO' driverState desugaredDecls
+              let desugaredDecls :: CST.Program = reparseProgram $ embedCoreProg $ desugarProgram decls
+              res <- runIO $ inferProgramIO defaultDriverState desugaredDecls
               case res of
                 Left err -> do
                   let msg = unlines [ "---------------------------------"
                                     , "Prettyprinted declarations:"
                                     , ""
-                                    ,  ppPrintString desugaredDecls
+                                    ,  ppPrintString (embedCoreProg $ desugarProgram decls)
                                     , ""
                                     , "Show instance of declarations:"
                                     , ""

@@ -1,16 +1,14 @@
-module Renamer.Program (lowerProgram, lowerDecl) where
+module Renamer.Program (renameProgram, renameDecl) where
 
+import Control.Monad.Reader
 import Control.Monad.Except (throwError)
-import Control.Monad.State
 import Data.Map qualified as M
-import Data.Text.IO qualified as T
 
 import Errors
 import Renamer.Definition
 import Renamer.SymbolTable
-import Renamer.Terms (lowerTerm, lowerCommand)
-import Renamer.Types (lowerTypeScheme, lowerXTorSig, lowerTyp)
-import Parser.Parser ( runFileParser, programP )
+import Renamer.Terms (renameTerm, renameCommand)
+import Renamer.Types (renameTypeScheme, renameXTorSig, renameTyp)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.RST.Program qualified as RST
@@ -18,26 +16,26 @@ import Syntax.RST.Types qualified as RST
 import Syntax.Common
 import Utils (Loc)
 
-lowerXtors :: [CST.XtorSig]
+renameXtors :: [CST.XtorSig]
            -> RenamerM ([RST.XtorSig Pos], [RST.XtorSig Neg])
-lowerXtors sigs = do
-    posSigs <- sequence $ lowerXTorSig PosRep <$> sigs
-    negSigs <- sequence $ lowerXTorSig NegRep <$> sigs
+renameXtors sigs = do
+    posSigs <- sequence $ renameXTorSig PosRep <$> sigs
+    negSigs <- sequence $ renameXTorSig NegRep <$> sigs
     pure (posSigs, negSigs)
 
-lowerDataDecl :: Loc -> CST.DataDecl -> RenamerM RST.DataDecl
-lowerDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+renameDataDecl :: Loc -> CST.DataDecl -> RenamerM RST.DataDecl
+renameDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   -- Default the kind if none was specified:
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
-  -- Insert the tycon arity into the environment
-  updateSymbolTable (\st -> st { tyConMap = M.insert data_name (NominalResult data_refined polyKind) (tyConMap st)})
-  -- Lower the xtors
-  xtors <- lowerXtors data_xtors
-  let ns = case data_refined of
-                  Refined -> Refinement
-                  NotRefined -> Nominal
+  -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
+  let g :: TyConResult -> TyConResult
+      g (SynonymResult ty) = SynonymResult ty
+      g (NominalResult _ polykind) = NominalResult NotRefined polykind
+  let f :: [(ModuleName, SymbolTable)] -> [(ModuleName, SymbolTable)]
+      f = fmap (\(mn, st) -> (mn, st { tyConMap = M.adjust g data_name (tyConMap st) }))
+  xtors <- local f (renameXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl
                 { data_refined = data_refined
@@ -46,70 +44,43 @@ lowerDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_k
                 , data_kind = polyKind
                 , data_xtors = xtors
                 }
-  -- Insert the xtors into the environment
-  let newXtors = (M.fromList [((RST.sig_name xt,data_polarity), (ns, RST.linearContextToArity (RST.sig_args xt)))| xt <- fst xtors])
-  updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
   pure dcl
 
-lowerAnnot :: PrdCnsRep pc -> CST.TypeScheme -> RenamerM (RST.TypeScheme (PrdCnsToPol pc))
-lowerAnnot PrdRep ts = lowerTypeScheme PosRep ts
-lowerAnnot CnsRep ts = lowerTypeScheme NegRep ts
+renameAnnot :: PrdCnsRep pc -> CST.TypeScheme -> RenamerM (RST.TypeScheme (PrdCnsToPol pc))
+renameAnnot PrdRep ts = renameTypeScheme PosRep ts
+renameAnnot CnsRep ts = renameTypeScheme NegRep ts
 
-lowerMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> RenamerM (Maybe (RST.TypeScheme (PrdCnsToPol pc)))
-lowerMaybeAnnot _ Nothing = pure Nothing
-lowerMaybeAnnot pc (Just annot) = Just <$> lowerAnnot pc annot
+renameMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> RenamerM (Maybe (RST.TypeScheme (PrdCnsToPol pc)))
+renameMaybeAnnot _ Nothing = pure Nothing
+renameMaybeAnnot pc (Just annot) = Just <$> renameAnnot pc annot
 
-lowerDecl :: CST.Declaration -> RenamerM RST.Declaration
-lowerDecl (CST.PrdCnsDecl loc doc Prd isrec fv annot tm) =
-  RST.PrdCnsDecl loc doc PrdRep isrec fv <$> (lowerMaybeAnnot PrdRep annot) <*> (lowerTerm PrdRep tm)
-lowerDecl (CST.PrdCnsDecl loc doc Cns isrec fv annot tm) =
-  RST.PrdCnsDecl loc doc CnsRep isrec fv <$> (lowerMaybeAnnot CnsRep annot) <*> (lowerTerm CnsRep tm)
-lowerDecl (CST.CmdDecl loc doc fv cmd) =
-  RST.CmdDecl loc doc fv <$> (lowerCommand cmd)
-lowerDecl (CST.DataDecl loc doc dd) = do
-  lowered <- lowerDataDecl loc dd
-
-  let ns = case CST.data_refined dd of
-                 Refined -> Refinement
-                 NotRefined -> Nominal
-  let newXtors = M.fromList [((RST.sig_name xt, CST.data_polarity dd), (ns, RST.linearContextToArity (RST.sig_args xt)))| xt <- fst (RST.data_xtors lowered)]
-  updateSymbolTable (\st -> st { xtorMap = M.union newXtors (xtorMap st)})
+renameDecl :: CST.Declaration -> RenamerM RST.Declaration
+renameDecl (CST.PrdCnsDecl loc doc Prd isrec fv annot tm) =
+  RST.PrdCnsDecl loc doc PrdRep isrec fv <$> (renameMaybeAnnot PrdRep annot) <*> (renameTerm PrdRep tm)
+renameDecl (CST.PrdCnsDecl loc doc Cns isrec fv annot tm) =
+  RST.PrdCnsDecl loc doc CnsRep isrec fv <$> (renameMaybeAnnot CnsRep annot) <*> (renameTerm CnsRep tm)
+renameDecl (CST.CmdDecl loc doc fv cmd) =
+  RST.CmdDecl loc doc fv <$> (renameCommand cmd)
+renameDecl (CST.DataDecl loc doc dd) = do
+  lowered <- renameDataDecl loc dd
   pure $ RST.DataDecl loc doc lowered
-lowerDecl (CST.XtorDecl loc doc dc xt args ret) = do
-  updateSymbolTable (\st -> st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)})
+renameDecl (CST.XtorDecl loc doc dc xt args ret) = do
   let ret' = case ret of
                Just eo -> eo
                Nothing -> case dc of Data -> CBV; Codata -> CBN
   pure $ RST.XtorDecl loc doc dc xt args ret'
-lowerDecl (CST.ImportDecl loc doc mod) = do
-  fp <- findModule mod loc
-  newSymbolTable <- lowerProgramFromDisk fp
-  updateSymbolTable (\st -> st <> newSymbolTable)
+renameDecl (CST.ImportDecl loc doc mod) = do
   pure $ RST.ImportDecl loc doc mod
-lowerDecl (CST.SetDecl loc doc txt) =
+renameDecl (CST.SetDecl loc doc txt) =
   pure $ RST.SetDecl loc doc txt
-lowerDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
-  let tyOp = MkTyOp { symbol = CustomOp op
-                    , prec = prec
-                    , assoc = assoc
-                    , desugar = NominalDesugaring tyname
-                    }
-  updateSymbolTable (\st -> st { tyOps = tyOp : (tyOps st)})
+renameDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
   pure $ RST.TyOpDecl loc doc op prec assoc tyname
-lowerDecl (CST.TySynDecl loc doc nm ty) = do
-  typ <- lowerTyp PosRep ty
-  tyn <- lowerTyp NegRep ty
-  updateSymbolTable (\st -> st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st)})
+renameDecl (CST.TySynDecl loc doc nm ty) = do
+  typ <- renameTyp PosRep ty
+  tyn <- renameTyp NegRep ty
   pure (RST.TySynDecl loc doc nm (typ, tyn))
-lowerDecl CST.ParseErrorDecl =
+renameDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
-lowerProgram :: CST.Program -> RenamerM RST.Program
-lowerProgram = sequence . fmap lowerDecl
-
-lowerProgramFromDisk :: FilePath
-                     -> RenamerM SymbolTable
-lowerProgramFromDisk fp = do
-  file <- liftIO $ T.readFile fp
-  decls <- runFileParser fp programP file
-  pure $ createSymbolTable decls
+renameProgram :: CST.Program -> RenamerM RST.Program
+renameProgram = sequence . fmap renameDecl

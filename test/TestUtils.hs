@@ -4,6 +4,7 @@ import Control.Monad.Except
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
 
+import Driver.Definition
 import Driver.Driver
 import Driver.Environment
 import Errors
@@ -11,8 +12,6 @@ import Parser.Parser
 import Renamer.SymbolTable
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
-import Syntax.RST.Program qualified as RST
-
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
@@ -31,28 +30,20 @@ getParsedDeclarations fp = do
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getRenamedDeclarations :: FilePath -> InferenceOptions -> IO (Either Error RST.Program)
-getRenamedDeclarations fp infopts = do
+getTypecheckedDecls :: FilePath -> IO (Either Error AST.Program)
+getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      renameProgramIO (DriverState infopts mempty mempty) decls
+      fmap snd <$> inferProgramIO defaultDriverState decls
     Left err -> return (Left err)
 
-getTypecheckedDecls :: FilePath -> InferenceOptions -> IO (Either Error AST.Program)
-getTypecheckedDecls fp infopts = do
+getEnvironment :: FilePath -> IO (Either Error Environment)
+getEnvironment fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> inferProgramIO (DriverState infopts mempty mempty) decls
-    Left err -> return (Left err)
-
-getEnvironment :: FilePath -> InferenceOptions -> IO (Either Error Environment)
-getEnvironment fp infopts = do
-  decls <- getParsedDeclarations fp
-  case decls of
-    Right decls -> do
-      fmap fst <$> inferProgramIO (DriverState infopts mempty mempty) decls
+      fmap fst <$> inferProgramIO defaultDriverState decls
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either Error SymbolTable)

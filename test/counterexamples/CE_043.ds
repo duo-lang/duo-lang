@@ -1,0 +1,8 @@
+-- Refinement type cannot be used like a nominal type
+
+refinement data Bool {
+    True,
+    False
+};
+
+def true[*] : Bool := True;

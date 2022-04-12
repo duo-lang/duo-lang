@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
+import Data.Text qualified as T
 import Data.Version (showVersion)
 import GitHash (tGitInfoCwd, giHash, giBranch)
 
@@ -10,6 +11,8 @@ import Deps (runDeps)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
 import Paths_dualsub (version)
+import Syntax.Common
+import Utils (trimStr)
 
 main :: IO ()
 main = do
@@ -19,8 +22,8 @@ main = do
 dispatch :: Options -> IO ()
 dispatch OptRepl         = runRepl
 dispatch (OptLSP log)    = runLSP log
-dispatch (OptCompile fp) = runCompile fp
-dispatch (OptDeps fp)    = runDeps fp
+dispatch (OptCompile fp) = runCompile (MkModuleName (T.pack (trimStr fp)))
+dispatch (OptDeps fp)    = runDeps (MkModuleName (T.pack (trimStr fp)))
 dispatch OptVersion      = printVersion
 
 printVersion :: IO ()

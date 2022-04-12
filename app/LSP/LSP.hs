@@ -26,6 +26,7 @@ import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
 import Paths_dualsub (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
+import Driver.Definition
 import Errors
 import LSP.MegaparsecToLSP ( locToRange )
 import Parser.Definition ( runFileParser )
@@ -200,7 +201,7 @@ publishErrors uri = do
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
         Right decls -> do
-          res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty mempty) decls
+          res <- liftIO $ inferProgramIO defaultDriverState decls
           case res of
             Left err -> do
               sendLocatedError (toNormalizedUri uri) err

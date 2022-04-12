@@ -11,7 +11,6 @@ module Driver.DepGraph
 
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Control.Monad.Except
 import Data.Graph.Inductive.Basic (hasLoop)
@@ -55,8 +54,8 @@ type CompilationOrder = [ModuleName]
 ---------------------------------------------------------------------------------
 
 -- | Create the dependency graph by recursively following import statements.
-createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] defaultDepGraph
+createDepGraph :: [ModuleName] -> DriverM DepGraph
+createDepGraph mns = createDepGraph' mns defaultDepGraph
 
 lookupOrInsert :: DepGraph -> ModuleName -> (Node, DepGraph)
 lookupOrInsert depGraph@MkDepGraph {..} mn = case M.lookup mn name_map of
