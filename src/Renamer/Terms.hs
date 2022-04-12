@@ -13,7 +13,6 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
 import Control.Monad (when)
-import Syntax.CST.Terms (FVOrStar)
 import qualified Syntax.Common as CST
 
 ---------------------------------------------------------------------------------
@@ -30,7 +29,7 @@ lowerTerms loc (a:ar) (t:tms) = do
   t' <- lowerT a t
   tms' <- lowerTerms loc ar tms
   return $ t' : tms'
-lowerTerms _ _ _ = error "compiler bug in lowerTerms"
+lowerTerms loc ar t = error $ "compiler bug in lowerTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
 
 {-
 checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> RenamerM ()
@@ -45,24 +44,6 @@ checkXtorArity loc (xt, dc) arityUsed = do
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-lowerSubstitution :: CST.Substitution -> RenamerM RST.Substitution
-lowerSubstitution [] = pure []
-lowerSubstitution (CST.PrdTerm tm:tms) = do
-  tm' <- lowerTerm PrdRep tm
-  subst <- lowerSubstitution tms
-  pure (RST.PrdTerm tm':subst)
-lowerSubstitution (CST.CnsTerm tm:tms) = do
-  tm' <- lowerTerm CnsRep tm
-  subst <- lowerSubstitution tms
-  pure (RST.CnsTerm tm':subst)
-
-
-
-lowerSubstitutionI :: CST.SubstitutionI -> RenamerM (RST.SubstitutionI Prd)
-lowerSubstitutionI (subst1, _, subst2) = do
-  subst1' <- lowerSubstitution subst1
-  subst2' <- lowerSubstitution subst2
-  pure (subst1', PrdRep, subst2')
 
 lowerCommand :: CST.Term -> RenamerM RST.Command
 lowerCommand (CST.PrimCmdTerm (CST.Print loc tm cmd)) =
@@ -112,7 +93,7 @@ isStar _ = False
 lowerCommandCase :: DataCodata -> CST.TermCase -> RenamerM RST.CmdCase
 lowerCommandCase dc (CST.MkTermCase cmdcase_ext cmdcase_name cmdcase_args cmdcase_cmd) = do
   cmd' <- lowerCommand cmdcase_cmd
-  (ns, ar) <- lookupXtor cmdcase_ext (cmdcase_name, dc)
+  (_, ar) <- lookupXtor cmdcase_ext (cmdcase_name, dc)
   when (length ar /= length cmdcase_args) $
            throwError $ LowerError (Just cmdcase_ext) $ XtorArityMismatch cmdcase_name (length ar) (length cmdcase_args)
   when (any (\x -> case x of CST.FoSStar -> True; _ -> False) cmdcase_args) $ throwError $ LowerError (Just cmdcase_ext) $ InvalidStar "Invalid star in command case"
@@ -133,7 +114,7 @@ commandCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc =
 lowerTermCase :: DataCodata -> CST.TermCase -> RenamerM (RST.TermCase Prd)
 lowerTermCase dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
   tm' <- lowerTerm PrdRep tmcase_term
-  (ns, ar) <- lookupXtor tmcase_ext (tmcase_name, dc)
+  (_, ar) <- lookupXtor tmcase_ext (tmcase_name, dc)
   when (length ar /= length tmcase_args) $
            throwError $ LowerError (Just tmcase_ext) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
   when (any (\x -> case x of CST.FoSStar -> True; _ -> False) tmcase_args) $ throwError $ LowerError (Just tmcase_ext) $ InvalidStar "Invalid star in command case"
@@ -149,11 +130,11 @@ lowerTermCase dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_t
 lowerTermCaseI :: DataCodata -> CST.TermCase -> RenamerM (RST.TermCaseI Prd)
 lowerTermCaseI dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
   tm' <- lowerTerm PrdRep tmcase_term
-  (ns, ar) <- lookupXtor tmcase_ext (tmcase_name, dc)
+  (_, ar) <- lookupXtor tmcase_ext (tmcase_name, dc)
   when (length ar /= length tmcase_args) $
            throwError $ LowerError (Just tmcase_ext) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
-  (x,y) <- splitFS undefined tmcase_args
-  let (ar1,a:ar2) = splitAt (length x) ar
+  (x,y) <- splitFS defaultLoc  tmcase_args -- TODO : improve Loc
+  let (ar1,_:ar2) = splitAt (length x) ar
   let args1 = zip ar1 x
   let args2 = zip ar2 y
   pure RST.MkTermCaseI { tmcasei_ext = tmcase_ext
@@ -203,7 +184,7 @@ isStarT _ = False
 
 toTm  :: CST.TermOrStar -> CST.Term
 toTm (CST.ToSTerm t) = t
-toTm x = error "Compiler bug: toFV"
+toTm _x = error "Compiler bug: toFV"
 
 lowerDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar], SourcePos) -> RenamerM CST.Term
 lowerDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
@@ -213,7 +194,7 @@ split :: Loc -> [CST.TermOrStar] -> RenamerM ([CST.Term],[CST.Term])
 split loc args = do
   let numstars = length (filter isStarT args)
   when ( numstars /= 1) $ throwError (OtherError (Just loc) "Exactly one star expected" )
-  let (args1,(_:args2)) = span (not . isStarT) args
+  let (args1,_:args2) = span (not . isStarT) args
   return (map toTm args1,map toTm args2)
 
 splitFS :: Loc -> [CST.FVOrStar] -> RenamerM ([CST.FreeVarName],[CST.FreeVarName])
@@ -240,7 +221,7 @@ lowerTerm CnsRep (CST.XtorSemi loc xtor subst Nothing) = do
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   pctms <- lowerTerms loc ar subst
   return $ RST.Xtor loc CnsRep ns xtor pctms
-lowerTerm _ (CST.XtorSemi loc xtor subst (Just t)) = error "lowerTerm / XTorSemi: not yet implemented"
+lowerTerm _ (CST.XtorSemi _loc _xtor _subst (Just _t)) = error "lowerTerm / XTorSemi: not yet implemented"
 lowerTerm PrdRep (CST.XCase loc Data Nothing _) =
   throwError (OtherError (Just loc) "Cannot lower pattern match to a producer.")
 lowerTerm CnsRep (CST.XCase loc Codata Nothing _) =
@@ -308,9 +289,10 @@ lowerTerm PrdRep (CST.Dtor loc xtor tm subst) = do
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   tm' <- lowerTerm PrdRep tm
   (args1,args2) <- split loc subst
+  let (ar1,_:ar2) = splitAt (length args1) ar
   -- there must be exactly one star
-  args1' <- lowerTerms loc ar args1
-  args2' <- lowerTerms loc ar args2
+  args1' <- lowerTerms loc ar1 args1
+  args2' <- lowerTerms loc ar2 args2
   pure $ RST.Dtor loc PrdRep ns xtor tm' (args1',PrdRep,args2')
 lowerTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
   throwError (OtherError (Just loc) "Cannot lower Dtor to a consumer (TODO).")

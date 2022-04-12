@@ -11,7 +11,7 @@ import Utils
 -- Declarations
 ---------------------------------------------------------------------------------
 
-data Declaration where
+data Declaration where 
   PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
   CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Term                                                       -> Declaration
   DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration

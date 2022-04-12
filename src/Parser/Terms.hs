@@ -45,7 +45,7 @@ termOrStarP = ((\s -> (CST.ToSStar,s)) <$> symbolP SymImplicit) <|> (first CST.T
 
 substitutionIP :: Parser ([CST.TermOrStar], SourcePos)
 substitutionIP = do
-     s <- optional $ map fst <$> parens  (fst <$> termOrStarP) `sepBy` symbolP SymComma
+     s <- optional $ fst <$> parens  ((fst <$> termOrStarP) `sepBy` symbolP SymComma)
      pos <- getSourcePos
      return (Data.Maybe.fromMaybe [] s,pos)
 
@@ -309,6 +309,7 @@ termBotP :: Parser (CST.Term, SourcePos)
 termBotP = freeVar <|>
   i64LitP <|>
   f64LitP <|>
+  primitiveCmdP <|>
   natLitP Structural <|>
   natLitP Nominal <|>
   xtorP <|>
@@ -316,7 +317,6 @@ termBotP = freeVar <|>
   muAbstraction  <|>
   termParensP <|>
   lambdaP <|>
-  primitiveCmdP <|>
   readCmdP <|>
   printCmdP <|>
   exitFailureCmdP <|>

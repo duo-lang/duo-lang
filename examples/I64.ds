@@ -4,37 +4,37 @@ data I64 {
     MkI64(#I64)
 };
 
-def add[*] : I64 -> I64 -> I64 := \x => \y =>
+def prd add : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
-            MkI64(y) => mu k. Add#I64(x, y)[mu z. MkI64(z) >> k]
+            MkI64(y) => mu k. Add#I64(x, y,mu z. MkI64(z) >> k)
         }
     };
 
-def sub[*] : I64 -> I64 -> I64 := \x => \y =>
+def prd sub : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
-            MkI64(y) => mu k. Sub#I64(x, y)[mu z. MkI64(z) >> k]
+            MkI64(y) => mu k. Sub#I64(x, y,mu z. MkI64(z) >> k)
         }
     };
 
-def mul[*] : I64 -> I64 -> I64 := \x => \y =>
+def prd mul : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
-            MkI64(y) => mu k. Mul#I64(x, y)[mu z. MkI64(z) >> k]
+            MkI64(y) => mu k. Mul#I64(x, y,mu z. MkI64(z) >> k)
         }
     };
 
-def div[*] : I64 -> I64 -> I64 := \x => \y =>
+def prd div : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
-            MkI64(y) => mu k. Div#I64(x, y)[mu z. MkI64(z) >> k]
+            MkI64(y) => mu k. Div#I64(x, y,mu z. MkI64(z) >> k)
         }
     };
 
-def mod[*] : I64 -> I64 -> I64 := \x => \y =>
+def prd mod : I64 -> I64 -> I64 := \x => \y =>
     case x of {
         MkI64(x) => case y of {
-            MkI64(y) => mu k. Mod#I64(x, y)[mu z. MkI64(z) >> k]
+            MkI64(y) => mu k. Mod#I64(x, y,mu z. MkI64(z) >> k)
         }
     };

@@ -9,7 +9,7 @@ import LinearLogic;
 
 
 data ParseResult : CBV {
-    PR(List(Nat))[Unit]
+    PR(List(Nat),return Unit)
 };
 
 
@@ -18,102 +18,102 @@ data ParseResult : CBV {
 -- the ParseResult contains the remaining input and, crucially, 
 -- another "backtracking" continuation
 codata Parser :  CBN {
-    Parse(List(Nat))[ParseResult,Unit]
+    Parse(List(Nat),return ParseResult,return Unit)
 }; 
 
 
-def lit[*] : Nat -> Parser := \n => cocase {
-    Parse(xs)[s,f] => xs >> case {
+def prd lit : Nat -> Parser := \n => cocase {
+    Parse(xs,s,f) => xs >> case {
         Nil => MkUnit >> f,
         Cons(y, ys) => nateq y n >> case {
-            True => PR(ys)[f] >> s,
+            True => PR(ys,f) >> s,
             False => MkUnit >> f
         } 
     } 
 } ; 
 
 
-def success[*] : Parser := cocase {
-    Parse(xs)[s,f] => PR(xs)[f] >> s
+def prd success : Parser := cocase {
+    Parse(xs,s,f) => PR(xs,f) >> s
 };
 
 
-def failure[*] : Parser := cocase {
-    Parse(xs)[s,f] => MkUnit >> f
+def prd failure : Parser := cocase {
+    Parse(xs,s,f) => MkUnit >> f
 };
 
-def seq[*] : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs)[s,f] => p1 >> Parse(xs)[ case { PR(l)[f2] => p2 >> Parse(l)[s,f2] } ,f] 
+def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
+    Parse(xs,s,f) => p1 >> Parse(xs, case { PR(l,f2) => p2 >> Parse(l,s,f2) } ,f) 
 };
 
-def alt[*] : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs)[s,f] => p1 >> Parse(xs)[s, mu q. p2 >> Parse(xs)[s,f] ]
+def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
+    Parse(xs,s,f) => p1 >> Parse(xs,s, mu q. p2 >> Parse(xs,s,f) )
 };
 
-def rec many1[*] : Parser -> Parser := \p => cocase {
-    Parse(xs)[s,f] => p >> Parse(xs)[case { PR(l)[f2] => alt success (many1 p) >> Parse(l)[s,f2]}, f]
+def rec prd many1 : Parser -> Parser := \p => cocase {
+    Parse(xs,s,f) => p >> Parse(xs,case { PR(l,f2) => alt success (many1 p) >> Parse(l,s,f2)}, f)
 };
 
-def many[*] : Parser -> Parser := \p => alt success (many1 p);
+def prd many : Parser -> Parser := \p => alt success (many1 p);
 
 
-def l1[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Nil)));
-def l2[*] : List(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
+def prd l1 : List(Nat) := Cons(1,Cons(2,Cons(3,Nil)));
+def prd l2 : List(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
 
-def parseOne[*] : Parser := lit 1;
+def prd parseOne : Parser := lit 1;
  
 
-def test1 := parseOne >> Parse(l1)[print,print] ;
-def test2 := parseOne >> Parse(l2)[print,print] ;
+def cmd test1 := parseOne >> Parse(l1,print,print) ;
+def cmd test2 := parseOne >> Parse(l2,print,print) ;
 
-def parseOneTwo[*] : Parser := seq (lit 1) (lit 2);
+def prd parseOneTwo : Parser := seq (lit 1) (lit 2);
 
-def test3 := parseOneTwo >> Parse(l1)[print,print] ;
-def test4 := parseOneTwo >> Parse(l2)[print,print] ;
+def cmd test3 := parseOneTwo >> Parse(l1,print,print) ;
+def cmd test4 := parseOneTwo >> Parse(l2,print,print) ;
 
-def parseTwoOrOne[*] : Parser := seq (alt (lit 2) (lit 1)) (lit 2);
+def prd parseTwoOrOne : Parser := seq (alt (lit 2) (lit 1)) (lit 2);
 
-def test5 := parseTwoOrOne >> Parse(l1)[print,print] ;
-def test6 := parseTwoOrOne >> Parse(l2)[print,print] ;
+def cmd test5 := parseTwoOrOne >> Parse(l1,print,print) ;
+def cmd test6 := parseTwoOrOne >> Parse(l2,print,print) ;
 
-def parseOnes[*] : Parser := seq (alt (seq (lit 1) (lit 1)) (lit 1)) (lit 1);
+def prd parseOnes : Parser := seq (alt (seq (lit 1) (lit 1)) (lit 1)) (lit 1);
 
-def l3[*] : List(Nat) := Cons(1,Cons(1,Cons(1,Nil)));
+def prd l3 : List(Nat) := Cons(1,Cons(1,Cons(1,Nil)));
 
-def test7 := parseOnes >> Parse(l3)[print,print] ;
+def cmd test7 := parseOnes >> Parse(l3,print,print) ;
 
-def parseOneTwoThree[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
-def parseOneTwoFour[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 4);
+def prd parseOneTwoThree : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
+def prd parseOneTwoFour : Parser := seq (seq (lit 1) (lit 2)) (lit 4);
 
 -- ( 123 | 12 | 35)^* 5 6
-def parseComplicated[*] : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
+def prd parseComplicated : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
 
-def l4[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
-def l5[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
-def l6[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
-def l7[*] : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
-def l8[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
-def l9[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
+def prd l4 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
+def prd l5 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
+def prd l6 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
+def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
+def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
+def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
-def test8  := parseComplicated >> Parse(l4)[print,print] ;
-def test9  := parseComplicated >> Parse(l5)[print,print] ;
-def test10 := parseComplicated >> Parse(l6)[print,print] ;
-def test11 := parseComplicated >> Parse(l7)[print,print] ;
-def test12 := parseComplicated >> Parse(l8)[print,print] ;
-def test13 := parseComplicated >> Parse(l9)[print,print] ;
+def cmd test8  := parseComplicated >> Parse(l4,print,print) ;
+def cmd test9  := parseComplicated >> Parse(l5,print,print) ;
+def cmd test10 := parseComplicated >> Parse(l6,print,print) ;
+def cmd test11 := parseComplicated >> Parse(l7,print,print) ;
+def cmd test12 := parseComplicated >> Parse(l8,print,print) ;
+def cmd test13 := parseComplicated >> Parse(l9,print,print) ;
 
 -- instead of modeling the parser as a codata producer, we could
 -- also model it as a data consumer. Is this better in any way?
 data Parser2 :  CBV {
-    Parse2(List(Nat))[ParseResult,Unit]
+    Parse2(List(Nat),return ParseResult,return Unit)
 
 }; 
 
-def lit2(*) : Parser2 :=  case {
-    Parse2(xs)[s,f] => xs >> case {
+def cns lit2 : Parser2 :=  case {
+    Parse2(xs,s,f) => xs >> case {
         Nil => MkUnit >> f,
         Cons(y, ys) => nateq y 0 >> case {
-            True => PR(ys)[f] >> s,
+            True => PR(ys,f) >> s,
             False => MkUnit >> f
         } 
     } 

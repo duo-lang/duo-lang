@@ -23,13 +23,13 @@ data Nat { Z, S(Nat) };
 -- We can define toplevel values using the following syntax, where the names of defined terms have
 -- to start with a lowercase letter.
 
-def true[*] := True;
-def two[*] := S(S(Z));
+def prd true := True;
+def prd two := S(S(Z));
 
 -- We also provide some syntactic sugar for (Peano) natural numbers, so that `two` can
 -- alternatively be written in the following way.
 
-def twoSugared[*] := 2;
+def prd twoSugared := 2;
 
 -- We now want to check the inferred types of our declared terms. In order to do that you can
 -- enter the following command in the REPL:
@@ -40,7 +40,7 @@ def twoSugared[*] := 2;
 -- Datatypes would be quite useless if you couldn't also destruct them via pattern matching.
 -- A convoluted way to define the number two is to define it as the predecessor of 3:
 
-def convolutedTwo[*] := case 3 of { Z => Z, S(x) => x };
+def prd convolutedTwo := case 3 of { Z => Z, S(x) => x };
 
 -- Pattern matches on the constructors of a declared datatype have to be exhaustive,
 -- otherwise an error is reported.
@@ -61,7 +61,7 @@ def convolutedTwo[*] := case 3 of { Z => Z, S(x) => x };
 -- Instead, you can define one yourself, using codata types, which are dual to data types.
 -- So let's define a (monomorphic) function type, the type of functions from Nat to Bool.
 
-codata Fun : CBN { Ap(Nat)[Bool] };
+codata Fun : CBN { Ap(Nat,return Bool) };
 
 -- We call `Ap` (short for "apply) a destructor of the codata type Fun. In parentheses we indicate
 -- the arguments of the destructor, and in square brackets we indicate the return type.
@@ -71,17 +71,17 @@ codata Fun : CBN { Ap(Nat)[Bool] };
 -- We can use a copattern match (or "cocase" for short) to construct a term of this codata type.
 -- For example, we can define the functions which return constant True or False:
 
-def constTrue[*] := cocase { Ap(x)[*] => True };
-def constFalse[*] := cocase { Ap(x)[*] => False };
+def prd constTrue := cocase { Ap(x,*) => True };
+def prd constFalse := cocase { Ap(x,*) => False };
 
 -- or, we can combine a copattern match with a pattern match to implement the `isZ` function:
 
-def isZ[*] := cocase { Ap(x)[*] => case x of { Z => True, S(x) => False } };
+def prd isZ := cocase { Ap(x,*) => case x of { Z => True, S(x) => False } };
 
 -- We can call a function which is declared in this way by using its destructor on it.
 -- For example, in order to check whether 5 is zero, we can write:
 
-def isFiveZ[*] := isZ.Ap(5)[*] ;
+def prd isFiveZ := isZ.Ap(5,*) ;
 
 -- Here is how this syntax corresponds to the more usual syntax for lambda abstractions in, e.g. Haskell.
 --
@@ -93,9 +93,9 @@ def isFiveZ[*] := isZ.Ap(5)[*] ;
 
 -- Since functions are so ubiquitious, DualSub contains some syntactic sugar for them:
 
-def isZSugared[*] := \x => case x of { Z => True, S(x) => False };
+def prd isZSugared := \x => case x of { Z => True, S(x) => False };
 
--- def isFiveZSugared[*] := isZ 5;
+-- def isFiveZSugared[*) := isZ 5;
 
 -- All toplevel declarations are defined by mutual recursion, so it is possible to define a
 -- recursive function like `isEven`:
@@ -118,7 +118,7 @@ def isZSugared[*] := \x => case x of { Z => True, S(x) => False };
 --    |-------------|------------------------------|---------------------|
 --    |   Data      | data Nat { Z, S(Nat) }       |      (Part 2)       |
 --    |-------------|------------------------------|---------------------|
---    |  Codata     | codata Fun { Ap(Nat)[Bool] } |      (Part 2)       |
+--    |  Codata     | codata Fun { Ap(Nat,Bool) } |      (Part 2)       |
 --    |-------------|------------------------------|---------------------|
 --
 -- In this part we have seen nominal data and codata types, in the next part of the tutorial we will introduce

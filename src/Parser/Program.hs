@@ -1,6 +1,8 @@
 module Parser.Program
   ( declarationP
   , programP
+  , returnP
+  ,xtorDeclP
   ) where
 
 import Control.Monad (void)
@@ -17,6 +19,7 @@ import Syntax.CST.Types
 import Syntax.Common
 import Utils
 import Data.Bifunctor (second)
+import qualified Data.Maybe
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
@@ -175,7 +178,7 @@ dataDeclP doc = do
         if refined == Refined && not (null (allTypeVars knd))
           then region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
           else pure (Just knd)
-    (xtors, _pos) <- braces $ xtorDeclP `sepBy` symbolP SymComma
+    (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
     endPos <- symbolP SymSemi
     let decl = NominalDecl
               { data_refined = refined
@@ -199,10 +202,10 @@ xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
-  (args, _) <- argListsP False monoKindP
+  args <- optional $ fst <$> (parens (returnP monoKindP `sepBy` symbolP SymComma) <?> "argument list") --argListsP False monoKindP
   ret <- optional (try (symbolP SymColon) >> evalOrderP)
   endPos <- symbolP SymSemi
-  pure (XtorDecl (Loc startPos endPos) doc dc xt args ret)
+  pure (XtorDecl (Loc startPos endPos) doc dc xt (Data.Maybe.fromMaybe [] args) ret)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
