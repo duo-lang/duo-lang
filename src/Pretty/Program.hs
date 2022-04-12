@@ -58,7 +58,7 @@ prettyCCList [] = mempty
 prettyCCList ((Prd, cc):xs) = (parens   $ prettyAnn cc) <> prettyCCList xs
 prettyCCList ((Cns, cc):xs) = (brackets $ prettyAnn cc) <> prettyCCList xs
 
-prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
+prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> RnTypeName -> Doc Annotation
 prettyTyOpDecl op assoc prec ty =
   annKeyword "type" <+> annKeyword "operator" <+>
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>

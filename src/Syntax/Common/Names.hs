@@ -2,6 +2,8 @@ module Syntax.Common.Names where
 
 import Data.Text (Text)
 
+import Utils
+
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------
@@ -11,8 +13,13 @@ newtype ModuleName = MkModuleName { unModuleName :: Text } deriving (Eq, Ord, Sh
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
 newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)
 
--- | Name of nominal type
+-- | Name of nominal type or type synonym.
 newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
+
+-- | Renamed TypeName
+-- rnTnLoc contains location of definition site.
+data RnTypeName = MkRnTypeName { rnTnLoc :: Loc, rnTnModule :: ModuleName, rnTnName :: TypeName }
+  deriving (Show, Ord, Eq)
 
 -- | Name of a free variable. Starts with a lowercase letter.
 newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show)

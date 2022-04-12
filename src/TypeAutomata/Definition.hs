@@ -151,16 +151,16 @@ data NodeLabel = MkNodeLabel
   , nl_data :: Maybe (Set XtorLabel)
   , nl_codata :: Maybe (Set XtorLabel)
   -- Nominal type names with the arities of type parameters
-  , nl_nominal :: Set (TypeName, [Variance])
+  , nl_nominal :: Set (RnTypeName, [Variance])
   , nl_primitive :: Set PrimitiveType
-  , nl_ref_data :: Map TypeName (Set XtorLabel)
-  , nl_ref_codata :: Map TypeName (Set XtorLabel)
+  , nl_ref_data :: Map RnTypeName (Set XtorLabel)
+  , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
   } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty S.empty M.empty M.empty
 
-singleNodeLabel :: Polarity -> DataCodata -> Maybe TypeName -> Set XtorLabel -> NodeLabel
+singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
 singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty S.empty M.empty M.empty
 singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty S.empty M.empty M.empty
 singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty S.empty (M.singleton tn xtors) M.empty
@@ -173,8 +173,8 @@ singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.e
 data EdgeLabel a
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | EpsilonEdge a
-  | RefineEdge TypeName
-  | TypeArgEdge TypeName Variance Int
+  | RefineEdge RnTypeName
+  | TypeArgEdge RnTypeName Variance Int
   deriving (Eq, Show, Ord)
 
 type EdgeLabelNormal  = EdgeLabel Void

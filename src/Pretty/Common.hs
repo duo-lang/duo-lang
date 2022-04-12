@@ -32,10 +32,6 @@ instance PrettyAnn XtorName where
 instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm
 
-instance PrettyAnn (Maybe FreeVarName) where
-  prettyAnn Nothing = "_"
-  prettyAnn (Just fv) = prettyAnn fv
-
 instance PrettyAnn ModuleName where
   prettyAnn (MkModuleName nm) = prettyAnn nm
 
@@ -44,6 +40,9 @@ instance PrettyAnn TVar where
 
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
+
+instance PrettyAnn RnTypeName where
+  prettyAnn MkRnTypeName { rnTnName } = prettyAnn rnTnName
 
 instance PrettyAnn Precedence where
   prettyAnn (MkPrecedence i) = pretty i

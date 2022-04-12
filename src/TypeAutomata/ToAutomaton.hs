@@ -149,7 +149,7 @@ lookupTVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: DataCodata -> Polarity -> Maybe TypeName -> [XtorSig pol] -> TTA Node
+insertXtors :: DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn xtors = do
   newNode <- newNodeM
   insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)))
