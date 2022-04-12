@@ -5,19 +5,26 @@ import Data.Bifunctor (first)
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (keys)
-import Text.Megaparsec hiding (State)
-
+import Text.Megaparsec
+    ( SourcePos,
+      optional,
+      (<|>),
+      getSourcePos,
+      many,
+      sepBy,
+      some,
+      MonadParsec(try, notFollowedBy) )
 import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-import Debug.Trace
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
 --------------------------------------------------------------------------------------------
+
 
 mkTerm :: (PrdCns, CST.Term) -> CST.PrdCnsTerm
 mkTerm (Prd, tm) = CST.PrdTerm tm
@@ -27,7 +34,7 @@ mkTerm (Cns, tm) = CST.CnsTerm tm
 -- E.g.: "(t1,t2,t3)"
 substitutionP :: Parser ([CST.Term], SourcePos)
 substitutionP = do 
-     s <- map fst <$> parens  (fst <$> termTopP) `sepBy` symbolP SymComma
+     s <- fst <$> parens ( (fst <$> termTopP) `sepBy` symbolP SymComma)
      pos <- getSourcePos
      return (s,pos) 
 
@@ -47,14 +54,12 @@ substitutionIP = do
 --------------------------------------------------------------------------------------------
 
 bindingP :: Parser (CST.FVOrStar , SourcePos)
-bindingP = do 
-     loc <- symbolP SymImplicit ;  return (CST.FoSStar ,loc)  
-        <|> first CST.FoSFV <$> freeVarNameP
+bindingP = dbg "bindingP" $ (do _ <- symbolP SymImplicit ;  pos <- getSourcePos; return (CST.FoSStar ,pos))  <|> (first CST.FoSFV <$> freeVarNameP)
 
 
 bindingSiteP :: Parser (CST.BindingSite, SourcePos)
-bindingSiteP = do
-  s <- map fst <$> parens  (fst <$> bindingP) `sepBy` symbolP SymComma
+bindingSiteP = dbg "bindingSiteP" $ do
+  s <- fst <$> (parens ((fst <$> bindingP) `sepBy` symbolP SymComma))
   endPos <- getSourcePos
   return (s,endPos) 
 
@@ -133,10 +138,10 @@ muAbstraction = do
 
 applyCmdP :: Parser (CST.Term, SourcePos)
 applyCmdP = do
-  startPos <- getSourcePos
-  (prd, _pos) <- try (termTopP <* symbolP SymCommand)
+  --startPos <- getSourcePos
+  _ <- symbolP SymCommand
   (cns, endPos) <- termTopP
-  return (CST.Apply (Loc startPos endPos) prd cns, endPos)
+  return (cns,endPos)
 
 exitSuccessCmdP :: Parser (CST.Term, SourcePos)
 exitSuccessCmdP = do
@@ -220,8 +225,7 @@ primitiveCmdP = do
 -- m ::= b ... b (n-ary application, left associative, n >= 1)
 --     | b
 --
--- t ::= m.D(t,...,t). ... .D(t,...,t) (n-ary destructor application, n >= 1)
---     | m >> m
+-- t ::= m.D(t,...,t). ... .D(t,...,t) [ >> m] (n-ary destructor application, n >= 1, also commands)
 --     | m
 -- 
 
@@ -239,9 +243,9 @@ datacodataP =  (\s -> (Data,s)) <$> keywordP KwCase
 ------------------------------------------
 
 caseP :: Parser (CST.Term, SourcePos)
-caseP = trace "caseP" $ do
+caseP = do
+  (dc,_) <- datacodataP 
   startPos <- getSourcePos
-  (dc,_) <- trace "caseP1" $ datacodataP 
   caseRestP dc startPos <|> caseRestP' dc startPos
 
 caseRestP :: DataCodata -> SourcePos -> Parser (CST.Term, SourcePos)
@@ -250,7 +254,7 @@ caseRestP dc startPos = do
   return (CST.XCase (Loc startPos endPos) dc Nothing cases, endPos)
 
 caseRestP' :: DataCodata -> SourcePos -> Parser (CST.Term, SourcePos)
-caseRestP' dc startPos = do
+caseRestP' dc startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
@@ -258,7 +262,7 @@ caseRestP' dc startPos = do
 
 
 termCaseP :: Parser (CST.TermCase, SourcePos)
-termCaseP = trace "termCaseP"  $ do
+termCaseP =  do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
   (args,_) <- bindingSiteP
@@ -301,7 +305,7 @@ termParensP = do
 --      | (t)
 --      | \x => t
 termBotP :: Parser (CST.Term, SourcePos)
-termBotP = trace "termBotP" $ freeVar <|>
+termBotP = freeVar <|>
   i64LitP <|>
   f64LitP <|>
   natLitP Structural <|>
@@ -323,7 +327,7 @@ termBotP = trace "termBotP" $ freeVar <|>
 -------------------------------------------------------------------------------------------
 
 applicationP :: Parser (CST.Term, SourcePos)
-applicationP = trace "applicationP" $do
+applicationP = do
   startPos <- getSourcePos
   aterms <- some termBotP
   return $ mkApps startPos aterms
@@ -342,7 +346,7 @@ mkApps startPos ((a1,_):(a2,endPos):as) =
 -- m ::= b ... b (n-ary application, left associative)
 --     | b
 termMiddleP :: Parser (CST.Term, SourcePos)
-termMiddleP = trace "termMiddleP" $ applicationP -- applicationP handles the case of 0-ary application
+termMiddleP =  applicationP -- applicationP handles the case of 0-ary application
 
 -------------------------------------------------------------------------------------------
 -- Top Parser
@@ -359,7 +363,7 @@ destructorChainP :: Parser [(XtorName, [CST.TermOrStar], SourcePos)]
 destructorChainP = many (symbolP SymDot >> destructorP)
 
 dtorP :: Parser (CST.Term, SourcePos)
-dtorP = trace "dtorP" $ do
+dtorP =  do
   startPos <- getSourcePos
   (destructee, endPos) <- termMiddleP
   destructorChain <- destructorChainP
@@ -368,9 +372,14 @@ dtorP = trace "dtorP" $ do
     (x:xs) -> return (CST.DtorChain startPos destructee (x :| xs), endPos)
 
 termTopP :: Parser (CST.Term, SourcePos)
-termTopP = do
-             _ <- trace "termTopP" $ return () 
-             dtorP <|> applyCmdP-- dtorP handles the case with an empty dtor chain.
+termTopP = do 
+  startPos <- getSourcePos
+  d <- dtorP
+  m <- optional $ applyCmdP
+  endPos <- getSourcePos 
+  return $ case m of 
+    Nothing -> d 
+    Just x -> (CST.Apply (Loc startPos endPos) (fst d) (fst x), endPos)
         
 
 
