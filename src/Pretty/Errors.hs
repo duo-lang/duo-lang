@@ -39,6 +39,8 @@ instance PrettyAnn LoweringError where
                                                    , "  Specified Arity:" <+> pretty ar1
                                                    , "  Used Arity:" <+> pretty ar2
                                                    ]
+  prettyAnn (CmdExpected t)                        = "Command expected: " <+> pretty t
+  prettyAnn (InvalidStar t)                        = "Invalid Star: " <+> pretty t
 
 instance PrettyAnn Error where
   prettyAnn (ParserErrorBundle errs)        = vsep (NE.toList (prettyAnn <$> errs))
@@ -48,7 +50,7 @@ instance PrettyAnn Error where
   prettyAnn (TypeAutomatonError loc err)    = prettyMaybeLoc loc <> "Type simplification error:" <+> pretty err
   prettyAnn (LowerError loc err)            = prettyMaybeLoc loc <> prettyAnn err
   prettyAnn (OtherError loc err)            = prettyMaybeLoc loc <> "Other Error:" <+> pretty err
-
+  prettyAnn (NoImplicitArg loc err)         = prettyMaybeLoc loc <> "No implicit arg: " <+> pretty err
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------

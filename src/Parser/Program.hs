@@ -137,8 +137,8 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  args <- fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
-  return (xt, map (\(x,(y,_)) -> (x,y)) args )
+  args <- optional $ fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
+  return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
 
 
 argListToLctxt :: [(PrdCns, Typ)] -> LinearContext

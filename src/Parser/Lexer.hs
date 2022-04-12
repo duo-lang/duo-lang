@@ -338,6 +338,7 @@ data Symbol where
   SymComma            :: Symbol
   SymDot              :: Symbol
   SymSemi             :: Symbol
+  SymDoubleSemi       :: Symbol
   SymColon            :: Symbol
   SymPipe             :: Symbol
   SymTick             :: Symbol
@@ -368,6 +369,7 @@ instance Show Symbol where
   show SymComma            = ","
   show SymDot              = "."
   show SymSemi             = ";"
+  show SymDoubleSemi       = ";;"
   show SymColon            = ":"
   show SymPipe             = "|"
   show SymTick             = "'"

@@ -38,4 +38,4 @@ def prd fixLazy := cocase { Ap(f,k) =>
                         Ap(x,mu xx. f >> Ap(xx,k)) },k)};
 
 def prd omega :=
-  mu k.(fixLazy >> Ap(id,k) );
+  mu k.fixLazy >> Ap(id,k) ;
