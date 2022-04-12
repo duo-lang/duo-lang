@@ -5,7 +5,6 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Test.Hspec
 
-import Driver.Definition
 import Driver.Environment
 import Pretty.Pretty
 import Pretty.Errors ()

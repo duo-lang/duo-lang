@@ -5,8 +5,6 @@ import Control.Monad (forM_)
 
 import Data.Either( isRight, isLeft )
 import TestUtils
-import Driver.Definition
-import Driver.Driver
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: Spec

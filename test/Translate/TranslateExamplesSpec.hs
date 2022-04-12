@@ -11,8 +11,8 @@ import Syntax.CST.Program qualified as CST
 import Translate.Desugar
 import Translate.EmbedCore
 import Translate.Reparse
-import Driver.Definition
-import Driver.Driver
+import Driver.Definition (defaultDriverState)
+import Driver.Driver (inferProgramIO)
 import TestUtils
 
 spec :: Spec

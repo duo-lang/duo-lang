@@ -7,7 +7,7 @@ import Pretty.Pretty
 import Pretty.Program ()
 
 import Driver.Definition
-import Driver.Driver
+import Driver.Driver (inferProgramIO)
 import Translate.Desugar
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
