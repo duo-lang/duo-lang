@@ -190,7 +190,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
   where
     compileModule :: ModuleName -> DriverM ()
     compileModule mn = do
-      liftIO $ putStrLn ("Compiling module: " <> ppPrintString mn)
+      guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
       fp <- findModule mn defaultLoc
       file <- liftIO $ T.readFile fp
@@ -204,7 +204,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       -- 4. Infer the declarations
       inferredDecls <- inferProgram renamedDecls
       -- 5. Add the renamed AST to the cache
-      liftIO $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
+      guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
       addTypecheckedProgram mn inferredDecls
 
 ---------------------------------------------------------------------------------
