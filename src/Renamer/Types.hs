@@ -27,25 +27,37 @@ renameTypeScheme rep (TypeScheme { ts_loc, ts_vars, ts_monotype }) = do
 renameTyp :: PolarityRep pol -> Typ -> RenamerM (RST.Typ pol)
 renameTyp rep (TyVar loc v) =
     pure $ RST.TyVar loc rep Nothing v
-renameTyp rep (TyXData loc Data name sigs) = do
+-- Nominal Data
+renameTyp rep (TyXData loc Data Nothing sigs) = do
     sigs <- renameXTorSigs rep sigs
-    pure $ RST.TyData loc rep name sigs
-renameTyp rep (TyXData loc Codata name sigs) = do
+    pure $ RST.TyData loc rep Nothing sigs
+-- Refinement Data
+renameTyp rep (TyXData loc Data (Just tn) sigs) = do
+    (tn',_) <- lookupTypeConstructor loc tn
+    sigs <- renameXTorSigs rep sigs
+    pure $ RST.TyData loc rep (Just tn') sigs
+-- Nominal Codata
+renameTyp rep (TyXData loc Codata Nothing sigs) = do
     sigs <- renameXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodata loc rep name sigs
+    pure $ RST.TyCodata loc rep Nothing sigs
+-- Refinement Codata
+renameTyp rep (TyXData loc Codata (Just tn) sigs) = do
+    (tn',_) <- lookupTypeConstructor loc tn
+    sigs <- renameXTorSigs (flipPolarityRep rep) sigs
+    pure $ RST.TyCodata loc rep (Just tn') sigs
 renameTyp rep (TyNominal loc name args) = do
     res <- lookupTypeConstructor loc name
     case res of
-        (_, SynonymResult typ) -> case args of
+        (name', SynonymResult typ) -> case args of
             [] -> do
                 typ' <- renameTyp rep typ
-                pure $ RST.TySyn loc rep name typ'
+                pure $ RST.TySyn loc rep name' typ'
             _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
         (_, NominalResult Refined _) -> do
             throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")
-        (_, NominalResult NotRefined polykind) -> do
+        (name', NominalResult NotRefined polykind) -> do
             args' <- renameTypeArgs loc rep name polykind args
-            pure $ RST.TyNominal loc rep Nothing name args'
+            pure $ RST.TyNominal loc rep Nothing name' args'
 renameTyp rep (TyRec loc v typ) =
     RST.TyRec loc rep v <$> renameTyp rep typ
 renameTyp PosRep (TyTop loc) = throwError (LowerError (Just loc) TopInPosPolarity)

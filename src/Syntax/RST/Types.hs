@@ -90,12 +90,12 @@ data Typ (pol :: Polarity) where
   TyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> TVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
-  TyData :: Loc -> PolarityRep pol -> Maybe TypeName -> [XtorSig pol]   -> Typ pol
-  TyCodata :: Loc -> PolarityRep pol -> Maybe TypeName -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyData :: Loc -> PolarityRep pol -> Maybe RnTypeName -> [XtorSig pol]   -> Typ pol
+  TyCodata :: Loc -> PolarityRep pol -> Maybe RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: Loc -> PolarityRep pol -> Maybe MonoKind -> TypeName -> [VariantType pol] -> Typ pol
+  TyNominal :: Loc -> PolarityRep pol -> Maybe MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
-  TySyn :: Loc -> PolarityRep pol -> TypeName -> Typ pol -> Typ pol
+  TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | PosRep = Union, NegRep = Intersection
   TySet :: Loc -> PolarityRep pol -> Maybe MonoKind -> [Typ pol] -> Typ pol
   TyRec :: Loc -> PolarityRep pol -> TVar -> Typ pol -> Typ pol
@@ -232,7 +232,7 @@ unfoldRecType ty = ty
 
 data DataDecl = NominalDecl
   { data_refined :: IsRefined
-  , data_name :: TypeName
+  , data_name :: RnTypeName
   , data_polarity :: DataCodata
   , data_kind :: PolyKind
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])

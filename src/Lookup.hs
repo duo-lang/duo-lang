@@ -81,12 +81,12 @@ lookupDataDecl xt = do
 
 -- | Find the type declaration belonging to a given TypeName.
 lookupTypeName :: EnvReader a m
-               => TypeName -> m DataDecl
+               => RnTypeName -> m DataDecl
 lookupTypeName tn = do
   env <- asks $ fmap snd . declEnv . fst
   case find (\NominalDecl{..} -> data_name == tn) env of
     Just decl -> return decl
-    Nothing -> throwOtherError ["Type name " <> unTypeName tn <> " not found in environment"]
+    Nothing -> throwOtherError ["Type name " <> unTypeName (rnTnName tn) <> " not found in environment"]
 
 -- | Find the XtorSig belonging to a given XtorName.
 lookupXtorSig :: EnvReader a m
@@ -95,12 +95,12 @@ lookupXtorSig xtn PosRep = do
   decl <- lookupDataDecl xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (data_xtors decl)) of
     Just xts -> return xts
-    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
+    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
 lookupXtorSig xtn NegRep = do
   decl <- lookupDataDecl xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
     Just xts -> return xts
-    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (data_name decl)]
+    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

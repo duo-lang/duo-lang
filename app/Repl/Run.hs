@@ -124,7 +124,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
       let keys = concat [ unFreeVarName <$> M.keys (prdEnv env)
                         , unFreeVarName <$> M.keys (cnsEnv env)
                         , unFreeVarName <$> M.keys (cmdEnv env)
-                        , (unTypeName . data_name . snd) <$> (declEnv env)
+                        , (unTypeName . rnTnName . data_name . snd) <$> (declEnv env)
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion

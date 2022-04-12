@@ -64,7 +64,7 @@ showOption = Option
 showTypeCmd :: Text -> Repl ()
 showTypeCmd s = do
   env <- gets (fmap snd . declEnv . replEnv)
-  let maybeDecl = find (\x -> data_name x == MkTypeName s) env
+  let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) env
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
     Just decl -> prettyRepl decl

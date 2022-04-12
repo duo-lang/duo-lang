@@ -320,13 +320,13 @@ embedType :: RST.Typ pol -> CST.Typ
 embedType (RST.TyVar loc _ _ tv)=
   CST.TyVar loc tv
 embedType (RST.TyData loc _ tn xtors) =
-  CST.TyXData loc Data tn (embedXtorSig <$> xtors)
+  CST.TyXData loc Data (rnTnName <$> tn) (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ tn xtors) =
-  CST.TyXData loc Codata tn (embedXtorSig <$> xtors)
+  CST.TyXData loc Codata (rnTnName <$> tn) (embedXtorSig <$> xtors)
 embedType (RST.TyNominal loc _ _ nm args) =
-  CST.TyNominal loc nm (embedVariantTypes args)
+  CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =
-  CST.TyNominal loc nm []
+  CST.TyNominal loc (rnTnName nm) []
 embedType (RST.TySet loc PosRep _ []) =
   CST.TyTop loc
 embedType (RST.TySet loc PosRep _ [ty1,ty2]) =
@@ -355,7 +355,7 @@ embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
 embedTyDecl :: RST.DataDecl -> CST.DataDecl
 embedTyDecl RST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } =
   CST.NominalDecl { data_refined = data_refined
-                  , data_name = data_name
+                  , data_name = rnTnName data_name
                   , data_polarity = data_polarity
                   , data_kind = Just data_kind
                   , data_xtors = embedXtorSig <$> fst data_xtors
@@ -409,7 +409,7 @@ reparseDecl (RST.ImportDecl loc doc mn) =
 reparseDecl (RST.SetDecl loc doc txt) =
   CST.SetDecl loc doc txt
 reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
-  CST.TyOpDecl loc doc op prec assoc ty
+  CST.TyOpDecl loc doc op prec assoc (rnTnName ty)
 reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =
   CST.TySynDecl loc doc nm (embedType ty)
 

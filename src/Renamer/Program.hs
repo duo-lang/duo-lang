@@ -24,7 +24,8 @@ renameXtors sigs = do
     pure (posSigs, negSigs)
 
 renameDataDecl :: Loc -> CST.DataDecl -> RenamerM RST.DataDecl
-renameDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+renameDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+  (data_name',_) <- lookupTypeConstructor loc data_name
   -- Default the kind if none was specified:
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
@@ -39,7 +40,7 @@ renameDataDecl _ CST.NominalDecl { data_refined, data_name, data_polarity, data_
   -- Create the new data declaration
   let dcl = RST.NominalDecl
                 { data_refined = data_refined
-                , data_name = data_name
+                , data_name = data_name'
                 , data_polarity = data_polarity
                 , data_kind = polyKind
                 , data_xtors = xtors
@@ -74,7 +75,8 @@ renameDecl (CST.ImportDecl loc doc mod) = do
 renameDecl (CST.SetDecl loc doc txt) =
   pure $ RST.SetDecl loc doc txt
 renameDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
-  pure $ RST.TyOpDecl loc doc op prec assoc tyname
+  (tyname',_) <- lookupTypeConstructor loc tyname
+  pure $ RST.TyOpDecl loc doc op prec assoc tyname'
 renameDecl (CST.TySynDecl loc doc nm ty) = do
   typ <- renameTyp PosRep ty
   tyn <- renameTyp NegRep ty

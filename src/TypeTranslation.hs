@@ -36,7 +36,7 @@ data TranslateState = TranslateState
 initialState :: TranslateState
 initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { recVarMap :: M.Map TypeName TVar }
+newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName TVar }
 
 initialReader :: Environment -> (Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
@@ -51,7 +51,7 @@ runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReade
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-withVarMap :: (M.Map TypeName TVar -> M.Map TypeName TVar) -> TranslateM a -> TranslateM a
+withVarMap :: (M.Map RnTypeName TVar -> M.Map RnTypeName TVar) -> TranslateM a -> TranslateM a
 withVarMap f m = do
   local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m

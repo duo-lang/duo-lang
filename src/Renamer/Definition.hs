@@ -59,14 +59,14 @@ lookupTypeConstructor :: Loc
                       -- ^ The location of the typename to be looked up
                       -> TypeName
                       -- ^ The typename to look up
-                      -> RenamerM (ModuleName, TyConResult)
-                      -- ^ The module where the typename is introduced, and the relevant info.
+                      -> RenamerM (RnTypeName, TyConResult)
+                      -- ^ The renamed typename, and the relevant info.
 lookupTypeConstructor loc tn = do
     symbolTables <- getSymbolTables
     let results :: [(ModuleName, Maybe TyConResult)]
         results = second (\st -> M.lookup tn (tyConMap st)) <$> symbolTables
     case firstResult results of
-        Just res -> pure res
+        Just (mn,res) -> pure (MkRnTypeName defaultLoc mn tn, res)
         Nothing -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " not found in symbol table"))
 
 lookupTyOp :: Loc
