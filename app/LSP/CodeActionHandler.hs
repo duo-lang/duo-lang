@@ -18,11 +18,7 @@ import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
 import Syntax.Core.Program qualified as Core
 import Driver.Definition
-import Driver.Driver
-    ( defaultInferenceOptions,
-      inferProgramIO,
-      DriverState(MkDriverState),
-      InferenceOptions(infOptsLibPath) )
+import Driver.Driver ( inferProgramIO )
 import Utils
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )

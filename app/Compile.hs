@@ -1,18 +1,13 @@
 module Compile (runCompile) where
 
-import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
-import Data.Text.IO qualified as T
-import System.IO.Error (tryIOError)
 
 import Driver.Definition
 import Driver.Driver
 import Driver.Environment (Environment(..))
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
-import Parser.Parser (runFileParser)
-import Parser.Program (programP)
 import Pretty.Pretty (ppPrintIO)
 import Syntax.Common
 import Syntax.AST.Program qualified as AST

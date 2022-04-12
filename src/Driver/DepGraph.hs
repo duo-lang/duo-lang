@@ -11,7 +11,6 @@ module Driver.DepGraph
 
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Control.Monad.Except
 import Data.Graph.Inductive.Basic (hasLoop)

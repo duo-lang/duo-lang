@@ -86,7 +86,7 @@ addTypecheckedProgram mn prog = modify f
 queryTypecheckedProgram :: ModuleName -> DriverM (AST.Program)
 queryTypecheckedProgram mn = do
   cache <- gets driverASTs
-  case find (\(mn',ast) -> mn == mn') cache of
+  case find (\(mn',_) -> mn == mn') cache of
     Nothing -> throwOtherError ["Module " <> ppPrint mn <> " not in cache."]
     Just (_,ast) -> pure ast
 
