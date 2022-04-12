@@ -118,13 +118,23 @@ findModule (MkModuleName mod) loc = do
     [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
     (fp:_) -> return fp
 
-liftErr :: Loc -> Error -> DriverM a
-liftErr loc err = do
+liftErr :: Error -> DriverM a
+liftErr err = do
+    guardVerbose $ printLocatedError err
+    throwError err
+
+liftErrLoc :: Loc -> Error -> DriverM a
+liftErrLoc loc err = do
     let locerr = attachLoc loc err
     guardVerbose $ printLocatedError locerr
     throwError locerr
 
-liftEitherErr :: Loc -> Either Error a -> DriverM a
-liftEitherErr loc x = case x of
-    Left err -> liftErr loc err
+liftEitherErr :: Either Error a -> DriverM a
+liftEitherErr x = case x of
+    Left err -> liftErr err
+    Right res -> return res
+
+liftEitherErrLoc :: Loc -> Either Error a -> DriverM a
+liftEitherErrLoc loc x = case x of
+    Left err -> liftErrLoc loc err
     Right res -> return res
