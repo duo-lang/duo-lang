@@ -31,7 +31,7 @@ def prd success : Parser := cocase {
 };
 
 def prd failure : Parser := cocase {
-    Parse(xs) => throw MkUnit 
+    Parse(xs,*) => throw MkUnit 
 };
 
 def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {

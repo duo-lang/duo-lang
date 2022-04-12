@@ -8,33 +8,33 @@ constructor False;
 type SBool := < True, False >;
 
 -- | Boolean negation.
-def not[*] : SBool -> SBool :=
+def prd not : SBool -> SBool :=
   \b => case b of { True => False,
                     False => True
                   };
 
 -- | Boolean if-then-else
-def ifthenelse[*] : forall a. SBool -> a -> a -> a :=
+def prd ifthenelse : forall a. SBool -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
 -- | Boolean conjunction
-def and[*] :=
+def prd and :=
   \b1 b2 => ifthenelse b1 b2 False;
 
 -- | Boolean disjunction
-def or[*] :=
+def prd or :=
   \b1 b2 => ifthenelse b1 True b2;
 
 -- | Boolean nand
-def nand[*] : (< False , True > -> (< False , True > -> < False , True >)) := cocase {
-   Ap(x2)[*] => cocase {Ap(x1)[*] => (not.Ap( ((and.Ap( x2 )[*]).Ap( x1 )[*]) )[*])}};
+def prd nand: (< False , True > -> (< False , True > -> < False , True >)) := cocase {
+   Ap(x2,*) => cocase {Ap(x1,*) => (not.Ap( ((and.Ap( x2 ,*)).Ap( x1 ,*)) ,*))}};
 
 -- | Boolean nor
-def nor[*] : (< False , True > -> (< False , True > -> < False , True >)) := cocase {
-   Ap(x2)[*] => cocase {Ap(x1)[*] => (not.Ap( ((or.Ap( x2 )[*]).Ap( x1 )[*]) )[*])}};
+def prd nor : (< False , True > -> (< False , True > -> < False , True >)) := cocase {
+   Ap(x2,*) => cocase {Ap(x1,*) => (not.Ap( ((or.Ap( x2 ,*)).Ap( x1 ,*)) ,*))}};
 
 -- | Boolean implication
-def impl[*] :=
+def prd impl :=
   \b1 b2 => case b1 of {
       True => b2,
       False => True

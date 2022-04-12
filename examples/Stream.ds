@@ -3,16 +3,16 @@ import Function;
 
 -- | The type of infinite Streams
 codata Stream : (+a : CBV) -> CBV {
-    Head[a],
-    Tail[Stream(a)]
+    Head(return a),
+    Tail(return Stream(a))
 };
 
-def rec map[*] := \f s => cocase {
-    Head[*] => f s.Head[*],
-    Tail[*] => map f (s.Tail[*])
+def rec prd map := \f s => cocase {
+    Head(*) => f s.Head(*),
+    Tail(*) => map f (s.Tail(*))
 };
 
-def rec constStream[*] := \x => cocase {
-    Head[*] => x,
-    Tail[*] => constStream x
+def rec prd constStream := \x => cocase {
+    Head(*) => x,
+    Tail(*) => constStream x
 };

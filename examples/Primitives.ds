@@ -2,13 +2,13 @@ import Function;
 import I64;
 import F64;
 
-def x[*] := MkI64(7#I64);
-def y[*] := MkI64(2#I64);
+def prd x := MkI64(7#I64);
+def prd y := MkI64(2#I64);
 
-def xf[*] := MkF64(7.0#F64);
-def yf[*] := MkF64(2.0#F64);
+def prd xf := MkF64(7.0#F64);
+def prd yf := MkF64(2.0#F64);
 
-def main :=
+def cmd main :=
     Print(add x y);
     Print(sub x y);
     Print(div x y);
@@ -16,7 +16,7 @@ def main :=
     Print(mod x y);
     ExitSuccess;
 
-def mainf :=
+def cmd mainf :=
     Print(addf xf yf);
     Print(subf xf yf);
     Print(divf xf yf);
