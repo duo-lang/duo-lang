@@ -189,6 +189,7 @@ insertType (TyRec _ rep rv ty) = do
   return newNode
 insertType (TyData _ polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) mtn xtors
 insertType (TyCodata _ polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) mtn xtors
+insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep _ tn args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM

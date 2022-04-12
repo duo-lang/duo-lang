@@ -38,6 +38,19 @@ common shared-build-depends
     , sorted-list
     , hslogger
     , unordered-containers
+
+common app-build-depends
+  build-depends:
+      optparse-applicative
+    , lsp
+    , githash
+
+common test-build-depends
+  build-depends:
+      QuickCheck
+    , hspec
+
+common shared-lang-options
   default-language:    Haskell2010
   default-extensions:
                      RecordWildCards,
@@ -60,8 +73,27 @@ common shared-build-depends
                      ImportQualifiedPost,
                      ViewPatterns
 
+common shared-ghc-opts
+  ghc-options:
+    -Wall
+    -fwarn-tabs
+    -fno-warn-name-shadowing
+    -fno-warn-orphans
+    -fno-warn-unticked-promoted-constructors
+
+common shared-rts-opts
+  ghc-options:
+    -threaded
+    -rtsopts
+    -with-rtsopts=-N
+
+
 library
   import: shared-build-depends
+  import: app-build-depends
+  import: test-build-depends
+  import: shared-lang-options
+  import: shared-ghc-opts
   exposed-modules:
       Driver.Definition
       Driver.DepGraph
@@ -138,15 +170,14 @@ library
       Paths_dualsub
   hs-source-dirs:
       src
-  ghc-options:
-    -Wall
-    -fwarn-tabs
-    -fno-warn-name-shadowing
-    -fno-warn-orphans
-    -fno-warn-unticked-promoted-constructors
 
 executable dualsub
   import: shared-build-depends
+  import: app-build-depends
+  import: test-build-depends
+  import: shared-lang-options
+  import: shared-ghc-opts
+  import: shared-rts-opts
   main-is: Main.hs
   other-modules:
       Compile
@@ -169,15 +200,6 @@ executable dualsub
       Paths_dualsub
   hs-source-dirs:
       app
-  ghc-options:
-    -threaded
-    -rtsopts
-    -with-rtsopts=-N
-    -Wall
-    -fwarn-tabs
-    -fno-warn-name-shadowing
-    -fno-warn-orphans
-    -fno-warn-unticked-promoted-constructors
   build-depends:
       dualsub,
       optparse-applicative,
@@ -186,6 +208,11 @@ executable dualsub
 
 test-suite dualsub-test
   import: shared-build-depends
+  import: app-build-depends
+  import: test-build-depends
+  import: shared-lang-options
+  import: shared-ghc-opts
+  import: shared-rts-opts
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
@@ -200,16 +227,6 @@ test-suite dualsub-test
     , TestUtils
   hs-source-dirs:
       test
-  ghc-options:
-    -Wall
-    -fwarn-tabs
-    -fno-warn-name-shadowing
-    -fno-warn-orphans
-    -fno-warn-unticked-promoted-constructors
-    -threaded
-    -rtsopts
-    -with-rtsopts=-N
   build-depends:
       dualsub
-    , QuickCheck
-    , hspec
+

@@ -276,6 +276,14 @@ instance ToHoverMap (Typ pol) where
                       ]
     in
       M.unions ((mkHoverMap loc msg) : (toHoverMap <$> args))
+  toHoverMap (TySyn loc rep _ ty) =
+    let
+      msg = T.unlines ["Type synonym"
+                      ,"Polarity: " <> prettyPolRep rep
+                      ,"Definition: " <> ppPrint ty 
+                      ]
+    in
+      mkHoverMap loc msg
   toHoverMap (TySet loc rep _knd args) =
     let
       msg = T.unlines [ "Set type"

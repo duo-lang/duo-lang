@@ -78,10 +78,10 @@ inferDecl (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   let genFun = case isRec of
         Recursive -> genConstraintsTermRecursive loc fv pc term
         NonRecursive -> genConstraintsTerm term
-  (tmInferred, constraintSet) <- liftEitherErr loc $ runGenM env genFun
+  (tmInferred, constraintSet) <- liftEitherErrLoc loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErr loc $ solveConstraints constraintSet env
+  solverResult <- liftEitherErrLoc loc $ solveConstraints constraintSet env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -116,9 +116,9 @@ inferDecl (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
 inferDecl (RST.CmdDecl loc doc v cmd) = do
   env <- gets driverEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr loc $ runGenM env (genConstraintsCommand cmd)
+  (cmdInferred,constraints) <- liftEitherErrLoc loc $ runGenM env (genConstraintsCommand cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErr loc $ solveConstraints constraints env
+  solverResult <- liftEitherErrLoc loc $ solveConstraints constraints env
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -200,7 +200,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       addSymboltable mn st
       -- 3. Rename the declarations.
       sts <- getSymbolTables
-      renamedDecls <- liftEitherErr defaultLoc (runRenamerM sts (renameProgram decls))
+      renamedDecls <- liftEitherErr (runRenamerM sts (renameProgram decls))
       -- 4. Infer the declarations
       inferredDecls <- inferProgram renamedDecls
       -- 5. Add the renamed AST to the cache
@@ -222,7 +222,7 @@ inferProgramIO state decls = do
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
-        renamedDecls <- liftEitherErr defaultLoc (runRenamerM sts (renameProgram decls))
+        renamedDecls <- liftEitherErr (runRenamerM sts (renameProgram decls))
         inferProgram renamedDecls
   res <- execDriverM state action
   case res of
