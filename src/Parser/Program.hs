@@ -3,6 +3,7 @@ module Parser.Program
   , programP
   , returnP
   ,xtorDeclP
+  ,xtorSignatureP
   ) where
 
 import Control.Monad (void)
@@ -129,32 +130,9 @@ tySynP doc = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
-returnP :: Parser a -> Parser (PrdCns,a)
-returnP p = do
-  r <- optional (keywordP KwReturn)
-  b <- p
-  return $ case r of
-    Just _ -> (Cns,b)
-    Nothing -> (Prd,b)
-
-xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
-xtorDeclP = do
-  (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  args <- optional $ fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
-  return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
 
 
-argListToLctxt :: [(PrdCns, Typ)] -> LinearContext
-argListToLctxt = fmap convert
-  where
-    convert (Prd, ty) = PrdType ty
-    convert (Cns, ty) = CnsType ty
 
-combineXtor :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
-combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
-
-combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
-combineXtors = fmap combineXtor
 
 dataCodataPrefixP :: Parser (IsRefined,DataCodata)
 dataCodataPrefixP = do

@@ -11,11 +11,10 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
-import Data.Bifunctor
 import Translate.EmbedCore
 import Translate.ForgetTypes
 import Translate.Reparse
-import qualified Control.Applicative as Semigroup
+import Utils (defaultLoc)
 
 ---------------------------------------------------------------------------------
 -- Pattern match cases and cocases
@@ -72,16 +71,16 @@ instance PrettyAnn (RST.TermCaseI pc) where
     prettyAnn tmcasei_term
 -}
 
-instance PrettyAnn CST.FVOrStar where 
-  prettyAnn (CST.FoSFV v) = prettyAnn v 
+instance PrettyAnn CST.FVOrStar where
+  prettyAnn (CST.FoSFV v) = prettyAnn v
   prettyAnn CST.FoSStar = "*"
 
-instance PrettyAnn CST.TermOrStar  where 
-  prettyAnn (CST.ToSTerm t) = prettyAnn t 
+instance PrettyAnn CST.TermOrStar  where
+  prettyAnn (CST.ToSTerm t) = prettyAnn t
   prettyAnn CST.ToSStar  = "*"
 
 printCasesArgs :: CST.BindingSite -> Doc Annotation
-printCasesArgs cs = parens (intercalateComma (map prettyAnn cs)) 
+printCasesArgs cs = parens (intercalateComma (map prettyAnn cs))
 
 {-printCasesArgs' :: [(PrdCns, [FreeVarName])] -> Doc Annotation
 printCasesArgs' [] = mempty
@@ -127,7 +126,7 @@ splitSubstCST = NE.groupBy f
 
 printSegmentCST :: NonEmpty CST.PrdCnsTerm -> Doc Annotation
 printSegmentCST (CST.PrdTerm e :| rest) = parens'   comma (prettyAnn <$> CST.PrdTerm e : rest)
-printSegmentCST (CST.CnsTerm e :| rest) = brackets' comma (prettyAnn <$> CST.CnsTerm e : rest)
+printSegmentCST (CST.CnsTerm e :| rest) = parens' comma (prettyAnn <$> CST.CnsTerm e : rest)
 
 instance {-# OVERLAPPING #-} PrettyAnn AST.Substitution where
   prettyAnn subst = prettyAnn (forgetTypesSubst subst)
@@ -147,8 +146,9 @@ instance PrettyAnn (RST.SubstitutionI pc) where
   prettyAnn substi = prettyAnn (reparseSubstI substi)
 
 instance PrettyAnn CST.SubstitutionI where
-  prettyAnn (subst1, Prd, subst2) = prettyAnn subst1 <> pretty ("[*]" :: String) <> prettyAnn subst2
-  prettyAnn (subst1, Cns, subst2) = prettyAnn subst1 <> pretty ("(*)" :: String) <> prettyAnn subst2
+  -- the PrdTerm is a bit of a hack but for pretty printing it doesn't matter whether it is Prd or Cns
+  prettyAnn (subst1, _, subst2) = prettyAnn (subst1 ++ [CST.PrdTerm (CST.Var defaultLoc (MkFreeVarName "*"))] ++  subst2)
+
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -168,21 +168,21 @@ instance PrettyAnn CST.Term where
     prettyAnn v
   prettyAnn (CST.XtorSemi _ xt args (Just c)) =
     prettyAnn xt <>
-    prettyAnn args <> "; " <>
+    parens' comma (prettyAnn <$> args) <> ";; " <>
     prettyAnn c
   prettyAnn (CST.XtorSemi _ xt args Nothing) =
     prettyAnn xt <>
-    prettyAnn args 
+    parens' comma (prettyAnn <$> args)
   prettyAnn (CST.XCase  _ Codata (Just t) cases) =
     annKeyword "cocase" <+>
-    prettyAnn t <>
+    prettyAnn t <+> annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (CST.XCase  _ Codata Nothing cases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (CST.XCase  _ Data (Just t) cases) =
     annKeyword "case" <+>
-    prettyAnn t <>
+    prettyAnn t <+> annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (CST.XCase  _ Data Nothing cases) =
     annKeyword "case" <+>
@@ -193,7 +193,7 @@ instance PrettyAnn CST.Term where
     "." <>
     parens (prettyAnn cmd)
   prettyAnn (CST.Dtor _ xt t substi) =
-      parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
+      parens ( prettyAnn t <> "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi))
   prettyAnn (CST.PrimLitI64 _ i) =
     annLiteral (prettyAnn i <>
     "#I64")
@@ -223,7 +223,7 @@ instance PrettyAnn CST.Term where
     prettyAnn (show n)
   prettyAnn (CST.DtorChain _ fst rst) =
     prettyAnn fst <>
-    hsep (NE.toList ((\(xt,substi,_) -> annSymbol "." <> prettyAnn xt <> prettyAnn substi) <$> rst))
+    hsep (NE.toList ((\(xt,substi,_) -> annSymbol "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi)) <$> rst))
   prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
     annKeyword "ExitSuccess"
   prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =
@@ -237,11 +237,11 @@ instance PrettyAnn CST.Term where
     annKeyword "Read" <>
     brackets (prettyAnn cns)
   prettyAnn (CST.Apply _ t1 t2) =
-    group (nest 3 (line' <> vsep [prettyAnn t1, annSymbol ">>", prettyAnn t2]))
+    group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
   prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ pt op subst)) =
     annKeyword (prettyAnn (primOpKeyword op)) <>
     annTypeName (prettyAnn (primTypeKeyword pt)) <>
-    prettyAnn subst
+    parens' comma (prettyAnn <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Commands

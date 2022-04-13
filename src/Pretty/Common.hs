@@ -63,11 +63,11 @@ instance PrettyAnn PrdCns where
 prettyArity :: Arity -> Doc Annotation
 prettyArity [] = mempty
 prettyArity (Prd:rest) = parens "-" <> prettyArity rest
-prettyArity (Cns:rest) = brackets "-" <> prettyArity rest
+prettyArity (Cns:rest) = parens "-" <> prettyArity rest
 
 prettyPrdCnsRep :: PrdCnsRep pc -> Doc Annotation
-prettyPrdCnsRep PrdRep = "[*]"
-prettyPrdCnsRep CnsRep = "(*)"
+prettyPrdCnsRep PrdRep = "prd"
+prettyPrdCnsRep CnsRep = "cns"
 
 ---------------------------------------------------------------------------------
 -- Data/Codata and Nominal/Structural/Refinement

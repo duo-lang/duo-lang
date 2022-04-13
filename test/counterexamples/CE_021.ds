@@ -1,4 +1,4 @@
 data Nat : CBV { Z, S(Nat) };
 codata Fun : CBN { Ap(Nat,Nat, return Nat) };
 
-def rec add := cocase { Ap(n,m,*) => case n of { Z => m, S(p) => add.Ap(p,S(m),Z,*) } };
+def rec prd add := cocase { Ap(n,m,*) => case n of { Z => m, S(p) => add.Ap(p,S(m),Z,*) } };

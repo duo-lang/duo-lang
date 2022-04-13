@@ -9,6 +9,7 @@ import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.RST.Types
 import Syntax.Common
+import Control.Applicative (Alternative(empty))
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -92,7 +93,8 @@ instance PrettyAnn (Typ pol) where
   prettyAnn (TyPrim _ _ pt) = "#" <> prettyAnn pt
 
 instance PrettyAnn (PrdCnsType pol) where
-  prettyAnn (PrdCnsType _ ty) = prettyAnn ty
+  prettyAnn (PrdCnsType PrdRep ty) = prettyAnn ty
+  prettyAnn (PrdCnsType CnsRep ty) = "return " <> prettyAnn ty
 
 splitCtxt :: LinearContext pol -> [NonEmpty (PrdCnsType pol)]
 splitCtxt = NE.groupBy f
@@ -102,12 +104,11 @@ splitCtxt = NE.groupBy f
     f (PrdCnsType CnsRep _) (PrdCnsType CnsRep _) = True
     f (PrdCnsType _ _) (PrdCnsType _ _) = False
 
-printSegment :: NonEmpty (PrdCnsType pol) -> Doc Annotation
-printSegment (PrdCnsType PrdRep ty :| rest) = parens'   comma (prettyAnn <$> PrdCnsType PrdRep ty : rest)
-printSegment (PrdCnsType CnsRep ty :| rest) = brackets' comma (prettyAnn <$> PrdCnsType CnsRep ty : rest)
+printSegment :: LinearContext pol -> Doc Annotation
+printSegment xs = parens'   comma (prettyAnn <$> xs)
 
 instance {-# OVERLAPPING #-} PrettyAnn (LinearContext pol) where
-  prettyAnn ctxt = mconcat (printSegment <$> splitCtxt ctxt)
+  prettyAnn ctxt = printSegment ctxt
 
 instance PrettyAnn (XtorSig a) where
   prettyAnn (MkXtorSig xt args) = prettyAnn xt <> prettyAnn args

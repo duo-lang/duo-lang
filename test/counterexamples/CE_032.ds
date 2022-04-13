@@ -2,4 +2,4 @@
 data Bool { True, False };
 data A : (+a : CBV) -> CBV {};
 
-def rec foo : A(Bool, Bool) := foo;
+def rec prd foo : A(Bool, Bool) := foo;

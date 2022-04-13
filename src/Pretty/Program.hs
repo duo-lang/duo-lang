@@ -40,13 +40,13 @@ prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
 prettyPrdCnsDecl :: PrettyAnn a => PrdCnsRep pc -> IsRec -> a -> Maybe (RST.TypeScheme pol) -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
-  annKeyword "def" <+> "rec" <+> prettyAnn fv <> prettyPrdCnsRep pc <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  annKeyword "def" <+> "rec" <+> prettyPrdCnsRep pc <+> prettyAnn fv   <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
-  annKeyword "def" <+>           prettyAnn fv <> prettyPrdCnsRep pc <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  annKeyword "def" <+>        prettyPrdCnsRep pc <+>   prettyAnn fv <+>  prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
-   annKeyword "def" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
+   annKeyword "def" <+> "cmd" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
 
 prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder -> Doc Annotation
 prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
