@@ -46,26 +46,26 @@ def prd fix := cocase { Ap(f,k) =>
 def prd addNominal := cocase { Ap2(n,m,k) => fix >> Ap( cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => n >> k, S(p) => alpha >> Ap(p,mu w. S(w) >> k) }} >> k },Ap(m,k)) };
 def prd mltNominal := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p,mu w. addNominal >> Ap2(n,w,k)) } } >> k },Ap(m,k))};
 
-def prd ex1 : forall a. { Ap(a,a) } := cocase { Ap(x,k) => x >> k };
+def prd ex1 : forall a. { Ap(a,return a) } := cocase { Ap(x,k) => x >> k };
 
 def prd ex2 : < Succ(< Zero >) > := Succ(Zero);
 
-def prd ex3 : forall a. { Ap3(< TT , FF >, a, a,a) } := cocase { Ap3(b,x,y,k) => b >> case { TT => x >> k, FF => y >> k }};
+def prd ex3 : forall a. { Ap3(< TT , FF >, a, a, return a) } := cocase { Ap3(b,x,y,k) => b >> case { TT => x >> k, FF => y >> k }};
 
-def prd ex4 : forall a b. { Ap3(<TT,FF>, a, b,a \/ b) } := cocase { Ap3(b,x,y,k) => b >> case { TT => x >> k, FF => y >> k }};
+def prd ex4 : forall a b. { Ap3(<TT,FF>, a, b,return a \/ b) } := cocase { Ap3(b,x,y,k) => b >> case { TT => x >> k, FF => y >> k }};
 
-def prd ex5 :  forall a b. { Ap({ Ap(a \/ b,b) },{ Ap(a,b) }) } := cocase { Ap(f,k) => (cocase { Ap(x,k) => f >> Ap(x,mu y. f >> Ap(y,k))}) >> k};
+def prd ex5 :  forall a b. { Ap({ Ap(a \/ b, return b) },return { Ap(a,return b) }) } := cocase { Ap(f,k) => (cocase { Ap(x,k) => f >> Ap(x,mu y. f >> Ap(y,k))}) >> k};
 
-def prd ex6 : { Ap(Bool,Bool) } := cocase { Ap(x,k) => x >> case { True => False >> k, False => True >> k }};
+def prd ex6 : { Ap(Bool,return Bool) } := cocase { Ap(x,k) => x >> case { True => False >> k, False => True >> k }};
 
-def prd ex7 : { Ap(Bool,(Bool \/ Nat)) } := cocase { Ap(x,k) => x >> case { True => False >> k, False => Z >> k }};
+def prd ex7 : { Ap(Bool,return Bool \/ Nat) } := cocase { Ap(x,k) => x >> case { True => False >> k, False => Z >> k }};
 
-def prd ex8 : { Ap(Bool,(Nat \/ Bool)) } := cocase { Ap(x,k) => x >> case { True => False >> k, False => Z >> k }};
+def prd ex8 : { Ap(Bool,return Nat \/ Bool) } := cocase { Ap(x,k) => x >> case { True => False >> k, False => Z >> k }};
 
-def prd ex9 : { Ap2(Nat,Nat,Nat) } := cocase { Ap2(n,m,k) => fix >> Ap( cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => n >> k, S(p) => alpha >> Ap(p,mu w. S(w) >> k) }} >> k },Ap(m,k)) };
+def prd ex9 : { Ap2(Nat,Nat,return Nat) } := cocase { Ap2(n,m,k) => fix >> Ap( cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => n >> k, S(p) => alpha >> Ap(p,mu w. S(w) >> k) }} >> k },Ap(m,k)) };
 
-def prd ex10 : forall t0. { Ap2((t0 /\ Nat),Nat,(t0 \/ Nat)) } := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p,mu w. addNominal >> Ap2(n,w,k)) } } >> k },Ap(m,k))};
+def prd ex10 : forall t0. { Ap2((t0 /\ Nat),Nat,return t0 \/ Nat) } := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => Z >> k, S(p) => alpha >> Ap(p,mu w. addNominal >> Ap2(n,w,k)) } } >> k },Ap(m,k))};
 
-def prd ex11 : forall t0. { Ap2((t0 /\ Nat),Nat,(t0 \/ Nat)) } := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p,mu w. mltNominal >> Ap2(n,w,k)) } } >> k },Ap(m,k)) };
+def prd ex11 : forall t0. { Ap2((t0 /\ Nat),Nat,return t0 \/ Nat) } := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(m,k) => m >> case { Z => S(Z) >> k, S(p) => alpha >> Ap(p,mu w. mltNominal >> Ap2(n,w,k)) } } >> k },Ap(m,k)) };
 
-def prd ex12 : forall t0. { Ap2((t0 /\ Nat),Nat,(t0 \/ Nat)) } := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(n,k) => cocase { Ap(m,k) => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np,Ap(mp,k)) }}} >> k } >> k },Ap(n,Ap(m,k)))};
+def prd ex12 : forall t0. { Ap2((t0 /\ Nat),Nat,return t0 \/ Nat) } := cocase { Ap2(n,m,k) => fix >> Ap(cocase { Ap(alpha,k) => cocase { Ap(n,k) => cocase { Ap(m,k) => m >> case { Z => n >> k, S(mp) => n >> case { Z => n >> k, S(np) => alpha >> Ap(np,Ap(mp,k)) }}} >> k } >> k },Ap(n,Ap(m,k)))};
