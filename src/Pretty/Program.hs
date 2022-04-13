@@ -17,6 +17,7 @@ import Syntax.Common
 import Driver.Environment
 import Translate.ForgetTypes (forgetTypesDecl)
 import Translate.EmbedCore
+import Parser.Program (returnP)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -54,8 +55,7 @@ prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <>
 
 -- | Prettyprint the list of MonoKinds
 prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
-prettyCCList xs =  parens' comma (prettyAnn . snd <$> xs)
-
+prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
 prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
 prettyTyOpDecl op assoc prec ty =
