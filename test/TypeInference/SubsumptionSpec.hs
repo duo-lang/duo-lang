@@ -48,17 +48,17 @@ spec = do
                 Right env -> env
     let env = env' <> env''            
     -- Subsumptions which should hold
-    subsumptionCheckPos env True "forall a. { Ap(a)[a] }" "{ Ap(< True >)[< True >] }"
-    subsumptionCheckPos env True "{ Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
-    subsumptionCheckPos env True "forall a. { Ap(< True >)[< True >] }" "{ Ap(< True >)[< True >] }"
-    subsumptionCheckPos env True "{ Ap(< True >)[< True >] }" "forall a. { Ap(< True >)[< True >] }"
-    subsumptionCheckPos env True "{ Ap(< True , False >)[< True >] }" "{ Ap(< True >)[< True , False >] }"
-    subsumptionCheckPos env True "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }" "{ Ap( Nat )[ { Ap( Nat )[ Bool ] } ] }"
+    subsumptionCheckPos env True "forall a. { Ap(a,return a) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos env True "{ Ap(< True >,return < True >) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos env True "forall a. { Ap(< True >,return < True >) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos env True "{ Ap(< True >,return < True >) }" "forall a. { Ap(< True >,return < True >) }"
+    subsumptionCheckPos env True "{ Ap(< True , False >,return < True >) }" "{ Ap(< True >,return < True , False >) }"
+    subsumptionCheckPos env True "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }" "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }"
     subsumptionCheckPos env True "Nat" "Nat"
-    subsumptionCheckPos env True "{ Ap(Nat)[Bool] }" "{ Ap(Nat)[Bool] }"
+    subsumptionCheckPos env True "{ Ap(Nat,return Bool) }" "{ Ap(Nat,return Bool) }"
     -- Subsumptions which shouldn't hold
     subsumptionCheckPos env False "{}" "<>"
-    subsumptionCheckPos env False "{ Ap(< True >)[< True >] }" "forall a. { Ap(a)[a] }"
-    subsumptionCheckPos env False "{ Ap(< True >)[< True , False >] }" "{ Ap(< True >)[< True >] }"
+    subsumptionCheckPos env False "{ Ap(< True >,return < True >) }" "forall a. { Ap(a,return a) }"
+    subsumptionCheckPos env False "{ Ap(< True >,return < True , False >) }" "{ Ap(< True >,return < True >) }"
     subsumptionCheckPos env False "Nat" "Bool"
 
