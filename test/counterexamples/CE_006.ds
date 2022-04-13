@@ -1,2 +1,2 @@
 -- Should not typecheck because True is nominal and not predeclared.
-def fail[*] := True;
+def prd fail := True;

@@ -1,6 +1,6 @@
 -- Comatch is not exhaustive
 
 data Nat : CBV { Z, S(Nat) };
-codata Tuple : CBN { Fst[Nat], Snd[Nat] };
+codata Tuple : CBN { Fst( return Nat), Snd(return Nat) };
 
-def fail[*] := cocase { Fst[*] => 1 };
+def prd fail := cocase { Fst(*) => 1 };

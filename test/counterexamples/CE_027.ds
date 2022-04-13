@@ -2,4 +2,4 @@
 
 destructor A : CBV;
 
-def test[*] := A;
+def prd test := A;

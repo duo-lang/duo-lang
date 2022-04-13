@@ -2,6 +2,6 @@
 
 data Nat : CBV { Z, S(Nat) };
 data Nat : CBV { True, False };
-codata Fun : CBN { Ap(Bool)[Nat] };
+codata Fun : CBN { Ap(Bool, return Nat) };
 
-def fail[*] := cocase { Ap(b)[*] => S(b) };
+def prd fail := cocase { Ap(b,*) => S(b) };
