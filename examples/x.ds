@@ -1,0 +1,153 @@
+import Function;
+import Peano;
+import Bool;
+import Prelude;
+def prd id1 : forall a. (a -> a) := cocase {Ap(x1,k1) => (x1) >> k1};
+def prd idPolyTwo : forall a b. (( a /\ b ) -> ( a \/ b )) := cocase {Ap(x1,k1) => (x1) >> k1};
+def prd id : (Nat -> Nat) := cocase {Ap(x1,k1) => (x1) >> k1};
+def prd idNominal : (Nat -> Nat) := cocase {Ap(x1,k1) => (x1) >> k1};
+def prd idPoly : forall a. (a -> a) := cocase {Ap(x1,*) => x1};
+def prd idPolyTwo : forall a b. (( a /\ b ) -> ( a \/ b )) := cocase {Ap(x1,*) => x1};
+def prd id : (Nat -> Nat) := cocase {Ap(x1,*) => x1};
+destructor Ap( CBV , CBV ) : CBV;
+destructor Ap2( CBV , CBV , CBV ) : CBV;
+destructor Ap3( CBV , CBV , CBV , CBV ) : CBV;
+constructor TT : CBV;
+constructor FF : CBV;
+constructor Succ( CBV ) : CBV;
+constructor Zero : CBV;
+def cns subsumptionEx1 : < TT > := case {TT() => ExitSuccess, FF() => ExitSuccess};
+def cns subsumptionEx2 : Nat := mu x1.(ExitSuccess);
+def prd fix  := cocase {
+   Ap(x5,k5) => 
+      (cocase {
+         Ap(x2,k2) => (x5) >> Ap( cocase {Ap(x1,k1) => (x2) >> Ap( x2 , Ap( x1 , k1 ) )} , k2 )})
+      >>
+      Ap( cocase {
+           Ap(x4,k4) => (x5) >> Ap( cocase {Ap(x3,k3) => (x4) >> Ap( x4 , Ap( x3 , k3 ) )} , k4 )}
+        , k5
+        )};
+
+def prd addNominal  := cocase {
+   Ap2(x5,x6,k3) => 
+      (fix)
+      >>
+      Ap( cocase {
+           Ap(x4,k2) => 
+              (cocase {
+                 Ap(x3,k1) => 
+                    (x3)
+                    >>
+                    case {Z() => (x5) >> k1, S(x2) => (x4) >> Ap( x2 , mu x1.((S( x1 )) >> k1) )}})
+              >>
+              k2}
+        , Ap( x6 , k3 )
+        )};
+def prd mltNominal  := cocase {
+   Ap2(x5,x6,k3) => 
+      (fix)
+      >>
+      Ap( cocase {
+           Ap(x4,k2) => 
+              (cocase {
+                 Ap(x3,k1) => 
+                    (x3)
+                    >>
+                    case {
+                       Z() => (0) >> k1,
+                       S(x2) => (x4) >> Ap( x2 , mu x1.((addNominal) >> Ap2( x5 , x1 , k1 )) )}})
+              >>
+              k2}
+        , Ap( x6 , k3 )
+        )};
+def prd ex1 : forall a. { Ap( a , return a ) } := cocase {Ap(x1,k1) => (x1) >> k1};
+def prd ex2 : < Succ( < Zero > ) > := Succ( Zero );
+def prd ex3 : forall a. { Ap3( < TT , FF > , a , a , return a ) } := cocase {
+   Ap3(x1,x2,x3,k1) => (x1) >> case {TT() => (x2) >> k1, FF() => (x3) >> k1}};
+def prd ex4 : forall a b. { Ap3( < TT , FF > , a , b , return ( a \/ b ) ) } := cocase {
+   Ap3(x1,x2,x3,k1) => (x1) >> case {TT() => (x2) >> k1, FF() => (x3) >> k1}};
+def prd ex5 : forall a b. { Ap( { Ap( ( a \/ b ) , return b ) }
+                              , return { Ap( a , return b ) }
+                              ) } := cocase {
+   Ap(x3,k2) => (cocase {Ap(x2,k1) => (x3) >> Ap( x2 , mu x1.((x3) >> Ap( x1 , k1 )) )}) >> k2};
+def prd ex6 : { Ap( Bool , return Bool ) } := cocase {
+   Ap(x1,k1) => (x1) >> case {True() => (False) >> k1, False() => (True) >> k1}};
+def prd ex7 : { Ap( Bool , return ( Bool \/ Nat ) ) } := cocase {
+   Ap(x1,k1) => (x1) >> case {True() => (False) >> k1, False() => (0) >> k1}};
+def prd ex8 : { Ap( Bool , return ( Nat \/ Bool ) ) } := cocase {
+   Ap(x1,k1) => (x1) >> case {True() => (False) >> k1, False() => (0) >> k1}};
+def prd ex9 : { Ap2( Nat , Nat , return Nat ) } := cocase {
+   Ap2(x5,x6,k3) => 
+      (fix)
+      >>
+      Ap( cocase {
+           Ap(x4,k2) => 
+              (cocase {
+                 Ap(x3,k1) => 
+                    (x3)
+                    >>
+                    case {Z() => (x5) >> k1, S(x2) => (x4) >> Ap( x2 , mu x1.((S( x1 )) >> k1) )}})
+              >>
+              k2}
+        , Ap( x6 , k3 )
+        )};
+def prd ex10 : forall t0. { Ap2( ( t0 /\ Nat ) , Nat , return ( t0 \/ Nat ) ) } := cocase {
+   Ap2(x5,x6,k3) => 
+      (fix)
+      >>
+      Ap( cocase {
+           Ap(x4,k2) => 
+              (cocase {
+                 Ap(x3,k1) => 
+                    (x3)
+                    >>
+                    case {
+                       Z() => (0) >> k1,
+                       S(x2) => (x4) >> Ap( x2 , mu x1.((addNominal) >> Ap2( x5 , x1 , k1 )) )}})
+              >>
+              k2}
+        , Ap( x6 , k3 )
+        )};
+def prd ex11 : forall t0. { Ap2( ( t0 /\ Nat ) , Nat , return ( t0 \/ Nat ) ) } := cocase {
+   Ap2(x5,x6,k3) => 
+      (fix)
+      >>
+      Ap( cocase {
+           Ap(x4,k2) => 
+              (cocase {
+                 Ap(x3,k1) => 
+                    (x3)
+                    >>
+                    case {
+                       Z() => (1) >> k1,
+                       S(x2) => (x4) >> Ap( x2 , mu x1.((mltNominal) >> Ap2( x5 , x1 , k1 )) )}})
+              >>
+              k2}
+        , Ap( x6 , k3 )
+        )};
+def prd ex12 : forall t0. { Ap2( ( t0 /\ Nat ) , Nat , return ( t0 \/ Nat ) ) } := cocase {
+   Ap2(x6,x7,k4) => 
+      (fix)
+      >>
+      Ap( cocase {
+           Ap(x5,k3) => 
+              (cocase {
+                 Ap(x4,k2) => 
+                    (cocase {
+                       Ap(x3,k1) => 
+                          (x3)
+                          >>
+                          case {
+                             Z() => (x4) >> k1,
+                             S(x2) => 
+                                (x4)
+                                >>
+                                case {
+                                   Z() => (x4) >> k1,
+                                   S(x1) => (x5) >> Ap( x1 , Ap( x2 , k1 ) )}}})
+                    >>
+                    k2})
+              >>
+              k3}
+        , Ap( x6 , Ap( x7 , k4 ) )
+        )};

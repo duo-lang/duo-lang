@@ -54,9 +54,8 @@ prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <>
 
 -- | Prettyprint the list of MonoKinds
 prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
-prettyCCList [] = mempty
-prettyCCList ((Prd, cc):xs) = (parens   $ prettyAnn cc) <> prettyCCList xs
-prettyCCList ((Cns, cc):xs) = (brackets $ prettyAnn cc) <> prettyCCList xs
+prettyCCList xs =  parens' comma (prettyAnn . snd <$> xs)
+
 
 prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
 prettyTyOpDecl op assoc prec ty =
