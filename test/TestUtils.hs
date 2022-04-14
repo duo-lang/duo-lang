@@ -50,5 +50,5 @@ getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (Right (createSymbolTable decls))
+    Right decls -> pure (runExcept (createSymbolTable decls))
     Left err -> return (Left err)
