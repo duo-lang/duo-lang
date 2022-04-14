@@ -88,13 +88,15 @@ isStar _ = False
 
 
 
-renameCommandCase :: CST.TermCase -> RenamerM RST.CmdCase
-renameCommandCase (CST.MkTermCase cmdcase_ext cmdcase_name cmdcase_args cmdcase_cmd) = do
+renameCommandCase :: DataCodata -> CST.TermCase -> RenamerM RST.CmdCase
+renameCommandCase dc (CST.MkTermCase cmdcase_ext cmdcase_name cmdcase_args cmdcase_cmd) = do
   cmd' <- renameCommand cmdcase_cmd
-  (_,XtorNameResult _ _ ar) <- lookupXtor cmdcase_ext cmdcase_name
+  (_,XtorNameResult dc' _ ar) <- lookupXtor cmdcase_ext cmdcase_name
   when (length ar /= length cmdcase_args) $
            throwError $ LowerError (Just cmdcase_ext) $ XtorArityMismatch cmdcase_name (length ar) (length cmdcase_args)
   when (any (\x -> case x of CST.FoSStar -> True; _ -> False) cmdcase_args) $ throwError $ LowerError (Just cmdcase_ext) $ InvalidStar "Invalid star in command case"
+  when (dc /= dc') $
+           throwError $ OtherError (Just cmdcase_ext) "Constructor/Destructor confusion"
   let fv = (\x -> case x of CST.FoSStar -> error "compiler bug"; CST.FoSFV f -> f) <$> cmdcase_args
   let args = zip ar fv
   pure RST.MkCmdCase { cmdcase_ext = cmdcase_ext
@@ -113,9 +115,11 @@ commandCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) = do
 renameTermCase :: CST.TermCase -> RenamerM (RST.TermCase Prd)
 renameTermCase CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
   tm' <- renameTerm PrdRep tmcase_term
-  (_, XtorNameResult _ _ ar) <- lookupXtor tmcase_ext tmcase_name
+  (_, XtorNameResult dc _ ar) <- lookupXtor tmcase_ext tmcase_name
   when (length ar /= length tmcase_args) $
            throwError $ LowerError (Just tmcase_ext) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
+  when (dc /= Data) $
+           throwError $ OtherError (Just tmcase_ext) "Expected constructor but got destructor"
   when (any (\x -> case x of CST.FoSStar -> True; _ -> False) tmcase_args) $ throwError $ LowerError (Just tmcase_ext) $ InvalidStar "Invalid star in command case"
   let fv = (\x -> case x of CST.FoSStar -> error "compiler bug"; CST.FoSFV f -> f) <$> tmcase_args
   let args = zip ar fv
@@ -129,9 +133,11 @@ renameTermCase CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_ter
 renameTermCaseI :: CST.TermCase -> RenamerM (RST.TermCaseI Prd)
 renameTermCaseI CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
   tm' <- renameTerm PrdRep tmcase_term
-  (_, XtorNameResult _ _ ar) <- lookupXtor tmcase_ext tmcase_name
+  (_, XtorNameResult dc _ ar) <- lookupXtor tmcase_ext tmcase_name
   when (length ar /= length tmcase_args) $
            throwError $ LowerError (Just tmcase_ext) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
+  when (dc /= Codata) $
+           throwError $ OtherError (Just tmcase_ext) "Expected Destructor but got constructor"
   (x,y) <- splitFS defaultLoc  tmcase_args -- TODO : improve Loc
   let (ar1,_:ar2) = splitAt (length x) ar
   let args1 = zip ar1 x
@@ -207,15 +213,19 @@ renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
 renameTerm rep    (CST.Var loc v) =
   pure $ RST.FreeVar loc rep v
 renameTerm PrdRep (CST.XtorSemi loc xtor subst Nothing) = do
-  (_, XtorNameResult _ ns ar) <- lookupXtor loc xtor
+  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+  when (dc /= Data) $
+           throwError $ OtherError (Just loc) "The given xtor is declared as a destructor, not a constructor."
   pctms <- renameTerms loc ar subst
   return $ RST.Xtor loc PrdRep ns xtor pctms
 renameTerm CnsRep (CST.XtorSemi loc xtor subst Nothing) = do
-  (_, XtorNameResult _ ns ar) <- lookupXtor loc xtor
+  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+  when (dc /= Codata) $
+           throwError $ OtherError (Just loc) "The given xtor is declared as a constructor, not a destructor."
   pctms <- renameTerms loc ar subst
   return $ RST.Xtor loc CnsRep ns xtor pctms
 renameTerm _ (CST.XtorSemi _loc _xtor _subst (Just _t)) = error "renameTerm / XTorSemi: not yet implemented"
@@ -223,11 +233,11 @@ renameTerm PrdRep (CST.XCase loc Data Nothing _) =
   throwError (OtherError (Just loc) "Cannot rename pattern match to a producer.")
 renameTerm CnsRep (CST.XCase loc Codata Nothing _) =
   throwError (OtherError (Just loc) "Cannot rename copattern match to a consumer.")
-renameTerm PrdRep (CST.XCase loc _ Nothing cases)  = do
+renameTerm PrdRep (CST.XCase loc dc Nothing cases)  = do
   c <- analyzeTermCases cases
   case c of
     AllNoStars -> do
-      cases' <- sequence (renameCommandCase <$> cases)
+      cases' <- sequence (renameCommandCase dc <$> cases)
       ns <- commandCasesToNS cases
       pure $ RST.XMatch loc PrdRep ns cases'
     AllConsumerStar -> do
@@ -235,11 +245,11 @@ renameTerm PrdRep (CST.XCase loc _ Nothing cases)  = do
       ns <- termCasesToNS cases
       pure $ RST.Cocase loc ns cases'
     AllProducerStar -> error "not yet implemented"
-renameTerm CnsRep (CST.XCase loc _ Nothing cases)  = do
+renameTerm CnsRep (CST.XCase loc dc Nothing cases)  = do
   c <- analyzeTermCases cases
   case c of
     AllNoStars -> do
-      cases' <- sequence (renameCommandCase <$> cases)
+      cases' <- sequence (renameCommandCase dc <$> cases)
       ns <- commandCasesToNS cases
       pure $ RST.XMatch loc CnsRep ns cases'
     _ -> error "not yet implemented"
