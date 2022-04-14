@@ -17,7 +17,6 @@ import Syntax.Common
 import Driver.Environment
 import Translate.ForgetTypes (forgetTypesDecl)
 import Translate.EmbedCore
-import Parser.Program (returnP)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations

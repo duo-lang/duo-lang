@@ -26,11 +26,6 @@ import qualified Data.Maybe
 -- Substitutions and implicit substitutions
 --------------------------------------------------------------------------------------------
 
-
-mkTerm :: (PrdCns, CST.Term) -> CST.PrdCnsTerm
-mkTerm (Prd, tm) = CST.PrdTerm tm
-mkTerm (Cns, tm) = CST.CnsTerm tm
-
 -- | Parse a substitution,
 -- E.g.: "(t1,t2,t3)"
 substitutionP :: Parser ([CST.Term], SourcePos)

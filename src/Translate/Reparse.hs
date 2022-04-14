@@ -25,9 +25,9 @@ import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
-import qualified Syntax.AST.Terms as AST
 import Syntax.CST.Terms (FVOrStar(FoSStar))
 import GHC.Base (NonEmpty ((:|)))
+
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
 --

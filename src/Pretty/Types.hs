@@ -9,7 +9,6 @@ import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.Common
-import Control.Applicative (Alternative(empty))
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types

@@ -19,7 +19,6 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Utils
-import Data.Bifunctor (second)
 import qualified Data.Maybe
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration

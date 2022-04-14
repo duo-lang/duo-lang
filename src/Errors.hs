@@ -58,6 +58,7 @@ attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError (Just loc) t
 attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError (Just loc) txt
 attachLoc loc (LowerError _ err) = LowerError (Just loc) err
 attachLoc loc (OtherError _ txt) = OtherError (Just loc) txt
+attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg (Just loc) txt
 
 getLoc :: Error -> Maybe Loc
 getLoc (ParserErrorBundle _)  = Nothing
@@ -67,6 +68,7 @@ getLoc (SolveConstraintsError loc _) = loc
 getLoc (TypeAutomatonError loc _) = loc
 getLoc (LowerError loc _) = loc
 getLoc (OtherError loc _) = loc
+getLoc (NoImplicitArg loc _) = loc
 
 ---------------------------------------------------------------------------------------------
 -- Throwing errors in a monadic context
