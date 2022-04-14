@@ -2,6 +2,7 @@ module Renamer.Program (renameProgram, renameDecl) where
 
 import Control.Monad.Reader
 import Control.Monad.Except (throwError)
+import Data.Map (Map)
 import Data.Map qualified as M
 
 import Errors
@@ -34,8 +35,8 @@ renameDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, dat
   let g :: TypeNameResolve -> TypeNameResolve
       g (SynonymResult ty) = SynonymResult ty
       g (NominalResult dc _ polykind) = NominalResult dc NotRefined polykind
-  let f :: [(ModuleName, SymbolTable)] -> [(ModuleName, SymbolTable)]
-      f = fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) }))
+  let f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
+      f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
   xtors <- local f (renameXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl

@@ -3,6 +3,7 @@ module Renamer.Definition where
 import Control.Monad.Except (MonadError, Except, throwError, runExcept)
 import Control.Monad.Reader
 import Data.Bifunctor (second)
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List (find)
 import Data.Text qualified as T
@@ -19,7 +20,7 @@ import Errors
 -- Renamer Monad
 ------------------------------------------------------------------------------
 
-type RenameReader = [(ModuleName, SymbolTable)]
+type RenameReader = Map ModuleName SymbolTable
 
 newtype RenamerM a = MkRenamerM { unRenamerM :: ReaderT RenameReader (Except Error) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadReader RenameReader)
@@ -30,9 +31,6 @@ runRenamerM reader action = runExcept (runReaderT (unRenamerM action) reader)
 ------------------------------------------------------------------------------
 -- Helper Functions
 ------------------------------------------------------------------------------
-
-getSymbolTables :: RenamerM [(ModuleName, SymbolTable)]
-getSymbolTables = ask
 
 filterJusts :: [(a, Maybe b)] -> [(a,b)]
 filterJusts [] = []
@@ -46,7 +44,7 @@ lookupXtor :: Loc
            -> RenamerM (ModuleName, XtorNameResolve)
            -- ^ The module where the xtor comes from, its sort and arity.
 lookupXtor loc xtor = do
-  symbolTables <- getSymbolTables
+  symbolTables <- M.toList <$> ask
   let results :: [(ModuleName, Maybe XtorNameResolve)]
       results = second (\st -> M.lookup xtor (xtorNameMap st)) <$> symbolTables
   case filterJusts results of
@@ -63,7 +61,7 @@ lookupTypeConstructor :: Loc
                       -> RenamerM (RnTypeName, TypeNameResolve)
                       -- ^ The renamed typename, and the relevant info.
 lookupTypeConstructor loc tn = do
-    symbolTables <- getSymbolTables
+    symbolTables <- M.toList <$> ask
     let results :: [(ModuleName, Maybe TypeNameResolve)]
         results = second (\st -> M.lookup tn (typeNameMap st)) <$> symbolTables
     case filterJusts results of
@@ -75,7 +73,7 @@ lookupTyOp :: Loc
            -> BinOp
            -> RenamerM (ModuleName, TyOp)
 lookupTyOp loc op = do
-  symbolTables <- getSymbolTables
+  symbolTables <- M.toList <$> ask
   let results :: [(ModuleName, Maybe TyOp)]
       results = second (\st -> find (\tyop -> symbol tyop == op) (tyOps st)) <$> symbolTables
   case filterJusts results of

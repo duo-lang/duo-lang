@@ -36,7 +36,7 @@ showCmd "" = do
   loadedFiles <- gets loadedFiles
   forM_ loadedFiles $ \fp -> do
     decls <- parseFile fp programP
-    let decls' :: Either Error Program = runRenamerM [] $ renameProgram decls
+    let decls' :: Either Error Program = runRenamerM M.empty $ renameProgram decls
     case decls' of
       Left err -> prettyText (T.pack $ show err)
       Right decls -> prettyRepl decls

@@ -22,7 +22,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Renamer.Program (renameProgram)
 import Renamer.SymbolTable
-import Renamer.Definition hiding (getSymbolTables)
+import Renamer.Definition
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
