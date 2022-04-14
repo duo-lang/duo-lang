@@ -1,8 +1,8 @@
 -- Standard Prelude
 
-def cmd impossible := ExitSuccess;
-def prd impossible := mu k. impossible;
-def cns impossible := mu x. impossible;
+def cmd impossibleCmd := ExitSuccess;
+def prd impossiblePrd := mu k. impossibleCmd;
+def cns impossibleCns := mu x. impossibleCmd;
 
 -- | Generic print consumer
 def cns print := mu x.Print(x); ExitSuccess;

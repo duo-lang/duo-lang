@@ -53,9 +53,9 @@ renameTyp rep (TyNominal loc name args) = do
                 typ' <- renameTyp rep typ
                 pure $ RST.TySyn loc rep name' typ'
             _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
-        (_, NominalResult Refined _) -> do
+        (_, NominalResult _ Refined _) -> do
             throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")
-        (name', NominalResult NotRefined polykind) -> do
+        (name', NominalResult _ NotRefined polykind) -> do
             args' <- renameTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 renameTyp rep (TyRec loc v typ) =

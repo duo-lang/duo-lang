@@ -29,7 +29,7 @@ def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(
             Cons(x1, xs) => case xs of {
                 Nil => mu j. MkTensor(Nil, ys) >> k,
                 Cons(x2, xs) => case ys of {
-                    Nil => impossible,
+                    Nil => impossiblePrd,
                     Cons(y, ys) => splitHalvesHelper xs ys (MkNot(
                         mu tensor. case tensor of {
                             MkTensor(left, right) =>
@@ -42,7 +42,7 @@ def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(
     };
 
 def prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
-    \xs => mu k. splitHalvesHelper xs xs MkNot(k) >> impossible;
+    \xs => mu k. splitHalvesHelper xs xs MkNot(k) >> impossibleCns;
 
 def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
     \f left right => case left of {

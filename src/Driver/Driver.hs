@@ -22,7 +22,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Renamer.Program (renameProgram)
 import Renamer.SymbolTable
-import Renamer.Definition hiding (getSymbolTables)
+import Renamer.Definition
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
@@ -196,7 +196,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       file <- liftIO $ T.readFile fp
       decls <- runFileParser fp programP file
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      let st :: SymbolTable = createSymbolTable decls
+      st <- createSymbolTable decls
       addSymboltable mn st
       -- 3. Rename the declarations.
       sts <- getSymbolTables
@@ -218,7 +218,7 @@ inferProgramIO  :: DriverState -- ^ Initial State
 inferProgramIO state decls = do
   let action :: DriverM (AST.Program)
       action = do
-        let st = createSymbolTable decls
+        st <- createSymbolTable decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables

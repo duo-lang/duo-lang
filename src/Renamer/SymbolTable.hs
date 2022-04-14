@@ -1,8 +1,12 @@
 module Renamer.SymbolTable where
 
+import Control.Monad.Except
 import Data.Map (Map)
 import Data.Map qualified as M
 
+import Errors
+import Pretty.Pretty
+import Pretty.Common ()
 import Syntax.Common
 import Syntax.CST.Program
 import Syntax.CST.Types
@@ -25,84 +29,135 @@ data TyOp = MkTyOp
         desugar :: TyOpDesugaring
     }
 
--- | Type operator for the union type
-unionTyOp :: TyOp
-unionTyOp = MkTyOp
-  { symbol = UnionOp
-  , prec = MkPrecedence 1
-  , assoc = LeftAssoc
-  , desugar = UnionDesugaring
-  }
-
--- | Type operator for the intersection type
-interTyOp :: TyOp
-interTyOp = MkTyOp
-  { symbol = InterOp
-  , prec = MkPrecedence 2
-  , assoc = LeftAssoc
-  , desugar = InterDesugaring
-  }
-
 ---------------------------------------------------------------------------------
 -- Symbol Table
 ---------------------------------------------------------------------------------
 
-data TyConResult =
-    NominalResult IsRefined PolyKind
-  | SynonymResult Typ
+-- | What a TypeName can resolve to during name resolution
+data TypeNameResolve where
+  -- | Typename was introduced in a data or codata declaration
+  NominalResult :: DataCodata -> IsRefined -> PolyKind -> TypeNameResolve
+  -- | TypeName was introduced in a type synonym
+  SynonymResult :: Typ -> TypeNameResolve
+
+-- | What a XtorName can resolve to during name resolution
+data XtorNameResolve where
+  -- | Xtor was introduced in a data or codata declaration
+  XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
+
+-- | What a toplevel definition can resolve to during name resolution
+data FreeVarNameResolve where
+  FreeVarResult :: FreeVarNameResolve
 
 data SymbolTable = MkSymbolTable
-  { xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
-  , tyConMap :: Map TypeName TyConResult
+  { xtorNameMap :: Map XtorName    XtorNameResolve
+  , typeNameMap :: Map TypeName    TypeNameResolve
+  , freeVarMap  :: Map FreeVarName FreeVarNameResolve
   , tyOps :: [TyOp]
   , imports :: [(ModuleName, Loc)]
   }
 
+emptySymbolTable :: SymbolTable
+emptySymbolTable  = MkSymbolTable
+    { xtorNameMap = M.empty
+    , typeNameMap =  M.empty
+    , freeVarMap  = M.empty
+    , tyOps       = []
+    , imports     = []
+    }
+
 instance Show SymbolTable where
   show _ = "<SymbolTable>"
-
-instance Semigroup SymbolTable where
-  (MkSymbolTable xtormap1 tyConMap1 tyOps1 imports1) <> (MkSymbolTable xtormap2 tyConMap2 tyOps2 imports2) =
-    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2) (tyOps1 ++ tyOps2) (imports1 ++ imports2)
-
-instance Monoid SymbolTable where
-  mempty = MkSymbolTable
-    { xtorMap = M.empty
-    , tyConMap =  M.empty
-    , tyOps = [unionTyOp, interTyOp]
-    , imports = []
-    }
 
 ---------------------------------------------------------------------------------
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
-createSymbolTable :: Program -> SymbolTable
-createSymbolTable = foldr createSymbolTable' mempty
+checkFreshTypeName :: MonadError Error m
+                   => Loc
+                   -> TypeName
+                   -> SymbolTable
+                   -> m ()
+checkFreshTypeName loc tn st =
+  if tn `elem` M.keys (typeNameMap st)
+  then throwError (OtherError (Just loc) ("TypeName is already used: " <> ppPrint tn))
+  else pure ()
 
-createSymbolTable' :: Declaration -> SymbolTable -> SymbolTable
-createSymbolTable' (XtorDecl _ _ dc xt args _) st =
-  st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
-createSymbolTable' (DataDecl _ _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }) st =
+checkFreshXtorName :: MonadError Error m
+                   => Loc
+                   -> XtorName
+                   -> SymbolTable
+                   -> m ()
+checkFreshXtorName loc xt st =
+  if xt `elem` M.keys (xtorNameMap st)
+  then throwError (OtherError (Just loc) ("XtorName is already used: " <> ppPrint xt))
+  else pure ()
+
+checkFreshFreeVarName :: MonadError Error m
+                   => Loc
+                   -> FreeVarName
+                   -> SymbolTable
+                   -> m ()
+checkFreshFreeVarName loc fv st =
+  if fv `elem` M.keys (freeVarMap st)
+  then throwError (OtherError (Just loc) ("FreeVarName is already used: " <> ppPrint fv))
+  else pure ()
+
+
+-- | Creating a symbol table for a program.
+-- Throws errors if multiple declarations declare the same name.
+createSymbolTable :: MonadError Error m
+                  => Program
+                  -> m SymbolTable
+createSymbolTable prog = createSymbolTableAcc prog emptySymbolTable
+  where
+    createSymbolTableAcc [] acc = pure acc
+    createSymbolTableAcc (x:xs) acc = do
+      acc' <- createSymbolTable' x acc
+      createSymbolTableAcc xs acc'
+
+createSymbolTable' :: MonadError Error m
+                   => Declaration 
+                   -> SymbolTable 
+                   -> m SymbolTable
+createSymbolTable' (XtorDecl loc _ dc xt args _) st = do
+  -- Check whether the xtor name is already declared in this module
+  checkFreshXtorName loc xt st
+  let xtorResolve = XtorNameResult dc Structural (fst <$> args)
+  pure $ st { xtorNameMap = M.insert xt xtorResolve (xtorNameMap st)}
+createSymbolTable' (DataDecl loc _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
+  -- Check whether the TypeName, and the XtorNames, are already declared in this module
+  checkFreshTypeName loc data_name st
+  forM_ (sig_name <$> data_xtors) $ \xtorName -> checkFreshXtorName loc xtorName st
   -- Create the default polykind
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
-      ns = case data_refined of
+  let ns = case data_refined of
                Refined -> Refinement
                NotRefined -> Nominal
-      xtors = M.fromList [((sig_name xt, data_polarity), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors]
-  in st { xtorMap  = M.union xtors (xtorMap st)
-        , tyConMap = M.insert data_name (NominalResult data_refined polyKind) (tyConMap st)}
-createSymbolTable' (TyOpDecl _ _ op prec assoc ty) st =
+  let xtors = M.fromList [(sig_name xt, XtorNameResult data_polarity ns (linearContextToArity (sig_args xt)))| xt <- data_xtors]
+  pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
+            , typeNameMap = M.insert data_name (NominalResult data_polarity data_refined polyKind) (typeNameMap st)}
+createSymbolTable' (TyOpDecl _ _ op prec assoc ty) st = do
     let tyOp = MkTyOp { symbol = CustomOp op
                       , prec = prec
                       , assoc = assoc
                       , desugar = NominalDesugaring ty
                       }
-    in st { tyOps = tyOp : (tyOps st) }
+    pure $ st { tyOps = tyOp : (tyOps st) }
 createSymbolTable' (ImportDecl loc _ mn) st =
-  st { imports = (mn,loc):(imports st) }
-createSymbolTable' (TySynDecl _ _ nm ty) st =
-  st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st) }
-createSymbolTable' _decl st = st
+  pure $ st { imports = (mn,loc):(imports st) }
+createSymbolTable' (TySynDecl loc _ nm ty) st = do
+  -- Check whether the TypeName is already declared in this module
+  checkFreshTypeName loc nm st
+  pure $ st { typeNameMap = M.insert nm (SynonymResult ty) (typeNameMap st) }
+createSymbolTable' (PrdCnsDecl loc _ _ _ fv _ _) st = do
+  -- Check if the FreeVarName is already declared in this module
+  checkFreshFreeVarName loc fv st
+  pure $ st { freeVarMap = M.insert fv FreeVarResult (freeVarMap st) }
+createSymbolTable' (CmdDecl loc _ fv _) st = do
+  checkFreshFreeVarName loc fv st
+  pure $ st { freeVarMap = M.insert fv FreeVarResult (freeVarMap st) }
+createSymbolTable' (SetDecl _ _ _) st = pure st
+createSymbolTable' ParseErrorDecl st = pure st

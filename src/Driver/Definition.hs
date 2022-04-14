@@ -2,6 +2,8 @@ module Driver.Definition where
 
 import Control.Monad.Except
 import Control.Monad.State
+import Data.Map (Map)
+import Data.Map qualified as M
 import Data.List (find)
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
@@ -43,7 +45,7 @@ defaultInferenceOptions = InferenceOptions
 data DriverState = MkDriverState
   { driverOpts :: InferenceOptions
   , driverEnv :: Environment
-  , driverSymbols :: [(ModuleName, SymbolTable)]
+  , driverSymbols :: Map ModuleName SymbolTable
   , driverASTs :: [(ModuleName, AST.Program)]
   }
 
@@ -51,7 +53,7 @@ defaultDriverState :: DriverState
 defaultDriverState = MkDriverState
   { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
   , driverEnv = mempty
-  , driverSymbols = []
+  , driverSymbols = M.empty
   , driverASTs = []
   }
 
@@ -70,9 +72,9 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 addSymboltable :: ModuleName -> SymbolTable -> DriverM ()
 addSymboltable mn st = modify f
   where
-    f state@MkDriverState { driverSymbols } = state { driverSymbols = (mn,st) : driverSymbols }
+    f state@MkDriverState { driverSymbols } = state { driverSymbols = M.insert mn st driverSymbols }
 
-getSymbolTables :: DriverM [(ModuleName, SymbolTable)]
+getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets driverSymbols
 
 
