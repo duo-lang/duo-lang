@@ -69,9 +69,29 @@ lookupTypeConstructor loc tn = do
       [(mn,res)] -> pure (MkRnTypeName defaultLoc mn tn, res)
       xs          -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))))
 
+-- | Type operator for the union type
+unionTyOp :: TyOp
+unionTyOp = MkTyOp
+  { symbol = UnionOp
+  , prec = MkPrecedence 1
+  , assoc = LeftAssoc
+  , desugar = UnionDesugaring
+  }
+
+-- | Type operator for the intersection type
+interTyOp :: TyOp
+interTyOp = MkTyOp
+  { symbol = InterOp
+  , prec = MkPrecedence 2
+  , assoc = LeftAssoc
+  , desugar = InterDesugaring
+  }
+
 lookupTyOp :: Loc
            -> BinOp
            -> RenamerM (ModuleName, TyOp)
+lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
+lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
 lookupTyOp loc op = do
   symbolTables <- M.toList <$> ask
   let results :: [(ModuleName, Maybe TyOp)]

@@ -27,24 +27,6 @@ data TyOp = MkTyOp
         desugar :: TyOpDesugaring
     }
 
--- | Type operator for the union type
-unionTyOp :: TyOp
-unionTyOp = MkTyOp
-  { symbol = UnionOp
-  , prec = MkPrecedence 1
-  , assoc = LeftAssoc
-  , desugar = UnionDesugaring
-  }
-
--- | Type operator for the intersection type
-interTyOp :: TyOp
-interTyOp = MkTyOp
-  { symbol = InterOp
-  , prec = MkPrecedence 2
-  , assoc = LeftAssoc
-  , desugar = InterDesugaring
-  }
-
 ---------------------------------------------------------------------------------
 -- Symbol Table
 ---------------------------------------------------------------------------------
@@ -78,7 +60,7 @@ emptySymbolTable  = MkSymbolTable
     { xtorNameMap = M.empty
     , typeNameMap =  M.empty
     , freeVarMap  = M.empty
-    , tyOps       = [unionTyOp, interTyOp]
+    , tyOps       = []
     , imports     = []
     }
 
