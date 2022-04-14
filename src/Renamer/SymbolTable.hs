@@ -58,27 +58,23 @@ data SymbolTable = MkSymbolTable
   , imports :: [(ModuleName, Loc)]
   }
 
-instance Show SymbolTable where
-  show _ = "<SymbolTable>"
-
-instance Semigroup SymbolTable where
-  (MkSymbolTable xtormap1 tyConMap1 tyOps1 imports1) <> (MkSymbolTable xtormap2 tyConMap2 tyOps2 imports2) =
-    MkSymbolTable (M.union xtormap1 xtormap2) (M.union tyConMap1 tyConMap2) (tyOps1 ++ tyOps2) (imports1 ++ imports2)
-
-instance Monoid SymbolTable where
-  mempty = MkSymbolTable
+emptySymbolTable :: SymbolTable
+emptySymbolTable = MkSymbolTable
     { xtorMap = M.empty
     , tyConMap =  M.empty
     , tyOps = [unionTyOp, interTyOp]
     , imports = []
     }
 
+instance Show SymbolTable where
+  show _ = "<SymbolTable>"
+
 ---------------------------------------------------------------------------------
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
 createSymbolTable :: Program -> SymbolTable
-createSymbolTable = foldr createSymbolTable' mempty
+createSymbolTable = foldr createSymbolTable' emptySymbolTable
 
 createSymbolTable' :: Declaration -> SymbolTable -> SymbolTable
 createSymbolTable' (XtorDecl _ _ dc xt args _) st =
