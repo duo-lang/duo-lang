@@ -14,6 +14,8 @@ import Syntax.Common
 import Utils
 import Control.Monad (when)
 import qualified Syntax.Common as CST
+import qualified Syntax.CST.Terms as CST.Terms
+import qualified Data.Text as T
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -298,4 +300,5 @@ lowerTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
   throwError (OtherError (Just loc) "Cannot lower Dtor to a consumer (TODO).")
 lowerTerm rep    (CST.DtorChain pos tm dtors) =
   lowerDtorChain pos tm dtors >>= lowerTerm rep
-lowerTerm rep t = error $ "lowerTerm not yet implemented for " ++ show t ++ " in rep: " ++ show rep
+lowerTerm _ (CST.Apply loc _ _) =  throwError (OtherError (Just loc) "Cannot lower Command to a term.")
+lowerTerm _ t = throwError (OtherError (Just (CST.Terms.getLoc t)) (T.pack $ "Cannot lower "++ show t ++ " to a term."))
