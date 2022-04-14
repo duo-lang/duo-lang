@@ -61,25 +61,6 @@ combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
 combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
 combineXtors = fmap combineXtor
 
--- | Parse a parenthesized list of producer types.
--- E.g.: "(Nat, Bool, { Ap(Nat)[Bool] })"
---prdCtxtPartP :: Parser LinearContext
---prdCtxtPartP = do
---  (res, _) <- parens $ (PrdType . fst <$> typP) `sepBy` symbolP SymComma
---  return res
-
--- | Parse a bracketed list of consumer types.
--- E.g.: "[Nat, Bool, { Ap(Nat)[Bool] }]"
---cnsCtxtPartP :: Parser LinearContext
---cnsCtxtPartP = do
- -- (res,_) <- brackets $ (CnsType . fst <$> typP) `sepBy` symbolP SymComma
- -- return res
-
--- | Parse a linear context.
--- E.g.: "(Nat,Bool)[Int](Int)[Bool,Float]"
---linearContextP :: Parser LinearContext
---linearContextP = (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list") -- Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
-
 ---------------------------------------------------------------------------------
 -- Nominal and Structural Types
 ---------------------------------------------------------------------------------

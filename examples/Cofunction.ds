@@ -4,15 +4,14 @@ data CoFun : (-f : CBV, +e : CBV) -> CBV {
     CoAp(e,return f)
 };
 
--- cannot use -< unfortunately
-type operator @ rightassoc at 0 := CoFun;
+type operator -< rightassoc at 0 := CoFun;
 
 
-def cns id : forall a. a @ a  :=
+def cns id : forall a. a -< a  :=
   case { CoAp(e,f) => e >>f };
 
 
-def cns compose : forall a b c . (a @ b) @  (b @ c) @ (a @ c) :=
+def cns compose : forall a b c . (a -< b) -<  (b -< c) -< (a -< c) :=
   case {
    CoAp(k5,x3) => 
       k5 

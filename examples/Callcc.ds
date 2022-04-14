@@ -5,8 +5,8 @@ def prd peirce : forall a b. ((a -> b) -> a) -> a :=
   \y => mu k. (y (\x => mu c.x >> k)) >> k;
 
 
-def cns copeirce : forall a b. ((a @ b) @ a) @ a := case {
- CoAp(y5,k2) => 
+def cns copeirce : forall a b. ((a -< b) -< a) -< a := case {
+ CoAp(y5,k2) =>
      y5 
      >>
      (mu y4.

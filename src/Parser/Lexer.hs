@@ -23,12 +23,6 @@ module Parser.Lexer
   , parens
   , brackets
   , braces
-  , parensListP
-  , parensListIP
-  , bracketsListP
-  , bracketsListIP
-  , argListsP
-  , argListsIP
   -- Other
   , primOpKeywordP
   , checkTick
@@ -408,7 +402,8 @@ operators = enumFromTo minBound maxBound
 -- Check if the string is in the list of reserved operators.
 -- Reserved operators cannot be used as custom operators
 checkReservedOp :: Text -> Parser ()
-checkReservedOp str | any ((flip T.isInfixOf) str) (T.pack . show <$> operators) = fail . T.unpack $ "Operator " <> str <> " cannot be used as a custom operator."
+checkReservedOp str | str == "-<" = pure () -- ^ Special case for cofunctions =D
+checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> operators) = fail . T.unpack $ "Operator " <> str <> " cannot be used as a custom operator."
                     | otherwise = return ()
 
 -------------------------------------------------------------------------------------------
@@ -427,52 +422,3 @@ parens    = betweenP (symbolP SymParenLeft)   (symbolP SymParenRight)
 braces    = betweenP (symbolP SymBraceLeft)   (symbolP SymBraceRight)
 brackets  = betweenP (symbolP SymBracketLeft) (symbolP SymBracketRight)
 angles    = betweenP (symbolP SymAngleLeft)   (symbolP SymAngleRight)
-
--- | Parse a non-empty list of elements in parens.
--- E.g. "(a,a,a)"
-parensListP :: Show a => Parser a -> Parser ([(PrdCns, a)], SourcePos)
-parensListP p = parens  $ ((,) Prd <$> p) `sepBy` symbolP SymComma
-
--- | Parse a non-empty list of elements in parens, with exactly one asterisk.
--- E.g. "(a,*,a)"
-parensListIP :: Show a => Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
-parensListIP p = parens $ do
-  let p' =(\x -> (Prd, x)) <$> p
-  fsts <- option [] (try ((p' `sepBy` try (symbolP SymComma <* notFollowedBy (symbolP SymImplicit))) <* symbolP SymComma))
-  _ <- symbolP SymImplicit
-  snds <- option [] (try (symbolP SymComma *> p' `sepBy` symbolP SymComma))
-  return (fsts, snds)
-
--- | Parse a non-empty list of elements in brackets.
--- E.g. "[a,a,a]"
-bracketsListP :: Show a => Parser a -> Parser ([(PrdCns,a)], SourcePos)
-bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` symbolP SymComma
-
--- | Parse a non-empty list of elements in parens, with exactly one asterisk.
--- E.g. "[a,*,a]"
-bracketsListIP :: Show a => Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
-bracketsListIP p = brackets $ do
-  let p' =(\x -> (Cns, x)) <$> p
-  fsts <- option [] (try ((p' `sepBy` try (symbolP SymComma <* notFollowedBy (symbolP SymImplicit))) <* symbolP SymComma))
-  _ <- symbolP SymImplicit
-  snds <- option [] (try (symbolP SymComma *> p' `sepBy` symbolP SymComma))
-  return (fsts, snds)
-
--- | Parse a sequence of producer/consumer argument lists
-argListsP ::  Show a => Bool -> Parser a -> Parser ([(PrdCns,a)], SourcePos)
-argListsP backtrack p = do
-  endPos <- getSourcePos
-  xs <- if backtrack then many ( try (parensListP p) <|> try (bracketsListP p)) else many ( parensListP p <|> bracketsListP p)
-  case xs of
-    [] -> return ([], endPos)
-    xs -> return (concat (fst <$> xs), snd (last xs))
-
-argListsIP :: Show a => PrdCns -> Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
-argListsIP mode p = do
-  (fsts,_) <- argListsP True p
-  ((middle1, middle2),_) <- (if mode == Prd then parensListIP else bracketsListIP) p
-  (lasts,endPos) <- argListsP False p
-  return ((fsts ++ middle1,(), middle2 ++ lasts), endPos)
-
-
-

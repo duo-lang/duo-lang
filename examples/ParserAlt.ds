@@ -12,7 +12,7 @@ import LinearLogic;
 -- cofunction and par types:
 
 codata Parser :  CBN {
-    Parse(List(Nat), return (Unit ⅋ (Unit @ List(Nat) )) )
+    Parse(List(Nat), return (Unit ⅋ (Unit -< List(Nat) )) )
 }; 
 
 
