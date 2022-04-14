@@ -19,9 +19,9 @@ def prd idNominal : Nat -> Nat := cocase { Ap(x,k) => x >> k };
 
 def prd idPoly : forall a. a -> a := cocase { Ap(x,*) => x };
 
-def prd idPolyTwo : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x,*) => x };
+def prd idPolyThree : forall a b. (a /\ b) -> (a \/ b) := cocase { Ap(x,*) => x };
 
-def prd id : Nat -> Nat := cocase { Ap(x,*) => x };
+def prd idTwo : Nat -> Nat := cocase { Ap(x,*) => x };
 
 destructor ApS(CBV,return CBV): CBV;
 destructor Ap2(CBV,CBV,return CBV) : CBV;
