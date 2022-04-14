@@ -31,11 +31,11 @@ renameDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, dat
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
-  let g :: TyConResult -> TyConResult
+  let g :: TypeNameResolve -> TypeNameResolve
       g (SynonymResult ty) = SynonymResult ty
-      g (NominalResult _ polykind) = NominalResult NotRefined polykind
+      g (NominalResult dc _ polykind) = NominalResult dc NotRefined polykind
   let f :: [(ModuleName, SymbolTable)] -> [(ModuleName, SymbolTable)]
-      f = fmap (\(mn, st) -> (mn, st { tyConMap = M.adjust g data_name (tyConMap st) }))
+      f = fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) }))
   xtors <- local f (renameXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl

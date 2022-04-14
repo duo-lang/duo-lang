@@ -49,25 +49,37 @@ interTyOp = MkTyOp
 -- Symbol Table
 ---------------------------------------------------------------------------------
 
-data TyConResult =
-    NominalResult IsRefined PolyKind
-  | SynonymResult Typ
+-- | What a TypeName can resolve to during name resolution
+data TypeNameResolve where
+  -- | Typename was introduced in a data or codata declaration
+  NominalResult :: DataCodata -> IsRefined -> PolyKind -> TypeNameResolve
+  -- | TypeName was introduced in a type synonym
+  SynonymResult :: Typ -> TypeNameResolve
+
+-- | What a XtorName can resolve to during name resolution
+data XtorNameResolve where
+  -- | Xtor was introduced in a data or codata declaration
+  XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
+
+-- | What a toplevel definition can resolve to during name resolution
+data FreeVarNameResolve where
+  FreeVarResult :: FreeVarNameResolve
 
 data SymbolTable = MkSymbolTable
-  { xtorMap :: Map (XtorName,DataCodata) (NominalStructural, Arity)
-  , tyConMap :: Map TypeName TyConResult
+  { xtorNameMap :: Map XtorName    XtorNameResolve
+  , typeNameMap :: Map TypeName    TypeNameResolve
+  , freeVarMap  :: Map FreeVarName FreeVarNameResolve
   , tyOps :: [TyOp]
-  , defs :: Map FreeVarName ()
   , imports :: [(ModuleName, Loc)]
   }
 
 emptySymbolTable :: SymbolTable
-emptySymbolTable = MkSymbolTable
-    { xtorMap = M.empty
-    , tyConMap =  M.empty
-    , tyOps = [unionTyOp, interTyOp]
-    , defs = M.empty
-    , imports = []
+emptySymbolTable  = MkSymbolTable
+    { xtorNameMap = M.empty
+    , typeNameMap =  M.empty
+    , freeVarMap  = M.empty
+    , tyOps       = [unionTyOp, interTyOp]
+    , imports     = []
     }
 
 instance Show SymbolTable where
@@ -77,6 +89,8 @@ instance Show SymbolTable where
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
+-- | Creating a symbol table for a program.
+-- Throws errors if multiple declarations declare the same name.
 createSymbolTable :: MonadError Error m
                   => Program
                   -> m SymbolTable
@@ -91,8 +105,9 @@ createSymbolTable' :: MonadError Error m
                    => Declaration 
                    -> SymbolTable 
                    -> m SymbolTable
-createSymbolTable' (XtorDecl _ _ dc xt args _) st =
-  pure $ st { xtorMap = M.insert (xt,dc) (Structural, fst <$> args) (xtorMap st)}
+createSymbolTable' (XtorDecl _ _ dc xt args _) st = do
+  let xtorResolve = XtorNameResult dc Structural (fst <$> args)
+  pure $ st { xtorNameMap = M.insert xt xtorResolve (xtorNameMap st)}
 createSymbolTable' (DataDecl _ _ NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
   -- Create the default polykind
   let polyKind = case data_kind of
@@ -101,9 +116,9 @@ createSymbolTable' (DataDecl _ _ NominalDecl { data_refined, data_name, data_pol
   let ns = case data_refined of
                Refined -> Refinement
                NotRefined -> Nominal
-  let xtors = M.fromList [((sig_name xt, data_polarity), (ns, linearContextToArity (sig_args xt)))| xt <- data_xtors]
-  pure $ st { xtorMap  = M.union xtors (xtorMap st)
-            , tyConMap = M.insert data_name (NominalResult data_refined polyKind) (tyConMap st)}
+  let xtors = M.fromList [(sig_name xt, XtorNameResult data_polarity ns (linearContextToArity (sig_args xt)))| xt <- data_xtors]
+  pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
+            , typeNameMap = M.insert data_name (NominalResult data_polarity data_refined polyKind) (typeNameMap st)}
 createSymbolTable' (TyOpDecl _ _ op prec assoc ty) st = do
     let tyOp = MkTyOp { symbol = CustomOp op
                       , prec = prec
@@ -114,5 +129,5 @@ createSymbolTable' (TyOpDecl _ _ op prec assoc ty) st = do
 createSymbolTable' (ImportDecl loc _ mn) st =
   pure $ st { imports = (mn,loc):(imports st) }
 createSymbolTable' (TySynDecl _ _ nm ty) st =
-  pure $ st { tyConMap = M.insert nm (SynonymResult ty) (tyConMap st) }
+  pure $ st { typeNameMap = M.insert nm (SynonymResult ty) (typeNameMap st) }
 createSymbolTable' _decl st = pure $ st
