@@ -161,8 +161,8 @@ nodeToTypeNoCache rep i = do
         return $ TyCodata defaultLoc rep (Just tn) sig
     -- Creating Nominal types
     let adjEdges = lsuc gr i
-    let typeArgsMap :: Map (TypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
-    let unsafeLookup :: (TypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
+    let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
+    let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
           Just x -> pure x
           Nothing -> throwOtherError ["Impossible: Cannot loose type arguments in automata"]
     nominals <- do

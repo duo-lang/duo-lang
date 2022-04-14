@@ -2,15 +2,19 @@ module Driver.Definition where
 
 import Control.Monad.Except
 import Control.Monad.State
+import Data.List (find)
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 
+
 import Driver.Environment
 import Errors
+import Pretty.Pretty
 import Pretty.Errors ( printLocatedError )
 import Renamer.SymbolTable
 import Syntax.Common
+import Syntax.AST.Program qualified as AST
 import Utils
 
 ------------------------------------------------------------------------------
@@ -36,10 +40,19 @@ defaultInferenceOptions = InferenceOptions
 -- Driver Monad
 ---------------------------------------------------------------------------------
 
-data DriverState = DriverState
+data DriverState = MkDriverState
   { driverOpts :: InferenceOptions
   , driverEnv :: Environment
-  , driverSymbols :: SymbolTable
+  , driverSymbols :: [(ModuleName, SymbolTable)]
+  , driverASTs :: [(ModuleName, AST.Program)]
+  }
+
+defaultDriverState :: DriverState
+defaultDriverState = MkDriverState
+  { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
+  , driverEnv = mempty
+  , driverSymbols = []
+  , driverASTs = []
   }
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
@@ -52,11 +65,38 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 -- Utility functions
 ---------------------------------------------------------------------------------
 
+-- Symbol tables
+
+addSymboltable :: ModuleName -> SymbolTable -> DriverM ()
+addSymboltable mn st = modify f
+  where
+    f state@MkDriverState { driverSymbols } = state { driverSymbols = (mn,st) : driverSymbols }
+
+getSymbolTables :: DriverM [(ModuleName, SymbolTable)]
+getSymbolTables = gets driverSymbols
+
+
+-- AST Cache
+
+addTypecheckedProgram :: ModuleName -> AST.Program -> DriverM ()
+addTypecheckedProgram mn prog = modify f
+  where
+    f state@MkDriverState { driverASTs } = state { driverASTs = (mn,prog) : driverASTs }
+
+queryTypecheckedProgram :: ModuleName -> DriverM (AST.Program)
+queryTypecheckedProgram mn = do
+  cache <- gets driverASTs
+  case find (\(mn',_) -> mn == mn') cache of
+    Nothing -> throwOtherError ["Module " <> ppPrint mn <> " not in cache."]
+    Just (_,ast) -> pure ast
+
+
+-- Environment
+
 setEnvironment :: Environment -> DriverM ()
 setEnvironment env = modify (\state -> state { driverEnv = env })
 
-setSymboltable :: SymbolTable -> DriverM ()
-setSymboltable st = modify (\state -> state { driverSymbols = st })
+
 
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()
@@ -78,13 +118,23 @@ findModule (MkModuleName mod) loc = do
     [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
     (fp:_) -> return fp
 
-liftErr :: Loc -> Error -> DriverM a
-liftErr loc err = do
+liftErr :: Error -> DriverM a
+liftErr err = do
+    guardVerbose $ printLocatedError err
+    throwError err
+
+liftErrLoc :: Loc -> Error -> DriverM a
+liftErrLoc loc err = do
     let locerr = attachLoc loc err
     guardVerbose $ printLocatedError locerr
     throwError locerr
 
-liftEitherErr :: Loc -> Either Error a -> DriverM a
-liftEitherErr loc x = case x of
-    Left err -> liftErr loc err
+liftEitherErr :: Either Error a -> DriverM a
+liftEitherErr x = case x of
+    Left err -> liftErr err
+    Right res -> return res
+
+liftEitherErrLoc :: Loc -> Either Error a -> DriverM a
+liftEitherErrLoc loc x = case x of
+    Left err -> liftErrLoc loc err
     Right res -> return res

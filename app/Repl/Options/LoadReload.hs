@@ -21,6 +21,7 @@ import Repl.Repl
       prettyText,
       parseFile )
 import Driver.Driver
+import Driver.Definition
 import Utils (trim)
 
 -- Load
@@ -35,7 +36,8 @@ loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
   opts <- gets typeInfOpts
-  res <- liftIO $ inferProgramIO (DriverState opts mempty mempty) decls
+  let ds :: DriverState = defaultDriverState { driverOpts = opts }
+  res <- liftIO $ inferProgramIO ds decls
   case res of
     Left err -> printLocatedError err
     Right (newEnv,_) -> do

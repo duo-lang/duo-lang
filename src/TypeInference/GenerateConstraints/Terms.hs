@@ -560,7 +560,7 @@ genConstraintsCommand (RST.Print loc prd cmd) = do
   return (AST.Print loc prd' cmd')
 genConstraintsCommand (RST.Read loc cns) = do
   cns' <- genConstraintsTerm cns
-  addConstraint (SubType (ReadConstraint loc)  (TyNominal defaultLoc PosRep Nothing (MkTypeName "Nat") []) (AST.getTypeTerm cns'))
+  addConstraint (SubType (ReadConstraint loc)  (TyNominal defaultLoc PosRep Nothing (MkRnTypeName defaultLoc (MkModuleName "Peano")(MkTypeName "Nat")) []) (AST.getTypeTerm cns'))
   return (AST.Read loc cns')
 genConstraintsCommand (RST.Apply loc t1 t2) = do
   t1' <- genConstraintsTerm t1

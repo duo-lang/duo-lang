@@ -127,7 +127,7 @@ freshTVarsForTypeParams rep dd = do
     PosRep -> pure (varTypes, map)
     NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  TypeName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars ::  RnTypeName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs

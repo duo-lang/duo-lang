@@ -57,7 +57,7 @@ prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <>
 prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
-prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
+prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> RnTypeName -> Doc Annotation
 prettyTyOpDecl op assoc prec ty =
   annKeyword "type" <+> annKeyword "operator" <+>
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>

@@ -17,11 +17,8 @@ import Syntax.Common
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
 import Syntax.Core.Program qualified as Core
-import Driver.Driver
-    ( defaultInferenceOptions,
-      inferProgramIO,
-      DriverState(DriverState),
-      InferenceOptions(infOptsLibPath) )
+import Driver.Definition
+import Driver.Driver ( inferProgramIO )
 import Utils
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
@@ -47,7 +44,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      res <- liftIO $ inferProgramIO (DriverState (defaultInferenceOptions { infOptsLibPath = ["examples"]}) mempty mempty) decls
+      res <- liftIO $ inferProgramIO defaultDriverState decls
       case res of
         Left _err -> do
           responder (Right (List []))

@@ -3,18 +3,15 @@ module TypeInference.SubsumptionSpec ( spec ) where
 import Data.Text (Text)
 import Test.Hspec
 
-import Driver.Definition
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
+import Renamer.Definition
 import Renamer.SymbolTable
 import Renamer.Types
 import Syntax.Common
 import TestUtils (getSymbolTable)
 import TypeAutomata.Subsume (subsume)
-
-ds :: SymbolTable -> DriverState
-ds st = DriverState defaultInferenceOptions mempty st
 
 subsumptionCheckPos :: SymbolTable -> Bool -> Text -> Text -> Spec
 subsumptionCheckPos env bspec s1 s2 = do
@@ -25,12 +22,12 @@ subsumptionCheckPos env bspec s1 s2 = do
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        lowerResult1 <- execDriverM (ds env) (lowerTypeScheme PosRep r1)
-        lowerResult2 <- execDriverM (ds env) (lowerTypeScheme PosRep r2)
+        let lowerResult1 = runRenamerM [(MkModuleName "", env)] (renameTypeScheme PosRep r1)
+        let lowerResult2 = runRenamerM [(MkModuleName "", env)] (renameTypeScheme PosRep r2)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
-          (Right (r1,_), Right (r2,_)) -> do
+          (Right r1, Right r2) -> do
             let Right b = subsume PosRep r1 r2
             b `shouldBe` bspec
 

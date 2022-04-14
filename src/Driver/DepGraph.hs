@@ -11,13 +11,15 @@ module Driver.DepGraph
 
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Data.Maybe (fromJust)
+import Data.List (intersperse)
 import Control.Monad.Except
-import Data.Graph.Inductive.Basic (hasLoop)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.PatriciaTree
-import Data.Graph.Inductive.Query.TransClos (tc)
+import Data.Graph.Inductive.Query.BFS
 import Data.Graph.Inductive.Query.DFS (topsort')
 import Data.GraphViz
 import System.FilePath ( (</>), (<.>))
@@ -55,8 +57,8 @@ type CompilationOrder = [ModuleName]
 ---------------------------------------------------------------------------------
 
 -- | Create the dependency graph by recursively following import statements.
-createDepGraph :: FilePath -> DriverM DepGraph
-createDepGraph fp = createDepGraph' [MkModuleName (T.pack fp)] defaultDepGraph
+createDepGraph :: [ModuleName] -> DriverM DepGraph
+createDepGraph mns = createDepGraph' mns defaultDepGraph
 
 lookupOrInsert :: DepGraph -> ModuleName -> (Node, DepGraph)
 lookupOrInsert depGraph@MkDepGraph {..} mn = case M.lookup mn name_map of
@@ -93,13 +95,30 @@ createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGrap
                                       createDepGraph' (importedModules ++ mns) depGraph'''
 
 
+-- | Compute the transitive closure where the edges are annotated with a witnessing path.
+tc :: Gr ModuleName () -> Gr ModuleName [Node]
+tc g = newEdges `insEdges` insNodes ln empty
+  where
+    ln :: [LNode ModuleName]
+    ln       = labNodes g
+    newEdges :: [(Node, Node, [Node])]
+    newEdges = [ (u, head path, path) | (u, u',_) <- labEdges g,  path <- bft u' g ]
 
+-- | Return all the paths which witness that there is a path from `a` to `a`.
+hasLoop ::  Gr ModuleName [Node] -> [[Node]]
+hasLoop gr = map (\(_,_,e) -> e) (filter (\(x,y,_) -> x == y) (labEdges gr))
 
 -- | Throws an error if the dependency graph contains a cycle of imports.
 checkRecursiveImports :: DepGraph -> DriverM ()
 checkRecursiveImports depgraph = case hasLoop (tc (graph depgraph)) of
-    True -> throwError (OtherError Nothing "Imports contain a loop")
-    False -> pure ()
+    (x:_) -> throwError (OtherError Nothing (explainRecursiveLoop depgraph x))
+    [] -> pure ()
+
+explainRecursiveLoop :: DepGraph -> [Node] -> Text
+explainRecursiveLoop gr nodes = "Recursive module imports are not allowed. Involved Modules: " <> T.concat (intersperse "," (ppPrint <$> lnodes))
+  where
+    lnodes :: [ModuleName]
+    lnodes = fromJust <$> (lab (graph gr) <$> nodes)
 
 -- | Return a compilation order for a given dependency graph.
 -- Throws an error if the dependency graph is not acyclical.

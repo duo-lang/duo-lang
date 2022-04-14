@@ -1,14 +1,14 @@
 module Renamer.Definition where
 
-import Control.Monad.Except (throwError)
-import Control.Monad.State
+import Control.Monad.Except (MonadError, Except, throwError, runExcept)
+import Control.Monad.Reader
+import Data.Bifunctor (second)
 import Data.Map qualified as M
-import Data.Text qualified as T
-import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist )
+import Data.List (find)
 
-import Driver.Definition
 import Pretty.Pretty
+import Pretty.Common ()
+import Pretty.Types ()
 import Renamer.SymbolTable
 import Syntax.Common
 import Utils
@@ -18,55 +18,65 @@ import Errors
 -- Renamer Monad
 ------------------------------------------------------------------------------
 
-type RenamerM a = DriverM a
+type RenameReader = [(ModuleName, SymbolTable)]
+
+newtype RenamerM a = MkRenamerM { unRenamerM :: ReaderT RenameReader (Except Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader RenameReader)
+
+runRenamerM :: RenameReader -> RenamerM a -> Either Error a
+runRenamerM reader action = runExcept (runReaderT (unRenamerM action) reader)
 
 ------------------------------------------------------------------------------
 -- Helper Functions
 ------------------------------------------------------------------------------
 
-getSymbolTable :: RenamerM SymbolTable
-getSymbolTable = gets driverSymbols
+getSymbolTables :: RenamerM [(ModuleName, SymbolTable)]
+getSymbolTables = ask
 
+-- | Returns the first "(a,Just b)" result in the list.
+firstResult :: [(a, Maybe b)] -> Maybe (a,b)
+firstResult [] = Nothing
+firstResult ((x,Just y):_) = Just (x,y)
+firstResult ((_,Nothing):rest) = firstResult rest
 
-lookupXtor :: Loc -> (XtorName, DataCodata) -> RenamerM (NominalStructural, Arity)
+lookupXtor :: Loc
+           -- ^ The location of the xtor to be looked up
+           -> (XtorName, DataCodata)
+           -- ^ The name of the xtor and whether we expect a ctor or dtor
+           -> RenamerM (ModuleName, (NominalStructural, Arity))
+           -- ^ The module where the xtor comes from, its sort and arity.
 lookupXtor loc xs@(xtor,dc) = do
-  symbolTable <- getSymbolTable
-  case M.lookup xs (xtorMap symbolTable) of
+  symbolTables <- getSymbolTables
+  let results :: [(ModuleName, Maybe (NominalStructural, Arity))]
+      results = second (\st -> M.lookup xs (xtorMap st)) <$> symbolTables
+  case firstResult results of
+    Just res -> pure res
     Nothing -> throwError $ OtherError (Just loc) ((case dc of Data -> "Constructor"; Codata -> "Destructor") <>" not in symbol table: " <> ppPrint xtor)
-    Just ns -> pure ns
+    
 
 -- | Find the Arity of a given typename
-lookupTypeConstructor :: Loc -> TypeName -> RenamerM TyConResult
+lookupTypeConstructor :: Loc
+                      -- ^ The location of the typename to be looked up
+                      -> TypeName
+                      -- ^ The typename to look up
+                      -> RenamerM (RnTypeName, TyConResult)
+                      -- ^ The renamed typename, and the relevant info.
 lookupTypeConstructor loc tn = do
-    symbolTable <- getSymbolTable
-    case M.lookup tn (tyConMap symbolTable) of
-        Just res -> pure res
+    symbolTables <- getSymbolTables
+    let results :: [(ModuleName, Maybe TyConResult)]
+        results = second (\st -> M.lookup tn (tyConMap st)) <$> symbolTables
+    case firstResult results of
+        Just (mn,res) -> pure (MkRnTypeName defaultLoc mn tn, res)
         Nothing -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " not found in symbol table"))
 
-------------------------------------------------------------------------------
--- Deprecated stuff
-------------------------------------------------------------------------------
-
-updateSymbolTable :: (SymbolTable -> SymbolTable) -> RenamerM ()
-updateSymbolTable f = do
-    symbolTable <- gets driverSymbols
-    let newSymbolTable = f symbolTable
-    modify (\state -> state { driverSymbols = newSymbolTable })
-
-
--- | Given the Library Paths contained in the inference options and a module name,
--- try to find a filepath which corresponds to the given module name.
-findModule :: ModuleName -> Loc ->  RenamerM FilePath
-findModule (MkModuleName mod) loc = do
-  infopts <- gets driverOpts
-  let libpaths = infOptsLibPath infopts
-  fps <- forM libpaths $ \libpath -> do
-    let fp = libpath </> T.unpack mod <.> "ds"
-    exists <- liftIO $ doesFileExist fp
-    if exists then return [fp] else return []
-  case concat fps of
-    [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
-    (fp:_) -> return fp
-
-
-
+lookupTyOp :: Loc
+           -> BinOp
+           -> RenamerM (ModuleName, TyOp)
+lookupTyOp loc op = do
+  symbolTables <- getSymbolTables
+  let results :: [(ModuleName, Maybe TyOp)]
+      results = second (\st -> find (\tyop -> symbol tyop == op) (tyOps st)) <$> symbolTables
+  case firstResult results of
+    Just res -> pure res
+    Nothing -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)))
+      
