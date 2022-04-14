@@ -242,7 +242,7 @@ renameTerm PrdRep (CST.XCase loc dc Nothing cases)  = do
       cases' <- sequence (renameTermCaseI Codata <$> cases)
       ns <- termCasesToNS cases Codata
       pure $ RST.Cocase loc ns cases'
-    _ -> error "not yet implemented"
+    AllProducerStar -> error "not yet implemented"
 renameTerm CnsRep (CST.XCase loc dc Nothing cases)  = do
   c <- analyzeTermCases cases
   case c of

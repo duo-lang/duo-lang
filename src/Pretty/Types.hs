@@ -1,8 +1,6 @@
 module Pretty.Types where
 
 import Data.List (intersperse)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Common ()
@@ -96,19 +94,8 @@ instance PrettyAnn (RST.PrdCnsType pol) where
   prettyAnn (RST.PrdCnsType PrdRep ty) = prettyAnn ty
   prettyAnn (RST.PrdCnsType CnsRep ty) = "return " <> prettyAnn ty
 
-splitCtxt :: RST.LinearContext pol -> [NonEmpty (RST.PrdCnsType pol)]
-splitCtxt = NE.groupBy f
-  where
-    f :: RST.PrdCnsType pol -> RST.PrdCnsType pol -> Bool
-    f (RST.PrdCnsType PrdRep _) (RST.PrdCnsType PrdRep _) = True
-    f (RST.PrdCnsType CnsRep _) (RST.PrdCnsType CnsRep _) = True
-    f (RST.PrdCnsType _ _) (RST.PrdCnsType _ _) = False
-
-printSegment :: RST.LinearContext pol -> Doc Annotation
-printSegment xs = parens'   comma (prettyAnn <$> xs)
-
 instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
-  prettyAnn ctxt = printSegment ctxt
+  prettyAnn ctxt = parens'   comma (prettyAnn <$> ctxt)
 
 instance PrettyAnn (RST.XtorSig a) where
   prettyAnn (RST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args

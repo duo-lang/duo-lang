@@ -1,6 +1,5 @@
 module Pretty.Terms where
 
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
@@ -14,7 +13,6 @@ import Syntax.Common
 import Translate.EmbedCore
 import Translate.ForgetTypes
 import Translate.Reparse
-import Utils (defaultLoc)
 
 ---------------------------------------------------------------------------------
 -- Pattern match cases and cocases

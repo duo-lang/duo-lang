@@ -28,8 +28,7 @@ import Syntax.Common
 
 freeVarNameP :: Parser (FreeVarName, SourcePos)
 freeVarNameP = try $ do
-  (name, _) <- lowerCaseId
-  pos <- getSourcePos 
+  (name, pos) <- lowerCaseId
   return (MkFreeVarName name, pos)
 
 tvarP :: Parser (TVar, SourcePos)
