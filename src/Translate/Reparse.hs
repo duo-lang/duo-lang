@@ -371,16 +371,16 @@ embedTyDecl RST.NominalDecl { data_refined, data_name, data_polarity, data_kind,
 reparseTerm :: RST.Term pc -> CST.Term
 reparseTerm tm = embedTerm (openTermComplete (evalState (createNamesTerm tm) names))
 
-reparsePCTerm :: RST.PrdCnsTerm -> CST.PrdCnsTerm
-reparsePCTerm (RST.PrdTerm tm) = CST.PrdTerm (reparseTerm tm)
-reparsePCTerm (RST.CnsTerm tm) = CST.CnsTerm (reparseTerm tm)
+reparsePCTerm :: RST.PrdCnsTerm -> CST.Term
+reparsePCTerm (RST.PrdTerm tm) = reparseTerm tm
+reparsePCTerm (RST.CnsTerm tm) = reparseTerm tm
 
 reparseSubst :: RST.Substitution -> CST.Substitution
 reparseSubst = fmap reparsePCTerm
 
 reparseSubstI :: RST.SubstitutionI pc -> CST.SubstitutionI
-reparseSubstI (subst1,PrdRep,subst2) = (reparseSubst subst1,Prd,reparseSubst subst2)
-reparseSubstI (subst1,CnsRep,subst2) = (reparseSubst subst1,Cns,reparseSubst subst2)
+reparseSubstI (subst1,_,subst2) =
+  (CST.ToSTerm <$> reparseSubst subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> reparseSubst subst2)
 
 reparseCommand :: RST.Command -> CST.Term
 reparseCommand cmd =

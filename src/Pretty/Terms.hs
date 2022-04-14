@@ -31,13 +31,6 @@ instance PrettyAnn AST.CmdCase where
 instance PrettyAnn RST.CmdCase where
   prettyAnn cmdcase = prettyAnn (reparseCmdCase cmdcase)
 
-{-instance PrettyAnn CST.CmdCase where
-  prettyAnn CST.MkCmdCase{ cmdcase_name, cmdcase_args, cmdcase_cmd } =
-      prettyAnn cmdcase_name <>
-      printCasesArgs cmdcase_args <+>
-      annSymbol "=>" <+>
-      prettyAnn cmdcase_cmd
--}
 -- TermCase
 
 instance PrettyAnn (AST.TermCase pc) where
@@ -61,16 +54,6 @@ instance PrettyAnn (AST.TermCaseI pc) where
 instance PrettyAnn (RST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (reparseTermCaseI termcasei)
 
-{-instance PrettyAnn CST.TermCaseI where
-  prettyAnn CST.MkTermCaseI { tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
-    prettyAnn tmcasei_name <>
-    printCasesArgs as1 <>
-    pretty ("[*]" :: String) <>
-    printCasesArgs as2 <+>
-    annSymbol "=>" <+>
-    prettyAnn tmcasei_term
--}
-
 instance PrettyAnn CST.FVOrStar where
   prettyAnn (CST.FoSFV v) = prettyAnn v
   prettyAnn CST.FoSStar = "*"
@@ -82,22 +65,7 @@ instance PrettyAnn CST.TermOrStar  where
 printCasesArgs :: CST.BindingSite -> Doc Annotation
 printCasesArgs cs = parens (intercalateComma (map prettyAnn cs))
 
-{-printCasesArgs' :: [(PrdCns, [FreeVarName])] -> Doc Annotation
-printCasesArgs' [] = mempty
-printCasesArgs' ((Prd, vs) : cs) = parens (intercalateComma (map prettyAnn vs)) <> printCasesArgs' cs
-printCasesArgs' ((Cns, vs) : cs) = brackets (intercalateComma (map prettyAnn vs)) <> printCasesArgs' cs
 
-splitOnChange :: Eq b => (a -> b) -> [a] -> [(b, [a])]
-splitOnChange _ [] = []
-splitOnChange f (a : as) = helper f (f a) as [a] []
-  where
-    helper :: Eq b => (a -> b) -> b -> [a] -> [a] -> [(b, [a])] -> [(b, [a])]
-    helper _ _ [] [] res = res
-    helper _ prev [] curr res = res ++ [(prev, curr)]
-    helper f prev (a : as) curr res | f a == prev = helper f prev as (curr ++ [a]) res
-    helper f prev (a : as) curr res =
-      helper f (f a) as [a] (res ++ [(prev, curr)])
--}
 ---------------------------------------------------------------------------------
 -- Substitutions
 ---------------------------------------------------------------------------------
@@ -110,23 +78,7 @@ instance PrettyAnn AST.PrdCnsTerm where
 instance PrettyAnn RST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (reparsePCTerm pcterm)
 
-instance PrettyAnn CST.PrdCnsTerm where
-  prettyAnn (CST.PrdTerm tm) = prettyAnn tm
-  prettyAnn (CST.CnsTerm tm) = prettyAnn tm
-
 -- Substitution
-
-splitSubstCST :: CST.Substitution -> [NonEmpty CST.PrdCnsTerm]
-splitSubstCST = NE.groupBy f
-  where
-    f :: CST.PrdCnsTerm -> CST.PrdCnsTerm -> Bool
-    f (CST.PrdTerm _) (CST.PrdTerm _) = True
-    f (CST.CnsTerm _) (CST.CnsTerm _) = True
-    f _ _ = False
-
-printSegmentCST :: NonEmpty CST.PrdCnsTerm -> Doc Annotation
-printSegmentCST (CST.PrdTerm e :| rest) = parens'   comma (prettyAnn <$> CST.PrdTerm e : rest)
-printSegmentCST (CST.CnsTerm e :| rest) = parens' comma (prettyAnn <$> CST.CnsTerm e : rest)
 
 instance {-# OVERLAPPING #-} PrettyAnn AST.Substitution where
   prettyAnn subst = prettyAnn (forgetTypesSubst subst)
@@ -135,7 +87,7 @@ instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
   prettyAnn subst = prettyAnn (reparseSubst subst)
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.Substitution where
-  prettyAnn subst = mconcat (printSegmentCST <$> splitSubstCST subst)
+  prettyAnn subst = parens' comma (prettyAnn <$> subst)
 
 -- SubstitutionI
 
@@ -145,9 +97,8 @@ instance PrettyAnn (AST.SubstitutionI pc) where
 instance PrettyAnn (RST.SubstitutionI pc) where
   prettyAnn substi = prettyAnn (reparseSubstI substi)
 
-instance PrettyAnn CST.SubstitutionI where
-  -- the PrdTerm is a bit of a hack but for pretty printing it doesn't matter whether it is Prd or Cns
-  prettyAnn (subst1, _, subst2) = prettyAnn (subst1 ++ [CST.PrdTerm (CST.Var defaultLoc (MkFreeVarName "*"))] ++  subst2)
+instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
+  prettyAnn substi = parens' comma (prettyAnn <$> substi)
 
 
 ---------------------------------------------------------------------------------
@@ -255,7 +206,3 @@ instance PrettyAnn RST.Command where
 
 instance PrettyAnn Core.Command where
   prettyAnn cmd = prettyAnn (embedCoreCommand cmd)
-
-{-instance PrettyAnn CST.Command where
--}
-

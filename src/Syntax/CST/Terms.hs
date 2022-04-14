@@ -10,14 +10,6 @@ import Utils
 -- Substitutions and Binding Sites
 --------------------------------------------------------------------------------------------
 
-data PrdCnsTerm where
-    PrdTerm :: Term -> PrdCnsTerm
-    CnsTerm :: Term -> PrdCnsTerm
-
-deriving instance Show PrdCnsTerm
-deriving instance Eq PrdCnsTerm
-
-
 data TermOrStar where
     ToSTerm :: Term -> TermOrStar
     ToSStar :: TermOrStar
@@ -25,18 +17,8 @@ data TermOrStar where
 deriving instance Show TermOrStar
 deriving instance Eq TermOrStar
 
-type Substitution = [PrdCnsTerm]
-type SubstitutionI = (Substitution,PrdCns,Substitution)
-
-substitutionToArity :: Substitution -> Arity
-substitutionToArity = map f
-  where
-    f (PrdTerm _) = Prd
-    f (CnsTerm _) = Cns
-
-substitutionIToArity :: SubstitutionI -> Arity
-substitutionIToArity (subst1, pc, subst2) =
-  substitutionToArity subst1 ++ [case pc of Prd -> Cns; Cns -> Prd] ++ substitutionToArity subst2
+type Substitution = [Term]
+type SubstitutionI = [TermOrStar]
 
 data FVOrStar where
     FoSFV :: FreeVarName -> FVOrStar
@@ -89,13 +71,13 @@ getLocPC (PrimOp loc _ _ _) = loc
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 
     Var :: Loc -> FreeVarName -> Term
-    XtorSemi :: Loc -> XtorName -> [Term] -> Maybe Term -> Term
+    XtorSemi :: Loc -> XtorName -> Substitution -> Maybe Term -> Term
     XCase :: Loc -> DataCodata -> Maybe Term -> [TermCase] -> Term    
     MuAbs :: Loc -> FreeVarName -> Term -> Term
-    Dtor :: Loc -> XtorName -> Term -> [TermOrStar] -> Term
+    Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
     PrimLitF64 :: Loc -> Double -> Term
-    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, [TermOrStar], SourcePos) -> Term
+    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
