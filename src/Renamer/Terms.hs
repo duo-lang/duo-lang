@@ -12,177 +12,148 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
+import Control.Monad (when)
+import qualified Syntax.Common as CST
+import qualified Syntax.CST.Terms as CST.Terms
+import qualified Data.Text as T
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
+renameT :: PrdCns -> CST.Term -> RenamerM RST.PrdCnsTerm
+renameT Prd t = RST.PrdTerm <$> renameTerm PrdRep t
+renameT Cns t = RST.CnsTerm <$> renameTerm CnsRep t
 
+-- can only be called when length ar == length tms
+renameTerms :: Loc -> Arity -> [CST.Term] -> RenamerM [RST.PrdCnsTerm]
+renameTerms _ [] [] = return []
+renameTerms loc (a:ar) (t:tms) = do
+  t' <- renameT a t
+  tms' <- renameTerms loc ar tms
+  return $ t' : tms'
+renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
+
+{-
 checkXtorArity :: Loc -> (XtorName, DataCodata) -> Arity -> RenamerM ()
 checkXtorArity loc (xt, dc) arityUsed = do
   (_,(_,aritySpecified)) <- lookupXtor loc (xt, dc)
   if arityUsed /= aritySpecified
     then throwError (LowerError (Just loc) (XtorArityMismatch xt aritySpecified arityUsed))
     else pure ()
-
+-}
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-renameSubstitution :: CST.Substitution -> RenamerM RST.Substitution
-renameSubstitution [] = pure []
-renameSubstitution (CST.PrdTerm tm:tms) = do
-  tm' <- renameTerm PrdRep tm
-  subst <- renameSubstitution tms
-  pure (RST.PrdTerm tm':subst)
-renameSubstitution (CST.CnsTerm tm:tms) = do
-  tm' <- renameTerm CnsRep tm
-  subst <- renameSubstitution tms
-  pure (RST.CnsTerm tm':subst)
+
+renameCommand :: CST.Term -> RenamerM RST.Command
+renameCommand (CST.PrimCmdTerm (CST.Print loc tm cmd)) =
+  RST.Print loc <$> renameTerm PrdRep tm <*> renameCommand cmd
+renameCommand (CST.PrimCmdTerm (CST.Read loc tm)) =
+  RST.Read loc <$> renameTerm CnsRep tm
+renameCommand (CST.Var loc fv)              = pure $ RST.Jump loc fv
+renameCommand (CST.PrimCmdTerm (CST.ExitSuccess loc) )  =
+  pure $ RST.ExitSuccess loc
+renameCommand (CST.PrimCmdTerm (CST.ExitFailure loc))
+  = pure $ RST.ExitFailure loc
+renameCommand (CST.TermParens _loc cmd) = renameCommand cmd
+renameCommand (CST.PrimCmdTerm (CST.PrimOp loc pt op tms)) =
+  do
+    reqArity <- getPrimOpArity loc (pt, op)
+    when (length reqArity /= length tms) $
+           throwError $ LowerError (Just loc) $ PrimOpArityMismatch (pt,op) (length reqArity) (length tms)
+    foo <- renameTerms loc reqArity tms
+    return $ RST.PrimOp loc pt op foo
+renameCommand (CST.Apply loc tm1 tm2) =
+  RST.Apply loc <$> renameTerm PrdRep tm1 <*> renameTerm CnsRep tm2
+renameCommand t = throwError $ LowerError (Just (CST.getLoc t)) (CmdExpected "Command expected")
+
+getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
+getPrimOpArity loc primOp = do
+  case M.lookup primOp primOps of
+    Nothing -> throwError $ LowerError (Just loc) $ UndefinedPrimOp primOp
+    Just aritySpecified -> return aritySpecified
 
 
-renameSubstitutionI :: CST.SubstitutionI -> RenamerM (RST.SubstitutionI Prd)
-renameSubstitutionI (subst1, _, subst2) = do
-  subst1' <- renameSubstitution subst1
-  subst2' <- renameSubstitution subst2
-  pure (subst1', PrdRep, subst2')
+-- todo : must analyze arity to cover all producer case
+data TermCaseCases = AllNoStars | AllProducerStar | AllConsumerStar
+
+analyzeTermCases :: [CST.TermCase] -> RenamerM TermCaseCases
+analyzeTermCases cases | all noStar cases = return AllNoStars
+analyzeTermCases cases | all oneStar cases = return AllConsumerStar
+analyzeTermCases cases  = throwError $ LowerError (Just $ CST.tmcase_ext (head cases)) $ InvalidStar "Inconsistent stars"
+
+noStar :: CST.TermCase -> Bool
+noStar (CST.MkTermCase _ _ bs  _) = not (any isStar bs)
+
+oneStar :: CST.TermCase -> Bool
+oneStar (CST.MkTermCase _ _ bs  _) = length (filter isStar bs) == 1
+
+isStar :: CST.FVOrStar -> Bool
+isStar CST.FoSStar   = True
+isStar _ = False
 
 
+
+renameCommandCase :: DataCodata -> CST.TermCase -> RenamerM RST.CmdCase
+renameCommandCase dc (CST.MkTermCase cmdcase_ext cmdcase_name cmdcase_args cmdcase_cmd) = do
+  cmd' <- renameCommand cmdcase_cmd
+  (_,(_, ar)) <- lookupXtor cmdcase_ext (cmdcase_name, dc)
+  when (length ar /= length cmdcase_args) $
+           throwError $ LowerError (Just cmdcase_ext) $ XtorArityMismatch cmdcase_name (length ar) (length cmdcase_args)
+  when (any (\x -> case x of CST.FoSStar -> True; _ -> False) cmdcase_args) $ throwError $ LowerError (Just cmdcase_ext) $ InvalidStar "Invalid star in command case"
+  let fv = (\x -> case x of CST.FoSStar -> error "compiler bug"; CST.FoSFV f -> f) <$> cmdcase_args
+  let args = zip ar fv
+  pure RST.MkCmdCase { cmdcase_ext = cmdcase_ext
+                     , cmdcase_name = cmdcase_name
+                     , cmdcase_args = second Just <$> args
+                     , cmdcase_cmd = RST.commandClosing args cmd'
+                     }
+
+-- TODO: Check that all command cases use the same nominal/structural variant.
+commandCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
+commandCasesToNS [] _ = pure Structural
+commandCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc =
+  (fst . snd) <$> lookupXtor tmcase_ext (tmcase_name, dc)
 
 renameTermCase :: DataCodata -> CST.TermCase -> RenamerM (RST.TermCase Prd)
 renameTermCase dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
   tm' <- renameTerm PrdRep tmcase_term
-  checkXtorArity tmcase_ext (tmcase_name, dc) (fst <$> tmcase_args)
+  (_,(_, ar)) <- lookupXtor tmcase_ext (tmcase_name, dc)
+  when (length ar /= length tmcase_args) $
+           throwError $ LowerError (Just tmcase_ext) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
+  when (any (\x -> case x of CST.FoSStar -> True; _ -> False) tmcase_args) $ throwError $ LowerError (Just tmcase_ext) $ InvalidStar "Invalid star in command case"
+  let fv = (\x -> case x of CST.FoSStar -> error "compiler bug"; CST.FoSFV f -> f) <$> tmcase_args
+  let args = zip ar fv
   pure RST.MkTermCase { tmcase_ext = tmcase_ext
                       , tmcase_name = tmcase_name
-                      , tmcase_args = second Just <$> tmcase_args
-                      , tmcase_term = RST.termClosing tmcase_args tm'
+                      , tmcase_args = second Just <$> args
+                      , tmcase_term = RST.termClosing args tm'
+                      }
+
+
+renameTermCaseI :: DataCodata -> CST.TermCase -> RenamerM (RST.TermCaseI Prd)
+renameTermCaseI dc CST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } = do
+  tm' <- renameTerm PrdRep tmcase_term
+  (_,(_, ar)) <- lookupXtor tmcase_ext (tmcase_name, dc)
+  when (length ar /= length tmcase_args) $
+           throwError $ LowerError (Just tmcase_ext) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
+  (x,y) <- splitFS defaultLoc  tmcase_args -- TODO : improve Loc
+  let (ar1,_:ar2) = splitAt (length x) ar
+  let args1 = zip ar1 x
+  let args2 = zip ar2 y
+  pure RST.MkTermCaseI { tmcasei_ext = tmcase_ext
+                      , tmcasei_name = tmcase_name
+                      , tmcasei_args = (second Just <$> args1, (), second Just <$> args2)
+                      , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                       }
 
 termCasesToNS :: [CST.TermCase] -> DataCodata -> RenamerM NominalStructural
 termCasesToNS [] _ = pure Structural
-termCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc = do
-  (_, (ns,_)) <- lookupXtor tmcase_ext (tmcase_name, dc)
-  pure ns
+termCasesToNS ((CST.MkTermCase { tmcase_ext, tmcase_name }):_) dc =
+  (fst . snd) <$> lookupXtor tmcase_ext (tmcase_name, dc)
 
-renameTermCaseI :: DataCodata -> CST.TermCaseI -> RenamerM (RST.TermCaseI Prd)
-renameTermCaseI dc (CST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (bs1,(),bs2), tmcasei_term }) = do
-  tm' <- renameTerm PrdRep tmcasei_term
-  checkXtorArity tmcasei_ext (tmcasei_name,dc) ((fst <$> bs1) ++ [Cns] ++ (fst <$> bs2))
-  pure RST.MkTermCaseI { tmcasei_ext = tmcasei_ext
-                       , tmcasei_name = tmcasei_name
-                       , tmcasei_args = (second Just <$> bs1, (), second Just <$> bs2)
-                       -- HACK: We want to ensure that the implicit argument gets the intuitive De-Bruijn index.
-                       -- termClosing doesn't support implicit arguments yet. We can emulate it for now by passing
-                       -- a string that cannot be parsed as a variable (e.g. *).
-                       , tmcasei_term = RST.termClosing (bs1 ++ [(Cns, MkFreeVarName "*")] ++ bs2) tm'
-                       }
-
-termCasesIToNS :: [CST.TermCaseI] -> DataCodata -> RenamerM NominalStructural
-termCasesIToNS [] _ = pure Structural
-termCasesIToNS ((CST.MkTermCaseI { tmcasei_ext, tmcasei_name }):_) dc = do
-  (_,(ns,_)) <- lookupXtor tmcasei_ext (tmcasei_name, dc)
-  pure ns
-
-renameCommandCase :: DataCodata -> CST.CmdCase -> RenamerM RST.CmdCase
-renameCommandCase dc (CST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd}) = do
-  cmd' <- renameCommand cmdcase_cmd
-  checkXtorArity cmdcase_ext (cmdcase_name,dc) (fst <$> cmdcase_args)
-  pure RST.MkCmdCase { cmdcase_ext = cmdcase_ext
-                     , cmdcase_name = cmdcase_name
-                     , cmdcase_args = second Just <$> cmdcase_args
-                     , cmdcase_cmd = RST.commandClosing cmdcase_args cmd'
-                     }
-
--- TODO: Check that all command cases use the same nominal/structural variant.
-commandCasesToNS :: [CST.CmdCase] -> DataCodata -> RenamerM NominalStructural
-commandCasesToNS [] _ = pure Structural
-commandCasesToNS ((CST.MkCmdCase { cmdcase_ext, cmdcase_name }):_) dc = do
-  (_,(ns,_)) <- lookupXtor cmdcase_ext (cmdcase_name, dc)
-  pure ns
-
-renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
-renameTerm rep    (CST.Var loc v) =
-  pure $ RST.FreeVar loc rep v
-renameTerm PrdRep (CST.Xtor loc xtor subst) = do
-  (_,(ns, _)) <- lookupXtor loc (xtor, Data)
-  checkXtorArity loc (xtor,Data) (CST.substitutionToArity subst)
-  RST.Xtor loc PrdRep ns xtor <$> renameSubstitution subst
-renameTerm CnsRep (CST.Xtor loc xtor subst) = do
-  (_,(ns, _)) <- lookupXtor loc (xtor, Codata)
-  checkXtorArity loc (xtor,Codata) (CST.substitutionToArity subst)
-  RST.Xtor loc CnsRep ns xtor <$> renameSubstitution subst
-renameTerm CnsRep (CST.XMatch loc Data cases) = do
-  cases' <- sequence (renameCommandCase Data <$> cases)
-  ns <- commandCasesToNS cases Data
-  pure $ RST.XMatch loc CnsRep ns cases'
-renameTerm PrdRep (CST.XMatch loc Data _) =
-  throwError (OtherError (Just loc) "Cannot lower pattern match to a producer.")
-renameTerm PrdRep (CST.XMatch loc Codata cases) = do
-  cases' <- sequence (renameCommandCase Codata <$> cases)
-  ns <- commandCasesToNS cases Codata
-  pure $ RST.XMatch loc PrdRep ns cases'
-renameTerm CnsRep (CST.XMatch loc Codata _) =
-  throwError (OtherError (Just loc) "Cannot lower copattern match to a consumer.")
-renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
-  cmd' <- renameCommand cmd
-  pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
-renameTerm CnsRep (CST.MuAbs loc fv cmd) = do
-  cmd' <- renameCommand cmd
-  pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
-renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
-  (_,(ns, _)) <- lookupXtor loc (xtor, Codata)
-  checkXtorArity loc (xtor,Codata) (CST.substitutionIToArity subst)
-  tm' <- renameTerm PrdRep tm
-  subst' <- renameSubstitutionI subst
-  pure $ RST.Dtor loc PrdRep ns xtor tm' subst'
-renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
-  throwError (OtherError (Just loc) "Cannot lower Dtor to a consumer (TODO).")
-renameTerm PrdRep (CST.Case loc tm cases)       = do
-  cases' <- sequence (renameTermCase Data <$> cases)
-  tm' <- renameTerm PrdRep tm
-  ns <- termCasesToNS cases Data
-  pure $ RST.Case loc ns tm' cases'
-renameTerm CnsRep (CST.Case loc _tm _cases) =
-  throwError (OtherError (Just loc) "Cannot lower Match to a consumer (TODO)")
-renameTerm PrdRep (CST.Cocase loc cases) = do
-  cases' <- sequence (renameTermCaseI Codata <$> cases)
-  ns <- termCasesIToNS cases Codata
-  pure $ RST.Cocase loc ns cases'
-renameTerm CnsRep (CST.Cocase loc _cases) =
-  throwError (OtherError (Just loc) "Cannot lower Comatch to a consumer (TODO)")
-renameTerm PrdRep (CST.NatLit loc ns i) =
-  renameNatLit loc ns i
-renameTerm CnsRep (CST.NatLit loc _ns _i) =
-  throwError (OtherError (Just loc) "Cannot lower NatLit to a consumer.")
-renameTerm rep    (CST.TermParens _loc tm) =
-  renameTerm rep tm
-renameTerm rep    (CST.DtorChain pos tm dtors) =
-  renameDtorChain pos tm dtors >>= renameTerm rep
-renameTerm PrdRep (CST.FunApp loc fun arg) =
-  renameApp loc fun arg
-renameTerm CnsRep (CST.FunApp loc _fun _arg) =
-  throwError (OtherError (Just loc) "Cannot lower FunApp to a consumer.")
-renameTerm rep    (CST.MultiLambda loc fvs tm) =
-  renameMultiLambda loc fvs tm >>= renameTerm rep
-renameTerm PrdRep (CST.Lambda loc fv tm) =
-  renameLambda loc fv tm
-renameTerm CnsRep (CST.Lambda loc _fv _tm) =
-  throwError (OtherError (Just loc) "Cannot lower Lambda to a consumer.")
-renameTerm PrdRep (CST.PrimLitI64 loc i) =
-  pure $ RST.PrimLitI64 loc i
-renameTerm CnsRep (CST.PrimLitI64 loc _) =
-  throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
-renameTerm PrdRep (CST.PrimLitF64 loc d) =
-  pure $ RST.PrimLitF64 loc d
-renameTerm CnsRep (CST.PrimLitF64 loc _) =
-  throwError (OtherError (Just loc) "Cannot lower primitive literal to a consumer.")
-
-
-
-renameDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, CST.SubstitutionI, SourcePos) -> RenamerM CST.Term
-renameDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
-renameDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = renameDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
 
 -- | Lower a multi-lambda abstraction
@@ -213,29 +184,124 @@ renameApp loc fun arg = do
   arg' <- renameTerm PrdRep arg
   pure $ RST.Dtor loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
 
-renameCommand :: CST.Command -> RenamerM RST.Command
-renameCommand (CST.Apply loc tm1 tm2)       = RST.Apply loc <$> renameTerm PrdRep tm1 <*> renameTerm CnsRep tm2
-renameCommand (CST.Print loc tm cmd)        = RST.Print loc <$> renameTerm PrdRep tm <*> renameCommand cmd
-renameCommand (CST.Read loc tm)             = RST.Read loc <$> renameTerm CnsRep tm
-renameCommand (CST.Jump loc fv)             = pure $ RST.Jump loc fv
-renameCommand (CST.ExitSuccess loc)         = pure $ RST.ExitSuccess loc
-renameCommand (CST.ExitFailure loc)         = pure $ RST.ExitFailure loc
-renameCommand (CST.CommandParens _loc cmd)  = renameCommand cmd
-renameCommand (CST.PrimOp loc pt op subst)  = do
-  let arity = CST.substitutionToArity subst
-  _ <- checkPrimOpArity loc (pt, op) arity
-  RST.PrimOp loc pt op <$> renameSubstitution subst
+isStarT :: CST.TermOrStar -> Bool
+isStarT CST.ToSStar  = True
+isStarT _ = False
 
----------------------------------------------------------------------------------
--- Check Arity of PrimOp
----------------------------------------------------------------------------------
+toTm  :: CST.TermOrStar -> CST.Term
+toTm (CST.ToSTerm t) = t
+toTm _x = error "Compiler bug: toFV"
 
-checkPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> Arity -> RenamerM ()
-checkPrimOpArity loc primOp arityUsed = do
-  case M.lookup primOp primOps of
-    Nothing -> throwError (LowerError (Just loc) (UndefinedPrimOp primOp))
-    Just aritySpecified ->
-      if arityUsed /= aritySpecified then
-        throwError (LowerError (Just loc) (PrimOpArityMismatch primOp aritySpecified arityUsed))
-      else
-        pure ()
+renameDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar], SourcePos) -> RenamerM CST.Term
+renameDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
+renameDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = renameDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
+
+split :: Loc -> [CST.TermOrStar] -> RenamerM ([CST.Term],[CST.Term])
+split loc args = do
+  let numstars = length (filter isStarT args)
+  when ( numstars /= 1) $ throwError (OtherError (Just loc) "Exactly one star expected" )
+  let (args1,_:args2) = span (not . isStarT) args
+  return (map toTm args1,map toTm args2)
+
+splitFS :: Loc -> [CST.FVOrStar] -> RenamerM ([CST.FreeVarName],[CST.FreeVarName])
+splitFS loc args = do
+  let numstars = length (filter isStar args)
+  when ( numstars /= 1) $ throwError (OtherError (Just loc) "Exactly one star expected" )
+  let (args1,(_:args2)) = break isStar args
+  return (map (\(CST.FoSFV fv) -> fv) args1,map (\(CST.FoSFV fv) -> fv) args2)
+
+
+renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
+renameTerm rep    (CST.Var loc v) =
+  pure $ RST.FreeVar loc rep v
+renameTerm PrdRep (CST.XtorSemi loc xtor subst Nothing) = do
+  (_,(ns, ar)) <- lookupXtor loc (xtor, Data)
+  when (length ar /= length subst) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+  pctms <- renameTerms loc ar subst
+  return $ RST.Xtor loc PrdRep ns xtor pctms
+renameTerm CnsRep (CST.XtorSemi loc xtor subst Nothing) = do
+  (_,(ns, ar)) <- lookupXtor loc (xtor, Codata)
+  when (length ar /= length subst) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+  pctms <- renameTerms loc ar subst
+  return $ RST.Xtor loc CnsRep ns xtor pctms
+renameTerm _ (CST.XtorSemi _loc _xtor _subst (Just _t)) = error "renameTerm / XTorSemi: not yet implemented"
+renameTerm PrdRep (CST.XCase loc Data Nothing _) =
+  throwError (OtherError (Just loc) "Cannot rename pattern match to a producer.")
+renameTerm CnsRep (CST.XCase loc Codata Nothing _) =
+  throwError (OtherError (Just loc) "Cannot rename copattern match to a consumer.")
+renameTerm PrdRep (CST.XCase loc dc Nothing cases)  = do
+  c <- analyzeTermCases cases
+  case c of
+    AllNoStars -> do
+      cases' <- sequence (renameCommandCase dc <$> cases)
+      ns <- commandCasesToNS cases dc
+      pure $ RST.XMatch loc PrdRep ns cases'
+    AllConsumerStar -> do
+      cases' <- sequence (renameTermCaseI Codata <$> cases)
+      ns <- termCasesToNS cases Codata
+      pure $ RST.Cocase loc ns cases'
+    AllProducerStar -> error "not yet implemented"
+renameTerm CnsRep (CST.XCase loc dc Nothing cases)  = do
+  c <- analyzeTermCases cases
+  case c of
+    AllNoStars -> do
+      cases' <- sequence (renameCommandCase dc <$> cases)
+      ns <- commandCasesToNS cases dc
+      pure $ RST.XMatch loc CnsRep ns cases'
+    _ -> error "not yet implemented"
+
+renameTerm PrdRep (CST.XCase loc Data (Just t) cases)  = do
+  cases' <- sequence (renameTermCase Data <$> cases)
+  t' <- renameTerm PrdRep t
+  ns <- commandCasesToNS cases Data
+  pure $ RST.Case loc ns t' cases'
+renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
+  cmd' <- renameCommand cmd
+  pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
+renameTerm CnsRep (CST.MuAbs loc fv cmd) = do
+  cmd' <- renameCommand cmd
+  pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
+
+renameTerm PrdRep (CST.FunApp loc fun arg) =
+  renameApp loc fun arg
+renameTerm CnsRep (CST.FunApp loc _fun _arg) =
+  throwError (OtherError (Just loc) "Cannot rename FunApp to a consumer.")
+renameTerm rep    (CST.MultiLambda loc fvs tm) =
+  renameMultiLambda loc fvs tm >>= renameTerm rep
+renameTerm PrdRep (CST.Lambda loc fv tm) =
+  renameLambda loc fv tm
+renameTerm CnsRep (CST.Lambda loc _fv _tm) =
+  throwError (OtherError (Just loc) "Cannot rename Lambda to a consumer.")
+renameTerm PrdRep (CST.PrimLitI64 loc i) =
+  pure $ RST.PrimLitI64 loc i
+renameTerm CnsRep (CST.PrimLitI64 loc _) =
+  throwError (OtherError (Just loc) "Cannot rename primitive literal to a consumer.")
+renameTerm PrdRep (CST.PrimLitF64 loc d) =
+  pure $ RST.PrimLitF64 loc d
+renameTerm CnsRep (CST.PrimLitF64 loc _) =
+  throwError (OtherError (Just loc) "Cannot rename primitive literal to a consumer.")
+renameTerm PrdRep (CST.NatLit loc ns i) =
+  renameNatLit loc ns i
+renameTerm CnsRep (CST.NatLit loc _ns _i) =
+  throwError (OtherError (Just loc) "Cannot rename NatLit to a consumer.")
+renameTerm rep    (CST.TermParens _loc tm) =
+  renameTerm rep tm
+renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
+  (_,(ns, ar)) <- lookupXtor loc (xtor, Codata)
+  when (length ar /= length subst) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+  tm' <- renameTerm PrdRep tm
+  (args1,args2) <- split loc subst
+  let (ar1,_:ar2) = splitAt (length args1) ar
+  -- there must be exactly one star
+  args1' <- renameTerms loc ar1 args1
+  args2' <- renameTerms loc ar2 args2
+  pure $ RST.Dtor loc PrdRep ns xtor tm' (args1',PrdRep,args2')
+renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
+  throwError (OtherError (Just loc) "Cannot rename Dtor to a consumer (TODO).")
+renameTerm rep    (CST.DtorChain pos tm dtors) =
+  renameDtorChain pos tm dtors >>= renameTerm rep
+renameTerm _ (CST.Apply loc _ _) =  throwError (OtherError (Just loc) "Cannot rename Command to a term.")
+renameTerm _ t = throwError (OtherError (Just (CST.Terms.getLoc t)) (T.pack $ "Cannot rename "++ show t ++ " to a term."))

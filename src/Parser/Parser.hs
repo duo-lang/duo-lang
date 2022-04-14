@@ -2,7 +2,6 @@ module Parser.Parser
   ( runFileParser
   , runInteractiveParser
   , termP
-  , commandP
   , declarationP
   , programP
   , typeSchemeP

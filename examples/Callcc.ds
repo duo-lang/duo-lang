@@ -1,0 +1,19 @@
+import Function;
+import Cofunction;
+
+def prd peirce : forall a b. ((a -> b) -> a) -> a := 
+  \y => mu k. (y (\x => mu c.x >> k)) >> k;
+
+
+def cns copeirce : forall a b. ((a @ b) @ a) @ a := case {
+ CoAp(y5,k2) => 
+     y5 
+     >>
+     (mu y4.
+         y4 
+         >> 
+         (mu y3.
+           CoAp(y3, case {CoAp(y2,k1) => y2 >> (mu y1.(y4 >> k1))}  ) >> k2)
+          
+         )
+     };

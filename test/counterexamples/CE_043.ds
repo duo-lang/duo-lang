@@ -5,4 +5,4 @@ refinement data Bool {
     False
 };
 
-def true[*] : Bool := True;
+def prd true : Bool := True;

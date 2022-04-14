@@ -7,6 +7,10 @@ module Parser.Types
   , typeSchemeP
   , typP
   , typAtomP
+  , xtorDeclP
+  , xtorSignatureP
+  ,returnP
+  ,combineXtors
   ) where
 
 import Text.Megaparsec hiding (State)
@@ -24,25 +28,57 @@ import Utils ( Loc(..) )
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
 ---------------------------------------------------------------------------------
+returnP :: Parser a -> Parser (PrdCns,a)
+returnP p = do
+  r <- optional (keywordP KwReturn)
+  b <- p
+  return $ case r of
+    Just _ -> (Cns,b)
+    Nothing -> (Prd,b)
+
+
+xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
+xtorDeclP = do
+  (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
+  args <- optional $ fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
+  return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
+
+-- | Parse a Constructor or destructor signature. E.g.
+xtorSignatureP :: Parser XtorSig
+xtorSignatureP = do
+  (xt, pos) <- xtorDeclP
+  return $ MkXtorSig xt (argListToLctxt pos)
+
+argListToLctxt :: [(PrdCns, Typ)] -> LinearContext
+argListToLctxt = fmap convert
+  where
+    convert (Prd, ty) = PrdType ty
+    convert (Cns, ty) = CnsType ty
+
+combineXtor :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
+combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
+
+combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
+combineXtors = fmap combineXtor
 
 -- | Parse a parenthesized list of producer types.
 -- E.g.: "(Nat, Bool, { Ap(Nat)[Bool] })"
-prdCtxtPartP :: Parser LinearContext
-prdCtxtPartP = do
-  (res, _) <- parens $ (PrdType . fst <$> typP) `sepBy` symbolP SymComma
-  return res
+--prdCtxtPartP :: Parser LinearContext
+--prdCtxtPartP = do
+--  (res, _) <- parens $ (PrdType . fst <$> typP) `sepBy` symbolP SymComma
+--  return res
 
 -- | Parse a bracketed list of consumer types.
 -- E.g.: "[Nat, Bool, { Ap(Nat)[Bool] }]"
-cnsCtxtPartP :: Parser LinearContext
-cnsCtxtPartP = do
-  (res,_) <- brackets $ (CnsType . fst <$> typP) `sepBy` symbolP SymComma
-  return res
+--cnsCtxtPartP :: Parser LinearContext
+--cnsCtxtPartP = do
+ -- (res,_) <- brackets $ (CnsType . fst <$> typP) `sepBy` symbolP SymComma
+ -- return res
 
 -- | Parse a linear context.
 -- E.g.: "(Nat,Bool)[Int](Int)[Bool,Float]"
-linearContextP :: Parser LinearContext
-linearContextP = Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
+--linearContextP :: Parser LinearContext
+--linearContextP = (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list") -- Prelude.concat <$> many (prdCtxtPartP <|> cnsCtxtPartP)
 
 ---------------------------------------------------------------------------------
 -- Nominal and Structural Types
@@ -73,13 +109,7 @@ xdataTypeP Codata = do
   (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` symbolP SymComma)
   pure (TyXData (Loc startPos endPos) Codata Nothing xtorSigs, endPos)
 
--- | Parse a Constructor or destructor signature. E.g.
--- - "Cons(Nat,List)"
--- - "Head[Nat]"
-xtorSignatureP :: Parser XtorSig
-xtorSignatureP = do
-  (xt, _pos) <- xtorNameP
-  MkXtorSig xt <$> linearContextP
+
 
 ---------------------------------------------------------------------------------
 -- Type variables and recursive types

@@ -154,9 +154,6 @@ mkParen _ l r i (x:xs) = align $ sep list
 parens' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
 parens' = mkParen False (prettyAnn ("(" :: String))(prettyAnn (")" :: String))
 
-brackets' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
-brackets' = mkParen False (prettyAnn ("[" :: String))(prettyAnn ("]" :: String))
-
 angles' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
 angles' = mkParen True (prettyAnn ("<" :: String))(prettyAnn (">" :: String))
 

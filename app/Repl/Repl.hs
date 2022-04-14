@@ -14,7 +14,7 @@ import System.IO.Error (tryIOError)
 import Errors ()
 import Eval.Eval ( eval, evalSteps )
 import Parser.Parser
-    ( Parser, runFileParser, runInteractiveParser, commandP )
+    ( Parser, runFileParser, runInteractiveParser, termP )
 import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
@@ -99,7 +99,7 @@ safeRead file =  do
 
 cmd :: String -> Repl ()
 cmd s = do
-  (comLoc,_) <- parseInteractive commandP (T.pack s)
+  (comLoc,_) <- parseInteractive termP (T.pack s)
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   let ds :: DriverState = defaultDriverState { driverOpts = opts, driverEnv = oldEnv }

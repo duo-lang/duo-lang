@@ -201,6 +201,11 @@ data Keyword where
   KwCodata      :: Keyword
   KwSet         :: Keyword
   KwImport      :: Keyword
+  KwPrd         :: Keyword 
+  KwCns         :: Keyword 
+  KwCmd         :: Keyword 
+  KwReturn      :: Keyword
+
   deriving (Eq, Ord, Enum, Bounded)
 
 instance Show Keyword where
@@ -239,6 +244,10 @@ instance Show Keyword where
   show KwCodata      = "codata"
   show KwSet         = "set"
   show KwImport      = "import"
+  show KwPrd         = "prd"
+  show KwCns         = "cns"
+  show KwCmd         = "cmd"
+  show KwReturn      = "return"
 
 
 -- | These keywords start a new declaration at the toplevel and
@@ -280,6 +289,11 @@ isDeclarationKw KwData        = True
 isDeclarationKw KwCodata      = True
 isDeclarationKw KwSet         = True
 isDeclarationKw KwImport      = True
+isDeclarationKw KwPrd         = False 
+isDeclarationKw KwCns         = False 
+isDeclarationKw KwCmd         = False 
+isDeclarationKw KwReturn      = False 
+
 
 -- | All keywords of the language
 keywords :: [Keyword]
@@ -324,6 +338,7 @@ data Symbol where
   SymComma            :: Symbol
   SymDot              :: Symbol
   SymSemi             :: Symbol
+  SymDoubleSemi       :: Symbol
   SymColon            :: Symbol
   SymPipe             :: Symbol
   SymTick             :: Symbol
@@ -354,6 +369,7 @@ instance Show Symbol where
   show SymComma            = ","
   show SymDot              = "."
   show SymSemi             = ";"
+  show SymDoubleSemi       = ";;"
   show SymColon            = ":"
   show SymPipe             = "|"
   show SymTick             = "'"
@@ -399,14 +415,14 @@ checkReservedOp str | any ((flip T.isInfixOf) str) (T.pack . show <$> operators)
 -- Parens
 -------------------------------------------------------------------------------------------
 
-betweenP :: Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
+betweenP :: Show a => Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
 betweenP open close middle = do
   _ <- open
   res <- middle
   endPos <- close
   pure (res, endPos)
 
-parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
+parens, braces, brackets, angles :: Show a => Parser a -> Parser (a, SourcePos)
 parens    = betweenP (symbolP SymParenLeft)   (symbolP SymParenRight)
 braces    = betweenP (symbolP SymBraceLeft)   (symbolP SymBraceRight)
 brackets  = betweenP (symbolP SymBracketLeft) (symbolP SymBracketRight)
@@ -414,12 +430,12 @@ angles    = betweenP (symbolP SymAngleLeft)   (symbolP SymAngleRight)
 
 -- | Parse a non-empty list of elements in parens.
 -- E.g. "(a,a,a)"
-parensListP :: Parser a -> Parser ([(PrdCns, a)], SourcePos)
+parensListP :: Show a => Parser a -> Parser ([(PrdCns, a)], SourcePos)
 parensListP p = parens  $ ((,) Prd <$> p) `sepBy` symbolP SymComma
 
 -- | Parse a non-empty list of elements in parens, with exactly one asterisk.
 -- E.g. "(a,*,a)"
-parensListIP :: Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
+parensListIP :: Show a => Parser a -> Parser (([(PrdCns, a)],[(PrdCns, a)]), SourcePos)
 parensListIP p = parens $ do
   let p' =(\x -> (Prd, x)) <$> p
   fsts <- option [] (try ((p' `sepBy` try (symbolP SymComma <* notFollowedBy (symbolP SymImplicit))) <* symbolP SymComma))
@@ -429,12 +445,12 @@ parensListIP p = parens $ do
 
 -- | Parse a non-empty list of elements in brackets.
 -- E.g. "[a,a,a]"
-bracketsListP :: Parser a -> Parser ([(PrdCns,a)], SourcePos)
+bracketsListP :: Show a => Parser a -> Parser ([(PrdCns,a)], SourcePos)
 bracketsListP p = brackets $ ((,) Cns <$> p) `sepBy` symbolP SymComma
 
 -- | Parse a non-empty list of elements in parens, with exactly one asterisk.
 -- E.g. "[a,*,a]"
-bracketsListIP :: Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
+bracketsListIP :: Show a => Parser a -> Parser (([(PrdCns, a)], [(PrdCns, a)]), SourcePos)
 bracketsListIP p = brackets $ do
   let p' =(\x -> (Cns, x)) <$> p
   fsts <- option [] (try ((p' `sepBy` try (symbolP SymComma <* notFollowedBy (symbolP SymImplicit))) <* symbolP SymComma))
@@ -443,7 +459,7 @@ bracketsListIP p = brackets $ do
   return (fsts, snds)
 
 -- | Parse a sequence of producer/consumer argument lists
-argListsP ::  Bool -> Parser a -> Parser ([(PrdCns,a)], SourcePos)
+argListsP ::  Show a => Bool -> Parser a -> Parser ([(PrdCns,a)], SourcePos)
 argListsP backtrack p = do
   endPos <- getSourcePos
   xs <- if backtrack then many ( try (parensListP p) <|> try (bracketsListP p)) else many ( parensListP p <|> bracketsListP p)
@@ -451,7 +467,7 @@ argListsP backtrack p = do
     [] -> return ([], endPos)
     xs -> return (concat (fst <$> xs), snd (last xs))
 
-argListsIP :: PrdCns -> Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
+argListsIP :: Show a => PrdCns -> Parser a -> Parser (([(PrdCns,a)],(),[(PrdCns,a)]), SourcePos)
 argListsIP mode p = do
   (fsts,_) <- argListsP True p
   ((middle1, middle2),_) <- (if mode == Prd then parensListIP else bracketsListIP) p

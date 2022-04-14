@@ -3,4 +3,4 @@
 constructor A : CBV;
 constructor B(CBV) : CBV;
 
-def foo[*] := B(A,A);
+def prd foo := B(A,A);

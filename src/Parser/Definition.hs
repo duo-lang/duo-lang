@@ -2,7 +2,8 @@ module Parser.Definition
   ( Parser
   , runInteractiveParser
   , runFileParser
-  ) where
+  , dbg
+  , parseTst) where
 
 import Control.Applicative (Alternative)
 import Control.Monad.Except
@@ -10,6 +11,7 @@ import Data.Text qualified as T
 import Data.Void (Void)
 import Data.Text (Text)
 import Text.Megaparsec
+import qualified Text.Megaparsec.Debug
 
 import Errors
 import Utils
@@ -22,6 +24,15 @@ newtype Parser a = Parser { unParser :: Parsec Void Text a }
   deriving (Functor, Applicative, Monad, MonadFail, Alternative, MonadPlus
            , MonadParsec Void Text)
 
+-------------------------------------------------------------------------------------------
+-- Debugging Support 
+-------------------------------------------------------------------------------------------
+
+dbg :: Show a => String   -> Parser a    -> Parser a
+dbg txt (Parser p) = Parser $ Text.Megaparsec.Debug.dbg txt p
+
+parseTst :: Show a => Parser a -> Text -> IO ()
+parseTst (Parser p) = Text.Megaparsec.parseTest p
 -------------------------------------------------------------------------------------------
 -- Translating a Parse Error to an Error
 -------------------------------------------------------------------------------------------

@@ -2,4 +2,4 @@
 
 constructor B(CBV) : CBV;
 
-def foo[*] := B;
+def prd foo := B;

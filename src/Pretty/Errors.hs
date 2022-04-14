@@ -30,15 +30,17 @@ instance PrettyAnn LoweringError where
   prettyAnn (UnknownOperator op)                  = "Undefined type operator `" <> pretty op <> "`"
   prettyAnn (XtorArityMismatch xt ar1 ar2)        = vsep [ "Arity mismatch:"
                                                    , "  Constructor/Destructor:" <+> prettyAnn xt
-                                                   , "  Specified Arity:" <+> prettyAnn ar1
-                                                   , "  Used Arity:" <+> prettyAnn ar2
+                                                   , "  Specified Arity:" <+> pretty ar1
+                                                   , "  Used Arity:" <+> pretty ar2
                                                    ]
   prettyAnn (UndefinedPrimOp (pt, op))             = "Undefined primitive operator  " <> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
   prettyAnn (PrimOpArityMismatch (pt, op) ar1 ar2) = vsep [ "Arity mismatch:"
                                                    , "  Primitive operation:" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
-                                                   , "  Specified Arity:" <+> prettyAnn ar1
-                                                   , "  Used Arity:" <+> prettyAnn ar2
+                                                   , "  Specified Arity:" <+> pretty ar1
+                                                   , "  Used Arity:" <+> pretty ar2
                                                    ]
+  prettyAnn (CmdExpected t)                        = "Command expected: " <+> pretty t
+  prettyAnn (InvalidStar t)                        = "Invalid Star: " <+> pretty t
 
 instance PrettyAnn Error where
   prettyAnn (ParserErrorBundle errs)        = vsep (NE.toList (prettyAnn <$> errs))
@@ -48,7 +50,7 @@ instance PrettyAnn Error where
   prettyAnn (TypeAutomatonError loc err)    = prettyMaybeLoc loc <> "Type simplification error:" <+> pretty err
   prettyAnn (LowerError loc err)            = prettyMaybeLoc loc <> prettyAnn err
   prettyAnn (OtherError loc err)            = prettyMaybeLoc loc <> "Other Error:" <+> pretty err
-
+  prettyAnn (NoImplicitArg loc err)         = prettyMaybeLoc loc <> "No implicit arg: " <+> pretty err
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------

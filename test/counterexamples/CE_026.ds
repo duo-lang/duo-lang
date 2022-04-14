@@ -5,6 +5,6 @@ constructor True : CBV;
 constructor False : CBV;
 constructor Bar : CBV;
 
-def id[*] : { Ap(<True , False >)[<True , False>] } := cocase { Ap(x)[*] => x };
+def prd id : { Ap(<True , False >, return <True , False>) } := cocase { Ap(x,*) => x };
 
-def useId[*] : < Bar > := id.Ap(Bar)[*];
+def prd useId : < Bar > := id.Ap(Bar,*);

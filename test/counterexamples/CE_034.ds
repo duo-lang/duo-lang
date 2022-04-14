@@ -2,4 +2,4 @@
 
 destructor B(CBV) : CBV;
 
-def foo(*) := B;
+def cns foo := B;

@@ -1,6 +1,9 @@
 module Parser.Program
   ( declarationP
   , programP
+  , returnP
+  ,xtorDeclP
+  ,xtorSignatureP
   ) where
 
 import Control.Monad (void)
@@ -16,6 +19,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Utils
+import qualified Data.Maybe
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
@@ -35,8 +39,8 @@ prdCnsDeclarationP :: Maybe DocComment -> SourcePos -> PrdCns -> Parser Declarat
 prdCnsDeclarationP doc startPos pc = do
     (isRec, v) <- try $ do
       isRec <- isRecP
+      _ <- (case pc of Prd -> keywordP KwPrd ; Cns -> keywordP KwCns)
       (v, _pos) <- freeVarNameP
-      _ <- (case pc of Prd -> brackets (symbolP SymImplicit); Cns -> parens (symbolP SymImplicit))
       pure (isRec, v)
     annot <- annotP
     _ <- symbolP SymColoneq
@@ -47,10 +51,11 @@ prdCnsDeclarationP doc startPos pc = do
 cmdDeclarationP :: Maybe DocComment -> SourcePos -> Parser Declaration
 cmdDeclarationP doc startPos = do
     v <- try $ do
+      _ <- keywordP KwCmd
       (v, _pos) <- freeVarNameP
       _ <- symbolP SymColoneq
       pure v
-    (cmd,_) <- commandP
+    (cmd,_) <- termP
     endPos <- symbolP SymSemi
     pure (CmdDecl (Loc startPos endPos) doc v cmd)
 
@@ -124,24 +129,9 @@ tySynP doc = do
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
 
-xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
-xtorDeclP = do
-  (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  (args,_) <- argListsP False (fst <$> typP) <?> "argument list"
-  return (xt, args )
 
 
-argListToLctxt :: [(PrdCns, Typ)] -> LinearContext
-argListToLctxt = fmap convert
-  where
-    convert (Prd, ty) = PrdType ty
-    convert (Cns, ty) = CnsType ty
 
-combineXtor :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
-combineXtor (xt, args) = MkXtorSig xt (argListToLctxt args)
-
-combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
-combineXtors = fmap combineXtor
 
 dataCodataPrefixP :: Parser (IsRefined,DataCodata)
 dataCodataPrefixP = do
@@ -165,7 +155,7 @@ dataDeclP doc = do
         if refined == Refined && not (null (allTypeVars knd))
           then region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
           else pure (Just knd)
-    (xtors, _pos) <- braces $ xtorDeclP `sepBy` symbolP SymComma
+    (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
     endPos <- symbolP SymSemi
     let decl = NominalDecl
               { data_refined = refined
@@ -189,10 +179,10 @@ xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
-  (args, _) <- argListsP False monoKindP
+  args <- optional $ fst <$> (parens (returnP monoKindP `sepBy` symbolP SymComma) <?> "argument list") --argListsP False monoKindP
   ret <- optional (try (symbolP SymColon) >> evalOrderP)
   endPos <- symbolP SymSemi
-  pure (XtorDecl (Loc startPos endPos) doc dc xt args ret)
+  pure (XtorDecl (Loc startPos endPos) doc dc xt (Data.Maybe.fromMaybe [] args) ret)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program

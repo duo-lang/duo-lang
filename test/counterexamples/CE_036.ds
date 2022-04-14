@@ -3,4 +3,4 @@
 constructor A : CBV;
 destructor B(CBV) : CBV;
 
-def foo(*) := B(A,A);
+def cns foo := B(A,A);

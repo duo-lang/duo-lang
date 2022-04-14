@@ -12,62 +12,62 @@ import LinearLogic;
 -- cofunction and par types:
 
 codata Parser :  CBN {
-    Parse(List(Nat))[Unit ⅋ (Unit @ List(Nat) ) ]
+    Parse(List(Nat), return (Unit ⅋ (Unit @ List(Nat) )) )
 }; 
 
 
-def lit[*] : Nat -> Parser := \n => cocase {
-    Parse(xs)[m] => xs >> case {
+def prd lit : Nat -> Parser := \n => cocase {
+    Parse(xs,m) => xs >> case {
         Nil =>  throw MkUnit >> m,
         Cons(y, ys) => nateq y n >> case {
-            True => return CoAp(ys)[mu z.throw z >> m] >> m,
+            True => unit CoAp(ys,mu z.throw z >> m) >> m,
             False => throw MkUnit >> m
         }            
     } 
 } ; 
 
-def success[*] : Parser := cocase {
-    Parse(xs)[m] => return CoAp(xs)[mu z.throw z >> m]  >> m
+def prd success : Parser := cocase {
+    Parse(xs,m) => unit CoAp(xs,mu z.throw z >> m)  >> m
 };
 
-def failure[*] : Parser := cocase {
-    Parse(xs)[*] => throw MkUnit 
+def prd failure : Parser := cocase {
+    Parse(xs,*) => throw MkUnit 
 };
 
-def seq[*] : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs)[m] => 
+def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
+    Parse(xs,m) => 
       p1 >> 
-        Parse(xs)[  MkPar[case { MkUnit => throw MkUnit >> m} ,
-                           case { CoAp(l)[f] => p2 >> Parse(l)[MkPar[f,mu z. return z >> m]] }] ] };
+        Parse(xs,  MkPar(case { MkUnit => throw MkUnit >> m} ,
+                           case { CoAp(l,f) => p2 >> Parse(l,MkPar(f,mu z. unit z >> m)) }) ) };
 
-def alt[*] : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs)[m] => p1 >> Parse(xs)[MkPar[case { MkUnit => p2 >> Parse(xs)[m] },mu z. return z >> m] ]
+def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
+    Parse(xs,m) => p1 >> Parse(xs,MkPar(case { MkUnit => p2 >> Parse(xs,m) },mu z. unit z >> m) )
 };
 
 
-def rec many1[*] : Parser -> Parser := \p => cocase {
-    Parse(xs)[m] => p >> Parse(xs)[ MkPar[case { MkUnit => throw MkUnit >> m} , 
-                                            case { CoAp(l)[f2] => alt success (many1 p) >> Parse(l)[MkPar[f2, mu z. return z >> m]] }]]
+def rec prd many1 : Parser -> Parser := \p => cocase {
+    Parse(xs,m) => p >> Parse(xs, MkPar(case { MkUnit => throw MkUnit >> m} , 
+                                            case { CoAp(l,f2) => alt success (many1 p) >> Parse(l,MkPar(f2, mu z. unit z >> m)) }))
 };
 
-def many[*] : Parser -> Parser := \p => alt success (many1 p);
+def prd many : Parser -> Parser := \p => alt success (many1 p);
 
-def parseOneTwo[*] : Parser := seq (lit 1) (lit 2);
-def parseOneTwoThree[*] : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
+def prd parseOneTwo : Parser := seq (lit 1) (lit 2);
+def prd parseOneTwoThree : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
 
 -- (123 | 12 | 35)^* 5 6
-def parseComplicated[*] : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
+def prd parseComplicated : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
 
-def l4[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
-def l5[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
-def l6[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
-def l7[*] : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
-def l8[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
-def l9[*] : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
+def prd l4 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
+def prd l5 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
+def prd l6 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
+def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
+def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
+def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
-def test8  := parseComplicated >> Parse(l4)[MkPar[print,print]] ;
-def test9  := parseComplicated >> Parse(l5)[MkPar[print,print]] ;
-def test10 := parseComplicated >> Parse(l6)[MkPar[print,print]] ;
-def test11 := parseComplicated >> Parse(l7)[MkPar[print,print]] ;
-def test12 := parseComplicated >> Parse(l8)[MkPar[print,print]] ;
-def test13 := parseComplicated >> Parse(l9)[MkPar[print,print]] ;
+def cmd test8  := parseComplicated >> Parse(l4,MkPar(print,print)) ;
+def cmd test9  := parseComplicated >> Parse(l5,MkPar(print,print)) ;
+def cmd test10 := parseComplicated >> Parse(l6,MkPar(print,print)) ;
+def cmd test11 := parseComplicated >> Parse(l7,MkPar(print,print)) ;
+def cmd test12 := parseComplicated >> Parse(l8,MkPar(print,print)) ;
+def cmd test13 := parseComplicated >> Parse(l9,MkPar(print,print)) ;

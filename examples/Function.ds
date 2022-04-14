@@ -1,38 +1,41 @@
 -- Function Type
 
 codata Fun : (-a : CBV, +b : CBV) -> CBN {
-    Ap(a)[b]
+    Ap(a,return b)
 };
 
 type operator -> rightassoc at 0 := Fun;
 
 -- | The polymorphic identity function
-def id[*] : forall a. a -> a :=
+def prd id : forall a. a -> a :=
   \x => x;
 
 -- | Function composition
-def compose[*] :=
+def prd compose :=
   \f g x => f (g x);
 
 -- | Apply a function two times to its argument
-def twice[*] :=
+def prd twice :=
   \f x => f (f x);
 
 -- | Apply a function three times to its argument
-def thrice[*]  :=
+def prd thrice  :=
   \f x => f (f (f x));
 
-def fix[*] := cocase { Ap(f)[k] =>
-             cocase { Ap(x)[k] => f >>
-               Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] } >>
-                 Ap( cocase { Ap(x)[k] => f >>
-                   Ap( cocase { Ap(v)[k] => x >> Ap(x)[Ap(v)[k]] })[k] })[k] };
+def prd id2 : forall a. a -> a := 
+  cocase { Ap(x,y) => x >> y };
 
-def fixLazy[*] := cocase { Ap(f)[k] =>
-                 cocase { Ap(x)[k] => x >>
-                   Ap(x)[mu xx. f >> Ap(xx)[k]] } >>
-                      Ap(cocase { Ap(x)[k] => x >>
-                        Ap(x)[mu xx. f >> Ap(xx)[k]] })[k]};
+def prd fix := cocase { Ap(f,k) =>
+             cocase { Ap(x,k) => f >>
+               Ap( cocase { Ap(v,k) => x >> Ap(x,Ap(v,k)) },k) } >>
+                 Ap( cocase { Ap(x,k) => f >>
+                   Ap( cocase { Ap(v,k) => x >> Ap(x,Ap(v,k)) },k) },k) };
 
-def omega[*] :=
-  mu k.fixLazy >> Ap(id)[k];
+def prd fixLazy := cocase { Ap(f,k) =>
+                 cocase { Ap(x,k) => x >>
+                   Ap(x,mu xx. f >> Ap(xx,k)) } >>
+                      Ap(cocase { Ap(x,k) => x >>
+                        Ap(x,mu xx. f >> Ap(xx,k)) },k)};
+
+def prd omega :=
+  mu k.fixLazy >> Ap(id,k) ;

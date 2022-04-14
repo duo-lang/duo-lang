@@ -11,7 +11,7 @@ data Ordering {
     GT
 };
 
-def rec splitAt[*] : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
+def rec prd splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
     \n xs => case n of {
         Z => MkTensor(Nil, xs),
         S(n) => case xs of {
@@ -22,29 +22,29 @@ def rec splitAt[*] : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         }
     };
 
-def rec splitHalvesHelper[*] : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> Void :=
+def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> Void :=
     \xs ys k => case k of {
-        MkNot[k] => case xs of {
+        MkNot(k) => case xs of {
             Nil => mu j. MkTensor(Nil, ys) >> k,
             Cons(x1, xs) => case xs of {
                 Nil => mu j. MkTensor(Nil, ys) >> k,
                 Cons(x2, xs) => case ys of {
                     Nil => impossible,
-                    Cons(y, ys) => splitHalvesHelper xs ys (MkNot[
+                    Cons(y, ys) => splitHalvesHelper xs ys (MkNot(
                         mu tensor. case tensor of {
                             MkTensor(left, right) =>
                                 MkTensor(Cons(y, left), right)
                         } >> k
-                    ])
+                    ))
                 }
             }
         }
     };
 
-def splitHalves[*] : forall a. List(a) -> Tensor(List(a), List(a)) :=
-    \xs => mu k. splitHalvesHelper xs xs MkNot[k] >> impossible;
+def prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
+    \xs => mu k. splitHalvesHelper xs xs MkNot(k) >> impossible;
 
-def rec merge[*] : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
+def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
     \f left right => case left of {
         Nil => right,
         Cons(x, xs) => case right of {
@@ -57,7 +57,7 @@ def rec merge[*] : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(
         }
     };
 
-def rec sort[*] : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
+def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => case ys of {
@@ -68,7 +68,7 @@ def rec sort[*] : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
         }
     };
 
-def rec compare[*] : Nat -> Nat -> Ordering :=
+def rec prd compare : Nat -> Nat -> Ordering :=
     \x y => case x of {
         Z => case y of {
             Z => EQ,
@@ -82,6 +82,6 @@ def rec compare[*] : Nat -> Nat -> Ordering :=
 
 -- Examples
 
-def testlist[*] := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
+def prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
-def main := Print(sort compare testlist); ExitSuccess;
+def cmd main := Print(sort compare testlist); ExitSuccess;
