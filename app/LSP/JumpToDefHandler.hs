@@ -1,5 +1,7 @@
 module LSP.JumpToDefHandler where
 
+import Data.Map (Map)
+import Data.Map qualified as M
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Language.LSP.Types
 import Language.LSP.Server
@@ -12,7 +14,6 @@ import Data.Maybe
 
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
-import Utils
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 
@@ -34,8 +35,19 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
-            responder (generateJumpToDef uri pos prog)
+            responder (generateJumpToDef pos prog)
     
 
-generateJumpToDef :: Uri -> Position -> Program -> Either ResponseError (Location |? b)
-generateJumpToDef _ _ _ = (Right (InL (Location { _uri = undefined, _range = undefined})))
+generateJumpToDef :: Position -> Program -> Either ResponseError (Location |? b)
+generateJumpToDef pos prog = do
+    let jumpMap = toJumpMap prog
+    case lookupInRangeMap pos jumpMap of
+        Nothing -> (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing }))
+        Just loc -> Right (InL loc)
+
+class ToJumpMap a where
+    toJumpMap :: a -> Map Range Location
+
+
+instance ToJumpMap Program where
+    toJumpMap _prog = M.empty
