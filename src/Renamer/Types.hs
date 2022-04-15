@@ -60,11 +60,13 @@ renameTyp rep (TyNominal loc name args) = do
             pure $ RST.TyNominal loc rep Nothing name' args'
 renameTyp rep (TyRec loc v typ) =
     RST.TyRec loc rep v <$> renameTyp rep typ
-renameTyp PosRep (TyTop loc) = throwError (LowerError (Just loc) TopInPosPolarity)
+-- Lattice types    
+renameTyp PosRep (TyTop loc) =
+    throwError (LowerError (Just loc) TopInPosPolarity)
 renameTyp NegRep (TyTop loc) =
-    pure $ RST.TySet loc NegRep Nothing []
+    pure $ RST.TyTop loc Nothing
 renameTyp PosRep (TyBot loc) =
-    pure $ RST.TySet loc PosRep Nothing []
+    pure $ RST.TyBot loc Nothing
 renameTyp NegRep (TyBot loc) =
     throwError (LowerError (Just loc) BotInNegPolarity)
 renameTyp rep (TyBinOpChain fst rest) =
@@ -116,17 +118,13 @@ desugaring :: Loc -> PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> RenamerM
 desugaring loc PosRep UnionDesugaring tl tr = do
     tl <- renameTyp PosRep tl
     tr <- renameTyp PosRep tr
-    case tl of
-        RST.TySet loc rep k ts -> pure $ RST.TySet loc rep k (ts ++ [tr])
-        _ -> pure $ RST.TySet loc PosRep Nothing [tl, tr]
+    pure $ RST.TyUnion loc Nothing tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
     throwError (LowerError (Just loc) UnionInNegPolarity)
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- renameTyp NegRep tl
     tr <- renameTyp NegRep tr
-    case tl of
-        RST.TySet loc rep k ts -> pure $ RST.TySet loc rep k (ts ++ [tr])
-        _ -> pure $ RST.TySet loc NegRep Nothing [tl, tr]
+    pure $ RST.TyInter loc Nothing tl tr
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (LowerError (Just loc) IntersectionInPosPolarity)
 desugaring loc rep (NominalDesugaring tyname) tl tr = do

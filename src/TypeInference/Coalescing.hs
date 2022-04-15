@@ -74,8 +74,8 @@ coalesceType (TyVar _ PosRep _ tv) = do
             lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
             recVarMap <- gets snd
             case M.lookup (tv, Pos) recVarMap of
-                Nothing     -> return $                                 TySet defaultLoc PosRep Nothing (TyVar defaultLoc PosRep Nothing tv:lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (TySet defaultLoc PosRep Nothing (TyVar defaultLoc PosRep Nothing tv:lbs'))
+                Nothing     -> return $                                 mkUnion defaultLoc Nothing (TyVar defaultLoc PosRep Nothing tv:lbs')
+                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc Nothing (TyVar defaultLoc PosRep Nothing tv:lbs'))
 coalesceType (TyVar _ NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
@@ -88,8 +88,8 @@ coalesceType (TyVar _ NegRep _ tv) = do
             ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
             recVarMap <- gets snd
             case M.lookup (tv, Neg) recVarMap of
-                Nothing     -> return $                                 TySet defaultLoc NegRep Nothing (TyVar defaultLoc NegRep Nothing tv:ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (TySet defaultLoc NegRep Nothing (TyVar defaultLoc NegRep Nothing tv:ubs'))
+                Nothing     -> return $                                 mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs')
+                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs'))
 coalesceType (TyData loc rep tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData loc rep tn xtors')
@@ -100,9 +100,18 @@ coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TySet loc rep kind tys) = do
-    tys' <- sequence $ coalesceType <$> tys
-    return (TySet loc rep kind tys')
+coalesceType (TyTop loc knd) =
+    pure (TyTop loc knd)
+coalesceType (TyBot loc knd) =
+    pure (TyBot loc knd)
+coalesceType (TyUnion loc knd ty1 ty2) = do
+    ty1' <- coalesceType ty1
+    ty2' <- coalesceType ty2
+    pure (TyUnion loc knd ty1' ty2')
+coalesceType (TyInter loc knd ty1 ty2) = do
+    ty1' <- coalesceType ty1
+    ty2' <- coalesceType ty2
+    pure (TyInter loc knd ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     modify (\(i,m) -> (i, M.insert (tv, Pos) tv m))
     let f = (\(x,s) -> (x, S.insert (tv,Pos) s))

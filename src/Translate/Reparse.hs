@@ -330,18 +330,14 @@ embedType (RST.TyNominal loc _ _ nm args) =
   CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =
   CST.TyNominal loc (rnTnName nm) []
-embedType (RST.TySet loc PosRep _ []) =
+embedType (RST.TyTop loc _knd) =
   CST.TyTop loc
-embedType (RST.TySet loc PosRep _ [ty1,ty2]) =
-  CST.TyBinOp loc (embedType ty1) UnionOp (embedType ty2)
-embedType (RST.TySet loc PosRep knd (ty1:tys)) =
-  CST.TyBinOp loc (embedType ty1) UnionOp (embedType (RST.TySet loc PosRep knd tys))
-embedType (RST.TySet loc NegRep _ []) =
+embedType (RST.TyBot loc _knd) =
   CST.TyBot loc
-embedType (RST.TySet loc NegRep _ [ty1,ty2]) =
-  CST.TyBinOp loc (embedType ty1) InterOp (embedType ty2)
-embedType (RST.TySet loc NegRep knd (ty1:tys)) =
-  CST.TyBinOp loc (embedType ty1) InterOp (embedType (RST.TySet loc NegRep knd tys))
+embedType (RST.TyUnion loc _knd ty ty') =
+  CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
+embedType (RST.TyInter loc _knd ty ty') =
+  CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
 embedType (RST.TyRec loc _ tv ty) =
   CST.TyRec loc tv (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
