@@ -86,7 +86,7 @@ createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGrap
                                       fp <- findModule mn defaultLoc
                                       file <- liftIO $ T.readFile fp
                                       decls <- runFileParser fp programP file
-                                      symTable <- createSymbolTable decls
+                                      symTable <- createSymbolTable mn decls
                                       let importedModules :: [ModuleName] = fst <$> imports symTable
                                       -- We have to insert all the imported module names
                                       let (nodes, depGraph'') = lookupOrInserts depGraph' importedModules

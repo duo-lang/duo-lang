@@ -26,15 +26,15 @@ renameXtors sigs = do
 
 renameDataDecl :: Loc -> CST.DataDecl -> RenamerM RST.DataDecl
 renameDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
-  (data_name',_) <- lookupTypeConstructor loc data_name
+  NominalResult data_name' _ _ _ <- lookupTypeConstructor loc data_name
   -- Default the kind if none was specified:
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
   let g :: TypeNameResolve -> TypeNameResolve
-      g (SynonymResult ty) = SynonymResult ty
-      g (NominalResult dc _ polykind) = NominalResult dc NotRefined polykind
+      g (SynonymResult tn ty) = SynonymResult tn ty
+      g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
   let f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
       f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
   xtors <- local f (renameXtors data_xtors)
@@ -76,7 +76,7 @@ renameDecl (CST.ImportDecl loc doc mod) = do
 renameDecl (CST.SetDecl loc doc txt) =
   pure $ RST.SetDecl loc doc txt
 renameDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
-  (tyname',_) <- lookupTypeConstructor loc tyname
+  NominalResult tyname' _ _ _ <- lookupTypeConstructor loc tyname
   pure $ RST.TyOpDecl loc doc op prec assoc tyname'
 renameDecl (CST.TySynDecl loc doc nm ty) = do
   typ <- renameTyp PosRep ty

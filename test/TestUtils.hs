@@ -10,6 +10,7 @@ import Driver.Environment
 import Errors
 import Parser.Parser
 import Renamer.SymbolTable
+import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
 
@@ -50,5 +51,5 @@ getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable decls))
+    Right decls -> pure (runExcept (createSymbolTable (MkModuleName "<BOOM>") decls))
     Left err -> return (Left err)

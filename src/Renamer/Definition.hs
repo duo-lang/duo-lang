@@ -25,6 +25,9 @@ type RenameReader = Map ModuleName SymbolTable
 newtype RenamerM a = MkRenamerM { unRenamerM :: ReaderT RenameReader (Except Error) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadReader RenameReader)
 
+instance MonadFail RenamerM where
+  fail str = throwError (OtherError Nothing (T.pack str))
+
 runRenamerM :: RenameReader -> RenamerM a -> Either Error a
 runRenamerM reader action = runExcept (runReaderT (unRenamerM action) reader)
 
@@ -58,7 +61,7 @@ lookupTypeConstructor :: Loc
                       -- ^ The location of the typename to be looked up
                       -> TypeName
                       -- ^ The typename to look up
-                      -> RenamerM (RnTypeName, TypeNameResolve)
+                      -> RenamerM TypeNameResolve
                       -- ^ The renamed typename, and the relevant info.
 lookupTypeConstructor loc tn = do
     symbolTables <- M.toList <$> ask
@@ -66,8 +69,8 @@ lookupTypeConstructor loc tn = do
         results = second (\st -> M.lookup tn (typeNameMap st)) <$> symbolTables
     case filterJusts results of
       []         -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " not found in symbol table."))
-      [(mn,res)] -> pure (MkRnTypeName defaultLoc mn tn, res)
-      xs          -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))))
+      [(_,res)]  -> pure res
+      xs         -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))))
 
 -- | Type operator for the union type
 unionTyOp :: TyOp
