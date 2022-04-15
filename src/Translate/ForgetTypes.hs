@@ -56,10 +56,6 @@ forgetTypesTerm (AST.XMatch loc pc _annot ns cases) =
     RST.XMatch loc pc ns (forgetTypesCmdCase <$> cases)
 forgetTypesTerm (AST.MuAbs loc pc _annot bs cmd) =
     RST.MuAbs loc pc bs (forgetTypesCommand cmd)
-forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =
-    RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
-forgetTypesTerm (AST.CocasePrdI loc _annot ns cases) =
-    RST.Cocase loc ns (forgetTypesTermCaseI <$> cases)
 forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 forgetTypesTerm (AST.PrimLitF64 loc d) =

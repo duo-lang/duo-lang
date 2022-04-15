@@ -86,10 +86,6 @@ openTermComplete (RST.MuAbs loc CnsRep (Just fv) cmd) =
   RST.MuAbs loc CnsRep (Just fv) (RST.commandOpening [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] (openCommandComplete cmd))
 openTermComplete (RST.MuAbs _ _ Nothing _) =
   error "Create names first!"
-openTermComplete (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
-  RST.Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
-openTermComplete (RST.Cocase loc ns cocases) =
-  RST.Cocase loc ns (openTermCaseI <$> cocases)
 openTermComplete (RST.PrimLitI64 loc i) =
   RST.PrimLitI64 loc i
 openTermComplete (RST.PrimLitF64 loc d) =
@@ -153,14 +149,6 @@ createNamesTerm (RST.MuAbs loc pc _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
   pure $ RST.MuAbs loc pc var cmd'
-createNamesTerm (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
-  e' <- createNamesTerm e
-  subst1' <- createNamesSubstitution subst1
-  subst2' <- createNamesSubstitution subst2
-  pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
-createNamesTerm (RST.Cocase loc ns cases) = do
-  cases' <- sequence (createNamesTermCaseI <$> cases)
-  pure $ RST.Cocase loc ns cases'
 createNamesTerm (RST.PrimLitI64 loc i) =
   pure (RST.PrimLitI64 loc i)
 createNamesTerm (RST.PrimLitF64 loc d) =
@@ -234,10 +222,6 @@ embedTerm (RST.XMatch loc CnsRep _ cases) =
   CST.XCase loc Data Nothing (embedCmdCase <$> cases)
 embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
-embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
-  CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
-embedTerm (RST.Cocase loc _ cases) =
-  CST.XCase loc Codata Nothing (embedTermCaseI <$> cases)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
 embedTerm (RST.PrimLitF64 loc d) =

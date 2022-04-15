@@ -147,7 +147,7 @@ data Term (pc :: PrdCns) where
   --
   -- Syntactic Sugar
   --
-  Dtor :: Loc -> PrdCnsRep pc -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
+  --Dtor :: Loc -> PrdCnsRep pc -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
   -- | A pattern match:
   --
   -- case e of { ... }
@@ -157,7 +157,7 @@ data Term (pc :: PrdCns) where
   --
   -- cocase { ... }
   --
-  Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
+  --Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -221,14 +221,6 @@ termOpeningRec k args (XMatch loc rep ns cases) =
 termOpeningRec k args (MuAbs loc rep fv cmd) =
   MuAbs loc rep fv (commandOpeningRec (k+1) args cmd)
 -- ATerms
-termOpeningRec k args (Dtor loc rep ns xt t (args1,pcrep,args2)) =
-  let
-    args1' = pctermOpeningRec k args <$> args1
-    args2' = pctermOpeningRec k args <$> args2
-  in
-    Dtor loc rep ns xt (termOpeningRec k args t) (args1', pcrep, args2')
-termOpeningRec k args (Cocase loc ns cocases) =
-  Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
 
@@ -269,14 +261,6 @@ termClosingRec k vars (XMatch loc pc sn cases) =
 termClosingRec k vars (MuAbs loc pc fv cmd) =
   MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
 -- ATerms
-termClosingRec k args (Dtor loc pc ns xt t (args1,pcrep,args2)) =
-  let
-    args1' = pctermClosingRec k args <$> args1
-    args2' = pctermClosingRec k args <$> args2
-  in
-    Dtor loc pc ns xt (termClosingRec k args t) (args1', pcrep, args2')
-termClosingRec k args (Cocase loc ns cocases) =
-  Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
@@ -316,10 +300,9 @@ shiftTermRec n (XMatch loc pcrep ns cases) =
   XMatch loc pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
 shiftTermRec n (MuAbs loc pcrep bs cmd) =
   MuAbs loc pcrep bs (shiftCmdRec (n + 1) cmd)
-shiftTermRec n (Dtor loc pcrep ns xt e (args1,pcrep',args2)) =
-  Dtor loc pcrep ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2)
 shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
+--shiftTermRec n (Cocase loc ns cases) = Cocase loc ns (shiftPCTermRec n <$> subst) 
 
 shiftTermCaseRec :: Int -> TermCase pc -> TermCase pc
 shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)

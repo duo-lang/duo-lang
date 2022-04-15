@@ -18,6 +18,7 @@ import qualified Syntax.Common as CST
 import qualified Syntax.CST.Terms as CST.Terms
 import qualified Data.Text as T
 import qualified Syntax.RST.Desugar as RST
+import Syntax.RST.Desugar (dtorD)
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -164,7 +165,7 @@ renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc 
 renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
 renameLambda loc var tm = do
   tm' <- renameTerm PrdRep tm
-  pure $ RST.Cocase loc Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
+  pure $ RST.cocaseD loc Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
                                                       ([(Prd, Just var)], (), [])
                                                       (RST.termClosing [(Prd, var)] tm')
                                 ]
@@ -181,7 +182,7 @@ renameApp :: Loc -> CST.Term -> CST.Term -> RenamerM (RST.Term Prd)
 renameApp loc fun arg = do
   fun' <- renameTerm PrdRep fun
   arg' <- renameTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
+  pure $ dtorD loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
@@ -244,7 +245,7 @@ renameTerm PrdRep (CST.XCase loc dc Nothing cases)  = do
     AllConsumerStar -> do
       cases' <- sequence (renameTermCaseI <$> cases)
       ns <- termCasesToNS cases
-      pure $ RST.Cocase loc ns cases'
+      pure $ RST.cocaseD loc ns cases'
     AllProducerStar -> error "not yet implemented"
 renameTerm CnsRep (CST.XCase loc dc Nothing cases)  = do
   c <- analyzeTermCases cases
@@ -301,7 +302,7 @@ renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
   -- there must be exactly one star
   args1' <- renameTerms loc ar1 args1
   args2' <- renameTerms loc ar2 args2
-  pure $ RST.Dtor loc PrdRep ns xtor tm' (args1',PrdRep,args2')
+  pure $ dtorD loc PrdRep ns xtor tm' (args1',PrdRep,args2')
 renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
   throwError (OtherError (Just loc) "Cannot rename Dtor to a consumer (TODO).")
 renameTerm rep    (CST.DtorChain pos tm dtors) =
