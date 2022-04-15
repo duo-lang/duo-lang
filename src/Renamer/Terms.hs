@@ -17,6 +17,7 @@ import Control.Monad (when)
 import qualified Syntax.Common as CST
 import qualified Syntax.CST.Terms as CST.Terms
 import qualified Data.Text as T
+import qualified Syntax.RST.Desugar as RST
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -258,7 +259,7 @@ renameTerm PrdRep (CST.XCase loc Data (Just t) cases)  = do
   cases' <- sequence (renameTermCase <$> cases)
   t' <- renameTerm PrdRep t
   ns <- commandCasesToNS cases
-  pure $ RST.Case loc ns t' cases'
+  pure $ RST.caseD loc ns t' cases'
 renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')

@@ -88,8 +88,6 @@ openTermComplete (RST.MuAbs _ _ Nothing _) =
   error "Create names first!"
 openTermComplete (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
   RST.Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
-openTermComplete (RST.Case loc ns t cases) =
-  RST.Case loc ns (openTermComplete t) (openTermCase <$> cases)
 openTermComplete (RST.Cocase loc ns cocases) =
   RST.Cocase loc ns (openTermCaseI <$> cocases)
 openTermComplete (RST.PrimLitI64 loc i) =
@@ -160,10 +158,6 @@ createNamesTerm (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
   subst1' <- createNamesSubstitution subst1
   subst2' <- createNamesSubstitution subst2
   pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
-createNamesTerm (RST.Case loc ns e cases) = do
-  e' <- createNamesTerm e
-  cases' <- sequence (createNamesTermCase <$> cases)
-  pure $ RST.Case loc ns e' cases'
 createNamesTerm (RST.Cocase loc ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
   pure $ RST.Cocase loc ns cases'
@@ -197,13 +191,13 @@ createNamesCommand (RST.PrimOp loc pt pop subst) = do
 createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
 createNamesCmdCase RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } = do
   cmd' <- createNamesCommand cmdcase_cmd
-  args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
+  args <- sequence $ (\(pc,_) -> fresh pc >>= \v -> return (pc,v)) <$> cmdcase_args
   return $ RST.MkCmdCase defaultLoc cmdcase_name args cmd'
 
 createNamesTermCase :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
 createNamesTermCase (RST.MkTermCase _ xt args e) = do
   e' <- createNamesTerm e
-  args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
+  args' <- sequence $ (\(pc,_) -> fresh pc >>= \v -> return (pc,v)) <$> args
   return $ RST.MkTermCase defaultLoc xt args' e'
 
 createNamesTermCaseI :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
@@ -242,8 +236,6 @@ embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
 embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
   CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
-embedTerm (RST.Case loc _ tm cases) =
-  CST.XCase loc Data (Just $ embedTerm tm) (embedTermCase <$> cases)
 embedTerm (RST.Cocase loc _ cases) =
   CST.XCase loc Codata Nothing (embedTermCaseI <$> cases)
 embedTerm (RST.PrimLitI64 loc i) =
