@@ -10,6 +10,7 @@ import LSP.Definition
 import LSP.MegaparsecToLSP
 import System.Log.Logger
 import Syntax.AST.Program
+import Syntax.Common
 import Data.Maybe
 
 import Driver.Definition
@@ -30,7 +31,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
       Right decls -> do
-        res <- liftIO $ inferProgramIO defaultDriverState decls
+        res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
         case res of
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
@@ -45,9 +46,30 @@ generateJumpToDef pos prog = do
         Nothing -> (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing }))
         Just loc -> Right (InL loc)
 
+
+class ToLocation a where
+  toLocation :: a -> Location
+
 class ToJumpMap a where
     toJumpMap :: a -> Map Range Location
 
 
 instance ToJumpMap Program where
-    toJumpMap _prog = M.empty
+  toJumpMap prog = M.unions (toJumpMap <$> prog)
+
+instance ToJumpMap Declaration where
+  toJumpMap PrdCnsDecl {} = M.empty
+  toJumpMap CmdDecl {} = M.empty
+  toJumpMap DataDecl {} = M.empty
+  toJumpMap XtorDecl {} = M.empty
+  toJumpMap ImportDecl {} = M.empty
+  toJumpMap SetDecl {} = M.empty
+  toJumpMap (TyOpDecl loc _ _ _ _ rnTn) = M.fromList [(locToRange loc, toLocation rnTn)]
+  toJumpMap TySynDecl {} = M.empty
+
+instance ToLocation RnTypeName where
+  toLocation (MkRnTypeName { rnTnLoc, rnTnModule }) =
+    let rng = locToRange rnTnLoc
+    in  Location { _uri = Uri $ "" <> unModuleName rnTnModule
+                 , _range = rng
+                 }

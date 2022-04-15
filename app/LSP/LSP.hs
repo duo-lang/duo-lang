@@ -35,6 +35,7 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Driver.Driver
 import Utils
+import Syntax.Common
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
 import LSP.Handler.CodeAction ( codeActionHandler )
@@ -203,7 +204,7 @@ publishErrors uri = do
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
         Right decls -> do
-          res <- liftIO $ inferProgramIO defaultDriverState decls
+          res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
           case res of
             Left err -> do
               sendLocatedError (toNormalizedUri uri) err

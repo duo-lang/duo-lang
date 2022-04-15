@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import System.Console.Repline ( fileCompleter )
 
+import Syntax.Common
 import Parser.Parser ( programP )
 import Pretty.Errors (printLocatedError)
 import Repl.Repl
@@ -37,7 +38,7 @@ loadFile fp = do
   decls <- parseFile fp programP
   opts <- gets typeInfOpts
   let ds :: DriverState = defaultDriverState { driverOpts = opts }
-  res <- liftIO $ inferProgramIO ds decls
+  res <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") decls
   case res of
     Left err -> printLocatedError err
     Right (newEnv,_) -> do

@@ -22,7 +22,7 @@ testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ e
     Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
     Right decls -> do
       let focusedDecls :: CST.Program = reparseProgram $ embedCoreProg $ focusProgram cbx (desugarProgram decls)
-      res <- runIO $ inferProgramIO defaultDriverState focusedDecls
+      res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") focusedDecls
       case res of
         Left err -> do
            let msg = unlines [ "---------------------------------"

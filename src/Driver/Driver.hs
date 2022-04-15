@@ -213,12 +213,13 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 
 
 inferProgramIO  :: DriverState -- ^ Initial State
+                -> ModuleName
                 -> [CST.Declaration]
                 -> IO (Either Error (Environment, AST.Program))
-inferProgramIO state decls = do
+inferProgramIO state mn decls = do
   let action :: DriverM (AST.Program)
       action = do
-        st <- createSymbolTable (MkModuleName "<BOOM>") decls
+        st <- createSymbolTable mn decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
