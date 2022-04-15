@@ -36,10 +36,10 @@ import Pretty.Program ()
 import Driver.Driver
 import Utils
 import LSP.Definition
-import LSP.HoverHandler ( hoverHandler, updateHoverCache )
-import LSP.CodeActionHandler ( codeActionHandler )
-import LSP.CompletionHandler ( completionHandler )
-import LSP.JumpToDefHandler ( jumpToDefHandler )
+import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
+import LSP.Handler.CodeAction ( codeActionHandler )
+import LSP.Handler.Completion ( completionHandler )
+import LSP.Handler.JumpToDef ( jumpToDefHandler )
 
 ---------------------------------------------------------------------------------
 -- Static configuration of the LSP Server

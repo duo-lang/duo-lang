@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
-module LSP.CodeActionHandler (codeActionHandler) where
+module LSP.Handler.CodeAction (codeActionHandler) where
 
 import Language.LSP.Types
 import Language.LSP.Server

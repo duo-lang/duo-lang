@@ -1,4 +1,4 @@
-module LSP.JumpToDefHandler where
+module LSP.Handler.JumpToDef ( jumpToDefHandler ) where
 
 import Data.Map (Map)
 import Data.Map qualified as M

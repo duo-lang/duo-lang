@@ -1,4 +1,4 @@
-module LSP.HoverHandler
+module LSP.Handler.Hover
   ( hoverHandler
   , updateHoverCache
   ) where
