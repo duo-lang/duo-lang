@@ -74,8 +74,6 @@ forgetTypesTerm (AST.CocaseCns _loc _rep _annot _ns _t _tmcasesI) =
     error "not yet implemented" 
 forgetTypesTerm (AST.CocaseCnsI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
-forgetTypesTerm (AST.Case _loc CnsRep _annot _ns _tm _cases) =
-    error "not yet implemented"
 
 forgetTypesCommand :: AST.Command -> RST.Command
 forgetTypesCommand (AST.Apply loc _kind prd cns) =

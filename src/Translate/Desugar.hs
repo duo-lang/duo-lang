@@ -40,7 +40,6 @@ isDesugaredTerm AST.PrimLitI64{} = True
 isDesugaredTerm AST.PrimLitF64{} = True
 -- Non-core terms
 isDesugaredTerm AST.Dtor{} = False
-isDesugaredTerm AST.Case {} = False
 isDesugaredTerm AST.CocaseCns {} = False
 isDesugaredTerm AST.CocasePrdI {} = False
 isDesugaredTerm AST.CaseCnsPrdI {} = False
@@ -112,20 +111,6 @@ desugarTerm (AST.Dtor loc _ _ ns xt t (args1,CnsRep,args2)) =
                                 (Core.Xtor loc CnsRep ns xt args)
   in
     Core.MuAbs loc CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd cmd
--- we want to desugar match t { C (args) => e1 }
--- Mu k.[ (desugar t) >> match {C (args) => (desugar e1) >> k } ]
-desugarTerm (AST.Case loc PrdRep _ ns t cases)   =
-  let
-    desugarMatchCase (AST.MkTermCase _ xt args t) = Core.MkCmdCase loc xt args  $ Core.Apply loc Nothing (desugarTerm t) (Core.FreeVar loc CnsRep resVar)
-    cmd = Core.Apply loc Nothing (desugarTerm t) (Core.XMatch loc CnsRep ns  (desugarMatchCase <$> cases))
-  in
-    Core.MuAbs loc PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
-desugarTerm (AST.Case loc CnsRep _ ns t cases)   =
-  let
-    desugarMatchCase (AST.MkTermCase _ xt args t) = Core.MkCmdCase loc xt args  $ Core.Apply loc Nothing (Core.FreeVar loc PrdRep  resVar) (desugarTerm t)
-    cmd = Core.Apply loc Nothing (desugarTerm t) (Core.XMatch loc CnsRep ns  (desugarMatchCase <$> cases))
-  in
-    Core.MuAbs loc CnsRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
 -- we want to desugar comatch { D(args) => e }
 -- comatch { D(args)[k] => (desugar e) >> k }
 desugarTerm (AST.CocasePrdI loc _ ns cocases) =

@@ -171,8 +171,6 @@ instance ToHoverMap (Term pc) where
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
   toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2)) =
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
-  toHoverMap (Case loc _ ty ns e cases) =
-    M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
   toHoverMap (CocasePrdI loc ty ns cocases) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (CocaseCnsI loc ty ns cocases) =
