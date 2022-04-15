@@ -1,11 +1,10 @@
-module LSP.HoverHandler
+module LSP.Handler.Hover
   ( hoverHandler
   , updateHoverCache
   ) where
 
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.IORef (readIORef, modifyIORef)
-import Data.List (sortBy )
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text (Text)
@@ -40,52 +39,13 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Nothing -> do
       sendInfo ("Hover Cache not initialized for: " <> T.pack (show uri))
       responder (Right Nothing)
-    Just cache -> responder (Right (lookupInHoverMap pos cache))
+    Just cache -> responder (Right (lookupInRangeMap pos cache))
 
 
 updateHoverCache :: Uri -> AST.Program -> LSPMonad ()
 updateHoverCache uri prog = do
   MkLSPConfig ref <- getConfig
   liftIO $ modifyIORef ref (M.insert uri (toHoverMap prog))
-
----------------------------------------------------------------------------------
--- Computations on positions and ranges
----------------------------------------------------------------------------------
-
--- Define an ordering on Positions
-positionOrd :: Position -> Position -> Ordering
-positionOrd (Position line1 column1) (Position line2 column2) =
-  case compare line1 line2 of
-    LT -> LT
-    EQ -> compare column1 column2
-    GT -> GT
-
--- | Check whether the first position comes textually before the second position.
-before :: Position -> Position -> Bool
-before pos1 pos2 = case positionOrd pos1 pos2 of
-  LT -> True
-  EQ -> True
-  GT -> False
-
--- | Check whether a given position lies within a given range
-inRange :: Position -> Range -> Bool
-inRange pos (Range startPos endPos) = before startPos pos && before pos endPos
-
--- | Order ranges according to their starting position
-rangeOrd :: Range -> Range -> Ordering
-rangeOrd (Range start1 _) (Range start2 _) = positionOrd start1 start2
-
-lookupInHoverMap :: Position -> HoverMap -> Maybe Hover
-lookupInHoverMap pos map =
-  let
-    withinRange :: [(Range, Hover)] = M.toList $ M.filterWithKey (\k _ -> inRange pos k) map
-    -- | Sort them so that the range starting with the latest(!) starting position
-    -- comes first.
-    withinRangeOrdered = sortBy (\(r1,_) (r2,_) -> rangeOrd r2 r1) withinRange
-  in
-    case withinRangeOrdered of
-      [] -> Nothing
-      ((_,ho):_) -> Just ho
 
 ---------------------------------------------------------------------------------
 -- Generating HoverMaps
@@ -332,6 +292,7 @@ instance ToHoverMap (Typ pol) where
     let
       msg = T.unlines [ "#### Nominal type"
                       , "- Name: `" <> ppPrint tn <> "`"
+                      , "- Doc: " <> maybe "" ppPrint (rnTnDoc tn)
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in
@@ -340,6 +301,7 @@ instance ToHoverMap (Typ pol) where
     let
       msg = T.unlines [ "#### Type synonym"
                       , "- Name: `" <> ppPrint nm <> "`"
+                      , "- Doc: " <> maybe "" ppPrint (rnTnDoc nm)
                       , "- Definition: `" <> ppPrint ty <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]

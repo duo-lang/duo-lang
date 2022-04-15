@@ -2,6 +2,7 @@ module TestUtils where
 
 import Control.Monad.Except
 import Data.Text.IO qualified as T
+import Data.Text qualified as T
 import System.Directory (listDirectory)
 
 import Driver.Definition
@@ -10,6 +11,7 @@ import Driver.Environment
 import Errors
 import Parser.Parser
 import Renamer.SymbolTable
+import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
 
@@ -35,7 +37,7 @@ getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> inferProgramIO defaultDriverState decls
+      fmap snd <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls
     Left err -> return (Left err)
 
 getEnvironment :: FilePath -> IO (Either Error Environment)
@@ -43,12 +45,12 @@ getEnvironment fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap fst <$> inferProgramIO defaultDriverState decls
+      fmap fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable decls))
+    Right decls -> pure (runExcept (createSymbolTable (MkModuleName "<BOOM>") decls))
     Left err -> return (Left err)

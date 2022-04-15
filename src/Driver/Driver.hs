@@ -196,7 +196,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       file <- liftIO $ T.readFile fp
       decls <- runFileParser fp programP file
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- createSymbolTable decls
+      st <- createSymbolTable mn decls
       addSymboltable mn st
       -- 3. Rename the declarations.
       sts <- getSymbolTables
@@ -213,12 +213,13 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 
 
 inferProgramIO  :: DriverState -- ^ Initial State
+                -> ModuleName
                 -> [CST.Declaration]
                 -> IO (Either Error (Environment, AST.Program))
-inferProgramIO state decls = do
+inferProgramIO state mn decls = do
   let action :: DriverM (AST.Program)
       action = do
-        st <- createSymbolTable decls
+        st <- createSymbolTable mn decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables

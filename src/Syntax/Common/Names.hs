@@ -18,8 +18,12 @@ newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
 
 -- | Renamed TypeName
 -- rnTnLoc contains location of definition site.
-data RnTypeName = MkRnTypeName { rnTnLoc :: Loc, rnTnModule :: ModuleName, rnTnName :: TypeName }
+data RnTypeName = MkRnTypeName { rnTnLoc :: Loc, rnTnDoc :: Maybe DocComment, rnTnModule :: ModuleName, rnTnName :: TypeName }
   deriving (Show, Ord, Eq)
+
+
+peanoNm :: RnTypeName
+peanoNm = MkRnTypeName defaultLoc Nothing (MkModuleName "Peano")(MkTypeName "Nat")
 
 -- | Name of a free variable. Starts with a lowercase letter.
 newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show)

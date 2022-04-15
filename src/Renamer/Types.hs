@@ -33,7 +33,7 @@ renameTyp rep (TyXData loc Data Nothing sigs) = do
     pure $ RST.TyData loc rep Nothing sigs
 -- Refinement Data
 renameTyp rep (TyXData loc Data (Just tn) sigs) = do
-    (tn',_) <- lookupTypeConstructor loc tn
+    NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- renameXTorSigs rep sigs
     pure $ RST.TyData loc rep (Just tn') sigs
 -- Nominal Codata
@@ -42,20 +42,20 @@ renameTyp rep (TyXData loc Codata Nothing sigs) = do
     pure $ RST.TyCodata loc rep Nothing sigs
 -- Refinement Codata
 renameTyp rep (TyXData loc Codata (Just tn) sigs) = do
-    (tn',_) <- lookupTypeConstructor loc tn
+    NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- renameXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodata loc rep (Just tn') sigs
 renameTyp rep (TyNominal loc name args) = do
     res <- lookupTypeConstructor loc name
     case res of
-        (name', SynonymResult typ) -> case args of
+        SynonymResult name' typ -> case args of
             [] -> do
                 typ' <- renameTyp rep typ
                 pure $ RST.TySyn loc rep name' typ'
             _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
-        (_, NominalResult _ Refined _) -> do
+        NominalResult _ _ Refined _ -> do
             throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")
-        (name', NominalResult _ NotRefined polykind) -> do
+        NominalResult name' _ NotRefined polykind -> do
             args' <- renameTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 renameTyp rep (TyRec loc v typ) =

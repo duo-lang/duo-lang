@@ -7,6 +7,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Errors ()
 import Pretty.Program ()
+import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Translate.Desugar
 import Translate.EmbedCore
@@ -26,7 +27,7 @@ spec = do
             Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
             Right decls -> do
               let desugaredDecls :: CST.Program = reparseProgram $ embedCoreProg $ desugarProgram decls
-              res <- runIO $ inferProgramIO defaultDriverState desugaredDecls
+              res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") desugaredDecls
               case res of
                 Left err -> do
                   let msg = unlines [ "---------------------------------"

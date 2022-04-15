@@ -103,7 +103,7 @@ cmd s = do
   oldEnv <- gets replEnv
   opts <- gets typeInfOpts
   let ds :: DriverState = defaultDriverState { driverOpts = opts, driverEnv = oldEnv }
-  inferredCmd <- liftIO $ inferProgramIO ds [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
+  inferredCmd <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ _ inferredCmd]) -> do
       evalOrder <- gets evalOrder

@@ -1,4 +1,4 @@
-module LSP.CompletionHandler (completionHandler) where
+module LSP.Handler.Completion (completionHandler) where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Text (Text)

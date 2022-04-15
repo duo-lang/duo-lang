@@ -65,6 +65,7 @@ common shared-lang-options
                      KindSignatures,
                      StandaloneDeriving,
                      TypeFamilies,
+                     TypeOperators,
                      ViewPatterns,
                      GeneralizedNewtypeDeriving,
                      LambdaCase,
@@ -182,11 +183,12 @@ executable dualsub
   other-modules:
       Compile
       Deps
-      LSP.LSP
       LSP.Definition
-      LSP.CodeActionHandler
-      LSP.CompletionHandler
-      LSP.HoverHandler
+      LSP.Handler.CodeAction
+      LSP.Handler.Completion
+      LSP.Handler.Hover
+      LSP.Handler.JumpToDef
+      LSP.LSP
       LSP.MegaparsecToLSP
       Options
       Repl.Repl
