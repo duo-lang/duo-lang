@@ -98,10 +98,14 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         return $ case typs of [t] -> PrdCnsType PrdRep t; _ -> PrdCnsType PrdRep (TySet defaultLoc rep Nothing typs)
+         pure $ PrdCnsType PrdRep $ case rep of
+                                       PosRep -> mkUnion defaultLoc Nothing typs
+                                       NegRep -> mkInter defaultLoc Nothing typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         return $ case typs of [t] -> PrdCnsType CnsRep t; _ -> PrdCnsType CnsRep (TySet defaultLoc (flipPolarityRep rep) Nothing typs)
+         pure $ PrdCnsType CnsRep $ case rep of
+                                       PosRep -> mkInter defaultLoc Nothing typs
+                                       NegRep -> mkUnion defaultLoc Nothing typs
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
@@ -176,7 +180,9 @@ nodeToTypeNoCache rep i = do
     let prims = TyPrim defaultLoc rep <$> S.toList tps
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
-    return $ case typs of [t] -> t; _ -> TySet defaultLoc rep Nothing typs
+    return $ case rep of
+      PosRep -> mkUnion defaultLoc Nothing typs
+      NegRep -> mkInter defaultLoc Nothing typs
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr

@@ -90,15 +90,20 @@ data Typ (pol :: Polarity) where
   TyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> TVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
-  TyData :: Loc -> PolarityRep pol -> Maybe RnTypeName -> [XtorSig pol]   -> Typ pol
+  TyData   :: Loc -> PolarityRep pol -> Maybe RnTypeName -> [XtorSig pol]   -> Typ pol
   TyCodata :: Loc -> PolarityRep pol -> Maybe RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal :: Loc -> PolarityRep pol -> Maybe MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
   TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
-  -- | PosRep = Union, NegRep = Intersection
-  TySet :: Loc -> PolarityRep pol -> Maybe MonoKind -> [Typ pol] -> Typ pol
+  -- | Lattice types
+  TyBot :: Loc -> Maybe MonoKind -> Typ Pos
+  TyTop :: Loc -> Maybe MonoKind -> Typ Neg
+  TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
+  -- | Equirecursive Types
   TyRec :: Loc -> PolarityRep pol -> TVar -> Typ pol -> Typ pol
+  -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
 
 deriving instance Eq (Typ Pos)
@@ -108,13 +113,26 @@ deriving instance Ord (Typ Neg)
 deriving instance Show (Typ Pos)
 deriving instance Show (Typ Neg)
 
+mkUnion :: Loc -> Maybe MonoKind -> [Typ Pos] -> Typ Pos
+mkUnion loc knd []     = TyBot loc knd
+mkUnion _   _   [t]    = t
+mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
+
+mkInter :: Loc -> Maybe MonoKind -> [Typ Neg] -> Typ Neg
+mkInter loc knd []     = TyTop loc knd
+mkInter _   _   [t]    = t
+mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
+
 getPolarity :: Typ pol -> PolarityRep pol
 getPolarity (TyVar _ rep _ _)         = rep
 getPolarity (TyData _ rep _ _)        = rep
 getPolarity (TyCodata _ rep _ _)      = rep
 getPolarity (TyNominal _ rep _ _ _)   = rep
 getPolarity (TySyn _ rep _ _)         = rep
-getPolarity (TySet _ rep _ _)         = rep
+getPolarity TyTop {}                  = NegRep
+getPolarity TyBot {}                  = PosRep
+getPolarity TyUnion {}                = PosRep
+getPolarity TyInter {}                = NegRep
 getPolarity (TyRec _ rep _ _)         = rep
 getPolarity (TyPrim _ rep _)          = rep
 
@@ -148,14 +166,17 @@ class FreeTVars (a :: Type) where
   freeTVars :: a -> Set TVar
 
 instance FreeTVars (Typ pol) where
-  freeTVars (TyVar _ _ _ tv) = S.singleton tv
-  freeTVars (TySet _ _ _ ts) = S.unions (freeTVars <$> ts)
-  freeTVars (TyRec _ _ v t)  = S.delete v (freeTVars t)
+  freeTVars (TyVar _ _ _ tv)         = S.singleton tv
+  freeTVars TyTop {}                 = S.empty
+  freeTVars TyBot {}                 = S.empty
+  freeTVars (TyUnion _ _ ty ty')     = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyInter _ _ ty ty')     = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyRec _ _ v t)          = S.delete v (freeTVars t)
   freeTVars (TyNominal _ _ _ _ args) = S.unions (freeTVars <$> args)
-  freeTVars (TySyn _ _ _ ty) = freeTVars ty
-  freeTVars (TyData _ _ _ xtors) = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodata _ _ _ xtors) = S.unions (freeTVars <$> xtors)
-  freeTVars (TyPrim _ _ _) = S.empty
+  freeTVars (TySyn _ _ _ ty)         = freeTVars ty
+  freeTVars (TyData _ _ _ xtors)     = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodata _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
+  freeTVars (TyPrim _ _ _)           = S.empty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
@@ -199,8 +220,14 @@ instance Zonk (Typ pol) where
      TyNominal loc rep kind tn (zonk bisubst <$> args)
   zonk bisubst (TySyn loc rep nm ty) =
      TySyn loc rep nm (zonk bisubst ty)
-  zonk bisubst (TySet loc rep kind tys) =
-     TySet loc rep kind (zonk bisubst <$> tys)
+  zonk _ (TyTop loc knd) =
+    TyTop loc knd
+  zonk _ (TyBot loc knd) =
+    TyBot loc knd
+  zonk bisubst (TyUnion loc knd ty ty') =
+    TyUnion loc knd (zonk bisubst ty) (zonk bisubst ty')
+  zonk bisubst (TyInter loc knd ty ty') =
+    TyInter loc knd (zonk bisubst ty) (zonk bisubst ty')
   zonk bisubst (TyRec loc rep tv ty) =
      TyRec loc rep tv (zonk bisubst ty)
   zonk _ t@TyPrim {} = t

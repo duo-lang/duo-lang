@@ -345,13 +345,34 @@ instance ToHoverMap (Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TySet loc rep _knd args) =
+  toHoverMap (TyTop loc _knd) =
     let
-      msg = T.unlines [ "#### Set type"
-                      , "- Polarity: " <> prettyPolRep rep
+      msg = T.unlines [ "#### Top type"
+                      , "- Polarity: " <> prettyPolRep NegRep
                       ]
     in
-      M.unions ((mkHoverMap loc msg) : (toHoverMap <$> args))
+      mkHoverMap loc msg
+  toHoverMap (TyBot loc _knd) =
+    let
+      msg = T.unlines [ "#### Bot type"
+                      , "- Polarity: " <> prettyPolRep PosRep
+                      ]
+    in
+      mkHoverMap loc msg
+  toHoverMap (TyUnion loc _knd ty1 ty2) =
+    let
+      msg = T.unlines [ "#### Union type"
+                      , "- Polarity: " <> prettyPolRep PosRep
+                      ]
+    in
+      M.unions [mkHoverMap loc msg, toHoverMap ty1, toHoverMap ty2]
+  toHoverMap (TyInter loc _knd ty1 ty2) =
+    let
+      msg = T.unlines [ "#### Intersection type"
+                      , "- Polarity: " <> prettyPolRep NegRep
+                      ]
+    in
+      M.unions [mkHoverMap loc msg, toHoverMap ty1, toHoverMap ty2]
   toHoverMap (TyRec loc rep _var ty) =
     let
       msg = T.unlines [ "#### Recursive type"

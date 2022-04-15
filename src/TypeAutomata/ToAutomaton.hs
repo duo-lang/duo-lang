@@ -172,12 +172,28 @@ insertVariantType (ContravariantType ty) = do
 
 insertType :: Typ pol -> TTA Node
 insertType (TyVar _ rep _ tv) = lookupTVar rep tv
-insertType (TySet _ rep _ tys) = do
+insertType (TyTop _ _) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel (polarityRepToPol rep))
-  ns <- mapM insertType tys
-  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
-  return newNode
+  insertNode newNode (emptyNodeLabel Neg)
+  pure newNode
+insertType (TyBot _ _) = do
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel Pos)
+  pure newNode
+insertType (TyUnion _ _ ty1 ty2) = do
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel Pos)
+  ty1' <- insertType ty1
+  ty2' <- insertType ty2
+  insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
+  pure newNode
+insertType (TyInter _ _ ty1 ty2) = do
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel Neg)
+  ty1' <- insertType ty1
+  ty2' <- insertType ty2
+  insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
+  pure newNode
 insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM

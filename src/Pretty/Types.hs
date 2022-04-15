@@ -69,12 +69,10 @@ instance PrettyAnn (RST.Typ pol) where
   -- Sugared types
   prettyAnn (resugarType -> Just (ty1, binOp, ty2)) = parens (ty1 <+> prettyAnn binOp <+> ty2)
   -- Lattice types
-  prettyAnn (RST.TySet _ PosRep _ [])  = botSym
-  prettyAnn (RST.TySet _ PosRep _ [t]) = prettyAnn t
-  prettyAnn (RST.TySet _ PosRep _ tts) = parens' unionSym (map prettyAnn tts)
-  prettyAnn (RST.TySet _ NegRep _ [])  = topSym
-  prettyAnn (RST.TySet _ NegRep _ [t]) = prettyAnn t
-  prettyAnn (RST.TySet _ NegRep _ tts) = parens' interSym (map prettyAnn tts)
+  prettyAnn RST.TyTop {}               = topSym
+  prettyAnn RST.TyBot {}               = botSym
+  prettyAnn (RST.TyUnion _ _ ty ty')   = parens' unionSym [prettyAnn ty, prettyAnn ty']
+  prettyAnn (RST.TyInter _ _ ty ty')   = parens' interSym [prettyAnn ty, prettyAnn ty']
   -- Type Variables
   prettyAnn (RST.TyVar _ _ _ tv)       = prettyAnn tv
   -- Recursive types

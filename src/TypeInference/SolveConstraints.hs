@@ -155,10 +155,18 @@ subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ (TySet _ PosRep _ tys) ty) =
-  return [SubType IntersectionUnionSubConstraint ty' ty | ty' <- tys]
-subConstraints (SubType _ ty (TySet _ NegRep _ tys)) =
-  return [SubType IntersectionUnionSubConstraint ty ty' | ty' <- tys]
+subConstraints (SubType _ _ (TyTop _ _)) =
+  pure []
+subConstraints (SubType _ (TyBot _ _) _) =
+  pure []
+subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) =
+  pure [ SubType IntersectionUnionSubConstraint ty1 ty3
+       , SubType IntersectionUnionSubConstraint ty2 ty3
+       ]
+subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) =
+  pure [ SubType IntersectionUnionSubConstraint ty1 ty2
+       , SubType IntersectionUnionSubConstraint ty1 ty3
+       ]
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
