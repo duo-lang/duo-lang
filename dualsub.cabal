@@ -65,6 +65,7 @@ common shared-lang-options
                      KindSignatures,
                      StandaloneDeriving,
                      TypeFamilies,
+                     TypeOperators,
                      ViewPatterns,
                      GeneralizedNewtypeDeriving,
                      LambdaCase,
