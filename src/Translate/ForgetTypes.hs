@@ -60,16 +60,6 @@ forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 forgetTypesTerm (AST.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
-forgetTypesTerm (AST.CaseCnsPrdI _loc _annot _ns _tmcasesI) =
-    error "not yet implemented"
-forgetTypesTerm (AST.CaseCnsCnsI _loc _annot _ns _tmcasesI) =
-    error "not yet implemented"
-forgetTypesTerm (AST.Semicolon _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
-    error "not yet implemented"
-forgetTypesTerm (AST.CocaseCns _loc _rep _annot _ns _t _tmcasesI) =
-    error "not yet implemented" 
-forgetTypesTerm (AST.CocaseCnsI _loc _annot _ns _tmcasesI) =
-    error "not yet implemented"
 
 forgetTypesCommand :: AST.Command -> RST.Command
 forgetTypesCommand (AST.Apply loc _kind prd cns) =
@@ -86,19 +76,6 @@ forgetTypesCommand (AST.ExitFailure loc) =
     RST.ExitFailure loc
 forgetTypesCommand (AST.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (forgetTypesSubst subst)
-forgetTypesCommand (AST.CasePrdCmd _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CasePrdPrdI _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CasePrdCnsI _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CocaseCnsCmd _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CocaseCnsPrdI _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CocaseCnsCnsI _loc _ns _t _cases) =
-    error "not yet implemented"
-
 
 forgetAnnot :: RST.TopAnnot pol -> Maybe (RST.TypeScheme pol)
 forgetAnnot (RST.Annotated tys) = Just tys

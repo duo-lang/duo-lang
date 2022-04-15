@@ -144,20 +144,6 @@ data Term (pc :: PrdCns) where
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
   MuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
-  --
-  -- Syntactic Sugar
-  --
-  --Dtor :: Loc -> PrdCnsRep pc -> NominalStructural ->  XtorName -> Term Prd -> SubstitutionI pc -> Term pc
-  -- | A pattern match:
-  --
-  -- case e of { ... }
-  --
-  --Case :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
-  -- | A copattern match:
-  --
-  -- cocase { ... }
-  --
-  --Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -166,17 +152,6 @@ deriving instance Eq (Term Prd)
 deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
 deriving instance Show (Term Cns)
-
-
-resVar :: FreeVarName
-resVar = MkFreeVarName "$result"
-
-caseD :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
-caseD loc ns tm cases = MuAbs loc PrdRep Nothing $ commandClosing [(Cns, resVar)] (shiftCmd cmd)
-  where
-    f :: TermCase Prd -> CmdCase
-    f (MkTermCase loc xtor args t) = MkCmdCase loc xtor args (Apply loc t (FreeVar loc CnsRep resVar))
-    cmd = Apply loc tm (XMatch loc CnsRep ns (map f cases))
 
 ---------------------------------------------------------------------------------
 -- Commands
@@ -302,13 +277,6 @@ shiftTermRec n (MuAbs loc pcrep bs cmd) =
   MuAbs loc pcrep bs (shiftCmdRec (n + 1) cmd)
 shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
---shiftTermRec n (Cocase loc ns cases) = Cocase loc ns (shiftPCTermRec n <$> subst) 
-
-shiftTermCaseRec :: Int -> TermCase pc -> TermCase pc
-shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)
-
-shiftTermCaseIRec :: Int -> TermCaseI pc -> TermCaseI pc
-shiftTermCaseIRec n (MkTermCaseI ext xt args e) = MkTermCaseI ext xt args (shiftTermRec n e)
 
 shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
 shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
