@@ -1,5 +1,6 @@
--- Function Type
 
+
+-- | The function type
 codata Fun : (-a : CBV, +b : CBV) -> CBN {
     Ap(a,return b)
 };
