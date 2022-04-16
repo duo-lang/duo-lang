@@ -11,7 +11,6 @@ import Renamer.Definition
 import Renamer.SymbolTable
 import Renamer.Types
 import Syntax.Common
-import TestUtils (getSymbolTable)
 import TypeAutomata.Subsume (subsume)
 
 subsumptionCheckPos :: [(ModuleName, SymbolTable)] -> Bool -> Text -> Text -> Spec
@@ -33,30 +32,21 @@ subsumptionCheckPos env bspec s1 s2 = do
             b `shouldBe` bspec
 
 
-spec :: Spec
-spec = do
+spec :: [(ModuleName, SymbolTable)] -> Spec
+spec symboltables = do
   describe "Subsumption between typeschemes works" $ do
-    eenv <- runIO $ getSymbolTable "examples/Peano.ds"
-    let env' = case eenv of
-                Left _ -> error "Could not load Peano.ds"
-                Right env -> env
-    eenv' <- runIO $ getSymbolTable "examples/Bool.ds"
-    let env'' = case eenv' of
-                Left _ -> error "Could not load Bool.ds"
-                Right env -> env
-    let env = [(MkModuleName "Peano", env'), (MkModuleName "Bool", env'')]
     -- Subsumptions which should hold
-    subsumptionCheckPos env True "forall a. { Ap(a,return a) }" "{ Ap(< True >,return < True >) }"
-    subsumptionCheckPos env True "{ Ap(< True >,return < True >) }" "{ Ap(< True >,return < True >) }"
-    subsumptionCheckPos env True "forall a. { Ap(< True >,return < True >) }" "{ Ap(< True >,return < True >) }"
-    subsumptionCheckPos env True "{ Ap(< True >,return < True >) }" "forall a. { Ap(< True >,return < True >) }"
-    subsumptionCheckPos env True "{ Ap(< True , False >,return < True >) }" "{ Ap(< True >,return < True , False >) }"
-    subsumptionCheckPos env True "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }" "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }"
-    subsumptionCheckPos env True "Nat" "Nat"
-    subsumptionCheckPos env True "{ Ap(Nat,return Bool) }" "{ Ap(Nat,return Bool) }"
+    subsumptionCheckPos symboltables True "forall a. { Ap(a,return a) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos symboltables True "{ Ap(< True >,return < True >) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos symboltables True "forall a. { Ap(< True >,return < True >) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos symboltables True "{ Ap(< True >,return < True >) }" "forall a. { Ap(< True >,return < True >) }"
+    subsumptionCheckPos symboltables True "{ Ap(< True , False >,return < True >) }" "{ Ap(< True >,return < True , False >) }"
+    subsumptionCheckPos symboltables True "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }" "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }"
+    subsumptionCheckPos symboltables True "Nat" "Nat"
+    subsumptionCheckPos symboltables True "{ Ap(Nat,return Bool) }" "{ Ap(Nat,return Bool) }"
     -- Subsumptions which shouldn't hold
-    subsumptionCheckPos env False "{}" "<>"
-    subsumptionCheckPos env False "{ Ap(< True >,return < True >) }" "forall a. { Ap(a,return a) }"
-    subsumptionCheckPos env False "{ Ap(< True >,return < True , False >) }" "{ Ap(< True >,return < True >) }"
-    subsumptionCheckPos env False "Nat" "Bool"
+    subsumptionCheckPos symboltables False "{}" "<>"
+    subsumptionCheckPos symboltables False "{ Ap(< True >,return < True >) }" "forall a. { Ap(a,return a) }"
+    subsumptionCheckPos symboltables False "{ Ap(< True >,return < True , False >) }" "{ Ap(< True >,return < True >) }"
+    subsumptionCheckPos symboltables False "Nat" "Bool"
 
