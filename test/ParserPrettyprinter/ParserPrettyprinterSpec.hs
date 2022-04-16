@@ -18,10 +18,9 @@ import Driver.Driver
 -- 2. Prettyprinted
 -- 3a. Parsed again from the prettyprinted result.
 -- 3b. Parsed and typechecked again from the prettyprinted result.
-spec :: Spec
-spec = do
+spec :: [FilePath] -> Spec
+spec examples = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
-    examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
         decls <- runIO $ getTypecheckedDecls example
@@ -31,7 +30,6 @@ spec = do
             Right decls -> (runFileParser example programP (ppPrint decls)) `shouldSatisfy` isRight
   
   describe "All the examples in the \"examples/\" folder can be parsed and typechecked after prettyprinting." $ do
-    examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
         decls <- runIO $ getTypecheckedDecls example

@@ -42,10 +42,9 @@ testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ e
            it "Could not load examples" $ expectationFailure msg
         Right _env -> pure ()
 
-spec :: Spec
-spec = do
+spec :: [FilePath] -> Spec
+spec examples = do
     describe "Focusing an entire program still typechecks" $ do
-      examples <- runIO $ getAvailableExamples "examples/"
       forM_ examples $ \example -> do
         testHelper example CBV
         testHelper example CBN

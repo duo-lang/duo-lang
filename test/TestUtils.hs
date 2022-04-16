@@ -3,7 +3,6 @@ module TestUtils where
 import Control.Monad.Except
 import Data.Text.IO qualified as T
 import Data.Text qualified as T
-import System.Directory (listDirectory)
 
 import Driver.Definition
 import Driver.Driver
@@ -15,15 +14,6 @@ import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.AST.Program qualified as AST
 
-getAvailableCounterExamples :: IO [FilePath]
-getAvailableCounterExamples = do
-  examples <- listDirectory "test/counterexamples/"
-  return (("test/counterexamples/" ++) <$> examples)
-
-getAvailableExamples :: FilePath -> IO [FilePath]
-getAvailableExamples fp = do
-  examples <- listDirectory fp
-  return ((fp ++) <$> filter (\s -> head s /= '.') examples)
 
 getParsedDeclarations :: FilePath -> IO (Either Error CST.Program)
 getParsedDeclarations fp = do

@@ -16,10 +16,9 @@ import Driver.Definition (defaultDriverState)
 import Driver.Driver (inferProgramIO)
 import TestUtils
 
-spec :: Spec
-spec = do
+spec :: [FilePath] -> Spec
+spec examples = do
     describe "Desugaring an entire program still typechecks" $ do
-      examples <- runIO $ getAvailableExamples "examples/"
       forM_ examples $ \example -> do
         describe ("Desugaring the program in  " ++ example ++ " typechecks.") $ do
           decls <- runIO $ getTypecheckedDecls example

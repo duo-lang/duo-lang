@@ -12,10 +12,9 @@ import Syntax.AST.Terms
 import Syntax.Common
 import TestUtils
 
-spec :: Spec
-spec = do
+spec :: [FilePath] -> Spec
+spec examples = do
   describe "All examples are locally closed." $ do
-    examples <- runIO $ getAvailableExamples "examples/"
     forM_ examples $ \example -> do
       describe ("Examples in " ++ example ++ " are locally closed") $ do
         env <- runIO $ getEnvironment example
