@@ -218,12 +218,11 @@ test-suite dualsub-test
   type: exitcode-stdio-1.0
   main-is: TestRunner.hs
   other-modules:
-      Translate.TranslateExamplesSpec
-    , Translate.FocusingSpec
-    , TypeInference.ExamplesSpec
-    , TypeInference.SubsumptionSpec
-    , Eval.SubstitutionSpec
-    , ParserPrettyprinter.ParserPrettyprinterSpec
+      Spec.Focusing
+    , Spec.TypeInferenceExamples
+    , Spec.Subsumption
+    , Spec.LocallyClosed
+    , Spec.Prettyprinter
     , Paths_dualsub
     , TestUtils
   hs-source-dirs:

@@ -1,4 +1,4 @@
-module TypeInference.SubsumptionSpec ( spec ) where
+module Spec.Subsumption ( spec ) where
 
 import Data.Text (Text)
 import Data.Map qualified as M

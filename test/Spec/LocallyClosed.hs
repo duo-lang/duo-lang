@@ -1,4 +1,4 @@
-module Eval.SubstitutionSpec where
+module Spec.LocallyClosed where
 
 import Control.Monad (forM_)
 import Data.Map qualified as M

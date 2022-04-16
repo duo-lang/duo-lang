@@ -1,4 +1,4 @@
-module ParserPrettyprinter.ParserPrettyprinterSpec (spec) where
+module Spec.Prettyprinter (spec) where
 
 import Control.Monad (forM_)
 import Data.Either (isRight)

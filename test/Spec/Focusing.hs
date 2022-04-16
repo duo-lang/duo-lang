@@ -1,4 +1,4 @@
-module Translate.FocusingSpec (spec) where
+module Spec.Focusing (spec) where
 
 import Control.Monad
 import Test.Hspec

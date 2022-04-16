@@ -5,12 +5,11 @@ import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
 
-import Eval.SubstitutionSpec qualified
-import TypeInference.ExamplesSpec qualified
-import TypeInference.SubsumptionSpec qualified
-import ParserPrettyprinter.ParserPrettyprinterSpec qualified
-import Translate.FocusingSpec qualified
-import Translate.TranslateExamplesSpec qualified
+import Spec.LocallyClosed qualified
+import Spec.TypeInferenceExamples qualified
+import Spec.Subsumption qualified
+import Spec.Prettyprinter qualified
+import Spec.Focusing qualified
 
 
 getAvailableCounterExamples :: IO [FilePath]
@@ -30,10 +29,9 @@ main = do
     counterExamples <- getAvailableCounterExamples
     -- Run the testsuite
     hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-      describe "SubstitutionSpec" (Eval.SubstitutionSpec.spec examples)
-      describe "ExampleSpec" (TypeInference.ExamplesSpec.spec (examples, counterExamples))
-      describe "SubsumptionSpec" TypeInference.SubsumptionSpec.spec
-      describe "ParserPrettyprinterSpec" (ParserPrettyprinter.ParserPrettyprinterSpec.spec examples)
-      describe "FocusingSpec" (Translate.FocusingSpec.spec examples)
-      describe "TranslateExampleSpec" (Translate.TranslateExamplesSpec.spec examples)
+      describe "All examples are locally closed" (Spec.LocallyClosed.spec examples)
+      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec (examples, counterExamples))
+      describe "Subsumption works" Spec.Subsumption.spec
+      describe "Prettyprinted work again" (Spec.Prettyprinter.spec examples)
+      describe "Focusing works" (Spec.Focusing.spec examples)
 
