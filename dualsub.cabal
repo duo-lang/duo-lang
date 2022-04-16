@@ -225,7 +225,6 @@ test-suite dualsub-test
     , Eval.SubstitutionSpec
     , ParserPrettyprinter.ParserPrettyprinterSpec
     , Paths_dualsub
-    , Spec
     , TestUtils
   hs-source-dirs:
       test

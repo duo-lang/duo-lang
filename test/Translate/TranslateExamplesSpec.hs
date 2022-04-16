@@ -45,5 +45,5 @@ spec = do
                                     , "---------------------------------"
                                     ]
                   it "Could not load examples" $ expectationFailure msg
-                Right _env -> return ()
+                Right _env -> pure ()
 

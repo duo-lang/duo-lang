@@ -40,7 +40,7 @@ testHelper example cbx = describe (show cbx ++ " Focusing the program in  " ++ e
                              , "---------------------------------"
                              ]
            it "Could not load examples" $ expectationFailure msg
-        Right _env -> return ()
+        Right _env -> pure ()
 
 spec :: Spec
 spec = do
