@@ -1,6 +1,6 @@
 module Main where
 
-import Control.Monad.Except (runExcept)
+import Control.Monad.Except (runExcept, forM)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
@@ -71,6 +71,14 @@ main = do
     -- Collect the filepaths of all the available examples
     examples <- getAvailableExamples
     counterExamples <- getAvailableCounterExamples
+    -- Collect the parsed declarations
+    parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
+    -- Collect the typechecked declarations
+    checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
+    checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
+    -- Collect the environment (TODO rewrite!)
+    environment <- forM examples $ \example -> getEnvironment example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
     peano_st <- getSymbolTable "examples/Peano.ds"
     let peano_st' = case peano_st of
@@ -83,9 +91,9 @@ main = do
     let symboltables = [(MkModuleName "Peano", peano_st'), (MkModuleName "Bool", bool_st')]
     -- Run the testsuite
     hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-      describe "All examples are locally closed" (Spec.LocallyClosed.spec examples)
-      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec (examples, counterExamples))
+      describe "All examples are locally closed" (Spec.LocallyClosed.spec environment)
+      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec checkedExamples parsedCounterExamples checkedCounterExamples)
       describe "Subsumption works" (Spec.Subsumption.spec symboltables)
-      describe "Prettyprinted work again" (Spec.Prettyprinter.spec examples)
-      describe "Focusing works" (Spec.Focusing.spec examples)
+      describe "Prettyprinted work again" (Spec.Prettyprinter.spec checkedExamples)
+      describe "Focusing works" (Spec.Focusing.spec checkedExamples)
 

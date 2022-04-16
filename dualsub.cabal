@@ -224,7 +224,6 @@ test-suite dualsub-test
     , Spec.LocallyClosed
     , Spec.Prettyprinter
     , Paths_dualsub
-    , TestUtils
   hs-source-dirs:
       test
   build-depends:
