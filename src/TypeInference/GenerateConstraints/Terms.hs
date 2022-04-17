@@ -20,6 +20,7 @@ import TypeInference.Constraints
 import Utils
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
+import Syntax.RST.Terms
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -164,6 +165,8 @@ genConstraintsTerm (RST.XMatch _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
+genConstraintsTerm (RST.XMatch loc rep Nominal cases@((DesugaredCmdCase _ _):_)) = 
+  genConstraintsTerm (RST.XMatch loc rep Nominal (map (\(DesugaredCmdCase _ cs) -> cs) cases))
 genConstraintsTerm (RST.XMatch loc rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (RST.cmdcase_name pmcase)
@@ -232,6 +235,7 @@ genConstraintsTerm (RST.MuAbs loc CnsRep bs cmd) = do
   return (AST.MuAbs loc CnsRep uvneg bs cmdInferred)
 genConstraintsTerm (RST.PrimLitI64 loc i) = pure $ AST.PrimLitI64 loc i
 genConstraintsTerm (RST.PrimLitF64 loc d) = pure $ AST.PrimLitF64 loc d
+genConstraintsTerm (RST.Desugared t _) = genConstraintsTerm t
 
 genConstraintsCommand :: RST.Command -> GenM AST.Command
 genConstraintsCommand (RST.ExitSuccess loc) = return (AST.ExitSuccess loc)

@@ -36,7 +36,7 @@ forgetTypesTermCase AST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcas
       , tmcase_term = forgetTypesTerm tmcase_term 
       }
 
-forgetTypesTermCaseI :: AST.TermCaseI pc -> RST.TermCaseI pc
+{-forgetTypesTermCaseI :: AST.TermCaseI pc -> RST.TermCaseI pc
 forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } =
     RST.MkTermCaseI
       { tmcasei_ext = tmcasei_ext
@@ -44,7 +44,7 @@ forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, 
       , tmcasei_args = tmcasei_args
       , tmcasei_term = forgetTypesTerm tmcasei_term 
       }
-
+-}
 forgetTypesTerm :: AST.Term pc -> RST.Term pc
 forgetTypesTerm (AST.BoundVar loc pc _annot idx) =
     RST.BoundVar loc pc idx

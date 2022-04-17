@@ -46,11 +46,6 @@ instance PrettyAnn CST.TermCase where
 
 -- TermCaseI
 
-instance PrettyAnn (AST.TermCaseI pc) where
-  prettyAnn termcasei = prettyAnn (forgetTypesTermCaseI termcasei)
-
-instance PrettyAnn (RST.TermCaseI pc) where
-  prettyAnn termcasei = prettyAnn (reparseTermCaseI termcasei)
 
 instance PrettyAnn CST.FVOrStar where
   prettyAnn (CST.FoSFV v) = prettyAnn v

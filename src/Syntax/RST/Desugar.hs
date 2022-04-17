@@ -30,14 +30,36 @@ dtorD loc _ ns xt t (args1,PrdRep,args2) =
   in
     MuAbs loc PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd cmd
 
-cocaseD :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
-cocaseD loc ns cocases =  
+{-# COMPLETE BoundVar,FreeVar,Xtor,XMatch,MuAbs,PrimLitI64,PrimLitF64, Cocase #-}
+
+pattern Cocase :: () =>
+                  (pc ~ 'Prd) => 
+                  Loc -> NominalStructural -> [CmdCase] -> Term pc
+pattern Cocase l ns cases = Desugared (XMatch l PrdRep ns cases) CocaseS  
+
+mySplitAt :: Int -> [a] -> ([a],(), [a])
+mySplitAt n x = (a, (), tail b)
+  where (a,b) = splitAt n x 
+
+pattern MkTermCaseI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> Term Prd -> CmdCase
+pattern MkTermCaseI loc xt cases t <- DesugaredCmdCase i (MkCmdCase loc xt (mySplitAt i -> cases ) (Apply _ t (BoundVar _ CnsRep _)))  where 
+  MkTermCaseI loc xt cases  t = termCaseID loc xt cases t
+
+
+{-# COMPLETE MkCmdCase,MkTermCaseI #-}
+
+-- the third argument has a more general type than I'd like.
+--cocaseD :: Loc -> NominalStructural -> [CmdCase] -> Term Prd
+--cocaseD loc ns cocases =  
+--    XMatch loc PrdRep ns cocases
+
+termCaseID :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> Term Prd -> CmdCase 
+termCaseID loc xt  (as1, (), as2) t = 
   let
-    desugarComatchCase (MkTermCaseI _ xt (as1, (), as2) t) =
-      let args = as1 ++ [(Cns,Nothing)] ++ as2 in
-      MkCmdCase loc xt args $ Apply loc t (BoundVar loc CnsRep (0,length as1))
+    args = as1 ++ [(Cns,Nothing)] ++ as2 
   in
-    XMatch loc PrdRep ns $ desugarComatchCase <$> cocases
+    DesugaredCmdCase (length as1) (MkCmdCase loc xt args $ Apply loc t (BoundVar loc CnsRep (0,length as1))) 
+
 {-
 
 ATTIC - saved for later

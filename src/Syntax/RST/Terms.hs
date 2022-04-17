@@ -5,9 +5,10 @@ module Syntax.RST.Terms
   , Substitution
   , SubstitutionI
   , TermCase(..)
-  , TermCaseI(..)
+  --, TermCaseI(..)
   , CmdCase(..)
   , Command(..)
+  , Sugar(..)
    -- Functions
   , termOpening
   , commandOpening
@@ -21,6 +22,7 @@ import Data.Maybe (fromJust, isJust)
 
 import Utils
 import Syntax.Common
+import qualified Syntax.CST.Terms as CST
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -91,7 +93,7 @@ deriving instance Show (TermCase Cns)
 --        |
 --    tmcasei_name
 --
-data TermCaseI (pc :: PrdCns) = MkTermCaseI
+{-data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_ext  :: Loc
   , tmcasei_name :: XtorName
   -- | The pattern arguments
@@ -99,11 +101,12 @@ data TermCaseI (pc :: PrdCns) = MkTermCaseI
   , tmcasei_args :: ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)])
   , tmcasei_term :: Term pc
   }
+  -}
 
-deriving instance Eq (TermCaseI Prd)
-deriving instance Eq (TermCaseI Cns)
-deriving instance Show (TermCaseI Prd)
-deriving instance Show (TermCaseI Cns)
+--deriving instance Eq (TermCaseI Prd)
+--deriving instance Eq (TermCaseI Cns)
+--deriving instance Show (TermCaseI Prd)
+--deriving instance Show (TermCaseI Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -117,7 +120,7 @@ data CmdCase = MkCmdCase
   , cmdcase_name :: XtorName
   , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
   , cmdcase_cmd  :: Command
-  }
+  } | DesugaredCmdCase Int CmdCase  
 
 deriving instance Eq CmdCase
 deriving instance Show CmdCase
@@ -125,6 +128,7 @@ deriving instance Show CmdCase
 ---------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------
+data Sugar = CocaseS deriving (Eq,Show)
 
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
@@ -147,6 +151,8 @@ data Term (pc :: PrdCns) where
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
+
+  Desugared :: Term pc -> Sugar -> Term pc 
 
 deriving instance Eq (Term Prd)
 deriving instance Eq (Term Cns)
@@ -192,12 +198,17 @@ termOpeningRec _ _ fv@FreeVar {}       = fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
   Xtor loc rep ns xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XMatch loc rep ns cases) =
-  XMatch loc rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
+  XMatch loc rep ns $ map (cmdCaseOpeningRec k args) cases
 termOpeningRec k args (MuAbs loc rep fv cmd) =
   MuAbs loc rep fv (commandOpeningRec (k+1) args cmd)
+termOpeningRec k args (Desugared t s) = Desugared (termOpeningRec k args t) s
 -- ATerms
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
+
+cmdCaseOpeningRec :: Int -> Substitution -> CmdCase -> CmdCase
+cmdCaseOpeningRec k args m@MkCmdCase {cmdcase_cmd} = m {cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd } 
+cmdCaseOpeningRec k args (DesugaredCmdCase i ccase) = DesugaredCmdCase i (cmdCaseOpeningRec k args ccase)
 
 
 commandOpeningRec :: Int -> Substitution -> Command -> Command
@@ -232,9 +243,12 @@ termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars)
 termClosingRec k vars (Xtor loc pc ns xt subst) =
   Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XMatch loc pc sn cases) =
-  XMatch loc pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
+  XMatch loc pc sn $  f <$> cases
+  where f m@MkCmdCase { cmdcase_cmd } = m { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }
+        f (DesugaredCmdCase i t) = DesugaredCmdCase i (f t)
 termClosingRec k vars (MuAbs loc pc fv cmd) =
   MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
+termClosingRec k vars (Desugared t s) = Desugared (termClosingRec k vars t) s   
 -- ATerms
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
@@ -275,11 +289,13 @@ shiftTermRec n (XMatch loc pcrep ns cases) =
   XMatch loc pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
 shiftTermRec n (MuAbs loc pcrep bs cmd) =
   MuAbs loc pcrep bs (shiftCmdRec (n + 1) cmd)
+shiftTermRec n (Desugared t s) = Desugared (shiftTermRec n t) s
 shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
 
 shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
 shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
+shiftCmdCaseRec n (DesugaredCmdCase i t) = DesugaredCmdCase i (shiftCmdCaseRec n t)
 
 shiftCmdRec :: Int -> Command -> Command
 shiftCmdRec n (Apply ext prd cns) = Apply ext (shiftTermRec n prd) (shiftTermRec n cns)
