@@ -228,10 +228,22 @@ createNamesCommand (RST.Read loc cns) = do
 createNamesCommand (RST.PrimOp loc pt pop subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
   pure $ RST.PrimOp loc pt pop subst'
-createNamesCommand RST.CaseOfCmd {} = undefined
-createNamesCommand RST.CocaseOfCmd {} = undefined
-createNamesCommand RST.CaseOfI {} = undefined
-createNamesCommand RST.CocaseOfI {} = undefined
+createNamesCommand (RST.CaseOfCmd loc ns tm cases) = do
+  tm' <- createNamesTerm tm
+  cases' <- sequence $ createNamesCmdCase <$> cases
+  pure $ RST.CaseOfCmd loc ns tm' cases'
+createNamesCommand (RST.CocaseOfCmd loc ns tm cases) = do
+  tm' <- createNamesTerm tm
+  cases' <- sequence $ createNamesCmdCase <$> cases
+  pure $ RST.CocaseOfCmd loc ns tm' cases'
+createNamesCommand (RST.CaseOfI loc rep ns tm cases) = do
+  tm' <- createNamesTerm tm
+  cases' <- sequence $ createNamesTermCaseI <$> cases
+  pure $ RST.CaseOfI loc rep ns tm' cases'
+createNamesCommand (RST.CocaseOfI loc rep ns tm cases) = do
+  tm' <- createNamesTerm tm
+  cases' <- sequence $ createNamesTermCaseI <$> cases
+  pure $ RST.CocaseOfI loc rep ns tm' cases'
 
 createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
 createNamesCmdCase RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } = do

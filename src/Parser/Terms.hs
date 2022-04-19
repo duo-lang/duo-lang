@@ -84,7 +84,7 @@ xtorP = do
   endPos <- getSourcePos
   case afterSemi of
     Nothing -> pure (CST.Xtor (Loc startPos endPos) xt subst, endPos)
-    Just tm -> pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
+    Just _tm -> undefined -- pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
 
 
 --------------------------------------------------------------------------------------------
