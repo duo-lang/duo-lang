@@ -9,6 +9,13 @@ module Translate.Reparse
   , reparseCmdCase
   , reparseTermCase
   , reparseTermCaseI
+  -- Types
+  , embedVariantType
+  , embedType
+  , embedXtorSig
+  , embedPrdCnsType
+  , embedTypeScheme
+  , embedLinearContext
   )where
 
 
@@ -306,10 +313,13 @@ embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp
 embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
 embedPrdCnsType (RST.PrdCnsType CnsRep ty) = CST.CnsType (embedType ty)
 
+embedLinearContext :: RST.LinearContext pol -> CST.LinearContext
+embedLinearContext = fmap embedPrdCnsType
+
 embedXtorSig :: RST.XtorSig pol -> CST.XtorSig
 embedXtorSig RST.MkXtorSig { sig_name, sig_args } =
   CST.MkXtorSig { sig_name = sig_name
-                , sig_args = embedPrdCnsType <$> sig_args
+                , sig_args = embedLinearContext sig_args
                 }
 
 embedVariantTypes :: [RST.VariantType pol] -> [CST.Typ]
@@ -319,8 +329,16 @@ embedVariantType :: RST.VariantType pol -> CST.Typ
 embedVariantType (RST.CovariantType ty) = embedType ty
 embedVariantType (RST.ContravariantType ty) = embedType ty
 
+resugarType :: RST.Typ pol -> Maybe CST.Typ
+resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
+  Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "->")) (embedType tr))
+resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
+  Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
+resugarType _ = Nothing
+
 embedType :: RST.Typ pol -> CST.Typ
-embedType (RST.TyVar loc _ _ tv)=
+embedType (resugarType -> Just ty) = ty
+embedType (RST.TyVar loc _ _ tv) =
   CST.TyVar loc tv
 embedType (RST.TyData loc _ tn xtors) =
   CST.TyXData loc Data (rnTnName <$> tn) (embedXtorSig <$> xtors)
