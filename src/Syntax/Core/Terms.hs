@@ -76,31 +76,38 @@ deriving instance Show CmdCase
 data MuAnnot where
   -- | User-written Mu abstraction
   MuAnnotOrig :: MuAnnot
+  -- DATA
   -- Semicolon
   MuAnnotSemicolon :: MuAnnot
+  -- Case
+  MuAnnotCase :: MuAnnot
+  -- CODATA
   -- Dtor
   MuAnnotDtor :: MuAnnot
   -- CocaseCns
   MuAnnotCocaseCns :: MuAnnot
-  -- Case
-  MuAnnotCase :: MuAnnot
+
   deriving (Ord, Eq, Show)
 
 data MatchAnnot where
   -- | User-written XMatch abstraction
   MatchAnnotOrig :: MatchAnnot
-  -- CocaseCnsCns
-  MatchAnnotCocaseCnsCns :: MatchAnnot
-  -- CocaseCnsPrd
-  MatchAnnotCocaseCnsPrd :: MatchAnnot
-  -- CocaseCnsCmd
-  MatchAnnotCocaseCnsCmd :: MatchAnnot
+  -- DATA
   -- CasePrdCns
   MatchAnnotCasePrdCns :: MatchAnnot
   -- CasePrdPrd
   MatchAnnotCasePrdPrd :: MatchAnnot
   -- CasePrdCmd
   MatchAnnotCasePrdCmd :: MatchAnnot
+  -- Case
+  MatchAnnotCase :: MatchAnnot
+  -- CODATA
+  -- CocaseCnsCns
+  MatchAnnotCocaseCnsCns :: MatchAnnot
+  -- CocaseCnsPrd
+  MatchAnnotCocaseCnsPrd :: MatchAnnot
+  -- CocaseCnsCmd
+  MatchAnnotCocaseCnsCmd :: MatchAnnot
   -- CocaseCns
   MatchAnnotCocaseCns :: MatchAnnot
   -- CaseCnsCns
@@ -111,8 +118,6 @@ data MatchAnnot where
   MatchAnnotCocasePrdI :: MatchAnnot
   -- CocaseCnsI
   MatchAnnotCocaseCnsI :: MatchAnnot
-  -- Case
-  MatchAnnotCase :: MatchAnnot
   deriving (Ord, Eq, Show)
 
 data XtorAnnot where
@@ -158,29 +163,7 @@ deriving instance Show (Term Cns)
 data ApplyAnnot where
   -- User-written apply command
   ApplyAnnotOrig :: ApplyAnnot
-  -- CocaseCnsCns
-  ApplyAnnotCocaseCnsCnsInner :: ApplyAnnot
-  ApplyAnnotCocaseCnsCnsOuter :: ApplyAnnot
-  -- CocaseCnsPrd
-  ApplyAnnotCocaseCnsPrdInner :: ApplyAnnot
-  ApplyAnnotCocaseCnsPrdOuter :: ApplyAnnot
-  -- CocaseCnsCmd
-  ApplyAnnotCocaseCnsCmd :: ApplyAnnot
-  -- CasePrdCmd
-  ApplyAnnotCasePrdCmd :: ApplyAnnot
-  -- CasePrdPrd
-  ApplyAnnotCasePrdPrdInner :: ApplyAnnot
-  ApplyAnnotCasePrdPrdOuter :: ApplyAnnot
-  -- CasePrdCns
-  ApplyAnnotCasePrdCnsInner :: ApplyAnnot
-  ApplyAnnotCasePrdCnsOuter :: ApplyAnnot
-  -- Semicolon
-  ApplyAnnotSemicolon :: ApplyAnnot
-  -- Dtor
-  ApplyAnnotDtor :: ApplyAnnot
-  -- CocaseCns
-  ApplyAnnotCocaseCnsInner :: ApplyAnnot
-  ApplyAnnotCocaseCnsOuter :: ApplyAnnot
+  -- DATA
   -- CaseCnsCns
   ApplyAnnotCaseCnsCns :: ApplyAnnot
   -- CaseCnsPrd
@@ -192,6 +175,30 @@ data ApplyAnnot where
   -- Case
   ApplyAnnotCaseInner :: ApplyAnnot
   ApplyAnnotCaseOuter :: ApplyAnnot
+  -- CasePrdCmd
+  ApplyAnnotCasePrdCmd :: ApplyAnnot
+  -- CasePrdPrd
+  ApplyAnnotCasePrdPrdInner :: ApplyAnnot
+  ApplyAnnotCasePrdPrdOuter :: ApplyAnnot
+  -- CasePrdCns
+  ApplyAnnotCasePrdCnsInner :: ApplyAnnot
+  ApplyAnnotCasePrdCnsOuter :: ApplyAnnot
+  -- Semicolon
+  ApplyAnnotSemicolon :: ApplyAnnot
+  -- CODATA
+  -- CocaseCnsCns
+  ApplyAnnotCocaseCnsCnsInner :: ApplyAnnot
+  ApplyAnnotCocaseCnsCnsOuter :: ApplyAnnot
+  -- CocaseCnsPrd
+  ApplyAnnotCocaseCnsPrdInner :: ApplyAnnot
+  ApplyAnnotCocaseCnsPrdOuter :: ApplyAnnot
+  -- CocaseCnsCmd
+  ApplyAnnotCocaseCnsCmd :: ApplyAnnot
+  -- Dtor
+  ApplyAnnotDtor :: ApplyAnnot
+  -- CocaseCns
+  ApplyAnnotCocaseCnsInner :: ApplyAnnot
+  ApplyAnnotCocaseCnsOuter :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
 -- | An executable command.
