@@ -242,17 +242,17 @@ embedTerm (RST.FreeVar loc _ fv) =
 embedTerm (RST.Xtor loc _ _ xt subst) =
   CST.XtorSemi loc xt (embedSubst subst) Nothing
 embedTerm (RST.XMatch loc PrdRep _ cases) =
-  CST.XCase loc Codata Nothing (embedCmdCase <$> cases)
+  CST.Cocase loc Nothing (embedCmdCase <$> cases)
 embedTerm (RST.XMatch loc CnsRep _ cases) =
-  CST.XCase loc Data Nothing (embedCmdCase <$> cases)
+  CST.Case loc Nothing (embedCmdCase <$> cases)
 embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
 embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
   CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
 embedTerm (RST.Case loc _ tm cases) =
-  CST.XCase loc Data (Just $ embedTerm tm) (embedTermCase <$> cases)
+  CST.Case loc (Just $ embedTerm tm) (embedTermCase <$> cases)
 embedTerm (RST.Cocase loc _ cases) =
-  CST.XCase loc Codata Nothing (embedTermCaseI <$> cases)
+  CST.Cocase loc Nothing (embedTermCaseI <$> cases)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
 embedTerm (RST.PrimLitF64 loc d) =

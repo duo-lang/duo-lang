@@ -72,7 +72,8 @@ data Term where
     PrimCmdTerm :: PrimCommand -> Term 
     Var :: Loc -> FreeVarName -> Term
     XtorSemi :: Loc -> XtorName -> Substitution -> Maybe Term -> Term
-    XCase :: Loc -> DataCodata -> Maybe Term -> [TermCase] -> Term    
+    Case :: Loc -> Maybe Term -> [TermCase] -> Term
+    Cocase :: Loc -> Maybe Term -> [TermCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Term -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
@@ -95,7 +96,8 @@ getLoc (Var loc _) = loc
 getLoc (XtorSemi loc _ _ _) = loc
 getLoc (MuAbs loc _ _) = loc
 getLoc (Dtor loc _ _ _) = loc
-getLoc (XCase loc _ _ _) = loc
+getLoc (Case loc _ _) = loc
+getLoc (Cocase loc _ _) = loc
 getLoc (PrimLitI64 loc _) = loc
 getLoc (PrimLitF64 loc _) = loc
 getLoc (DtorChain _ tm _)  = getLoc tm

@@ -229,15 +229,15 @@ renameTerm CnsRep (CST.XtorSemi loc xtor subst Nothing) = do
   pctms <- renameTerms loc ar subst
   return $ RST.Xtor loc CnsRep ns xtor pctms
 renameTerm _ (CST.XtorSemi _loc _xtor _subst (Just _t)) = error "renameTerm / XTorSemi: not yet implemented"
-renameTerm PrdRep (CST.XCase loc Data Nothing _) =
+renameTerm PrdRep (CST.Case loc Nothing _) =
   throwError (OtherError (Just loc) "Cannot rename pattern match to a producer.")
-renameTerm CnsRep (CST.XCase loc Codata Nothing _) =
+renameTerm CnsRep (CST.Cocase loc Nothing _) =
   throwError (OtherError (Just loc) "Cannot rename copattern match to a consumer.")
-renameTerm PrdRep (CST.XCase loc dc Nothing cases)  = do
+renameTerm PrdRep (CST.Cocase loc Nothing cases)  = do
   c <- analyzeTermCases cases
   case c of
     AllNoStars -> do
-      cases' <- sequence (renameCommandCase dc <$> cases)
+      cases' <- sequence (renameCommandCase Codata <$> cases)
       ns <- commandCasesToNS cases
       pure $ RST.XMatch loc PrdRep ns cases'
     AllConsumerStar -> do
@@ -245,16 +245,15 @@ renameTerm PrdRep (CST.XCase loc dc Nothing cases)  = do
       ns <- termCasesToNS cases
       pure $ RST.Cocase loc ns cases'
     AllProducerStar -> error "not yet implemented"
-renameTerm CnsRep (CST.XCase loc dc Nothing cases)  = do
+renameTerm CnsRep (CST.Case loc Nothing cases)  = do
   c <- analyzeTermCases cases
   case c of
     AllNoStars -> do
-      cases' <- sequence (renameCommandCase dc <$> cases)
+      cases' <- sequence (renameCommandCase Data <$> cases)
       ns <- commandCasesToNS cases
       pure $ RST.XMatch loc CnsRep ns cases'
     _ -> error "not yet implemented"
-
-renameTerm PrdRep (CST.XCase loc Data (Just t) cases)  = do
+renameTerm PrdRep (CST.Case loc (Just t) cases)  = do
   cases' <- sequence (renameTermCase <$> cases)
   t' <- renameTerm PrdRep t
   ns <- commandCasesToNS cases
