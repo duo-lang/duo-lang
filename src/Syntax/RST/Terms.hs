@@ -153,7 +153,7 @@ data Term (pc :: PrdCns) where
   --
   -- cocase { ... }
   --
-  Cocase :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
+  CocasePrdI :: Loc -> NominalStructural -> [TermCaseI Prd] -> Term Prd
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -215,8 +215,8 @@ termOpeningRec k args (Dtor loc rep ns xt t (args1,pcrep,args2)) =
     Dtor loc rep ns xt (termOpeningRec k args t) (args1', pcrep, args2')
 termOpeningRec k args (CaseOf loc ns t cases) =
   CaseOf loc ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
-termOpeningRec k args (Cocase loc ns cocases) =
-  Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+termOpeningRec k args (CocasePrdI loc ns cocases) =
+  CocasePrdI loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
 
@@ -265,8 +265,8 @@ termClosingRec k args (Dtor loc pc ns xt t (args1,pcrep,args2)) =
     Dtor loc pc ns xt (termClosingRec k args t) (args1', pcrep, args2')
 termClosingRec k args (CaseOf loc ns t cases) =
   CaseOf loc ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
-termClosingRec k args (Cocase loc ns cocases) =
-  Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+termClosingRec k args (CocasePrdI loc ns cocases) =
+  CocasePrdI loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 

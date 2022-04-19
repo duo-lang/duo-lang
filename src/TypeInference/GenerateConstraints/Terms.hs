@@ -462,7 +462,7 @@ genConstraintsTerm (RST.CaseOf loc Refinement destructee cases@(RST.MkTermCase {
 --
 -- cocase { 'X(xs) => e' }
 --
-genConstraintsTerm (RST.Cocase loc Structural cocases) = do
+genConstraintsTerm (RST.CocasePrdI loc Structural cocases) = do
   cocasesInferred <- forM cocases $ \RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
     -- Generate unification variables for each case arg
     (argtsPos1,argtsNeg1) <- freshTVars as1
@@ -479,9 +479,9 @@ genConstraintsTerm (RST.Cocase loc Structural cocases) = do
 --
 -- cocase { X(xs) => e' }
 --
-genConstraintsTerm (RST.Cocase _ Nominal []) =
+genConstraintsTerm (RST.CocasePrdI _ Nominal []) =
   throwGenError ["Unreachable: A nominal comatch needs to have at least one case."]
-genConstraintsTerm (RST.Cocase loc Nominal cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
+genConstraintsTerm (RST.CocasePrdI loc Nominal cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
   -- We check that all cases in the copattern match belong to the type declaration.
@@ -508,9 +508,9 @@ genConstraintsTerm (RST.Cocase loc Nominal cocases@(RST.MkTermCaseI {tmcasei_nam
 --
 -- cocase { X(xs) => e' }
 --
-genConstraintsTerm (RST.Cocase _ Refinement []) =
+genConstraintsTerm (RST.CocasePrdI _ Refinement []) =
   throwGenError ["Unreachable: A refinement comatch needs to have at least one case."]
-genConstraintsTerm (RST.Cocase loc Refinement cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
+genConstraintsTerm (RST.CocasePrdI loc Refinement cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
   -- We check that all cases in the pattern match belong to the type declaration.

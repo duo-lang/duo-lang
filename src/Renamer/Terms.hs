@@ -163,10 +163,10 @@ renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc 
 renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
 renameLambda loc var tm = do
   tm' <- renameTerm PrdRep tm
-  pure $ RST.Cocase loc Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
+  pure $ RST.CocasePrdI loc Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
                                                       ([(Prd, Just var)], (), [])
                                                       (RST.termClosing [(Prd, var)] tm')
-                                ]
+                                    ]
 
 -- | Lower a natural number literal.
 renameNatLit :: Loc -> NominalStructural -> Int -> RenamerM (RST.Term Prd)
@@ -244,7 +244,7 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
     AllConsumerStar -> do
       cases' <- sequence (renameTermCaseI <$> cases)
       ns <- termCasesToNS cases
-      pure $ RST.Cocase loc ns cases'
+      pure $ RST.CocasePrdI loc ns cases'
     AllProducerStar -> error "not yet implemented"
 renameTerm CnsRep (CST.Case loc cases)  = do
   c <- analyzeTermCases cases

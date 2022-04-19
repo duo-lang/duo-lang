@@ -97,8 +97,8 @@ openTermComplete (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
   RST.Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
 openTermComplete (RST.CaseOf loc ns t cases) =
   RST.CaseOf loc ns (openTermComplete t) (openTermCase <$> cases)
-openTermComplete (RST.Cocase loc ns cocases) =
-  RST.Cocase loc ns (openTermCaseI <$> cocases)
+openTermComplete (RST.CocasePrdI loc ns cocases) =
+  RST.CocasePrdI loc ns (openTermCaseI <$> cocases)
 openTermComplete (RST.PrimLitI64 loc i) =
   RST.PrimLitI64 loc i
 openTermComplete (RST.PrimLitF64 loc d) =
@@ -171,9 +171,9 @@ createNamesTerm (RST.CaseOf loc ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
   pure $ RST.CaseOf loc ns e' cases'
-createNamesTerm (RST.Cocase loc ns cases) = do
+createNamesTerm (RST.CocasePrdI loc ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
-  pure $ RST.Cocase loc ns cases'
+  pure $ RST.CocasePrdI loc ns cases'
 createNamesTerm (RST.PrimLitI64 loc i) =
   pure (RST.PrimLitI64 loc i)
 createNamesTerm (RST.PrimLitF64 loc d) =
@@ -251,7 +251,7 @@ embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
   CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
 embedTerm (RST.CaseOf loc _ tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedTermCase <$> cases)
-embedTerm (RST.Cocase loc _ cases) =
+embedTerm (RST.CocasePrdI loc _ cases) =
   CST.Cocase loc (embedTermCaseI <$> cases)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
