@@ -96,15 +96,11 @@ forgetTypesCommand (AST.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (forgetTypesSubst subst)
 forgetTypesCommand (AST.CaseOfCmd _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CaseOfPrdI _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CaseOfCnsI _loc _ns _t _cases) =
+forgetTypesCommand (AST.CaseOfI _loc _pcrep _ns _t _cases) =
     error "not yet implemented"
 forgetTypesCommand (AST.CocaseOfCmd _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CocaseOfPrdI _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CocaseOfCnsI _loc _ns _t _cases) =
+forgetTypesCommand (AST.CocaseOfI _loc _pcrep _ns _t _cases) =
     error "not yet implemented"
 
 

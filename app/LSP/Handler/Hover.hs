@@ -214,15 +214,11 @@ instance ToHoverMap AST.Command where
   toHoverMap PrimOp {} = M.empty
   toHoverMap (CaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
-  toHoverMap (CaseOfPrdI _ _ t tmcasesI) =
-    M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CaseOfCnsI _ _ t tmcasesI) =
+  toHoverMap (CaseOfI _ _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
   toHoverMap (CocaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
-  toHoverMap (CocaseOfPrdI _ _ t tmcasesI) =
-    M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CocaseOfCnsI _ _ t tmcasesI) =
+  toHoverMap (CocaseOfI _ _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
 
 instance ToHoverMap Substitution where
