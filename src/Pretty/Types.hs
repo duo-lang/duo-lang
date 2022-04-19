@@ -76,7 +76,7 @@ instance PrettyAnn (RST.Typ pol) where
   -- Type Variables
   prettyAnn (RST.TyVar _ _ _ tv)       = prettyAnn tv
   -- Recursive types
-  prettyAnn (RST.TyRec _ _ rv t)       = recSym <+> prettyAnn rv <> "." <> align (prettyAnn t)
+  prettyAnn (RST.TyRec _ _ rv t)       = parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
   -- Nominal types
   prettyAnn (RST.TyNominal _ _ _ tn args) = prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
   prettyAnn (RST.TySyn _ _ nm _) = prettyAnn nm
