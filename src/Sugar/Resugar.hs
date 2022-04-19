@@ -25,11 +25,11 @@ embedCoreTerm (Core.BoundVar loc rep idx) =
     RST.BoundVar loc rep idx
 embedCoreTerm (Core.FreeVar loc rep idx) =
     RST.FreeVar loc rep idx
-embedCoreTerm (Core.Xtor loc rep ns xs subst) =
+embedCoreTerm (Core.Xtor loc _annot rep ns xs subst) =
     RST.Xtor loc rep ns xs (embedSubst subst)
-embedCoreTerm (Core.XMatch loc rep ns cases) =
+embedCoreTerm (Core.XMatch loc _annot rep ns cases) =
     RST.XMatch loc rep ns (embedCmdCase <$> cases)
-embedCoreTerm (Core.MuAbs loc rep b cmd) =
+embedCoreTerm (Core.MuAbs loc _annot rep b cmd) =
     RST.MuAbs loc rep b (embedCoreCommand cmd)
 embedCoreTerm (Core.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
@@ -38,7 +38,7 @@ embedCoreTerm (Core.PrimLitF64 loc d) =
 
 
 embedCoreCommand :: Core.Command -> RST.Command
-embedCoreCommand (Core.Apply loc _knd prd cns ) =
+embedCoreCommand (Core.Apply loc _annot _knd prd cns ) =
     RST.Apply loc (embedCoreTerm prd) (embedCoreTerm cns)
 embedCoreCommand (Core.Print loc tm cmd) =
     RST.Print loc (embedCoreTerm tm) (embedCoreCommand cmd)

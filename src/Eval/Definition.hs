@@ -49,8 +49,8 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
 
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc PrdRep Nominal (MkXtorName "Z") []
-convertInt n = Xtor defaultLoc PrdRep Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep Nominal (MkXtorName "Z") []
+convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)
