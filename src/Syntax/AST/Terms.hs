@@ -162,7 +162,7 @@ data Term (pc :: PrdCns) where
   -- ~mu x.c    =   MuAbs CnsRep c
   MuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
   ---------------------------------------------------------------------------------
-  -- Syntactic Sugar
+  -- Syntactic sugar
   ---------------------------------------------------------------------------------
   -- The two dual constructs "Dtor" and "Semi"
   --
@@ -172,13 +172,20 @@ data Term (pc :: PrdCns) where
   --  C(args).cns
   Semi :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
   Dtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
-  -- The dual constructs
-  -- case e of 
-  -- case e of { ... }
+  -- The two dual constructs "CaseOf" and "CocaseOf"
   --
+  -- case   prd of { X(xs) => prd }
+  -- case   prd of { X(xs) => cns }
+  -- cocase cns of { X(xs) => prd }
+  -- cocase cns of { X(xs) => cns }
   CaseOf   :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
   CocaseOf :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
-
+  -- The two dual constructs "CaseI" and "CocaseI"
+  --
+  -- case   { X(xs,*,ys) => prd}
+  -- case   { X(xs,*,ys) => cns}
+  -- cocase { X(xs,*,ys) => prd}
+  -- cocase { X(xs,*,ys) => cns}
   CaseI   :: Loc -> PrdCnsRep pc -> Typ Neg -> NominalStructural -> [TermCaseI pc] -> Term Cns
   CocaseI :: Loc -> PrdCnsRep pc -> Typ Pos -> NominalStructural -> [TermCaseI pc] -> Term Prd
   ---------------------------------------------------------------------------------
@@ -193,6 +200,7 @@ instance Eq (Term pc) where
 deriving instance Show (Term pc)
 
 instance Zonk (Term pc) where
+  -- Core constructs
   zonk bisubst (BoundVar loc rep ty idx) =
     BoundVar loc rep (zonk bisubst ty) idx
   zonk bisubst (FreeVar loc rep ty nm)  =
@@ -203,37 +211,42 @@ instance Zonk (Term pc) where
     XCase loc rep (zonk bisubst ty) ns (zonk bisubst <$> cases)
   zonk bisubst (MuAbs loc rep ty fv cmd) =
     MuAbs loc rep (zonk bisubst ty) fv (zonk bisubst cmd)
+  -- Syntactic sugar
+  zonk bisubst (Semi loc rep ty ns xt (subst1,pcrep,subst2) cns) =
+    Semi loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2) (zonk bisubst cns)
   zonk bisubst (Dtor loc rep ty ns xt prd (subst1,pcrep,subst2)) =
     Dtor loc rep (zonk bisubst ty) ns xt (zonk bisubst prd) (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2)
   zonk bisubst (CaseOf loc rep ty ns prd cases) =
     CaseOf loc rep (zonk bisubst ty) ns (zonk bisubst prd) (zonk bisubst <$> cases)
-  zonk bisubst (CocaseI loc pcrep ty ns cases) =
-    CocaseI loc pcrep (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (CocaseOf loc rep ty ns t cases) =
+    CocaseOf loc rep (zonk bisubst ty) ns (zonk bisubst t) (zonk bisubst <$> cases)
   zonk bisubst (CaseI loc pcrep ty ns cases) =
     CaseI loc pcrep (zonk bisubst ty) ns (zonk bisubst <$> cases)
-  zonk bisubst (Semi loc rep ty ns xt (subst1,pcrep,subst2) t) =
-    Semi loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2) (zonk bisubst t)
-  zonk bisubst (CocaseOf loc rep ty ns t cases) =
-    CocaseOf loc rep (zonk bisubst ty) ns (zonk bisubst t) (zonk bisubst <$> cases) 
+  zonk bisubst (CocaseI loc pcrep ty ns cases) =
+    CocaseI loc pcrep (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  -- Primitive constructs  
   zonk _ lit@PrimLitI64{} = lit
   zonk _ lit@PrimLitF64{} = lit
 
 
 
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
-getTypeTerm (BoundVar _ _ annot _)   = annot
-getTypeTerm (FreeVar  _ _ annot _)   = annot
-getTypeTerm (Xtor _ _ annot _ _ _)   = annot
-getTypeTerm (XCase _ _ annot _ _)   = annot
-getTypeTerm (MuAbs _ _ annot _ _)    = annot
-getTypeTerm (Dtor _ _ annot _ _ _ _) = annot
-getTypeTerm (CaseOf _ _ annot  _ _ _)     = annot
-getTypeTerm (CocaseI _ _ annot _ _)     = annot
-getTypeTerm (PrimLitI64 _ _)         = TyPrim defaultLoc PosRep I64
-getTypeTerm (PrimLitF64 _ _)         = TyPrim defaultLoc PosRep F64
-getTypeTerm (CaseI _ _ annot _ _) = annot
-getTypeTerm (Semi _ _ annot _ _ _ _) = annot
+-- Core constructs
+getTypeTerm (BoundVar _ _ annot _) = annot
+getTypeTerm (FreeVar  _ _ annot _) = annot
+getTypeTerm (Xtor _ _ annot _ _ _) = annot
+getTypeTerm (XCase _ _ annot _ _)  = annot
+getTypeTerm (MuAbs _ _ annot _ _)  = annot
+-- Syntactic sugar
+getTypeTerm (Semi _ _ annot _ _ _ _)   = annot
+getTypeTerm (Dtor _ _ annot _ _ _ _)   = annot
+getTypeTerm (CaseOf _ _ annot  _ _ _)  = annot
 getTypeTerm (CocaseOf _ _ annot _ _ _) = annot
+getTypeTerm (CaseI _ _ annot _ _)      = annot
+getTypeTerm (CocaseI _ _ annot _ _)    = annot
+-- Primitive constructs
+getTypeTerm (PrimLitI64 _ _) = TyPrim defaultLoc PosRep I64
+getTypeTerm (PrimLitF64 _ _) = TyPrim defaultLoc PosRep F64
 
 getTypArgs :: Substitution -> LinearContext Pos
 getTypArgs subst = getTypArgs'' <$> subst
@@ -291,8 +304,6 @@ instance Zonk Command where
   zonk bisubst (CocaseOfI loc pcrep ns t cases) =
     CocaseOfI loc pcrep ns (zonk bisubst t) (zonk bisubst <$> cases) 
 
-
-
 ---------------------------------------------------------------------------------
 -- Variable Opening
 ---------------------------------------------------------------------------------
@@ -303,6 +314,7 @@ pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
+-- Core constructs
 termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, subst !! j) of
                                                                       (PrdRep, PrdTerm tm) -> tm
                                                                       (CnsRep, CnsTerm tm) -> tm
@@ -315,7 +327,13 @@ termOpeningRec k args (XCase loc rep annot ns cases) =
   XCase loc rep annot ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc rep annot fv cmd) =
   MuAbs loc rep annot fv (commandOpeningRec (k+1) args cmd)
--- ATerms
+-- Syntactic sugar
+termOpeningRec k args (Semi loc rep annot ns xtor (args1,pcrep,args2) tm) =
+  let
+    args1' = pctermOpeningRec k args <$> args1
+    args2' = pctermOpeningRec k args <$> args2
+  in
+    Semi loc rep annot ns xtor (args1', pcrep, args2') (termOpeningRec k args tm)
 termOpeningRec k args (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
   let
     args1' = pctermOpeningRec k args <$> args1
@@ -324,19 +342,13 @@ termOpeningRec k args (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
     Dtor loc rep annot ns xt (termOpeningRec k args t) (args1', pcrep, args2')
 termOpeningRec k args (CaseOf loc rep annot ns t cases) =
   CaseOf loc rep annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
-termOpeningRec k args (CocaseI loc pcrep annot ns cocases) =
-  CocaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+termOpeningRec k args (CocaseOf loc rep annot ns t tmcases) = 
+  CocaseOf loc rep annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> tmcases)
 termOpeningRec k args (CaseI loc pcrep annot ns tmcasesI) =
   CaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
-termOpeningRec k args (Semi loc rep annot ns xtor (args1,pcrep,args2) tm) =
-  let
-    args1' = pctermOpeningRec k args <$> args1
-    args2' = pctermOpeningRec k args <$> args2
-  in
-    Semi loc rep annot ns xtor (args1', pcrep, args2') (termOpeningRec k args tm)
-
-termOpeningRec k args (CocaseOf loc rep annot ns t tmcases) = 
-  CocaseOf loc rep annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> tmcases)  
+termOpeningRec k args (CocaseI loc pcrep annot ns cocases) =
+  CocaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+-- Primitive constructs
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
 
@@ -376,6 +388,7 @@ pctermClosingRec k vars (PrdTerm tm) = PrdTerm $ termClosingRec k vars tm
 pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
 termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
+-- Core constructs
 termClosingRec _ _ bv@(BoundVar _ _ _ _) = bv
 termClosingRec k vars (FreeVar loc PrdRep annot v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep annot (k, fromJust ((Prd,v) `elemIndex` vars))
                                                    | otherwise = FreeVar loc PrdRep annot v
@@ -387,7 +400,13 @@ termClosingRec k vars (XCase loc pc annot sn cases) =
   XCase loc pc annot sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc pc annot fv cmd) =
   MuAbs loc pc annot fv (commandClosingRec (k+1) vars cmd)
--- ATerms
+-- Syntactic sugar
+termClosingRec k args (Semi loc rep annot ns xt (args1,pcrep,args2) t) = 
+  let
+    args1' = pctermClosingRec k args <$> args1
+    args2' = pctermClosingRec k args <$> args2
+  in
+  Semi loc rep annot ns xt (args1',pcrep,args2') (termClosingRec k args t)
 termClosingRec k args (Dtor loc pc annot ns xt t (args1,pcrep,args2)) =
   let
     args1' = pctermClosingRec k args <$> args1
@@ -396,19 +415,13 @@ termClosingRec k args (Dtor loc pc annot ns xt t (args1,pcrep,args2)) =
     Dtor loc pc annot ns xt (termClosingRec k args t) (args1', pcrep, args2')
 termClosingRec k args (CaseOf loc rep annot ns t cases) =
   CaseOf loc rep annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
-termClosingRec k args (CocaseI loc pcrep annot ns cocases) =
-  CocaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
-termClosingRec k args (CaseI loc pcrep annot ns tmcasesI) = 
-  CaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
-termClosingRec k args (Semi loc rep annot ns xt (args1,pcrep,args2) t) = 
-  let
-    args1' = pctermClosingRec k args <$> args1
-    args2' = pctermClosingRec k args <$> args2
-  in
-  Semi loc rep annot ns xt (args1',pcrep,args2') (termClosingRec k args t)
-
 termClosingRec k args (CocaseOf loc rep annot ns t tmcases) = 
   CocaseOf loc rep annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> tmcases) 
+termClosingRec k args (CaseI loc pcrep annot ns tmcasesI) = 
+  CaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+termClosingRec k args (CocaseI loc pcrep annot ns cocases) =
+  CocaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+-- Primitive constructs
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
@@ -467,6 +480,7 @@ pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm
 pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 
 termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
+-- Core constructs
 termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _ _) = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
@@ -475,6 +489,11 @@ termLocallyClosedRec env (XCase _ _ _ _ cases) = do
   sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> cmdcase_args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
+-- Syntactic sugar
+termLocallyClosedRec env (Semi _ _ _ _ _ (args1,_,args2) t) = do 
+  termLocallyClosedRec env t
+  sequence_ (pctermLocallyClosedRec env <$> args1)
+  sequence_ (pctermLocallyClosedRec env <$> args2)
 termLocallyClosedRec env (Dtor _ _ _ _ _ e (args1,_,args2)) = do
   termLocallyClosedRec env e
   sequence_ (pctermLocallyClosedRec env <$> args1)
@@ -482,18 +501,14 @@ termLocallyClosedRec env (Dtor _ _ _ _ _ e (args1,_,args2)) = do
 termLocallyClosedRec env (CaseOf _ _ _ _ e cases) = do
   termLocallyClosedRec env e
   sequence_ (termCaseLocallyClosedRec env <$> cases)
-termLocallyClosedRec env (CocaseI _ _ _ _ cases) =
-  sequence_ (termCaseILocallyClosedRec env <$> cases)
-termLocallyClosedRec env (CaseI _ _ _ _ tmcasesI) = 
-  sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
-termLocallyClosedRec env (Semi _ _ _ _ _ (args1,_,args2) t) = do 
-  termLocallyClosedRec env t
-  sequence_ (pctermLocallyClosedRec env <$> args1)
-  sequence_ (pctermLocallyClosedRec env <$> args2)
 termLocallyClosedRec env (CocaseOf _ _ _ _ t tmcases) = do 
   termLocallyClosedRec env t
   sequence_ (termCaseLocallyClosedRec env <$> tmcases)
-  
+termLocallyClosedRec env (CaseI _ _ _ _ tmcasesI) = 
+  sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
+termLocallyClosedRec env (CocaseI _ _ _ _ cases) =
+  sequence_ (termCaseILocallyClosedRec env <$> cases)
+-- Primitive constructs  
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
@@ -546,6 +561,7 @@ shiftPCTermRec n (PrdTerm tm) = PrdTerm $ shiftTermRec n tm
 shiftPCTermRec n (CnsTerm tm) = CnsTerm $ shiftTermRec n tm
 
 shiftTermRec :: Int -> Term pc -> Term pc
+-- Core constructs
 shiftTermRec _ var@FreeVar {} = var
 shiftTermRec n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar loc pcrep annot (i + 1, j)
                                                 | otherwise = BoundVar loc pcrep annot (i    , j)
@@ -555,18 +571,20 @@ shiftTermRec n (XCase loc pcrep annot ns cases) =
   XCase loc pcrep annot ns (shiftCmdCaseRec (n + 1) <$> cases)
 shiftTermRec n (MuAbs loc pcrep annot bs cmd) =
   MuAbs loc pcrep annot bs (shiftCmdRec (n + 1) cmd)
+-- Syntactic sugar
+shiftTermRec n (Semi loc rep annot ns xt (args1,pcrep',args2) t) =
+  Semi loc rep annot ns xt (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2) (shiftTermRec n t)
 shiftTermRec n (Dtor loc pcrep annot ns xt e (args1,pcrep',args2)) =
   Dtor loc pcrep annot ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2)
 shiftTermRec n (CaseOf loc pcrep annot ns e cases) =
   CaseOf loc pcrep annot ns (shiftTermRec n e) (shiftTermCaseRec (n + 1) <$> cases)
-shiftTermRec n (CocaseI loc pcrep annot ns cases) =
-  CocaseI loc pcrep annot ns (shiftTermCaseIRec n <$> cases)
-shiftTermRec n (CaseI loc pcrep annot ns tmcasesI) =
-  CaseI loc pcrep annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI)
-shiftTermRec n (Semi loc rep annot ns xt (args1,pcrep',args2) t) =
-  Semi loc rep annot ns xt (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2) (shiftTermRec n t)
 shiftTermRec n (CocaseOf loc rep annot ns t tmcases) =
   CocaseOf loc rep annot ns (shiftTermRec n t) (shiftTermCaseRec (n + 1) <$> tmcases) 
+shiftTermRec n (CaseI loc pcrep annot ns tmcasesI) =
+  CaseI loc pcrep annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI)
+shiftTermRec n (CocaseI loc pcrep annot ns cases) =
+  CocaseI loc pcrep annot ns (shiftTermCaseIRec n <$> cases)
+-- Primitive constructs
 shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
 
