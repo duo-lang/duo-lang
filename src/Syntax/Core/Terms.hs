@@ -60,7 +60,7 @@ type Substitution = [PrdCnsTerm]
 --    cmdcase_name  cmdcase_args      cmdcase_cmd
 --
 data CmdCase = MkCmdCase
-  { cmdcase_ext  :: Loc
+  { cmdcase_loc  :: Loc
   , cmdcase_name :: XtorName
   , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
   , cmdcase_cmd  :: Command

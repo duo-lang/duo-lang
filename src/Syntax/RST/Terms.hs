@@ -49,8 +49,8 @@ type Substitution = [PrdCnsTerm]
 -- replaced by an implicit argument. The following convention for the use of the
 -- `pc` parameter is used:
 --
--- SubstitutionI ext Prd = ... [*] ...
--- SubstitutionI ext Cns = ... (*) ...
+-- SubstitutionI Prd = ... [*] ...
+-- SubstitutionI Cns = ... (*) ...
 type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 
 ---------------------------------------------------------------------------------
@@ -58,7 +58,6 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 ---------------------------------------------------------------------------------
 
 -- | Represents one case in a pattern match or copattern match.
--- The `ext` field is used to save additional information, such as source code locations.
 --
 --        X(x_1,...,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
@@ -68,7 +67,7 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 --    tmcase_name
 --
 data TermCase (pc :: PrdCns)= MkTermCase
-  { tmcase_ext  :: Loc
+  { tmcase_loc  :: Loc
   , tmcase_name :: XtorName
   , tmcase_args :: [(PrdCns, Maybe FreeVarName)]
   , tmcase_term :: Term pc
@@ -81,7 +80,6 @@ deriving instance Show (TermCase Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 -- Does bind an implicit argument (in contrast to TermCase).
--- The `ext` field is used to save additional information, such as source code locations.
 --
 --        X(x_1, * ,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
@@ -91,7 +89,7 @@ deriving instance Show (TermCase Cns)
 --    tmcasei_name
 --
 data TermCaseI (pc :: PrdCns) = MkTermCaseI
-  { tmcasei_ext  :: Loc
+  { tmcasei_loc  :: Loc
   , tmcasei_name :: XtorName
   -- | The pattern arguments
   -- The empty tuple stands for the implicit argument (*)
@@ -112,7 +110,7 @@ deriving instance Show (TermCaseI Cns)
 --    cmdcase_name  cmdcase_args      cmdcase_cmd
 --
 data CmdCase = MkCmdCase
-  { cmdcase_ext  :: Loc
+  { cmdcase_loc  :: Loc
   , cmdcase_name :: XtorName
   , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
   , cmdcase_cmd  :: Command
@@ -126,7 +124,6 @@ deriving instance Show CmdCase
 ---------------------------------------------------------------------------------
 
 -- | A symmetric term.
--- The `bs` parameter is used to store additional information at binding sites.
 data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
   BoundVar :: Loc -> PrdCnsRep pc -> Index -> Term pc
@@ -274,13 +271,13 @@ termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
-commandClosingRec _ _ (ExitSuccess ext) = ExitSuccess ext
-commandClosingRec _ _ (ExitFailure ext) = ExitFailure ext
-commandClosingRec _ _ (Jump ext fv) = Jump ext fv
-commandClosingRec k args (Print ext t cmd) = Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
-commandClosingRec k args (Read ext cns) = Read ext (termClosingRec k args cns)
-commandClosingRec k args (Apply ext t1 t2) = Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
-commandClosingRec k args (PrimOp ext pt op subst) = PrimOp ext pt op (pctermClosingRec k args <$> subst)
+commandClosingRec _ _ (ExitSuccess loc) = ExitSuccess loc
+commandClosingRec _ _ (ExitFailure loc) = ExitFailure loc
+commandClosingRec _ _ (Jump loc fv) = Jump loc fv
+commandClosingRec k args (Print loc t cmd) = Print loc (termClosingRec k args t) (commandClosingRec k args cmd)
+commandClosingRec k args (Read loc cns) = Read loc (termClosingRec k args cns)
+commandClosingRec k args (Apply loc t1 t2) = Apply loc (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (PrimOp loc pt op subst) = PrimOp loc pt op (pctermClosingRec k args <$> subst)
 
 termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 termClosing = termClosingRec 0

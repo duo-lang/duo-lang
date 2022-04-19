@@ -34,7 +34,7 @@ type BindingSite = [FVOrStar]
 --------------------------------------------------------------------------------------------
 
 data TermCase  = MkTermCase
-  { tmcase_ext  :: Loc
+  { tmcase_loc  :: Loc
   , tmcase_name :: XtorName
   , tmcase_args :: BindingSite
   , tmcase_term :: Term

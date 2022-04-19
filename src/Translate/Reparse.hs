@@ -51,24 +51,24 @@ freeVarNamesToXtorArgs bs = f <$> bs
     f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
 
 openTermCase :: RST.TermCase pc -> RST.TermCase pc
-openTermCase RST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
-    RST.MkTermCase { tmcase_ext = tmcase_ext
+openTermCase RST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
+    RST.MkTermCase { tmcase_loc = tmcase_loc
                    , tmcase_name = tmcase_name
                    , tmcase_args = tmcase_args
                    , tmcase_term = RST.termOpening (freeVarNamesToXtorArgs tmcase_args) (openTermComplete tmcase_term)
                    }
 
 openTermCaseI :: RST.TermCaseI pc -> RST.TermCaseI pc
-openTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
-  RST.MkTermCaseI { tmcasei_ext = tmcasei_ext
+openTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
+  RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
                   , tmcasei_name = tmcasei_name
                   , tmcasei_args = (as1, (), as2)
                   , tmcasei_term = RST.termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
                   }
 
 openCmdCase :: RST.CmdCase -> RST.CmdCase
-openCmdCase RST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
-  RST.MkCmdCase { cmdcase_ext = cmdcase_ext
+openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+  RST.MkCmdCase { cmdcase_loc = cmdcase_loc
                 , cmdcase_name = cmdcase_name
                 , cmdcase_args = cmdcase_args
                 , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs cmdcase_args) (openCommandComplete cmdcase_cmd)
@@ -287,23 +287,23 @@ embedCommand (RST.PrimOp loc ty op subst) =
   CST.PrimCmdTerm $ CST.PrimOp loc ty op (embedSubst subst)
 
 embedCmdCase :: RST.CmdCase -> CST.TermCase
-embedCmdCase RST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
-  CST.MkTermCase { tmcase_ext = cmdcase_ext
+embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+  CST.MkTermCase { tmcase_loc = cmdcase_loc
                 , tmcase_name = cmdcase_name
                 , tmcase_args = CST.FoSFV . fromJust . snd <$> cmdcase_args
                 , tmcase_term = embedCommand cmdcase_cmd
                 }
 
 embedTermCase :: RST.TermCase pc -> CST.TermCase
-embedTermCase RST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
-  CST.MkTermCase { tmcase_ext = tmcase_ext
+embedTermCase RST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
+  CST.MkTermCase { tmcase_loc = tmcase_loc
                  , tmcase_name = tmcase_name
                  , tmcase_args = CST.FoSFV . fromJust . snd <$> tmcase_args
                  , tmcase_term = embedTerm tmcase_term}
 
 embedTermCaseI :: RST.TermCaseI pc -> CST.TermCase
-embedTermCaseI RST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args = (as1,_, as2), tmcasei_term } =
-  CST.MkTermCase { tmcase_ext = tmcasei_ext
+embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1,_, as2), tmcasei_term } =
+  CST.MkTermCase { tmcase_loc = tmcasei_loc
                   , tmcase_name = tmcasei_name
                   , tmcase_args = (CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2)
                   , tmcase_term = embedTerm tmcasei_term}

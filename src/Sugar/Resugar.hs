@@ -6,8 +6,8 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
-embedCmdCase Core.MkCmdCase {cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
-    RST.MkCmdCase { cmdcase_ext = cmdcase_ext
+embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+    RST.MkCmdCase { cmdcase_loc = cmdcase_loc
                   , cmdcase_name = cmdcase_name
                   , cmdcase_args = cmdcase_args
                   , cmdcase_cmd = embedCoreCommand cmdcase_cmd

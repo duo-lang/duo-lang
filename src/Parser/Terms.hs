@@ -298,7 +298,7 @@ termCaseP =  do
   (args,_) <- bindingSiteP
   _ <- symbolP SymDoubleRightArrow
   (t, endPos) <- termTopP
-  let pmcase = CST.MkTermCase { tmcase_ext  = Loc startPos endPos
+  let pmcase = CST.MkTermCase { tmcase_loc  = Loc startPos endPos
                               , tmcase_name = xt
                               , tmcase_args = args
                               , tmcase_term  = t }

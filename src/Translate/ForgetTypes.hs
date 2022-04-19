@@ -19,27 +19,27 @@ forgetTypesPCTerm (AST.PrdTerm tm) = RST.PrdTerm (forgetTypesTerm tm)
 forgetTypesPCTerm (AST.CnsTerm tm) = RST.CnsTerm (forgetTypesTerm tm)
 
 forgetTypesCmdCase :: AST.CmdCase  -> RST.CmdCase
-forgetTypesCmdCase AST.MkCmdCase { cmdcase_ext, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+forgetTypesCmdCase AST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
     RST.MkCmdCase
-      { cmdcase_ext = cmdcase_ext
+      { cmdcase_loc = cmdcase_loc
       , cmdcase_name = cmdcase_name
       , cmdcase_args = cmdcase_args
       , cmdcase_cmd = forgetTypesCommand cmdcase_cmd 
       }
 
 forgetTypesTermCase :: AST.TermCase pc -> RST.TermCase pc
-forgetTypesTermCase AST.MkTermCase { tmcase_ext, tmcase_name, tmcase_args, tmcase_term } =
+forgetTypesTermCase AST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
     RST.MkTermCase
-      { tmcase_ext = tmcase_ext
+      { tmcase_loc = tmcase_loc
       , tmcase_name = tmcase_name
       , tmcase_args = tmcase_args
       , tmcase_term = forgetTypesTerm tmcase_term 
       }
 
 forgetTypesTermCaseI :: AST.TermCaseI pc -> RST.TermCaseI pc
-forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_ext, tmcasei_name, tmcasei_args, tmcasei_term } =
+forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args, tmcasei_term } =
     RST.MkTermCaseI
-      { tmcasei_ext = tmcasei_ext
+      { tmcasei_loc = tmcasei_loc
       , tmcasei_name = tmcasei_name
       , tmcasei_args = tmcasei_args
       , tmcasei_term = forgetTypesTerm tmcasei_term 

@@ -58,8 +58,8 @@ type Substitution = [PrdCnsTerm]
 -- replaced by an implicit argument. The following convention for the use of the
 -- `pc` parameter is used:
 --
--- SubstitutionI ext Prd = ... [*] ...
--- SubstitutionI ext Cns = ... (*) ...
+-- SubstitutionI Prd = ... [*] ...
+-- SubstitutionI Cns = ... (*) ...
 type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 
 ---------------------------------------------------------------------------------
@@ -67,7 +67,6 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 ---------------------------------------------------------------------------------
 
 -- | Represents one case in a pattern match or copattern match.
--- The `ext` field is used to save additional information, such as source code locations.
 --
 --        X(x_1,...,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
@@ -77,7 +76,7 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 --    tmcase_name
 --
 data TermCase (pc :: PrdCns) = MkTermCase
-  { tmcase_ext  :: Loc
+  { tmcase_loc  :: Loc
   , tmcase_name :: XtorName
   , tmcase_args :: [(PrdCns, Maybe FreeVarName)]
   , tmcase_term :: Term pc
@@ -94,7 +93,6 @@ deriving instance Show (TermCase Cns)
 
 -- | Represents one case in a pattern match or copattern match.
 -- Does bind an implicit argument (in contrast to TermCase).
--- The `ext` field is used to save additional information, such as source code locations.
 --
 --        X(x_1, * ,x_n) => e
 --        ^ ^^^^^^^^^^^     ^
@@ -104,7 +102,7 @@ deriving instance Show (TermCase Cns)
 --    tmcasei_name
 --
 data TermCaseI (pc :: PrdCns) = MkTermCaseI
-  { tmcasei_ext  :: Loc
+  { tmcasei_loc  :: Loc
   , tmcasei_name :: XtorName
   -- | The pattern arguments
   -- The empty tuple stands for the implicit argument (*)
@@ -129,7 +127,7 @@ deriving instance Show (TermCaseI Cns)
 --    cmdcase_name  cmdcase_args      cmdcase_cmd
 --
 data CmdCase = MkCmdCase
-  { cmdcase_ext  :: Loc
+  { cmdcase_loc  :: Loc
   , cmdcase_name :: XtorName
   , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
   , cmdcase_cmd  :: Command
