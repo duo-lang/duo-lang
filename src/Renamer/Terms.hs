@@ -163,7 +163,7 @@ renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc 
 renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
 renameLambda loc var tm = do
   tm' <- renameTerm PrdRep tm
-  pure $ RST.CocasePrdI loc Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
+  pure $ RST.CocaseI loc PrdRep Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
                                                       ([(Prd, Just var)], (), [])
                                                       (RST.termClosing [(Prd, var)] tm')
                                     ]
@@ -244,7 +244,7 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
     AllConsumerStar -> do
       cases' <- sequence (renameTermCaseI <$> cases)
       ns <- termCasesToNS cases
-      pure $ RST.CocasePrdI loc ns cases'
+      pure $ RST.CocaseI loc PrdRep ns cases'
     AllProducerStar -> error "not yet implemented"
 renameTerm CnsRep (CST.Case loc cases)  = do
   c <- analyzeTermCases cases
@@ -258,7 +258,7 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
   cases' <- sequence (renameTermCase <$> cases)
   t' <- renameTerm PrdRep t
   ns <- commandCasesToNS cases
-  pure $ RST.CaseOf loc ns t' cases'
+  pure $ RST.CaseOf loc PrdRep ns t' cases'
 renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')

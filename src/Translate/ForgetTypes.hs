@@ -5,8 +5,6 @@ import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types qualified as RST
-import Syntax.Common (PrdCnsRep(PrdRep),PrdCnsRep(CnsRep))
-
 
 forgetTypesSubst :: AST.Substitution  -> RST.Substitution 
 forgetTypesSubst = fmap forgetTypesPCTerm
@@ -46,6 +44,7 @@ forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args, 
       }
 
 forgetTypesTerm :: AST.Term pc -> RST.Term pc
+-- Core constructs
 forgetTypesTerm (AST.BoundVar loc pc _annot idx) =
     RST.BoundVar loc pc idx
 forgetTypesTerm (AST.FreeVar loc pc _annot nm) =
@@ -56,27 +55,26 @@ forgetTypesTerm (AST.XCase loc pc _annot ns cases) =
     RST.XCase loc pc ns (forgetTypesCmdCase <$> cases)
 forgetTypesTerm (AST.MuAbs loc pc _annot bs cmd) =
     RST.MuAbs loc pc bs (forgetTypesCommand cmd)
+-- Syntactic sugar
+forgetTypesTerm (AST.Semi loc pc _annot ns xt subst cns) =
+    RST.Semi loc pc ns xt (forgetTypesSubstI subst) (forgetTypesTerm cns)
 forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =
     RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
-forgetTypesTerm (AST.CaseOf loc PrdRep _annot ns tm cases) =
-    RST.CaseOf loc ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.CocaseI loc PrdRep _annot ns cases) =
-    RST.CocasePrdI loc ns (forgetTypesTermCaseI <$> cases)
-forgetTypesTerm (AST.CocaseI _loc CnsRep _annot _ns _tmcasesI) =
-    error "not yet implemented"
+forgetTypesTerm (AST.CaseOf loc rep _annot ns tm cases) =
+    RST.CaseOf loc rep ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
+forgetTypesTerm (AST.CocaseOf loc rep _annot ns tm cases) =
+    RST.CocaseOf loc rep ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
+forgetTypesTerm (AST.CaseI loc rep _annot ns tmcasesI) =
+    RST.CaseI loc rep ns (forgetTypesTermCaseI <$> tmcasesI)
+forgetTypesTerm (AST.CocaseI loc rep _annot ns cases) =
+    RST.CocaseI loc rep ns (forgetTypesTermCaseI <$> cases)
+-- Primitive constructs
 forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 forgetTypesTerm (AST.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
-forgetTypesTerm (AST.CaseI _loc _pcrep _annot _ns _tmcasesI) =
-    error "not yet implemented"
-forgetTypesTerm (AST.Semi _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
-    error "not yet implemented"
-forgetTypesTerm (AST.CocaseOf _loc _rep _annot _ns _t _tmcasesI) =
-    error "not yet implemented" 
 
-forgetTypesTerm (AST.CaseOf _loc CnsRep _annot _ns _tm _cases) =
-    error "not yet implemented"
+
 
 forgetTypesCommand :: AST.Command -> RST.Command
 forgetTypesCommand (AST.Apply loc _kind prd cns) =
@@ -93,14 +91,14 @@ forgetTypesCommand (AST.ExitFailure loc) =
     RST.ExitFailure loc
 forgetTypesCommand (AST.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (forgetTypesSubst subst)
-forgetTypesCommand (AST.CaseOfCmd _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CaseOfI _loc _pcrep _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CocaseOfCmd _loc _ns _t _cases) =
-    error "not yet implemented"
-forgetTypesCommand (AST.CocaseOfI _loc _pcrep _ns _t _cases) =
-    error "not yet implemented"
+forgetTypesCommand (AST.CaseOfCmd loc ns t cases) =
+    RST.CaseOfCmd loc ns (forgetTypesTerm t) (forgetTypesCmdCase <$> cases)
+forgetTypesCommand (AST.CocaseOfCmd loc ns t cases) =
+    RST.CocaseOfCmd loc ns (forgetTypesTerm t) (forgetTypesCmdCase <$> cases)
+forgetTypesCommand (AST.CaseOfI loc pcrep ns t cases) =
+    RST.CaseOfI loc pcrep ns (forgetTypesTerm t) (forgetTypesTermCaseI <$> cases)
+forgetTypesCommand (AST.CocaseOfI loc pcrep ns t cases) =
+    RST.CocaseOfI loc pcrep ns (forgetTypesTerm t) (forgetTypesTermCaseI <$> cases)
 
 
 forgetAnnot :: RST.TopAnnot pol -> Maybe (RST.TypeScheme pol)

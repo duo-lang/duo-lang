@@ -372,7 +372,7 @@ genConstraintsTerm (RST.Dtor loc _ Refinement xt destructee (subst1,CnsRep,subst
 --
 -- case e of { 'X(xs) => e' }
 --
-genConstraintsTerm (RST.CaseOf loc Structural destructee cases) = do
+genConstraintsTerm (RST.CaseOf loc PrdRep Structural destructee cases) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Generate a unification variable for the return type of the pattern match
   (retTypePos, retTypeNeg) <- freshTVar (PatternMatch loc)
@@ -393,11 +393,11 @@ genConstraintsTerm (RST.CaseOf loc Structural destructee cases) = do
 --
 -- case e of { X(xs) => e' }
 --
-genConstraintsTerm (RST.CaseOf _ Nominal _ []) =
+genConstraintsTerm (RST.CaseOf _ PrdRep Nominal _ []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
-genConstraintsTerm (RST.CaseOf loc Nominal destructee cases@(RST.MkTermCase { tmcase_name = xtn }:_)) = do
+genConstraintsTerm (RST.CaseOf loc PrdRep Nominal destructee cases@(RST.MkTermCase { tmcase_name = xtn }:_)) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
@@ -427,11 +427,11 @@ genConstraintsTerm (RST.CaseOf loc Nominal destructee cases@(RST.MkTermCase { tm
 --
 -- case e of { X(xs) => e' }
 --
-genConstraintsTerm (RST.CaseOf _ Refinement _ []) =
+genConstraintsTerm (RST.CaseOf _ PrdRep Refinement _ []) =
   -- We know that empty matches cannot be parsed as refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A refinement match needs to have at least one case."]
-genConstraintsTerm (RST.CaseOf loc Refinement destructee cases@(RST.MkTermCase { tmcase_name = xtn }:_)) = do
+genConstraintsTerm (RST.CaseOf loc PrdRep Refinement destructee cases@(RST.MkTermCase { tmcase_name = xtn }:_)) = do
   destructeeInferred <- genConstraintsTerm destructee
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
@@ -462,7 +462,7 @@ genConstraintsTerm (RST.CaseOf loc Refinement destructee cases@(RST.MkTermCase {
 --
 -- cocase { 'X(xs) => e' }
 --
-genConstraintsTerm (RST.CocasePrdI loc Structural cocases) = do
+genConstraintsTerm (RST.CocaseI loc PrdRep Structural cocases) = do
   cocasesInferred <- forM cocases $ \RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } -> do
     -- Generate unification variables for each case arg
     (argtsPos1,argtsNeg1) <- freshTVars as1
@@ -479,9 +479,9 @@ genConstraintsTerm (RST.CocasePrdI loc Structural cocases) = do
 --
 -- cocase { X(xs) => e' }
 --
-genConstraintsTerm (RST.CocasePrdI _ Nominal []) =
+genConstraintsTerm (RST.CocaseI _ PrdRep Nominal []) =
   throwGenError ["Unreachable: A nominal comatch needs to have at least one case."]
-genConstraintsTerm (RST.CocasePrdI loc Nominal cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
+genConstraintsTerm (RST.CocaseI loc PrdRep Nominal cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
   -- We check that all cases in the copattern match belong to the type declaration.
@@ -508,9 +508,9 @@ genConstraintsTerm (RST.CocasePrdI loc Nominal cocases@(RST.MkTermCaseI {tmcasei
 --
 -- cocase { X(xs) => e' }
 --
-genConstraintsTerm (RST.CocasePrdI _ Refinement []) =
+genConstraintsTerm (RST.CocaseI _ PrdRep Refinement []) =
   throwGenError ["Unreachable: A refinement comatch needs to have at least one case."]
-genConstraintsTerm (RST.CocasePrdI loc Refinement cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
+genConstraintsTerm (RST.CocaseI loc PrdRep Refinement cocases@(RST.MkTermCaseI {tmcasei_name = xtn}:_)) = do
   -- Lookup the type declaration in the context.
   tn@NominalDecl{..} <- lookupDataDecl xtn
   -- We check that all cases in the pattern match belong to the type declaration.
@@ -548,8 +548,10 @@ genConstraintsTerm (RST.PrimLitI64 loc i) = pure $ AST.PrimLitI64 loc i
 genConstraintsTerm (RST.PrimLitF64 loc d) = pure $ AST.PrimLitF64 loc d
 
 genConstraintsCommand :: RST.Command -> GenM AST.Command
-genConstraintsCommand (RST.ExitSuccess loc) = return (AST.ExitSuccess loc)
-genConstraintsCommand (RST.ExitFailure loc) = return (AST.ExitFailure loc)
+genConstraintsCommand (RST.ExitSuccess loc) =
+  return (AST.ExitSuccess loc)
+genConstraintsCommand (RST.ExitFailure loc) =
+  return (AST.ExitFailure loc)
 genConstraintsCommand (RST.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
   _ <- lookupCommand fv
@@ -575,6 +577,14 @@ genConstraintsCommand (RST.PrimOp loc pt op subst) = do
     Just sig -> do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
       return (AST.PrimOp loc pt op substInferred)
+genConstraintsCommand RST.CaseOfI {} =
+  throwGenError ["Constraint generation not implemented for CaseOfI"]
+genConstraintsCommand RST.CocaseOfI {} =
+  throwGenError ["Constraint generation not implemented for CocaseOfI"]
+genConstraintsCommand RST.CaseOfCmd {} =
+  throwGenError ["Constraint generation not implemented for CaseOfCmd"]
+genConstraintsCommand RST.CocaseOfCmd {} =
+  throwGenError ["Constraint generation not implemented for CocaseOfCmd"]
 
 ---------------------------------------------------------------------------------------------
 -- Checking recursive terms
