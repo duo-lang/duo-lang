@@ -45,7 +45,6 @@ data PrdCnsTerm where
   PrdTerm :: Term Prd -> PrdCnsTerm
   CnsTerm :: Term Cns -> PrdCnsTerm
 
-deriving instance Eq PrdCnsTerm
 deriving instance Show PrdCnsTerm
 
 instance Zonk PrdCnsTerm where
@@ -86,7 +85,6 @@ instance Zonk (TermCase pc) where
   zonk bisubst (MkTermCase loc nm args tm) =
     MkTermCase loc nm args (zonk bisubst tm)
 
-deriving instance Eq (TermCase pc)
 deriving instance Show (TermCase pc)
 
 -- | Represents one case in a pattern match or copattern match.
@@ -112,7 +110,6 @@ instance Zonk (TermCaseI pc) where
   zonk bisubst (MkTermCaseI loc nm args tm) =
     MkTermCaseI loc nm args (zonk bisubst tm)
 
-deriving instance Eq (TermCaseI pc)
 deriving instance Show (TermCaseI pc)
 
 -- | Represents one case in a pattern match or copattern match.
@@ -133,7 +130,6 @@ instance Zonk CmdCase where
   zonk bisubst (MkCmdCase loc nm args cmd) =
     MkCmdCase loc nm args (zonk bisubst cmd)
 
-deriving instance Eq CmdCase
 deriving instance Show CmdCase
 
 ---------------------------------------------------------------------------------
@@ -193,9 +189,6 @@ data Term (pc :: PrdCns) where
   ---------------------------------------------------------------------------------
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
-
-instance Eq (Term pc) where
-  (==) = undefined
 
 deriving instance Show (Term pc)
 
@@ -277,8 +270,6 @@ data Command where
   CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 
 deriving instance Show Command
-instance Eq Command where
-  (==) = undefined
 
 instance Zonk Command where
   zonk bisubst (Apply ext kind prd cns) =

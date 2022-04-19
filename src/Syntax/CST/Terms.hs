@@ -89,8 +89,6 @@ data Term where
     Lambda :: Loc -> FreeVarName -> Term -> Term
     Apply :: Loc -> Term -> Term -> Term 
 
-
-
 deriving instance Show Term
 deriving instance Eq Term
 
