@@ -58,8 +58,8 @@ forgetTypesTerm (AST.MuAbs loc pc _annot bs cmd) =
     RST.MuAbs loc pc bs (forgetTypesCommand cmd)
 forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =
     RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
-forgetTypesTerm (AST.Case loc PrdRep _annot ns tm cases) =
-    RST.Case loc ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
+forgetTypesTerm (AST.CaseOf loc PrdRep _annot ns tm cases) =
+    RST.CaseOf loc ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
 forgetTypesTerm (AST.CocasePrdI loc _annot ns cases) =
     RST.Cocase loc ns (forgetTypesTermCaseI <$> cases)
 forgetTypesTerm (AST.PrimLitI64 loc i) =
@@ -76,7 +76,7 @@ forgetTypesTerm (AST.CocaseCns _loc _rep _annot _ns _t _tmcasesI) =
     error "not yet implemented" 
 forgetTypesTerm (AST.CocaseCnsI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
-forgetTypesTerm (AST.Case _loc CnsRep _annot _ns _tm _cases) =
+forgetTypesTerm (AST.CaseOf _loc CnsRep _annot _ns _tm _cases) =
     error "not yet implemented"
 
 forgetTypesCommand :: AST.Command -> RST.Command

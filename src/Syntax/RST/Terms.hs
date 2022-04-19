@@ -148,7 +148,7 @@ data Term (pc :: PrdCns) where
   --
   -- case e of { ... }
   --
-  Case :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
+  CaseOf :: Loc -> NominalStructural -> Term Prd -> [TermCase Prd] -> Term Prd
   -- | A copattern match:
   --
   -- cocase { ... }
@@ -213,8 +213,8 @@ termOpeningRec k args (Dtor loc rep ns xt t (args1,pcrep,args2)) =
     args2' = pctermOpeningRec k args <$> args2
   in
     Dtor loc rep ns xt (termOpeningRec k args t) (args1', pcrep, args2')
-termOpeningRec k args (Case loc ns t cases) =
-  Case loc ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
+termOpeningRec k args (CaseOf loc ns t cases) =
+  CaseOf loc ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
 termOpeningRec k args (Cocase loc ns cocases) =
   Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
@@ -263,8 +263,8 @@ termClosingRec k args (Dtor loc pc ns xt t (args1,pcrep,args2)) =
     args2' = pctermClosingRec k args <$> args2
   in
     Dtor loc pc ns xt (termClosingRec k args t) (args1', pcrep, args2')
-termClosingRec k args (Case loc ns t cases) =
-  Case loc ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
+termClosingRec k args (CaseOf loc ns t cases) =
+  CaseOf loc ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
 termClosingRec k args (Cocase loc ns cocases) =
   Cocase loc ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
 termClosingRec _ _ lit@PrimLitI64{} = lit

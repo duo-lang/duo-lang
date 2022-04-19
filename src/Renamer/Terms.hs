@@ -258,7 +258,7 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
   cases' <- sequence (renameTermCase <$> cases)
   t' <- renameTerm PrdRep t
   ns <- commandCasesToNS cases
-  pure $ RST.Case loc ns t' cases'
+  pure $ RST.CaseOf loc ns t' cases'
 renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')

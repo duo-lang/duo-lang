@@ -95,8 +95,8 @@ openTermComplete (RST.MuAbs _ _ Nothing _) =
   error "Create names first!"
 openTermComplete (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
   RST.Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
-openTermComplete (RST.Case loc ns t cases) =
-  RST.Case loc ns (openTermComplete t) (openTermCase <$> cases)
+openTermComplete (RST.CaseOf loc ns t cases) =
+  RST.CaseOf loc ns (openTermComplete t) (openTermCase <$> cases)
 openTermComplete (RST.Cocase loc ns cocases) =
   RST.Cocase loc ns (openTermCaseI <$> cocases)
 openTermComplete (RST.PrimLitI64 loc i) =
@@ -167,10 +167,10 @@ createNamesTerm (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
   subst1' <- createNamesSubstitution subst1
   subst2' <- createNamesSubstitution subst2
   pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
-createNamesTerm (RST.Case loc ns e cases) = do
+createNamesTerm (RST.CaseOf loc ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
-  pure $ RST.Case loc ns e' cases'
+  pure $ RST.CaseOf loc ns e' cases'
 createNamesTerm (RST.Cocase loc ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
   pure $ RST.Cocase loc ns cases'
@@ -249,7 +249,7 @@ embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
 embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
   CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
-embedTerm (RST.Case loc _ tm cases) =
+embedTerm (RST.CaseOf loc _ tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedTermCase <$> cases)
 embedTerm (RST.Cocase loc _ cases) =
   CST.Cocase loc (embedTermCaseI <$> cases)
