@@ -122,18 +122,18 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.XtorSemi _ xt args Nothing) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args)
-  prettyAnn (CST.Cocase  _ (Just t) cases) =
+  prettyAnn (CST.CocaseOf  _ t cases) =
     annKeyword "cocase" <+>
     prettyAnn t <+> annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (CST.Cocase  _ Nothing cases) =
+  prettyAnn (CST.Cocase  _ cases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (CST.Case  _ (Just t) cases) =
+  prettyAnn (CST.CaseOf  _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+> annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (CST.Case  _ Nothing cases) =
+  prettyAnn (CST.Case  _ cases) =
     annKeyword "case" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (CST.MuAbs _ v cmd) =

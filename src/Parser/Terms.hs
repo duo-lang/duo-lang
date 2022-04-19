@@ -246,7 +246,7 @@ caseRestP :: SourcePos -- ^ The source position of the start of the "case" keywo
           -> Parser (CST.Term, SourcePos)
 caseRestP startPos = do
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  pure (CST.Case (Loc startPos endPos) Nothing cases, endPos)
+  pure (CST.Case (Loc startPos endPos) cases, endPos)
 
 -- | Parses the second half of a "caseof" construct, i.e.
 --       case tm of { termcases }
@@ -257,7 +257,7 @@ caseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  return (CST.Case (Loc startPos endPos) (Just arg) cases, endPos)
+  return (CST.CaseOf (Loc startPos endPos) arg cases, endPos)
 
 -- | Parses all constructs of the forms:
 --       cocase { termcases }
@@ -274,7 +274,7 @@ cocaseRestP :: SourcePos -- ^ The source position of the start of the "cocase" k
             -> Parser (CST.Term, SourcePos)
 cocaseRestP startPos = do
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  return (CST.Cocase (Loc startPos endPos) Nothing cases, endPos)
+  return (CST.Cocase (Loc startPos endPos) cases, endPos)
 
 -- | Parses the second half of a "caseof" construct, i.e.
 --       cocase tm of { termcases }
@@ -285,7 +285,7 @@ cocaseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  return (CST.Cocase (Loc startPos endPos) (Just arg) cases, endPos)
+  return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
 
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP =  do
