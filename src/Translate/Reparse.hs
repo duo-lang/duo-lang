@@ -337,10 +337,14 @@ embedCommand (RST.ExitFailure loc) =
   CST.PrimCmdTerm $ CST.ExitFailure loc
 embedCommand (RST.PrimOp loc ty op subst) =
   CST.PrimCmdTerm $ CST.PrimOp loc ty op (embedSubst subst)
-embedCommand RST.CaseOfCmd {} = undefined
-embedCommand RST.CocaseOfCmd {} = undefined
-embedCommand RST.CaseOfI {} = undefined
-embedCommand RST.CocaseOfI {} = undefined
+embedCommand (RST.CaseOfCmd loc _ns tm cases) = 
+  CST.CaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
+embedCommand (RST.CocaseOfCmd loc _ns tm cases) =
+  CST.CocaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
+embedCommand (RST.CaseOfI loc _rep _ns tm cases) =
+  CST.CaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
+embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
+  CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
 
 
 embedCmdCase :: RST.CmdCase -> CST.TermCase
