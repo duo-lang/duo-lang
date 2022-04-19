@@ -546,6 +546,17 @@ genConstraintsTerm (RST.CocaseI loc PrdRep Refinement cocases@(RST.MkTermCaseI {
   return (AST.CocaseI loc PrdRep ( TyCodata defaultLoc PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
 genConstraintsTerm (RST.PrimLitI64 loc i) = pure $ AST.PrimLitI64 loc i
 genConstraintsTerm (RST.PrimLitF64 loc d) = pure $ AST.PrimLitF64 loc d
+-- NotImplemented
+genConstraintsTerm (RST.CaseOf _ CnsRep _ _ _) =
+  throwGenError ["Constraint generation not implemented for CaseOf CnsRep"]
+genConstraintsTerm (RST.CocaseI _ CnsRep _ _) =
+  throwGenError ["Constraint generation not implemented for CocaseI CnsRep"]
+genConstraintsTerm RST.Semi {} =
+  throwGenError ["Constraint generation not implemented for Semi"]
+genConstraintsTerm RST.CocaseOf {} =
+  throwGenError ["Constraint generation not implemented for CocaseOf"]
+genConstraintsTerm RST.CaseI {} =
+  throwGenError ["Constraint generation not implemented for CaseI"]
 
 genConstraintsCommand :: RST.Command -> GenM AST.Command
 genConstraintsCommand (RST.ExitSuccess loc) =
