@@ -128,10 +128,14 @@ openCommandComplete (RST.ExitFailure loc) =
   RST.ExitFailure loc
 openCommandComplete (RST.PrimOp loc pt op subst) =
   RST.PrimOp loc pt op (openPCTermComplete <$> subst)
-openCommandComplete RST.CaseOfCmd {} = undefined
-openCommandComplete RST.CocaseOfCmd {} = undefined
-openCommandComplete RST.CaseOfI {} = undefined
-openCommandComplete RST.CocaseOfI {} = undefined
+openCommandComplete (RST.CaseOfCmd loc ns tm cases) =
+  RST.CaseOfCmd loc ns (openTermComplete tm) (openCmdCase <$> cases)
+openCommandComplete (RST.CocaseOfCmd loc ns tm cases) =
+  RST.CocaseOfCmd loc ns (openTermComplete tm) (openCmdCase <$> cases)
+openCommandComplete (RST.CaseOfI loc rep ns tm cases) =
+  RST.CaseOfI loc rep ns (openTermComplete tm) (openTermCaseI <$> cases)
+openCommandComplete (RST.CocaseOfI loc rep ns tm cases) =
+  RST.CocaseOfI loc rep ns (openTermComplete tm) (openTermCaseI <$> cases)
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
