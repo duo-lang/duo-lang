@@ -173,9 +173,7 @@ instance ToHoverMap (Term pc) where
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
   toHoverMap (CaseOf loc _ ty ns e cases) =
     M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
-  toHoverMap (CocasePrdI loc ty ns cocases) =
-    M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
-  toHoverMap (CocaseCnsI loc ty ns cocases) =
+  toHoverMap (CocaseI loc _pcrep ty ns cocases) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 loc _) =
     mkHoverMap loc $ T.unlines [ "#### Literal"
@@ -185,9 +183,7 @@ instance ToHoverMap (Term pc) where
     mkHoverMap loc $ T.unlines [ "#### Literal"
                                , "- Raw `#F64` literal"
                                ]
-  toHoverMap (CasePrdI loc ty ns tmcasesI) =
-    M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (CaseCnsI loc ty ns tmcasesI) =
+  toHoverMap (CaseI loc _pcrep ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
   toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))

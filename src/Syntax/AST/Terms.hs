@@ -179,17 +179,18 @@ data Term (pc :: PrdCns) where
   CaseOf   :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
   CocaseOf :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
 
-  CasePrdI :: Loc -> Typ Neg -> NominalStructural -> [TermCaseI Prd] -> Term Cns
-  CaseCnsI :: Loc -> Typ Neg -> NominalStructural -> [TermCaseI Cns] -> Term Cns
-  CocasePrdI :: Loc -> Typ Pos -> NominalStructural -> [TermCaseI Prd] -> Term Prd
-  CocaseCnsI :: Loc -> Typ Pos -> NominalStructural -> [TermCaseI Cns] -> Term Prd
-
-  
+  CaseI   :: Loc -> PrdCnsRep pc -> Typ Neg -> NominalStructural -> [TermCaseI pc] -> Term Cns
+  CocaseI :: Loc -> PrdCnsRep pc -> Typ Pos -> NominalStructural -> [TermCaseI pc] -> Term Prd
   ---------------------------------------------------------------------------------
   -- Primitive constructs
   ---------------------------------------------------------------------------------
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
+
+instance Eq (Term pc) where
+  (==) = undefined
+
+deriving instance Show (Term pc)
 
 instance Zonk (Term pc) where
   zonk bisubst (BoundVar loc rep ty idx) =
@@ -206,24 +207,18 @@ instance Zonk (Term pc) where
     Dtor loc rep (zonk bisubst ty) ns xt (zonk bisubst prd) (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2)
   zonk bisubst (CaseOf loc rep ty ns prd cases) =
     CaseOf loc rep (zonk bisubst ty) ns (zonk bisubst prd) (zonk bisubst <$> cases)
-  zonk bisubst (CocasePrdI loc ty ns cases) =
-    CocasePrdI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
-  zonk bisubst (CasePrdI loc ty ns cases) =
-    CasePrdI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
-  zonk bisubst (CaseCnsI loc ty ns cases) =
-    CaseCnsI loc (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (CocaseI loc pcrep ty ns cases) =
+    CocaseI loc pcrep (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (CaseI loc pcrep ty ns cases) =
+    CaseI loc pcrep (zonk bisubst ty) ns (zonk bisubst <$> cases)
   zonk bisubst (Semi loc rep ty ns xt (subst1,pcrep,subst2) t) =
     Semi loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2) (zonk bisubst t)
-  zonk bisubst (CocaseCnsI loc ty ns cases) =
-    CocaseCnsI loc (zonk bisubst ty) ns (zonk bisubst <$> cases) 
   zonk bisubst (CocaseOf loc rep ty ns t cases) =
     CocaseOf loc rep (zonk bisubst ty) ns (zonk bisubst t) (zonk bisubst <$> cases) 
-  
   zonk _ lit@PrimLitI64{} = lit
   zonk _ lit@PrimLitF64{} = lit
 
-deriving instance Eq (Term pc)
-deriving instance Show (Term pc)
+
 
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
 getTypeTerm (BoundVar _ _ annot _)   = annot
@@ -233,12 +228,10 @@ getTypeTerm (XCase _ _ annot _ _)   = annot
 getTypeTerm (MuAbs _ _ annot _ _)    = annot
 getTypeTerm (Dtor _ _ annot _ _ _ _) = annot
 getTypeTerm (CaseOf _ _ annot  _ _ _)     = annot
-getTypeTerm (CocasePrdI _ annot _ _)     = annot
-getTypeTerm (CocaseCnsI _ annot _ _)     = annot
+getTypeTerm (CocaseI _ _ annot _ _)     = annot
 getTypeTerm (PrimLitI64 _ _)         = TyPrim defaultLoc PosRep I64
 getTypeTerm (PrimLitF64 _ _)         = TyPrim defaultLoc PosRep F64
-getTypeTerm (CasePrdI _ annot _ _) = annot
-getTypeTerm (CaseCnsI _ annot _ _) = annot
+getTypeTerm (CaseI _ _ annot _ _) = annot
 getTypeTerm (Semi _ _ annot _ _ _ _) = annot
 getTypeTerm (CocaseOf _ _ annot _ _ _) = annot
 
@@ -331,20 +324,17 @@ termOpeningRec k args (Dtor loc rep annot ns xt t (args1,pcrep,args2)) =
     Dtor loc rep annot ns xt (termOpeningRec k args t) (args1', pcrep, args2')
 termOpeningRec k args (CaseOf loc rep annot ns t cases) =
   CaseOf loc rep annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
-termOpeningRec k args (CocasePrdI loc annot ns cocases) =
-  CocasePrdI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
-termOpeningRec k args (CasePrdI loc annot ns tmcasesI) =
-  CasePrdI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
-termOpeningRec k args (CaseCnsI loc annot ns tmcasesI) =
-  CaseCnsI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
+termOpeningRec k args (CocaseI loc pcrep annot ns cocases) =
+  CocaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+termOpeningRec k args (CaseI loc pcrep annot ns tmcasesI) =
+  CaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
 termOpeningRec k args (Semi loc rep annot ns xtor (args1,pcrep,args2) tm) =
   let
     args1' = pctermOpeningRec k args <$> args1
     args2' = pctermOpeningRec k args <$> args2
   in
     Semi loc rep annot ns xtor (args1', pcrep, args2') (termOpeningRec k args tm)
-termOpeningRec k args (CocaseCnsI loc annot ns tmcasesI) = 
-  CocaseCnsI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
+
 termOpeningRec k args (CocaseOf loc rep annot ns t tmcases) = 
   CocaseOf loc rep annot ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> tmcases)  
 termOpeningRec _ _ lit@PrimLitI64{} = lit
@@ -406,20 +396,17 @@ termClosingRec k args (Dtor loc pc annot ns xt t (args1,pcrep,args2)) =
     Dtor loc pc annot ns xt (termClosingRec k args t) (args1', pcrep, args2')
 termClosingRec k args (CaseOf loc rep annot ns t cases) =
   CaseOf loc rep annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
-termClosingRec k args (CocasePrdI loc annot ns cocases) =
-  CocasePrdI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
-termClosingRec k args (CasePrdI loc annot ns tmcasesI) = 
-  CasePrdI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
-termClosingRec k args (CaseCnsI loc annot ns tmcasesI) = 
-  CaseCnsI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+termClosingRec k args (CocaseI loc pcrep annot ns cocases) =
+  CocaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+termClosingRec k args (CaseI loc pcrep annot ns tmcasesI) = 
+  CaseI loc pcrep annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
 termClosingRec k args (Semi loc rep annot ns xt (args1,pcrep,args2) t) = 
   let
     args1' = pctermClosingRec k args <$> args1
     args2' = pctermClosingRec k args <$> args2
   in
   Semi loc rep annot ns xt (args1',pcrep,args2') (termClosingRec k args t)
-termClosingRec k args (CocaseCnsI loc annot ns tmcasesI) = 
-  CocaseCnsI loc annot ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI)  
+
 termClosingRec k args (CocaseOf loc rep annot ns t tmcases) = 
   CocaseOf loc rep annot ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> tmcases) 
 termClosingRec _ _ lit@PrimLitI64{} = lit
@@ -495,18 +482,14 @@ termLocallyClosedRec env (Dtor _ _ _ _ _ e (args1,_,args2)) = do
 termLocallyClosedRec env (CaseOf _ _ _ _ e cases) = do
   termLocallyClosedRec env e
   sequence_ (termCaseLocallyClosedRec env <$> cases)
-termLocallyClosedRec env (CocasePrdI _ _ _ cases) =
+termLocallyClosedRec env (CocaseI _ _ _ _ cases) =
   sequence_ (termCaseILocallyClosedRec env <$> cases)
-termLocallyClosedRec env (CasePrdI _ _ _ tmcasesI) = 
-  sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
-termLocallyClosedRec env (CaseCnsI _ _ _ tmcasesI) = 
+termLocallyClosedRec env (CaseI _ _ _ _ tmcasesI) = 
   sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
 termLocallyClosedRec env (Semi _ _ _ _ _ (args1,_,args2) t) = do 
   termLocallyClosedRec env t
   sequence_ (pctermLocallyClosedRec env <$> args1)
   sequence_ (pctermLocallyClosedRec env <$> args2)
-termLocallyClosedRec env (CocaseCnsI _ _ _ tmcasesI) = 
-  sequence_ (termCaseILocallyClosedRec env <$> tmcasesI)
 termLocallyClosedRec env (CocaseOf _ _ _ _ t tmcases) = do 
   termLocallyClosedRec env t
   sequence_ (termCaseLocallyClosedRec env <$> tmcases)
@@ -576,16 +559,12 @@ shiftTermRec n (Dtor loc pcrep annot ns xt e (args1,pcrep',args2)) =
   Dtor loc pcrep annot ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2)
 shiftTermRec n (CaseOf loc pcrep annot ns e cases) =
   CaseOf loc pcrep annot ns (shiftTermRec n e) (shiftTermCaseRec (n + 1) <$> cases)
-shiftTermRec n (CocasePrdI loc annot ns cases) =
-  CocasePrdI loc annot ns (shiftTermCaseIRec n <$> cases)
-shiftTermRec n (CasePrdI loc annot ns tmcasesI) =
-  CasePrdI loc annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI)
-shiftTermRec n (CaseCnsI loc annot ns tmcasesI) =
-  CaseCnsI loc annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI)
+shiftTermRec n (CocaseI loc pcrep annot ns cases) =
+  CocaseI loc pcrep annot ns (shiftTermCaseIRec n <$> cases)
+shiftTermRec n (CaseI loc pcrep annot ns tmcasesI) =
+  CaseI loc pcrep annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI)
 shiftTermRec n (Semi loc rep annot ns xt (args1,pcrep',args2) t) =
   Semi loc rep annot ns xt (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2) (shiftTermRec n t)
-shiftTermRec n (CocaseCnsI loc annot ns tmcasesI) =
-  CocaseCnsI loc annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI) 
 shiftTermRec n (CocaseOf loc rep annot ns t tmcases) =
   CocaseOf loc rep annot ns (shiftTermRec n t) (shiftTermCaseRec (n + 1) <$> tmcases) 
 shiftTermRec _ lit@PrimLitI64{} = lit

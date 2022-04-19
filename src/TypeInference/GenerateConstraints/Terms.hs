@@ -473,7 +473,7 @@ genConstraintsTerm (RST.CocasePrdI loc Structural cocases) = do
     -- Hence, the "*" type variable just serves as a placeholder to ensure that the arguments have the correct De-Bruijn indices.
     tmcasei_termInferred <- withContext (argtsPos1 ++ [PrdCnsType CnsRep (TyVar defaultLoc NegRep Nothing (MkTVar "*"))] ++ argtsPos2) (genConstraintsTerm tmcasei_term)
     return (AST.MkTermCaseI tmcasei_loc tmcasei_name (as1, (), as2) tmcasei_termInferred, MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ AST.getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
-  return (AST.CocasePrdI loc (TyCodata defaultLoc PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
+  return (AST.CocaseI loc PrdRep (TyCodata defaultLoc PosRep Nothing (snd <$> cocasesInferred)) Structural (fst <$> cocasesInferred))
 --
 -- Nominal Comatch (Syntactic Sugar):
 --
@@ -502,7 +502,7 @@ genConstraintsTerm (RST.CocasePrdI loc Nominal cocases@(RST.MkTermCaseI {tmcasei
     -- The term must have a subtype of the copattern match return type
     addConstraint (SubType (CaseConstraint loc) (AST.getTypeTerm tmcasei_termInferred) retType)
     return (AST.MkTermCaseI tmcasei_loc tmcasei_name tmcasei_args tmcasei_termInferred)
-  return (AST.CocasePrdI loc (TyNominal defaultLoc PosRep Nothing data_name args) Nominal cocasesInferred)
+  return (AST.CocaseI loc PrdRep (TyNominal defaultLoc PosRep Nothing data_name args) Nominal cocasesInferred)
 --
 -- Refinement Comatch (Syntactic Sugar):
 --
@@ -543,7 +543,7 @@ genConstraintsTerm (RST.CocasePrdI loc Refinement cocases@(RST.MkTermCaseI {tmca
     addConstraint (SubType (CaseConstraint loc) (AST.getTypeTerm tmcasei_termInferred) retType)
     return (AST.MkTermCaseI tmcasei_loc tmcasei_name (as1, (), as2) tmcasei_termInferred,
       MkXtorSig tmcasei_name (argtsNeg1 ++ [PrdCnsType CnsRep $ AST.getTypeTerm tmcasei_termInferred] ++ argtsNeg2))
-  return (AST.CocasePrdI loc ( TyCodata defaultLoc PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
+  return (AST.CocaseI loc PrdRep ( TyCodata defaultLoc PosRep (Just data_name) (snd <$> cocasesInferred)) Refinement (fst <$> cocasesInferred))
 genConstraintsTerm (RST.PrimLitI64 loc i) = pure $ AST.PrimLitI64 loc i
 genConstraintsTerm (RST.PrimLitF64 loc d) = pure $ AST.PrimLitF64 loc d
 

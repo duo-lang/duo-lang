@@ -60,22 +60,21 @@ forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =
     RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
 forgetTypesTerm (AST.CaseOf loc PrdRep _annot ns tm cases) =
     RST.CaseOf loc ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.CocasePrdI loc _annot ns cases) =
+forgetTypesTerm (AST.CocaseI loc PrdRep _annot ns cases) =
     RST.CocasePrdI loc ns (forgetTypesTermCaseI <$> cases)
+forgetTypesTerm (AST.CocaseI _loc CnsRep _annot _ns _tmcasesI) =
+    error "not yet implemented"
 forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 forgetTypesTerm (AST.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
-forgetTypesTerm (AST.CasePrdI _loc _annot _ns _tmcasesI) =
-    error "not yet implemented"
-forgetTypesTerm (AST.CaseCnsI _loc _annot _ns _tmcasesI) =
+forgetTypesTerm (AST.CaseI _loc _pcrep _annot _ns _tmcasesI) =
     error "not yet implemented"
 forgetTypesTerm (AST.Semi _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
     error "not yet implemented"
 forgetTypesTerm (AST.CocaseOf _loc _rep _annot _ns _t _tmcasesI) =
     error "not yet implemented" 
-forgetTypesTerm (AST.CocaseCnsI _loc _annot _ns _tmcasesI) =
-    error "not yet implemented"
+
 forgetTypesTerm (AST.CaseOf _loc CnsRep _annot _ns _tm _cases) =
     error "not yet implemented"
 
