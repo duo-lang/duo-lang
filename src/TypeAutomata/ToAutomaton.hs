@@ -120,11 +120,9 @@ lookupTVar PosRep tv = do
     Just (Nothing,_) -> throwAutomatonError $ [ "Could not insert type into automaton."
                                               , "The type variable:"
                                               , "    " <> unTVar tv
-                                              , "exists, but not with the correct polarity."
+                                              , "exists only at negative polarity."
                                               ]
     Just (Just pos,_) -> return pos
-
-
 lookupTVar NegRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
@@ -136,7 +134,7 @@ lookupTVar NegRep tv = do
     Just (_,Nothing) -> throwAutomatonError $ [ "Could not insert type into automaton."
                                               , "The type variable:"
                                               , "    " <> unTVar tv
-                                              , "exists, but not with the correct polarity."
+                                              , "exists only at positive polarity."
                                               ]
     Just (_,Just neg) -> return neg
 
