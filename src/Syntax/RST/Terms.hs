@@ -40,7 +40,6 @@ data PrdCnsTerm where
   PrdTerm :: Term Prd -> PrdCnsTerm
   CnsTerm :: Term Cns -> PrdCnsTerm
 
-deriving instance Eq PrdCnsTerm
 deriving instance Show PrdCnsTerm
 
 type Substitution = [PrdCnsTerm]
@@ -73,7 +72,6 @@ data TermCase (pc :: PrdCns)= MkTermCase
   , tmcase_term :: Term pc
   }
 
-deriving instance Eq (TermCase pc)
 deriving instance Show (TermCase pc)
 
 -- | Represents one case in a pattern match or copattern match.
@@ -95,7 +93,6 @@ data TermCaseI (pc :: PrdCns) = MkTermCaseI
   , tmcasei_term :: Term pc
   }
 
-deriving instance Eq (TermCaseI pc)
 deriving instance Show (TermCaseI pc)
 
 -- | Represents one case in a pattern match or copattern match.
@@ -112,7 +109,6 @@ data CmdCase = MkCmdCase
   , cmdcase_cmd  :: Command
   }
 
-deriving instance Eq CmdCase
 deriving instance Show CmdCase
 
 ---------------------------------------------------------------------------------
@@ -172,10 +168,6 @@ data Term (pc :: PrdCns) where
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
 
-
-instance Eq (Term pc) where
-  (==) = undefined
-
 deriving instance Show (Term pc)
 
 
@@ -200,11 +192,7 @@ data Command where
   CocaseOfCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
   CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 
-instance Eq Command where
-  (==) = undefined
-  
 deriving instance Show Command
-
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
