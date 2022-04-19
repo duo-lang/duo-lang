@@ -79,6 +79,7 @@ openPCTermComplete (RST.PrdTerm tm) = RST.PrdTerm $ openTermComplete tm
 openPCTermComplete (RST.CnsTerm tm) = RST.CnsTerm $ openTermComplete tm
 
 openTermComplete :: RST.Term pc -> RST.Term pc
+-- Core constructs
 openTermComplete (RST.BoundVar loc pc idx) =
   RST.BoundVar loc pc idx
 openTermComplete (RST.FreeVar loc pc v) =
@@ -93,12 +94,20 @@ openTermComplete (RST.MuAbs loc CnsRep (Just fv) cmd) =
   RST.MuAbs loc CnsRep (Just fv) (RST.commandOpening [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] (openCommandComplete cmd))
 openTermComplete (RST.MuAbs _ _ Nothing _) =
   error "Create names first!"
+-- Syntactic sugar
+openTermComplete (RST.Semi loc rep ns xt (args1, pcrep, args2) t) =
+  RST.Semi loc rep ns xt (openPCTermComplete <$> args1, pcrep, openPCTermComplete <$> args2) (openTermComplete t)
 openTermComplete (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
   RST.Dtor loc rep ns xt (openTermComplete t) (openPCTermComplete <$> args1,pcrep, openPCTermComplete <$> args2)
 openTermComplete (RST.CaseOf loc rep ns t cases) =
   RST.CaseOf loc rep ns (openTermComplete t) (openTermCase <$> cases)
+openTermComplete (RST.CocaseOf loc rep ns t cases) =
+  RST.CocaseOf loc rep ns (openTermComplete t) (openTermCase <$> cases)
+openTermComplete (RST.CaseI loc rep ns cases) =
+  RST.CaseI loc rep ns (openTermCaseI <$> cases)
 openTermComplete (RST.CocaseI loc rep ns cocases) =
   RST.CocaseI loc rep ns (openTermCaseI <$> cocases)
+-- Primitive constructs
 openTermComplete (RST.PrimLitI64 loc i) =
   RST.PrimLitI64 loc i
 openTermComplete (RST.PrimLitF64 loc d) =
@@ -152,6 +161,7 @@ createNamesSubstitution :: RST.Substitution  -> CreateNameM RST.Substitution
 createNamesSubstitution = mapM createNamesPCTerm
 
 createNamesTerm :: RST.Term pc -> CreateNameM (RST.Term pc)
+-- Core constructs
 createNamesTerm (RST.BoundVar loc pc idx) =
   pure $ RST.BoundVar loc pc idx
 createNamesTerm (RST.FreeVar loc pc nm) =
@@ -166,6 +176,12 @@ createNamesTerm (RST.MuAbs loc pc _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
   pure $ RST.MuAbs loc pc var cmd'
+-- Syntactic sugar
+createNamesTerm (RST.Semi loc pc ns xt (subst1,pcrep,subst2) e) = do
+  e' <- createNamesTerm e
+  subst1' <- createNamesSubstitution subst1
+  subst2' <- createNamesSubstitution subst2
+  pure $ RST.Semi loc pc ns xt (subst1', pcrep, subst2') e'
 createNamesTerm (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
   e' <- createNamesTerm e
   subst1' <- createNamesSubstitution subst1
@@ -175,9 +191,17 @@ createNamesTerm (RST.CaseOf loc rep ns e cases) = do
   e' <- createNamesTerm e
   cases' <- sequence (createNamesTermCase <$> cases)
   pure $ RST.CaseOf loc rep ns e' cases'
+createNamesTerm (RST.CocaseOf loc rep ns e cases) = do
+  e' <- createNamesTerm e
+  cases' <- sequence (createNamesTermCase <$> cases)
+  pure $ RST.CocaseOf loc rep ns e' cases'
+createNamesTerm (RST.CaseI loc rep ns cases) = do
+  cases' <- sequence (createNamesTermCaseI <$> cases)
+  pure $ RST.CaseI loc rep ns cases'
 createNamesTerm (RST.CocaseI loc rep ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
   pure $ RST.CocaseI loc rep ns cases'
+-- Primitive constructs
 createNamesTerm (RST.PrimLitI64 loc i) =
   pure (RST.PrimLitI64 loc i)
 createNamesTerm (RST.PrimLitF64 loc d) =
@@ -243,6 +267,7 @@ isNumSTermRST _ = Nothing
 embedTerm :: RST.Term pc -> CST.Term
 embedTerm (isNumSTermRST -> Just i) =
   CST.NatLit defaultLoc Nominal i
+-- Core constructs
 embedTerm RST.BoundVar{} =
   error "Should have been removed by opening"
 embedTerm (RST.FreeVar loc _ fv) =
@@ -255,11 +280,18 @@ embedTerm (RST.XCase loc CnsRep _ cases) =
   CST.Case loc (embedCmdCase <$> cases)
 embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
+-- Syntactic sugar
+embedTerm (RST.Semi loc _ _ xt substi tm) =
+  CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
 embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
   CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
 embedTerm (RST.CaseOf loc _ _ tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedTermCase <$> cases)
-embedTerm (RST.CocaseI loc rep _ cases) =
+embedTerm (RST.CocaseOf loc _ _ tm cases) =
+  CST.CocaseOf loc (embedTerm tm) (embedTermCase <$> cases)
+embedTerm (RST.CaseI loc _ _ cases) =
+  CST.Case loc (embedTermCaseI <$> cases)
+embedTerm (RST.CocaseI loc _ _ cases) =
   CST.Cocase loc (embedTermCaseI <$> cases)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i

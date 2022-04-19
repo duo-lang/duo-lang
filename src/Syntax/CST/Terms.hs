@@ -72,7 +72,7 @@ data Term where
     PrimCmdTerm :: PrimCommand -> Term 
     Var :: Loc -> FreeVarName -> Term
     Xtor :: Loc -> XtorName -> Substitution -> Term
-    Semi :: Loc -> XtorName -> Substitution -> Term -> Term
+    Semi :: Loc -> XtorName -> SubstitutionI -> Term -> Term
     Case :: Loc -> [TermCase] -> Term
     CaseOf :: Loc -> Term -> [TermCase] -> Term
     Cocase :: Loc -> [TermCase] -> Term
