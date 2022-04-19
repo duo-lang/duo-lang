@@ -1,11 +1,14 @@
 module Pretty.Types where
 
 import Data.List (intersperse)
+import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
+import Syntax.CST.Types qualified as CST
+import Translate.Reparse
 import Syntax.Common
 
 ---------------------------------------------------------------------------------
@@ -42,8 +45,11 @@ arrowSym = annKeyword "->"
 parSym :: Doc Annotation
 parSym = annKeyword "⅋"
 
+returnKw :: Doc Annotation
+returnKw = annKeyword "return"
+
 ---------------------------------------------------------------------------------
--- Prettyprinting of types
+-- Names and Operators
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn TyOpName where
@@ -54,54 +60,85 @@ instance PrettyAnn BinOp where
   prettyAnn UnionOp = unionSym
   prettyAnn InterOp = interSym
 
+---------------------------------------------------------------------------------
+-- Wrappers
+---------------------------------------------------------------------------------
+
 instance PrettyAnn (RST.VariantType pol) where
-  prettyAnn (RST.CovariantType ty) = prettyAnn ty
-  prettyAnn (RST.ContravariantType ty) = prettyAnn ty
-
-resugarType :: RST.Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
-resugarType (RST.TyNominal _ _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
-  Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
-resugarType (RST.TyNominal _ _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
-  Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
-resugarType _ = Nothing
-
-instance PrettyAnn (RST.Typ pol) where
-  -- Sugared types
-  prettyAnn (resugarType -> Just (ty1, binOp, ty2)) = parens (ty1 <+> prettyAnn binOp <+> ty2)
-  -- Lattice types
-  prettyAnn RST.TyTop {}               = topSym
-  prettyAnn RST.TyBot {}               = botSym
-  prettyAnn (RST.TyUnion _ _ ty ty')   = parens' unionSym [prettyAnn ty, prettyAnn ty']
-  prettyAnn (RST.TyInter _ _ ty ty')   = parens' interSym [prettyAnn ty, prettyAnn ty']
-  -- Type Variables
-  prettyAnn (RST.TyVar _ _ _ tv)       = prettyAnn tv
-  -- Recursive types
-  prettyAnn (RST.TyRec _ _ rv t)       = parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
-  -- Nominal types
-  prettyAnn (RST.TyNominal _ _ _ tn args) = prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
-  prettyAnn (RST.TySyn _ _ nm _) = prettyAnn nm
-  -- Structural data and codata types
-  prettyAnn (RST.TyData _ _ Nothing xtors)   = angles' commaSym  (prettyAnn <$> xtors)
-  prettyAnn (RST.TyCodata _ _ Nothing xtors) = braces' commaSym (prettyAnn <$> xtors)
-  -- Refinement types
-  prettyAnn (RST.TyData _ _ (Just tn) xtors)   = angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (RST.TyCodata _ _ (Just tn) xtors) = braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (RST.TyPrim _ _ pt) = "#" <> prettyAnn pt
+  prettyAnn varType = prettyAnn (embedVariantType varType)
 
 instance PrettyAnn (RST.PrdCnsType pol) where
-  prettyAnn (RST.PrdCnsType PrdRep ty) = prettyAnn ty
-  prettyAnn (RST.PrdCnsType CnsRep ty) = "return " <> prettyAnn ty
+  prettyAnn pctype = prettyAnn (embedPrdCnsType pctype)
+
+instance PrettyAnn CST.PrdCnsTyp where
+  prettyAnn (CST.PrdType ty) = prettyAnn ty
+  prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
 
 instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
-  prettyAnn ctxt = parens'   comma (prettyAnn <$> ctxt)
+  prettyAnn ctxt = prettyAnn (embedLinearContext ctxt)
 
-instance PrettyAnn (RST.XtorSig a) where
-  prettyAnn (RST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
+instance {-# OVERLAPPING #-} PrettyAnn CST.LinearContext where
+  prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
+
+instance PrettyAnn (RST.XtorSig pol) where
+  prettyAnn xtorSig = prettyAnn (embedXtorSig xtorSig)
+
+instance PrettyAnn CST.XtorSig where
+  prettyAnn (CST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
+
+---------------------------------------------------------------------------------
+-- Typ
+---------------------------------------------------------------------------------
+
+instance PrettyAnn (RST.Typ pol) where
+  prettyAnn typ = prettyAnn (embedType typ)
+  
+instance PrettyAnn CST.Typ where
+  -- Top and Bottom lattice types
+  prettyAnn CST.TyTop {} = topSym
+  prettyAnn CST.TyBot {} = botSym
+  -- Type Variables
+  prettyAnn (CST.TyVar _ tv) = prettyAnn tv
+  -- Recursive types
+  prettyAnn (CST.TyRec _ rv t) =
+    parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
+  -- Nominal types
+  prettyAnn (CST.TyNominal _ tn args) =
+    prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
+  -- Type operators
+  prettyAnn (CST.TyBinOp _ t1 op t2) =
+    parens $ prettyAnn t1 <+> prettyAnn op <+> prettyAnn t2
+  prettyAnn (CST.TyBinOpChain ty tys) =
+    let
+      f (_loc,op,ty) = prettyAnn op <+> prettyAnn ty
+    in
+      prettyAnn ty <> hsep (NE.toList (f <$> tys))
+  -- Structural data and codata types
+  prettyAnn (CST.TyXData _ Data   Nothing xtors) =
+    angles' commaSym  (prettyAnn <$> xtors)
+  prettyAnn (CST.TyXData _ Codata Nothing xtors) =
+    braces' commaSym (prettyAnn <$> xtors)
+  -- Refinement types
+  prettyAnn (CST.TyXData _ Data   (Just tn) xtors) =
+    angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (CST.TyXData _ Codata (Just tn) xtors) =
+    braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  -- Primitive types
+  prettyAnn (CST.TyPrim _ pt) = "#" <> prettyAnn pt
+  prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
+
+
+---------------------------------------------------------------------------------
+-- TypScheme
+---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.TypeScheme pol) where
-  prettyAnn (RST.TypeScheme { ts_vars = [], ts_monotype }) =
+  prettyAnn tys = prettyAnn (embedTypeScheme tys)
+
+instance PrettyAnn CST.TypeScheme where
+  prettyAnn (CST.TypeScheme { ts_vars = [], ts_monotype }) =
     prettyAnn ts_monotype
-  prettyAnn (RST.TypeScheme { ts_vars, ts_monotype }) =
+  prettyAnn (CST.TypeScheme { ts_vars, ts_monotype }) =
     forallSym <+>
     sep (prettyAnn <$> ts_vars ) <>
     "." <+>
