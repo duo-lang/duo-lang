@@ -66,9 +66,9 @@ forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 forgetTypesTerm (AST.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
-forgetTypesTerm (AST.CaseCnsPrdI _loc _annot _ns _tmcasesI) =
+forgetTypesTerm (AST.CasePrdI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
-forgetTypesTerm (AST.CaseCnsCnsI _loc _annot _ns _tmcasesI) =
+forgetTypesTerm (AST.CaseCnsI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
 forgetTypesTerm (AST.Semicolon _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
     error "not yet implemented"

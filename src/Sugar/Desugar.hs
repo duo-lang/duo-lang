@@ -43,8 +43,8 @@ isDesugaredTerm AST.Dtor{} = False
 isDesugaredTerm AST.CaseOf {} = False
 isDesugaredTerm AST.CocaseCns {} = False
 isDesugaredTerm AST.CocasePrdI {} = False
-isDesugaredTerm AST.CaseCnsPrdI {} = False
-isDesugaredTerm AST.CaseCnsCnsI {} = False
+isDesugaredTerm AST.CasePrdI {} = False
+isDesugaredTerm AST.CaseCnsI {} = False
 isDesugaredTerm AST.Semicolon {} = False
 isDesugaredTerm AST.CocaseCnsI {} = False
 
@@ -143,14 +143,14 @@ desugarTerm (AST.CocaseCnsI loc _ ns cocases) =
   in
     Core.XCase loc Core.MatchAnnotCocaseCnsI PrdRep ns $ desugarComatchCase <$> cocases
 
-desugarTerm (AST.CaseCnsPrdI loc _ ns tmcasesI) = 
+desugarTerm (AST.CasePrdI loc _ ns tmcasesI) = 
   let
     desugarmatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in
       Core.MkCmdCase loc xt args $ Core.Apply loc Core.ApplyAnnotCaseCnsPrd Nothing (desugarTerm t) (Core.BoundVar loc CnsRep (0,length as1))
   in
     Core.XCase loc Core.MatchAnnotCaseCnsPrd CnsRep ns $ desugarmatchCase <$> tmcasesI
-desugarTerm (AST.CaseCnsCnsI loc _ ns tmcasesI) = 
+desugarTerm (AST.CaseCnsI loc _ ns tmcasesI) = 
   let
     desugarmatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Prd,Nothing)] ++ as2 in

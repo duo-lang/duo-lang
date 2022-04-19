@@ -185,9 +185,9 @@ instance ToHoverMap (Term pc) where
     mkHoverMap loc $ T.unlines [ "#### Literal"
                                , "- Raw `#F64` literal"
                                ]
-  toHoverMap (CaseCnsPrdI loc ty ns tmcasesI) =
+  toHoverMap (CasePrdI loc ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (CaseCnsCnsI loc ty ns tmcasesI) =
+  toHoverMap (CaseCnsI loc ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
   toHoverMap (Semicolon loc _ ty ns _ (s1,_,s2) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
