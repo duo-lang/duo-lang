@@ -329,8 +329,16 @@ embedVariantType :: RST.VariantType pol -> CST.Typ
 embedVariantType (RST.CovariantType ty) = embedType ty
 embedVariantType (RST.ContravariantType ty) = embedType ty
 
+resugarType :: RST.Typ pol -> Maybe CST.Typ
+resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
+  Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "->")) (embedType tr))
+resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
+  Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
+resugarType _ = Nothing
+
 embedType :: RST.Typ pol -> CST.Typ
-embedType (RST.TyVar loc _ _ tv)=
+embedType (resugarType -> Just ty) = ty
+embedType (RST.TyVar loc _ _ tv) =
   CST.TyVar loc tv
 embedType (RST.TyData loc _ tn xtors) =
   CST.TyXData loc Data (rnTnName <$> tn) (embedXtorSig <$> xtors)
@@ -352,13 +360,6 @@ embedType (RST.TyRec loc _ tv ty) =
   CST.TyRec loc tv (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
-
--- resugarType :: RST.Typ pol -> Maybe (Doc Annotation, BinOp, Doc Annotation)
--- resugarType (RST.TyNominal _ _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
---   Just (prettyAnn tl , CustomOp (MkTyOpName "->"), prettyAnn tr)
--- resugarType (RST.TyNominal _ _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
---   Just (prettyAnn t1 , CustomOp (MkTyOpName "⅋"), prettyAnn t2)
--- resugarType _ = Nothing
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
