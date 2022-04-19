@@ -240,7 +240,7 @@ embedTerm RST.BoundVar{} =
 embedTerm (RST.FreeVar loc _ fv) =
   CST.Var loc fv
 embedTerm (RST.Xtor loc _ _ xt subst) =
-  CST.XtorSemi loc xt (embedSubst subst) Nothing
+  CST.Xtor loc xt (embedSubst subst)
 embedTerm (RST.XMatch loc PrdRep _ cases) =
   CST.Cocase loc (embedCmdCase <$> cases)
 embedTerm (RST.XMatch loc CnsRep _ cases) =

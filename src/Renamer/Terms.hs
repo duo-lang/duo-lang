@@ -212,23 +212,24 @@ splitFS loc args = do
 renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
 renameTerm rep    (CST.Var loc v) =
   pure $ RST.FreeVar loc rep v
-renameTerm PrdRep (CST.XtorSemi loc xtor subst Nothing) = do
+renameTerm PrdRep (CST.Xtor loc xtor subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Data) $
            throwError $ OtherError (Just loc) "The given xtor is declared as a destructor, not a constructor."
   pctms <- renameTerms loc ar subst
-  return $ RST.Xtor loc PrdRep ns xtor pctms
-renameTerm CnsRep (CST.XtorSemi loc xtor subst Nothing) = do
+  pure $ RST.Xtor loc PrdRep ns xtor pctms
+renameTerm CnsRep (CST.Xtor loc xtor subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Codata) $
            throwError $ OtherError (Just loc) "The given xtor is declared as a constructor, not a destructor."
   pctms <- renameTerms loc ar subst
-  return $ RST.Xtor loc CnsRep ns xtor pctms
-renameTerm _ (CST.XtorSemi _loc _xtor _subst (Just _t)) = error "renameTerm / XTorSemi: not yet implemented"
+  pure $ RST.Xtor loc CnsRep ns xtor pctms
+renameTerm _ (CST.Semi _loc _xtor _subst _c) =
+  error "renameTerm / Semi: not yet implemented"
 renameTerm PrdRep (CST.Case loc _) =
   throwError (OtherError (Just loc) "Cannot rename pattern match to a producer.")
 renameTerm CnsRep (CST.Cocase loc _) =

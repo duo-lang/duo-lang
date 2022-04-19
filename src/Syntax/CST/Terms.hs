@@ -71,7 +71,8 @@ getLocPC (PrimOp loc _ _ _) = loc
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 
     Var :: Loc -> FreeVarName -> Term
-    XtorSemi :: Loc -> XtorName -> Substitution -> Maybe Term -> Term
+    Xtor :: Loc -> XtorName -> Substitution -> Term
+    Semi :: Loc -> XtorName -> Substitution -> Term -> Term
     Case :: Loc -> [TermCase] -> Term
     CaseOf :: Loc -> Term -> [TermCase] -> Term
     Cocase :: Loc -> [TermCase] -> Term
@@ -95,7 +96,8 @@ deriving instance Eq Term
 
 getLoc :: Term -> Loc
 getLoc (Var loc _) = loc
-getLoc (XtorSemi loc _ _ _) = loc
+getLoc (Xtor loc _ _) = loc
+getLoc (Semi loc _ _ _) = loc
 getLoc (MuAbs loc _ _) = loc
 getLoc (Dtor loc _ _ _) = loc
 getLoc (Case loc _) = loc

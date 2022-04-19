@@ -82,7 +82,9 @@ xtorP = do
     _ <- symbolP SymDoubleSemi
     termTopP
   endPos <- getSourcePos
-  return (CST.XtorSemi (Loc startPos endPos) xt subst afterSemi, endPos)
+  case afterSemi of
+    Nothing -> pure (CST.Xtor (Loc startPos endPos) xt subst, endPos)
+    Just tm -> pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
 
 
 --------------------------------------------------------------------------------------------
@@ -236,7 +238,8 @@ primitiveCmdP = do
 --       case tm of { termcases }
 caseP :: Parser (CST.Term, SourcePos)
 caseP = do
-  startPos <- keywordP KwCase
+  startPos <- getSourcePos
+  _ <- keywordP KwCase
   caseRestP startPos <|> caseOfRestP startPos
 
 -- | Parses the second half of a "case" construct, i.e.
@@ -264,7 +267,8 @@ caseOfRestP startPos =  do
 --       cocase tm of { termcases }
 cocaseP :: Parser (CST.Term, SourcePos)
 cocaseP = do
-  startPos <- keywordP KwCocase
+  startPos <- getSourcePos
+  _ <- keywordP KwCocase
   cocaseRestP startPos <|> cocaseOfRestP startPos
 
 -- | Parses the second half of a "cocase" construct, i.e.

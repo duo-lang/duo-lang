@@ -115,13 +115,14 @@ instance PrettyAnn (Core.Term pc) where
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
     prettyAnn v
-  prettyAnn (CST.XtorSemi _ xt args (Just c)) =
-    prettyAnn xt <>
-    parens' comma (prettyAnn <$> args) <> ";; " <>
-    prettyAnn c
-  prettyAnn (CST.XtorSemi _ xt args Nothing) =
+  prettyAnn (CST.Xtor _ xt args) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args)
+  prettyAnn (CST.Semi _ xt args c) =
+    prettyAnn xt <>
+    parens' comma (prettyAnn <$> args) <>
+    annSymbol ";;" <+>
+    prettyAnn c
   prettyAnn (CST.CocaseOf  _ t cases) =
     annKeyword "cocase" <+>
     prettyAnn t <+> annKeyword "of" <+>
