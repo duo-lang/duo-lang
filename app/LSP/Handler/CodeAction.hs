@@ -25,7 +25,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
-import Translate.Desugar (desugarTerm, desugarCmd, isDesugaredTerm, isDesugaredCommand)
+import Sugar.Desugar (desugarTerm, desugarCmd, isDesugaredTerm, isDesugaredCommand)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions

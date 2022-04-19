@@ -1,4 +1,4 @@
-module Translate.EmbedCore where
+module Sugar.Resugar where
 
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Program qualified as RST

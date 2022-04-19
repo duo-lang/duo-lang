@@ -10,7 +10,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
-import Translate.EmbedCore
+import Sugar.Resugar
 import Translate.ForgetTypes
 import Translate.Reparse
 

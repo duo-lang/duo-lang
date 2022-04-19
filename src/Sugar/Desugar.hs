@@ -1,4 +1,4 @@
-module Translate.Desugar
+module Sugar.Desugar
   ( desugarTerm
   , desugarPCTerm
   , desugarProgram

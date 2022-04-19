@@ -7,12 +7,12 @@ import Pretty.Program ()
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-import Translate.Desugar
+import Sugar.Desugar
+import Sugar.Resugar
 import Syntax.Common
 import Syntax.AST.Program qualified as AST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
-import Translate.EmbedCore
 import Translate.Reparse
 import Errors
 

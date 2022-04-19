@@ -11,7 +11,7 @@ import Eval.Eval (eval)
 import Pretty.Pretty (ppPrintIO)
 import Syntax.Common
 import Syntax.AST.Program qualified as AST
-import Translate.Desugar (desugarCmd, desugarEnvironment)
+import Sugar.Desugar (desugarCmd, desugarEnvironment)
 import Translate.Focusing (focusCmd, focusEnvironment)
 
 driverAction :: ModuleName -> DriverM (AST.Program)

@@ -125,6 +125,8 @@ library
       Renamer.SymbolTable
       Renamer.Terms
       Renamer.Types
+      Sugar.Desugar
+      Sugar.Resugar
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.Common
@@ -161,8 +163,6 @@ library
       TypeInference.SolveConstraints
       TypeInference.Constraints
       TypeTranslation
-      Translate.Desugar
-      Translate.EmbedCore
       Translate.Focusing
       Translate.Reparse
       Translate.ForgetTypes
