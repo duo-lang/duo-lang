@@ -165,7 +165,7 @@ instance ToHoverMap (Term pc) where
     freeVarToHoverMap loc ty
   toHoverMap (Xtor loc pc ty ns _ args) =
     M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
-  toHoverMap (XMatch loc pc ty ns cases) =
+  toHoverMap (XCase loc pc ty ns cases) =
     M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (MuAbs loc pc ty _ cmd) =
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]

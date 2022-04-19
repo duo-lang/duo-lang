@@ -144,7 +144,7 @@ genConstraintsTerm (RST.Xtor loc rep Refinement xt subst) = do
 --
 -- Structural pattern and copattern matches:
 --
-genConstraintsTerm (RST.XMatch loc rep Structural cases) = do
+genConstraintsTerm (RST.XCase loc rep Structural cases) = do
   inferredCases <- forM cases (\RST.MkCmdCase{cmdcase_args, cmdcase_name, cmdcase_ext, cmdcase_cmd} -> do
                       -- Generate positive and negative unification variables for all variables
                       -- bound in the pattern.
@@ -155,16 +155,16 @@ genConstraintsTerm (RST.XMatch loc rep Structural cases) = do
                       return (AST.MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
-    PrdRep -> return $ AST.XMatch loc rep (TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
-    CnsRep -> return $ AST.XMatch loc rep (TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
+    PrdRep -> return $ AST.XCase loc rep (TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
+    CnsRep -> return $ AST.XCase loc rep (TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
 --
-genConstraintsTerm (RST.XMatch _ _ Nominal []) =
+genConstraintsTerm (RST.XCase _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
-genConstraintsTerm (RST.XMatch loc rep Nominal cases@(pmcase:_)) = do
+genConstraintsTerm (RST.XCase loc rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (RST.cmdcase_name pmcase)
   -- We check that all cases in the pattern match belong to the type declaration.
@@ -186,16 +186,16 @@ genConstraintsTerm (RST.XMatch loc rep Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (AST.MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name negTypes'))
   case rep of
-    PrdRep -> return $ AST.XMatch loc rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
-    CnsRep -> return $ AST.XMatch loc rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
+    PrdRep -> return $ AST.XCase loc rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
+    CnsRep -> return $ AST.XCase loc rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
-genConstraintsTerm (RST.XMatch _ _ Refinement []) =
+genConstraintsTerm (RST.XCase _ _ Refinement []) =
   -- We know that empty matches cannot be parsed as Refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
   throwGenError ["Unreachable: A refinement match needs to have at least one case."]
-genConstraintsTerm (RST.XMatch loc rep Refinement cases@(pmcase:_)) = do
+genConstraintsTerm (RST.XCase loc rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (RST.cmdcase_name pmcase)
   -- We check that all cases in the pattern match belong to the type declaration.
@@ -217,8 +217,8 @@ genConstraintsTerm (RST.XMatch loc rep Refinement cases@(pmcase:_)) = do
                        -- and greatest type translation.
                        return (AST.MkCmdCase cmdcase_ext cmdcase_name cmdcase_args cmdInferred, MkXtorSig cmdcase_name uvarsNeg))
   case rep of
-    PrdRep -> return $ AST.XMatch loc rep (TyCodata defaultLoc PosRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
-    CnsRep -> return $ AST.XMatch loc rep (TyData   defaultLoc NegRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    PrdRep -> return $ AST.XCase loc rep (TyCodata defaultLoc PosRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    CnsRep -> return $ AST.XCase loc rep (TyData   defaultLoc NegRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --

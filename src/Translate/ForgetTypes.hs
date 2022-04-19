@@ -52,8 +52,8 @@ forgetTypesTerm (AST.FreeVar loc pc _annot nm) =
     RST.FreeVar loc pc nm
 forgetTypesTerm (AST.Xtor loc pc _annot ns xt subst) =
     RST.Xtor loc pc ns xt (forgetTypesSubst subst)
-forgetTypesTerm (AST.XMatch loc pc _annot ns cases) =
-    RST.XMatch loc pc ns (forgetTypesCmdCase <$> cases)
+forgetTypesTerm (AST.XCase loc pc _annot ns cases) =
+    RST.XCase loc pc ns (forgetTypesCmdCase <$> cases)
 forgetTypesTerm (AST.MuAbs loc pc _annot bs cmd) =
     RST.MuAbs loc pc bs (forgetTypesCommand cmd)
 forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =

@@ -46,11 +46,11 @@ evalApplyOnce kind prd (FreeVar _ CnsRep fv) = do
   cns <- lookupTerm CnsRep fv
   return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
-evalApplyOnce _ prd@(Xtor _ _ PrdRep _ xt args) cns@(XMatch _ _ CnsRep _ cases) = do
+evalApplyOnce _ prd@(Xtor _ _ PrdRep _ xt args) cns@(XCase _ _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalApplyOnce _ prd@(XMatch _ _ PrdRep _ cases) cns@(Xtor _ _ CnsRep _ xt args) = do
+evalApplyOnce _ prd@(XCase _ _ PrdRep _ cases) cns@(Xtor _ _ CnsRep _ xt args) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
   checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening

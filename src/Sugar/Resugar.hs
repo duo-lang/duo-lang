@@ -27,8 +27,8 @@ embedCoreTerm (Core.FreeVar loc rep idx) =
     RST.FreeVar loc rep idx
 embedCoreTerm (Core.Xtor loc _annot rep ns xs subst) =
     RST.Xtor loc rep ns xs (embedSubst subst)
-embedCoreTerm (Core.XMatch loc _annot rep ns cases) =
-    RST.XMatch loc rep ns (embedCmdCase <$> cases)
+embedCoreTerm (Core.XCase loc _annot rep ns cases) =
+    RST.XCase loc rep ns (embedCmdCase <$> cases)
 embedCoreTerm (Core.MuAbs loc _annot rep b cmd) =
     RST.MuAbs loc rep b (embedCoreCommand cmd)
 embedCoreTerm (Core.PrimLitI64 loc i) =

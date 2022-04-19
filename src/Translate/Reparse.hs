@@ -85,8 +85,8 @@ openTermComplete (RST.FreeVar loc pc v) =
   RST.FreeVar loc pc v
 openTermComplete (RST.Xtor loc pc ns xt args) =
   RST.Xtor loc pc ns xt (openPCTermComplete <$> args)
-openTermComplete (RST.XMatch loc pc ns cases) =
-  RST.XMatch loc pc ns (openCmdCase <$> cases)
+openTermComplete (RST.XCase loc pc ns cases) =
+  RST.XCase loc pc ns (openCmdCase <$> cases)
 openTermComplete (RST.MuAbs loc PrdRep (Just fv) cmd) =
   RST.MuAbs loc PrdRep (Just fv) (RST.commandOpening [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] (openCommandComplete cmd))
 openTermComplete (RST.MuAbs loc CnsRep (Just fv) cmd) =
@@ -155,9 +155,9 @@ createNamesTerm (RST.FreeVar loc pc nm) =
 createNamesTerm (RST.Xtor loc pc ns xt subst) = do
   subst' <- createNamesSubstitution subst
   pure $ RST.Xtor loc pc ns xt subst'
-createNamesTerm (RST.XMatch loc pc ns cases) = do
+createNamesTerm (RST.XCase loc pc ns cases) = do
   cases' <- mapM createNamesCmdCase cases
-  pure $ RST.XMatch loc pc ns cases'
+  pure $ RST.XCase loc pc ns cases'
 createNamesTerm (RST.MuAbs loc pc _ cmd) = do
   cmd' <- createNamesCommand cmd
   var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
@@ -241,9 +241,9 @@ embedTerm (RST.FreeVar loc _ fv) =
   CST.Var loc fv
 embedTerm (RST.Xtor loc _ _ xt subst) =
   CST.Xtor loc xt (embedSubst subst)
-embedTerm (RST.XMatch loc PrdRep _ cases) =
+embedTerm (RST.XCase loc PrdRep _ cases) =
   CST.Cocase loc (embedCmdCase <$> cases)
-embedTerm (RST.XMatch loc CnsRep _ cases) =
+embedTerm (RST.XCase loc CnsRep _ cases) =
   CST.Case loc (embedCmdCase <$> cases)
 embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)

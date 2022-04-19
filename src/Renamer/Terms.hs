@@ -240,7 +240,7 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
     AllNoStars -> do
       cases' <- sequence (renameCommandCase Codata <$> cases)
       ns <- commandCasesToNS cases
-      pure $ RST.XMatch loc PrdRep ns cases'
+      pure $ RST.XCase loc PrdRep ns cases'
     AllConsumerStar -> do
       cases' <- sequence (renameTermCaseI <$> cases)
       ns <- termCasesToNS cases
@@ -252,7 +252,7 @@ renameTerm CnsRep (CST.Case loc cases)  = do
     AllNoStars -> do
       cases' <- sequence (renameCommandCase Data <$> cases)
       ns <- commandCasesToNS cases
-      pure $ RST.XMatch loc CnsRep ns cases'
+      pure $ RST.XCase loc CnsRep ns cases'
     _ -> error "not yet implemented"
 renameTerm PrdRep (CST.CaseOf loc t cases)  = do
   cases' <- sequence (renameTermCase <$> cases)

@@ -90,7 +90,7 @@ data MuAnnot where
   deriving (Ord, Eq, Show)
 
 data MatchAnnot where
-  -- | User-written XMatch abstraction
+  -- | User-written XCase abstraction
   MatchAnnotOrig :: MatchAnnot
   -- DATA
   -- CasePrdCns
@@ -121,7 +121,7 @@ data MatchAnnot where
   deriving (Ord, Eq, Show)
 
 data XtorAnnot where
-  -- | User-written XMatch abstraction
+  -- | User-written XCase abstraction
   XtorAnnotOrig :: XtorAnnot
   -- Semicolon
   XtorAnnotSemicolon :: XtorAnnot
@@ -141,7 +141,7 @@ data Term (pc :: PrdCns) where
   Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: Loc -> MatchAnnot -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -235,8 +235,8 @@ termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, sub
 termOpeningRec _ _ fv@FreeVar{} = fv
 termOpeningRec k args (Xtor loc annot rep ns xt subst) =
   Xtor loc annot rep ns xt (pctermOpeningRec k args <$> subst)
-termOpeningRec k args (XMatch loc annot rep ns cases) =
-  XMatch loc annot rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
+termOpeningRec k args (XCase loc annot rep ns cases) =
+  XCase loc annot rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc annot rep fv cmd) =
   MuAbs loc annot rep fv (commandOpeningRec (k+1) args cmd)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
@@ -278,8 +278,8 @@ termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars)
                                              | otherwise = FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc annot pc ns xt subst) =
   Xtor loc annot pc ns xt (pctermClosingRec k vars <$> subst)
-termClosingRec k vars (XMatch loc annot pc sn cases) =
-  XMatch loc annot pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
+termClosingRec k vars (XCase loc annot pc sn cases) =
+  XCase loc annot pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc annot pc fv cmd) =
   MuAbs loc annot pc fv (commandClosingRec (k+1) vars cmd)
 termClosingRec _ _ lit@PrimLitI64{} = lit
@@ -335,7 +335,7 @@ termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
-termLocallyClosedRec env (XMatch _ _ _ _ cases) = do
+termLocallyClosedRec env (XCase _ _ _ _ cases) = do
   sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> cmdcase_args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
@@ -370,8 +370,8 @@ shiftTermRec n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 
 shiftTermRec _ var@FreeVar {} = var
 shiftTermRec n (Xtor loc annot pcrep ns xt subst) =
     Xtor loc annot pcrep ns xt (shiftPCTermRec n <$> subst)
-shiftTermRec n (XMatch loc annot pcrep ns cases) =
-  XMatch loc annot pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
+shiftTermRec n (XCase loc annot pcrep ns cases) =
+  XCase loc annot pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
 shiftTermRec n (MuAbs loc annot pcrep bs cmd) =
   MuAbs loc annot pcrep bs (shiftCmdRec (n + 1) cmd)
 shiftTermRec _ lit@PrimLitI64{} = lit

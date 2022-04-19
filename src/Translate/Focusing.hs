@@ -48,8 +48,8 @@ isFocusedTerm _  bv@BoundVar {} = Just bv
 isFocusedTerm _  fv@FreeVar {} = Just fv
 isFocusedTerm eo (Xtor loc annot pc ns xt subst) =
     Xtor loc annot pc ns xt <$> isValueSubst eo subst
-isFocusedTerm eo (XMatch loc annot pc ns cases) =
-    XMatch loc annot pc ns <$> sequence (isFocusedCmdCase eo <$> cases)
+isFocusedTerm eo (XCase loc annot pc ns cases) =
+    XCase loc annot pc ns <$> sequence (isFocusedCmdCase eo <$> cases)
 isFocusedTerm eo (MuAbs loc annot pc v cmd) = 
     MuAbs loc annot pc v <$> isFocusedCmd eo cmd
 isFocusedTerm _  lit@PrimLitI64{} = Just lit
@@ -128,7 +128,7 @@ focusTerm eo (isFocusedTerm eo -> Just tm)   = tm
 focusTerm _  (BoundVar loc rep var)          = BoundVar loc rep var
 focusTerm _  (FreeVar loc rep var)           = FreeVar loc rep var
 focusTerm eo (Xtor _ _annot pcrep ns xt subst) = focusXtor eo pcrep ns xt subst
-focusTerm eo (XMatch loc annot rep ns cases) = XMatch loc annot rep ns (focusCmdCase eo <$> cases)
+focusTerm eo (XCase loc annot rep ns cases) = XCase loc annot rep ns (focusCmdCase eo <$> cases)
 focusTerm eo (MuAbs loc annot rep v cmd)     = MuAbs loc annot rep v (focusCmd eo cmd)
 focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
 focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d

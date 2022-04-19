@@ -137,7 +137,7 @@ data Term (pc :: PrdCns) where
   Xtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XMatch :: Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -205,8 +205,8 @@ termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, su
 termOpeningRec _ _ fv@(FreeVar _ _ _)       = fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
   Xtor loc rep ns xt (pctermOpeningRec k args <$> subst)
-termOpeningRec k args (XMatch loc rep ns cases) =
-  XMatch loc rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
+termOpeningRec k args (XCase loc rep ns cases) =
+  XCase loc rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc rep fv cmd) =
   MuAbs loc rep fv (commandOpeningRec (k+1) args cmd)
 -- ATerms
@@ -255,8 +255,8 @@ termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars)
                                              | otherwise = FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc pc ns xt subst) =
   Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
-termClosingRec k vars (XMatch loc pc sn cases) =
-  XMatch loc pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
+termClosingRec k vars (XCase loc pc sn cases) =
+  XCase loc pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc pc fv cmd) =
   MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
 -- ATerms
