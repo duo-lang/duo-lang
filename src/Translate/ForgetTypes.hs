@@ -72,7 +72,7 @@ forgetTypesTerm (AST.CaseCnsI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
 forgetTypesTerm (AST.Semicolon _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
     error "not yet implemented"
-forgetTypesTerm (AST.CocaseCns _loc _rep _annot _ns _t _tmcasesI) =
+forgetTypesTerm (AST.CocaseOf _loc _rep _annot _ns _t _tmcasesI) =
     error "not yet implemented" 
 forgetTypesTerm (AST.CocaseCnsI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"

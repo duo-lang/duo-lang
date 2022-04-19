@@ -191,7 +191,7 @@ instance ToHoverMap (Term pc) where
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
   toHoverMap (Semicolon loc _ ty ns _ (s1,_,s2) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
-  toHoverMap (CocaseCns loc _ ty ns t tmcasesI) =
+  toHoverMap (CocaseOf loc _ ty ns t tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI) <> [toHoverMap t]
 
 instance ToHoverMap PrdCnsTerm where
