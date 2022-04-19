@@ -70,7 +70,7 @@ forgetTypesTerm (AST.CasePrdI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
 forgetTypesTerm (AST.CaseCnsI _loc _annot _ns _tmcasesI) =
     error "not yet implemented"
-forgetTypesTerm (AST.Semicolon _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
+forgetTypesTerm (AST.Semi _loc _rep _annot _ns _xt (_args1,_pcrep,_args2) _t) =
     error "not yet implemented"
 forgetTypesTerm (AST.CocaseOf _loc _rep _annot _ns _t _tmcasesI) =
     error "not yet implemented" 
@@ -94,17 +94,17 @@ forgetTypesCommand (AST.ExitFailure loc) =
     RST.ExitFailure loc
 forgetTypesCommand (AST.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (forgetTypesSubst subst)
-forgetTypesCommand (AST.CasePrdCmd _loc _ns _t _cases) =
+forgetTypesCommand (AST.CaseOfCmd _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CasePrdPrdI _loc _ns _t _cases) =
+forgetTypesCommand (AST.CaseOfPrdI _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CasePrdCnsI _loc _ns _t _cases) =
+forgetTypesCommand (AST.CaseOfCnsI _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CocaseCnsCmd _loc _ns _t _cases) =
+forgetTypesCommand (AST.CocaseOfCmd _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CocaseCnsPrdI _loc _ns _t _cases) =
+forgetTypesCommand (AST.CocaseOfPrdI _loc _ns _t _cases) =
     error "not yet implemented"
-forgetTypesCommand (AST.CocaseCnsCnsI _loc _ns _t _cases) =
+forgetTypesCommand (AST.CocaseOfCnsI _loc _ns _t _cases) =
     error "not yet implemented"
 
 

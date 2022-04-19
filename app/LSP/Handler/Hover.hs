@@ -189,7 +189,7 @@ instance ToHoverMap (Term pc) where
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
   toHoverMap (CaseCnsI loc ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (Semicolon loc _ ty ns _ (s1,_,s2) t) =
+  toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
   toHoverMap (CocaseOf loc _ ty ns t tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI) <> [toHoverMap t]
@@ -212,17 +212,17 @@ instance ToHoverMap AST.Command where
   toHoverMap ExitSuccess {} = M.empty
   toHoverMap ExitFailure {} = M.empty
   toHoverMap PrimOp {} = M.empty
-  toHoverMap (CasePrdCmd _ _ t cmdcases) =
+  toHoverMap (CaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
-  toHoverMap (CasePrdPrdI _ _ t tmcasesI) =
+  toHoverMap (CaseOfPrdI _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CasePrdCnsI _ _ t tmcasesI) =
+  toHoverMap (CaseOfCnsI _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CocaseCnsCmd _ _ t cmdcases) =
+  toHoverMap (CocaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
-  toHoverMap (CocaseCnsPrdI _ _ t tmcasesI) =
+  toHoverMap (CocaseOfPrdI _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CocaseCnsCnsI _ _ t tmcasesI) =
+  toHoverMap (CocaseOfCnsI _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
 
 instance ToHoverMap Substitution where

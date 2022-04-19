@@ -45,7 +45,7 @@ isDesugaredTerm AST.CocaseOf {} = False
 isDesugaredTerm AST.CocasePrdI {} = False
 isDesugaredTerm AST.CasePrdI {} = False
 isDesugaredTerm AST.CaseCnsI {} = False
-isDesugaredTerm AST.Semicolon {} = False
+isDesugaredTerm AST.Semi {} = False
 isDesugaredTerm AST.CocaseCnsI {} = False
 
 isDesugaredCommand :: AST.Command -> Bool
@@ -60,12 +60,12 @@ isDesugaredCommand (AST.ExitSuccess _) = True
 isDesugaredCommand (AST.ExitFailure _) = True
 isDesugaredCommand (AST.PrimOp _ _ _ subst) =
   and (isDesugaredPCTerm <$> subst)
-isDesugaredCommand AST.CasePrdCmd {} =  False
-isDesugaredCommand AST.CasePrdPrdI {} =  False
-isDesugaredCommand AST.CasePrdCnsI {} =  False
-isDesugaredCommand AST.CocaseCnsCmd {} =  False
-isDesugaredCommand AST.CocaseCnsPrdI {} =  False
-isDesugaredCommand AST.CocaseCnsCnsI {} =  False
+isDesugaredCommand AST.CaseOfCmd {} =  False
+isDesugaredCommand AST.CaseOfPrdI {} =  False
+isDesugaredCommand AST.CaseOfCnsI {} =  False
+isDesugaredCommand AST.CocaseOfCmd {} =  False
+isDesugaredCommand AST.CocaseOfPrdI {} =  False
+isDesugaredCommand AST.CocaseOfCnsI {} =  False
 
 ---------------------------------------------------------------------------------
 -- Desugar Terms
@@ -161,14 +161,14 @@ desugarTerm (AST.CaseCnsI loc _ ns tmcasesI) =
   -- foo(...)[*](...) ; e
   -- desugares to mu k. foo(...)[k](...) >> e
 
-desugarTerm (AST.Semicolon loc PrdRep _ ns xt (args1, PrdRep, args2) t) = 
+desugarTerm (AST.Semi loc PrdRep _ ns xt (args1, PrdRep, args2) t) = 
   let
     args = (desugarPCTerm <$> args1) ++ [Core.CnsTerm $ Core.FreeVar loc CnsRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Core.Apply loc Core.ApplyAnnotSemicolon Nothing  (Core.Xtor loc Core.XtorAnnotSemicolon PrdRep ns xt args) (desugarTerm t)
   in
   Core.MuAbs loc Core.MuAnnotSemicolon PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
 
-desugarTerm (AST.Semicolon loc CnsRep _ ns xt (args1, CnsRep, args2) t) = 
+desugarTerm (AST.Semi loc CnsRep _ ns xt (args1, CnsRep, args2) t) = 
   let
     args = (desugarPCTerm <$> args1) ++ [Core.PrdTerm $ Core.FreeVar loc PrdRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Core.Apply loc Core.ApplyAnnotSemicolon Nothing  (Core.Xtor loc Core.XtorAnnotSemicolon PrdRep ns xt args) (desugarTerm t)
@@ -214,16 +214,16 @@ desugarCmd (AST.PrimOp loc pt op subst) =
 -- case e of {cmd-cases} 
 --    desugares to 
 -- e >> case {cmd-cases}  
-desugarCmd (AST.CasePrdCmd loc ns t cases) =
+desugarCmd (AST.CaseOfCmd loc ns t cases) =
   Core.Apply loc Core.ApplyAnnotCasePrdCmd Nothing (desugarTerm t) (Core.XCase loc Core.MatchAnnotCasePrdCmd CnsRep ns (desugarCmdCase <$> cases))
-desugarCmd (AST.CasePrdPrdI loc ns t cases) = 
+desugarCmd (AST.CaseOfPrdI loc ns t cases) = 
   let
     desugarmatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in
       Core.MkCmdCase loc xt args $ Core.Apply loc Core.ApplyAnnotCasePrdPrdInner Nothing (desugarTerm t) (Core.BoundVar loc CnsRep (0,length as1))
   in
     Core.Apply loc Core.ApplyAnnotCasePrdPrdOuter Nothing (desugarTerm t) (Core.XCase loc Core.MatchAnnotCasePrdPrd CnsRep ns $ desugarmatchCase <$> cases)
-desugarCmd (AST.CasePrdCnsI loc ns t cases) = 
+desugarCmd (AST.CaseOfCnsI loc ns t cases) = 
   let
     desugarmatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Prd,Nothing)] ++ as2 in
@@ -231,9 +231,9 @@ desugarCmd (AST.CasePrdCnsI loc ns t cases) =
   in
     Core.Apply loc Core.ApplyAnnotCasePrdCnsOuter Nothing (desugarTerm t) (Core.XCase loc Core.MatchAnnotCasePrdCns CnsRep ns $ desugarmatchCase <$> cases)
 
-desugarCmd (AST.CocaseCnsCmd loc ns t cases) =
+desugarCmd (AST.CocaseOfCmd loc ns t cases) =
   Core.Apply loc Core.ApplyAnnotCocaseCnsCmd Nothing (Core.XCase loc Core.MatchAnnotCocaseCnsCmd PrdRep ns (desugarCmdCase <$> cases)) (desugarTerm t)
-desugarCmd (AST.CocaseCnsPrdI loc ns t cases) = 
+desugarCmd (AST.CocaseOfPrdI loc ns t cases) = 
   let
     desugarcomatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Cns,Nothing)] ++ as2 in
@@ -241,7 +241,7 @@ desugarCmd (AST.CocaseCnsPrdI loc ns t cases) =
   in
     Core.Apply loc Core.ApplyAnnotCocaseCnsPrdOuter Nothing (Core.XCase loc Core.MatchAnnotCocaseCnsPrd PrdRep ns $ desugarcomatchCase <$> cases) (desugarTerm t)
 
-desugarCmd (AST.CocaseCnsCnsI loc ns t cases) = 
+desugarCmd (AST.CocaseOfCnsI loc ns t cases) = 
   let
     desugarcomatchCase (AST.MkTermCaseI _ xt (as1, (), as2) t) =
       let args = as1 ++ [(Prd,Nothing)] ++ as2 in
