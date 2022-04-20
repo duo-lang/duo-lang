@@ -90,28 +90,15 @@ data MatchAnnot where
   -- CaseOf / CocaseOf
   MatchAnnotCaseOf :: MatchAnnot
   MatchAnnotCocaseOf :: MatchAnnot
-  -- DATA
-  -- CasePrdCns
-  MatchAnnotCasePrdCns :: MatchAnnot
-  -- CasePrdPrd
-  MatchAnnotCasePrdPrd :: MatchAnnot
-  -- CasePrdCmd
-  MatchAnnotCasePrdCmd :: MatchAnnot
-  -- CODATA
-  -- CocaseCnsCns
-  MatchAnnotCocaseCnsCns :: MatchAnnot
-  -- CocaseCnsPrd
-  MatchAnnotCocaseCnsPrd :: MatchAnnot
-  -- CocaseCnsCmd
-  MatchAnnotCocaseCnsCmd :: MatchAnnot
-  -- CaseCnsCns
-  MatchAnnotCaseCnsCns :: MatchAnnot
-  -- CaseCnsPrd
-  MatchAnnotCaseCnsPrd :: MatchAnnot
-  -- CocasePrdI
-  MatchAnnotCocasePrdI :: MatchAnnot
-  -- CocaseCnsI
-  MatchAnnotCocaseCnsI :: MatchAnnot
+  -- CaseI / CocaseI
+  MatchAnnotCaseI :: MatchAnnot
+  MatchAnnotCocaseI :: MatchAnnot
+  -- CaseOfI / CocaseOfI
+  MatchAnnotCaseOfI :: MatchAnnot
+  MatchAnnotCocaseOfI :: MatchAnnot
+  -- CaseOfCmd / CocaseOfCmd
+  MatchAnnotCaseOfCmd :: MatchAnnot
+  MatchAnnotCocaseOfCmd :: MatchAnnot
   deriving (Ord, Eq, Show)
 
 data XtorAnnot where
@@ -163,31 +150,17 @@ data ApplyAnnot where
   ApplyAnnotCaseOfOuter :: ApplyAnnot
   ApplyAnnotCocaseOfInner :: ApplyAnnot
   ApplyAnnotCocaseOfOuter :: ApplyAnnot
-  -- CaseCnsCns
-  ApplyAnnotCaseCnsCns :: ApplyAnnot
-  -- CaseCnsPrd
-  ApplyAnnotCaseCnsPrd :: ApplyAnnot
-  -- CocasePrdI
-  ApplyAnnotCocasePrdI :: ApplyAnnot
-  -- CocaseCnsI
-  ApplyAnnotCocaseCnsI :: ApplyAnnot
-  -- CasePrdCmd
-  ApplyAnnotCasePrdCmd :: ApplyAnnot
-  -- CasePrdPrd
-  ApplyAnnotCasePrdPrdInner :: ApplyAnnot
-  ApplyAnnotCasePrdPrdOuter :: ApplyAnnot
-  -- CasePrdCns
-  ApplyAnnotCasePrdCnsInner :: ApplyAnnot
-  ApplyAnnotCasePrdCnsOuter :: ApplyAnnot
-  -- CODATA
-  -- CocaseCnsCns
-  ApplyAnnotCocaseCnsCnsInner :: ApplyAnnot
-  ApplyAnnotCocaseCnsCnsOuter :: ApplyAnnot
-  -- CocaseCnsPrd
-  ApplyAnnotCocaseCnsPrdInner :: ApplyAnnot
-  ApplyAnnotCocaseCnsPrdOuter :: ApplyAnnot
-  -- CocaseCnsCmd
-  ApplyAnnotCocaseCnsCmd :: ApplyAnnot
+  -- CaseI/CocaseI
+  ApplyAnnotCaseI :: ApplyAnnot
+  ApplyAnnotCocaseI :: ApplyAnnot
+  -- CaseOfCmd/CocaseOfCmd
+  ApplyAnnotCaseOfCmd :: ApplyAnnot
+  ApplyAnnotCocaseOfCmd :: ApplyAnnot
+  -- CaseOfI/CocaseOfI
+  ApplyAnnotCaseOfIInner :: ApplyAnnot
+  ApplyAnnotCaseOfIOuter :: ApplyAnnot
+  ApplyAnnotCocaseOfIInner :: ApplyAnnot
+  ApplyAnnotCocaseOfIOuter :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
 -- | An executable command.
