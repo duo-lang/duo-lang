@@ -79,19 +79,17 @@ data MuAnnot where
   -- Semi/Dtor
   MuAnnotSemi :: MuAnnot
   MuAnnotDtor :: MuAnnot
-  -- Case
-  MuAnnotCase :: MuAnnot
-  -- CODATA
-  -- Dtor
-
-  -- CocaseCns
-  MuAnnotCocaseCns :: MuAnnot
-
+  -- CaseOf / CocaseOf
+  MuAnnotCaseOf :: MuAnnot
+  MuAnnotCocaseOf :: MuAnnot
   deriving (Ord, Eq, Show)
 
 data MatchAnnot where
   -- | User-written XCase abstraction
   MatchAnnotOrig :: MatchAnnot
+  -- CaseOf / CocaseOf
+  MatchAnnotCaseOf :: MatchAnnot
+  MatchAnnotCocaseOf :: MatchAnnot
   -- DATA
   -- CasePrdCns
   MatchAnnotCasePrdCns :: MatchAnnot
@@ -99,8 +97,6 @@ data MatchAnnot where
   MatchAnnotCasePrdPrd :: MatchAnnot
   -- CasePrdCmd
   MatchAnnotCasePrdCmd :: MatchAnnot
-  -- Case
-  MatchAnnotCase :: MatchAnnot
   -- CODATA
   -- CocaseCnsCns
   MatchAnnotCocaseCnsCns :: MatchAnnot
@@ -108,8 +104,6 @@ data MatchAnnot where
   MatchAnnotCocaseCnsPrd :: MatchAnnot
   -- CocaseCnsCmd
   MatchAnnotCocaseCnsCmd :: MatchAnnot
-  -- CocaseCns
-  MatchAnnotCocaseCns :: MatchAnnot
   -- CaseCnsCns
   MatchAnnotCaseCnsCns :: MatchAnnot
   -- CaseCnsPrd
@@ -123,9 +117,8 @@ data MatchAnnot where
 data XtorAnnot where
   -- | User-written XCase abstraction
   XtorAnnotOrig :: XtorAnnot
-  -- Semicolon
-  XtorAnnotSemicolon :: XtorAnnot
-  -- Dtor
+  -- Semi/Dtor
+  XtorAnnotSemi :: XtorAnnot
   XtorAnnotDtor :: XtorAnnot
   deriving (Ord, Eq, Show)
 
@@ -150,7 +143,6 @@ data Term (pc :: PrdCns) where
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
-
 deriving instance Eq (Term Prd)
 deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
@@ -163,7 +155,14 @@ deriving instance Show (Term Cns)
 data ApplyAnnot where
   -- User-written apply command
   ApplyAnnotOrig :: ApplyAnnot
-  -- DATA
+  -- Semi/Dtor
+  ApplyAnnotSemi :: ApplyAnnot
+  ApplyAnnotDtor :: ApplyAnnot
+  -- CaseOf/CocaseOf
+  ApplyAnnotCaseOfInner :: ApplyAnnot
+  ApplyAnnotCaseOfOuter :: ApplyAnnot
+  ApplyAnnotCocaseOfInner :: ApplyAnnot
+  ApplyAnnotCocaseOfOuter :: ApplyAnnot
   -- CaseCnsCns
   ApplyAnnotCaseCnsCns :: ApplyAnnot
   -- CaseCnsPrd
@@ -172,9 +171,6 @@ data ApplyAnnot where
   ApplyAnnotCocasePrdI :: ApplyAnnot
   -- CocaseCnsI
   ApplyAnnotCocaseCnsI :: ApplyAnnot
-  -- Case
-  ApplyAnnotCaseInner :: ApplyAnnot
-  ApplyAnnotCaseOuter :: ApplyAnnot
   -- CasePrdCmd
   ApplyAnnotCasePrdCmd :: ApplyAnnot
   -- CasePrdPrd
@@ -183,8 +179,6 @@ data ApplyAnnot where
   -- CasePrdCns
   ApplyAnnotCasePrdCnsInner :: ApplyAnnot
   ApplyAnnotCasePrdCnsOuter :: ApplyAnnot
-  -- Semicolon
-  ApplyAnnotSemicolon :: ApplyAnnot
   -- CODATA
   -- CocaseCnsCns
   ApplyAnnotCocaseCnsCnsInner :: ApplyAnnot
@@ -194,11 +188,6 @@ data ApplyAnnot where
   ApplyAnnotCocaseCnsPrdOuter :: ApplyAnnot
   -- CocaseCnsCmd
   ApplyAnnotCocaseCnsCmd :: ApplyAnnot
-  -- Dtor
-  ApplyAnnotDtor :: ApplyAnnot
-  -- CocaseCns
-  ApplyAnnotCocaseCnsInner :: ApplyAnnot
-  ApplyAnnotCocaseCnsOuter :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
 -- | An executable command.
