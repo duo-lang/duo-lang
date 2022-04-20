@@ -17,12 +17,9 @@ data VariantType (pol :: Polarity) where
   CovariantType :: Typ pol -> VariantType pol
   ContravariantType :: Typ (FlipPol pol) -> VariantType pol
 
-deriving instance Eq (VariantType Pos)
-deriving instance Eq (VariantType Neg)
-deriving instance Ord (VariantType Pos)
-deriving instance Ord (VariantType Neg)
-deriving instance Show (VariantType Pos)
-deriving instance Show (VariantType Neg)
+deriving instance Eq (VariantType pol)
+deriving instance Ord (VariantType pol)
+deriving instance Show (VariantType pol)
 
 toVariance :: VariantType pol -> Variance
 toVariance (CovariantType _) = Covariant
@@ -35,29 +32,18 @@ toVariance (ContravariantType _) = Contravariant
 data PrdCnsType (pol :: Polarity) where
   PrdCnsType :: PrdCnsRep pc -> Typ (PrdCnsFlip pc pol) -> PrdCnsType pol
 
-instance Eq (PrdCnsType Pos) where
+instance Eq (PrdCnsType pol) where
   (PrdCnsType PrdRep ty1) == (PrdCnsType PrdRep ty2) = ty1 == ty2
   (PrdCnsType CnsRep ty1) == (PrdCnsType CnsRep ty2) = ty1 == ty2
   _ == _ = False
-instance Eq (PrdCnsType Neg) where
-  (PrdCnsType PrdRep ty1) == (PrdCnsType PrdRep ty2) = ty1 == ty2
-  (PrdCnsType CnsRep ty1) == (PrdCnsType CnsRep ty2) = ty1 == ty2
-  _ == _ = False
--- For Ord: PrdType < CnsType
-instance Ord (PrdCnsType Pos) where
+
+instance Ord (PrdCnsType pol) where
   (PrdCnsType PrdRep ty1) `compare` (PrdCnsType PrdRep ty2) = ty1 `compare` ty2
   (PrdCnsType CnsRep ty1) `compare` (PrdCnsType CnsRep ty2) = ty1 `compare` ty2
   (PrdCnsType PrdRep _)   `compare` (PrdCnsType CnsRep _)   = LT
   (PrdCnsType CnsRep _)   `compare` (PrdCnsType PrdRep _)   = GT
-instance Ord (PrdCnsType Neg) where
-  (PrdCnsType PrdRep ty1) `compare` (PrdCnsType PrdRep ty2) = ty1 `compare` ty2
-  (PrdCnsType CnsRep ty1) `compare` (PrdCnsType CnsRep ty2) = ty1 `compare` ty2
-  (PrdCnsType PrdRep _)   `compare` (PrdCnsType CnsRep _)   = LT
-  (PrdCnsType CnsRep _)   `compare` (PrdCnsType PrdRep _)   = GT
-instance Show (PrdCnsType Pos) where
-  show (PrdCnsType PrdRep ty) = "PrdType " <> show ty
-  show (PrdCnsType CnsRep ty) = "CnsType " <> show ty
-instance Show (PrdCnsType Neg) where
+
+instance Show (PrdCnsType pol) where
   show (PrdCnsType PrdRep ty) = "PrdType " <> show ty
   show (PrdCnsType CnsRep ty) = "CnsType " <> show ty
 
@@ -79,12 +65,9 @@ data XtorSig (pol :: Polarity) = MkXtorSig
   , sig_args :: LinearContext pol
   }
 
-deriving instance Eq (XtorSig Pos)
-deriving instance Eq (XtorSig Neg)
-deriving instance Ord (XtorSig Pos)
-deriving instance Ord (XtorSig Neg)
-deriving instance Show (XtorSig Pos)
-deriving instance Show (XtorSig Neg)
+deriving instance Eq (XtorSig pol)
+deriving instance Ord (XtorSig pol)
+deriving instance Show (XtorSig pol)
 
 data Typ (pol :: Polarity) where
   TyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> TVar -> Typ pol
@@ -106,12 +89,9 @@ data Typ (pol :: Polarity) where
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
 
-deriving instance Eq (Typ Pos)
-deriving instance Eq (Typ Neg)
-deriving instance Ord (Typ Pos)
-deriving instance Ord (Typ Neg)
-deriving instance Show (Typ Pos)
-deriving instance Show (Typ Neg)
+deriving instance Eq (Typ pol)
+deriving instance Ord (Typ pol)
+deriving instance Show (Typ pol)
 
 mkUnion :: Loc -> Maybe MonoKind -> [Typ Pos] -> Typ Pos
 mkUnion loc knd []     = TyBot loc knd

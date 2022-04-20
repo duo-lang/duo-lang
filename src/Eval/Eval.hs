@@ -28,41 +28,42 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO $ readInt
-  return (Just (Apply defaultLoc (Just (CBox CBV)) tm cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig (Just (CBox CBV)) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
-evalTermOnce (Apply _ Nothing _ _) = throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ (Just kind) prd cns) = evalApplyOnce kind prd cns
+evalTermOnce (Apply _ _ Nothing _ _) =
+  throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
+evalTermOnce (Apply _ _ (Just kind) prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
 evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
 -- Free variables have to be looked up in the environment.
 evalApplyOnce kind (FreeVar _ PrdRep fv) cns = do
   prd <- lookupTerm PrdRep fv
-  return (Just (Apply defaultLoc (Just kind) prd cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
 evalApplyOnce kind prd (FreeVar _ CnsRep fv) = do
   cns <- lookupTerm CnsRep fv
-  return (Just (Apply defaultLoc (Just kind) prd cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
-evalApplyOnce _ prd@(Xtor _ PrdRep _ xt args) cns@(XMatch _ CnsRep _ cases) = do
+evalApplyOnce _ prd@(Xtor _ _ PrdRep _ xt args) cns@(XCase _ _ CnsRep _ cases) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply defaultLoc Nothing prd cns) argTypes args
+  checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
-evalApplyOnce _ prd@(XMatch _ PrdRep _ cases) cns@(Xtor _ CnsRep _ xt args) = do
+evalApplyOnce _ prd@(XCase _ _ PrdRep _ cases) cns@(Xtor _ _ CnsRep _ xt args) = do
   (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply defaultLoc Nothing prd cns) argTypes args
+  checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
-evalApplyOnce (CBox CBV) (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
+evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ cmd) cns@(MuAbs _ _ CnsRep _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce (CRep _) (MuAbs _ PrdRep _ cmd) cns@(MuAbs _ CnsRep _ _) =
+evalApplyOnce (CRep _) (MuAbs _ _ PrdRep _ cmd) cns@(MuAbs _ _ CnsRep _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce (CBox CBN) prd@(MuAbs _ PrdRep _ _) (MuAbs _ CnsRep _ cmd) =
+evalApplyOnce (CBox CBN) prd@(MuAbs _ _ PrdRep _ _) (MuAbs _ _ CnsRep _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))
-evalApplyOnce _ (MuAbs _ PrdRep _ cmd) cns =
+evalApplyOnce _ (MuAbs _ _ PrdRep _ cmd) cns =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce _ prd (MuAbs _ CnsRep _ cmd) =
+evalApplyOnce _ prd (MuAbs _ _ CnsRep _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
 evalApplyOnce _ (BoundVar _ PrdRep i) _ =

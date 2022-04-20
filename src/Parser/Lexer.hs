@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Avoid lambda using `infix`" #-}
 module Parser.Lexer
   ( -- Space Consumer and Comments
     sc
@@ -402,7 +404,7 @@ operators = enumFromTo minBound maxBound
 -- Check if the string is in the list of reserved operators.
 -- Reserved operators cannot be used as custom operators
 checkReservedOp :: Text -> Parser ()
-checkReservedOp str | str == "-<" = pure () -- ^ Special case for cofunctions =D
+checkReservedOp str | str == "-<" = pure () -- Special case for cofunctions =D
 checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> operators) = fail . T.unpack $ "Operator " <> str <> " cannot be used as a custom operator."
                     | otherwise = return ()
 

@@ -24,7 +24,7 @@ import Driver.Environment (Environment)
 import Syntax.Common
 import Driver.Driver
 import Driver.Definition
-import Translate.Desugar
+import Sugar.Desugar
 import Translate.Focusing
 import Utils (trimStr, defaultLoc)
 

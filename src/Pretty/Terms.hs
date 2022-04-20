@@ -10,7 +10,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
-import Translate.EmbedCore
+import Sugar.Resugar
 import Translate.ForgetTypes
 import Translate.Reparse
 
@@ -115,25 +115,26 @@ instance PrettyAnn (Core.Term pc) where
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
     prettyAnn v
-  prettyAnn (CST.XtorSemi _ xt args (Just c)) =
-    prettyAnn xt <>
-    parens' comma (prettyAnn <$> args) <> ";; " <>
-    prettyAnn c
-  prettyAnn (CST.XtorSemi _ xt args Nothing) =
+  prettyAnn (CST.Xtor _ xt args) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args)
-  prettyAnn (CST.XCase  _ Codata (Just t) cases) =
+  prettyAnn (CST.Semi _ xt args c) =
+    prettyAnn xt <>
+    parens' comma (prettyAnn <$> args) <>
+    annSymbol ";;" <+>
+    prettyAnn c
+  prettyAnn (CST.CocaseOf  _ t cases) =
     annKeyword "cocase" <+>
     prettyAnn t <+> annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (CST.XCase  _ Codata Nothing cases) =
+  prettyAnn (CST.Cocase  _ cases) =
     annKeyword "cocase" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (CST.XCase  _ Data (Just t) cases) =
+  prettyAnn (CST.CaseOf  _ t cases) =
     annKeyword "case" <+>
     prettyAnn t <+> annKeyword "of" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
-  prettyAnn (CST.XCase  _ Data Nothing cases) =
+  prettyAnn (CST.Case  _ cases) =
     annKeyword "case" <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases)))))
   prettyAnn (CST.MuAbs _ v cmd) =

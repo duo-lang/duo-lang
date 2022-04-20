@@ -82,7 +82,9 @@ xtorP = do
     _ <- symbolP SymDoubleSemi
     termTopP
   endPos <- getSourcePos
-  return (CST.XtorSemi (Loc startPos endPos) xt subst afterSemi, endPos)
+  case afterSemi of
+    Nothing -> pure (CST.Xtor (Loc startPos endPos) xt subst, endPos)
+    Just _tm -> undefined -- pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
 
 
 --------------------------------------------------------------------------------------------
@@ -231,31 +233,63 @@ primitiveCmdP = do
 -- Bottom Parser
 -------------------------------------------------------------------------------------------
 
-
-------------------------------------------
-datacodataP :: Parser (DataCodata, SourcePos)
-datacodataP =  (\s -> (Data,s)) <$> keywordP KwCase
-           <|> (\s -> (Codata,s)) <$> keywordP KwCocase
-------------------------------------------
-
+-- | Parses all constructs of the forms:
+--       case { termcases }
+--       case tm of { termcases }
 caseP :: Parser (CST.Term, SourcePos)
 caseP = do
-  (dc,_) <- datacodataP
   startPos <- getSourcePos
-  caseRestP dc startPos <|> caseRestP' dc startPos
+  _ <- keywordP KwCase
+  caseRestP startPos <|> caseOfRestP startPos
 
-caseRestP :: DataCodata -> SourcePos -> Parser (CST.Term, SourcePos)
-caseRestP dc startPos = do
+-- | Parses the second half of a "case" construct, i.e.
+--       case { termcases }
+--            ^^^^^^^^^^^^^
+caseRestP :: SourcePos -- ^ The source position of the start of the "case" keyword
+          -> Parser (CST.Term, SourcePos)
+caseRestP startPos = do
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  return (CST.XCase (Loc startPos endPos) dc Nothing cases, endPos)
+  pure (CST.Case (Loc startPos endPos) cases, endPos)
 
-caseRestP' :: DataCodata -> SourcePos -> Parser (CST.Term, SourcePos)
-caseRestP' dc startPos =  do
+-- | Parses the second half of a "caseof" construct, i.e.
+--       case tm of { termcases }
+--            ^^^^^^^^^^^^^^^^^^^
+caseOfRestP :: SourcePos -- ^ The source position of the start of the "case" keyword
+            -> Parser (CST.Term, SourcePos)
+caseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  return (CST.XCase (Loc startPos endPos) dc (Just arg) cases, endPos)
+  return (CST.CaseOf (Loc startPos endPos) arg cases, endPos)
 
+-- | Parses all constructs of the forms:
+--       cocase { termcases }
+--       cocase tm of { termcases }
+cocaseP :: Parser (CST.Term, SourcePos)
+cocaseP = do
+  startPos <- getSourcePos
+  _ <- keywordP KwCocase
+  cocaseRestP startPos <|> cocaseOfRestP startPos
+
+-- | Parses the second half of a "cocase" construct, i.e.
+--       cocase { termcases }
+--              ^^^^^^^^^^^^^
+cocaseRestP :: SourcePos -- ^ The source position of the start of the "cocase" keyword
+            -> Parser (CST.Term, SourcePos)
+cocaseRestP startPos = do
+  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
+  return (CST.Cocase (Loc startPos endPos) cases, endPos)
+
+-- | Parses the second half of a "caseof" construct, i.e.
+--       cocase tm of { termcases }
+--              ^^^^^^^^^^^^^^^^^^^
+cocaseOfRestP :: SourcePos -- ^ The source position of the start of the "cocase" keyword
+              -> Parser (CST.Term, SourcePos)
+cocaseOfRestP startPos =  do
+  (arg, _pos) <- termTopP
+  _ <- keywordP KwOf
+  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
+  return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
 
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP =  do
@@ -264,10 +298,10 @@ termCaseP =  do
   (args,_) <- bindingSiteP
   _ <- symbolP SymDoubleRightArrow
   (t, endPos) <- termTopP
-  let pmcase = CST.MkTermCase { tmcase_ext  = Loc startPos endPos
-                             , tmcase_name = xt
-                             , tmcase_args = args
-                             , tmcase_term  = t }
+  let pmcase = CST.MkTermCase { tmcase_loc  = Loc startPos endPos
+                              , tmcase_name = xt
+                              , tmcase_args = args
+                              , tmcase_term  = t }
   return (pmcase, endPos)
 
 
@@ -309,6 +343,7 @@ termBotP = freeVar <|>
   natLitP Nominal <|>
   xtorP <|>
   caseP <|>
+  cocaseP <|>
   muAbstraction  <|>
   termParensP <|>
   lambdaP <|>

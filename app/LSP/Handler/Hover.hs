@@ -165,17 +165,15 @@ instance ToHoverMap (Term pc) where
     freeVarToHoverMap loc ty
   toHoverMap (Xtor loc pc ty ns _ args) =
     M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
-  toHoverMap (XMatch loc pc ty ns cases) =
+  toHoverMap (XCase loc pc ty ns cases) =
     M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (MuAbs loc pc ty _ cmd) =
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
   toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2)) =
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
-  toHoverMap (Case loc _ ty ns e cases) =
+  toHoverMap (CaseOf loc _ ty ns e cases) =
     M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
-  toHoverMap (CocasePrdI loc ty ns cocases) =
-    M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
-  toHoverMap (CocaseCnsI loc ty ns cocases) =
+  toHoverMap (CocaseI loc _pcrep ty ns cocases) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 loc _) =
     mkHoverMap loc $ T.unlines [ "#### Literal"
@@ -185,13 +183,11 @@ instance ToHoverMap (Term pc) where
     mkHoverMap loc $ T.unlines [ "#### Literal"
                                , "- Raw `#F64` literal"
                                ]
-  toHoverMap (CaseCnsPrdI loc ty ns tmcasesI) =
+  toHoverMap (CaseI loc _pcrep ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (CaseCnsCnsI loc ty ns tmcasesI) =
-    M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (Semicolon loc _ ty ns _ (s1,_,s2) t) =
+  toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
-  toHoverMap (CocaseCns loc _ ty ns t tmcasesI) =
+  toHoverMap (CocaseOf loc _ ty ns t tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI) <> [toHoverMap t]
 
 instance ToHoverMap PrdCnsTerm where
@@ -212,17 +208,13 @@ instance ToHoverMap AST.Command where
   toHoverMap ExitSuccess {} = M.empty
   toHoverMap ExitFailure {} = M.empty
   toHoverMap PrimOp {} = M.empty
-  toHoverMap (CasePrdCmd _ _ t cmdcases) =
+  toHoverMap (CaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
-  toHoverMap (CasePrdPrdI _ _ t tmcasesI) =
+  toHoverMap (CaseOfI _ _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CasePrdCnsI _ _ t tmcasesI) =
-    M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CocaseCnsCmd _ _ t cmdcases) =
+  toHoverMap (CocaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
-  toHoverMap (CocaseCnsPrdI _ _ t tmcasesI) =
-    M.unions $ toHoverMap t : map toHoverMap tmcasesI
-  toHoverMap (CocaseCnsCnsI _ _ t tmcasesI) =
+  toHoverMap (CocaseOfI _ _ _ t tmcasesI) =
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
 
 instance ToHoverMap Substitution where

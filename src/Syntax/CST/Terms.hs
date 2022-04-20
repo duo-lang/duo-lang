@@ -34,7 +34,7 @@ type BindingSite = [FVOrStar]
 --------------------------------------------------------------------------------------------
 
 data TermCase  = MkTermCase
-  { tmcase_ext  :: Loc
+  { tmcase_loc  :: Loc
   , tmcase_name :: XtorName
   , tmcase_args :: BindingSite
   , tmcase_term :: Term
@@ -71,8 +71,12 @@ getLocPC (PrimOp loc _ _ _) = loc
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 
     Var :: Loc -> FreeVarName -> Term
-    XtorSemi :: Loc -> XtorName -> Substitution -> Maybe Term -> Term
-    XCase :: Loc -> DataCodata -> Maybe Term -> [TermCase] -> Term    
+    Xtor :: Loc -> XtorName -> Substitution -> Term
+    Semi :: Loc -> XtorName -> SubstitutionI -> Term -> Term
+    Case :: Loc -> [TermCase] -> Term
+    CaseOf :: Loc -> Term -> [TermCase] -> Term
+    Cocase :: Loc -> [TermCase] -> Term
+    CocaseOf :: Loc -> Term -> [TermCase] -> Term
     MuAbs :: Loc -> FreeVarName -> Term -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
@@ -85,17 +89,19 @@ data Term where
     Lambda :: Loc -> FreeVarName -> Term -> Term
     Apply :: Loc -> Term -> Term -> Term 
 
-
-
 deriving instance Show Term
 deriving instance Eq Term
 
 getLoc :: Term -> Loc
 getLoc (Var loc _) = loc
-getLoc (XtorSemi loc _ _ _) = loc
+getLoc (Xtor loc _ _) = loc
+getLoc (Semi loc _ _ _) = loc
 getLoc (MuAbs loc _ _) = loc
 getLoc (Dtor loc _ _ _) = loc
-getLoc (XCase loc _ _ _) = loc
+getLoc (Case loc _) = loc
+getLoc (CaseOf loc _ _) = loc
+getLoc (Cocase loc _) = loc
+getLoc (CocaseOf loc _ _) = loc
 getLoc (PrimLitI64 loc _) = loc
 getLoc (PrimLitF64 loc _) = loc
 getLoc (DtorChain _ tm _)  = getLoc tm

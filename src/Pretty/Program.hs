@@ -16,7 +16,7 @@ import Syntax.Core.Program qualified as Core
 import Syntax.Common
 import Driver.Environment
 import Translate.ForgetTypes (forgetTypesDecl)
-import Translate.EmbedCore
+import Sugar.Resugar
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
