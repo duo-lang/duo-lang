@@ -76,14 +76,14 @@ deriving instance Show CmdCase
 data MuAnnot where
   -- | User-written Mu abstraction
   MuAnnotOrig :: MuAnnot
-  -- DATA
-  -- Semicolon
-  MuAnnotSemicolon :: MuAnnot
+  -- Semi/Dtor
+  MuAnnotSemi :: MuAnnot
+  MuAnnotDtor :: MuAnnot
   -- Case
   MuAnnotCase :: MuAnnot
   -- CODATA
   -- Dtor
-  MuAnnotDtor :: MuAnnot
+
   -- CocaseCns
   MuAnnotCocaseCns :: MuAnnot
 
