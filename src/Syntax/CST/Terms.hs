@@ -27,6 +27,16 @@ data FVOrStar where
 deriving instance Show FVOrStar
 deriving instance Eq FVOrStar
 
+isStar :: FVOrStar -> Bool
+isStar FoSStar   = True
+isStar (FoSFV _) = False
+
+-- | Partial function!
+fromFVOrStar :: FVOrStar -> FreeVarName
+fromFVOrStar (FoSFV fv) = fv
+fromFVOrStar FoSStar = error "fromFVOrStar called on FoSStar"
+
+
 type BindingSite = [FVOrStar]
 
 --------------------------------------------------------------------------------------------
