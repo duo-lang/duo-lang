@@ -5,6 +5,7 @@ import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Text.Megaparsec.Pos (SourcePos)
+import Data.Either (isLeft, isRight)
 
 import Errors
 import Renamer.Definition
@@ -34,6 +35,125 @@ renameTerms loc (a:ar) (t:tms) = do
   tms' <- renameTerms loc ar tms
   return $ t' : tms'
 renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
+
+---------------------------------------------------------------------------------
+-- Analyze cases
+---------------------------------------------------------------------------------
+
+splitFS :: [CST.FVOrStar] -> ([FreeVarName],[FreeVarName])
+splitFS args = (map (\(CST.FoSFV fv) -> fv) args1,map (\(CST.FoSFV fv) -> fv) args2)
+  where
+    (args1,(_:args2)) = break CST.isStar args
+
+-- | A case with no stars.
+data IntermediateCase  = MkIntermediateCase
+  { icase_loc  :: Loc
+  , icase_name :: XtorName
+  , icase_args :: [FreeVarName]
+  , icase_term :: CST.Term
+  }
+
+-- | A case with exactly one star.
+data IntermediateCaseI  = MkIntermediateCaseI
+  { icasei_loc  :: Loc
+  , icasei_name :: XtorName
+  , icasei_args :: ([FreeVarName],[FreeVarName])
+  , icasei_term :: CST.Term
+  }
+
+-- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
+-- the number of stars.
+analyzeCase :: DataCodata
+            -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
+            -> CST.TermCase
+            -> RenamerM (Either IntermediateCase IntermediateCaseI)
+analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term }) = do
+  -- Lookup up the arity information in the symbol table.
+  (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
+  -- Check whether the number of arguments in the given binding site
+  -- corresponds to the number of arguments specified for the constructor/destructor.
+  when (length arity /= length tmcase_args) $
+           throwError $ LowerError (Just tmcase_loc) $ XtorArityMismatch tmcase_name (length arity) (length tmcase_args)
+  -- Check whether the Xtor is a Constructor/Destructor as expected.
+  case (dc,dc') of
+    (Codata,Data  ) -> throwError $ OtherError (Just tmcase_loc) "Expected a destructor but found a constructor"
+    (Data  ,Codata) -> throwError $ OtherError (Just tmcase_loc) "Expected a constructor but found a destructor"
+    (Data  ,Data  ) -> pure ()
+    (Codata,Codata) -> pure ()
+  -- Do a case-distinction based on the number of arguments
+  case length (filter CST.isStar tmcase_args) of
+    0 -> pure $ Left $ MkIntermediateCase
+                        { icase_loc = tmcase_loc
+                        , icase_name = tmcase_name
+                        , icase_args = CST.fromFVOrStar <$> tmcase_args
+                        , icase_term = tmcase_term
+                        }
+    1 -> pure $ Right $ MkIntermediateCaseI
+                        { icasei_loc = tmcase_loc
+                        , icasei_name = tmcase_name
+                        , icasei_args = splitFS tmcase_args
+                        , icasei_term = tmcase_term
+                        }
+    n -> throwError $ LowerError (Just tmcase_loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
+
+fromLeft :: Either a b -> a
+fromLeft (Left x) = x
+fromLeft (Right _) = error "Compiler bug"
+
+fromRight :: Either a b -> b
+fromRight (Left _) = error "Compiler bug"
+fromRight (Right x) = x
+
+fromEitherList :: [Either a b] -> RenamerM (Either [a] [b])
+fromEitherList ls | all isLeft ls  = pure $ Left (fromLeft <$> ls)
+                  | all isRight ls = pure $ Right (fromRight <$> ls)
+                  | otherwise = error "TODO: write error message"
+
+analyzeCases :: DataCodata
+             -> [CST.TermCase]
+             -> RenamerM (Either [IntermediateCase] [IntermediateCaseI])
+analyzeCases dc cases = do
+  cases' <- sequence $ analyzeCase dc <$> cases
+  fromEitherList cases'
+
+---------------------------------------------------------------------------------
+-- Rename Cases
+---------------------------------------------------------------------------------
+
+renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
+renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+  cmd' <- renameCommand icase_term
+  (_,XtorNameResult _ _ ar) <- lookupXtor icase_loc icase_name
+  let args = zip ar icase_args
+  pure RST.MkCmdCase { cmdcase_loc = icase_loc
+                     , cmdcase_name = icase_name
+                     , cmdcase_args = second Just <$> args
+                     , cmdcase_cmd = RST.commandClosing args cmd'
+                     }
+
+renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI -> RenamerM (RST.TermCaseI pc)
+renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1, args2), icasei_term } = do
+  tm' <- renameTerm rep icasei_term
+  (_, XtorNameResult _ _ ar) <- lookupXtor icasei_loc icasei_name
+  let (ar1,_:ar2) = splitAt (length args1) ar
+  let args1' = zip ar1 args1
+  let args2' = zip ar2 args2
+  pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
+                       , tmcasei_name = icasei_name
+                       , tmcasei_args = (second Just <$> args1', (), second Just <$> args2')
+                       , tmcasei_term = RST.termClosing (args1' ++ [(Cns, MkFreeVarName "*")] ++ args2') tm'
+                       }
+
+renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
+renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
+  tm' <- renameTerm rep icase_term
+  (_, XtorNameResult _ _ ar) <- lookupXtor icase_loc icase_name
+  let args = zip ar icase_args
+  pure RST.MkTermCase { tmcase_loc = icase_loc
+                      , tmcase_name = icase_name
+                      , tmcase_args = second Just <$> args
+                      , tmcase_term = RST.termClosing args tm'
+                      }
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -76,15 +196,31 @@ renameCommand (CST.Semi loc _ _ _) =
 renameCommand (CST.Dtor loc _ _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Dtor")
 renameCommand (CST.Case loc _) =
+  -- A "case { ... } " expression cannot be renamed into a command
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Case")
 renameCommand (CST.Cocase loc _) =
+  -- A "cocase { ... } " expression cannot be renamed into a command.
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Cocase")
-renameCommand (CST.CaseOf loc _ _) =
-  -- TODO: Must be CaseOfI or CaseOfCmd
-  throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI or CaseOfCmd")
-renameCommand (CST.CocaseOf loc _ _) =
-  -- TODO: Must be CocaseOfI or CocaseOfCmd
-  throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI or CocaseOfCmd")
+renameCommand (CST.CaseOf loc tm cases) = do
+  tm' <- renameTerm PrdRep tm
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    Left explicitCases -> do
+      cmdCases <- sequence $ renameCommandCase <$> explicitCases
+      pure $ RST.CaseOfCmd loc ns tm' cmdCases
+    Right _implicitCases -> do
+      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI")
+renameCommand (CST.CocaseOf loc tm cases) = do
+  tm' <- renameTerm CnsRep tm
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Codata cases
+  case intermediateCases of
+    Left explicitCases -> do
+      cmdCases <- sequence $ renameCommandCase <$> explicitCases
+      pure $ RST.CocaseOfCmd loc ns tm' cmdCases
+    Right _implicitCases -> do
+      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI")
 
 getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
 getPrimOpArity loc primOp = do
@@ -93,89 +229,10 @@ getPrimOpArity loc primOp = do
     Just aritySpecified -> return aritySpecified
 
 
--- todo : must analyze arity to cover all producer case
-data TermCaseCases = AllNoStars | AllProducerStar | AllConsumerStar
 
-analyzeTermCases :: [CST.TermCase] -> RenamerM TermCaseCases
-analyzeTermCases cases | all noStar cases = return AllNoStars
-analyzeTermCases cases | all oneStar cases = return AllConsumerStar
-analyzeTermCases cases  = throwError $ LowerError (Just $ CST.tmcase_loc (head cases)) $ InvalidStar "Inconsistent stars"
-
-noStar :: CST.TermCase -> Bool
-noStar (CST.MkTermCase _ _ bs  _) = not (any isStar bs)
-
-oneStar :: CST.TermCase -> Bool
-oneStar (CST.MkTermCase _ _ bs  _) = length (filter isStar bs) == 1
-
-isStar :: CST.FVOrStar -> Bool
-isStar CST.FoSStar   = True
-isStar (CST.FoSFV _) = False
-
-
-
-renameCommandCase :: DataCodata -> CST.TermCase -> RenamerM RST.CmdCase
-renameCommandCase dc CST.MkTermCase { tmcase_loc , tmcase_name , tmcase_args ,tmcase_term } = do
-  cmd' <- renameCommand tmcase_term
-  (_,XtorNameResult dc' _ ar) <- lookupXtor tmcase_loc tmcase_name
-  when (length ar /= length tmcase_args) $
-           throwError $ LowerError (Just tmcase_loc) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
-  when (any (\x -> case x of CST.FoSStar -> True; _ -> False) tmcase_args) $ throwError $ LowerError (Just tmcase_loc) $ InvalidStar "Invalid star in command case"
-  when (dc /= dc') $
-           throwError $ OtherError (Just tmcase_loc) "Constructor/Destructor confusion"
-  let fv = (\x -> case x of CST.FoSStar -> error "compiler bug"; CST.FoSFV f -> f) <$> tmcase_args
-  let args = zip ar fv
-  pure RST.MkCmdCase { cmdcase_loc = tmcase_loc
-                     , cmdcase_name = tmcase_name
-                     , cmdcase_args = second Just <$> args
-                     , cmdcase_cmd = RST.commandClosing args cmd'
-                     }
-
--- TODO: Check that all command cases use the same nominal/structural variant.
-commandCasesToNS :: [CST.TermCase] -> RenamerM NominalStructural
-commandCasesToNS [] = pure Structural
-commandCasesToNS ((CST.MkTermCase { tmcase_loc, tmcase_name }):_) = do
-  (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
-  pure ns
-
-renameTermCase :: CST.TermCase -> RenamerM (RST.TermCase Prd)
-renameTermCase CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } = do
-  tm' <- renameTerm PrdRep tmcase_term
-  (_, XtorNameResult dc _ ar) <- lookupXtor tmcase_loc tmcase_name
-  when (length ar /= length tmcase_args) $
-           throwError $ LowerError (Just tmcase_loc) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
-  when (dc /= Data) $
-           throwError $ OtherError (Just tmcase_loc) "Expected constructor but got destructor"
-  when (any (\x -> case x of CST.FoSStar -> True; _ -> False) tmcase_args) $ throwError $ LowerError (Just tmcase_loc) $ InvalidStar "Invalid star in command case"
-  let fv = (\x -> case x of CST.FoSStar -> error "compiler bug"; CST.FoSFV f -> f) <$> tmcase_args
-  let args = zip ar fv
-  pure RST.MkTermCase { tmcase_loc = tmcase_loc
-                      , tmcase_name = tmcase_name
-                      , tmcase_args = second Just <$> args
-                      , tmcase_term = RST.termClosing args tm'
-                      }
-
-
-renameTermCaseI :: CST.TermCase -> RenamerM (RST.TermCaseI Prd)
-renameTermCaseI CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } = do
-  tm' <- renameTerm PrdRep tmcase_term
-  (_, XtorNameResult dc _ ar) <- lookupXtor tmcase_loc tmcase_name
-  when (length ar /= length tmcase_args) $
-           throwError $ LowerError (Just tmcase_loc) $ XtorArityMismatch tmcase_name (length ar) (length tmcase_args)
-  when (dc /= Codata) $
-           throwError $ OtherError (Just tmcase_loc) "Expected Destructor but got constructor"
-  (x,y) <- splitFS defaultLoc  tmcase_args -- TODO : improve Loc
-  let (ar1,_:ar2) = splitAt (length x) ar
-  let args1 = zip ar1 x
-  let args2 = zip ar2 y
-  pure RST.MkTermCaseI { tmcasei_loc = tmcase_loc
-                      , tmcasei_name = tmcase_name
-                      , tmcasei_args = (second Just <$> args1, (), second Just <$> args2)
-                      , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
-                      }
-
-termCasesToNS :: [CST.TermCase] -> RenamerM NominalStructural
-termCasesToNS [] = pure Structural
-termCasesToNS ((CST.MkTermCase { tmcase_loc, tmcase_name }):_) = do
+casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
+casesToNS [] = pure Structural
+casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_name }):_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 
@@ -226,12 +283,7 @@ split loc args = do
   let (args1,_:args2) = span (not . isStarT) args
   return (map toTm args1,map toTm args2)
 
-splitFS :: Loc -> [CST.FVOrStar] -> RenamerM ([CST.FreeVarName],[CST.FreeVarName])
-splitFS loc args = do
-  let numstars = length (filter isStar args)
-  when ( numstars /= 1) $ throwError (OtherError (Just loc) "Exactly one star expected" )
-  let (args1,(_:args2)) = break isStar args
-  return (map (\(CST.FoSFV fv) -> fv) args1,map (\(CST.FoSFV fv) -> fv) args2)
+
 
 
 renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
@@ -260,30 +312,32 @@ renameTerm PrdRep (CST.Case loc _) =
 renameTerm CnsRep (CST.Cocase loc _) =
   throwError (OtherError (Just loc) "Cannot rename copattern match to a consumer.")
 renameTerm PrdRep (CST.Cocase loc cases)  = do
-  c <- analyzeTermCases cases
-  case c of
-    AllNoStars -> do
-      cases' <- sequence (renameCommandCase Codata <$> cases)
-      ns <- commandCasesToNS cases
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Codata cases
+  case intermediateCases of
+    Left explicitCases -> do
+      cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    AllConsumerStar -> do
-      cases' <- sequence (renameTermCaseI <$> cases)
-      ns <- termCasesToNS cases
+    Right implicitCases -> do
+      cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
       pure $ RST.CocaseI loc PrdRep ns cases'
-    AllProducerStar -> error "not yet implemented"
 renameTerm CnsRep (CST.Case loc cases)  = do
-  c <- analyzeTermCases cases
-  case c of
-    AllNoStars -> do
-      cases' <- sequence (renameCommandCase Data <$> cases)
-      ns <- commandCasesToNS cases
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    Left explicitCases -> do
+      cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    _ -> error "not yet implemented"
+    Right _implicitCases -> error "not yet implemented"
 renameTerm PrdRep (CST.CaseOf loc t cases)  = do
-  cases' <- sequence (renameTermCase <$> cases)
-  t' <- renameTerm PrdRep t
-  ns <- commandCasesToNS cases
-  pure $ RST.CaseOf loc PrdRep ns t' cases'
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    Left explicitCases -> do
+      cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
+      t' <- renameTerm PrdRep t
+      pure $ RST.CaseOf loc PrdRep ns t' cases'
+    Right _implicitCases -> error "not yet implemented"
 renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
