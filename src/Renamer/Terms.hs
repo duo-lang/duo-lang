@@ -439,23 +439,45 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
     ImplicitPrdCases _implicitCases ->
-      throwError $ OtherError (Just loc) ""
+      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer."
     ImplicitCnsCases _implicitCases ->
-      throwError $ OtherError (Just loc) "foo"
+      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer"
 renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Data cases
+  intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm CnsRep t
       pure $ RST.CocaseOf loc PrdRep ns t' cases'
     ImplicitPrdCases _implicitCases ->
-      throwError $ OtherError (Just loc) "foo"
+      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
     ImplicitCnsCases _implicitCases ->
-      throwError $ OtherError (Just loc) "foo"
-renameTerm CnsRep (CST.CaseOf _loc _t _cases) = undefined
-renameTerm CnsRep (CST.CocaseOf _loc _t _cases) = undefined
+      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
+renameTerm CnsRep (CST.CaseOf loc t cases) = do
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    ExplicitCases explicitCases -> do
+      cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
+      t' <- renameTerm PrdRep t
+      pure $ RST.CaseOf loc CnsRep ns t' cases'
+    ImplicitPrdCases _implicitCases ->
+      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer."
+    ImplicitCnsCases _implicitCases ->
+      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer"
+renameTerm CnsRep (CST.CocaseOf loc t cases) = do
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Codata cases
+  case intermediateCases of
+    ExplicitCases explicitCases -> do
+      cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
+      t' <- renameTerm CnsRep t
+      pure $ RST.CocaseOf loc CnsRep ns t' cases'
+    ImplicitPrdCases _implicitCases ->
+      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
+    ImplicitCnsCases _implicitCases ->
+      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
 ---------------------------------------------------------------------------------
 -- Literals
 ---------------------------------------------------------------------------------
