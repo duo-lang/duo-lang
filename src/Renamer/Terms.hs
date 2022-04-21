@@ -244,10 +244,12 @@ renameCommand (CST.CaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    ImplicitPrdCases _implicitCases -> do
-      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI")
-    ImplicitCnsCases _implicitCases -> do
-      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI")
+    ImplicitPrdCases implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI PrdRep <$> implicitCases
+      pure $ RST.CaseOfI loc PrdRep ns tm' termCasesI
+    ImplicitCnsCases implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
+      pure $ RST.CaseOfI loc CnsRep ns tm' termCasesI
 renameCommand (CST.CocaseOf loc tm cases) = do
   tm' <- renameTerm CnsRep tm
   ns <- casesToNS cases
@@ -256,14 +258,12 @@ renameCommand (CST.CocaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    ImplicitPrdCases _implicitCases -> do
-      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI")
-    ImplicitCnsCases _implicitCases -> do
-      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI")
-
-
-
-
+    ImplicitPrdCases implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI PrdRep <$> implicitCases
+      pure $ RST.CocaseOfI loc PrdRep ns tm' termCasesI
+    ImplicitCnsCases implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
+      pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
 
 casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
 casesToNS [] = pure Structural
