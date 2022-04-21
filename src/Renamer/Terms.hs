@@ -21,6 +21,7 @@ import qualified Data.Text as T
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
+
 renameT :: PrdCns -> CST.Term -> RenamerM RST.PrdCnsTerm
 renameT Prd t = RST.PrdTerm <$> renameTerm PrdRep t
 renameT Cns t = RST.CnsTerm <$> renameTerm CnsRep t
@@ -38,28 +39,52 @@ renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
+renamePrimCommand :: CST.PrimCommand -> RenamerM RST.Command
+renamePrimCommand (CST.Print loc tm cmd) = do
+  tm' <- renameTerm PrdRep tm
+  cmd' <- renameCommand cmd
+  pure $ RST.Print loc tm' cmd'
+renamePrimCommand (CST.Read loc tm) = do
+  tm' <- renameTerm CnsRep tm
+  pure $ RST.Read loc tm'
+renamePrimCommand (CST.ExitSuccess loc) =
+  pure $ RST.ExitSuccess loc
+renamePrimCommand (CST.ExitFailure loc) =
+  pure $ RST.ExitFailure loc
+renamePrimCommand (CST.PrimOp loc pt op args) = do
+  reqArity <- getPrimOpArity loc (pt, op)
+  when (length reqArity /= length args) $
+         throwError $ LowerError (Just loc) $ PrimOpArityMismatch (pt,op) (length reqArity) (length args)
+  args' <- renameTerms loc reqArity args
+  pure $ RST.PrimOp loc pt op args'
 
 renameCommand :: CST.Term -> RenamerM RST.Command
-renameCommand (CST.PrimCmdTerm (CST.Print loc tm cmd)) =
-  RST.Print loc <$> renameTerm PrdRep tm <*> renameCommand cmd
-renameCommand (CST.PrimCmdTerm (CST.Read loc tm)) =
-  RST.Read loc <$> renameTerm CnsRep tm
-renameCommand (CST.Var loc fv)              = pure $ RST.Jump loc fv
-renameCommand (CST.PrimCmdTerm (CST.ExitSuccess loc) )  =
-  pure $ RST.ExitSuccess loc
-renameCommand (CST.PrimCmdTerm (CST.ExitFailure loc))
-  = pure $ RST.ExitFailure loc
-renameCommand (CST.TermParens _loc cmd) = renameCommand cmd
-renameCommand (CST.PrimCmdTerm (CST.PrimOp loc pt op tms)) =
-  do
-    reqArity <- getPrimOpArity loc (pt, op)
-    when (length reqArity /= length tms) $
-           throwError $ LowerError (Just loc) $ PrimOpArityMismatch (pt,op) (length reqArity) (length tms)
-    foo <- renameTerms loc reqArity tms
-    return $ RST.PrimOp loc pt op foo
-renameCommand (CST.Apply loc tm1 tm2) =
-  RST.Apply loc <$> renameTerm PrdRep tm1 <*> renameTerm CnsRep tm2
-renameCommand t = throwError $ LowerError (Just (CST.getLoc t)) (CmdExpected "Command expected")
+renameCommand (CST.PrimCmdTerm cmd) =
+  renamePrimCommand cmd
+renameCommand (CST.Var loc fv) =
+  pure $ RST.Jump loc fv
+renameCommand (CST.TermParens _loc cmd) =
+  renameCommand cmd
+renameCommand (CST.Apply loc tm1 tm2) = do
+  tm1' <- renameTerm PrdRep tm1
+  tm2' <- renameTerm CnsRep tm2
+  pure $ RST.Apply loc tm1' tm2'
+renameCommand (CST.Xtor loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
+renameCommand (CST.Semi loc _ _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Semi")
+renameCommand (CST.Dtor loc _ _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Dtor")
+renameCommand (CST.Case loc _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Case")
+renameCommand (CST.Cocase loc _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Cocase")
+renameCommand (CST.CaseOf loc _ _) =
+  -- TODO: Must be CaseOfI or CaseOfCmd
+  throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI or CaseOfCmd")
+renameCommand (CST.CocaseOf loc _ _) =
+  -- TODO: Must be CocaseOfI or CocaseOfCmd
+  throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI or CocaseOfCmd")
 
 getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
 getPrimOpArity loc primOp = do
@@ -84,7 +109,7 @@ oneStar (CST.MkTermCase _ _ bs  _) = length (filter isStar bs) == 1
 
 isStar :: CST.FVOrStar -> Bool
 isStar CST.FoSStar   = True
-isStar _ = False
+isStar (CST.FoSFV _) = False
 
 
 
