@@ -59,28 +59,39 @@ data IntermediateCaseI  = MkIntermediateCaseI
   }
 
 data SomeIntermediateCase where
-  ExplicitCase :: IntermediateCase  -> SomeIntermediateCase
-  ImplicitCase :: IntermediateCaseI -> SomeIntermediateCase
+  ExplicitCase    :: IntermediateCase  -> SomeIntermediateCase
+  ImplicitPrdCase :: IntermediateCaseI -> SomeIntermediateCase
+  ImplicitCnsCase :: IntermediateCaseI -> SomeIntermediateCase
 
 isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase (ExplicitCase _) = True
-isExplicitCase (ImplicitCase _) = False
+isExplicitCase _                = False
 
-isImplicitCase :: SomeIntermediateCase -> Bool
-isImplicitCase (ImplicitCase _) = True
-isImplicitCase (ExplicitCase _) = False
+isImplicitPrdCase :: SomeIntermediateCase -> Bool
+isImplicitPrdCase (ImplicitPrdCase _) = True
+isImplicitPrdCase _                   = False
+
+isImplicitCnsCase :: SomeIntermediateCase -> Bool
+isImplicitCnsCase (ImplicitCnsCase _) = True
+isImplicitCnsCase _                   = False
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
 fromExplicitCase (ExplicitCase cs) = cs
-fromExplicitCase (ImplicitCase _) = error "Compiler bug"
+fromExplicitCase _                 = error "Compiler bug"
 
-fromImplicitCase :: SomeIntermediateCase -> IntermediateCaseI
-fromImplicitCase (ImplicitCase cs) = cs
-fromImplicitCase (ExplicitCase _) = error "Compiler bug"
+fromImplicitPrdCase :: SomeIntermediateCase -> IntermediateCaseI
+fromImplicitPrdCase (ImplicitPrdCase cs) = cs
+fromImplicitPrdCase _                    = error "Compiler bug"
+
+fromImplicitCnsCase :: SomeIntermediateCase -> IntermediateCaseI
+fromImplicitCnsCase (ImplicitCnsCase cs) = cs
+fromImplicitCnsCase _                    = error "Compiler bug"
+
 
 data SomeIntermediateCases where
-  ExplicitCases :: [IntermediateCase]  -> SomeIntermediateCases
-  ImplicitCases :: [IntermediateCaseI] -> SomeIntermediateCases
+  ExplicitCases    :: [IntermediateCase]  -> SomeIntermediateCases
+  ImplicitPrdCases :: [IntermediateCaseI] -> SomeIntermediateCases
+  ImplicitCnsCases :: [IntermediateCaseI] -> SomeIntermediateCases
 
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
@@ -109,7 +120,7 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
                         , icase_args = CST.fromFVOrStar <$> tmcase_args
                         , icase_term = tmcase_term
                         }
-    1 -> pure $ ImplicitCase $ MkIntermediateCaseI
+    1 -> pure $ ImplicitPrdCase $ MkIntermediateCaseI
                         { icasei_loc = tmcase_loc
                         , icasei_name = tmcase_name
                         , icasei_args = splitFS tmcase_args
@@ -118,8 +129,9 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
     n -> throwError $ LowerError (Just tmcase_loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
 fromEitherList :: [SomeIntermediateCase] -> RenamerM (SomeIntermediateCases)
-fromEitherList ls | all isExplicitCase ls = pure $ ExplicitCases $ fromExplicitCase <$> ls
-                  | all isImplicitCase ls = pure $ ImplicitCases $ fromImplicitCase <$> ls
+fromEitherList ls | all isExplicitCase ls    = pure $ ExplicitCases    $ fromExplicitCase <$> ls
+                  | all isImplicitPrdCase ls = pure $ ImplicitPrdCases $ fromImplicitPrdCase <$> ls
+                  | all isImplicitCnsCase ls = pure $ ImplicitCnsCases $ fromImplicitCnsCase <$> ls
                   | otherwise = error "TODO: write error message"
 
 analyzeCases :: DataCodata
@@ -169,8 +181,14 @@ renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase
                       }
 
 ---------------------------------------------------------------------------------
--- Check Arity of Xtor
+-- Renaming PrimCommands
 ---------------------------------------------------------------------------------
+
+getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
+getPrimOpArity loc primOp = do
+  case M.lookup primOp primOps of
+    Nothing -> throwError $ LowerError (Just loc) $ UndefinedPrimOp primOp
+    Just aritySpecified -> return aritySpecified
 
 renamePrimCommand :: CST.PrimCommand -> RenamerM RST.Command
 renamePrimCommand (CST.Print loc tm cmd) = do
@@ -190,6 +208,10 @@ renamePrimCommand (CST.PrimOp loc pt op args) = do
          throwError $ LowerError (Just loc) $ PrimOpArityMismatch (pt,op) (length reqArity) (length args)
   args' <- renameTerms loc reqArity args
   pure $ RST.PrimOp loc pt op args'
+
+---------------------------------------------------------------------------------
+-- Renaming Commands
+---------------------------------------------------------------------------------
 
 renameCommand :: CST.Term -> RenamerM RST.Command
 renameCommand (CST.PrimCmdTerm cmd) =
@@ -222,7 +244,9 @@ renameCommand (CST.CaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    ImplicitCases _implicitCases -> do
+    ImplicitPrdCases _implicitCases -> do
+      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI")
+    ImplicitCnsCases _implicitCases -> do
       throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI")
 renameCommand (CST.CocaseOf loc tm cases) = do
   tm' <- renameTerm CnsRep tm
@@ -232,14 +256,12 @@ renameCommand (CST.CocaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    ImplicitCases _implicitCases -> do
+    ImplicitPrdCases _implicitCases -> do
+      throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI")
+    ImplicitCnsCases _implicitCases -> do
       throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI")
 
-getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
-getPrimOpArity loc primOp = do
-  case M.lookup primOp primOps of
-    Nothing -> throwError $ LowerError (Just loc) $ UndefinedPrimOp primOp
-    Just aritySpecified -> return aritySpecified
+
 
 
 
@@ -331,9 +353,12 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    ImplicitCases implicitCases -> do
+    ImplicitPrdCases implicitCases -> do
       cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
       pure $ RST.CocaseI loc PrdRep ns cases'
+    ImplicitCnsCases implicitCases -> do
+      cases' <- sequence $ renameTermCaseI CnsRep <$> implicitCases
+      pure $ RST.CocaseI loc CnsRep ns cases'
 renameTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
@@ -341,7 +366,8 @@ renameTerm CnsRep (CST.Case loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    ImplicitCases _implicitCases -> error "not yet implemented"
+    ImplicitPrdCases _implicitCases -> error "not yet implemented"
+    ImplicitCnsCases _implicitCases -> error "not yet implemented"
 renameTerm PrdRep (CST.CaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
@@ -350,7 +376,8 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
-    ImplicitCases _implicitCases -> error "not yet implemented"
+    ImplicitPrdCases _implicitCases -> error "not yet implemented"
+    ImplicitCnsCases _implicitCases -> error "not yet implemented"
 renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
