@@ -37,8 +37,8 @@ renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc
 -- Analyze cases
 ---------------------------------------------------------------------------------
 
-splitFS :: [CST.FVOrStar] -> ([FreeVarName],[FreeVarName])
-splitFS args = (map (\(CST.FoSFV fv) -> fv) args1,map (\(CST.FoSFV fv) -> fv) args2)
+splitFS :: [CST.FVOrStar] -> ([FreeVarName], PrdCnsRep Prd, [FreeVarName])
+splitFS args = (map (\(CST.FoSFV fv) -> fv) args1, PrdRep, map (\(CST.FoSFV fv) -> fv) args2)
   where
     (args1,(_:args2)) = break CST.isStar args
 
@@ -51,17 +51,17 @@ data IntermediateCase  = MkIntermediateCase
   }
 
 -- | A case with exactly one star.
-data IntermediateCaseI  = MkIntermediateCaseI
+data IntermediateCaseI pc = MkIntermediateCaseI
   { icasei_loc  :: Loc
   , icasei_name :: XtorName
-  , icasei_args :: ([FreeVarName],[FreeVarName])
+  , icasei_args :: ([FreeVarName], PrdCnsRep pc, [FreeVarName])
   , icasei_term :: CST.Term
   }
 
 data SomeIntermediateCase where
-  ExplicitCase    :: IntermediateCase  -> SomeIntermediateCase
-  ImplicitPrdCase :: IntermediateCaseI -> SomeIntermediateCase
-  ImplicitCnsCase :: IntermediateCaseI -> SomeIntermediateCase
+  ExplicitCase    :: IntermediateCase      -> SomeIntermediateCase
+  ImplicitPrdCase :: IntermediateCaseI Prd -> SomeIntermediateCase
+  ImplicitCnsCase :: IntermediateCaseI Cns -> SomeIntermediateCase
 
 isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase (ExplicitCase _) = True
@@ -79,19 +79,19 @@ fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
 fromExplicitCase (ExplicitCase cs) = cs
 fromExplicitCase _                 = error "Compiler bug"
 
-fromImplicitPrdCase :: SomeIntermediateCase -> IntermediateCaseI
+fromImplicitPrdCase :: SomeIntermediateCase -> IntermediateCaseI Prd
 fromImplicitPrdCase (ImplicitPrdCase cs) = cs
 fromImplicitPrdCase _                    = error "Compiler bug"
 
-fromImplicitCnsCase :: SomeIntermediateCase -> IntermediateCaseI
+fromImplicitCnsCase :: SomeIntermediateCase -> IntermediateCaseI Cns
 fromImplicitCnsCase (ImplicitCnsCase cs) = cs
 fromImplicitCnsCase _                    = error "Compiler bug"
 
 
 data SomeIntermediateCases where
-  ExplicitCases    :: [IntermediateCase]  -> SomeIntermediateCases
-  ImplicitPrdCases :: [IntermediateCaseI] -> SomeIntermediateCases
-  ImplicitCnsCases :: [IntermediateCaseI] -> SomeIntermediateCases
+  ExplicitCases    :: [IntermediateCase]      -> SomeIntermediateCases
+  ImplicitPrdCases :: [IntermediateCaseI Prd] -> SomeIntermediateCases
+  ImplicitCnsCases :: [IntermediateCaseI Cns] -> SomeIntermediateCases
 
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
@@ -156,8 +156,8 @@ renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , ica
                      , cmdcase_cmd = RST.commandClosing args cmd'
                      }
 
-renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI -> RenamerM (RST.TermCaseI pc)
-renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1, args2), icasei_term } = do
+renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCaseI pc)
+renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- renameTerm rep icasei_term
   (_, XtorNameResult _ _ ar) <- lookupXtor icasei_loc icasei_name
   let (ar1,_:ar2) = splitAt (length args1) ar
