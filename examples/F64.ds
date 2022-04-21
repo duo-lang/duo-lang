@@ -1,9 +1,29 @@
 import Function;
 
+--------------------------------------------------------------------------------------------
+-- Boxed 64-Bit floating point numbers
+--
+-- This module provides boxed representations of 64-Bit floating point numbers.
+-- The data type `F64` represents a boxed version of the unboxed primitive type `#F64`, which
+-- it wraps. I.e. `F64` and `#F64` are differentiated by their respective kind:
+--
+--  `#F64` has kind `#F64Rep`
+--  `F64`  has kind `CBV`
+--
+-- The basic idea behind this choice of representation of boxed primitives has been described
+-- by Simon Peyton Jones and John Launchbury in:
+--  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
+--     Proceedings of the 5th ACM conference on Functional Programming
+--
+-- This module also provides boxed versions of the primitive operations on `#F64` values.
+--------------------------------------------------------------------------------------------
+
+-- | Boxed 64-Bit floating point numbers.
 data F64 {
     MkF64(#F64)
 };
 
+-- | Addition of two 64-Bit floating point numbers.
 def prd addf : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
@@ -11,6 +31,7 @@ def prd addf : F64 -> F64 -> F64 := \x => \y =>
         }
     };
 
+-- | Subtraction of two 64-Bit floating point numbers.
 def prd subf : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
@@ -18,6 +39,7 @@ def prd subf : F64 -> F64 -> F64 := \x => \y =>
         }
     };
 
+-- | Multiplication of two 64-Bit floating point numbers.
 def prd mulf : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
@@ -25,6 +47,7 @@ def prd mulf : F64 -> F64 -> F64 := \x => \y =>
         }
     };
 
+-- | Division of two 64-Bit floating point numbers.
 def prd divf : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {

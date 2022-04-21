@@ -7,12 +7,16 @@ codata Stream : (+a : CBV) -> CBV {
     Tail(return Stream(a))
 };
 
-def rec prd map := \f s => cocase {
-    Head(*) => f s.Head(*),
-    Tail(*) => map f (s.Tail(*))
+-- | Map a function over a stream.
+def rec prd streamMap : forall a b. (a -> b) -> Stream(a) -> Stream(b) :=
+  \f s => cocase {
+    Head(*) => f (s.Head(*)),
+    Tail(*) => streamMap f (s.Tail(*))
 };
 
-def rec prd constStream := \x => cocase {
+-- | Return a constant stream for the given element.
+def rec prd constStream : forall a. a -> Stream(a) :=
+  \x => cocase {
     Head(*) => x,
     Tail(*) => constStream x
 };

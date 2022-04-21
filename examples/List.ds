@@ -3,23 +3,27 @@ import Peano;
 import Bool;
 import Function;
 
+-- | The type of lists.
 data List : (+a : CBV) -> CBV {
     Nil,
     Cons(a, List(a))
 };
 
+-- | Computes the length of a list.
 def rec prd length : forall a. List(a) -> Nat :=
     \xs => case xs of {
         Nil => Z,
         Cons(x, xs) => S(length xs)
     };
 
+-- | Maps a function over all elements of a list.
 def rec prd map : forall a b. (a -> b) -> List(a) -> List(b) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => Cons(f y, map f ys)
     };
 
+-- | Filters all predicates satisfying a given predicate.
 def rec prd filter : forall a. (a -> Bool) -> List(a) -> List(a) :=
     \f xs => case xs of {
         Nil => Nil,
@@ -29,12 +33,14 @@ def rec prd filter : forall a. (a -> Bool) -> List(a) -> List(a) :=
         }
     };
 
+-- | Right fold over a list.
 def rec prd foldr : forall a b. (a -> b -> b) -> b -> List(a) -> b :=
     \f init xs => case xs of {
         Nil => init,
         Cons(y, ys) => f y (foldr f init ys)
     };
 
+-- | Left fold over a list.
 def rec prd foldl : forall a b. (b -> a -> b) -> b -> List(a) -> b :=
     \f acc xs => case xs of {
         Nil => acc,
