@@ -214,28 +214,19 @@ renamePrimCommand (CST.PrimOp loc pt op args) = do
 ---------------------------------------------------------------------------------
 
 renameCommand :: CST.Term -> RenamerM RST.Command
-renameCommand (CST.PrimCmdTerm cmd) =
-  renamePrimCommand cmd
-renameCommand (CST.Var loc fv) =
-  pure $ RST.Jump loc fv
 renameCommand (CST.TermParens _loc cmd) =
   renameCommand cmd
+renameCommand (CST.Var loc fv) =
+  pure $ RST.Jump loc fv
+renameCommand (CST.PrimCmdTerm cmd) =
+  renamePrimCommand cmd
 renameCommand (CST.Apply loc tm1 tm2) = do
   tm1' <- renameTerm PrdRep tm1
   tm2' <- renameTerm CnsRep tm2
   pure $ RST.Apply loc tm1' tm2'
-renameCommand (CST.Xtor loc _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
-renameCommand (CST.Semi loc _ _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Semi")
-renameCommand (CST.Dtor loc _ _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Dtor")
-renameCommand (CST.Case loc _) =
-  -- A "case { ... } " expression cannot be renamed into a command
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Case")
-renameCommand (CST.Cocase loc _) =
-  -- A "cocase { ... } " expression cannot be renamed into a command.
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Cocase")
+---------------------------------------------------------------------------------
+-- CaseOf / CocaseOf
+---------------------------------------------------------------------------------
 renameCommand (CST.CaseOf loc tm cases) = do
   tm' <- renameTerm PrdRep tm
   ns <- casesToNS cases
@@ -264,6 +255,37 @@ renameCommand (CST.CocaseOf loc tm cases) = do
     ImplicitCnsCases implicitCases -> do
       termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
       pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
+---------------------------------------------------------------------------------
+-- CST constructs which can only be renamed to commands
+---------------------------------------------------------------------------------
+renameCommand (CST.Xtor loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
+renameCommand (CST.Semi loc _ _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Semi")
+renameCommand (CST.Dtor loc _ _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Dtor")
+renameCommand (CST.Case loc _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Case")
+renameCommand (CST.Cocase loc _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Cocase")
+renameCommand (CST.MuAbs loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Mu abstraction")
+renameCommand (CST.PrimLitI64 loc _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found #I64 literal")
+renameCommand (CST.PrimLitF64 loc _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found #F64 literal")
+renameCommand (CST.NatLit loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Nat literal")
+renameCommand (CST.DtorChain _ _ _) =
+  throwError $ LowerError Nothing (CmdExpected "Command expected, but found DtorChain")
+renameCommand (CST.FunApp loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found function application")
+renameCommand (CST.MultiLambda loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
+renameCommand (CST.Lambda loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
+
+
 
 casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
 casesToNS [] = pure Structural
@@ -319,11 +341,23 @@ split loc args = do
   return (map toTm args1,map toTm args2)
 
 
-
-
 renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
-renameTerm rep    (CST.Var loc v) =
+renameTerm rep (CST.TermParens _loc tm) =
+  renameTerm rep tm
+renameTerm rep (CST.Var loc v) =
   pure $ RST.FreeVar loc rep v
+---------------------------------------------------------------------------------
+-- Mu abstraction
+---------------------------------------------------------------------------------
+renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
+  cmd' <- renameCommand cmd
+  pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
+renameTerm CnsRep (CST.MuAbs loc fv cmd) = do
+  cmd' <- renameCommand cmd
+  pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
+---------------------------------------------------------------------------------
+-- Xtor
+---------------------------------------------------------------------------------
 renameTerm PrdRep (CST.Xtor loc xtor subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
@@ -340,8 +374,29 @@ renameTerm CnsRep (CST.Xtor loc xtor subst) = do
            throwError $ OtherError (Just loc) "The given xtor is declared as a constructor, not a destructor."
   pctms <- renameTerms loc ar subst
   pure $ RST.Xtor loc CnsRep ns xtor pctms
+---------------------------------------------------------------------------------
+-- Semi / Dtor
+---------------------------------------------------------------------------------
 renameTerm _ (CST.Semi _loc _xtor _subst _c) =
   error "renameTerm / Semi: not yet implemented"
+renameTerm rep    (CST.DtorChain pos tm dtors) =
+  renameDtorChain pos tm dtors >>= renameTerm rep
+renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
+  (_, XtorNameResult _ ns ar) <- lookupXtor loc xtor
+  when (length ar /= length subst) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+  tm' <- renameTerm PrdRep tm
+  (args1,args2) <- split loc subst
+  let (ar1,_:ar2) = splitAt (length args1) ar
+  -- there must be exactly one star
+  args1' <- renameTerms loc ar1 args1
+  args2' <- renameTerms loc ar2 args2
+  pure $ RST.Dtor loc PrdRep ns xtor tm' (args1',PrdRep,args2')
+renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
+  throwError (OtherError (Just loc) "Cannot rename Dtor to a consumer (TODO).")
+---------------------------------------------------------------------------------
+-- Case / Cocase
+---------------------------------------------------------------------------------
 renameTerm PrdRep (CST.Case loc _) =
   throwError (OtherError (Just loc) "Cannot rename pattern match to a producer.")
 renameTerm CnsRep (CST.Cocase loc _) =
@@ -366,8 +421,15 @@ renameTerm CnsRep (CST.Case loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    ImplicitPrdCases _implicitCases -> error "not yet implemented"
-    ImplicitCnsCases _implicitCases -> error "not yet implemented"
+    ImplicitPrdCases implicitCases -> do
+      cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
+      pure $ RST.CaseI loc PrdRep ns cases'
+    ImplicitCnsCases implicitCases -> do
+      cases' <- sequence $ renameTermCaseI CnsRep <$> implicitCases
+      pure $ RST.CaseI loc CnsRep ns cases'
+---------------------------------------------------------------------------------
+-- CaseOf / CocaseOf
+---------------------------------------------------------------------------------
 renameTerm PrdRep (CST.CaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
@@ -376,25 +438,27 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
-    ImplicitPrdCases _implicitCases -> error "not yet implemented"
-    ImplicitCnsCases _implicitCases -> error "not yet implemented"
-renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
-  cmd' <- renameCommand cmd
-  pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
-renameTerm CnsRep (CST.MuAbs loc fv cmd) = do
-  cmd' <- renameCommand cmd
-  pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
-
-renameTerm PrdRep (CST.FunApp loc fun arg) =
-  renameApp loc fun arg
-renameTerm CnsRep (CST.FunApp loc _fun _arg) =
-  throwError (OtherError (Just loc) "Cannot rename FunApp to a consumer.")
-renameTerm rep    (CST.MultiLambda loc fvs tm) =
-  renameMultiLambda loc fvs tm >>= renameTerm rep
-renameTerm PrdRep (CST.Lambda loc fv tm) =
-  renameLambda loc fv tm
-renameTerm CnsRep (CST.Lambda loc _fv _tm) =
-  throwError (OtherError (Just loc) "Cannot rename Lambda to a consumer.")
+    ImplicitPrdCases _implicitCases ->
+      throwError $ OtherError (Just loc) ""
+    ImplicitCnsCases _implicitCases ->
+      throwError $ OtherError (Just loc) "foo"
+renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
+  ns <- casesToNS cases
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    ExplicitCases explicitCases -> do
+      cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
+      t' <- renameTerm CnsRep t
+      pure $ RST.CocaseOf loc PrdRep ns t' cases'
+    ImplicitPrdCases _implicitCases ->
+      throwError $ OtherError (Just loc) "foo"
+    ImplicitCnsCases _implicitCases ->
+      throwError $ OtherError (Just loc) "foo"
+renameTerm CnsRep (CST.CaseOf _loc _t _cases) = undefined
+renameTerm CnsRep (CST.CocaseOf _loc _t _cases) = undefined
+---------------------------------------------------------------------------------
+-- Literals
+---------------------------------------------------------------------------------
 renameTerm PrdRep (CST.PrimLitI64 loc i) =
   pure $ RST.PrimLitI64 loc i
 renameTerm CnsRep (CST.PrimLitI64 loc _) =
@@ -407,22 +471,23 @@ renameTerm PrdRep (CST.NatLit loc ns i) =
   renameNatLit loc ns i
 renameTerm CnsRep (CST.NatLit loc _ns _i) =
   throwError (OtherError (Just loc) "Cannot rename NatLit to a consumer.")
-renameTerm rep    (CST.TermParens _loc tm) =
-  renameTerm rep tm
-renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
-  (_, XtorNameResult _ ns ar) <- lookupXtor loc xtor
-  when (length ar /= length subst) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
-  tm' <- renameTerm PrdRep tm
-  (args1,args2) <- split loc subst
-  let (ar1,_:ar2) = splitAt (length args1) ar
-  -- there must be exactly one star
-  args1' <- renameTerms loc ar1 args1
-  args2' <- renameTerms loc ar2 args2
-  pure $ RST.Dtor loc PrdRep ns xtor tm' (args1',PrdRep,args2')
-renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
-  throwError (OtherError (Just loc) "Cannot rename Dtor to a consumer (TODO).")
-renameTerm rep    (CST.DtorChain pos tm dtors) =
-  renameDtorChain pos tm dtors >>= renameTerm rep
-renameTerm _ (CST.Apply loc _ _) =  throwError (OtherError (Just loc) "Cannot rename Command to a term.")
-renameTerm _ t = throwError (OtherError (Just (CST.getLoc t)) (T.pack $ "Cannot rename "++ show t ++ " to a term."))
+---------------------------------------------------------------------------------
+-- Function specific syntax sugar
+---------------------------------------------------------------------------------
+renameTerm rep    (CST.MultiLambda loc fvs tm) =
+  renameMultiLambda loc fvs tm >>= renameTerm rep
+renameTerm PrdRep (CST.FunApp loc fun arg) =
+  renameApp loc fun arg
+renameTerm CnsRep (CST.FunApp loc _fun _arg) =
+  throwError (OtherError (Just loc) "Cannot rename FunApp to a consumer.")
+renameTerm PrdRep (CST.Lambda loc fv tm) =
+  renameLambda loc fv tm
+renameTerm CnsRep (CST.Lambda loc _fv _tm) =
+  throwError (OtherError (Just loc) "Cannot rename Lambda to a consumer.")
+---------------------------------------------------------------------------------
+-- CST constructs which can only be renamed to commands
+---------------------------------------------------------------------------------
+renameTerm _ (CST.Apply loc _ _) = 
+  throwError (OtherError (Just loc) "Cannot rename Apply command to a term.")
+renameTerm _ (CST.PrimCmdTerm _) =
+  throwError (OtherError Nothing " Cannot rename primCmdTerm to a term.")
