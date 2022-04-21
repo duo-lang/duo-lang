@@ -5,7 +5,6 @@ import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Text.Megaparsec.Pos (SourcePos)
-import Data.Either (isLeft, isRight)
 
 import Errors
 import Renamer.Definition
@@ -15,8 +14,6 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
 import Control.Monad (when)
-import qualified Syntax.Common as CST
-import qualified Syntax.CST.Terms as CST.Terms
 import qualified Data.Text as T
 
 ---------------------------------------------------------------------------------
@@ -61,12 +58,36 @@ data IntermediateCaseI  = MkIntermediateCaseI
   , icasei_term :: CST.Term
   }
 
+data SomeIntermediateCase where
+  ExplicitCase :: IntermediateCase  -> SomeIntermediateCase
+  ImplicitCase :: IntermediateCaseI -> SomeIntermediateCase
+
+isExplicitCase :: SomeIntermediateCase -> Bool
+isExplicitCase (ExplicitCase _) = True
+isExplicitCase (ImplicitCase _) = False
+
+isImplicitCase :: SomeIntermediateCase -> Bool
+isImplicitCase (ImplicitCase _) = True
+isImplicitCase (ExplicitCase _) = False
+
+fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
+fromExplicitCase (ExplicitCase cs) = cs
+fromExplicitCase (ImplicitCase _) = error "Compiler bug"
+
+fromImplicitCase :: SomeIntermediateCase -> IntermediateCaseI
+fromImplicitCase (ImplicitCase cs) = cs
+fromImplicitCase (ExplicitCase _) = error "Compiler bug"
+
+data SomeIntermediateCases where
+  ExplicitCases :: [IntermediateCase]  -> SomeIntermediateCases
+  ImplicitCases :: [IntermediateCaseI] -> SomeIntermediateCases
+
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
 analyzeCase :: DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
-            -> RenamerM (Either IntermediateCase IntermediateCaseI)
+            -> RenamerM SomeIntermediateCase
 analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term }) = do
   -- Lookup up the arity information in the symbol table.
   (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
@@ -82,13 +103,13 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
     (Codata,Codata) -> pure ()
   -- Do a case-distinction based on the number of arguments
   case length (filter CST.isStar tmcase_args) of
-    0 -> pure $ Left $ MkIntermediateCase
+    0 -> pure $ ExplicitCase $ MkIntermediateCase
                         { icase_loc = tmcase_loc
                         , icase_name = tmcase_name
                         , icase_args = CST.fromFVOrStar <$> tmcase_args
                         , icase_term = tmcase_term
                         }
-    1 -> pure $ Right $ MkIntermediateCaseI
+    1 -> pure $ ImplicitCase $ MkIntermediateCaseI
                         { icasei_loc = tmcase_loc
                         , icasei_name = tmcase_name
                         , icasei_args = splitFS tmcase_args
@@ -96,22 +117,14 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
                         }
     n -> throwError $ LowerError (Just tmcase_loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
-fromLeft :: Either a b -> a
-fromLeft (Left x) = x
-fromLeft (Right _) = error "Compiler bug"
-
-fromRight :: Either a b -> b
-fromRight (Left _) = error "Compiler bug"
-fromRight (Right x) = x
-
-fromEitherList :: [Either a b] -> RenamerM (Either [a] [b])
-fromEitherList ls | all isLeft ls  = pure $ Left (fromLeft <$> ls)
-                  | all isRight ls = pure $ Right (fromRight <$> ls)
+fromEitherList :: [SomeIntermediateCase] -> RenamerM (SomeIntermediateCases)
+fromEitherList ls | all isExplicitCase ls = pure $ ExplicitCases $ fromExplicitCase <$> ls
+                  | all isImplicitCase ls = pure $ ImplicitCases $ fromImplicitCase <$> ls
                   | otherwise = error "TODO: write error message"
 
 analyzeCases :: DataCodata
              -> [CST.TermCase]
-             -> RenamerM (Either [IntermediateCase] [IntermediateCaseI])
+             -> RenamerM SomeIntermediateCases
 analyzeCases dc cases = do
   cases' <- sequence $ analyzeCase dc <$> cases
   fromEitherList cases'
@@ -206,20 +219,20 @@ renameCommand (CST.CaseOf loc tm cases) = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
-    Left explicitCases -> do
+    ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    Right _implicitCases -> do
+    ImplicitCases _implicitCases -> do
       throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CaseOfI")
 renameCommand (CST.CocaseOf loc tm cases) = do
   tm' <- renameTerm CnsRep tm
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
-    Left explicitCases -> do
+    ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    Right _implicitCases -> do
+    ImplicitCases _implicitCases -> do
       throwError $ LowerError (Just loc) (CmdExpected "TODO: Must be CocaseOfI")
 
 getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
@@ -315,29 +328,29 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
-    Left explicitCases -> do
+    ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    Right implicitCases -> do
+    ImplicitCases implicitCases -> do
       cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
       pure $ RST.CocaseI loc PrdRep ns cases'
 renameTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
-    Left explicitCases -> do
+    ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    Right _implicitCases -> error "not yet implemented"
+    ImplicitCases _implicitCases -> error "not yet implemented"
 renameTerm PrdRep (CST.CaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
-    Left explicitCases -> do
+    ExplicitCases explicitCases -> do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
-    Right _implicitCases -> error "not yet implemented"
+    ImplicitCases _implicitCases -> error "not yet implemented"
 renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- renameCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
@@ -385,4 +398,4 @@ renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
 renameTerm rep    (CST.DtorChain pos tm dtors) =
   renameDtorChain pos tm dtors >>= renameTerm rep
 renameTerm _ (CST.Apply loc _ _) =  throwError (OtherError (Just loc) "Cannot rename Command to a term.")
-renameTerm _ t = throwError (OtherError (Just (CST.Terms.getLoc t)) (T.pack $ "Cannot rename "++ show t ++ " to a term."))
+renameTerm _ t = throwError (OtherError (Just (CST.getLoc t)) (T.pack $ "Cannot rename "++ show t ++ " to a term."))
