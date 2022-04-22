@@ -37,16 +37,32 @@ renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc
 -- Analyze cases
 ---------------------------------------------------------------------------------
 
-splitFS :: [CST.FVOrStar] -> ([FreeVarName], PrdCnsRep Prd, [FreeVarName])
-splitFS args = (map (\(CST.FoSFV fv) -> fv) args1, PrdRep, map (\(CST.FoSFV fv) -> fv) args2)
-  where
-    (args1,(_:args2)) = break CST.isStar args
+data AnalyzedPattern
+  = ExplicitPattern [(PrdCns, FreeVarName)]
+  | ImplicitPrdPattern ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
+  | ImplicitCnsPattern ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
+
+analyzePattern :: Loc -> Arity -> [CST.FVOrStar] -> RenamerM AnalyzedPattern
+analyzePattern loc arity pattern = do
+  -- Check whether the number of arguments in the given binding site
+  -- corresponds to the number of arguments specified for the constructor/destructor.
+  when (length arity /= length pattern) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length pattern)
+  case length (filter CST.isStar pattern) of
+    0 -> pure $ ExplicitPattern $ zip arity (CST.fromFVOrStar <$> pattern)
+    1 -> do
+      let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity pattern
+      let (args1,((pc,_):args2)) = break (\(_,x) -> CST.isStar x) zipped
+      case pc of
+        Cns -> pure $ ImplicitPrdPattern (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
+        Prd -> pure $ ImplicitCnsPattern (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
+    n -> throwError $ LowerError (Just loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
 -- | A case with no stars.
 data IntermediateCase  = MkIntermediateCase
   { icase_loc  :: Loc
   , icase_name :: XtorName
-  , icase_args :: [FreeVarName]
+  , icase_args :: [(PrdCns, FreeVarName)]
   , icase_term :: CST.Term
   }
 
@@ -54,7 +70,7 @@ data IntermediateCase  = MkIntermediateCase
 data IntermediateCaseI pc = MkIntermediateCaseI
   { icasei_loc  :: Loc
   , icasei_name :: XtorName
-  , icasei_args :: ([FreeVarName], PrdCnsRep pc, [FreeVarName])
+  , icasei_args :: ([(PrdCns, FreeVarName)], PrdCnsRep pc,[(PrdCns,FreeVarName)])
   , icasei_term :: CST.Term
   }
 
@@ -93,31 +109,34 @@ analyzeCase :: DataCodata
 analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term }) = do
   -- Lookup up the arity information in the symbol table.
   (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
-  -- Check whether the number of arguments in the given binding site
-  -- corresponds to the number of arguments specified for the constructor/destructor.
-  when (length arity /= length tmcase_args) $
-           throwError $ LowerError (Just tmcase_loc) $ XtorArityMismatch tmcase_name (length arity) (length tmcase_args)
   -- Check whether the Xtor is a Constructor/Destructor as expected.
   case (dc,dc') of
     (Codata,Data  ) -> throwError $ OtherError (Just tmcase_loc) "Expected a destructor but found a constructor"
     (Data  ,Codata) -> throwError $ OtherError (Just tmcase_loc) "Expected a constructor but found a destructor"
     (Data  ,Data  ) -> pure ()
     (Codata,Codata) -> pure ()
-  -- Do a case-distinction based on the number of arguments
-  case length (filter CST.isStar tmcase_args) of
-    0 -> pure $ ExplicitCase $ MkIntermediateCase
-                        { icase_loc = tmcase_loc
-                        , icase_name = tmcase_name
-                        , icase_args = CST.fromFVOrStar <$> tmcase_args
-                        , icase_term = tmcase_term
-                        }
-    1 -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
-                        { icasei_loc = tmcase_loc
-                        , icasei_name = tmcase_name
-                        , icasei_args = splitFS tmcase_args
-                        , icasei_term = tmcase_term
-                        }
-    n -> throwError $ LowerError (Just tmcase_loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
+  -- Analyze the pattern
+  analyzedPattern <- analyzePattern tmcase_loc arity tmcase_args
+  case analyzedPattern of
+    ExplicitPattern pat -> pure $ ExplicitCase $ MkIntermediateCase
+                                    { icase_loc = tmcase_loc
+                                    , icase_name = tmcase_name
+                                    , icase_args = pat
+                                    , icase_term = tmcase_term
+                                    }
+    ImplicitPrdPattern pat -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
+                                    { icasei_loc = tmcase_loc
+                                    , icasei_name = tmcase_name
+                                    , icasei_args = pat
+                                    , icasei_term = tmcase_term
+                                    }
+    ImplicitCnsPattern pat -> pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
+                                    { icasei_loc = tmcase_loc
+                                    , icasei_name = tmcase_name
+                                    , icasei_args = pat
+                                    , icasei_term = tmcase_term
+                                    }
+
 
 
 analyzeCases :: DataCodata
@@ -138,36 +157,28 @@ analyzeCases dc cases = do
 renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
 renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
   cmd' <- renameCommand icase_term
-  (_,XtorNameResult _ _ ar) <- lookupXtor icase_loc icase_name
-  let args = zip ar icase_args
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
                      , cmdcase_name = icase_name
-                     , cmdcase_args = second Just <$> args
-                     , cmdcase_cmd = RST.commandClosing args cmd'
+                     , cmdcase_args = second Just <$> icase_args
+                     , cmdcase_cmd = RST.commandClosing icase_args cmd'
                      }
 
 renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCaseI pc)
 renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- renameTerm rep icasei_term
-  (_, XtorNameResult _ _ ar) <- lookupXtor icasei_loc icasei_name
-  let (ar1,_:ar2) = splitAt (length args1) ar
-  let args1' = zip ar1 args1
-  let args2' = zip ar2 args2
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
                        , tmcasei_name = icasei_name
-                       , tmcasei_args = (second Just <$> args1', (), second Just <$> args2')
-                       , tmcasei_term = RST.termClosing (args1' ++ [(Cns, MkFreeVarName "*")] ++ args2') tm'
+                       , tmcasei_args = (second Just <$> args1, (), second Just <$> args2)
+                       , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
 renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
 renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
   tm' <- renameTerm rep icase_term
-  (_, XtorNameResult _ _ ar) <- lookupXtor icase_loc icase_name
-  let args = zip ar icase_args
-  pure RST.MkTermCase { tmcase_loc = icase_loc
+  pure RST.MkTermCase { tmcase_loc  = icase_loc
                       , tmcase_name = icase_name
-                      , tmcase_args = second Just <$> args
-                      , tmcase_term = RST.termClosing args tm'
+                      , tmcase_args = second Just <$> icase_args
+                      , tmcase_term = RST.termClosing icase_args tm'
                       }
 
 ---------------------------------------------------------------------------------
