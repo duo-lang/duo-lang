@@ -66,26 +66,19 @@ isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase (ExplicitCase _) = True
 isExplicitCase _                = False
 
-isImplicitPrdCase :: SomeIntermediateCase -> Bool
-isImplicitPrdCase (ImplicitCase PrdRep _) = True
-isImplicitPrdCase _                       = False
-
-isImplicitCnsCase :: SomeIntermediateCase -> Bool
-isImplicitCnsCase (ImplicitCase CnsRep _) = True
-isImplicitCnsCase _                       = False
+isImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> Bool
+isImplicitCase PrdRep (ImplicitCase PrdRep _) = True
+isImplicitCase CnsRep (ImplicitCase CnsRep _) = True
+isImplicitCase _      _                       = False
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
 fromExplicitCase (ExplicitCase cs) = cs
 fromExplicitCase _                 = error "Compiler bug"
 
-fromImplicitPrdCase :: SomeIntermediateCase -> IntermediateCaseI Prd
-fromImplicitPrdCase (ImplicitCase PrdRep cs) = cs
-fromImplicitPrdCase _                        = error "Compiler bug"
-
-fromImplicitCnsCase :: SomeIntermediateCase -> IntermediateCaseI Cns
-fromImplicitCnsCase (ImplicitCase CnsRep cs) = cs
-fromImplicitCnsCase _                        = error "Compiler bug"
-
+fromImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> IntermediateCaseI pc
+fromImplicitCase PrdRep (ImplicitCase PrdRep cs) = cs
+fromImplicitCase CnsRep (ImplicitCase CnsRep cs) = cs
+fromImplicitCase _      _                        = error "Compiler bug"
 
 data SomeIntermediateCases where
   ExplicitCases    ::                 [IntermediateCase]     -> SomeIntermediateCases
@@ -133,8 +126,8 @@ analyzeCases :: DataCodata
 analyzeCases dc cases = do
   cases' <- sequence $ analyzeCase dc <$> cases
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
-     | all isImplicitPrdCase cases' -> pure $ ImplicitCases PrdRep $ fromImplicitPrdCase <$> cases'
-     | all isImplicitCnsCase cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCnsCase <$> cases'
+     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases PrdRep $ fromImplicitCase PrdRep <$> cases'
+     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwError $ OtherError Nothing "TODO: write error message"
 
 
