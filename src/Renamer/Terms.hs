@@ -59,39 +59,37 @@ data IntermediateCaseI pc = MkIntermediateCaseI
   }
 
 data SomeIntermediateCase where
-  ExplicitCase    :: IntermediateCase      -> SomeIntermediateCase
-  ImplicitPrdCase :: IntermediateCaseI Prd -> SomeIntermediateCase
-  ImplicitCnsCase :: IntermediateCaseI Cns -> SomeIntermediateCase
+  ExplicitCase ::                 IntermediateCase     -> SomeIntermediateCase
+  ImplicitCase :: PrdCnsRep pc -> IntermediateCaseI pc -> SomeIntermediateCase
 
 isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase (ExplicitCase _) = True
 isExplicitCase _                = False
 
 isImplicitPrdCase :: SomeIntermediateCase -> Bool
-isImplicitPrdCase (ImplicitPrdCase _) = True
-isImplicitPrdCase _                   = False
+isImplicitPrdCase (ImplicitCase PrdRep _) = True
+isImplicitPrdCase _                       = False
 
 isImplicitCnsCase :: SomeIntermediateCase -> Bool
-isImplicitCnsCase (ImplicitCnsCase _) = True
-isImplicitCnsCase _                   = False
+isImplicitCnsCase (ImplicitCase CnsRep _) = True
+isImplicitCnsCase _                       = False
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
 fromExplicitCase (ExplicitCase cs) = cs
 fromExplicitCase _                 = error "Compiler bug"
 
 fromImplicitPrdCase :: SomeIntermediateCase -> IntermediateCaseI Prd
-fromImplicitPrdCase (ImplicitPrdCase cs) = cs
-fromImplicitPrdCase _                    = error "Compiler bug"
+fromImplicitPrdCase (ImplicitCase PrdRep cs) = cs
+fromImplicitPrdCase _                        = error "Compiler bug"
 
 fromImplicitCnsCase :: SomeIntermediateCase -> IntermediateCaseI Cns
-fromImplicitCnsCase (ImplicitCnsCase cs) = cs
-fromImplicitCnsCase _                    = error "Compiler bug"
+fromImplicitCnsCase (ImplicitCase CnsRep cs) = cs
+fromImplicitCnsCase _                        = error "Compiler bug"
 
 
 data SomeIntermediateCases where
-  ExplicitCases    :: [IntermediateCase]      -> SomeIntermediateCases
-  ImplicitPrdCases :: [IntermediateCaseI Prd] -> SomeIntermediateCases
-  ImplicitCnsCases :: [IntermediateCaseI Cns] -> SomeIntermediateCases
+  ExplicitCases    ::                 [IntermediateCase]     -> SomeIntermediateCases
+  ImplicitCases    :: PrdCnsRep pc -> [IntermediateCaseI pc] -> SomeIntermediateCases
 
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
@@ -120,7 +118,7 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
                         , icase_args = CST.fromFVOrStar <$> tmcase_args
                         , icase_term = tmcase_term
                         }
-    1 -> pure $ ImplicitPrdCase $ MkIntermediateCaseI
+    1 -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
                         { icasei_loc = tmcase_loc
                         , icasei_name = tmcase_name
                         , icasei_args = splitFS tmcase_args
@@ -130,9 +128,9 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
 
 fromEitherList :: [SomeIntermediateCase] -> RenamerM (SomeIntermediateCases)
 fromEitherList ls | all isExplicitCase ls    = pure $ ExplicitCases    $ fromExplicitCase <$> ls
-                  | all isImplicitPrdCase ls = pure $ ImplicitPrdCases $ fromImplicitPrdCase <$> ls
-                  | all isImplicitCnsCase ls = pure $ ImplicitCnsCases $ fromImplicitCnsCase <$> ls
-                  | otherwise = error "TODO: write error message"
+                  | all isImplicitPrdCase ls = pure $ ImplicitCases PrdRep $ fromImplicitPrdCase <$> ls
+                  | all isImplicitCnsCase ls = pure $ ImplicitCases CnsRep $ fromImplicitCnsCase <$> ls
+                  | otherwise = throwError $ OtherError Nothing "TODO: write error message"
 
 analyzeCases :: DataCodata
              -> [CST.TermCase]
@@ -235,12 +233,9 @@ renameCommand (CST.CaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    ImplicitPrdCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CaseOfI loc PrdRep ns tm' termCasesI
-    ImplicitCnsCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CaseOfI loc CnsRep ns tm' termCasesI
+    ImplicitCases rep implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CaseOfI loc rep ns tm' termCasesI
 renameCommand (CST.CocaseOf loc tm cases) = do
   tm' <- renameTerm CnsRep tm
   ns <- casesToNS cases
@@ -249,12 +244,9 @@ renameCommand (CST.CocaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    ImplicitPrdCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CocaseOfI loc PrdRep ns tm' termCasesI
-    ImplicitCnsCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
+    ImplicitCases rep implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CocaseOfI loc rep ns tm' termCasesI
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be renamed to commands
 ---------------------------------------------------------------------------------
@@ -408,12 +400,9 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    ImplicitPrdCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CocaseI loc PrdRep ns cases'
-    ImplicitCnsCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CocaseI loc CnsRep ns cases'
+    ImplicitCases rep implicitCases -> do
+      cases' <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CocaseI loc rep ns cases'
 renameTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
@@ -421,12 +410,9 @@ renameTerm CnsRep (CST.Case loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    ImplicitPrdCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CaseI loc PrdRep ns cases'
-    ImplicitCnsCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CaseI loc CnsRep ns cases'
+    ImplicitCases rep implicitCases -> do
+      cases' <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CaseI loc rep ns cases'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
 ---------------------------------------------------------------------------------
@@ -438,10 +424,8 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer."
-    ImplicitCnsCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer"
 renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
@@ -450,9 +434,7 @@ renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm CnsRep t
       pure $ RST.CocaseOf loc PrdRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
-    ImplicitCnsCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
 renameTerm CnsRep (CST.CaseOf loc t cases) = do
   ns <- casesToNS cases
@@ -462,10 +444,8 @@ renameTerm CnsRep (CST.CaseOf loc t cases) = do
       cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc CnsRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer."
-    ImplicitCnsCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer"
 renameTerm CnsRep (CST.CocaseOf loc t cases) = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
@@ -474,9 +454,7 @@ renameTerm CnsRep (CST.CocaseOf loc t cases) = do
       cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
       t' <- renameTerm CnsRep t
       pure $ RST.CocaseOf loc CnsRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
-    ImplicitCnsCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
 ---------------------------------------------------------------------------------
 -- Literals
