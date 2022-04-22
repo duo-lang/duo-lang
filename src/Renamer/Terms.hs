@@ -20,17 +20,17 @@ import qualified Data.Text as T
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-renameT :: PrdCns -> CST.Term -> RenamerM RST.PrdCnsTerm
-renameT Prd t = RST.PrdTerm <$> renameTerm PrdRep t
-renameT Cns t = RST.CnsTerm <$> renameTerm CnsRep t
-
 -- can only be called when length ar == length tms
 renameTerms :: Loc -> Arity -> [CST.Term] -> RenamerM [RST.PrdCnsTerm]
 renameTerms _ [] [] = return []
-renameTerms loc (a:ar) (t:tms) = do
-  t' <- renameT a t
+renameTerms loc (Prd:ar) (t:tms) = do
+  t' <- RST.PrdTerm <$> renameTerm PrdRep t
   tms' <- renameTerms loc ar tms
-  return $ t' : tms'
+  pure $ t' : tms'
+renameTerms loc (Cns:ar) (t:tms) = do
+  t' <- RST.CnsTerm <$> renameTerm CnsRep t
+  tms' <- renameTerms loc ar tms
+  pure $ t' : tms'
 renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
 
 ---------------------------------------------------------------------------------
@@ -126,18 +126,17 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
                         }
     n -> throwError $ LowerError (Just tmcase_loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
-fromEitherList :: [SomeIntermediateCase] -> RenamerM (SomeIntermediateCases)
-fromEitherList ls | all isExplicitCase ls    = pure $ ExplicitCases    $ fromExplicitCase <$> ls
-                  | all isImplicitPrdCase ls = pure $ ImplicitCases PrdRep $ fromImplicitPrdCase <$> ls
-                  | all isImplicitCnsCase ls = pure $ ImplicitCases CnsRep $ fromImplicitCnsCase <$> ls
-                  | otherwise = throwError $ OtherError Nothing "TODO: write error message"
 
 analyzeCases :: DataCodata
              -> [CST.TermCase]
              -> RenamerM SomeIntermediateCases
 analyzeCases dc cases = do
   cases' <- sequence $ analyzeCase dc <$> cases
-  fromEitherList cases'
+  if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
+     | all isImplicitPrdCase cases' -> pure $ ImplicitCases PrdRep $ fromImplicitPrdCase <$> cases'
+     | all isImplicitCnsCase cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCnsCase <$> cases'
+     | otherwise -> throwError $ OtherError Nothing "TODO: write error message"
+
 
 ---------------------------------------------------------------------------------
 -- Rename Cases

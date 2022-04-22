@@ -72,7 +72,8 @@ common shared-lang-options
                      DeriveFunctor,
                      OverloadedStrings,
                      ImportQualifiedPost,
-                     ViewPatterns
+                     ViewPatterns,
+                     MultiWayIf
 
 common shared-ghc-opts
   ghc-options:
