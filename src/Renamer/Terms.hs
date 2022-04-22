@@ -128,7 +128,7 @@ analyzeCases dc cases = do
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
      | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases PrdRep $ fromImplicitCase PrdRep <$> cases'
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
-     | otherwise -> throwError $ OtherError Nothing "TODO: write error message"
+     | otherwise -> throwError $ OtherError Nothing "Cases mix the use of both explicit and implicit patterns."
 
 
 ---------------------------------------------------------------------------------
