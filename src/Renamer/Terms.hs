@@ -20,33 +20,49 @@ import qualified Data.Text as T
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
 
-renameT :: PrdCns -> CST.Term -> RenamerM RST.PrdCnsTerm
-renameT Prd t = RST.PrdTerm <$> renameTerm PrdRep t
-renameT Cns t = RST.CnsTerm <$> renameTerm CnsRep t
-
 -- can only be called when length ar == length tms
 renameTerms :: Loc -> Arity -> [CST.Term] -> RenamerM [RST.PrdCnsTerm]
 renameTerms _ [] [] = return []
-renameTerms loc (a:ar) (t:tms) = do
-  t' <- renameT a t
+renameTerms loc (Prd:ar) (t:tms) = do
+  t' <- RST.PrdTerm <$> renameTerm PrdRep t
   tms' <- renameTerms loc ar tms
-  return $ t' : tms'
+  pure $ t' : tms'
+renameTerms loc (Cns:ar) (t:tms) = do
+  t' <- RST.CnsTerm <$> renameTerm CnsRep t
+  tms' <- renameTerms loc ar tms
+  pure $ t' : tms'
 renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
 
 ---------------------------------------------------------------------------------
 -- Analyze cases
 ---------------------------------------------------------------------------------
 
-splitFS :: [CST.FVOrStar] -> ([FreeVarName], PrdCnsRep Prd, [FreeVarName])
-splitFS args = (map (\(CST.FoSFV fv) -> fv) args1, PrdRep, map (\(CST.FoSFV fv) -> fv) args2)
-  where
-    (args1,(_:args2)) = break CST.isStar args
+data AnalyzedPattern
+  = ExplicitPattern [(PrdCns, FreeVarName)]
+  | ImplicitPrdPattern ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
+  | ImplicitCnsPattern ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
+
+analyzePattern :: Loc -> Arity -> [CST.FVOrStar] -> RenamerM AnalyzedPattern
+analyzePattern loc arity pattern = do
+  -- Check whether the number of arguments in the given binding site
+  -- corresponds to the number of arguments specified for the constructor/destructor.
+  when (length arity /= length pattern) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length pattern)
+  case length (filter CST.isStar pattern) of
+    0 -> pure $ ExplicitPattern $ zip arity (CST.fromFVOrStar <$> pattern)
+    1 -> do
+      let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity pattern
+      let (args1,((pc,_):args2)) = break (\(_,x) -> CST.isStar x) zipped
+      case pc of
+        Cns -> pure $ ImplicitPrdPattern (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
+        Prd -> pure $ ImplicitCnsPattern (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
+    n -> throwError $ LowerError (Just loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
 -- | A case with no stars.
 data IntermediateCase  = MkIntermediateCase
   { icase_loc  :: Loc
   , icase_name :: XtorName
-  , icase_args :: [FreeVarName]
+  , icase_args :: [(PrdCns, FreeVarName)]
   , icase_term :: CST.Term
   }
 
@@ -54,44 +70,35 @@ data IntermediateCase  = MkIntermediateCase
 data IntermediateCaseI pc = MkIntermediateCaseI
   { icasei_loc  :: Loc
   , icasei_name :: XtorName
-  , icasei_args :: ([FreeVarName], PrdCnsRep pc, [FreeVarName])
+  , icasei_args :: ([(PrdCns, FreeVarName)], PrdCnsRep pc,[(PrdCns,FreeVarName)])
   , icasei_term :: CST.Term
   }
 
 data SomeIntermediateCase where
-  ExplicitCase    :: IntermediateCase      -> SomeIntermediateCase
-  ImplicitPrdCase :: IntermediateCaseI Prd -> SomeIntermediateCase
-  ImplicitCnsCase :: IntermediateCaseI Cns -> SomeIntermediateCase
+  ExplicitCase ::                 IntermediateCase     -> SomeIntermediateCase
+  ImplicitCase :: PrdCnsRep pc -> IntermediateCaseI pc -> SomeIntermediateCase
 
 isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase (ExplicitCase _) = True
 isExplicitCase _                = False
 
-isImplicitPrdCase :: SomeIntermediateCase -> Bool
-isImplicitPrdCase (ImplicitPrdCase _) = True
-isImplicitPrdCase _                   = False
-
-isImplicitCnsCase :: SomeIntermediateCase -> Bool
-isImplicitCnsCase (ImplicitCnsCase _) = True
-isImplicitCnsCase _                   = False
+isImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> Bool
+isImplicitCase PrdRep (ImplicitCase PrdRep _) = True
+isImplicitCase CnsRep (ImplicitCase CnsRep _) = True
+isImplicitCase _      _                       = False
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
 fromExplicitCase (ExplicitCase cs) = cs
 fromExplicitCase _                 = error "Compiler bug"
 
-fromImplicitPrdCase :: SomeIntermediateCase -> IntermediateCaseI Prd
-fromImplicitPrdCase (ImplicitPrdCase cs) = cs
-fromImplicitPrdCase _                    = error "Compiler bug"
-
-fromImplicitCnsCase :: SomeIntermediateCase -> IntermediateCaseI Cns
-fromImplicitCnsCase (ImplicitCnsCase cs) = cs
-fromImplicitCnsCase _                    = error "Compiler bug"
-
+fromImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> IntermediateCaseI pc
+fromImplicitCase PrdRep (ImplicitCase PrdRep cs) = cs
+fromImplicitCase CnsRep (ImplicitCase CnsRep cs) = cs
+fromImplicitCase _      _                        = error "Compiler bug"
 
 data SomeIntermediateCases where
-  ExplicitCases    :: [IntermediateCase]      -> SomeIntermediateCases
-  ImplicitPrdCases :: [IntermediateCaseI Prd] -> SomeIntermediateCases
-  ImplicitCnsCases :: [IntermediateCaseI Cns] -> SomeIntermediateCases
+  ExplicitCases    ::                 [IntermediateCase]     -> SomeIntermediateCases
+  ImplicitCases    :: PrdCnsRep pc -> [IntermediateCaseI pc] -> SomeIntermediateCases
 
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
@@ -102,44 +109,46 @@ analyzeCase :: DataCodata
 analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term }) = do
   -- Lookup up the arity information in the symbol table.
   (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
-  -- Check whether the number of arguments in the given binding site
-  -- corresponds to the number of arguments specified for the constructor/destructor.
-  when (length arity /= length tmcase_args) $
-           throwError $ LowerError (Just tmcase_loc) $ XtorArityMismatch tmcase_name (length arity) (length tmcase_args)
   -- Check whether the Xtor is a Constructor/Destructor as expected.
   case (dc,dc') of
     (Codata,Data  ) -> throwError $ OtherError (Just tmcase_loc) "Expected a destructor but found a constructor"
     (Data  ,Codata) -> throwError $ OtherError (Just tmcase_loc) "Expected a constructor but found a destructor"
     (Data  ,Data  ) -> pure ()
     (Codata,Codata) -> pure ()
-  -- Do a case-distinction based on the number of arguments
-  case length (filter CST.isStar tmcase_args) of
-    0 -> pure $ ExplicitCase $ MkIntermediateCase
-                        { icase_loc = tmcase_loc
-                        , icase_name = tmcase_name
-                        , icase_args = CST.fromFVOrStar <$> tmcase_args
-                        , icase_term = tmcase_term
-                        }
-    1 -> pure $ ImplicitPrdCase $ MkIntermediateCaseI
-                        { icasei_loc = tmcase_loc
-                        , icasei_name = tmcase_name
-                        , icasei_args = splitFS tmcase_args
-                        , icasei_term = tmcase_term
-                        }
-    n -> throwError $ LowerError (Just tmcase_loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
+  -- Analyze the pattern
+  analyzedPattern <- analyzePattern tmcase_loc arity tmcase_args
+  case analyzedPattern of
+    ExplicitPattern pat -> pure $ ExplicitCase $ MkIntermediateCase
+                                    { icase_loc = tmcase_loc
+                                    , icase_name = tmcase_name
+                                    , icase_args = pat
+                                    , icase_term = tmcase_term
+                                    }
+    ImplicitPrdPattern pat -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
+                                    { icasei_loc = tmcase_loc
+                                    , icasei_name = tmcase_name
+                                    , icasei_args = pat
+                                    , icasei_term = tmcase_term
+                                    }
+    ImplicitCnsPattern pat -> pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
+                                    { icasei_loc = tmcase_loc
+                                    , icasei_name = tmcase_name
+                                    , icasei_args = pat
+                                    , icasei_term = tmcase_term
+                                    }
 
-fromEitherList :: [SomeIntermediateCase] -> RenamerM (SomeIntermediateCases)
-fromEitherList ls | all isExplicitCase ls    = pure $ ExplicitCases    $ fromExplicitCase <$> ls
-                  | all isImplicitPrdCase ls = pure $ ImplicitPrdCases $ fromImplicitPrdCase <$> ls
-                  | all isImplicitCnsCase ls = pure $ ImplicitCnsCases $ fromImplicitCnsCase <$> ls
-                  | otherwise = error "TODO: write error message"
+
 
 analyzeCases :: DataCodata
              -> [CST.TermCase]
              -> RenamerM SomeIntermediateCases
 analyzeCases dc cases = do
   cases' <- sequence $ analyzeCase dc <$> cases
-  fromEitherList cases'
+  if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
+     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases PrdRep $ fromImplicitCase PrdRep <$> cases'
+     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
+     | otherwise -> throwError $ OtherError Nothing "Cases mix the use of both explicit and implicit patterns."
+
 
 ---------------------------------------------------------------------------------
 -- Rename Cases
@@ -148,36 +157,28 @@ analyzeCases dc cases = do
 renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
 renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
   cmd' <- renameCommand icase_term
-  (_,XtorNameResult _ _ ar) <- lookupXtor icase_loc icase_name
-  let args = zip ar icase_args
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
                      , cmdcase_name = icase_name
-                     , cmdcase_args = second Just <$> args
-                     , cmdcase_cmd = RST.commandClosing args cmd'
+                     , cmdcase_args = second Just <$> icase_args
+                     , cmdcase_cmd = RST.commandClosing icase_args cmd'
                      }
 
 renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCaseI pc)
 renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- renameTerm rep icasei_term
-  (_, XtorNameResult _ _ ar) <- lookupXtor icasei_loc icasei_name
-  let (ar1,_:ar2) = splitAt (length args1) ar
-  let args1' = zip ar1 args1
-  let args2' = zip ar2 args2
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
                        , tmcasei_name = icasei_name
-                       , tmcasei_args = (second Just <$> args1', (), second Just <$> args2')
-                       , tmcasei_term = RST.termClosing (args1' ++ [(Cns, MkFreeVarName "*")] ++ args2') tm'
+                       , tmcasei_args = (second Just <$> args1, (), second Just <$> args2)
+                       , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
 renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
 renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
   tm' <- renameTerm rep icase_term
-  (_, XtorNameResult _ _ ar) <- lookupXtor icase_loc icase_name
-  let args = zip ar icase_args
-  pure RST.MkTermCase { tmcase_loc = icase_loc
+  pure RST.MkTermCase { tmcase_loc  = icase_loc
                       , tmcase_name = icase_name
-                      , tmcase_args = second Just <$> args
-                      , tmcase_term = RST.termClosing args tm'
+                      , tmcase_args = second Just <$> icase_args
+                      , tmcase_term = RST.termClosing icase_args tm'
                       }
 
 ---------------------------------------------------------------------------------
@@ -235,12 +236,9 @@ renameCommand (CST.CaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    ImplicitPrdCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CaseOfI loc PrdRep ns tm' termCasesI
-    ImplicitCnsCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CaseOfI loc CnsRep ns tm' termCasesI
+    ImplicitCases rep implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CaseOfI loc rep ns tm' termCasesI
 renameCommand (CST.CocaseOf loc tm cases) = do
   tm' <- renameTerm CnsRep tm
   ns <- casesToNS cases
@@ -249,12 +247,9 @@ renameCommand (CST.CocaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    ImplicitPrdCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CocaseOfI loc PrdRep ns tm' termCasesI
-    ImplicitCnsCases implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
+    ImplicitCases rep implicitCases -> do
+      termCasesI <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CocaseOfI loc rep ns tm' termCasesI
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be renamed to commands
 ---------------------------------------------------------------------------------
@@ -408,12 +403,9 @@ renameTerm PrdRep (CST.Cocase loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    ImplicitPrdCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CocaseI loc PrdRep ns cases'
-    ImplicitCnsCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CocaseI loc CnsRep ns cases'
+    ImplicitCases rep implicitCases -> do
+      cases' <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CocaseI loc rep ns cases'
 renameTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
@@ -421,12 +413,9 @@ renameTerm CnsRep (CST.Case loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- sequence $ renameCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    ImplicitPrdCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI PrdRep <$> implicitCases
-      pure $ RST.CaseI loc PrdRep ns cases'
-    ImplicitCnsCases implicitCases -> do
-      cases' <- sequence $ renameTermCaseI CnsRep <$> implicitCases
-      pure $ RST.CaseI loc CnsRep ns cases'
+    ImplicitCases rep implicitCases -> do
+      cases' <- sequence $ renameTermCaseI rep <$> implicitCases
+      pure $ RST.CaseI loc rep ns cases'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
 ---------------------------------------------------------------------------------
@@ -438,10 +427,8 @@ renameTerm PrdRep (CST.CaseOf loc t cases)  = do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer."
-    ImplicitCnsCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer"
 renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
@@ -450,9 +437,7 @@ renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
       cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
       t' <- renameTerm CnsRep t
       pure $ RST.CocaseOf loc PrdRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
-    ImplicitCnsCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
 renameTerm CnsRep (CST.CaseOf loc t cases) = do
   ns <- casesToNS cases
@@ -462,10 +447,8 @@ renameTerm CnsRep (CST.CaseOf loc t cases) = do
       cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
       t' <- renameTerm PrdRep t
       pure $ RST.CaseOf loc CnsRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer."
-    ImplicitCnsCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer"
 renameTerm CnsRep (CST.CocaseOf loc t cases) = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
@@ -474,9 +457,7 @@ renameTerm CnsRep (CST.CocaseOf loc t cases) = do
       cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
       t' <- renameTerm CnsRep t
       pure $ RST.CocaseOf loc CnsRep ns t' cases'
-    ImplicitPrdCases _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
-    ImplicitCnsCases _implicitCases ->
+    ImplicitCases _rep _implicitCases ->
       throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
 ---------------------------------------------------------------------------------
 -- Literals
