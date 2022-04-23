@@ -1,20 +1,21 @@
 module Renamer.Terms (renameTerm, renameCommand) where
 
+import Control.Monad (when)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
+import Data.Text qualified as T
 import Text.Megaparsec.Pos (SourcePos)
 
 import Errors
+import Pretty.Pretty ( ppPrint )
 import Renamer.Definition
 import Renamer.SymbolTable
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-import Control.Monad (when)
-import qualified Data.Text as T
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -358,7 +359,7 @@ renameTerm PrdRep (CST.Xtor loc xtor subst) = do
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Data) $
-           throwError $ OtherError (Just loc) "The given xtor is declared as a destructor, not a constructor."
+           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
   pctms <- renameTerms loc ar subst
   pure $ RST.Xtor loc PrdRep ns xtor pctms
 renameTerm CnsRep (CST.Xtor loc xtor subst) = do
@@ -366,16 +367,17 @@ renameTerm CnsRep (CST.Xtor loc xtor subst) = do
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Codata) $
-           throwError $ OtherError (Just loc) "The given xtor is declared as a constructor, not a destructor."
+           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
   pctms <- renameTerms loc ar subst
   pure $ RST.Xtor loc CnsRep ns xtor pctms
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
 ---------------------------------------------------------------------------------
-renameTerm _ (CST.Semi _loc _xtor _subst _c) =
-  error "renameTerm / Semi: not yet implemented"
 renameTerm rep    (CST.DtorChain pos tm dtors) =
   renameDtorChain pos tm dtors >>= renameTerm rep
+renameTerm _ (CST.Semi _loc _xtor _subst _c) =
+  error "renameTerm / Semi: not yet implemented"
+
 renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
   (_, XtorNameResult _ ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
