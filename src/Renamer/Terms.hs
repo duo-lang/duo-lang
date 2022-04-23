@@ -1,20 +1,21 @@
 module Renamer.Terms (renameTerm, renameCommand) where
 
+import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
+import Data.Text qualified as T
 import Text.Megaparsec.Pos (SourcePos)
 
 import Errors
+import Pretty.Pretty ( ppPrint )
 import Renamer.Definition
 import Renamer.SymbolTable
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-import Control.Monad (when)
-import qualified Data.Text as T
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -136,8 +137,6 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_te
                                     , icasei_args = pat
                                     , icasei_term = tmcase_term
                                     }
-
-
 
 analyzeCases :: DataCodata
              -> [CST.TermCase]
@@ -328,13 +327,31 @@ renameDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar]
 renameDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
 renameDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = renameDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
-split :: Loc -> [CST.TermOrStar] -> RenamerM ([CST.Term],[CST.Term])
-split loc args = do
-  let numstars = length (filter isStarT args)
-  when ( numstars /= 1) $ throwError (OtherError (Just loc) "Exactly one star expected" )
-  let (args1,_:args2) = span (not . isStarT) args
-  return (map toTm args1,map toTm args2)
+---------------------------------------------------------------------------------
+-- Analyze a substitution which (may) contain a star
+---------------------------------------------------------------------------------
+data AnalyzedSubstitution where
+  ExplicitSubst :: [(PrdCns, CST.Term)] -> AnalyzedSubstitution
+  ImplicitSubst :: [(PrdCns, CST.Term)] -> PrdCns -> [(PrdCns, CST.Term)] -> AnalyzedSubstitution
 
+analyzeSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> RenamerM AnalyzedSubstitution
+analyzeSubstitution loc xtor arity subst = do
+  -- Check whether the arity corresponds to the length of the substitution
+  when (length arity /= length subst) $
+    throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length arity) (length subst)
+  -- Dispatch on the number of stars in the substitution
+  case (length (filter isStarT subst)) of
+    0 -> pure $ ExplicitSubst (zip arity (toTm <$> subst))
+    1 -> do
+      let zipped :: [(PrdCns, CST.TermOrStar)] = zip arity subst
+      case span (not . isStarT . snd) zipped of
+        (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
+        _ -> throwError $ OtherError (Just loc) ("Compiler bug in analyzeSubstitution")
+    n -> throwError $ OtherError (Just loc) ("At most one star expected. Got " <> T.pack (show n) <> " stars.")
+
+renamePrdCnsTerm :: PrdCns -> CST.Term -> RenamerM RST.PrdCnsTerm
+renamePrdCnsTerm Prd tm = RST.PrdTerm <$> renameTerm PrdRep tm
+renamePrdCnsTerm Cns tm = RST.CnsTerm <$> renameTerm CnsRep tm
 
 renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
 renameTerm rep (CST.TermParens _loc tm) =
@@ -358,7 +375,7 @@ renameTerm PrdRep (CST.Xtor loc xtor subst) = do
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Data) $
-           throwError $ OtherError (Just loc) "The given xtor is declared as a destructor, not a constructor."
+           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
   pctms <- renameTerms loc ar subst
   pure $ RST.Xtor loc PrdRep ns xtor pctms
 renameTerm CnsRep (CST.Xtor loc xtor subst) = do
@@ -366,29 +383,64 @@ renameTerm CnsRep (CST.Xtor loc xtor subst) = do
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Codata) $
-           throwError $ OtherError (Just loc) "The given xtor is declared as a constructor, not a destructor."
+           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
   pctms <- renameTerms loc ar subst
   pure $ RST.Xtor loc CnsRep ns xtor pctms
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
 ---------------------------------------------------------------------------------
-renameTerm _ (CST.Semi _loc _xtor _subst _c) =
-  error "renameTerm / Semi: not yet implemented"
 renameTerm rep    (CST.DtorChain pos tm dtors) =
   renameDtorChain pos tm dtors >>= renameTerm rep
-renameTerm PrdRep (CST.Dtor loc xtor tm subst) = do
-  (_, XtorNameResult _ ns ar) <- lookupXtor loc xtor
-  when (length ar /= length subst) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+renameTerm rep (CST.Semi loc xtor subst tm) = do
+  tm' <- renameTerm CnsRep tm
+  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
+  when (dc /= Codata) $
+           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
+  analyzedSubst <- analyzeSubstitution loc xtor ar subst
+  case analyzedSubst of
+    ExplicitSubst _explicitSubst -> do
+      throwError (OtherError (Just loc) "The substitution in a Semi must contain at least one implicit argument")
+    ImplicitSubst subst1 Prd subst2 -> do
+      case rep of
+        PrdRep -> 
+          throwError (OtherError (Just loc) "Tried to rename Semi to a producer, but implicit argument stands for a producer")
+        CnsRep -> do
+          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          pure $ RST.Semi loc CnsRep ns xtor (subst1', CnsRep, subst2') tm'
+    ImplicitSubst subst1 Cns subst2 -> do
+      case rep of
+        PrdRep -> do
+          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          pure $ RST.Semi loc PrdRep ns xtor (subst1', PrdRep, subst2') tm'
+        CnsRep ->
+          throwError (OtherError (Just loc) "Tried to rename Semi to a producer, but implicit argument stands for a producer")
+renameTerm rep (CST.Dtor loc xtor tm subst) = do
   tm' <- renameTerm PrdRep tm
-  (args1,args2) <- split loc subst
-  let (ar1,_:ar2) = splitAt (length args1) ar
-  -- there must be exactly one star
-  args1' <- renameTerms loc ar1 args1
-  args2' <- renameTerms loc ar2 args2
-  pure $ RST.Dtor loc PrdRep ns xtor tm' (args1',PrdRep,args2')
-renameTerm CnsRep (CST.Dtor loc _xtor _tm _s)   =
-  throwError (OtherError (Just loc) "Cannot rename Dtor to a consumer (TODO).")
+  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
+  when (dc /= Codata) $
+           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
+  analyzedSubst <- analyzeSubstitution loc xtor ar subst
+  case analyzedSubst of
+    ExplicitSubst _explicitSubst -> do
+      throwError (OtherError (Just loc) "The substitution in a dtor must contain at least one implicit argument")
+    ImplicitSubst subst1 Prd subst2 -> do
+      case rep of
+        PrdRep -> do
+          throwError (OtherError (Just loc) "Tried to rename Dtor to a producer, but implicit argument stands for a producer")
+        CnsRep -> do
+          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          pure $ RST.Dtor loc CnsRep ns xtor tm' (subst1', CnsRep, subst2')
+    ImplicitSubst subst1 Cns subst2 -> do
+      case rep of
+        PrdRep -> do
+          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          pure $ RST.Dtor loc PrdRep ns xtor tm' (subst1', PrdRep, subst2')
+        CnsRep -> do
+          throwError (OtherError (Just loc) "Tried to rename Dtor to a consumer, but implicit argument stands for consumer")
 ---------------------------------------------------------------------------------
 -- Case / Cocase
 ---------------------------------------------------------------------------------
