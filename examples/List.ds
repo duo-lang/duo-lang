@@ -73,7 +73,7 @@ def rec prd concatMap : forall a b. (a -> List(b)) -> List(a) -> List(b) :=
 
 -- | Verify predicate for all elements of a list.
 def rec prd all : forall a. (a -> Bool) -> List(a) -> Bool :=
-    \p xs => (foldl and True) (map p xs); -- potential issue: does not work without explicit currying parentheses
+    \p xs => (foldl and True) (map p xs);
 
 -- | Verify predicate for at least one element of a list.
 def rec prd any : forall a. (a -> Bool) -> List(a) -> Bool :=
