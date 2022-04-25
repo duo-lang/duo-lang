@@ -10,7 +10,7 @@ import Driver.Definition
 import Driver.Driver
 import Parser.Parser ( runInteractiveParser, declarationP )
 import Repl.Repl
-    ( ReplState(replEnv, typeInfOpts),
+    ( ReplState(..),
       Repl,
       prettyText,
       Option(..),
@@ -20,10 +20,8 @@ import Repl.Repl
 letCmd :: Text -> Repl ()
 letCmd s = do
   decl <- fromRight (runExcept (runInteractiveParser declarationP s))
-  oldEnv <- gets replEnv
-  opts <- gets typeInfOpts
-  let ds = defaultDriverState { driverEnv = oldEnv, driverOpts = opts }
-  newEnv <-liftIO (inferProgramIO ds (MkModuleName "<Interactive>") [decl])
+  ds <- gets replDriverState
+  newEnv <- liftIO (inferProgramIO ds (MkModuleName "<Interactive>") [decl])
   case newEnv of
     Left err -> prettyText (T.pack $ show err)
     Right (env,_) -> modifyEnvironment (const env)

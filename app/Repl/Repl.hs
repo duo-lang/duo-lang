@@ -35,20 +35,18 @@ import Utils (trimStr, defaultLoc)
 data EvalSteps = Steps | NoSteps
 
 data ReplState = ReplState
-  { replEnv :: Environment
+  { replDriverState :: DriverState
   , loadedFiles :: [FilePath]
   , steps :: EvalSteps
   , evalOrder :: EvaluationOrder
-  , typeInfOpts :: InferenceOptions
   }
 
 
 initialReplState :: ReplState
-initialReplState = ReplState { replEnv = mempty
+initialReplState = ReplState { replDriverState = defaultDriverState
                              , loadedFiles = []
                              , steps = NoSteps
                              , evalOrder = CBV
-                             , typeInfOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
                              }
 
 ------------------------------------------------------------------------------
@@ -59,7 +57,7 @@ type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
 modifyEnvironment :: (Environment -> Environment) -> Repl ()
-modifyEnvironment f = modify $ \rs@ReplState{..} -> rs { replEnv = f replEnv }
+modifyEnvironment f = modify $ \rs@ReplState{ replDriverState = ds@MkDriverState { driverEnv }} -> rs { replDriverState = ds { driverEnv = f driverEnv } }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
 modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedFiles }
@@ -100,14 +98,12 @@ safeRead file =  do
 cmd :: String -> Repl ()
 cmd s = do
   (comLoc,_) <- parseInteractive termP (T.pack s)
-  oldEnv <- gets replEnv
-  opts <- gets typeInfOpts
-  let ds :: DriverState = defaultDriverState { driverOpts = opts, driverEnv = oldEnv }
+  ds <- gets replDriverState
   inferredCmd <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ _ inferredCmd]) -> do
       evalOrder <- gets evalOrder
-      env <- gets replEnv
+      env <- gets (driverEnv . replDriverState)
       steps <- gets steps
       let compiledCmd = focusCmd evalOrder (desugarCmd inferredCmd)
       let compiledEnv = focusEnvironment evalOrder (desugarEnvironment env)

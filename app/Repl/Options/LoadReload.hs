@@ -15,7 +15,7 @@ import Pretty.Errors (printLocatedError)
 import Repl.Repl
     ( Option(..),
       Repl,
-      ReplState(loadedFiles, typeInfOpts),
+      ReplState(loadedFiles, replDriverState),
       modifyEnvironment,
       modifyLoadedFiles,
       prettyRepl,
@@ -36,8 +36,7 @@ loadCmd s = do
 loadFile :: FilePath -> Repl ()
 loadFile fp = do
   decls <- parseFile fp programP
-  opts <- gets typeInfOpts
-  let ds :: DriverState = defaultDriverState { driverOpts = opts }
+  ds <- gets replDriverState
   res <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") decls
   case res of
     Left err -> printLocatedError err

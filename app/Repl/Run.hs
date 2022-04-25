@@ -26,12 +26,13 @@ import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(loadedFiles, replEnv),
+      ReplState(..),
       initialReplState,
       mkWordCompleter,
       prettyRepl,
       prettyText,
       cmd )
+import Driver.Definition
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.RST.Types ( DataDecl(data_name))
@@ -119,7 +120,7 @@ cmdCompleter :: CompletionFunc ReplInner
 cmdCompleter = mkWordCompleter (_simpleComplete f)
   where
     f n = do
-      env <- gets replEnv
+      env <- gets (driverEnv . replDriverState)
       let completionList = (':' :) . T.unpack . option_name <$> allOptions
       let keys = concat [ unFreeVarName <$> M.keys (prdEnv env)
                         , unFreeVarName <$> M.keys (cnsEnv env)

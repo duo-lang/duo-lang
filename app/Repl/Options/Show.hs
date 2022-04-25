@@ -17,10 +17,11 @@ import Repl.Repl
       prettyRepl,
       parseFile,
       Option(..),
-      ReplState(loadedFiles, replEnv),
+      ReplState(loadedFiles, replDriverState),
       Repl )
+import Driver.Definition (DriverState(..))
 import Driver.Environment
-    ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
+    ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv))
 import Renamer.Definition
 import Renamer.Program    
 import Syntax.RST.Types ( DataDecl(data_name) )
@@ -42,7 +43,7 @@ showCmd "" = do
       Right decls -> prettyRepl decls
 showCmd str = do
   let s = MkFreeVarName (trim str)
-  env <- gets replEnv
+  env <- gets (driverEnv . replDriverState)
   case M.lookup s (prdEnv env) of
     Just (prd,_,_) -> prettyRepl prd
     Nothing -> case M.lookup s (cnsEnv env) of
@@ -63,7 +64,7 @@ showOption = Option
 
 showTypeCmd :: Text -> Repl ()
 showTypeCmd s = do
-  env <- gets (fmap snd . declEnv . replEnv)
+  env <- gets (fmap snd . declEnv . driverEnv . replDriverState)
   let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) env
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
