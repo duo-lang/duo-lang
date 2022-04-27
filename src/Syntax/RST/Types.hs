@@ -3,7 +3,7 @@ module Syntax.RST.Types where
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Map (Map)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Kind ( Type )
 
 import Syntax.Common

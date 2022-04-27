@@ -42,7 +42,6 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
-import Data.List
 
 checkAnnot :: PolarityRep pol
            -> RST.TypeScheme pol -- ^ Inferred type

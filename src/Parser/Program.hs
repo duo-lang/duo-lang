@@ -7,6 +7,7 @@ module Parser.Program
   ) where
 
 import Control.Monad (void)
+import Data.Maybe qualified
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (eol)
 
@@ -19,7 +20,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.Common
 import Utils
-import qualified Data.Maybe
+
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)

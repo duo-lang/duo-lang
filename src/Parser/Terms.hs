@@ -5,6 +5,7 @@ import Data.Bifunctor (first)
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (keys)
+import Data.Maybe qualified
 import Text.Megaparsec
     ( SourcePos,
       optional,
@@ -20,7 +21,6 @@ import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
-import qualified Data.Maybe
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
