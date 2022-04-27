@@ -15,7 +15,7 @@ import Data.List
 import Data.Map (Map)
 import Data.Map qualified as M
 
-import Driver.Environment (Environment(..))
+import Driver.Environment (Environment(..), emptyEnvironment)
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
@@ -53,7 +53,8 @@ findFirstM f err = asks fst >>= \env -> go (M.toList env)
 lookupTerm :: EnvReader a m
            => PrdCnsRep pc -> FreeVarName -> m (Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
-  let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.")
+  env <- asks fst
+  let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> (ppPrint $ M.keys env))
   let f env = case M.lookup fv (prdEnv env) of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> Just (res1,res2)
@@ -129,13 +130,19 @@ withTerm mn PrdRep fv tm loc tys action = do
       modifyEnv env@MkEnvironment { prdEnv } =
         env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }
   let modifyEnvMap :: (Map ModuleName Environment, a) -> (Map ModuleName Environment, a)
-      modifyEnvMap (map, rest) = (M.adjust modifyEnv mn map, rest)
+      modifyEnvMap (map, rest) =
+        case M.lookup mn map of
+          Nothing -> (M.insert mn (modifyEnv emptyEnvironment) map, rest)
+          Just _  -> (M.adjust modifyEnv mn map, rest)
   local modifyEnvMap action
-withTerm mn CnsRep fv tm loc tys m = do
+withTerm mn CnsRep fv tm loc tys action = do
   let modifyEnv :: Environment -> Environment
       modifyEnv env@MkEnvironment { cnsEnv } =
         env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }
   let modifyEnvMap :: (Map ModuleName Environment, a) -> (Map ModuleName Environment, a)
-      modifyEnvMap (map, rest) = (M.adjust modifyEnv mn map, rest)
-  local modifyEnvMap m
+      modifyEnvMap (map, rest) =
+        case M.lookup mn map of
+          Nothing ->  (M.insert mn (modifyEnv emptyEnvironment) map, rest)
+          Just _  -> (M.adjust modifyEnv mn map, rest)
+  local modifyEnvMap action
 

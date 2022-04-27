@@ -9,12 +9,12 @@ import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
 
 
-import Driver.Environment
+import Driver.Environment ( Environment, emptyEnvironment )
 import Errors
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedError )
 import Renamer.SymbolTable
-import Syntax.Common
+import Syntax.Common.Names ( ModuleName(MkModuleName) )
 import Syntax.AST.Program qualified as AST
 import Utils
 
@@ -105,7 +105,7 @@ modifyEnvironment mn f = do
   env <- gets driverEnv
   case M.lookup mn env of
     Nothing -> do
-      let newEnv = M.insert mn (f (MkEnvironment M.empty M.empty M.empty [])) env
+      let newEnv = M.insert mn (f emptyEnvironment) env
       modify (\state -> state { driverEnv = newEnv })
     Just en -> do
       let newEnv = M.insert mn (f en) env

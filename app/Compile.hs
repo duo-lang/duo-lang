@@ -3,7 +3,7 @@ module Compile (runCompile) where
 import Control.Monad.IO.Class (liftIO)
 
 import Driver.Definition
-import Driver.Driver
+import Driver.Driver ( runCompilationModule )
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
 import Pretty.Pretty (ppPrintIO)

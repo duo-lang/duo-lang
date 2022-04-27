@@ -1,6 +1,7 @@
 module Driver.Environment where
 
 import Data.Map (Map)
+import Data.Map qualified as M
 
 import Syntax.Common
 import Syntax.AST.Terms ( Command, Term )
@@ -18,5 +19,7 @@ data Environment = MkEnvironment
   , declEnv :: [(Loc,DataDecl)]
   }
 
+emptyEnvironment :: Environment
+emptyEnvironment = MkEnvironment M.empty M.empty M.empty []
 instance Show Environment where
   show _ = "<Environment>"
