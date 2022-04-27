@@ -78,7 +78,7 @@ inferDecl mn (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   env <- gets driverEnv
   -- 1. Generate the constraints.
   let genFun = case isRec of
-        Recursive -> genConstraintsTermRecursive loc fv pc term
+        Recursive -> genConstraintsTermRecursive mn loc fv pc term
         NonRecursive -> genConstraintsTerm term
   (tmInferred, constraintSet) <- liftEitherErrLoc loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
