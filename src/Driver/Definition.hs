@@ -92,7 +92,9 @@ queryTypecheckedProgram :: ModuleName -> DriverM AST.Program
 queryTypecheckedProgram mn = do
   cache <- gets driverASTs
   case M.lookup mn cache of
-    Nothing -> throwOtherError ["Module " <> ppPrint mn <> " not in cache."]
+    Nothing -> throwOtherError [ "AST for module " <> ppPrint mn <> " not in cache."
+                               , "Available ASTs: " <> ppPrint (M.keys cache)
+                               ]
     Just ast -> pure ast
 
 
@@ -107,7 +109,8 @@ getEnvironment :: ModuleName -> DriverM Environment
 getEnvironment mn = do
   cache <- gets driverEnv
   case M.lookup mn cache of
-    Nothing -> throwOtherError ["Module " <> ppPrint mn <> " not in cache"]
+    Nothing -> throwOtherError [ "Environment for module " <> ppPrint mn <> " not in cache"
+                               , "Available environments: " <> ppPrint (M.keys cache)]
     Just en -> pure en
 
 -- | Only execute an action if verbosity is set to Verbose.
