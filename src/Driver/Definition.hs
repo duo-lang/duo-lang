@@ -17,17 +17,20 @@ import Renamer.SymbolTable
 import Syntax.Common
 import Syntax.AST.Program qualified as AST
 import Utils
-import System.Directory.Internal.Prelude (getEnv)
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
 ------------------------------------------------------------------------------
 
 data InferenceOptions = InferenceOptions
-  { infOptsVerbosity   :: Verbosity      -- ^ Whether to print debug information to the terminal.
-  , infOptsPrintGraphs :: Bool           -- ^ Whether to print graphs from type simplification.
-  , infOptsSimplify    :: Bool           -- ^ Whether or not to simplify types.
-  , infOptsLibPath     :: [FilePath]     -- ^ Where to search for imported modules.
+  { infOptsVerbosity   :: Verbosity
+    -- ^ Whether to print debug information to the terminal.
+  , infOptsPrintGraphs :: Bool
+    -- ^ Whether to print graphs from type simplification.
+  , infOptsSimplify    :: Bool
+    -- ^ Whether or not to simplify types.
+  , infOptsLibPath     :: [FilePath]
+    -- ^ Where to search for imported modules.
   }
 
 defaultInferenceOptions :: InferenceOptions
@@ -43,10 +46,10 @@ defaultInferenceOptions = InferenceOptions
 ---------------------------------------------------------------------------------
 
 data DriverState = MkDriverState
-  { driverOpts :: InferenceOptions
-  , driverEnv :: Map ModuleName Environment
+  { driverOpts    :: InferenceOptions
+  , driverEnv     :: Map ModuleName Environment
   , driverSymbols :: Map ModuleName SymbolTable
-  , driverASTs :: Map ModuleName AST.Program
+  , driverASTs    :: Map ModuleName AST.Program
   }
 
 defaultDriverState :: DriverState

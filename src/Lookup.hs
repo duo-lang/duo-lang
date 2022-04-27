@@ -36,19 +36,34 @@ type EnvReader a m = (MonadError Error m, MonadReader (Map ModuleName Environmen
 -- Lookup Terms
 ---------------------------------------------------------------------------------
 
+findFirstM :: forall a m res. EnvReader a m
+           => (Environment -> Maybe res)
+           -> Error
+           -> m (ModuleName, res)
+findFirstM f err = asks fst >>= \env -> go (M.toList env)
+  where
+    go :: [(ModuleName, Environment)] -> m (ModuleName, res)
+    go [] = throwError err
+    go ((mn,env):envs) =
+      case f env of
+        Just res -> pure (mn,res)
+        Nothing -> go envs
+
 -- | Lookup the term and the type of a term bound in the environment.
 lookupTerm :: EnvReader a m
            => PrdCnsRep pc -> FreeVarName -> m (Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
-  env <- asks fst
-  case M.lookup fv (prdEnv env) of
-    Nothing -> throwOtherError ["Unbound free producer variable " <> ppPrint fv <> " is not contained in environment."]
-    Just (res1,_,res2) -> return (res1,res2)
+  let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.")
+  let f env = case M.lookup fv (prdEnv env) of
+                       Nothing -> Nothing
+                       Just (res1,_,res2) -> Just (res1,res2)
+  snd <$> findFirstM f err
 lookupTerm CnsRep fv = do
-  env <- asks fst
-  case M.lookup fv (cnsEnv env) of
-    Nothing -> throwOtherError ["Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment."]
-    Just (res1,_,res2) -> return (res1,res2)
+  let err = OtherError Nothing ("Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment.")
+  let f env = case M.lookup fv (cnsEnv env) of
+                       Nothing -> Nothing
+                       Just (res1,_,res2) -> return (res1,res2)
+  snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
 -- Lookup Commands
@@ -57,10 +72,11 @@ lookupTerm CnsRep fv = do
 -- | Lookup a command in the environment.
 lookupCommand :: EnvReader a m => FreeVarName -> m Command
 lookupCommand fv = do
-  env <- asks fst
-  case M.lookup fv (cmdEnv env) of
-    Nothing -> throwOtherError ["Unbound free command variable " <> ppPrint fv <> " is not contained in environment."]
-    Just (res, _) -> return res
+  let err = OtherError Nothing ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
+  let f env = case M.lookup fv (cmdEnv env) of
+                     Nothing -> Nothing
+                     Just (res, _) -> return res
+  snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
 -- Lookup information about type declarations
@@ -73,21 +89,19 @@ lookupDataDecl xt = do
   let containsXtor :: XtorSig Pos -> Bool
       containsXtor sig = sig_name sig == xt
   let typeContainsXtor :: DataDecl -> Bool
-      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> (fst data_xtors)) = True
+      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                   | otherwise = False
-  env <- asks (((fmap snd) . declEnv) . fst)
-  case find typeContainsXtor env of
-    Nothing -> throwOtherError ["Constructor/Destructor " <> ppPrint xt <> " is not contained in program."]
-    Just decl -> return decl
+  let err = OtherError Nothing ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
+  let f env = find typeContainsXtor (fmap snd (declEnv env))
+  snd <$> findFirstM f err
 
 -- | Find the type declaration belonging to a given TypeName.
 lookupTypeName :: EnvReader a m
                => RnTypeName -> m DataDecl
 lookupTypeName tn = do
-  env <- asks $ fmap snd . declEnv . fst
-  case find (\NominalDecl{..} -> data_name == tn) env of
-    Just decl -> return decl
-    Nothing -> throwOtherError ["Type name " <> unTypeName (rnTnName tn) <> " not found in environment"]
+  let err = OtherError Nothing ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
+  let f env = find (\NominalDecl{..} -> data_name == tn) (fmap snd (declEnv env))
+  snd <$> findFirstM f err
 
 -- | Find the XtorSig belonging to a given XtorName.
 lookupXtorSig :: EnvReader a m
@@ -107,15 +121,21 @@ lookupXtorSig xtn NegRep = do
 -- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
 
-withTerm :: EnvReader a m
-         => PrdCnsRep pc -> FreeVarName -> Term pc -> Loc -> TypeScheme (PrdCnsToPol pc)
+withTerm :: forall a m b pc. EnvReader a m
+         => ModuleName -> PrdCnsRep pc -> FreeVarName -> Term pc -> Loc -> TypeScheme (PrdCnsToPol pc)
          -> (m b -> m b)
-withTerm PrdRep fv tm loc tys m = do
-  let modifyEnv (env@MkEnvironment { prdEnv }, rest) =
-        (env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }, rest)
-  local modifyEnv m
-withTerm CnsRep fv tm loc tys m = do
-  let modifyEnv (env@MkEnvironment { cnsEnv }, rest) =
-        (env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }, rest)
-  local modifyEnv m
+withTerm mn PrdRep fv tm loc tys action = do
+  let modifyEnv :: Environment -> Environment
+      modifyEnv env@MkEnvironment { prdEnv } =
+        env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }
+  let modifyEnvMap :: (Map ModuleName Environment, a) -> (Map ModuleName Environment, a)
+      modifyEnvMap (map, rest) = (M.adjust modifyEnv mn map, rest)
+  local modifyEnvMap action
+withTerm mn CnsRep fv tm loc tys m = do
+  let modifyEnv :: Environment -> Environment
+      modifyEnv env@MkEnvironment { cnsEnv } =
+        env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }
+  let modifyEnvMap :: (Map ModuleName Environment, a) -> (Map ModuleName Environment, a)
+      modifyEnvMap (map, rest) = (M.adjust modifyEnv mn map, rest)
+  local modifyEnvMap m
 
