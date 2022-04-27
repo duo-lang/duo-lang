@@ -10,7 +10,6 @@ import Test.Hspec.Formatters
 
 import Driver.Definition (defaultDriverState)
 import Driver.Driver (inferProgramIO)
-import Driver.Environment (Environment)
 import Errors
 import Parser.Definition (runFileParser)
 import Parser.Program (programP)
@@ -50,14 +49,6 @@ getTypecheckedDecls fp = do
       fmap snd <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls
     Left err -> return (Left err)
 
-getEnvironment :: FilePath -> IO (Either Error Environment)
-getEnvironment fp = do
-  decls <- getParsedDeclarations fp
-  case decls of
-    Right decls -> do
-      fmap fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls
-    Left err -> return (Left err)
-
 getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
@@ -72,13 +63,11 @@ main = do
     examples <- getAvailableExamples
     counterExamples <- getAvailableCounterExamples
     -- Collect the parsed declarations
-    parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
+    -- parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     -- Collect the typechecked declarations
     checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
     checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
-    -- Collect the environment (TODO rewrite!)
-    environment <- forM examples $ \example -> getEnvironment example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
     peano_st <- getSymbolTable "examples/Peano.ds"
     let peano_st' = case peano_st of
@@ -91,7 +80,7 @@ main = do
     let symboltables = [(MkModuleName "Peano", peano_st'), (MkModuleName "Bool", bool_st')]
     -- Run the testsuite
     hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-      describe "All examples are locally closed" (Spec.LocallyClosed.spec environment)
+      describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
       describe "ExampleSpec" (Spec.TypeInferenceExamples.spec checkedExamples parsedCounterExamples checkedCounterExamples)
       describe "Subsumption works" (Spec.Subsumption.spec symboltables)
       describe "Prettyprinted work again" (Spec.Prettyprinter.spec checkedExamples)

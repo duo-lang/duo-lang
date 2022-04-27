@@ -1,18 +1,26 @@
 module Spec.LocallyClosed where
 
 import Control.Monad (forM_)
-import Data.Map qualified as M
 import Data.Text qualified as T
 import Test.Hspec
 
-import Driver.Environment
-import Pretty.Pretty
+import Pretty.Pretty ( ppPrintString )
 import Pretty.Errors ()
-import Syntax.AST.Terms
+import Syntax.AST.Terms ( Term, termLocallyClosed )
+import Syntax.AST.Program qualified as AST
 import Syntax.Common
-import Errors
+import Errors ( Error )
 
-spec :: [(FilePath, Either Error Environment)] -> Spec
+getProducers :: AST.Program -> [(FreeVarName, Term Prd)]
+getProducers prog = go prog []
+  where
+    go :: AST.Program -> [(FreeVarName, Term Prd)] -> [(FreeVarName, Term Prd)]
+    go [] acc = acc
+    go ((AST.PrdCnsDecl _ _ PrdRep _ fv _ tm):rest) acc = go rest ((fv,tm):acc)
+    go (_:rest) acc = go rest acc
+
+
+spec :: [(FilePath, Either Error AST.Program)] -> Spec
 spec examples = do
   describe "All examples are locally closed." $ do
     forM_ examples $ \(example, eitherEnv) -> do
@@ -20,7 +28,7 @@ spec examples = do
         case eitherEnv of
           Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
           Right env -> do
-            forM_ (M.toList (prdEnv env)) $ \(name,(term,_,_)) -> do
+            forM_ (getProducers env) $ \(name,term) -> do
               it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes") $
                 termLocallyClosed term `shouldBe` Right ()
 
