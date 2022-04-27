@@ -100,18 +100,16 @@ queryTypecheckedProgram mn = do
 
 -- Environment
 
-addEnvironment :: ModuleName -> Environment -> DriverM ()
-addEnvironment mn env = modify f 
-  where
-    f state@MkDriverState { driverEnv } = state { driverEnv = M.insert mn env driverEnv }
-
-getEnvironment :: ModuleName -> DriverM Environment
-getEnvironment mn = do
-  cache <- gets driverEnv
-  case M.lookup mn cache of
-    Nothing -> throwOtherError [ "Environment for module " <> ppPrint mn <> " not in cache"
-                               , "Available environments: " <> ppPrint (M.keys cache)]
-    Just en -> pure en
+modifyEnvironment :: ModuleName -> (Environment -> Environment) -> DriverM ()
+modifyEnvironment mn f = do
+  env <- gets driverEnv
+  case M.lookup mn env of
+    Nothing -> do
+      let newEnv = M.insert mn (f (MkEnvironment M.empty M.empty M.empty [])) env
+      modify (\state -> state { driverEnv = newEnv })
+    Just en -> do
+      let newEnv = M.insert mn (f en) env
+      modify (\state -> state { driverEnv = newEnv })
 
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()

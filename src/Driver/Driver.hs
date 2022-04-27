@@ -102,15 +102,14 @@ inferDecl mn (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   -- 6. Check type annotation.
   ty <- checkAnnot (prdCnsToPol pc) typSimplified annot loc
   -- 7. Insert into environment
-  env <- getEnvironment mn
   case pc of
     PrdRep -> do
-      let newEnv = env { prdEnv  = M.insert fv (tmInferred ,loc, case ty of RST.Annotated ty -> ty; RST.Inferred ty -> ty) (prdEnv env) }
-      addEnvironment mn newEnv
+      let f env = env { prdEnv  = M.insert fv (tmInferred ,loc, case ty of RST.Annotated ty -> ty; RST.Inferred ty -> ty) (prdEnv env) }
+      modifyEnvironment mn f
       return (AST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
     CnsRep -> do
-      let newEnv = env { cnsEnv  = M.insert fv (tmInferred, loc, case ty of RST.Annotated ty -> ty; RST.Inferred ty -> ty) (cnsEnv env) }
-      addEnvironment mn newEnv
+      let f env = env { cnsEnv  = M.insert fv (tmInferred, loc, case ty of RST.Annotated ty -> ty; RST.Inferred ty -> ty) (cnsEnv env) }
+      modifyEnvironment mn f
       return (AST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
 --
 -- CmdDecl
@@ -125,27 +124,17 @@ inferDecl mn (RST.CmdDecl loc doc v cmd) = do
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  env <- getEnvironment mn
-  let newEnv = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
-  addEnvironment mn newEnv
+  let f env = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
+  modifyEnvironment mn f
   return (AST.CmdDecl loc doc v cmdInferred)
 --
 -- DataDecl
 --
 inferDecl mn (RST.DataDecl loc doc dcl) = do
   -- Insert into environment
-  env <- getEnvironment mn
-  let tn = RST.data_name dcl
-  case find (\RST.NominalDecl{..} -> data_name == tn) (snd <$> declEnv env) of
-    Just _ ->
-        -- HACK: inserting in the environment has already been done in lowering
-        -- because the declarations are already needed for lowering
-        -- In that case we make sure we don't insert twice
-        return (AST.DataDecl loc doc dcl)
-    Nothing -> do
-      let newEnv = env { declEnv = (loc,dcl) : declEnv env }
-      addEnvironment mn newEnv
-      return (AST.DataDecl loc doc dcl)
+  let f env = env { declEnv = (loc,dcl) : declEnv env }
+  modifyEnvironment mn f
+  pure (AST.DataDecl loc doc dcl)
 --
 -- XtorDecl
 --

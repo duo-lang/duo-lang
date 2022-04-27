@@ -41,7 +41,7 @@ loadFile fp = do
   case res of
     Left err -> printLocatedError err
     Right (newEnv,_) -> do
-      modifyEnvironment (MkModuleName "FOO") undefined --(const newEnv)
+      --modifyEnvironment (MkModuleName "FOO") undefined --(const newEnv)
       --prettyRepl newEnv
       prettyRepl $ "Successfully loaded: " ++ fp
 

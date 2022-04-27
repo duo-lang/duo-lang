@@ -24,7 +24,7 @@ letCmd s = do
   newEnv <- liftIO (inferProgramIO ds (MkModuleName "<Interactive>") [decl])
   case newEnv of
     Left err -> prettyText (T.pack $ show err)
-    Right (env,_) -> modifyEnvironment undefined undefined --(const env)
+    Right (env,_) -> undefined -- modifyEnvironment undefined undefined --(const env)
 
 letOption :: Option
 letOption = Option
