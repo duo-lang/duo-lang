@@ -17,6 +17,7 @@ import Renamer.SymbolTable
 import Syntax.Common
 import Syntax.AST.Program qualified as AST
 import Utils
+import System.Directory.Internal.Prelude (getEnv)
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -43,7 +44,7 @@ defaultInferenceOptions = InferenceOptions
 
 data DriverState = MkDriverState
   { driverOpts :: InferenceOptions
-  , driverEnv :: Environment
+  , driverEnv :: Map ModuleName Environment
   , driverSymbols :: Map ModuleName SymbolTable
   , driverASTs :: Map ModuleName AST.Program
   }
@@ -51,7 +52,7 @@ data DriverState = MkDriverState
 defaultDriverState :: DriverState
 defaultDriverState = MkDriverState
   { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
-  , driverEnv = mempty
+  , driverEnv = M.empty
   , driverSymbols = M.empty
   , driverASTs = M.empty
   }
@@ -94,10 +95,17 @@ queryTypecheckedProgram mn = do
 
 -- Environment
 
-setEnvironment :: Environment -> DriverM ()
-setEnvironment env = modify (\state -> state { driverEnv = env })
+addEnvironment :: ModuleName -> Environment -> DriverM ()
+addEnvironment mn env = modify f 
+  where
+    f state@MkDriverState { driverEnv } = state { driverEnv = M.insert mn env driverEnv }
 
-
+getEnvironment :: ModuleName -> DriverM Environment
+getEnvironment mn = do
+  cache <- gets driverEnv
+  case M.lookup mn cache of
+    Nothing -> throwOtherError ["Module " <> ppPrint mn <> " not in cache"]
+    Just en -> pure en
 
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()

@@ -12,6 +12,7 @@ module Lookup
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List
+import Data.Map (Map)
 import Data.Map qualified as M
 
 import Driver.Environment (Environment(..))
@@ -26,10 +27,10 @@ import Utils
 ---------------------------------------------------------------------------------
 -- We define functions which work for every Monad which implements:
 -- (1) MonadError Error
--- (2) MonadReader (Environment ph, a)
+-- (2) MonadReader (Map ModuleName Environment ph, a)
 ---------------------------------------------------------------------------------
 
-type EnvReader a m = (MonadError Error m, MonadReader (Environment, a) m)
+type EnvReader a m = (MonadError Error m, MonadReader (Map ModuleName Environment, a) m)
 
 ---------------------------------------------------------------------------------
 -- Lookup Terms
