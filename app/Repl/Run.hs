@@ -16,6 +16,7 @@ import System.Console.Repline
       ExitDecision(Exit),
       ReplOpts(..) )
 
+import Pretty.Pretty ( ppPrintString )
 import Repl.Options.Let (letOption)
 import Repl.Options.Subsume (subOption)
 import Repl.Options.LoadReload (loadOption, reloadOption)
@@ -97,7 +98,7 @@ final = prettyText "Goodbye!" >> return Exit
 
 replBanner :: a -> Repl String
 replBanner _ = do
-  loadedFiles <- gets loadedFiles
+  loadedFiles <- gets (fmap ppPrintString . M.keys . drvFiles . replDriverState)
   pure (unwords loadedFiles ++ "> ")
 
 opts :: ReplOpts ReplInner
@@ -120,7 +121,7 @@ cmdCompleter :: CompletionFunc ReplInner
 cmdCompleter = mkWordCompleter (_simpleComplete f)
   where
     f n = do
-      env <- gets (M.elems . driverEnv . replDriverState)
+      env <- gets (M.elems . drvEnv . replDriverState)
       let concatPrdEnv = M.unions $ prdEnv <$> env
       let concatCnsEnv = M.unions $ cnsEnv <$> env
       let concatCmdEnv = M.unions $ cmdEnv <$> env

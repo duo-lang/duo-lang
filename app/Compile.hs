@@ -25,9 +25,9 @@ runCompile mn = do
   res <- liftIO $ execDriverM defaultDriverState (driverAction mn)
   case res of
     Left err -> ppPrintIO err
-    Right (_, MkDriverState { driverEnv }) -> do
+    Right (_, MkDriverState { drvEnv }) -> do
       -- Run program
-      let compiledEnv :: EvalEnv = focusEnvironment CBV (desugarEnvironment driverEnv)
+      let compiledEnv :: EvalEnv = focusEnvironment CBV (desugarEnvironment drvEnv)
       evalCmd <- liftIO $ eval (Core.Jump defaultLoc (MkFreeVarName "main")) compiledEnv
       case evalCmd of
           Left err -> ppPrintIO err

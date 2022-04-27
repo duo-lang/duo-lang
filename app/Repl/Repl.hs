@@ -37,17 +37,13 @@ data EvalSteps = Steps | NoSteps
 
 data ReplState = ReplState
   { replDriverState :: DriverState
-  , loadedFiles :: [FilePath]
   , steps :: EvalSteps
-  , evalOrder :: EvaluationOrder
   }
 
 
 initialReplState :: ReplState
 initialReplState = ReplState { replDriverState = defaultDriverState
-                             , loadedFiles = []
                              , steps = NoSteps
-                             , evalOrder = CBV
                              }
 
 ------------------------------------------------------------------------------
@@ -60,10 +56,7 @@ type Repl a = HaskelineT ReplInner a
 modifyEnvironment :: ModuleName -> (Environment -> Environment) -> Repl ()
 modifyEnvironment mn f = modify g
   where
-    g rs@ReplState{ replDriverState = ds@MkDriverState { driverEnv }} = rs { replDriverState = ds { driverEnv = M.adjust f mn driverEnv } }
-
-modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
-modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedFiles }
+    g rs@ReplState{ replDriverState = ds@MkDriverState { drvEnv }} = rs { replDriverState = ds { drvEnv = M.adjust f mn drvEnv } }
 
 prettyRepl :: PrettyAnn a => a -> Repl ()
 prettyRepl s = liftIO $ ppPrintIO s
@@ -105,11 +98,10 @@ cmd s = do
   inferredCmd <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
   case inferredCmd of
     Right (_,[CmdDecl _ _ _ inferredCmd]) -> do
-      evalOrder <- gets evalOrder
-      env <- gets (driverEnv . replDriverState)
+      env <- gets (drvEnv . replDriverState)
       steps <- gets steps
-      let compiledCmd = focusCmd evalOrder (desugarCmd inferredCmd)
-      let compiledEnv = focusEnvironment evalOrder (desugarEnvironment env)
+      let compiledCmd = focusCmd CBV (desugarCmd inferredCmd)
+      let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
       case steps of
         NoSteps -> do
           resE <- liftIO $ eval compiledCmd compiledEnv

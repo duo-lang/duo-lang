@@ -10,7 +10,6 @@ import Data.Text qualified as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
-import Syntax.Common
 import Repl.Repl
     ( Option(..),
       Repl,
@@ -26,12 +25,10 @@ import Driver.Driver
 -- Set & Unset
 
 modifyTypeInfOpts :: (InferenceOptions -> InferenceOptions) -> Repl ()
-modifyTypeInfOpts f = modify (\rs@ReplState { replDriverState = ds@MkDriverState { driverOpts }} -> rs { replDriverState = ds { driverOpts = f driverOpts}})
+modifyTypeInfOpts f = modify (\rs@ReplState { replDriverState = ds@MkDriverState { drvOpts }} -> rs { replDriverState = ds { drvOpts = f drvOpts}})
 
 setCmdVariants :: [(Text, Repl ())]
-setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                 , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
-                 , ("steps", modify (\rs -> rs { steps = Steps }))
+setCmdVariants = [ ("steps", modify (\rs -> rs { steps = Steps }))
                  , ("simplify", modifyTypeInfOpts (\f -> f { infOptsSimplify = True}))
                  , ("printGraphs", modifyTypeInfOpts (\f -> f { infOptsPrintGraphs = True }))
                  , ("verbose", modifyTypeInfOpts (\f -> f { infOptsVerbosity = Verbose }))

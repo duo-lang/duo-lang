@@ -42,23 +42,31 @@ defaultInferenceOptions = InferenceOptions
   }
 
 ---------------------------------------------------------------------------------
--- Driver Monad
+-- Driver State
 ---------------------------------------------------------------------------------
 
+-- | The state of the driver during compilation.
 data DriverState = MkDriverState
-  { driverOpts    :: InferenceOptions
-  , driverEnv     :: Map ModuleName Environment
-  , driverSymbols :: Map ModuleName SymbolTable
-  , driverASTs    :: Map ModuleName AST.Program
+  { drvOpts    :: InferenceOptions
+    -- ^ The inference options
+  , drvEnv     :: Map ModuleName Environment
+  , drvFiles   :: Map ModuleName FilePath
+  , drvSymbols :: Map ModuleName SymbolTable
+  , drvASTs    :: Map ModuleName AST.Program
   }
 
 defaultDriverState :: DriverState
 defaultDriverState = MkDriverState
-  { driverOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
-  , driverEnv = M.empty
-  , driverSymbols = M.empty
-  , driverASTs = M.empty
+  { drvOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
+  , drvEnv = M.empty
+  , drvFiles = M.empty
+  , drvSymbols = M.empty
+  , drvASTs = M.empty
   }
+
+---------------------------------------------------------------------------------
+-- Driver Monad
+---------------------------------------------------------------------------------
 
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO)
@@ -75,10 +83,10 @@ execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 addSymboltable :: ModuleName -> SymbolTable -> DriverM ()
 addSymboltable mn st = modify f
   where
-    f state@MkDriverState { driverSymbols } = state { driverSymbols = M.insert mn st driverSymbols }
+    f state@MkDriverState { drvSymbols } = state { drvSymbols = M.insert mn st drvSymbols }
 
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
-getSymbolTables = gets driverSymbols
+getSymbolTables = gets drvSymbols
 
 
 -- AST Cache
@@ -86,11 +94,11 @@ getSymbolTables = gets driverSymbols
 addTypecheckedProgram :: ModuleName -> AST.Program -> DriverM ()
 addTypecheckedProgram mn prog = modify f
   where
-    f state@MkDriverState { driverASTs } = state { driverASTs = M.insert mn prog  driverASTs }
+    f state@MkDriverState { drvASTs } = state { drvASTs = M.insert mn prog  drvASTs }
 
 queryTypecheckedProgram :: ModuleName -> DriverM AST.Program
 queryTypecheckedProgram mn = do
-  cache <- gets driverASTs
+  cache <- gets drvASTs
   case M.lookup mn cache of
     Nothing -> throwOtherError [ "AST for module " <> ppPrint mn <> " not in cache."
                                , "Available ASTs: " <> ppPrint (M.keys cache)
@@ -102,26 +110,26 @@ queryTypecheckedProgram mn = do
 
 modifyEnvironment :: ModuleName -> (Environment -> Environment) -> DriverM ()
 modifyEnvironment mn f = do
-  env <- gets driverEnv
+  env <- gets drvEnv
   case M.lookup mn env of
     Nothing -> do
       let newEnv = M.insert mn (f emptyEnvironment) env
-      modify (\state -> state { driverEnv = newEnv })
+      modify (\state -> state { drvEnv = newEnv })
     Just en -> do
       let newEnv = M.insert mn (f en) env
-      modify (\state -> state { driverEnv = newEnv })
+      modify (\state -> state { drvEnv = newEnv })
 
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
-    verbosity <- gets (infOptsVerbosity . driverOpts)
+    verbosity <- gets (infOptsVerbosity . drvOpts)
     when (verbosity == Verbose) (liftIO action)
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
 findModule (MkModuleName mod) loc = do
-  infopts <- gets driverOpts
+  infopts <- gets drvOpts
   let libpaths = infOptsLibPath infopts
   fps <- forM libpaths $ \libpath -> do
     let fp = libpath </> T.unpack mod <.> "ds"

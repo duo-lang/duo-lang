@@ -73,8 +73,8 @@ inferDecl :: ModuleName
 -- PrdCnsDecl
 --
 inferDecl mn (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
-  infopts <- gets driverOpts
-  env <- gets driverEnv
+  infopts <- gets drvOpts
+  env <- gets drvEnv
   -- 1. Generate the constraints.
   let genFun = case isRec of
         Recursive -> genConstraintsTermRecursive mn loc fv pc term
@@ -93,7 +93,7 @@ inferDecl mn (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
   -- 5. Simplify
   typSimplified <- case infOptsSimplify infopts of
     True -> do
-      printGraphs <- gets (infOptsPrintGraphs . driverOpts)
+      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
       tys <- simplify (RST.generalize typ) printGraphs (T.unpack (unFreeVarName fv))
       guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
       return tys
@@ -114,7 +114,7 @@ inferDecl mn (RST.PrdCnsDecl loc doc pc isRec fv annot term) = do
 -- CmdDecl
 --
 inferDecl mn (RST.CmdDecl loc doc v cmd) = do
-  env <- gets driverEnv
+  env <- gets drvEnv
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErrLoc loc $ runGenM env (genConstraintsCommand cmd)
   -- Solve the constraints
@@ -218,5 +218,5 @@ inferProgramIO state mn decls = do
   res <- execDriverM state action
   case res of
     Left err -> return (Left err)
-    Right (res,x) -> return (Right ((driverEnv x), res))
+    Right (res,x) -> return (Right ((drvEnv x), res))
 
