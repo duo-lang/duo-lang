@@ -3,6 +3,7 @@ module Repl.Repl  where
 import Control.Monad.Except (runExcept)
 import Control.Monad.State
     ( gets, forM_, StateT, MonadIO(liftIO), modify )
+import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -56,8 +57,10 @@ initialReplState = ReplState { replDriverState = defaultDriverState
 type ReplInner = StateT ReplState IO
 type Repl a = HaskelineT ReplInner a
 
-modifyEnvironment :: (Environment -> Environment) -> Repl ()
-modifyEnvironment f = modify $ \rs@ReplState{ replDriverState = ds@MkDriverState { driverEnv }} -> rs { replDriverState = ds { driverEnv = f driverEnv } }
+modifyEnvironment :: ModuleName -> (Environment -> Environment) -> Repl ()
+modifyEnvironment mn f = modify g
+  where
+    g rs@ReplState{ replDriverState = ds@MkDriverState { driverEnv }} = rs { replDriverState = ds { driverEnv = M.adjust f mn driverEnv } }
 
 modifyLoadedFiles :: ([FilePath] -> [FilePath]) -> Repl ()
 modifyLoadedFiles f = modify $ \rs@ReplState{..} -> rs { loadedFiles = f loadedFiles }

@@ -23,7 +23,7 @@ import Driver.Definition (DriverState(..))
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv))
 import Renamer.Definition
-import Renamer.Program    
+import Renamer.Program
 import Syntax.RST.Types ( DataDecl(data_name) )
 import Syntax.RST.Program
 import Syntax.Common
@@ -43,12 +43,15 @@ showCmd "" = do
       Right decls -> prettyRepl decls
 showCmd str = do
   let s = MkFreeVarName (trim str)
-  env <- gets (driverEnv . replDriverState)
-  case M.lookup s (prdEnv env) of
+  env <- gets (M.elems . (driverEnv . replDriverState))
+  let concatPrdEnv = M.unions (prdEnv  <$> env)
+  let concatCnsEnv = M.unions (cnsEnv <$> env)
+  let concatCmdEnv = M.unions (cmdEnv <$> env)
+  case M.lookup s concatPrdEnv of
     Just (prd,_,_) -> prettyRepl prd
-    Nothing -> case M.lookup s (cnsEnv env) of
+    Nothing -> case M.lookup s concatCnsEnv of
       Just (cns,_,_) -> prettyRepl cns
-      Nothing -> case M.lookup s (cmdEnv env) of
+      Nothing -> case M.lookup s concatCmdEnv of
         Just (cmd,_) -> prettyRepl cmd
         Nothing -> prettyText "Not in environment."
 
@@ -64,8 +67,9 @@ showOption = Option
 
 showTypeCmd :: Text -> Repl ()
 showTypeCmd s = do
-  env <- gets (fmap snd . declEnv . driverEnv . replDriverState)
-  let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) env
+  env <- gets (driverEnv . replDriverState)
+  let concatEnv = concat (fmap snd . declEnv <$> (M.elems env))
+  let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) concatEnv
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
     Just decl -> prettyRepl decl

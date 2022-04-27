@@ -120,12 +120,16 @@ cmdCompleter :: CompletionFunc ReplInner
 cmdCompleter = mkWordCompleter (_simpleComplete f)
   where
     f n = do
-      env <- gets (driverEnv . replDriverState)
+      env <- gets (M.elems . driverEnv . replDriverState)
+      let concatPrdEnv = M.unions $ prdEnv <$> env
+      let concatCnsEnv = M.unions $ cnsEnv <$> env
+      let concatCmdEnv = M.unions $ cmdEnv <$> env
+      let concatDeclEnv = concat $ declEnv <$> env
       let completionList = (':' :) . T.unpack . option_name <$> allOptions
-      let keys = concat [ unFreeVarName <$> M.keys (prdEnv env)
-                        , unFreeVarName <$> M.keys (cnsEnv env)
-                        , unFreeVarName <$> M.keys (cmdEnv env)
-                        , (unTypeName . rnTnName . data_name . snd) <$> (declEnv env)
+      let keys = concat [ unFreeVarName <$> M.keys concatPrdEnv
+                        , unFreeVarName <$> M.keys concatCnsEnv
+                        , unFreeVarName <$> M.keys concatCmdEnv
+                        , (unTypeName . rnTnName . data_name . snd) <$> concatDeclEnv
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion

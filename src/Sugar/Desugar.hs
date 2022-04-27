@@ -9,6 +9,9 @@ module Sugar.Desugar
   )
   where
 
+import Data.Foldable (fold)
+import Data.Map (Map)
+import Data.Map qualified as M
 import Driver.Environment (Environment(..))
 import Eval.Definition (EvalEnv)
 import Syntax.AST.Program qualified as AST
@@ -322,8 +325,12 @@ desugarDecl (AST.TySynDecl loc doc nm ty) =
 desugarProgram :: AST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps
 
-desugarEnvironment :: Environment -> EvalEnv
-desugarEnvironment (MkEnvironment { prdEnv, cnsEnv, cmdEnv }) = (prd,cns,cmd)
+desugarEnvironment :: Map ModuleName Environment -> EvalEnv
+desugarEnvironment map = fold $ desugarEnvironment' <$> M.elems map
+
+
+desugarEnvironment' :: Environment -> EvalEnv
+desugarEnvironment' (MkEnvironment { prdEnv, cnsEnv, cmdEnv }) = (prd,cns,cmd)
   where
     prd = (\(tm,_,_) -> (desugarTerm tm)) <$> prdEnv
     cns = (\(tm,_,_) -> (desugarTerm tm)) <$> cnsEnv
