@@ -293,9 +293,10 @@ cocaseOfRestP startPos =  do
 
 patternP :: Parser (CST.TermPat, SourcePos)
 patternP = do
+  startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
   (args,endPos) <- bindingSiteP
-  pure (CST.XtorPat xt args, endPos)
+  pure (CST.XtorPat (Loc startPos endPos) xt args, endPos)
 
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP =  do

@@ -6,7 +6,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 embedPat :: Core.Pattern -> RST.Pattern
-embedPat (Core.XtorPat xt args) = RST.XtorPat xt args
+embedPat (Core.XtorPat loc xt args) = RST.XtorPat loc xt args
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =

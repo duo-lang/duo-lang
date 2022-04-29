@@ -44,7 +44,7 @@ type BindingSite = [FVOrStar]
 --------------------------------------------------------------------------------------------
 
 data TermPat where
-  XtorPat :: XtorName -> BindingSite -> TermPat
+  XtorPat :: Loc -> XtorName -> BindingSite -> TermPat
 
 deriving instance Show TermPat
 deriving instance Eq TermPat

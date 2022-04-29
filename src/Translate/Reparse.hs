@@ -52,23 +52,23 @@ freeVarNamesToXtorArgs bs = f <$> bs
     f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
 
 openTermCase :: RST.TermCase pc -> RST.TermCase pc
-openTermCase RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat xt args , tmcase_term } =
+openTermCase RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat loc xt args , tmcase_term } =
     RST.MkTermCase { tmcase_loc = tmcase_loc
-                   , tmcase_pat = RST.XtorPat xt args
+                   , tmcase_pat = RST.XtorPat loc xt args
                    , tmcase_term = RST.termOpening (freeVarNamesToXtorArgs args) (openTermComplete tmcase_term)
                    }
 
 openTermCaseI :: RST.TermCaseI pc -> RST.TermCaseI pc
-openTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat = RST.XtorPatI xt (as1, (), as2), tmcasei_term } =
+openTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2), tmcasei_term } =
   RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
-                  , tmcasei_pat = RST.XtorPatI xt (as1, (), as2)
+                  , tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2)
                   , tmcasei_term = RST.termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
                   }
 
 openCmdCase :: RST.CmdCase -> RST.CmdCase
-openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat xt args, cmdcase_cmd } =
+openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat loc xt args, cmdcase_cmd } =
   RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                , cmdcase_pat = RST.XtorPat xt args
+                , cmdcase_pat = RST.XtorPat loc xt args
                 , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete cmdcase_cmd)
                 }
 
@@ -248,16 +248,16 @@ createNamesCommand (RST.CocaseOfI loc rep ns tm cases) = do
   pure $ RST.CocaseOfI loc rep ns tm' cases'
 
 createNamesPat :: RST.Pattern -> CreateNameM RST.Pattern
-createNamesPat (RST.XtorPat xt args) = do
+createNamesPat (RST.XtorPat loc xt args) = do
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
-  pure $ RST.XtorPat xt args'
+  pure $ RST.XtorPat loc xt args'
 
 createNamesPatI :: RST.PatternI -> CreateNameM RST.PatternI
-createNamesPatI (RST.XtorPatI xt (as1, (), as2)) = do
+createNamesPatI (RST.XtorPatI loc xt (as1, (), as2)) = do
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
   as1' <- sequence $ f <$> as1
   as2' <- sequence $ f <$> as2
-  pure $ RST.XtorPatI xt (as1', (), as2')
+  pure $ RST.XtorPatI loc xt (as1', (), as2')
 
 createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
 createNamesCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
@@ -360,12 +360,12 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
 
 
 embedPat :: RST.Pattern -> CST.TermPat
-embedPat (RST.XtorPat xt args) =
-  CST.XtorPat xt (CST.FoSFV . fromJust . snd <$> args)
+embedPat (RST.XtorPat loc xt args) =
+  CST.XtorPat loc xt (CST.FoSFV . fromJust . snd <$> args)
 
 embedPatI :: RST.PatternI -> CST.TermPat
-embedPatI (RST.XtorPatI xt (as1,_,as2)) =
-  CST.XtorPat xt ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
+embedPatI (RST.XtorPatI loc xt (as1,_,as2)) =
+  CST.XtorPat loc xt ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
 
 embedCmdCase :: RST.CmdCase -> CST.TermCase
 embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =

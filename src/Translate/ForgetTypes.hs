@@ -17,10 +17,10 @@ forgetTypesPCTerm (AST.PrdTerm tm) = RST.PrdTerm (forgetTypesTerm tm)
 forgetTypesPCTerm (AST.CnsTerm tm) = RST.CnsTerm (forgetTypesTerm tm)
 
 forgetTypesPat :: AST.Pattern -> RST.Pattern
-forgetTypesPat (AST.XtorPat xt args) = RST.XtorPat xt args
+forgetTypesPat (AST.XtorPat loc xt args) = RST.XtorPat loc xt args
 
 forgetTypesPatI :: AST.PatternI -> RST.PatternI
-forgetTypesPatI (AST.XtorPatI xt args) = RST.XtorPatI xt args
+forgetTypesPatI (AST.XtorPatI loc xt args) = RST.XtorPatI loc xt args
 
 forgetTypesCmdCase :: AST.CmdCase  -> RST.CmdCase
 forgetTypesCmdCase AST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =

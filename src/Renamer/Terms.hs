@@ -107,7 +107,7 @@ analyzeCase :: DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
             -> RenamerM SomeIntermediateCase
-analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat tmcase_name tmcase_args, tmcase_term }) = do
+analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name tmcase_args, tmcase_term }) = do
   -- Lookup up the arity information in the symbol table.
   (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
   -- Check whether the Xtor is a Constructor/Destructor as expected.
@@ -157,7 +157,7 @@ renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
 renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
   cmd' <- renameCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
-                     , cmdcase_pat = RST.XtorPat icase_name (second Just <$> icase_args)
+                     , cmdcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                      , cmdcase_cmd = RST.commandClosing icase_args cmd'
                      }
 
@@ -165,7 +165,7 @@ renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCas
 renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- renameTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
-                       , tmcasei_pat = RST.XtorPatI icasei_name (second Just <$> args1, (), second Just <$> args2)
+                       , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
                        , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
@@ -173,7 +173,7 @@ renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
 renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
   tm' <- renameTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
-                      , tmcase_pat = RST.XtorPat icase_name (second Just <$> icase_args)
+                      , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
 
@@ -280,7 +280,7 @@ renameCommand (CST.Lambda loc _ _) =
 
 casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
 casesToNS [] = pure Structural
-casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat tmcase_name _ }):_) = do
+casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name _ }):_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 
@@ -293,7 +293,7 @@ renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc 
 renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
 renameLambda loc var tm = do
   tm' <- renameTerm PrdRep tm
-  let pat = RST.XtorPatI (MkXtorName "Ap") ([(Prd, Just var)], (), [])
+  let pat = RST.XtorPatI loc (MkXtorName "Ap") ([(Prd, Just var)], (), [])
   let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd, var)] tm')
   pure $ RST.CocaseI loc PrdRep Nominal [cs]
 

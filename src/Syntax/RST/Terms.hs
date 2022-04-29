@@ -59,13 +59,13 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 ---------------------------------------------------------------------------------
 
 data Pattern where
-  XtorPat :: XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
 
 deriving instance Show Pattern
 -- | The pattern arguments
 -- The empty tuple stands for the implicit argument (*)
 data PatternI where
-  XtorPatI :: XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
+  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
 
 deriving instance Show PatternI
 

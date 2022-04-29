@@ -31,7 +31,7 @@ runEval e env = runExceptT (runReaderT (unEvalM e) env)
 ---------------------------------------------------------------------------------
 
 lookupMatchCase :: XtorName -> [CmdCase] -> EvalM CmdCase
-lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat xt' _ } -> xt == xt') cases of
+lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat _ xt' _ } -> xt == xt') cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError ["Error during evaluation. The xtor: "
                             , unXtorName xt

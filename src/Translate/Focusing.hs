@@ -175,8 +175,8 @@ focusXtor' eo pc     ns xt (CnsTerm                                 cns:pcterms)
 
 
 focusCmdCase :: EvaluationOrder -> CmdCase -> CmdCase
-focusCmdCase eo MkCmdCase { cmdcase_pat = XtorPat xt args, cmdcase_cmd } =
-    MkCmdCase defaultLoc (XtorPat xt ((\(pc,_) -> (pc, Nothing)) <$> args)) (focusCmd eo cmdcase_cmd)
+focusCmdCase eo MkCmdCase { cmdcase_pat = XtorPat loc xt args, cmdcase_cmd } =
+    MkCmdCase defaultLoc (XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)) (focusCmd eo cmdcase_cmd)
 
 
 focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command

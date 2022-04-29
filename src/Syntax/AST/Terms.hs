@@ -68,13 +68,13 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 ---------------------------------------------------------------------------------
 
 data Pattern where
-  XtorPat :: XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
 
 deriving instance Show Pattern
 
 
 data PatternI where
-  XtorPatI :: XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
+  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
 
 deriving instance Show PatternI
 
@@ -485,7 +485,7 @@ termLocallyClosedRec _ (FreeVar _ _ _ _) = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
+  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 -- Syntactic sugar
@@ -512,16 +512,16 @@ termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
 termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase pc -> Either Error ()
-termCaseLocallyClosedRec env (MkTermCase _ (XtorPat _ args) e) = do
+termCaseLocallyClosedRec env (MkTermCase _ (XtorPat _ _ args) e) = do
   termLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) e
 
 termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI pc -> Either Error ()
-termCaseILocallyClosedRec env (MkTermCaseI _ (XtorPatI _ (as1, (), as2)) e) =
+termCaseILocallyClosedRec env (MkTermCaseI _ (XtorPatI _ _ (as1, (), as2)) e) =
   let newArgs = (\(x,_) -> (x,())) <$> as1 ++ [(Cns, Nothing)] ++ as2 in
   termLocallyClosedRec (newArgs:env) e
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
-cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ args) cmd)= do 
+cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do 
   commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
