@@ -4,6 +4,8 @@ module Syntax.RST.Terms
   , PrdCnsTerm(..)
   , Substitution
   , SubstitutionI
+  , Pattern(..)
+  , PatternI(..)
   , TermCase(..)
   , TermCaseI(..)
   , CmdCase(..)
@@ -56,6 +58,17 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+data Pattern where
+  XtorPat :: XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+
+deriving instance Show Pattern
+-- | The pattern arguments
+-- The empty tuple stands for the implicit argument (*)
+data PatternI where
+  XtorPatI :: XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
+
+deriving instance Show PatternI
+
 -- | Represents one case in a pattern match or copattern match.
 --
 --        X(x_1,...,x_n) => e
@@ -67,8 +80,7 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 --
 data TermCase (pc :: PrdCns)= MkTermCase
   { tmcase_loc  :: Loc
-  , tmcase_name :: XtorName
-  , tmcase_args :: [(PrdCns, Maybe FreeVarName)]
+  , tmcase_pat  :: Pattern
   , tmcase_term :: Term pc
   }
 
@@ -86,10 +98,7 @@ deriving instance Show (TermCase pc)
 --
 data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_loc  :: Loc
-  , tmcasei_name :: XtorName
-  -- | The pattern arguments
-  -- The empty tuple stands for the implicit argument (*)
-  , tmcasei_args :: ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)])
+  , tmcasei_pat  :: PatternI
   , tmcasei_term :: Term pc
   }
 
@@ -104,8 +113,7 @@ deriving instance Show (TermCaseI pc)
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_name :: XtorName
-  , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
+  , cmdcase_pat :: Pattern
   , cmdcase_cmd  :: Command
   }
 

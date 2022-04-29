@@ -157,8 +157,7 @@ renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
 renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
   cmd' <- renameCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
-                     , cmdcase_name = icase_name
-                     , cmdcase_args = second Just <$> icase_args
+                     , cmdcase_pat = RST.XtorPat icase_name (second Just <$> icase_args)
                      , cmdcase_cmd = RST.commandClosing icase_args cmd'
                      }
 
@@ -166,8 +165,7 @@ renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCas
 renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- renameTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
-                       , tmcasei_name = icasei_name
-                       , tmcasei_args = (second Just <$> args1, (), second Just <$> args2)
+                       , tmcasei_pat = RST.XtorPatI icasei_name (second Just <$> args1, (), second Just <$> args2)
                        , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
@@ -175,8 +173,7 @@ renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
 renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
   tm' <- renameTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
-                      , tmcase_name = icase_name
-                      , tmcase_args = second Just <$> icase_args
+                      , tmcase_pat = RST.XtorPat icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
 
@@ -296,10 +293,9 @@ renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc 
 renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
 renameLambda loc var tm = do
   tm' <- renameTerm PrdRep tm
-  pure $ RST.CocaseI loc PrdRep Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
-                                                      ([(Prd, Just var)], (), [])
-                                                      (RST.termClosing [(Prd, var)] tm')
-                                    ]
+  let pat = RST.XtorPatI (MkXtorName "Ap") ([(Prd, Just var)], (), [])
+  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd, var)] tm')
+  pure $ RST.CocaseI loc PrdRep Nominal [cs]
 
 -- | Lower a natural number literal.
 renameNatLit :: Loc -> NominalStructural -> Int -> RenamerM (RST.Term Prd)

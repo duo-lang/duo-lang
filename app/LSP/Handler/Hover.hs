@@ -66,10 +66,10 @@ mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap (TermCase pc) where
-  toHoverMap (MkTermCase _ _ _ tm) = toHoverMap tm
+  toHoverMap (MkTermCase {tmcase_term}) = toHoverMap tmcase_term
 
 instance ToHoverMap (TermCaseI pc) where
-  toHoverMap (MkTermCaseI _ _ _ tm) = toHoverMap tm
+  toHoverMap (MkTermCaseI {tmcasei_term}) = toHoverMap tmcasei_term
 
 instance ToHoverMap CmdCase where
   toHoverMap (MkCmdCase {cmdcase_cmd}) = toHoverMap cmdcase_cmd

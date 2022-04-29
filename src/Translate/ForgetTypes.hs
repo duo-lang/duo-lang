@@ -16,30 +16,33 @@ forgetTypesPCTerm :: AST.PrdCnsTerm  -> RST.PrdCnsTerm
 forgetTypesPCTerm (AST.PrdTerm tm) = RST.PrdTerm (forgetTypesTerm tm)
 forgetTypesPCTerm (AST.CnsTerm tm) = RST.CnsTerm (forgetTypesTerm tm)
 
+forgetTypesPat :: AST.Pattern -> RST.Pattern
+forgetTypesPat (AST.XtorPat xt args) = RST.XtorPat xt args
+
+forgetTypesPatI :: AST.PatternI -> RST.PatternI
+forgetTypesPatI (AST.XtorPatI xt args) = RST.XtorPatI xt args
+
 forgetTypesCmdCase :: AST.CmdCase  -> RST.CmdCase
-forgetTypesCmdCase AST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+forgetTypesCmdCase AST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     RST.MkCmdCase
       { cmdcase_loc = cmdcase_loc
-      , cmdcase_name = cmdcase_name
-      , cmdcase_args = cmdcase_args
+      , cmdcase_pat = forgetTypesPat cmdcase_pat
       , cmdcase_cmd = forgetTypesCommand cmdcase_cmd 
       }
 
 forgetTypesTermCase :: AST.TermCase pc -> RST.TermCase pc
-forgetTypesTermCase AST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
+forgetTypesTermCase AST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
     RST.MkTermCase
       { tmcase_loc = tmcase_loc
-      , tmcase_name = tmcase_name
-      , tmcase_args = tmcase_args
+      , tmcase_pat = forgetTypesPat tmcase_pat
       , tmcase_term = forgetTypesTerm tmcase_term 
       }
 
 forgetTypesTermCaseI :: AST.TermCaseI pc -> RST.TermCaseI pc
-forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args, tmcasei_term } =
+forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
     RST.MkTermCaseI
       { tmcasei_loc = tmcasei_loc
-      , tmcasei_name = tmcasei_name
-      , tmcasei_args = tmcasei_args
+      , tmcasei_pat = forgetTypesPatI tmcasei_pat
       , tmcasei_term = forgetTypesTerm tmcasei_term 
       }
 

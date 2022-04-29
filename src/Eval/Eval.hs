@@ -47,11 +47,11 @@ evalApplyOnce kind prd (FreeVar _ CnsRep fv) = do
   return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(Xtor _ _ PrdRep _ xt args) cns@(XCase _ _ CnsRep _ cases) = do
-  (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
+  (MkCmdCase _ (XtorPat _ argTypes) cmd') <- lookupMatchCase xt cases
   checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce _ prd@(XCase _ _ PrdRep _ cases) cns@(Xtor _ _ CnsRep _ xt args) = do
-  (MkCmdCase _ _ argTypes cmd') <- lookupMatchCase xt cases
+  (MkCmdCase _ (XtorPat _ argTypes) cmd') <- lookupMatchCase xt cases
   checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.

@@ -3,6 +3,7 @@ module Syntax.Core.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution
+  , Pattern(..)
   , CmdCase(..)
   , Command(..)
   , MuAnnot(..)
@@ -52,6 +53,12 @@ type Substitution = [PrdCnsTerm]
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+data Pattern where
+  XtorPat :: XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+
+deriving instance Eq Pattern
+deriving instance Show Pattern
+
 -- | Represents one case in a pattern match or copattern match.
 --
 --        X Gamma           => c
@@ -61,8 +68,7 @@ type Substitution = [PrdCnsTerm]
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_name :: XtorName
-  , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
+  , cmdcase_pat :: Pattern
   , cmdcase_cmd  :: Command
   }
 
@@ -298,7 +304,7 @@ termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> cmdcase_args) : env) cmdcase_cmd) <$> cases)
+  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
@@ -340,7 +346,7 @@ shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
 
 shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
-shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
+shiftCmdCaseRec n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftCmdRec n cmd)
 
 shiftCmdRec :: Int -> Command -> Command
 shiftCmdRec n (Apply loc annot kind prd cns) = Apply loc annot kind (shiftTermRec n prd) (shiftTermRec n cns)

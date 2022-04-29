@@ -56,7 +56,7 @@ isFocusedTerm _  lit@PrimLitI64{} = Just lit
 isFocusedTerm _  lit@PrimLitF64{} = Just lit
 
 isFocusedCmdCase :: EvaluationOrder -> CmdCase -> Maybe CmdCase
-isFocusedCmdCase eo (MkCmdCase loc xt args cmd) = MkCmdCase loc xt args <$> isFocusedCmd eo cmd
+isFocusedCmdCase eo (MkCmdCase loc pat cmd) = MkCmdCase loc pat <$> isFocusedCmd eo cmd
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: EvaluationOrder -> Command -> Maybe Command
@@ -175,8 +175,8 @@ focusXtor' eo pc     ns xt (CnsTerm                                 cns:pcterms)
 
 
 focusCmdCase :: EvaluationOrder -> CmdCase -> CmdCase
-focusCmdCase eo MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } =
-    MkCmdCase defaultLoc cmdcase_name ((\(pc,_) -> (pc, Nothing)) <$> cmdcase_args) (focusCmd eo cmdcase_cmd)
+focusCmdCase eo MkCmdCase { cmdcase_pat = XtorPat xt args, cmdcase_cmd } =
+    MkCmdCase defaultLoc (XtorPat xt ((\(pc,_) -> (pc, Nothing)) <$> args)) (focusCmd eo cmdcase_cmd)
 
 
 focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
