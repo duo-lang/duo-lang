@@ -291,16 +291,20 @@ cocaseOfRestP startPos =  do
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
   return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
 
+patternP :: Parser (CST.TermPat, SourcePos)
+patternP = do
+  (xt, _pos) <- xtorNameP
+  (args,endPos) <- bindingSiteP
+  pure (CST.XtorPat xt args, endPos)
+
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP =  do
   startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
-  (args,_) <- bindingSiteP
+  (pat,_) <- patternP
   _ <- symbolP SymDoubleRightArrow
   (t, endPos) <- termTopP
   let pmcase = CST.MkTermCase { tmcase_loc  = Loc startPos endPos
-                              , tmcase_name = xt
-                              , tmcase_args = args
+                              , tmcase_pat = pat
                               , tmcase_term  = t }
   return (pmcase, endPos)
 

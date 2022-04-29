@@ -107,7 +107,7 @@ analyzeCase :: DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
             -> RenamerM SomeIntermediateCase
-analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term }) = do
+analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat tmcase_name tmcase_args, tmcase_term }) = do
   -- Lookup up the arity information in the symbol table.
   (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
   -- Check whether the Xtor is a Constructor/Destructor as expected.
@@ -283,7 +283,7 @@ renameCommand (CST.Lambda loc _ _) =
 
 casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
 casesToNS [] = pure Structural
-casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_name }):_) = do
+casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat tmcase_name _ }):_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 

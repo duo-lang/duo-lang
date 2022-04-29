@@ -354,23 +354,20 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
 embedCmdCase :: RST.CmdCase -> CST.TermCase
 embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
   CST.MkTermCase { tmcase_loc = cmdcase_loc
-                , tmcase_name = cmdcase_name
-                , tmcase_args = CST.FoSFV . fromJust . snd <$> cmdcase_args
+                , tmcase_pat = CST.XtorPat cmdcase_name (CST.FoSFV . fromJust . snd <$> cmdcase_args)
                 , tmcase_term = embedCommand cmdcase_cmd
                 }
 
 embedTermCase :: RST.TermCase pc -> CST.TermCase
 embedTermCase RST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
   CST.MkTermCase { tmcase_loc = tmcase_loc
-                 , tmcase_name = tmcase_name
-                 , tmcase_args = CST.FoSFV . fromJust . snd <$> tmcase_args
+                 , tmcase_pat = CST.XtorPat tmcase_name (CST.FoSFV . fromJust . snd <$> tmcase_args)
                  , tmcase_term = embedTerm tmcase_term}
 
 embedTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1,_, as2), tmcasei_term } =
   CST.MkTermCase { tmcase_loc = tmcasei_loc
-                  , tmcase_name = tmcasei_name
-                  , tmcase_args = (CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2)
+                  , tmcase_pat = CST.XtorPat tmcasei_name ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
                   , tmcase_term = embedTerm tmcasei_term}
 
 
