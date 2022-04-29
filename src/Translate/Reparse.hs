@@ -34,6 +34,7 @@ import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.CST.Terms (FVOrStar(FoSStar))
 import GHC.Base (NonEmpty ((:|)))
+import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -51,27 +52,24 @@ freeVarNamesToXtorArgs bs = f <$> bs
     f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
 
 openTermCase :: RST.TermCase pc -> RST.TermCase pc
-openTermCase RST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
+openTermCase RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat loc xt args , tmcase_term } =
     RST.MkTermCase { tmcase_loc = tmcase_loc
-                   , tmcase_name = tmcase_name
-                   , tmcase_args = tmcase_args
-                   , tmcase_term = RST.termOpening (freeVarNamesToXtorArgs tmcase_args) (openTermComplete tmcase_term)
+                   , tmcase_pat = RST.XtorPat loc xt args
+                   , tmcase_term = RST.termOpening (freeVarNamesToXtorArgs args) (openTermComplete tmcase_term)
                    }
 
 openTermCaseI :: RST.TermCaseI pc -> RST.TermCaseI pc
-openTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1, (), as2), tmcasei_term } =
+openTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2), tmcasei_term } =
   RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
-                  , tmcasei_name = tmcasei_name
-                  , tmcasei_args = (as1, (), as2)
+                  , tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2)
                   , tmcasei_term = RST.termOpening (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (openTermComplete tmcasei_term)
                   }
 
 openCmdCase :: RST.CmdCase -> RST.CmdCase
-openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat loc xt args, cmdcase_cmd } =
   RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                , cmdcase_name = cmdcase_name
-                , cmdcase_args = cmdcase_args
-                , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs cmdcase_args) (openCommandComplete cmdcase_cmd)
+                , cmdcase_pat = RST.XtorPat loc xt args
+                , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete cmdcase_cmd)
                 }
 
 openPCTermComplete :: RST.PrdCnsTerm -> RST.PrdCnsTerm
@@ -249,25 +247,35 @@ createNamesCommand (RST.CocaseOfI loc rep ns tm cases) = do
   cases' <- sequence $ createNamesTermCaseI <$> cases
   pure $ RST.CocaseOfI loc rep ns tm' cases'
 
-createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
-createNamesCmdCase RST.MkCmdCase { cmdcase_name, cmdcase_args, cmdcase_cmd } = do
-  cmd' <- createNamesCommand cmdcase_cmd
-  args <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> cmdcase_args
-  return $ RST.MkCmdCase defaultLoc cmdcase_name args cmd'
-
-createNamesTermCase :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
-createNamesTermCase (RST.MkTermCase _ xt args e) = do
-  e' <- createNamesTerm e
+createNamesPat :: RST.Pattern -> CreateNameM RST.Pattern
+createNamesPat (RST.XtorPat loc xt args) = do
   args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
-  return $ RST.MkTermCase defaultLoc xt args' e'
+  pure $ RST.XtorPat loc xt args'
 
-createNamesTermCaseI :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
-createNamesTermCaseI (RST.MkTermCaseI _ xt (as1, (), as2) e) = do
-  e' <- createNamesTerm e
+createNamesPatI :: RST.PatternI -> CreateNameM RST.PatternI
+createNamesPatI (RST.XtorPatI loc xt (as1, (), as2)) = do
   let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
   as1' <- sequence $ f <$> as1
   as2' <- sequence $ f <$> as2
-  return $ RST.MkTermCaseI defaultLoc xt (as1', (), as2') e'
+  pure $ RST.XtorPatI loc xt (as1', (), as2')
+
+createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
+createNamesCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
+  pat' <- createNamesPat cmdcase_pat
+  cmd' <- createNamesCommand cmdcase_cmd
+  pure $ RST.MkCmdCase cmdcase_loc pat' cmd'
+
+createNamesTermCase :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
+createNamesTermCase RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
+  term <- createNamesTerm tmcase_term
+  pat <- createNamesPat tmcase_pat
+  pure $ RST.MkTermCase tmcase_loc pat term
+
+createNamesTermCaseI :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
+createNamesTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } = do
+  term <- createNamesTerm tmcasei_term
+  pat <- createNamesPatI tmcasei_pat
+  pure $ RST.MkTermCaseI tmcasei_loc pat term
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
@@ -351,27 +359,33 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
   CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
 
 
+embedPat :: RST.Pattern -> CST.TermPat
+embedPat (RST.XtorPat loc xt args) =
+  CST.XtorPat loc xt (CST.FoSFV . fromJust . snd <$> args)
+
+embedPatI :: RST.PatternI -> CST.TermPat
+embedPatI (RST.XtorPatI loc xt (as1,_,as2)) =
+  CST.XtorPat loc xt ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
+
 embedCmdCase :: RST.CmdCase -> CST.TermCase
-embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
   CST.MkTermCase { tmcase_loc = cmdcase_loc
-                , tmcase_name = cmdcase_name
-                , tmcase_args = CST.FoSFV . fromJust . snd <$> cmdcase_args
-                , tmcase_term = embedCommand cmdcase_cmd
-                }
+                 , tmcase_pat = embedPat cmdcase_pat
+                 , tmcase_term = embedCommand cmdcase_cmd
+                 }
 
 embedTermCase :: RST.TermCase pc -> CST.TermCase
-embedTermCase RST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term } =
+embedTermCase RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
   CST.MkTermCase { tmcase_loc = tmcase_loc
-                 , tmcase_name = tmcase_name
-                 , tmcase_args = CST.FoSFV . fromJust . snd <$> tmcase_args
+                 , tmcase_pat = embedPat tmcase_pat
                  , tmcase_term = embedTerm tmcase_term}
 
 embedTermCaseI :: RST.TermCaseI pc -> CST.TermCase
-embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_name, tmcasei_args = (as1,_, as2), tmcasei_term } =
+embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
   CST.MkTermCase { tmcase_loc = tmcasei_loc
-                  , tmcase_name = tmcasei_name
-                  , tmcase_args = (CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2)
-                  , tmcase_term = embedTerm tmcasei_term}
+                 , tmcase_pat = embedPatI tmcasei_pat
+                 , tmcase_term = embedTerm tmcasei_term
+                 }
 
 
 embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp

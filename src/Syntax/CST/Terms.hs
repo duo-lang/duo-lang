@@ -43,10 +43,15 @@ type BindingSite = [FVOrStar]
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
+data TermPat where
+  XtorPat :: Loc -> XtorName -> BindingSite -> TermPat
+
+deriving instance Show TermPat
+deriving instance Eq TermPat
+
 data TermCase  = MkTermCase
   { tmcase_loc  :: Loc
-  , tmcase_name :: XtorName
-  , tmcase_args :: BindingSite
+  , tmcase_pat  :: TermPat
   , tmcase_term :: Term
   }
 

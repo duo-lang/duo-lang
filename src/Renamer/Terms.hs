@@ -35,29 +35,42 @@ renameTerms loc (Cns:ar) (t:tms) = do
 renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
 
 ---------------------------------------------------------------------------------
--- Analyze cases
+-- Analyze Patterns
 ---------------------------------------------------------------------------------
 
 data AnalyzedPattern
-  = ExplicitPattern [(PrdCns, FreeVarName)]
-  | ImplicitPrdPattern ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
-  | ImplicitCnsPattern ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
+  = ExplicitPattern Loc XtorName [(PrdCns, FreeVarName)]
+  | ImplicitPrdPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
+  | ImplicitCnsPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
 
-analyzePattern :: Loc -> Arity -> [CST.FVOrStar] -> RenamerM AnalyzedPattern
-analyzePattern loc arity pattern = do
+analyzePattern :: DataCodata -> CST.TermPat -> RenamerM AnalyzedPattern
+analyzePattern dc (CST.XtorPat loc xt args) = do
+  -- Lookup up the arity information in the symbol table.
+  (_,XtorNameResult dc' _ arity) <- lookupXtor loc xt
+  -- Check whether the Xtor is a Constructor/Destructor as expected.
+  case (dc,dc') of
+    (Codata,Data  ) -> throwError $ OtherError (Just loc) "Expected a destructor but found a constructor"
+    (Data  ,Codata) -> throwError $ OtherError (Just loc) "Expected a constructor but found a destructor"
+    (Data  ,Data  ) -> pure ()
+    (Codata,Codata) -> pure ()
+  -- Analyze the pattern
   -- Check whether the number of arguments in the given binding site
   -- corresponds to the number of arguments specified for the constructor/destructor.
-  when (length arity /= length pattern) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length pattern)
-  case length (filter CST.isStar pattern) of
-    0 -> pure $ ExplicitPattern $ zip arity (CST.fromFVOrStar <$> pattern)
+  when (length arity /= length args) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
+  case length (filter CST.isStar args) of
+    0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
     1 -> do
-      let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity pattern
+      let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
       let (args1,((pc,_):args2)) = break (\(_,x) -> CST.isStar x) zipped
       case pc of
-        Cns -> pure $ ImplicitPrdPattern (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
-        Prd -> pure $ ImplicitCnsPattern (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
+        Cns -> pure $ ImplicitPrdPattern loc xt (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
+        Prd -> pure $ ImplicitCnsPattern loc xt (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
     n -> throwError $ LowerError (Just loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
+
+---------------------------------------------------------------------------------
+-- Analyze Cases
+---------------------------------------------------------------------------------
 
 -- | A case with no stars.
 data IntermediateCase  = MkIntermediateCase
@@ -107,33 +120,24 @@ analyzeCase :: DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
             -> RenamerM SomeIntermediateCase
-analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_name, tmcase_args, tmcase_term }) = do
-  -- Lookup up the arity information in the symbol table.
-  (_,XtorNameResult dc' _ arity) <- lookupXtor tmcase_loc tmcase_name
-  -- Check whether the Xtor is a Constructor/Destructor as expected.
-  case (dc,dc') of
-    (Codata,Data  ) -> throwError $ OtherError (Just tmcase_loc) "Expected a destructor but found a constructor"
-    (Data  ,Codata) -> throwError $ OtherError (Just tmcase_loc) "Expected a constructor but found a destructor"
-    (Data  ,Data  ) -> pure ()
-    (Codata,Codata) -> pure ()
-  -- Analyze the pattern
-  analyzedPattern <- analyzePattern tmcase_loc arity tmcase_args
+analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term }) = do
+  analyzedPattern <- analyzePattern dc tmcase_pat
   case analyzedPattern of
-    ExplicitPattern pat -> pure $ ExplicitCase $ MkIntermediateCase
+    ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
-                                    , icase_name = tmcase_name
+                                    , icase_name = xt
                                     , icase_args = pat
                                     , icase_term = tmcase_term
                                     }
-    ImplicitPrdPattern pat -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
+    ImplicitPrdPattern _ xt pat -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
-                                    , icasei_name = tmcase_name
+                                    , icasei_name = xt
                                     , icasei_args = pat
                                     , icasei_term = tmcase_term
                                     }
-    ImplicitCnsPattern pat -> pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
+    ImplicitCnsPattern _ xt pat -> pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
-                                    , icasei_name = tmcase_name
+                                    , icasei_name = xt
                                     , icasei_args = pat
                                     , icasei_term = tmcase_term
                                     }
@@ -157,8 +161,7 @@ renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
 renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
   cmd' <- renameCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
-                     , cmdcase_name = icase_name
-                     , cmdcase_args = second Just <$> icase_args
+                     , cmdcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                      , cmdcase_cmd = RST.commandClosing icase_args cmd'
                      }
 
@@ -166,8 +169,7 @@ renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCas
 renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- renameTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
-                       , tmcasei_name = icasei_name
-                       , tmcasei_args = (second Just <$> args1, (), second Just <$> args2)
+                       , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
                        , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
@@ -175,8 +177,7 @@ renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
 renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
   tm' <- renameTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
-                      , tmcase_name = icase_name
-                      , tmcase_args = second Just <$> icase_args
+                      , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
 
@@ -283,7 +284,7 @@ renameCommand (CST.Lambda loc _ _) =
 
 casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
 casesToNS [] = pure Structural
-casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_name }):_) = do
+casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name _ }):_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 
@@ -296,10 +297,9 @@ renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc 
 renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
 renameLambda loc var tm = do
   tm' <- renameTerm PrdRep tm
-  pure $ RST.CocaseI loc PrdRep Nominal [ RST.MkTermCaseI loc (MkXtorName "Ap")
-                                                      ([(Prd, Just var)], (), [])
-                                                      (RST.termClosing [(Prd, var)] tm')
-                                    ]
+  let pat = RST.XtorPatI loc (MkXtorName "Ap") ([(Prd, Just var)], (), [])
+  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd, var)] tm')
+  pure $ RST.CocaseI loc PrdRep Nominal [cs]
 
 -- | Lower a natural number literal.
 renameNatLit :: Loc -> NominalStructural -> Int -> RenamerM (RST.Term Prd)

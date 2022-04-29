@@ -18,6 +18,13 @@ import Translate.Reparse
 -- Pattern match cases and cocases
 ---------------------------------------------------------------------------------
 
+-- Patterns
+
+instance PrettyAnn CST.TermPat where
+  prettyAnn (CST.XtorPat _ xt args) =
+    prettyAnn xt <>
+    parens (intercalateComma (map prettyAnn args))
+
 -- CmdCase
 
 instance PrettyAnn Core.CmdCase where
@@ -38,9 +45,8 @@ instance PrettyAnn (RST.TermCase pc) where
   prettyAnn termcase = prettyAnn (reparseTermCase termcase)
 
 instance PrettyAnn CST.TermCase where
-  prettyAnn CST.MkTermCase{ tmcase_name, tmcase_args, tmcase_term } =
-      prettyAnn tmcase_name <>
-      printCasesArgs tmcase_args <+>
+  prettyAnn CST.MkTermCase{ tmcase_pat, tmcase_term } =
+      prettyAnn tmcase_pat <+>
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
@@ -59,10 +65,6 @@ instance PrettyAnn CST.FVOrStar where
 instance PrettyAnn CST.TermOrStar  where
   prettyAnn (CST.ToSTerm t) = prettyAnn t
   prettyAnn CST.ToSStar  = "*"
-
-printCasesArgs :: CST.BindingSite -> Doc Annotation
-printCasesArgs cs = parens (intercalateComma (map prettyAnn cs))
-
 
 ---------------------------------------------------------------------------------
 -- Substitutions

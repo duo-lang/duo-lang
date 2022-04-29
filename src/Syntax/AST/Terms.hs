@@ -4,6 +4,8 @@ module Syntax.AST.Terms
   , PrdCnsTerm(..)
   , Substitution
   , SubstitutionI
+  , Pattern(..)
+  , PatternI(..)
   , TermCase(..)
   , TermCaseI(..)
   , CmdCase(..)
@@ -65,6 +67,17 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+data Pattern where
+  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+
+deriving instance Show Pattern
+
+
+data PatternI where
+  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
+
+deriving instance Show PatternI
+
 -- | Represents one case in a pattern match or copattern match.
 --
 --        X(x_1,...,x_n) => e
@@ -76,14 +89,13 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 --
 data TermCase (pc :: PrdCns) = MkTermCase
   { tmcase_loc  :: Loc
-  , tmcase_name :: XtorName
-  , tmcase_args :: [(PrdCns, Maybe FreeVarName)]
+  , tmcase_pat :: Pattern
   , tmcase_term :: Term pc
   }
 
 instance Zonk (TermCase pc) where
-  zonk bisubst (MkTermCase loc nm args tm) =
-    MkTermCase loc nm args (zonk bisubst tm)
+  zonk bisubst (MkTermCase loc pat tm) =
+    MkTermCase loc pat (zonk bisubst tm)
 
 deriving instance Show (TermCase pc)
 
@@ -99,16 +111,13 @@ deriving instance Show (TermCase pc)
 --
 data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_loc  :: Loc
-  , tmcasei_name :: XtorName
-  -- | The pattern arguments
-  -- The empty tuple stands for the implicit argument (*)
-  , tmcasei_args :: ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)])
+  , tmcasei_pat :: PatternI
   , tmcasei_term :: Term pc
   }
 
 instance Zonk (TermCaseI pc) where
-  zonk bisubst (MkTermCaseI loc nm args tm) =
-    MkTermCaseI loc nm args (zonk bisubst tm)
+  zonk bisubst (MkTermCaseI loc pat tm) =
+    MkTermCaseI loc pat (zonk bisubst tm)
 
 deriving instance Show (TermCaseI pc)
 
@@ -121,14 +130,13 @@ deriving instance Show (TermCaseI pc)
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_name :: XtorName
-  , cmdcase_args :: [(PrdCns, Maybe FreeVarName)]
+  , cmdcase_pat :: Pattern
   , cmdcase_cmd  :: Command
   }
 
 instance Zonk CmdCase where
-  zonk bisubst (MkCmdCase loc nm args cmd) =
-    MkCmdCase loc nm args (zonk bisubst cmd)
+  zonk bisubst (MkCmdCase loc pat cmd) =
+    MkCmdCase loc pat (zonk bisubst cmd)
 
 deriving instance Show CmdCase
 
@@ -477,7 +485,7 @@ termLocallyClosedRec _ (FreeVar _ _ _ _) = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> cmdcase_args) : env) cmdcase_cmd) <$> cases)
+  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 -- Syntactic sugar
@@ -504,16 +512,16 @@ termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
 termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase pc -> Either Error ()
-termCaseLocallyClosedRec env (MkTermCase _ _ args e) = do
+termCaseLocallyClosedRec env (MkTermCase _ (XtorPat _ _ args) e) = do
   termLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) e
 
 termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI pc -> Either Error ()
-termCaseILocallyClosedRec env (MkTermCaseI _ _ (as1, (), as2) e) =
+termCaseILocallyClosedRec env (MkTermCaseI _ (XtorPatI _ _ (as1, (), as2)) e) =
   let newArgs = (\(x,_) -> (x,())) <$> as1 ++ [(Cns, Nothing)] ++ as2 in
   termLocallyClosedRec (newArgs:env) e
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
-cmdCaseLocallyClosedRec env (MkCmdCase _ _ args cmd)= do 
+cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do 
   commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
@@ -580,13 +588,25 @@ shiftTermRec _ lit@PrimLitI64{} = lit
 shiftTermRec _ lit@PrimLitF64{} = lit
 
 shiftTermCaseRec :: Int -> TermCase pc -> TermCase pc
-shiftTermCaseRec n (MkTermCase ext xt args e) = MkTermCase ext xt args (shiftTermRec n e)
+shiftTermCaseRec n MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
+  MkTermCase { tmcase_loc = tmcase_loc
+             , tmcase_pat = tmcase_pat
+             , tmcase_term = shiftTermRec n tmcase_term
+            }
 
 shiftTermCaseIRec :: Int -> TermCaseI pc -> TermCaseI pc
-shiftTermCaseIRec n (MkTermCaseI ext xt args e) = MkTermCaseI ext xt args (shiftTermRec n e)
+shiftTermCaseIRec n MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
+  MkTermCaseI { tmcasei_loc = tmcasei_loc
+              , tmcasei_pat = tmcasei_pat
+              , tmcasei_term = shiftTermRec n tmcasei_term
+              }
 
 shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
-shiftCmdCaseRec n (MkCmdCase ext name bs cmd) = MkCmdCase ext name bs (shiftCmdRec n cmd)
+shiftCmdCaseRec n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+  MkCmdCase { cmdcase_loc = cmdcase_loc
+            , cmdcase_pat = cmdcase_pat
+            , cmdcase_cmd = shiftCmdRec n cmdcase_cmd
+            }
 
 shiftCmdRec :: Int -> Command -> Command
 shiftCmdRec n (Apply ext kind prd cns) =

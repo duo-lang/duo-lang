@@ -5,11 +5,13 @@ import Syntax.RST.Program qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
+embedPat :: Core.Pattern -> RST.Pattern
+embedPat (Core.XtorPat loc xt args) = RST.XtorPat loc xt args
+
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
-embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_name, cmdcase_args, cmdcase_cmd } =
+embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                  , cmdcase_name = cmdcase_name
-                  , cmdcase_args = cmdcase_args
+                  , cmdcase_pat = embedPat cmdcase_pat
                   , cmdcase_cmd = embedCoreCommand cmdcase_cmd
                   }
 
