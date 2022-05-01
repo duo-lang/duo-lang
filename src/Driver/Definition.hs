@@ -71,6 +71,9 @@ defaultDriverState = MkDriverState
 newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO)
 
+instance MonadFail DriverM where
+  fail str = throwError (OtherError Nothing (T.pack str))
+  
 execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
 execDriverM state act = runExceptT $ runStateT (unDriverM act) state
 

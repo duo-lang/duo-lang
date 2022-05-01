@@ -11,21 +11,31 @@ module Driver.Repl
   , subsumeRepl
   ) where
 
+import Control.Monad.State (gets)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.Text (Text)
 import Data.Text qualified as T
 
 import Driver.Definition
 import Driver.Driver
+import Eval.Eval ( eval, evalSteps )
 import Parser.Definition
 import Parser.Parser ( subtypingProblemP )
 import Parser.Program ( declarationP )
+import Parser.Terms ( termP )
+import Pretty.Pretty
 import Renamer.Definition
 import Renamer.Types
+import Sugar.Desugar ( desugarCmd, desugarEnvironment )
+import Translate.Focusing ( focusCmd, focusEnvironment )
 import Syntax.Common
+import Syntax.RST.Program qualified as RST
+import Syntax.AST.Program qualified as AST
 import TypeAutomata.Subsume
 import Utils ( defaultLoc )
 import Renamer.Program (renameDecl)
+import Renamer.Terms (renameCommand)
+import Sugar.Desugar (desugarEnvironment)
 
 
 ---------------------------------------------------------------------------------
@@ -89,28 +99,25 @@ letRepl txt = do
 data EvalSteps = Steps | NoSteps
 
 runCmd :: Text -> EvalSteps ->  DriverM ()
-runCmd _s _steps = liftIO $ putStrLn "run currently not implemented"
--- do
---   (comLoc,_) <- parseInteractive termP (T.pack s)
---   ds <- gets replDriverState
---   inferredCmd <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") [CST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") comLoc]
---   case inferredCmd of
---     Right (_,[CmdDecl _ _ _ inferredCmd]) -> do
---       env <- gets (drvEnv . replDriverState)
---       steps <- gets steps
---       let compiledCmd = focusCmd CBV (desugarCmd inferredCmd)
---       let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
---       case steps of
---         NoSteps -> do
---           resE <- liftIO $ eval compiledCmd compiledEnv
---           res <- fromRight resE
---           prettyRepl res
---         Steps -> do
---           resE <- liftIO $ evalSteps compiledCmd compiledEnv
---           res <- fromRight  resE
---           forM_ res (\cmd -> prettyRepl cmd >> prettyText "----")
---     Right _ -> prettyText "Unreachable"
---     Left err -> prettyRepl err
+runCmd txt steps = do
+    (parsedCommand, _) <- runInteractiveParser termP txt
+    sts <- getSymbolTables
+    renamedDecl <- liftEitherErr (runRenamerM sts (renameCommand parsedCommand))
+    (AST.CmdDecl _ _ _ inferredCmd) <- inferDecl interactiveModule (RST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") renamedDecl)
+    env <- gets drvEnv
+    let compiledCmd = focusCmd CBV (desugarCmd inferredCmd)
+    let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
+    case steps of
+        NoSteps -> do
+            resE <- liftIO $ eval compiledCmd compiledEnv
+            liftIO $ putStrLn $ case resE of
+                                   Left err -> ppPrintString err
+                                   Right res -> ppPrintString res
+        Steps -> do
+            resE <-liftIO $ evalSteps compiledCmd compiledEnv
+            liftIO $ putStrLn $ case resE of
+                                   Left err -> ppPrintString err
+                                   Right res -> ppPrintString res
 
 ---------------------------------------------------------------------------------
 -- ":subsume" command
@@ -126,13 +133,3 @@ subsumeRepl txt = do
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"
-
--- safeRead :: FilePath -> Repl Text
--- safeRead file =  do
---   let file' = trimStr file
---   res <- liftIO $ tryIOError (T.readFile file')
---   case res of
---     (Left _) -> do
---       liftIO $ putStrLn $ "File with name " ++ file' ++ " does not exist."
---       abort
---     (Right s) -> return $ s
