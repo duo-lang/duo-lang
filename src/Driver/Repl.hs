@@ -17,25 +17,29 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Driver.Definition
-import Driver.Driver
+    ( DriverM,
+      DriverState(drvEnv),
+      getSymbolTables,
+      findModule,
+      liftEitherErr )
+import Driver.Driver ( inferDecl )
 import Eval.Eval ( eval, evalSteps )
-import Parser.Definition
+import Parser.Definition ( runInteractiveParser )
 import Parser.Parser ( subtypingProblemP )
 import Parser.Program ( declarationP )
 import Parser.Terms ( termP )
-import Pretty.Pretty
-import Renamer.Definition
-import Renamer.Types
+import Pretty.Pretty ( ppPrintString )
+import Renamer.Definition ( runRenamerM )
+import Renamer.Types ( renameTypeScheme )
 import Sugar.Desugar ( desugarCmd, desugarEnvironment )
 import Translate.Focusing ( focusCmd, focusEnvironment )
 import Syntax.Common
 import Syntax.RST.Program qualified as RST
 import Syntax.AST.Program qualified as AST
-import TypeAutomata.Subsume
+import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Renamer.Program (renameDecl)
 import Renamer.Terms (renameCommand)
-import Sugar.Desugar (desugarEnvironment)
 
 
 ---------------------------------------------------------------------------------
@@ -63,19 +67,6 @@ loadFromModule :: ModuleName -> DriverM ()
 loadFromModule mn = do
     fp <- findModule mn defaultLoc
     loadFromFile fp
-
-
--- loadFile :: FilePath -> Repl ()
--- loadFile fp = do
---   decls <- parseFile fp programP
---   ds <- gets replDriverState
---   res <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") decls
---   case res of
---     Left err -> printLocatedError err
---     Right (_newEnv,_) -> do
---       --modifyEnvironment (MkModuleName "FOO") undefined --(const newEnv)
---       --prettyRepl newEnv
---       prettyRepl $ "Successfully loaded: " ++ fp
 
 reload :: DriverM ()
 reload = liftIO $ putStrLn ":reload currently not implemented"
