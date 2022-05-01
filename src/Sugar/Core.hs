@@ -70,3 +70,38 @@ pattern CaseOfI loc rep ns t cases <-
          MkCmdCase loc pat $ Apply loc (ApplyAnnotCaseOfIInner $ length as1) Nothing  (BoundVar loc PrdRep (0,length as1)) t
      in
        Apply loc ApplyAnnotCaseOfIOuter Nothing t (XCase loc MatchAnnotCaseOfI CnsRep ns $ desugarmatchCase <$> cases)
+
+
+resugarCmdCocase :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
+resugarCmdCocase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
+                (Apply _ (ApplyAnnotCocaseOfIInner i) Nothing t (BoundVar _ CnsRep (0,_)))) =
+                      MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
+resugarCmdCocase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
+                (Apply _ (ApplyAnnotCocaseOfIInner i) Nothing (BoundVar _ PrdRep (0,_)) t)) =
+                      MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
+resugarCmdCocase _ cmd = error $ "cannot resugar " ++ show cmd
+
+-- CocaseOfI:
+--   [[cocase e of { Dtor(xs,*,ys) => prd }]] =
+--      < cocase { Dtor(xs,k,ys) => < [[prd]] | k > } | [[e]] >
+--   [[cocase e of { Dtor(xs,*,ys) => cns }]] =
+--      < cocase { Dtor(xs,k,ys) => < k | [[cns]] > } | [[e]] >
+
+pattern CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
+pattern CocaseOfI loc rep ns t cases <-
+  Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) ns (map (resugarCmdCocase rep) -> cases)) t 
+  where
+    CocaseOfI loc PrdRep ns t cases =
+     let
+       desugarcomatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+         let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2)  in
+         MkCmdCase loc pat $ Apply loc (ApplyAnnotCocaseOfIInner $ length as1) Nothing t (BoundVar loc CnsRep (0,length as1))
+     in
+       Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t
+    CocaseOfI loc CnsRep ns t cases =
+     let
+       desugarcomatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+         let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2)  in
+         MkCmdCase loc pat $ Apply loc (ApplyAnnotCocaseOfIInner $ length as1) Nothing  (BoundVar loc PrdRep (0,length as1)) t
+     in
+       Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t

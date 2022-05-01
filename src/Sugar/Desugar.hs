@@ -289,14 +289,14 @@ desugarCmd (AST.CocaseOfI loc PrdRep ns t cases) =
   let
     desugarcomatchCase (AST.MkTermCaseI _ (AST.XtorPatI loc xt (as1, (), as2)) t) =
       let pat = Core.XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2) in
-      Core.MkCmdCase loc pat $ Core.Apply loc Core.ApplyAnnotCocaseOfIInner Nothing (desugarTerm t) (Core.BoundVar loc CnsRep (0,length as1))  
+      Core.MkCmdCase loc pat $ Core.Apply loc (Core.ApplyAnnotCocaseOfIInner $ length as1) Nothing (desugarTerm t) (Core.BoundVar loc CnsRep (0,length as1))  
   in
     Core.Apply loc Core.ApplyAnnotCocaseOfIOuter Nothing (Core.XCase loc Core.MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) (desugarTerm t)
 desugarCmd (AST.CocaseOfI loc CnsRep ns t cases) = 
   let
     desugarcomatchCase (AST.MkTermCaseI _ (AST.XtorPatI loc xt (as1, (), as2)) t) =
       let pat = Core.XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2) in
-      Core.MkCmdCase loc pat $ Core.Apply loc Core.ApplyAnnotCocaseOfIInner Nothing (Core.BoundVar loc PrdRep (0,length as1)) (desugarTerm t)  
+      Core.MkCmdCase loc pat $ Core.Apply loc (Core.ApplyAnnotCocaseOfIInner $ length as1) Nothing (Core.BoundVar loc PrdRep (0,length as1)) (desugarTerm t)  
   in
     Core.Apply loc Core.ApplyAnnotCocaseOfIOuter Nothing (Core.XCase loc Core.MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) (desugarTerm t)
 

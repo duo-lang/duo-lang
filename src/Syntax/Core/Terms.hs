@@ -165,7 +165,7 @@ data ApplyAnnot where
   -- CaseOfI/CocaseOfI
   ApplyAnnotCaseOfIInner :: Int -> ApplyAnnot
   ApplyAnnotCaseOfIOuter :: ApplyAnnot
-  ApplyAnnotCocaseOfIInner :: ApplyAnnot
+  ApplyAnnotCocaseOfIInner :: Int -> ApplyAnnot
   ApplyAnnotCocaseOfIOuter :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
