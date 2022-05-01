@@ -2,13 +2,13 @@ module Repl.Options.Subsume (subOption) where
 
 import Data.Text (Text)
 
-import Driver.Repl (subsume)
+import Driver.Repl (subsumeRepl)
 import Repl.Repl  ( Repl, Option(..), runDriver)
 
 -- Subsume
 
 subCmd :: Text -> Repl ()
-subCmd s = runDriver (subsume s)
+subCmd s = runDriver (subsumeRepl s)
 
 subOption :: Option
 subOption = Option

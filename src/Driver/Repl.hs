@@ -8,20 +8,41 @@ module Driver.Repl
   , EvalSteps(..)
   , runCmd
     -- ":subsume"
-  , subsume
+  , subsumeRepl
   ) where
 
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.Text (Text)
+import Data.Text qualified as T
 
-import Driver.Definition ( DriverM )
+import Driver.Definition
+import Parser.Definition
+import Parser.Parser ( subtypingProblemP )
+import Renamer.Definition
+import Renamer.Types
+import Syntax.Common
+import TypeAutomata.Subsume
+import Utils ( defaultLoc )
 
 ---------------------------------------------------------------------------------
 -- ":load" and ":reload" commands
 ---------------------------------------------------------------------------------
 
 load :: Text -> DriverM ()
-load = undefined
+load txt = if T.isSuffixOf ".ds" txt
+           then loadFromFile (T.unpack txt)
+           else loadFromModule (MkModuleName txt)
+
+-- | The user has called ":load" with a filepath.
+loadFromFile :: FilePath -> DriverM ()
+loadFromFile _fp = liftIO $ putStrLn "load from file"
+
+-- | The user has called ":load" with a module name
+loadFromModule :: ModuleName -> DriverM ()
+loadFromModule mn = do
+    fp <- findModule mn defaultLoc
+    loadFromFile fp
+
 
 -- loadFile :: FilePath -> Repl ()
 -- loadFile fp = do
@@ -43,7 +64,7 @@ reload = liftIO $ putStrLn ":reload currently not implemented"
 ---------------------------------------------------------------------------------
 
 letRepl :: Text -> DriverM ()
-letRepl s = undefined --do
+letRepl _s = liftIO $ putStrLn "let currently not implemented"
 --   decl <- fromRight (runExcept (runInteractiveParser declarationP s))
 --   ds <- gets replDriverState
 --   newEnv <- liftIO (inferProgramIO ds (MkModuleName "<Interactive>") [decl])
@@ -59,7 +80,7 @@ letRepl s = undefined --do
 data EvalSteps = Steps | NoSteps
 
 runCmd :: Text -> EvalSteps ->  DriverM ()
-runCmd s = undefined
+runCmd _s _steps = liftIO $ putStrLn "run currently not implemented"
 -- do
 --   (comLoc,_) <- parseInteractive termP (T.pack s)
 --   ds <- gets replDriverState
@@ -86,16 +107,16 @@ runCmd s = undefined
 -- ":subsume" command
 ---------------------------------------------------------------------------------
 
-subsume :: Text -> DriverM ()
-subsume = undefined
---  (t1,t2) <- parseInteractive subtypingProblemP s
---  let t1' = runRenamerM M.empty $ renameTypeScheme PosRep t1
---  let t2' = runRenamerM M.empty $ renameTypeScheme PosRep t2
---  case (t1', t2') of
-{-      (Right res1, Right res2) -> do
-       res <- fromRight (subsume PosRep res1 res2)
-       prettyRepl res
-     (_,_) -> fail "SubtypingProblemP: Cannot lower types." -}
+subsumeRepl :: Text -> DriverM ()
+subsumeRepl txt = do
+    (t1,t2) <- runInteractiveParser subtypingProblemP txt
+    sts <- getSymbolTables
+    renamed_t1 <- liftEitherErr (runRenamerM sts (renameTypeScheme PosRep t1))
+    renamed_t2 <- liftEitherErr (runRenamerM sts (renameTypeScheme PosRep t2))
+    isSubsumed <- liftEitherErr $ subsume PosRep renamed_t1 renamed_t2
+    liftIO $ putStrLn $ if isSubsumed
+                        then "Subsumption holds"
+                        else "Subsumption doesn't hold"
 
 -- safeRead :: FilePath -> Repl Text
 -- safeRead file =  do
