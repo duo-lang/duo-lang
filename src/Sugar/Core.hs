@@ -46,31 +46,24 @@ resugarCmdCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
 resugarCmdCase _ cmd = error $ "cannot resugar " ++ show cmd
 
 
--- CaseOfIPrd:
+-- CaseOf:
 --   [[case e of { Ctor(xs,*,ys) => prd }]] =
 --      < [[e]] | case { Ctor(xs,k,ys) => < [[prd]] | k >} >
+--   [[case e of { Ctor(xs,*,ys) => cns }]] =
+--      < [[e]] | case { Ctor(xs,k,ys) => < k | [[cns]] > } >
 
-pattern CaseOfIPrd :: Loc -> NominalStructural -> Term Prd -> [TermCaseI Prd] -> Command
-pattern CaseOfIPrd loc ns t cases <-
-  Apply loc ApplyAnnotCaseOfIOuter Nothing t (XCase _ MatchAnnotCaseOfI CnsRep ns (map (resugarCmdCase PrdRep) -> cases))
+pattern CaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
+pattern CaseOfI loc rep ns t cases <-
+  Apply loc ApplyAnnotCaseOfIOuter Nothing t (XCase _ MatchAnnotCaseOfI (flipPrdCns -> rep) ns (map (resugarCmdCase rep) -> cases))
   where
-    CaseOfIPrd loc ns t cases =
+    CaseOfI loc PrdRep ns t cases =
      let
        desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
          let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2)  in
          MkCmdCase loc pat $ Apply loc (ApplyAnnotCaseOfIInner $ length as1) Nothing t (BoundVar loc CnsRep (0,length as1))
      in
        Apply loc ApplyAnnotCaseOfIOuter Nothing t (XCase loc MatchAnnotCaseOfI CnsRep ns $ desugarmatchCase <$> cases)
-
--- CaseOfICns:
---   [[case e of { Ctor(xs,*,ys) => cns }]] =
---      < [[e]] | case { Ctor(xs,k,ys) => < k | [[cns]] > } >
-
-pattern CaseOfICns :: Loc -> NominalStructural -> Term Prd -> [TermCaseI Cns] -> Command
-pattern CaseOfICns loc ns t cases <-
-  Apply loc ApplyAnnotCaseOfIOuter Nothing t (XCase _ MatchAnnotCaseOfI CnsRep ns (map (resugarCmdCase CnsRep) -> cases))
-  where
-    CaseOfICns loc ns t cases =
+    CaseOfI loc CnsRep ns t cases =
      let
        desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
          let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2)  in
