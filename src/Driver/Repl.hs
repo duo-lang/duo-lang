@@ -16,13 +16,24 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Driver.Definition
+import Driver.Driver
 import Parser.Definition
 import Parser.Parser ( subtypingProblemP )
+import Parser.Program ( declarationP )
 import Renamer.Definition
 import Renamer.Types
 import Syntax.Common
 import TypeAutomata.Subsume
 import Utils ( defaultLoc )
+import Renamer.Program (renameDecl)
+
+
+---------------------------------------------------------------------------------
+-- The special "<interactive>" module
+---------------------------------------------------------------------------------
+
+interactiveModule :: ModuleName 
+interactiveModule = MkModuleName "<Interactive>"
 
 ---------------------------------------------------------------------------------
 -- ":load" and ":reload" commands
@@ -64,14 +75,12 @@ reload = liftIO $ putStrLn ":reload currently not implemented"
 ---------------------------------------------------------------------------------
 
 letRepl :: Text -> DriverM ()
-letRepl _s = liftIO $ putStrLn "let currently not implemented"
---   decl <- fromRight (runExcept (runInteractiveParser declarationP s))
---   ds <- gets replDriverState
---   newEnv <- liftIO (inferProgramIO ds (MkModuleName "<Interactive>") [decl])
---   case newEnv of
---     Left err -> prettyText (T.pack $ show err)
---     Right (env,_) -> undefined -- modifyEnvironment undefined undefined --(const env)undefined
-
+letRepl txt = do
+    decl <- runInteractiveParser declarationP txt
+    sts <- getSymbolTables
+    renamedDecl <- liftEitherErr (runRenamerM sts (renameDecl decl))
+    _ <- inferDecl interactiveModule renamedDecl
+    pure ()
 
 ---------------------------------------------------------------------------------
 -- Running a command in the repl

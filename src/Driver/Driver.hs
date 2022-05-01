@@ -4,6 +4,7 @@ module Driver.Driver
   , DriverState(..)
   , execDriverM
   , inferProgramIO
+  , inferDecl
   , runCompilationModule
   ) where
 
