@@ -73,7 +73,8 @@ common shared-lang-options
                      OverloadedStrings,
                      ImportQualifiedPost,
                      ViewPatterns,
-                     MultiWayIf
+                     MultiWayIf,
+                     PatternSynonyms
 
 common shared-ghc-opts
   ghc-options:
@@ -128,6 +129,7 @@ library
       Renamer.Types
       Sugar.Desugar
       Sugar.Resugar
+      Sugar.Core
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.Common
