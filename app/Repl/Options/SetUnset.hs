@@ -10,16 +10,19 @@ import Data.Text qualified as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
+import Driver.Definition
+    ( DriverState(MkDriverState, drvOpts),
+      InferenceOptions(infOptsVerbosity, infOptsSimplify,
+                       infOptsPrintGraphs) )
+import Driver.Repl (EvalSteps(..))
 import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
       ReplState(..),
-      EvalSteps(NoSteps, Steps),
       prettyRepl,
       mkWordCompleter )
 import Utils (trim,  Verbosity(..))
-import Driver.Driver
 
 
 -- Set & Unset

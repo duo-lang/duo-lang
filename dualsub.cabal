@@ -101,6 +101,7 @@ library
       Driver.DepGraph
       Driver.Driver
       Driver.Environment
+      Driver.Repl
       Errors
       Eval.Definition
       Eval.Eval

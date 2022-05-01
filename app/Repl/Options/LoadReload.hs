@@ -3,43 +3,24 @@ module Repl.Options.LoadReload
   , reloadOption
   ) where
 
-import Control.Monad.IO.Class ( MonadIO(liftIO) ) 
-import Control.Monad.State ( gets )
 import Data.Text (Text)
-import Data.Text qualified as T
 import System.Console.Repline ( fileCompleter )
 
-import Syntax.Common
-import Parser.Parser ( programP )
-import Pretty.Errors (printLocatedError)
 import Repl.Repl
     ( Option(..),
       Repl,
-      ReplState(replDriverState),
-      prettyRepl,
-      prettyText,
-      parseFile )
-import Driver.Driver
+      runDriver,
+      prettyText
+    )
+
+      
+import Driver.Repl (load, reload)
 import Utils (trim)
 
 -- Load
 
 loadCmd :: Text -> Repl ()
-loadCmd s = do
-  let s' = T.unpack . trim $  s
-  loadFile s'
-
-loadFile :: FilePath -> Repl ()
-loadFile fp = do
-  decls <- parseFile fp programP
-  ds <- gets replDriverState
-  res <- liftIO $ inferProgramIO ds (MkModuleName "<Interactive>") decls
-  case res of
-    Left err -> printLocatedError err
-    Right (_newEnv,_) -> do
-      --modifyEnvironment (MkModuleName "FOO") undefined --(const newEnv)
-      --prettyRepl newEnv
-      prettyRepl $ "Successfully loaded: " ++ fp
+loadCmd txt = runDriver (load (trim txt))
 
 loadOption :: Option
 loadOption = Option
@@ -52,8 +33,7 @@ loadOption = Option
 -- Reload
 
 reloadCmd :: Text -> Repl ()
-reloadCmd "" = do
-  prettyText ":reload currently not implemented"
+reloadCmd "" = runDriver reload
 reloadCmd _ = prettyText ":reload does not accept arguments"
 
 reloadOption :: Option

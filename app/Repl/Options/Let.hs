@@ -1,31 +1,19 @@
 module Repl.Options.Let (letOption) where
 
-import Control.Monad.Except (runExcept)
-import Control.Monad.State ( gets, MonadIO(liftIO) )
 import Data.Text (Text)
-import Data.Text qualified as T
 
-import Syntax.Common
-import Driver.Definition
-import Driver.Driver
-import Parser.Parser ( runInteractiveParser, declarationP )
+import Driver.Repl (letRepl)
+
 import Repl.Repl
-    ( ReplState(..),
-      Repl,
-      prettyText,
+    ( Repl,
+      runDriver,
       Option(..),
-      fromRight,
-      modifyEnvironment )
+    )
+
 
 letCmd :: Text -> Repl ()
-letCmd s = do
-  decl <- fromRight (runExcept (runInteractiveParser declarationP s))
-  ds <- gets replDriverState
-  newEnv <- liftIO (inferProgramIO ds (MkModuleName "<Interactive>") [decl])
-  case newEnv of
-    Left err -> prettyText (T.pack $ show err)
-    Right (env,_) -> undefined -- modifyEnvironment undefined undefined --(const env)
-
+letCmd txt = runDriver (letRepl txt)
+  
 letOption :: Option
 letOption = Option
   { option_name = "let"
