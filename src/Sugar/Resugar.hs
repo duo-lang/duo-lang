@@ -4,7 +4,6 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Program qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
-import Syntax.Common.PrdCns
 
 embedPat :: Core.Pattern -> RST.Pattern
 embedPat (Core.XtorPat loc xt args) = RST.XtorPat loc xt args

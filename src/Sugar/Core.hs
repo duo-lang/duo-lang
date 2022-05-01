@@ -19,10 +19,10 @@ pattern CaseOfCmd loc ns t cases <- Apply loc ApplyAnnotCaseOfCmd Nothing t (XCa
 --   [[cocase e of { Dtor(xs) => cmd }]] = < cocase { Dtor(xs) => [[cmd]] } | [[e]] >
 --   Annotations used on RHS: ApplyAnnotCocaseOfCmd, MatchAnnotCocaseOfCmd
 
-pattern CoCaseOfCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
-pattern CoCaseOfCmd loc ns t cases <- Apply loc ApplyAnnotCocaseOfCmd Nothing (XCase _ MatchAnnotCocaseOfCmd PrdRep ns cases) t
+pattern CocaseOfCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
+pattern CocaseOfCmd loc ns t cases <- Apply loc ApplyAnnotCocaseOfCmd Nothing (XCase _ MatchAnnotCocaseOfCmd PrdRep ns cases) t
  where
-    CoCaseOfCmd loc ns t cases = Apply loc ApplyAnnotCocaseOfCmd Nothing (XCase loc MatchAnnotCocaseOfCmd PrdRep ns cases) t
+    CocaseOfCmd loc ns t cases = Apply loc ApplyAnnotCocaseOfCmd Nothing (XCase loc MatchAnnotCocaseOfCmd PrdRep ns cases) t
 
 mySplitAt :: Int -> [a] -> ([a],(), [a])
 mySplitAt n x = (a, (), tail b)
