@@ -171,7 +171,7 @@ inferProgram mn decls = sequence $ inferDecl mn <$> decls
 runCompilationModule :: ModuleName -> DriverM ()
 runCompilationModule mn = do
   -- Build the dependency graph
-  depGraph <- createDepGraph [mn]
+  depGraph <- createDepGraph mn
   -- Create the compilation order
   compilationOrder <- topologicalSort depGraph
   runCompilationPlan compilationOrder

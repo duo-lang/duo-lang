@@ -20,9 +20,8 @@ import Driver.Definition
     ( DriverM,
       DriverState(drvEnv),
       getSymbolTables,
-      findModule,
       liftEitherErr )
-import Driver.Driver ( inferDecl )
+import Driver.Driver ( inferDecl, runCompilationModule )
 import Eval.Eval ( eval, evalSteps )
 import Parser.Definition ( runInteractiveParser )
 import Parser.Parser ( subtypingProblemP )
@@ -64,12 +63,10 @@ loadFromFile _fp = liftIO $ putStrLn "load from file"
 
 -- | The user has called ":load" with a module name
 loadFromModule :: ModuleName -> DriverM ()
-loadFromModule mn = do
-    fp <- findModule mn defaultLoc
-    loadFromFile fp
+loadFromModule mn = runCompilationModule  mn
 
 reload :: DriverM ()
-reload = liftIO $ putStrLn ":reload currently not implemented"
+reload = pure ()
 
 ---------------------------------------------------------------------------------
 -- ":let" command
