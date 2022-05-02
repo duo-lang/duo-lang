@@ -158,8 +158,8 @@ data ApplyAnnot where
   ApplyAnnotCocaseOfInner :: ApplyAnnot
   ApplyAnnotCocaseOfOuter :: ApplyAnnot
   -- CaseI/CocaseI
-  ApplyAnnotCaseI :: ApplyAnnot
-  ApplyAnnotCocaseI :: ApplyAnnot
+  ApplyAnnotCaseI :: Int -> ApplyAnnot
+  ApplyAnnotCocaseI :: Int -> ApplyAnnot
   -- CaseOfCmd/CocaseOfCmd
   ApplyAnnotCaseOfCmd :: ApplyAnnot
   ApplyAnnotCocaseOfCmd :: ApplyAnnot
