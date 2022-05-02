@@ -139,3 +139,24 @@ pattern Semi loc rep ns xt substi t <-
                 cmd = Apply loc ApplyAnnotSemi Nothing  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
             in
             MuAbs loc MuAnnotSemi CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd
+
+-- Dtor:
+--   [[e.Dtor(as,*,bs)]]    = mu k. <  [[e]]  | Dtor([[as]], k, [[bs]])
+--   Annotations used on RHS: MuAnnotDtor, ApplyAnnotDtor, XtorAnnotDtor
+
+pattern Dtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
+pattern Dtor loc rep ns xt t substi <-
+    MuAbs loc MuAnnotSemi rep Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi Nothing t (Xtor _ (XtorAnnotSemi i) CnsRep ns xt (resugarSubst rep i -> substi)) )
+    where 
+        Dtor loc PrdRep ns xt t (args1, PrdRep, args2)  = 
+            let
+                args = args1 ++ [CnsTerm $ FreeVar loc CnsRep resVar] ++ args2
+                cmd = Apply loc ApplyAnnotDtor Nothing t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt args) 
+            in
+            MuAbs loc MuAnnotDtor PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd ShiftUp cmd
+        Dtor loc CnsRep ns xt t (args1, CnsRep, args2)  =  
+            let
+                args = args1 ++ [PrdTerm $ FreeVar loc PrdRep resVar] ++ args2
+                cmd = Apply loc ApplyAnnotDtor Nothing  t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt args) 
+            in
+            MuAbs loc MuAnnotDtor CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd

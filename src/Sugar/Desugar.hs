@@ -100,28 +100,10 @@ desugarTerm (AST.XCase loc pc _annot ns cases) =
   Core.XCase loc Core.MatchAnnotOrig pc ns (desugarCmdCase <$> cases)
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
---
--- Dtor:
---   [[e.Dtor(as,*,bs)]]    = mu k. <  [[e]]  | Dtor([[as]], k, [[bs]])
---   Annotations used on RHS: MuAnnotDtor, ApplyAnnotDtor, XtorAnnotDtor
---
 ---------------------------------------------------------------------------------
 desugarTerm (AST.Semi loc rep _ ns xt (args1,r,args2) t) = Core.Semi loc rep ns xt (desugarPCTerm <$> args1,r,desugarPCTerm <$> args2) (desugarTerm t)
+desugarTerm (AST.Dtor loc rep _ ns xt t (args1,r,args2)) = Core.Dtor loc rep ns xt (desugarTerm t) (desugarPCTerm <$> args1,r,desugarPCTerm <$> args2)
 
-desugarTerm (AST.Dtor loc _ _ ns xt t (args1,PrdRep,args2)) =
-  let
-    args = (desugarPCTerm <$> args1) ++ [Core.CnsTerm $ Core.FreeVar loc CnsRep resVar] ++ (desugarPCTerm <$> args2)
-    cmd = Core.Apply loc Core.ApplyAnnotDtor Nothing (desugarTerm t)
-                           (Core.Xtor loc Core.XtorAnnotDtor CnsRep ns xt args)
-  in
-    Core.MuAbs loc Core.MuAnnotDtor PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
-desugarTerm (AST.Dtor loc _ _ ns xt t (args1,CnsRep,args2)) =
-  let
-    args = (desugarPCTerm <$> args1) ++ [Core.PrdTerm $ Core.FreeVar loc PrdRep resVar] ++ (desugarPCTerm <$> args2)
-    cmd = Core.Apply loc Core.ApplyAnnotDtor Nothing (desugarTerm t)
-                                (Core.Xtor loc Core.XtorAnnotDtor CnsRep ns xt args)
-  in
-    Core.MuAbs loc Core.MuAnnotDtor CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
 -- 

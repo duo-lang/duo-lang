@@ -113,7 +113,7 @@ data XtorAnnot where
   XtorAnnotOrig :: XtorAnnot
   -- Semi/Dtor
   XtorAnnotSemi :: Int -> XtorAnnot
-  XtorAnnotDtor :: XtorAnnot
+  XtorAnnotDtor :: Int -> XtorAnnot
   deriving (Ord, Eq, Show)
 
 -- | A symmetric term.
