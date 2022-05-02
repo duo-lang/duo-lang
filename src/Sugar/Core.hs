@@ -51,6 +51,7 @@ resugarCmdCase _ cmd = error $ "cannot resugar " ++ show cmd
 --      < [[e]] | case { Ctor(xs,k,ys) => < [[prd]] | k >} >
 --   [[case e of { Ctor(xs,*,ys) => cns }]] =
 --      < [[e]] | case { Ctor(xs,k,ys) => < k | [[cns]] > } >
+--   Annotations used on RHS: ApplyAnnotCaseOfIInner, ApplyAnnotCaseOfIOuter, MatchAnnotCaseOfI
 
 pattern CaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
 pattern CaseOfI loc rep ns t cases <-
@@ -86,6 +87,7 @@ resugarCmdCocase _ cmd = error $ "cannot resugar " ++ show cmd
 --      < cocase { Dtor(xs,k,ys) => < [[prd]] | k > } | [[e]] >
 --   [[cocase e of { Dtor(xs,*,ys) => cns }]] =
 --      < cocase { Dtor(xs,k,ys) => < k | [[cns]] > } | [[e]] >
+--   Annotations used on RHS: ApplyAnnotCaseOfIInner, ApplyAnnotCaseOfIOuter, MatchAnnotCaseOfI
 
 pattern CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 pattern CocaseOfI loc rep ns t cases <-
@@ -105,3 +107,10 @@ pattern CocaseOfI loc rep ns t cases <-
          MkCmdCase loc pat $ Apply loc (ApplyAnnotCocaseOfIInner $ length as1) Nothing  (BoundVar loc PrdRep (0,length as1)) t
      in
        Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t
+
+
+--type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
+
+--pattern Semi :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
+--pattern Semi loc rep ns xt substi t <- 
+--    MuAbs loc MuAnnotSemi rep Nothing (Apply loc ApplyAnnotSemi Nothing (Xtor _ XtorAnnotSemi PrdRep ns xt undefined) t
