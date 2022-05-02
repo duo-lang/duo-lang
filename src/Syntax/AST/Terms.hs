@@ -12,6 +12,7 @@ module Syntax.AST.Terms
   , Command(..)
   -- Functions
   , commandClosing
+  , ShiftDirection(..)
   , shiftCmd
   , getTypeTerm
   , getTypArgs
@@ -555,84 +556,89 @@ termLocallyClosed = termLocallyClosedRec []
 -- Used in program transformations like focusing.
 ---------------------------------------------------------------------------------
 
-shiftPCTermRec :: Int -> PrdCnsTerm -> PrdCnsTerm
-shiftPCTermRec n (PrdTerm tm) = PrdTerm $ shiftTermRec n tm
-shiftPCTermRec n (CnsTerm tm) = CnsTerm $ shiftTermRec n tm
+data ShiftDirection = ShiftUp | ShiftDown
+  deriving (Show, Eq)
 
-shiftTermRec :: Int -> Term pc -> Term pc
+shiftPCTermRec :: ShiftDirection -> Int -> PrdCnsTerm -> PrdCnsTerm
+shiftPCTermRec dir n (PrdTerm tm) = PrdTerm $ shiftTermRec dir n tm
+shiftPCTermRec dir n (CnsTerm tm) = CnsTerm $ shiftTermRec dir n tm
+
+shiftTermRec :: ShiftDirection -> Int -> Term pc -> Term pc
 -- Core constructs
-shiftTermRec _ var@FreeVar {} = var
-shiftTermRec n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar loc pcrep annot (i + 1, j)
-                                                | otherwise = BoundVar loc pcrep annot (i    , j)
-shiftTermRec n (Xtor loc pcrep annot ns xt subst) =
-    Xtor loc pcrep annot ns xt (shiftPCTermRec n <$> subst)
-shiftTermRec n (XCase loc pcrep annot ns cases) =
-  XCase loc pcrep annot ns (shiftCmdCaseRec (n + 1) <$> cases)
-shiftTermRec n (MuAbs loc pcrep annot bs cmd) =
-  MuAbs loc pcrep annot bs (shiftCmdRec (n + 1) cmd)
+shiftTermRec _ _ var@FreeVar {} = var
+shiftTermRec ShiftUp n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar loc pcrep annot (i + 1, j)
+                                                        | otherwise = BoundVar loc pcrep annot (i    , j)
+shiftTermRec ShiftDown n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar loc pcrep annot (i - 1, j)
+                                                          | otherwise = BoundVar loc pcrep annot (i    , j)                                                  
+shiftTermRec dir n (Xtor loc pcrep annot ns xt subst) =
+    Xtor loc pcrep annot ns xt (shiftPCTermRec dir n <$> subst)
+shiftTermRec dir n (XCase loc pcrep annot ns cases) =
+  XCase loc pcrep annot ns (shiftCmdCaseRec dir (n + 1) <$> cases)
+shiftTermRec dir n (MuAbs loc pcrep annot bs cmd) =
+  MuAbs loc pcrep annot bs (shiftCmdRec dir (n + 1) cmd)
 -- Syntactic sugar
-shiftTermRec n (Semi loc rep annot ns xt (args1,pcrep',args2) t) =
-  Semi loc rep annot ns xt (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2) (shiftTermRec n t)
-shiftTermRec n (Dtor loc pcrep annot ns xt e (args1,pcrep',args2)) =
-  Dtor loc pcrep annot ns xt (shiftTermRec n e) (shiftPCTermRec n <$> args1,pcrep',shiftPCTermRec n <$> args2)
-shiftTermRec n (CaseOf loc pcrep annot ns e cases) =
-  CaseOf loc pcrep annot ns (shiftTermRec n e) (shiftTermCaseRec (n + 1) <$> cases)
-shiftTermRec n (CocaseOf loc rep annot ns t tmcases) =
-  CocaseOf loc rep annot ns (shiftTermRec n t) (shiftTermCaseRec (n + 1) <$> tmcases) 
-shiftTermRec n (CaseI loc pcrep annot ns tmcasesI) =
-  CaseI loc pcrep annot ns (shiftTermCaseIRec (n + 1) <$> tmcasesI)
-shiftTermRec n (CocaseI loc pcrep annot ns cases) =
-  CocaseI loc pcrep annot ns (shiftTermCaseIRec n <$> cases)
+shiftTermRec dir n (Semi loc rep annot ns xt (args1,pcrep',args2) t) =
+  Semi loc rep annot ns xt (shiftPCTermRec dir n <$> args1,pcrep',shiftPCTermRec dir n <$> args2) (shiftTermRec dir n t)
+shiftTermRec dir n (Dtor loc pcrep annot ns xt e (args1,pcrep',args2)) =
+  Dtor loc pcrep annot ns xt (shiftTermRec dir n e) (shiftPCTermRec dir n <$> args1,pcrep',shiftPCTermRec dir n <$> args2)
+shiftTermRec dir n (CaseOf loc pcrep annot ns e cases) =
+  CaseOf loc pcrep annot ns (shiftTermRec dir n e) (shiftTermCaseRec dir (n + 1) <$> cases)
+shiftTermRec dir n (CocaseOf loc rep annot ns t tmcases) =
+  CocaseOf loc rep annot ns (shiftTermRec dir n t) (shiftTermCaseRec dir (n + 1) <$> tmcases) 
+shiftTermRec dir n (CaseI loc pcrep annot ns tmcasesI) =
+  CaseI loc pcrep annot ns (shiftTermCaseIRec dir (n + 1) <$> tmcasesI)
+shiftTermRec dir n (CocaseI loc pcrep annot ns cases) =
+  CocaseI loc pcrep annot ns (shiftTermCaseIRec dir n <$> cases)
 -- Primitive constructs
-shiftTermRec _ lit@PrimLitI64{} = lit
-shiftTermRec _ lit@PrimLitF64{} = lit
+shiftTermRec _ _ lit@PrimLitI64{} = lit
+shiftTermRec _ _ lit@PrimLitF64{} = lit
 
-shiftTermCaseRec :: Int -> TermCase pc -> TermCase pc
-shiftTermCaseRec n MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
+shiftTermCaseRec :: ShiftDirection -> Int -> TermCase pc -> TermCase pc
+shiftTermCaseRec dir n MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
   MkTermCase { tmcase_loc = tmcase_loc
              , tmcase_pat = tmcase_pat
-             , tmcase_term = shiftTermRec n tmcase_term
+             , tmcase_term = shiftTermRec dir n tmcase_term
             }
 
-shiftTermCaseIRec :: Int -> TermCaseI pc -> TermCaseI pc
-shiftTermCaseIRec n MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
+shiftTermCaseIRec :: ShiftDirection -> Int -> TermCaseI pc -> TermCaseI pc
+shiftTermCaseIRec dir n MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
   MkTermCaseI { tmcasei_loc = tmcasei_loc
               , tmcasei_pat = tmcasei_pat
-              , tmcasei_term = shiftTermRec n tmcasei_term
+              , tmcasei_term = shiftTermRec dir n tmcasei_term
               }
 
-shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
-shiftCmdCaseRec n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
+shiftCmdCaseRec dir n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
   MkCmdCase { cmdcase_loc = cmdcase_loc
             , cmdcase_pat = cmdcase_pat
-            , cmdcase_cmd = shiftCmdRec n cmdcase_cmd
+            , cmdcase_cmd = shiftCmdRec dir n cmdcase_cmd
             }
 
-shiftCmdRec :: Int -> Command -> Command
-shiftCmdRec n (Apply ext kind prd cns) =
-  Apply ext kind (shiftTermRec n prd) (shiftTermRec n cns)
-shiftCmdRec _ (ExitSuccess ext) =
+shiftCmdRec :: ShiftDirection -> Int -> Command -> Command
+shiftCmdRec dir n (Apply ext kind prd cns) =
+  Apply ext kind (shiftTermRec dir n prd) (shiftTermRec dir n cns)
+shiftCmdRec _ _ (ExitSuccess ext) =
   ExitSuccess ext
-shiftCmdRec _ (ExitFailure ext) =
+shiftCmdRec _ _ (ExitFailure ext) =
   ExitFailure ext
-shiftCmdRec n (Print ext prd cmd) =
-  Print ext (shiftTermRec n prd) (shiftCmdRec n cmd)
-shiftCmdRec n (Read ext cns) =
-  Read ext (shiftTermRec n cns)
-shiftCmdRec _ (Jump ext fv) =
+shiftCmdRec dir n (Print ext prd cmd) =
+  Print ext (shiftTermRec dir n prd) (shiftCmdRec dir n cmd)
+shiftCmdRec dir n (Read ext cns) =
+  Read ext (shiftTermRec dir n cns)
+shiftCmdRec _ _ (Jump ext fv) =
   Jump ext fv
-shiftCmdRec n (PrimOp ext pt op subst) =
-  PrimOp ext pt op (shiftPCTermRec n <$> subst)
-shiftCmdRec n (CaseOfCmd loc ns t cmdcases) =
-  CaseOfCmd loc ns  (shiftTermRec n t) $ map (shiftCmdCaseRec n) cmdcases
-shiftCmdRec n (CaseOfI loc pcrep ns t tmcasesI) =
-  CaseOfI loc pcrep ns (shiftTermRec n t) $ map (shiftTermCaseIRec n) tmcasesI
-shiftCmdRec n (CocaseOfCmd loc ns t cmdcases) =
-  CocaseOfCmd loc ns (shiftTermRec n t) $ map (shiftCmdCaseRec n) cmdcases
-shiftCmdRec n (CocaseOfI loc pcrep ns t tmcasesI) =
-  CocaseOfI loc pcrep ns (shiftTermRec n t) $ map (shiftTermCaseIRec n) tmcasesI
+shiftCmdRec dir n (PrimOp ext pt op subst) =
+  PrimOp ext pt op (shiftPCTermRec dir n <$> subst)
+shiftCmdRec dir n (CaseOfCmd loc ns t cmdcases) =
+  CaseOfCmd loc ns  (shiftTermRec dir n t) $ map (shiftCmdCaseRec dir n) cmdcases
+shiftCmdRec dir n (CaseOfI loc pcrep ns t tmcasesI) =
+  CaseOfI loc pcrep ns (shiftTermRec dir n t) $ map (shiftTermCaseIRec dir n) tmcasesI
+shiftCmdRec dir n (CocaseOfCmd loc ns t cmdcases) =
+  CocaseOfCmd loc ns (shiftTermRec dir n t) $ map (shiftCmdCaseRec dir n) cmdcases
+shiftCmdRec dir n (CocaseOfI loc pcrep ns t tmcasesI) =
+  CocaseOfI loc pcrep ns (shiftTermRec dir n t) $ map (shiftTermCaseIRec dir n) tmcasesI
 
 -- | Shift all unbound BoundVars up by one.
-shiftCmd :: Command -> Command
-shiftCmd = shiftCmdRec 0
+shiftCmd :: ShiftDirection -> Command -> Command
+shiftCmd dir cmd = shiftCmdRec dir 0 cmd
 

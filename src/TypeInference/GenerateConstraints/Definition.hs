@@ -33,6 +33,7 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Text qualified as T
 
@@ -76,17 +77,17 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 data GenerateReader = GenerateReader { context :: [LinearContext Pos]
                                      }
 
-initialReader :: Environment -> (Environment, GenerateReader)
+initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
 initialReader env = (env, GenerateReader { context = [] })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Environment, GenerateReader) (StateT GenerateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Environment, GenerateReader), MonadError Error)
+newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError Error)
 
-runGenM :: Environment -> GenM a -> Either Error (a, ConstraintSet)
+runGenM :: Map ModuleName Environment -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)

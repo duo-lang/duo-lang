@@ -10,28 +10,32 @@ import Data.Text qualified as T
 import System.Console.Haskeline.Completion
     ( simpleCompletion, CompletionFunc )
 
-import Syntax.Common
+import Driver.Definition
+    ( DriverState(MkDriverState, drvOpts),
+      InferenceOptions(infOptsVerbosity, infOptsSimplify,
+                       infOptsPrintGraphs) )
+import Driver.Repl (EvalSteps(..))
 import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(evalOrder, typeInfOpts, steps, ReplState),
-      EvalSteps(NoSteps, Steps),
+      ReplState(..),
       prettyRepl,
       mkWordCompleter )
 import Utils (trim,  Verbosity(..))
-import Driver.Driver
+
 
 -- Set & Unset
 
+modifyTypeInfOpts :: (InferenceOptions -> InferenceOptions) -> Repl ()
+modifyTypeInfOpts f = modify (\rs@ReplState { replDriverState = ds@MkDriverState { drvOpts }} -> rs { replDriverState = ds { drvOpts = f drvOpts}})
+
 setCmdVariants :: [(Text, Repl ())]
-setCmdVariants = [ ("cbv", modify (\rs -> rs { evalOrder = CBV }))
-                 , ("cbn", modify (\rs -> rs { evalOrder = CBN }))
-                 , ("steps", modify (\rs -> rs { steps = Steps }))
-                 , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = True } }))
-                 , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = True } }))
-                 , ("verbose", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Verbose } }))
-                 , ("silent", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts {infOptsVerbosity = Silent } }))
+setCmdVariants = [ ("steps", modify (\rs -> rs { steps = Steps }))
+                 , ("simplify", modifyTypeInfOpts (\f -> f { infOptsSimplify = True}))
+                 , ("printGraphs", modifyTypeInfOpts (\f -> f { infOptsPrintGraphs = True }))
+                 , ("verbose", modifyTypeInfOpts (\f -> f { infOptsVerbosity = Verbose }))
+                 , ("silent", modifyTypeInfOpts (\f -> f { infOptsVerbosity = Silent }))
                  ]
 
 setCmd :: Text -> Repl ()
@@ -65,8 +69,8 @@ setOption = Option
 
 unsetCmdVariants :: [(Text, Repl ())]
 unsetCmdVariants = [ ("steps", modify (\rs -> rs { steps = NoSteps }))
-                   , ("simplify", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsSimplify = False } }))
-                   , ("printGraphs", modify (\rs@ReplState { typeInfOpts } -> rs { typeInfOpts = typeInfOpts { infOptsPrintGraphs = False } }))
+                   , ("simplify", modifyTypeInfOpts (\f -> f { infOptsSimplify = False }))
+                   , ("printGraphs", modifyTypeInfOpts (\f -> f { infOptsPrintGraphs = False }))
                    ]
 
 unsetCmd :: Text -> Repl ()

@@ -601,17 +601,18 @@ genConstraintsCommand RST.CocaseOfCmd {} =
 -- Checking recursive terms
 ---------------------------------------------------------------------------------------------
 
-genConstraintsTermRecursive :: Loc
+genConstraintsTermRecursive :: ModuleName
+                            -> Loc
                             -> FreeVarName
                             -> PrdCnsRep pc -> RST.Term pc
                             -> GenM (AST.Term pc)
-genConstraintsTermRecursive loc fv PrdRep tm = do
+genConstraintsTermRecursive mn loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
+  tm <- withTerm mn PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint (AST.getTypeTerm tm) y)
   return tm
-genConstraintsTermRecursive loc fv CnsRep tm = do
+genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
+  tm <- withTerm mn CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint x (AST.getTypeTerm tm))
   return tm

@@ -3,51 +3,43 @@ module Repl.Options.Show
   , showTypeOption
   ) where
 
-import Control.Monad.State ( forM_, gets )
+import Control.Monad.State ( gets )
 import Data.List (find)
 import Data.Map qualified as M
 import Data.Text (Text)
-import Data.Text qualified as T
 import System.Console.Repline ()
 
-import Parser.Parser ( programP )
 import Pretty.Program ()
 import Repl.Repl
     ( prettyText,
       prettyRepl,
-      parseFile,
       Option(..),
-      ReplState(loadedFiles, replEnv),
+      ReplState(replDriverState),
       Repl )
+import Driver.Definition (DriverState(..))
 import Driver.Environment
-    ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Renamer.Definition
-import Renamer.Program    
+    ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv))
 import Syntax.RST.Types ( DataDecl(data_name) )
-import Syntax.RST.Program
+
 import Syntax.Common
 import Utils (trim)
-import Errors
+
 
 -- Show
 
 showCmd :: Text -> Repl ()
-showCmd "" = do
-  loadedFiles <- gets loadedFiles
-  forM_ loadedFiles $ \fp -> do
-    decls <- parseFile fp programP
-    let decls' :: Either Error Program = runRenamerM M.empty $ renameProgram decls
-    case decls' of
-      Left err -> prettyText (T.pack $ show err)
-      Right decls -> prettyRepl decls
+showCmd "" = prettyText ":show needs an argument"
 showCmd str = do
   let s = MkFreeVarName (trim str)
-  env <- gets replEnv
-  case M.lookup s (prdEnv env) of
+  env <- gets (M.elems . (drvEnv . replDriverState))
+  let concatPrdEnv = M.unions (prdEnv  <$> env)
+  let concatCnsEnv = M.unions (cnsEnv <$> env)
+  let concatCmdEnv = M.unions (cmdEnv <$> env)
+  case M.lookup s concatPrdEnv of
     Just (prd,_,_) -> prettyRepl prd
-    Nothing -> case M.lookup s (cnsEnv env) of
+    Nothing -> case M.lookup s concatCnsEnv of
       Just (cns,_,_) -> prettyRepl cns
-      Nothing -> case M.lookup s (cmdEnv env) of
+      Nothing -> case M.lookup s concatCmdEnv of
         Just (cmd,_) -> prettyRepl cmd
         Nothing -> prettyText "Not in environment."
 
@@ -63,8 +55,9 @@ showOption = Option
 
 showTypeCmd :: Text -> Repl ()
 showTypeCmd s = do
-  env <- gets (fmap snd . declEnv . replEnv)
-  let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) env
+  env <- gets (drvEnv . replDriverState)
+  let concatEnv = concat (fmap snd . declEnv <$> M.elems env)
+  let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) concatEnv
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
     Just decl -> prettyRepl decl

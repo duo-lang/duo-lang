@@ -22,6 +22,6 @@ createDeps fp = fmap fst <$> execDriverM defaultDriverState (createDeps' fp)
 
 createDeps' :: ModuleName -> DriverM (DepGraph, CompilationOrder)
 createDeps' fp = do
-    depGraph <- createDepGraph [fp]
+    depGraph <- createDepGraph fp
     compilationOrder <- topologicalSort depGraph
     pure (depGraph, compilationOrder)

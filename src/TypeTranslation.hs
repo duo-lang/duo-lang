@@ -9,6 +9,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe
+import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set
 import Data.Set qualified as S
@@ -38,13 +39,13 @@ initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
 newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName TVar }
 
-initialReader :: Environment -> (Environment, TranslateReader)
+initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
 
-newtype TranslateM a = TraM { getTraM :: ReaderT (Environment, TranslateReader) (StateT TranslateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Environment, TranslateReader), MonadError Error)
+newtype TranslateM a = TraM { getTraM :: ReaderT (Map ModuleName Environment, TranslateReader) (StateT TranslateState (Except Error)) a }
+  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Map ModuleName Environment, TranslateReader), MonadError Error)
 
-runTranslateM :: Environment -> TranslateM a -> Either Error (a, TranslateState)
+runTranslateM :: Map ModuleName Environment -> TranslateM a -> Either Error (a, TranslateState)
 runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState)
 
 ---------------------------------------------------------------------------------------------
@@ -190,22 +191,22 @@ cleanUpType ty = case ty of
 -- Exported functions
 ---------------------------------------------------------------------------------------------
 
-translateTypeUpper :: Environment -> Typ Neg -> Either Error (Typ Neg)
+translateTypeUpper :: Map ModuleName Environment -> Typ Neg -> Either Error (Typ Neg)
 translateTypeUpper env ty = case runTranslateM env $ cleanUpType =<< translateTypeUpper' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSigUpper :: Environment -> XtorSig Neg -> Either Error (XtorSig Neg)
+translateXtorSigUpper :: Map ModuleName Environment -> XtorSig Neg -> Either Error (XtorSig Neg)
 translateXtorSigUpper env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSigUpper' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'
 
-translateTypeLower :: Environment -> Typ Pos -> Either Error (Typ Pos)
+translateTypeLower :: Map ModuleName Environment -> Typ Pos -> Either Error (Typ Pos)
 translateTypeLower env ty = case runTranslateM env $ cleanUpType =<< translateTypeLower' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSigLower :: Environment -> XtorSig Pos -> Either Error (XtorSig Pos)
+translateXtorSigLower :: Map ModuleName Environment -> XtorSig Pos -> Either Error (XtorSig Pos)
 translateXtorSigLower env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSigLower' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'

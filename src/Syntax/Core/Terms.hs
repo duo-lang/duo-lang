@@ -24,6 +24,7 @@ import Data.Text qualified as T
 import Utils
 import Errors
 import Syntax.Common
+import Syntax.AST.Terms (ShiftDirection(..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -328,36 +329,39 @@ termLocallyClosed = termLocallyClosedRec []
 -- Used in program transformations like focusing.
 ---------------------------------------------------------------------------------
 
-shiftPCTermRec :: Int -> PrdCnsTerm -> PrdCnsTerm
-shiftPCTermRec n (PrdTerm tm) = PrdTerm $ shiftTermRec n tm
-shiftPCTermRec n (CnsTerm tm) = CnsTerm $ shiftTermRec n tm
+shiftPCTermRec :: ShiftDirection -> Int -> PrdCnsTerm -> PrdCnsTerm
+shiftPCTermRec dir n (PrdTerm tm) = PrdTerm $ shiftTermRec dir n tm
+shiftPCTermRec dir n (CnsTerm tm) = CnsTerm $ shiftTermRec dir n tm
 
-shiftTermRec :: Int -> Term pc -> Term pc
-shiftTermRec n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 1, j)
-                                          | otherwise = BoundVar loc pcrep (i    , j)
-shiftTermRec _ var@FreeVar {} = var
-shiftTermRec n (Xtor loc annot pcrep ns xt subst) =
-    Xtor loc annot pcrep ns xt (shiftPCTermRec n <$> subst)
-shiftTermRec n (XCase loc annot pcrep ns cases) =
-  XCase loc annot pcrep ns (shiftCmdCaseRec (n + 1) <$> cases)
-shiftTermRec n (MuAbs loc annot pcrep bs cmd) =
-  MuAbs loc annot pcrep bs (shiftCmdRec (n + 1) cmd)
-shiftTermRec _ lit@PrimLitI64{} = lit
-shiftTermRec _ lit@PrimLitF64{} = lit
+shiftTermRec :: ShiftDirection -> Int -> Term pc -> Term pc
+-- If (n <= i), then the bound variable was free from the position where shift was called.
+shiftTermRec ShiftUp n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 1, j)
+                                                  | otherwise = BoundVar loc pcrep (i    , j)
+shiftTermRec ShiftDown n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i - 1, j)
+                                                    | otherwise = BoundVar loc pcrep (i    , j)                                        
+shiftTermRec _ _ var@FreeVar {} = var
+shiftTermRec dir n (Xtor loc annot pcrep ns xt subst) =
+    Xtor loc annot pcrep ns xt (shiftPCTermRec dir n <$> subst)
+shiftTermRec dir n (XCase loc annot pcrep ns cases) =
+  XCase loc annot pcrep ns (shiftCmdCaseRec dir (n + 1) <$> cases)
+shiftTermRec dir n (MuAbs loc annot pcrep bs cmd) =
+  MuAbs loc annot pcrep bs (shiftCmdRec dir (n + 1) cmd)
+shiftTermRec _ _ lit@PrimLitI64{} = lit
+shiftTermRec _ _ lit@PrimLitF64{} = lit
 
-shiftCmdCaseRec :: Int -> CmdCase -> CmdCase
-shiftCmdCaseRec n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftCmdRec n cmd)
+shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
+shiftCmdCaseRec dir n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftCmdRec dir n cmd)
 
-shiftCmdRec :: Int -> Command -> Command
-shiftCmdRec n (Apply loc annot kind prd cns) = Apply loc annot kind (shiftTermRec n prd) (shiftTermRec n cns)
-shiftCmdRec _ (ExitSuccess ext) = ExitSuccess ext
-shiftCmdRec _ (ExitFailure ext) = ExitFailure ext
-shiftCmdRec n (Print ext prd cmd) = Print ext (shiftTermRec n prd) (shiftCmdRec n cmd)
-shiftCmdRec n (Read ext cns) = Read ext (shiftTermRec n cns)
-shiftCmdRec _ (Jump ext fv) = Jump ext fv
-shiftCmdRec n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec n <$> subst)
+shiftCmdRec :: ShiftDirection -> Int -> Command -> Command
+shiftCmdRec dir n (Apply loc annot kind prd cns) = Apply loc annot kind (shiftTermRec dir n prd) (shiftTermRec dir n cns)
+shiftCmdRec _ _ (ExitSuccess ext) = ExitSuccess ext
+shiftCmdRec _ _ (ExitFailure ext) = ExitFailure ext
+shiftCmdRec dir n (Print ext prd cmd) = Print ext (shiftTermRec dir n prd) (shiftCmdRec dir n cmd)
+shiftCmdRec dir n (Read ext cns) = Read ext (shiftTermRec dir n cns)
+shiftCmdRec _ _ (Jump ext fv) = Jump ext fv
+shiftCmdRec dir n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec dir n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
-shiftCmd :: Command -> Command
-shiftCmd = shiftCmdRec 0
+shiftCmd :: ShiftDirection -> Command -> Command
+shiftCmd dir = shiftCmdRec dir 0
 
