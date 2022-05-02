@@ -158,15 +158,13 @@ data ApplyAnnot where
   ApplyAnnotCocaseOfInner :: ApplyAnnot
   ApplyAnnotCocaseOfOuter :: ApplyAnnot
   -- CaseI/CocaseI
-  ApplyAnnotCaseI :: Int -> ApplyAnnot
-  ApplyAnnotCocaseI :: Int -> ApplyAnnot
-  -- CaseOfCmd/CocaseOfCmd
+  ApplyAnnotXCaseI :: Int -> ApplyAnnot
+    -- CaseOfCmd/CocaseOfCmd
   ApplyAnnotCaseOfCmd :: ApplyAnnot
   ApplyAnnotCocaseOfCmd :: ApplyAnnot
   -- CaseOfI/CocaseOfI
-  ApplyAnnotCaseOfIInner :: Int -> ApplyAnnot
+  ApplyAnnotXCaseOfIInner :: Int -> ApplyAnnot
   ApplyAnnotCaseOfIOuter :: ApplyAnnot
-  ApplyAnnotCocaseOfIInner :: Int -> ApplyAnnot
   ApplyAnnotCocaseOfIOuter :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
