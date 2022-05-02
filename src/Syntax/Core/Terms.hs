@@ -112,7 +112,7 @@ data XtorAnnot where
   -- | User-written XCase abstraction
   XtorAnnotOrig :: XtorAnnot
   -- Semi/Dtor
-  XtorAnnotSemi :: XtorAnnot
+  XtorAnnotSemi :: Int -> XtorAnnot
   XtorAnnotDtor :: XtorAnnot
   deriving (Ord, Eq, Show)
 

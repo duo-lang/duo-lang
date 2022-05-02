@@ -5,6 +5,7 @@ import Syntax.Core.Program
 import Syntax.Core.Terms
 import Syntax.Common
 import Utils
+import Syntax.AST.Terms (ShiftDirection(..))
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >
@@ -91,7 +92,7 @@ resugarCmdCocase _ cmd = error $ "cannot resugar " ++ show cmd
 
 pattern CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 pattern CocaseOfI loc rep ns t cases <-
-  Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) ns (map (resugarCmdCocase rep) -> cases)) t 
+  Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) ns (map (resugarCmdCocase rep) -> cases)) t
   where
     CocaseOfI loc PrdRep ns t cases =
      let
@@ -109,8 +110,32 @@ pattern CocaseOfI loc rep ns t cases <-
        Apply loc ApplyAnnotCocaseOfIOuter Nothing (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t
 
 
---type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
+type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 
---pattern Semi :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
---pattern Semi loc rep ns xt substi t <- 
---    MuAbs loc MuAnnotSemi rep Nothing (Apply loc ApplyAnnotSemi Nothing (Xtor _ XtorAnnotSemi PrdRep ns xt undefined) t
+resugarSubst ::  PrdCnsRep pc -> Int -> Substitution -> SubstitutionI pc
+resugarSubst rep n x = (a, rep, tail b)
+  where (a,b) = splitAt n x
+
+resVar :: FreeVarName
+resVar = MkFreeVarName "$result"
+
+-- Semi:
+--   [[Ctor(as,*,bs) ;; e]] = mu k. <  Ctor([[as]],k,[[bs]])  |  [[e]]  >
+--   Annotations used on RHS: MuAnnotSemi, ApplyAnnotSemi, XtorAnnotSemi
+
+pattern Semi :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
+pattern Semi loc rep ns xt substi t <-
+    MuAbs loc MuAnnotSemi rep Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi Nothing (Xtor _ (XtorAnnotSemi i) PrdRep ns xt (resugarSubst rep i -> substi)) t)
+    where 
+        Semi loc PrdRep ns xt (args1, PrdRep, args2) t = 
+            let
+                args = args1 ++ [CnsTerm $ FreeVar loc CnsRep resVar] ++ args2
+                cmd = Apply loc ApplyAnnotSemi Nothing  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
+            in
+            MuAbs loc MuAnnotSemi PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd ShiftUp cmd
+        Semi loc CnsRep ns xt (args1, CnsRep, args2) t =  
+            let
+                args = args1 ++ [PrdTerm $ FreeVar loc PrdRep resVar] ++ args2
+                cmd = Apply loc ApplyAnnotSemi Nothing  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
+            in
+            MuAbs loc MuAnnotSemi CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd
