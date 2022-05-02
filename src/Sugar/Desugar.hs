@@ -114,27 +114,27 @@ desugarTerm (AST.Semi loc PrdRep _ ns xt (args1, PrdRep, args2) t) =
     args = (desugarPCTerm <$> args1) ++ [Core.CnsTerm $ Core.FreeVar loc CnsRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Core.Apply loc Core.ApplyAnnotSemi Nothing  (Core.Xtor loc Core.XtorAnnotSemi PrdRep ns xt args) (desugarTerm t)
   in
-  Core.MuAbs loc Core.MuAnnotSemi PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
+  Core.MuAbs loc Core.MuAnnotSemi PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 desugarTerm (AST.Semi loc CnsRep _ ns xt (args1, CnsRep, args2) t) = 
   let
     args = (desugarPCTerm <$> args1) ++ [Core.PrdTerm $ Core.FreeVar loc PrdRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Core.Apply loc Core.ApplyAnnotSemi Nothing  (Core.Xtor loc Core.XtorAnnotSemi PrdRep ns xt args) (desugarTerm t)
   in
-  Core.MuAbs loc Core.MuAnnotSemi CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd cmd
+  Core.MuAbs loc Core.MuAnnotSemi CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 desugarTerm (AST.Dtor loc _ _ ns xt t (args1,PrdRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [Core.CnsTerm $ Core.FreeVar loc CnsRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Core.Apply loc Core.ApplyAnnotDtor Nothing (desugarTerm t)
                            (Core.Xtor loc Core.XtorAnnotDtor CnsRep ns xt args)
   in
-    Core.MuAbs loc Core.MuAnnotDtor PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
+    Core.MuAbs loc Core.MuAnnotDtor PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 desugarTerm (AST.Dtor loc _ _ ns xt t (args1,CnsRep,args2)) =
   let
     args = (desugarPCTerm <$> args1) ++ [Core.PrdTerm $ Core.FreeVar loc PrdRep resVar] ++ (desugarPCTerm <$> args2)
     cmd = Core.Apply loc Core.ApplyAnnotDtor Nothing (desugarTerm t)
                                 (Core.Xtor loc Core.XtorAnnotDtor CnsRep ns xt args)
   in
-    Core.MuAbs loc Core.MuAnnotDtor CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd cmd
+    Core.MuAbs loc Core.MuAnnotDtor CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
 -- 
@@ -154,23 +154,23 @@ desugarTerm (AST.CaseOf loc PrdRep _ ns t cases) =
     desugarMatchCase (AST.MkTermCase _ pat t) = Core.MkCmdCase loc (desugarPat pat)  $ Core.Apply loc Core.ApplyAnnotCaseOfInner Nothing (desugarTerm t) (Core.FreeVar loc CnsRep resVar)
     cmd = Core.Apply loc Core.ApplyAnnotCaseOfOuter Nothing (desugarTerm t) (Core.XCase loc Core.MatchAnnotCaseOf CnsRep ns  (desugarMatchCase <$> cases))
   in
-    Core.MuAbs loc Core.MuAnnotCaseOf PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
+    Core.MuAbs loc Core.MuAnnotCaseOf PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 desugarTerm (AST.CaseOf loc CnsRep _ ns t cases) =
   let
     desugarMatchCase (AST.MkTermCase _ pat t) = Core.MkCmdCase loc (desugarPat pat)  $ Core.Apply loc Core.ApplyAnnotCaseOfInner Nothing (Core.FreeVar loc PrdRep  resVar) (desugarTerm t)
     cmd = Core.Apply loc Core.ApplyAnnotCaseOfOuter Nothing (desugarTerm t) (Core.XCase loc Core.MatchAnnotCaseOf CnsRep ns  (desugarMatchCase <$> cases))
   in
-    Core.MuAbs loc Core.MuAnnotCaseOf CnsRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
+    Core.MuAbs loc Core.MuAnnotCaseOf CnsRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 desugarTerm (AST.CocaseOf loc PrdRep _ ns t cases) =
   let
      desugarComatchCase (AST.MkTermCase _ pat t) = Core.MkCmdCase loc (desugarPat pat) $ Core.Apply loc Core.ApplyAnnotCocaseOfInner Nothing (desugarTerm t) (Core.FreeVar loc CnsRep resVar)
      cmd = Core.Apply loc Core.ApplyAnnotCocaseOfOuter Nothing (Core.XCase loc Core.MatchAnnotCocaseOf PrdRep ns  (desugarComatchCase <$> cases)) (desugarTerm t)
-  in Core.MuAbs loc Core.MuAnnotCocaseOf PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd cmd
+  in Core.MuAbs loc Core.MuAnnotCocaseOf PrdRep Nothing $ Core.commandClosing [(Cns, resVar)] $ Core.shiftCmd AST.ShiftUp cmd
 desugarTerm (AST.CocaseOf loc CnsRep _ ns t cases) =
   let
     desugarComatchCase (AST.MkTermCase _ pat t) = Core.MkCmdCase loc (desugarPat pat) $ Core.Apply loc Core.ApplyAnnotCocaseOfInner Nothing (Core.FreeVar loc PrdRep resVar) (desugarTerm t)
     cmd = Core.Apply loc Core.ApplyAnnotCocaseOfOuter Nothing (Core.XCase loc Core.MatchAnnotCocaseOf PrdRep ns  (desugarComatchCase <$> cases)) (desugarTerm t)
-  in Core.MuAbs loc Core.MuAnnotCocaseOf CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] (Core.shiftCmd cmd)
+  in Core.MuAbs loc Core.MuAnnotCocaseOf CnsRep Nothing $ Core.commandClosing [(Prd, resVar)] (Core.shiftCmd AST.ShiftUp cmd)
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
 --
