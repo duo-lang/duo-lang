@@ -16,6 +16,7 @@ import System.Console.Repline
       ExitDecision(Exit),
       ReplOpts(..) )
 
+import Pretty.Pretty ( ppPrintString )
 import Repl.Options.Let (letOption)
 import Repl.Options.Subsume (subOption)
 import Repl.Options.LoadReload (loadOption, reloadOption)
@@ -26,12 +27,13 @@ import Repl.Repl
     ( Option(..),
       Repl,
       ReplInner,
-      ReplState(loadedFiles, replEnv),
+      ReplState(..),
       initialReplState,
       mkWordCompleter,
       prettyRepl,
       prettyText,
       cmd )
+import Driver.Definition
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.RST.Types ( DataDecl(data_name))
@@ -96,7 +98,7 @@ final = prettyText "Goodbye!" >> return Exit
 
 replBanner :: a -> Repl String
 replBanner _ = do
-  loadedFiles <- gets loadedFiles
+  loadedFiles <- gets (fmap ppPrintString . M.keys . drvFiles . replDriverState)
   pure (unwords loadedFiles ++ "> ")
 
 opts :: ReplOpts ReplInner
@@ -119,12 +121,16 @@ cmdCompleter :: CompletionFunc ReplInner
 cmdCompleter = mkWordCompleter (_simpleComplete f)
   where
     f n = do
-      env <- gets replEnv
+      env <- gets (M.elems . drvEnv . replDriverState)
+      let concatPrdEnv = M.unions $ prdEnv <$> env
+      let concatCnsEnv = M.unions $ cnsEnv <$> env
+      let concatCmdEnv = M.unions $ cmdEnv <$> env
+      let concatDeclEnv = concat $ declEnv <$> env
       let completionList = (':' :) . T.unpack . option_name <$> allOptions
-      let keys = concat [ unFreeVarName <$> M.keys (prdEnv env)
-                        , unFreeVarName <$> M.keys (cnsEnv env)
-                        , unFreeVarName <$> M.keys (cmdEnv env)
-                        , (unTypeName . rnTnName . data_name . snd) <$> (declEnv env)
+      let keys = concat [ unFreeVarName <$> M.keys concatPrdEnv
+                        , unFreeVarName <$> M.keys concatCnsEnv
+                        , unFreeVarName <$> M.keys concatCmdEnv
+                        , (unTypeName . rnTnName . data_name . snd) <$> concatDeclEnv
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion

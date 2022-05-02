@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Data.Void (Void)
 import Data.Text (Text)
 import Text.Megaparsec
-import qualified Text.Megaparsec.Debug
+import Text.Megaparsec.Debug qualified
 
 import Errors
 import Utils

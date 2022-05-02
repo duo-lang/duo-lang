@@ -18,22 +18,23 @@ import Data.Maybe (fromJust)
 import Data.List (intersperse)
 import Control.Monad.Except
 import Data.Graph.Inductive.Graph
-import Data.Graph.Inductive.PatriciaTree
-import Data.Graph.Inductive.Query.BFS
+import Data.Graph.Inductive.PatriciaTree ( Gr )
+import Data.Graph.Inductive.Query.BFS ( bft )
 import Data.Graph.Inductive.Query.DFS (topsort')
 import Data.GraphViz
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
 import Data.Text.Lazy (pack)
 
-import Parser.Definition
-import Parser.Program
-import Pretty.Pretty
-import Driver.Definition
+import Parser.Definition ( runFileParser )
+import Parser.Program ( programP )
+import Pretty.Pretty ( ppPrint, ppPrintString )
+import Driver.Definition ( DriverM, findModule )
 import Renamer.SymbolTable
-import Syntax.Common
-import Errors
-import Utils
+    ( SymbolTable(imports), createSymbolTable )
+import Syntax.Common ( ModuleName(..) )
+import Errors ( Error(OtherError) )
+import Utils ( defaultLoc )
 
 -- | A dependency Graph which represents the structure of imports.
 data DepGraph = MkDepGraph { graph :: Gr ModuleName ()
@@ -57,8 +58,8 @@ type CompilationOrder = [ModuleName]
 ---------------------------------------------------------------------------------
 
 -- | Create the dependency graph by recursively following import statements.
-createDepGraph :: [ModuleName] -> DriverM DepGraph
-createDepGraph mns = createDepGraph' mns defaultDepGraph
+createDepGraph :: ModuleName -> DriverM DepGraph
+createDepGraph mn = createDepGraph' [mn] defaultDepGraph
 
 lookupOrInsert :: DepGraph -> ModuleName -> (Node, DepGraph)
 lookupOrInsert depGraph@MkDepGraph {..} mn = case M.lookup mn name_map of
