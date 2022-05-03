@@ -112,8 +112,8 @@ data XtorAnnot where
   -- | User-written XCase abstraction
   XtorAnnotOrig :: XtorAnnot
   -- Semi/Dtor
-  XtorAnnotSemi :: XtorAnnot
-  XtorAnnotDtor :: XtorAnnot
+  XtorAnnotSemi :: Int -> XtorAnnot
+  XtorAnnotDtor :: Int -> XtorAnnot
   deriving (Ord, Eq, Show)
 
 -- | A symmetric term.
@@ -158,15 +158,13 @@ data ApplyAnnot where
   ApplyAnnotCocaseOfInner :: ApplyAnnot
   ApplyAnnotCocaseOfOuter :: ApplyAnnot
   -- CaseI/CocaseI
-  ApplyAnnotCaseI :: ApplyAnnot
-  ApplyAnnotCocaseI :: ApplyAnnot
-  -- CaseOfCmd/CocaseOfCmd
+  ApplyAnnotXCaseI :: Int -> ApplyAnnot
+    -- CaseOfCmd/CocaseOfCmd
   ApplyAnnotCaseOfCmd :: ApplyAnnot
   ApplyAnnotCocaseOfCmd :: ApplyAnnot
   -- CaseOfI/CocaseOfI
-  ApplyAnnotCaseOfIInner :: ApplyAnnot
+  ApplyAnnotXCaseOfIInner :: Int -> ApplyAnnot
   ApplyAnnotCaseOfIOuter :: ApplyAnnot
-  ApplyAnnotCocaseOfIInner :: ApplyAnnot
   ApplyAnnotCocaseOfIOuter :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
