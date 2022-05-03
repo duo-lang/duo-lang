@@ -1,7 +1,6 @@
 module Sugar.Core
   where
 
-import Syntax.Core.Program
 import Syntax.Core.Terms
 import Syntax.Common
 import Utils
