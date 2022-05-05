@@ -163,11 +163,11 @@ instance ToHoverMap (Term pc) where
     boundVarToHoverMap loc ty
   toHoverMap (FreeVar loc _ ty _) =
     freeVarToHoverMap loc ty
-  toHoverMap (Xtor loc pc ty ns _ args) =
+  toHoverMap (Xtor loc _ pc ty ns _ args) =
     M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
-  toHoverMap (XCase loc pc ty ns cases) =
+  toHoverMap (XCase loc _ pc ty ns cases) =
     M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
-  toHoverMap (MuAbs loc pc ty _ cmd) =
+  toHoverMap (MuAbs loc _ pc ty _ cmd) =
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
   toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2)) =
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
@@ -199,7 +199,7 @@ applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rn
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap AST.Command where
-  toHoverMap (Apply loc kind prd cns) =
+  toHoverMap (Apply loc _ kind prd cns) =
     M.unions [toHoverMap prd, toHoverMap cns, applyToHoverMap (locToRange loc) kind]
   toHoverMap (Print _ prd cmd) =
     M.unions [toHoverMap prd, toHoverMap cmd]

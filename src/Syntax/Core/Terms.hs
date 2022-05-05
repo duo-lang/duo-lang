@@ -20,7 +20,7 @@ module Syntax.Core.Terms
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
-
+import Syntax.Common.Annot
 import Utils
 import Errors
 import Syntax.Common
@@ -80,41 +80,7 @@ deriving instance Show CmdCase
 -- Terms
 ---------------------------------------------------------------------------------
 
-data MuAnnot where
-  -- | User-written Mu abstraction
-  MuAnnotOrig :: MuAnnot
-  -- Semi/Dtor
-  MuAnnotSemi :: MuAnnot
-  MuAnnotDtor :: MuAnnot
-  -- CaseOf / CocaseOf
-  MuAnnotCaseOf :: MuAnnot
-  MuAnnotCocaseOf :: MuAnnot
-  deriving (Ord, Eq, Show)
 
-data MatchAnnot where
-  -- | User-written XCase abstraction
-  MatchAnnotOrig :: MatchAnnot
-  -- CaseOf / CocaseOf
-  MatchAnnotCaseOf :: MatchAnnot
-  MatchAnnotCocaseOf :: MatchAnnot
-  -- CaseI / CocaseI
-  MatchAnnotCaseI :: MatchAnnot
-  MatchAnnotCocaseI :: MatchAnnot
-  -- CaseOfI / CocaseOfI
-  MatchAnnotCaseOfI :: MatchAnnot
-  MatchAnnotCocaseOfI :: MatchAnnot
-  -- CaseOfCmd / CocaseOfCmd
-  MatchAnnotCaseOfCmd :: MatchAnnot
-  MatchAnnotCocaseOfCmd :: MatchAnnot
-  deriving (Ord, Eq, Show)
-
-data XtorAnnot where
-  -- | User-written XCase abstraction
-  XtorAnnotOrig :: XtorAnnot
-  -- Semi/Dtor
-  XtorAnnotSemi :: Int -> XtorAnnot
-  XtorAnnotDtor :: Int -> XtorAnnot
-  deriving (Ord, Eq, Show)
 
 -- | A symmetric term.
 -- The `bs` parameter is used to store additional information at binding sites.
@@ -146,27 +112,6 @@ deriving instance Show (Term Cns)
 -- Commands
 ---------------------------------------------------------------------------------
 
-data ApplyAnnot where
-  -- User-written apply command
-  ApplyAnnotOrig :: ApplyAnnot
-  -- Semi/Dtor
-  ApplyAnnotSemi :: ApplyAnnot
-  ApplyAnnotDtor :: ApplyAnnot
-  -- CaseOf/CocaseOf
-  ApplyAnnotCaseOfInner :: ApplyAnnot
-  ApplyAnnotCaseOfOuter :: ApplyAnnot
-  ApplyAnnotCocaseOfInner :: ApplyAnnot
-  ApplyAnnotCocaseOfOuter :: ApplyAnnot
-  -- CaseI/CocaseI
-  ApplyAnnotXCaseI :: Int -> ApplyAnnot
-    -- CaseOfCmd/CocaseOfCmd
-  ApplyAnnotCaseOfCmd :: ApplyAnnot
-  ApplyAnnotCocaseOfCmd :: ApplyAnnot
-  -- CaseOfI/CocaseOfI
-  ApplyAnnotXCaseOfIInner :: Int -> ApplyAnnot
-  ApplyAnnotCaseOfIOuter :: ApplyAnnot
-  ApplyAnnotCocaseOfIOuter :: ApplyAnnot
-  deriving (Ord, Eq, Show)
 
 -- | An executable command.
 data Command where

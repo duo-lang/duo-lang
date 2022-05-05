@@ -48,28 +48,28 @@ forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } 
 
 forgetTypesTerm :: AST.Term pc -> RST.Term pc
 -- Core constructs
-forgetTypesTerm (AST.BoundVar loc pc _annot idx) =
+forgetTypesTerm (AST.BoundVar loc pc _ty idx) =
     RST.BoundVar loc pc idx
-forgetTypesTerm (AST.FreeVar loc pc _annot nm) =
+forgetTypesTerm (AST.FreeVar loc pc _ty nm) =
     RST.FreeVar loc pc nm
-forgetTypesTerm (AST.Xtor loc pc _annot ns xt subst) =
-    RST.Xtor loc pc ns xt (forgetTypesSubst subst)
-forgetTypesTerm (AST.XCase loc pc _annot ns cases) =
-    RST.XCase loc pc ns (forgetTypesCmdCase <$> cases)
-forgetTypesTerm (AST.MuAbs loc pc _annot bs cmd) =
-    RST.MuAbs loc pc bs (forgetTypesCommand cmd)
+forgetTypesTerm (AST.Xtor loc _annot pc _ty ns xt subst) =
+    RST.Xtor loc  pc ns xt (forgetTypesSubst subst)
+forgetTypesTerm (AST.XCase loc _annot  pc _ty ns cases) =
+    RST.XCase loc  pc ns (forgetTypesCmdCase <$> cases)
+forgetTypesTerm (AST.MuAbs loc _annot pc _ty bs cmd) =
+    RST.MuAbs loc  pc bs (forgetTypesCommand cmd)
 -- Syntactic sugar
-forgetTypesTerm (AST.Semi loc pc _annot ns xt subst cns) =
+forgetTypesTerm (AST.Semi loc pc _ty ns xt subst cns) =
     RST.Semi loc pc ns xt (forgetTypesSubstI subst) (forgetTypesTerm cns)
-forgetTypesTerm (AST.Dtor loc pc _annot ns xt tm subst) =
+forgetTypesTerm (AST.Dtor loc pc _ty ns xt tm subst) =
     RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
-forgetTypesTerm (AST.CaseOf loc rep _annot ns tm cases) =
+forgetTypesTerm (AST.CaseOf loc rep _ty ns tm cases) =
     RST.CaseOf loc rep ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.CocaseOf loc rep _annot ns tm cases) =
+forgetTypesTerm (AST.CocaseOf loc rep _ty ns tm cases) =
     RST.CocaseOf loc rep ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.CaseI loc rep _annot ns tmcasesI) =
+forgetTypesTerm (AST.CaseI loc rep _ty ns tmcasesI) =
     RST.CaseI loc rep ns (forgetTypesTermCaseI <$> tmcasesI)
-forgetTypesTerm (AST.CocaseI loc rep _annot ns cases) =
+forgetTypesTerm (AST.CocaseI loc rep _ty ns cases) =
     RST.CocaseI loc rep ns (forgetTypesTermCaseI <$> cases)
 -- Primitive constructs
 forgetTypesTerm (AST.PrimLitI64 loc i) =
@@ -80,7 +80,7 @@ forgetTypesTerm (AST.PrimLitF64 loc d) =
 
 
 forgetTypesCommand :: AST.Command -> RST.Command
-forgetTypesCommand (AST.Apply loc _kind prd cns) =
+forgetTypesCommand (AST.Apply loc _annot _kind prd cns) =
     RST.Apply loc (forgetTypesTerm prd) (forgetTypesTerm cns)
 forgetTypesCommand (AST.Print loc tm cmd) =
     RST.Print loc (forgetTypesTerm tm) (forgetTypesCommand cmd)

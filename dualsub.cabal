@@ -131,10 +131,12 @@ library
       Sugar.Desugar
       Sugar.Resugar
       Sugar.Core
+      Sugar.AST
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.Common
       Syntax.Common.Kinds
+      Syntax.Common.Annot
       Syntax.Common.Names
       Syntax.Common.Polarity
       Syntax.Common.Primitives

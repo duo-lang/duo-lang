@@ -28,6 +28,7 @@ import Utils
 import Errors
 import Syntax.Common
 import Syntax.RST.Types
+import Syntax.Common.Annot
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -157,15 +158,15 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
+  MuAbs :: Loc -> MuAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   ---------------------------------------------------------------------------------
@@ -207,12 +208,12 @@ instance Zonk (Term pc) where
     BoundVar loc rep (zonk bisubst ty) idx
   zonk bisubst (FreeVar loc rep ty nm)  =
     FreeVar loc rep (zonk bisubst ty) nm
-  zonk bisubst (Xtor loc rep ty ns xt subst) =
-    Xtor loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst)
-  zonk bisubst (XCase loc rep ty ns cases) =
-    XCase loc rep (zonk bisubst ty) ns (zonk bisubst <$> cases)
-  zonk bisubst (MuAbs loc rep ty fv cmd) =
-    MuAbs loc rep (zonk bisubst ty) fv (zonk bisubst cmd)
+  zonk bisubst (Xtor loc annot rep ty ns xt subst) =
+    Xtor loc annot rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst)
+  zonk bisubst (XCase loc annot rep ty ns cases) =
+    XCase loc annot rep (zonk bisubst ty) ns (zonk bisubst <$> cases)
+  zonk bisubst (MuAbs loc annot rep ty fv cmd) =
+    MuAbs loc annot rep (zonk bisubst ty) fv (zonk bisubst cmd)
   -- Syntactic sugar
   zonk bisubst (Semi loc rep ty ns xt (subst1,pcrep,subst2) cns) =
     Semi loc rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst1,pcrep,zonk bisubst <$> subst2) (zonk bisubst cns)
@@ -236,9 +237,9 @@ getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
 -- Core constructs
 getTypeTerm (BoundVar _ _ annot _) = annot
 getTypeTerm (FreeVar  _ _ annot _) = annot
-getTypeTerm (Xtor _ _ annot _ _ _) = annot
-getTypeTerm (XCase _ _ annot _ _)  = annot
-getTypeTerm (MuAbs _ _ annot _ _)  = annot
+getTypeTerm (Xtor _ _ _ annot _ _ _) = annot
+getTypeTerm (XCase _ _ _ annot _ _)  = annot
+getTypeTerm (MuAbs _ _ _ annot _ _)  = annot
 -- Syntactic sugar
 getTypeTerm (Semi _ _ annot _ _ _ _)   = annot
 getTypeTerm (Dtor _ _ annot _ _ _ _)   = annot
@@ -266,7 +267,7 @@ data Command where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply  :: Loc -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
+  Apply  :: Loc -> ApplyAnnot -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
@@ -281,8 +282,8 @@ data Command where
 deriving instance Show Command
 
 instance Zonk Command where
-  zonk bisubst (Apply ext kind prd cns) =
-    Apply ext kind (zonk bisubst prd) (zonk bisubst cns)
+  zonk bisubst (Apply ext annot kind prd cns) =
+    Apply ext annot kind (zonk bisubst prd) (zonk bisubst cns)
   zonk bisubst (Print ext prd cmd) =
     Print ext (zonk bisubst prd) (zonk bisubst cmd)
   zonk bisubst (Read ext cns) =
@@ -321,12 +322,12 @@ termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, 
                                                                       _                    -> error "termOpeningRec BOOM"
                                                    | otherwise = bv
 termOpeningRec _ _ fv@(FreeVar _ _ _ _)       = fv
-termOpeningRec k args (Xtor loc rep annot ns xt subst) =
-  Xtor loc rep annot ns xt (pctermOpeningRec k args <$> subst)
-termOpeningRec k args (XCase loc rep annot ns cases) =
-  XCase loc rep annot ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
-termOpeningRec k args (MuAbs loc rep annot fv cmd) =
-  MuAbs loc rep annot fv (commandOpeningRec (k+1) args cmd)
+termOpeningRec k args (Xtor loc anno rep ty ns xt subst) =
+  Xtor loc anno rep ty ns xt (pctermOpeningRec k args <$> subst)
+termOpeningRec k args (XCase loc annot rep ty ns cases) =
+  XCase loc annot rep ty ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
+termOpeningRec k args (MuAbs loc annot rep ty fv cmd) =
+  MuAbs loc annot rep ty fv (commandOpeningRec (k+1) args cmd)
 -- Syntactic sugar
 termOpeningRec k args (Semi loc rep annot ns xtor (args1,pcrep,args2) tm) =
   let
@@ -363,8 +364,8 @@ commandOpeningRec k args (Read loc cns) =
   Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
-commandOpeningRec k args (Apply loc kind t1 t2) =
-  Apply loc kind (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec k args (Apply loc annot kind t1 t2) =
+  Apply loc annot kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc pt op subst) =
   PrimOp loc pt op (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (CaseOfCmd loc ns t cmdcases) =
@@ -394,12 +395,12 @@ termClosingRec k vars (FreeVar loc PrdRep annot v) | isJust ((Prd,v) `elemIndex`
                                                    | otherwise = FreeVar loc PrdRep annot v
 termClosingRec k vars (FreeVar loc CnsRep annot v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep annot (k, fromJust ((Cns,v) `elemIndex` vars))
                                                    | otherwise = FreeVar loc CnsRep annot v
-termClosingRec k vars (Xtor loc pc annot ns xt subst) =
-  Xtor loc pc annot ns xt (pctermClosingRec k vars <$> subst)
-termClosingRec k vars (XCase loc pc annot sn cases) =
-  XCase loc pc annot sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
-termClosingRec k vars (MuAbs loc pc annot fv cmd) =
-  MuAbs loc pc annot fv (commandClosingRec (k+1) vars cmd)
+termClosingRec k vars (Xtor loc annot pc ty ns xt subst) =
+  Xtor loc annot pc ty ns xt (pctermClosingRec k vars <$> subst)
+termClosingRec k vars (XCase loc annot pc ty sn cases) =
+  XCase loc annot pc ty sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
+termClosingRec k vars (MuAbs loc annot pc ty fv cmd) =
+  MuAbs loc annot pc ty fv (commandClosingRec (k+1) vars cmd)
 -- Syntactic sugar
 termClosingRec k args (Semi loc rep annot ns xt (args1,pcrep,args2) t) = 
   let
@@ -437,8 +438,8 @@ commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
-commandClosingRec k args (Apply ext kind t1 t2) =
-  Apply ext kind (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (Apply ext annot kind t1 t2) =
+  Apply ext annot kind (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext pt op subst) =
   PrimOp ext pt op (pctermClosingRec k args <$> subst)
 commandClosingRec k args (CaseOfCmd loc ns t cmdcases) =
@@ -483,12 +484,12 @@ termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 -- Core constructs
 termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
 termLocallyClosedRec _ (FreeVar _ _ _ _) = Right ()
-termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
+termLocallyClosedRec env (Xtor _ _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
-termLocallyClosedRec env (XCase _ _ _ _ cases) = do
+termLocallyClosedRec env (XCase _ _ _ _ _ cases) = do
   sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
-termLocallyClosedRec env (MuAbs _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
-termLocallyClosedRec env (MuAbs _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
+termLocallyClosedRec env (MuAbs _ _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
+termLocallyClosedRec env (MuAbs _ _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 -- Syntactic sugar
 termLocallyClosedRec env (Semi _ _ _ _ _ (args1,_,args2) t) = do 
   termLocallyClosedRec env t
@@ -531,7 +532,7 @@ commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
-commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 commandLocallyClosedRec env (CaseOfCmd _ _ t cmdcases) = do 
   termLocallyClosedRec env t
@@ -570,12 +571,12 @@ shiftTermRec ShiftUp n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar l
                                                         | otherwise = BoundVar loc pcrep annot (i    , j)
 shiftTermRec ShiftDown n (BoundVar loc pcrep annot (i,j)) | n <= i    = BoundVar loc pcrep annot (i - 1, j)
                                                           | otherwise = BoundVar loc pcrep annot (i    , j)                                                  
-shiftTermRec dir n (Xtor loc pcrep annot ns xt subst) =
-    Xtor loc pcrep annot ns xt (shiftPCTermRec dir n <$> subst)
-shiftTermRec dir n (XCase loc pcrep annot ns cases) =
-  XCase loc pcrep annot ns (shiftCmdCaseRec dir (n + 1) <$> cases)
-shiftTermRec dir n (MuAbs loc pcrep annot bs cmd) =
-  MuAbs loc pcrep annot bs (shiftCmdRec dir (n + 1) cmd)
+shiftTermRec dir n (Xtor loc annot pcrep ty ns xt subst) =
+    Xtor loc annot pcrep ty ns xt (shiftPCTermRec dir n <$> subst)
+shiftTermRec dir n (XCase loc annot pcrep ty ns cases) =
+  XCase loc annot pcrep ty ns (shiftCmdCaseRec dir (n + 1) <$> cases)
+shiftTermRec dir n (MuAbs loc annot pcrep ty bs cmd) =
+  MuAbs loc annot pcrep ty bs (shiftCmdRec dir (n + 1) cmd)
 -- Syntactic sugar
 shiftTermRec dir n (Semi loc rep annot ns xt (args1,pcrep',args2) t) =
   Semi loc rep annot ns xt (shiftPCTermRec dir n <$> args1,pcrep',shiftPCTermRec dir n <$> args2) (shiftTermRec dir n t)
@@ -615,8 +616,8 @@ shiftCmdCaseRec dir n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
             }
 
 shiftCmdRec :: ShiftDirection -> Int -> Command -> Command
-shiftCmdRec dir n (Apply ext kind prd cns) =
-  Apply ext kind (shiftTermRec dir n prd) (shiftTermRec dir n cns)
+shiftCmdRec dir n (Apply ext annot kind prd cns) =
+  Apply ext annot kind (shiftTermRec dir n prd) (shiftTermRec dir n cns)
 shiftCmdRec _ _ (ExitSuccess ext) =
   ExitSuccess ext
 shiftCmdRec _ _ (ExitFailure ext) =
