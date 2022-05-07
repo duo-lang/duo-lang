@@ -89,6 +89,21 @@ data Typ (pol :: Polarity) where
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
 
+flipType :: Typ pol -> Typ (FlipPol pol)
+flipType (TyVar l rep kind v) = TyVar l (flipPolarityRep rep) kind v
+flipType (TyData l rep tn sigs) = TyData l (flipPolarityRep rep) tn (flipXtorSig <$> sigs)
+flipType (TyCodata l rep tn sigs) = TyCodata l (flipPolarityRep rep) tn (flipXtorSig <$> sigs) 
+flipType (TyNominal loc rep kind tn vts) = TyNominal loc (flipPolarityRep rep) kind tn (flipVariantType <$> vts)
+flipType (TyRec loc rep v t) = TyRec loc (flipPolarityRep rep) v (flipType t)
+flipType (TyPrim loc rep pt) = TyPrim loc (flipPolarityRep rep) pt 
+flipType t = error $ "no cuts on lattice type " ++ show t
+
+flipXtorSig :: XtorSig pol -> XtorSig (FlipPol pol)
+flipXtorSig = undefined 
+
+flipVariantType :: VariantType pol -> VariantType (FlipPol pol)
+flipVariantType = undefined 
+
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
