@@ -13,7 +13,7 @@ import Pretty.Terms ()
 import Syntax.Common
 import Syntax.AST.Terms
 import Utils
-import Syntax.Common.TypesPol (Typ(TyData, TyNominal))
+import Syntax.Common.TypesPol (Typ (TyNominal))
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad

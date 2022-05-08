@@ -61,7 +61,7 @@ isFocusedCmdCase eo (MkCmdCase loc pat cmd) = MkCmdCase loc pat <$> isFocusedCmd
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: EvaluationOrder -> Command -> Maybe Command
-isFocusedCmd eo (Apply loc annot _ prd cns) = Apply loc annot (Just (CBox eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
+isFocusedCmd eo (Apply loc annot prd cns) = Apply loc annot  {- (Just (CBox eo))-} <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (ExitSuccess loc)          = Just (ExitSuccess loc)
 isFocusedCmd _  (ExitFailure loc)          = Just (ExitFailure loc)
 isFocusedCmd _  (Jump loc fv)              = Just (Jump loc fv)
@@ -155,9 +155,9 @@ focusXtor eo CnsRep ns xt subst =
 
 
 focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
-focusXtor' eo CnsRep ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (FreeVar defaultLoc PrdRep alphaVar)
+focusXtor' eo CnsRep ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  {- (Just (CBox eo))-} (FreeVar defaultLoc PrdRep alphaVar)
                                                                            (Xtor defaultLoc XtorAnnotOrig CnsRep ns xt (reverse pcterms'))
-focusXtor' eo PrdRep ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (Xtor defaultLoc XtorAnnotOrig PrdRep ns xt (reverse pcterms'))
+focusXtor' eo PrdRep ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  {- (Just (CBox eo))-} (Xtor defaultLoc XtorAnnotOrig PrdRep ns xt (reverse pcterms'))
                                                                            (FreeVar defaultLoc CnsRep alphaVar)
 focusXtor' eo pc     ns xt (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc ns xt pcterms (PrdTerm prd : pcterms')
 focusXtor' eo pc     ns xt (PrdTerm                                 prd:pcterms) pcterms' =
@@ -165,13 +165,13 @@ focusXtor' eo pc     ns xt (PrdTerm                                 prd:pcterms)
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusXtor' eo pc ns xt pcterms (PrdTerm (FreeVar defaultLoc PrdRep var) : pcterms')))
                                                               in
-                                                                  Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep Nothing cmd)
+                                                                  Apply defaultLoc ApplyAnnotOrig  {- (Just (CBox eo))-} (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep Nothing cmd)
 focusXtor' eo pc     ns xt (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc ns xt pcterms (CnsTerm cns : pcterms')
 focusXtor' eo pc     ns xt (CnsTerm                                 cns:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusXtor' eo pc ns xt pcterms (CnsTerm (FreeVar defaultLoc CnsRep var) : pcterms')))
-                                                              in Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (MuAbs defaultLoc MuAnnotOrig PrdRep Nothing cmd) (focusTerm eo cns)
+                                                              in Apply defaultLoc ApplyAnnotOrig  {- (Just (CBox eo))-} (MuAbs defaultLoc MuAnnotOrig PrdRep Nothing cmd) (focusTerm eo cns)
 
 
 
@@ -188,27 +188,27 @@ focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
         var = betaVar (length pcterms')
         cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusPrimOp eo op pcterms (PrdTerm (FreeVar defaultLoc PrdRep var) : pcterms')))
     in
-        Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep Nothing cmd)
+        Apply defaultLoc ApplyAnnotOrig {- (Just (CBox eo))-} (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep Nothing cmd)
 focusPrimOp eo op (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp eo op pcterms (CnsTerm cns : pcterms')
 focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
         cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusPrimOp eo op pcterms (CnsTerm (FreeVar defaultLoc CnsRep var) : pcterms')))
     in
-        Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (MuAbs defaultLoc MuAnnotOrig PrdRep Nothing cmd) (focusTerm eo cns)
+        Apply defaultLoc ApplyAnnotOrig  {- (Just (CBox eo))-} (MuAbs defaultLoc MuAnnotOrig PrdRep Nothing cmd) (focusTerm eo cns)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: EvaluationOrder -> Command -> Command
-focusCmd eo (Apply loc annot _ prd cns) = Apply loc annot (Just (CBox eo)) (focusTerm eo prd) (focusTerm eo cns)
+focusCmd eo (Apply loc annot prd cns) = Apply loc annot {- (Just (CBox eo))-} (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (ExitSuccess loc) = ExitSuccess loc
 focusCmd _  (ExitFailure loc) = ExitFailure loc
 focusCmd _  (Jump loc fv) = Jump loc fv
 focusCmd eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focusCmd eo cmd)
-focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd)
+focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig {- (Just (CBox eo)) -} (focusTerm eo prd) 
                                                              (MuAbs loc MuAnnotOrig CnsRep Nothing (Print loc (BoundVar loc PrdRep (0,0)) (focusCmd eo cmd)))
 focusCmd eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
-focusCmd eo (Read loc cns) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (MuAbs loc MuAnnotOrig PrdRep Nothing (Read loc (BoundVar loc CnsRep (0,0))))
+focusCmd eo (Read loc cns) = Apply loc ApplyAnnotOrig {- (Just (CBox eo)) -} (MuAbs loc MuAnnotOrig PrdRep Nothing (Read loc (BoundVar loc CnsRep (0,0))))
                                                         (focusTerm eo cns)
 focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 

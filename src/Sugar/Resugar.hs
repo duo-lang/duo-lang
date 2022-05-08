@@ -40,7 +40,7 @@ embedCoreTerm (Core.PrimLitF64 loc d) =
 
 
 embedCoreCommand :: Core.Command -> RST.Command
-embedCoreCommand (Core.Apply loc _annot _knd prd cns ) =
+embedCoreCommand (Core.Apply loc _annot prd cns ) =
     RST.Apply loc (embedCoreTerm prd) (embedCoreTerm cns)
 embedCoreCommand (Core.Print loc tm cmd) =
     RST.Print loc (embedCoreTerm tm) (embedCoreCommand cmd)

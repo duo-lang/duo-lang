@@ -130,8 +130,8 @@ desugarTermCase :: AST.TermCase pc -> Core.TermCase pc
 desugarTermCase (AST.MkTermCase loc pat t) = Core.MkTermCase loc (desugarPat pat) (desugarTerm t)
 
 desugarCmd :: AST.Command -> Core.Command
-desugarCmd (AST.Apply loc annot kind prd cns) =
-  Core.Apply loc annot kind (desugarTerm prd) (desugarTerm cns)
+desugarCmd (AST.Apply loc annot _kind prd cns) =
+  Core.Apply loc annot (desugarTerm prd) (desugarTerm cns)
 desugarCmd (AST.Print loc prd cmd) =
   Core.Print loc (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (AST.Read loc cns) =

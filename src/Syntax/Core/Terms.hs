@@ -113,7 +113,7 @@ data Command where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply  :: Loc -> ApplyAnnot -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
+  Apply  :: Loc -> ApplyAnnot -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
@@ -161,8 +161,8 @@ commandOpeningRec k args (Read loc cns) =
   Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
-commandOpeningRec k args (Apply loc annot kind t1 t2) =
-  Apply loc annot kind (termOpeningRec k args t1) (termOpeningRec k args t2)
+commandOpeningRec k args (Apply loc annot t1 t2) =
+  Apply loc annot (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc pt op subst) =
   PrimOp loc pt op (pctermOpeningRec k args <$> subst)
 
@@ -203,8 +203,8 @@ commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
-commandClosingRec k args (Apply ext annot kind t1 t2) =
-  Apply ext annot kind (termClosingRec k args t1) (termClosingRec k args t2)
+commandClosingRec k args (Apply ext annot t1 t2) =
+  Apply ext annot (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext pt op subst) =
   PrimOp ext pt op (pctermClosingRec k args <$> subst)
 
@@ -255,7 +255,7 @@ commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
-commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
 termLocallyClosed :: Term pc -> Either Error ()
@@ -291,7 +291,7 @@ shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
 shiftCmdCaseRec dir n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftCmdRec dir n cmd)
 
 shiftCmdRec :: ShiftDirection -> Int -> Command -> Command
-shiftCmdRec dir n (Apply loc annot kind prd cns) = Apply loc annot kind (shiftTermRec dir n prd) (shiftTermRec dir n cns)
+shiftCmdRec dir n (Apply loc annot prd cns) = Apply loc annot (shiftTermRec dir n prd) (shiftTermRec dir n cns)
 shiftCmdRec _ _ (ExitSuccess ext) = ExitSuccess ext
 shiftCmdRec _ _ (ExitFailure ext) = ExitFailure ext
 shiftCmdRec dir n (Print ext prd cmd) = Print ext (shiftTermRec dir n prd) (shiftCmdRec dir n cmd)
