@@ -22,6 +22,7 @@ import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
+import Sugar.AST
 import Syntax.Common.TypesPol
 import Utils (Loc)
 
@@ -163,17 +164,17 @@ instance ToHoverMap (Term pc) where
     boundVarToHoverMap loc ty
   toHoverMap (FreeVar loc _ ty _) =
     freeVarToHoverMap loc ty
-  toHoverMap (Xtor loc _annot pc ty ns _ args) =
+  toHoverMap (RawXtor loc pc ty ns _ args) =
     M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
-  toHoverMap (XCase loc _annot pc ty ns cases) =
+  toHoverMap (RawCase loc pc ty ns cases) =
     M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
-  toHoverMap (MuAbs loc _annot pc ty _ cmd) =
+  toHoverMap (RawMuAbs loc pc ty _ cmd) =
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
   toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2)) =
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
   toHoverMap (CaseOf loc _ ty ns e cases) =
     M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
-  toHoverMap (CocaseI loc _pcrep ty ns cocases) =
+  toHoverMap (XCaseI loc _pcrep PrdRep ty ns cocases) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
   toHoverMap (PrimLitI64 loc _) =
     mkHoverMap loc $ T.unlines [ "#### Literal"
@@ -183,7 +184,7 @@ instance ToHoverMap (Term pc) where
     mkHoverMap loc $ T.unlines [ "#### Literal"
                                , "- Raw `#F64` literal"
                                ]
-  toHoverMap (CaseI loc _pcrep ty ns tmcasesI) =
+  toHoverMap (XCaseI loc _pcrep CnsRep ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
   toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
@@ -199,7 +200,7 @@ applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rn
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap AST.Command where
-  toHoverMap (Apply loc _annot kind prd cns) =
+  toHoverMap (RawApply loc kind prd cns) =
     M.unions [toHoverMap prd, toHoverMap cns, applyToHoverMap (locToRange loc) kind]
   toHoverMap (Print _ prd cmd) =
     M.unions [toHoverMap prd, toHoverMap cmd]
