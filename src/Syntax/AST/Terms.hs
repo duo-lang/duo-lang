@@ -101,7 +101,7 @@ data Term (pc :: PrdCns) where
   Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -319,7 +319,7 @@ termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
-cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do 
+cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do
   commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
@@ -354,7 +354,7 @@ shiftTermRec _ _ var@FreeVar {} = var
 shiftTermRec ShiftUp n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i + 1, j)
                                                         | otherwise = BoundVar loc pcrep ty (i    , j)
 shiftTermRec ShiftDown n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i - 1, j)
-                                                          | otherwise = BoundVar loc pcrep ty (i    , j)                                                  
+                                                          | otherwise = BoundVar loc pcrep ty (i    , j)
 shiftTermRec dir n (Xtor loc annot pcrep ty ns xt subst) =
     Xtor loc annot pcrep ty ns xt (shiftPCTermRec dir n <$> subst)
 shiftTermRec dir n (XCase loc annot pcrep ty ns cases) =

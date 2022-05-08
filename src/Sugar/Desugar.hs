@@ -55,8 +55,8 @@ desugarTerm (RST.Semi loc rep ns xt (args1,r,args2) t) = Core.Semi loc rep ns xt
 desugarTerm (RST.Dtor loc rep ns xt t (args1,r,args2)) = Core.Dtor loc rep ns xt (desugarTerm t) (desugarPCTerm <$> args1,r,desugarPCTerm <$> args2)
 desugarTerm (RST.CaseOf loc rep ns t cases) = Core.CaseOf loc rep ns (desugarTerm t) (desugarTermCase <$> cases)
 desugarTerm (RST.CocaseOf loc rep ns t cases) = Core.CocaseOf loc rep ns (desugarTerm t) (desugarTermCase <$> cases)
-desugarTerm (RST.CaseI loc rep ns tmcasesI) = Core.CaseI loc rep ns (desugarTermCaseI <$> tmcasesI)
-desugarTerm (RST.CocaseI loc rep ns cocases) = Core.CocaseI loc rep ns (desugarTermCaseI <$> cocases)
+desugarTerm (RST.CaseI loc rep ns tmcasesI) = Core.XCaseI loc rep CnsRep ns (desugarTermCaseI <$> tmcasesI)
+desugarTerm (RST.CocaseI loc rep ns cocases) = Core.XCaseI loc rep PrdRep ns (desugarTermCaseI <$> cocases)
 
 ---------------------------------------------------------------------------------
 -- Primitive constructs

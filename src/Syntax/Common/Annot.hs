@@ -1,4 +1,5 @@
 module Syntax.Common.Annot where
+import Syntax.Common.PrdCns (PrdCnsRep, PrdCns)
 
 data MuAnnot where
   -- | User-written Mu abstraction
@@ -11,22 +12,21 @@ data MuAnnot where
   MuAnnotCocaseOf :: MuAnnot
   deriving (Ord, Eq, Show)
 
-data MatchAnnot where
+data MatchAnnot (pc :: PrdCns) where
   -- | User-written XCase abstraction
-  MatchAnnotOrig :: MatchAnnot
+  MatchAnnotOrig :: MatchAnnot pc
   -- CaseOf / CocaseOf
-  MatchAnnotCaseOf :: MatchAnnot
-  MatchAnnotCocaseOf :: MatchAnnot
+  MatchAnnotCaseOf :: MatchAnnot pc 
+  MatchAnnotCocaseOf :: MatchAnnot pc 
   -- CaseI / CocaseI
-  MatchAnnotCaseI :: MatchAnnot
-  MatchAnnotCocaseI :: MatchAnnot
+  MatchAnnotXCaseI :: PrdCnsRep pc -> MatchAnnot pc 
   -- CaseOfI / CocaseOfI
-  MatchAnnotCaseOfI :: MatchAnnot
-  MatchAnnotCocaseOfI :: MatchAnnot
+  MatchAnnotCaseOfI :: MatchAnnot pc 
+  MatchAnnotCocaseOfI :: MatchAnnot pc 
   -- CaseOfCmd / CocaseOfCmd
-  MatchAnnotCaseOfCmd :: MatchAnnot
-  MatchAnnotCocaseOfCmd :: MatchAnnot
-  deriving (Ord, Eq, Show)
+  MatchAnnotCaseOfCmd :: MatchAnnot pc 
+  MatchAnnotCocaseOfCmd :: MatchAnnot pc 
+  deriving (Eq, Show)
 
 data XtorAnnot where
   -- | User-written XCase abstraction

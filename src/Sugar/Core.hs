@@ -11,8 +11,7 @@ module Sugar.Core(
   TermCase (..),
   pattern CaseOf,
   pattern CocaseOf,
-  pattern CaseI,
-  pattern CocaseI,
+  pattern XCaseI,
   pattern RawCase,
   pattern RawXtor, 
   pattern RawMuAbs,
@@ -121,7 +120,7 @@ pattern CocaseOfI loc rep ns t cases <-
 pattern RawApply ::  Loc -> Term Prd -> Term Cns -> Command
 pattern RawApply loc t1 t2 = Apply loc ApplyAnnotOrig t1 t2
 
-{-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd #-}
+{-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd , Print, Read, Jump, ExitSuccess, ExitFailure, PrimOp #-}
 
 
 type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
@@ -245,53 +244,32 @@ resugarCmdCase' CnsRep (MkCmdCase loc (XtorPat _ xt cases)
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 
+-- XCaseI unifies CaseI and CocaseI
 -- CaseI:
 --   [[case { Ctor(xs,*,ys) => prd }]] = case { Ctor(xs,k,ys) => < [[prd]] | k > }
 --   [[case { Ctor(xs,*,ys) => cns }]] = case { Ctor(xs,k,ys) => < k | [[cns]] > }
---   Annotations used on RHS: MatchAnnotCaseI, ApplyAnnotCaseI
-
-pattern CaseI :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Cns            
-pattern CaseI loc rep ns cases <- XCase loc MatchAnnotCaseI (flipPrdCns -> rep) ns (map (resugarCmdCase' rep) -> cases)   
-  where 
-   CaseI loc PrdRep ns cases =    
-    let
-        desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
-          let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2) in
-          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) t (BoundVar loc CnsRep (0,length as1))
-    in
-        XCase loc MatchAnnotCaseI CnsRep ns $ desugarmatchCase <$> cases
-   CaseI loc CnsRep ns cases =    
-    let
-        desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
-          let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2) in
-          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) (BoundVar loc PrdRep (0,length as1)) t
-    in
-        XCase loc MatchAnnotCaseI CnsRep ns $ desugarmatchCase <$> cases
-
-
-
 -- CocaseI:
 --   [[cocase { Dtor(xs,*,ys) => prd }]] = cocase { Dtor(xs,k,ys) => < [[prd]] | k > }
 --   [[cocase { Dtor(xs,*,ys) => cns }]] = cocase { Dtor(xs,k,ys) => < k | [[cns]] > }
---   Annotations used on RHS: MatchAnnotCocaseI, ApplyAnnotCocaseI
+--   Annotations used on RHS: MatchAnnotXCaseI, ApplyAnnotXCaseI
 
-pattern CocaseI :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Prd            
-pattern CocaseI loc rep ns cases <- XCase loc MatchAnnotCocaseI rep ns (map (resugarCmdCase' rep) -> cases)   
+pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> NominalStructural -> [TermCaseI pc] -> Term pc'            
+pattern XCaseI loc rep rep' ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ns (map (resugarCmdCase' rep) -> cases)   
   where 
-   CocaseI loc PrdRep ns cases =    
+   XCaseI loc PrdRep rep' ns cases =    
     let
         desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
           let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2) in
           MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) t (BoundVar loc CnsRep (0,length as1))
     in
-        XCase loc MatchAnnotCocaseI PrdRep ns $ desugarmatchCase <$> cases
-   CocaseI loc CnsRep ns cases =    
+        XCase loc (MatchAnnotXCaseI PrdRep) rep' ns $ desugarmatchCase <$> cases
+   XCaseI loc CnsRep rep' ns cases =    
     let
         desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
           let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2) in
           MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) (BoundVar loc PrdRep (0,length as1)) t
     in
-        XCase loc MatchAnnotCocaseI PrdRep ns $ desugarmatchCase <$> cases
+        XCase loc (MatchAnnotXCaseI CnsRep) rep' ns $ desugarmatchCase <$> cases
 
 pattern RawCase ::  Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
 pattern RawCase loc pc ns cases = XCase loc MatchAnnotOrig pc ns cases 
@@ -302,4 +280,4 @@ pattern RawXtor loc pc ns xt subst = Xtor loc XtorAnnotOrig pc ns xt subst
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
 pattern RawMuAbs loc pc name cmd = MuAbs loc MuAnnotOrig pc name cmd 
 
-{-# COMPLETE RawCase, RawXtor, RawMuAbs, CocaseI, CaseI, CocaseOf, CaseOf, Dtor, Semi #-}
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}

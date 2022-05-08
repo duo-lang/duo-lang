@@ -11,12 +11,13 @@ module Sugar.AST (
   TermCase (..),
   pattern CaseOf,
   pattern CocaseOf,
-  pattern CaseI,
-  pattern CocaseI,
+  pattern XCaseI,
   pattern RawApply,
   pattern RawCase, 
   pattern RawXtor, 
-  pattern RawMuAbs)
+  pattern RawMuAbs,
+  isDesugaredTerm,
+  isDesugaredCommand)
   where
 
 import Syntax.AST.Terms
@@ -91,7 +92,7 @@ pattern CocaseOfI loc rep ns t cases <-
 pattern RawApply ::  Loc -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
 pattern RawApply loc kind t1 t2 = Apply loc ApplyAnnotOrig kind t1 t2
 
-{-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd #-}
+{-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd, Print, Read, Jump, ExitSuccess, ExitFailure, PrimOp  #-}
 
 -- | A SubstitutionI is like a substitution where one of the arguments has been
 -- replaced by an implicit argument. The following convention for the use of the
@@ -175,23 +176,17 @@ resugarCmdCase' CnsRep (MkCmdCase loc (XtorPat _ xt cases)
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 
+-- XCaseI unifies CaseI and CocaseI
 -- CaseI:
 --   [[case { Ctor(xs,*,ys) => prd }]] = case { Ctor(xs,k,ys) => < [[prd]] | k > }
 --   [[case { Ctor(xs,*,ys) => cns }]] = case { Ctor(xs,k,ys) => < k | [[cns]] > }
---   Annotations used on RHS: MatchAnnotCaseI, ApplyAnnotCaseI
-
-pattern CaseI :: Loc -> PrdCnsRep pc -> Typ Neg -> NominalStructural -> [TermCaseI pc] -> Term Cns            
-pattern CaseI loc rep ty ns cases <- XCase loc MatchAnnotCaseI (flipPrdCns -> rep) ty ns (map (resugarCmdCase' rep) -> cases)   
-
-
 -- CocaseI:
 --   [[cocase { Dtor(xs,*,ys) => prd }]] = cocase { Dtor(xs,k,ys) => < [[prd]] | k > }
 --   [[cocase { Dtor(xs,*,ys) => cns }]] = cocase { Dtor(xs,k,ys) => < k | [[cns]] > }
---   Annotations used on RHS: MatchAnnotCocaseI, ApplyAnnotCocaseI
-
-pattern CocaseI :: Loc -> PrdCnsRep pc -> Typ Pos -> NominalStructural -> [TermCaseI pc] -> Term Prd            
-pattern CocaseI loc rep ty ns cases <- XCase loc MatchAnnotCocaseI rep ty ns (map (resugarCmdCase' rep) -> cases)   
-
+--   Annotations used on RHS: MatchAnnotXCaseI, ApplyAnnotXCaseI
+ 
+pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> Typ (PrdCnsToPol pc') -> NominalStructural -> [TermCaseI pc] -> Term pc'            
+pattern XCaseI loc rep rep' ty ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ty ns (map (resugarCmdCase' rep) -> cases)   
 
 pattern RawCase ::  Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
 pattern RawCase loc pc ty ns cases = XCase loc MatchAnnotOrig pc ty ns cases 
@@ -202,4 +197,36 @@ pattern RawXtor loc pc ty ns xt subst = Xtor loc XtorAnnotOrig pc ty ns xt subst
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
 pattern RawMuAbs loc pc ty name cmd = MuAbs loc MuAnnotOrig pc ty name cmd 
 
-{-# COMPLETE RawCase, RawXtor, RawMuAbs, CocaseI, CaseI, CocaseOf, CaseOf, Dtor, Semi #-}
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
+
+isDesugaredTerm :: Term pc -> Bool 
+isDesugaredTerm XCaseI {} = False 
+isDesugaredTerm CocaseOf {} = False 
+isDesugaredTerm CaseOf {} = False 
+isDesugaredTerm Dtor {} = False 
+isDesugaredTerm Semi {} = False 
+isDesugaredTerm (RawCase _ _ _ _ cases) = 
+  and $ (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases 
+isDesugaredTerm (RawXtor _ _ _ _ _ subst) = 
+  and $ isDesugaredPCTerm <$> subst
+isDesugaredTerm (RawMuAbs _ _ _ _ cmd) = isDesugaredCommand cmd 
+isDesugaredTerm _ = True 
+
+isDesugaredCommand :: Command -> Bool 
+isDesugaredCommand CocaseOfI {} = False  
+isDesugaredCommand CaseOfI {} = False  
+isDesugaredCommand CocaseOfCmd {} = False  
+isDesugaredCommand CaseOfCmd {} = False  
+isDesugaredCommand (PrimOp _ _ _ subst) =
+  and (isDesugaredPCTerm <$> subst)
+isDesugaredCommand (RawApply _ _ prd cns) =
+  isDesugaredTerm prd && isDesugaredTerm cns
+isDesugaredCommand (Print _ prd cmd) =
+  isDesugaredTerm prd && isDesugaredCommand cmd
+isDesugaredCommand (Read _ cns) =
+  isDesugaredTerm cns  
+isDesugaredCommand _ = True 
+
+isDesugaredPCTerm :: PrdCnsTerm -> Bool
+isDesugaredPCTerm (PrdTerm tm) = isDesugaredTerm tm
+isDesugaredPCTerm (CnsTerm tm) = isDesugaredTerm tm

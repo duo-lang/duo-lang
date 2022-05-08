@@ -41,7 +41,7 @@ data PrdCnsTerm where
   PrdTerm :: Term Prd -> PrdCnsTerm
   CnsTerm :: Term Cns -> PrdCnsTerm
 
-deriving instance Eq PrdCnsTerm 
+--deriving instance Eq PrdCnsTerm 
 deriving instance Show PrdCnsTerm
 
 type Substitution = [PrdCnsTerm]
@@ -69,7 +69,7 @@ data CmdCase = MkCmdCase
   , cmdcase_cmd  :: Command
   }
 
-deriving instance Eq CmdCase
+--deriving instance Eq CmdCase
 deriving instance Show CmdCase
 
 ---------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ data Term (pc :: PrdCns) where
   Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -98,8 +98,8 @@ data Term (pc :: PrdCns) where
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
-deriving instance Eq (Term Prd)
-deriving instance Eq (Term Cns)
+--deriving instance Eq (Term Prd)
+--deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
 deriving instance Show (Term Cns)
 
@@ -121,7 +121,7 @@ data Command where
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
 
-deriving instance Eq Command
+--deriving instance Eq Command
 deriving instance Show Command
 
 
