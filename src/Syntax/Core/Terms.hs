@@ -21,6 +21,7 @@ import Utils
 import Errors
 import Syntax.Common
 import Syntax.AST.Terms (ShiftDirection(..))
+import Syntax.Common.Pattern
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -46,15 +47,6 @@ deriving instance Show PrdCnsTerm
 
 type Substitution = [PrdCnsTerm]
 
----------------------------------------------------------------------------------
--- Pattern/copattern match cases
----------------------------------------------------------------------------------
-
-data Pattern where
-  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
-
-deriving instance Eq Pattern
-deriving instance Show Pattern
 
 -- | Represents one case in a pattern match or copattern match.
 --

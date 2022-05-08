@@ -4,6 +4,8 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Program qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
+import Sugar.Core qualified as Core
+import Syntax.Common.PrdCns
 
 embedPat :: Core.Pattern -> RST.Pattern
 embedPat (Core.XtorPat loc xt args) = RST.XtorPat loc xt args
@@ -27,17 +29,29 @@ embedCoreTerm (Core.BoundVar loc rep idx) =
     RST.BoundVar loc rep idx
 embedCoreTerm (Core.FreeVar loc rep idx) =
     RST.FreeVar loc rep idx
-embedCoreTerm (Core.Xtor loc _annot rep ns xs subst) =
+embedCoreTerm (Core.RawXtor loc rep ns xs subst) =
     RST.Xtor loc rep ns xs (embedSubst subst)
-embedCoreTerm (Core.XCase loc _annot rep ns cases) =
+embedCoreTerm (Core.RawCase loc rep ns cases) =
     RST.XCase loc rep ns (embedCmdCase <$> cases)
-embedCoreTerm (Core.MuAbs loc _annot rep b cmd) =
+embedCoreTerm (Core.RawMuAbs loc rep b cmd) =
     RST.MuAbs loc rep b (embedCoreCommand cmd)
+embedCoreTerm (Core.CocaseOf loc rep ns t cases) =
+    RST.CocaseOf loc rep ns (embedCoreTerm t) (embedTermCase <$> cases)
+embedCoreTerm (Core.CaseOf loc rep ns t cases) = RST.CaseOf loc rep ns (embedCoreTerm t) (embedTermCase <$> cases)    
+embedCoreTerm (Core.Dtor loc rep ns xt t (subst,r,subst2)) = RST.Dtor loc rep ns xt (embedCoreTerm t) (embedSubst subst, r, embedSubst subst2)
+embedCoreTerm (Core.Semi loc rep ns xt (subst,r,subst2) t ) = RST.Semi loc rep ns xt (embedSubst subst, r, embedSubst subst2) (embedCoreTerm t) 
+embedCoreTerm (Core.XCaseI loc rep PrdRep ns cases) = RST.CocaseI loc rep ns (embedTermCaseI <$> cases)
+embedCoreTerm (Core.XCaseI loc rep CnsRep ns cases) = RST.CaseI loc rep ns (embedTermCaseI <$> cases)
 embedCoreTerm (Core.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 embedCoreTerm (Core.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
 
+embedTermCase :: Core.TermCase pc -> RST.TermCase pc
+embedTermCase (Core.MkTermCase loc pat t) = RST.MkTermCase loc pat (embedCoreTerm t)
+
+embedTermCaseI :: Core.TermCaseI pc -> RST.TermCaseI pc
+embedTermCaseI (Core.MkTermCaseI loc pati t) = RST.MkTermCaseI loc pati (embedCoreTerm t)
 
 embedCoreCommand :: Core.Command -> RST.Command
 embedCoreCommand (Core.Apply loc _annot prd cns ) =

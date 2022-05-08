@@ -145,6 +145,7 @@ library
       Syntax.Common.Annot
       Syntax.Common.TypesUnpol
       Syntax.Common.TypesPol
+      Syntax.Common.Pattern
       Syntax.Core.Terms
       Syntax.Core.Program
       Syntax.CST.Program

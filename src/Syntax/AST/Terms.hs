@@ -24,6 +24,7 @@ import Utils
 import Errors
 import Syntax.Common
 import Syntax.Common.TypesPol
+import Syntax.Common.Pattern
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -51,16 +52,6 @@ instance Zonk PrdCnsTerm where
   zonk bisubst (CnsTerm tm) = CnsTerm (zonk bisubst tm)
 
 type Substitution = [PrdCnsTerm]
-
-
----------------------------------------------------------------------------------
--- Pattern/copattern match cases
----------------------------------------------------------------------------------
-
-data Pattern where
-  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
-
-deriving instance Show Pattern
 
 
 -- | Represents one case in a pattern match or copattern match.

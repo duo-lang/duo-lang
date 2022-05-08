@@ -22,6 +22,7 @@ import Data.Maybe (fromJust, isJust)
 
 import Utils
 import Syntax.Common
+import Syntax.Common.Pattern
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -58,16 +59,6 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
-data Pattern where
-  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
-
-deriving instance Show Pattern
--- | The pattern arguments
--- The empty tuple stands for the implicit argument (*)
-data PatternI where
-  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
-
-deriving instance Show PatternI
 
 -- | Represents one case in a pattern match or copattern match.
 --

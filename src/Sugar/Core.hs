@@ -22,6 +22,7 @@ import Syntax.Core.Terms
 import Syntax.Common
 import Utils
 import Syntax.AST.Terms (ShiftDirection(..) )
+import Syntax.Common.Pattern
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >
@@ -45,8 +46,6 @@ mySplitAt :: Int -> [a] -> ([a],(), [a])
 mySplitAt n x = (a, (), tail b)
   where (a,b) = splitAt n x
 
-data PatternI where
-  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
 
 data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_loc  :: Loc
