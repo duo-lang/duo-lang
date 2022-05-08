@@ -107,6 +107,9 @@ library
       Eval.Definition
       Eval.Eval
       Eval.Primitives
+      Eval2.Definition
+      Eval2.Eval
+      Eval2.Primitives
       Lookup
       Parser.Common
       Parser.Definition
