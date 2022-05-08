@@ -12,7 +12,11 @@ module Sugar.AST (
   pattern CaseOf,
   pattern CocaseOf,
   pattern CaseI,
-  pattern CocaseI)
+  pattern CocaseI,
+  pattern RawApply,
+  pattern RawCase, 
+  pattern RawXtor, 
+  pattern RawMuAbs)
   where
 
 import Syntax.AST.Terms
@@ -82,6 +86,12 @@ pattern CaseOfI loc rep ns t cases <-
 pattern CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 pattern CocaseOfI loc rep ns t cases <-
   Apply loc ApplyAnnotCocaseOfIOuter _ (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) _ ns (map (resugarCmdCase rep) -> cases)) t
+
+
+pattern RawApply ::  Loc -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
+pattern RawApply loc kind t1 t2 = Apply loc ApplyAnnotOrig kind t1 t2
+
+{-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd #-}
 
 -- | A SubstitutionI is like a substitution where one of the arguments has been
 -- replaced by an implicit argument. The following convention for the use of the
@@ -181,3 +191,15 @@ pattern CaseI loc rep ty ns cases <- XCase loc MatchAnnotCaseI (flipPrdCns -> re
 
 pattern CocaseI :: Loc -> PrdCnsRep pc -> Typ Pos -> NominalStructural -> [TermCaseI pc] -> Term Prd            
 pattern CocaseI loc rep ty ns cases <- XCase loc MatchAnnotCocaseI rep ty ns (map (resugarCmdCase' rep) -> cases)   
+
+
+pattern RawCase ::  Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
+pattern RawCase loc pc ty ns cases = XCase loc MatchAnnotOrig pc ty ns cases 
+
+pattern RawXtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
+pattern RawXtor loc pc ty ns xt subst = Xtor loc XtorAnnotOrig pc ty ns xt subst 
+
+pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
+pattern RawMuAbs loc pc ty name cmd = MuAbs loc MuAnnotOrig pc ty name cmd 
+
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, CocaseI, CaseI, CocaseOf, CaseOf, Dtor, Semi #-}

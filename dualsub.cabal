@@ -131,6 +131,7 @@ library
       Sugar.Desugar
       Sugar.Resugar
       Sugar.Core
+      Sugar.AST
       Syntax.AST.Program
       Syntax.AST.Terms
       Syntax.Common
