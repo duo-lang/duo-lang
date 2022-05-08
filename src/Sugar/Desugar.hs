@@ -34,11 +34,11 @@ isDesugaredTerm :: AST.Term pc -> Bool
 -- Core terms
 isDesugaredTerm AST.BoundVar {} = True
 isDesugaredTerm AST.FreeVar {} = True
-isDesugaredTerm (AST.Xtor _ _ _ _ _ subst) =
+isDesugaredTerm (AST.Xtor _ _ _ _ _ _ subst) =
   and (isDesugaredPCTerm <$> subst)
-isDesugaredTerm (AST.MuAbs _ _ _ _ cmd) =
+isDesugaredTerm (AST.MuAbs _ _ _ _ _ cmd) =
   isDesugaredCommand cmd
-isDesugaredTerm (AST.XCase _ _ _ _ cases) =
+isDesugaredTerm (AST.XCase _ _ _ _ _ cases) =
   and ((\AST.MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases)
 isDesugaredTerm AST.PrimLitI64{} = True
 isDesugaredTerm AST.PrimLitF64{} = True
@@ -52,7 +52,7 @@ isDesugaredTerm AST.Semi {} = False
 
 
 isDesugaredCommand :: AST.Command -> Bool
-isDesugaredCommand (AST.Apply _ _ prd cns) =
+isDesugaredCommand (AST.Apply _ _ _ prd cns) =
   isDesugaredTerm prd && isDesugaredTerm cns
 isDesugaredCommand (AST.Print _ prd cmd) =
   isDesugaredTerm prd && isDesugaredCommand cmd
@@ -88,16 +88,16 @@ desugarTerm :: AST.Term pc -> Core.Term pc
 ---------------------------------------------------------------------------------
 -- Core constructs
 ---------------------------------------------------------------------------------
-desugarTerm (AST.BoundVar loc pc _annot idx) =
+desugarTerm (AST.BoundVar loc pc _ty idx) =
   Core.BoundVar loc pc idx
-desugarTerm (AST.FreeVar loc pc _annot fv) =
+desugarTerm (AST.FreeVar loc pc _ty fv) =
   Core.FreeVar loc pc fv
-desugarTerm (AST.Xtor loc pc _annot ns xt args) =
-  Core.Xtor loc Core.XtorAnnotOrig pc ns xt (desugarPCTerm <$> args)
-desugarTerm (AST.MuAbs loc pc _annot bs cmd) =
-  Core.MuAbs loc Core.MuAnnotOrig pc bs (desugarCmd cmd)
-desugarTerm (AST.XCase loc pc _annot ns cases) =
-  Core.XCase loc Core.MatchAnnotOrig pc ns (desugarCmdCase <$> cases)
+desugarTerm (AST.Xtor loc annot pc _ty ns xt args) =
+  Core.Xtor loc annot pc ns xt (desugarPCTerm <$> args)
+desugarTerm (AST.MuAbs loc annot pc _ty bs cmd) =
+  Core.MuAbs loc annot pc bs (desugarCmd cmd)
+desugarTerm (AST.XCase loc annot pc _ty ns cases) =
+  Core.XCase loc annot pc ns (desugarCmdCase <$> cases)
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
 ---------------------------------------------------------------------------------
@@ -130,8 +130,8 @@ desugarTermCase :: AST.TermCase pc -> Core.TermCase pc
 desugarTermCase (AST.MkTermCase loc pat t) = Core.MkTermCase loc (desugarPat pat) (desugarTerm t)
 
 desugarCmd :: AST.Command -> Core.Command
-desugarCmd (AST.Apply loc kind prd cns) =
-  Core.Apply loc Core.ApplyAnnotOrig kind (desugarTerm prd) (desugarTerm cns)
+desugarCmd (AST.Apply loc annot kind prd cns) =
+  Core.Apply loc annot kind (desugarTerm prd) (desugarTerm cns)
 desugarCmd (AST.Print loc prd cmd) =
   Core.Print loc (desugarTerm prd) (desugarCmd cmd)
 desugarCmd (AST.Read loc cns) =
