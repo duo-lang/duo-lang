@@ -20,7 +20,6 @@ import TypeInference.Constraints
 import Utils
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
-import Syntax.Common.Annot
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts

@@ -28,7 +28,6 @@ import Utils
 import Errors
 import Syntax.Common
 import Syntax.Common.TypesPol
-import Syntax.Common.Annot
 
 ---------------------------------------------------------------------------------
 -- Variable representation

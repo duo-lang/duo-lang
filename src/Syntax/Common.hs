@@ -6,6 +6,7 @@ module Syntax.Common (
   module Syntax.Common.PrdCns,
   module Syntax.Common.Types,
   module Syntax.Common.XData,
+  module Syntax.Common.Annot
 ) where
 
 import Syntax.Common.Kinds
@@ -15,3 +16,4 @@ import Syntax.Common.Primitives
 import Syntax.Common.PrdCns
 import Syntax.Common.Types
 import Syntax.Common.XData
+import Syntax.Common.Annot
