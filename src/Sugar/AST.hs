@@ -82,9 +82,6 @@ resugarSubst ::  PrdCnsRep pc -> Int -> Substitution -> SubstitutionI pc
 resugarSubst rep n x = (a, rep, tail b)
   where (a,b) = splitAt n x
 
-resVar :: FreeVarName
-resVar = MkFreeVarName "$result"
-
 -- Semi:
 --   [[Ctor(as,*,bs) ;; e]] = mu k. <  Ctor([[as]],k,[[bs]])  |  [[e]]  >
 --   Annotations used on RHS: MuAnnotSemi, ApplyAnnotSemi, XtorAnnotSemi
