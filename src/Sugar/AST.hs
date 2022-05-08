@@ -17,7 +17,9 @@ module Sugar.AST (
   pattern RawXtor, 
   pattern RawMuAbs,
   isDesugaredTerm,
-  isDesugaredCommand)
+  isDesugaredCommand,
+  resetAnnotationTerm,
+  resetAnnotationCmd)
   where
 
 import Syntax.AST.Terms
@@ -230,3 +232,21 @@ isDesugaredCommand _ = True
 isDesugaredPCTerm :: PrdCnsTerm -> Bool
 isDesugaredPCTerm (PrdTerm tm) = isDesugaredTerm tm
 isDesugaredPCTerm (CnsTerm tm) = isDesugaredTerm tm
+
+resetAnnotationPC :: PrdCnsTerm -> PrdCnsTerm 
+resetAnnotationPC (PrdTerm t) = PrdTerm (resetAnnotationTerm t)
+resetAnnotationPC (CnsTerm t) = CnsTerm (resetAnnotationTerm t)
+
+resetAnnotationTerm :: Term pc -> Term pc 
+resetAnnotationTerm (Xtor loc _ rep ns ty xt subst) = Xtor loc XtorAnnotOrig rep ns ty xt (resetAnnotationPC <$> subst)
+resetAnnotationTerm (MuAbs loc _ rep ty fn cmd) = MuAbs loc MuAnnotOrig rep ty fn (resetAnnotationCmd cmd)
+resetAnnotationTerm (XCase loc _ pc ty ns cases) = XCase loc MatchAnnotOrig pc ty ns ((\(MkCmdCase a b cmd) -> (MkCmdCase a b (resetAnnotationCmd cmd)) ) <$> cases )
+resetAnnotationTerm t = t 
+
+resetAnnotationCmd :: Command -> Command 
+resetAnnotationCmd (PrimOp a b c subst) =
+  PrimOp a b c (resetAnnotationPC <$> subst)
+resetAnnotationCmd (Apply l _ kind t1 t2) = Apply l ApplyAnnotOrig kind (resetAnnotationTerm t1) (resetAnnotationTerm t2)  
+resetAnnotationCmd (Print loc t cmd) = Print loc (resetAnnotationTerm t) (resetAnnotationCmd cmd)
+resetAnnotationCmd (Read loc t) = Read loc (resetAnnotationTerm t)
+resetAnnotationCmd cmd = cmd   
