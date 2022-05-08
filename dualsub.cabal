@@ -141,6 +141,7 @@ library
       Syntax.Common.PrdCns
       Syntax.Common.Types
       Syntax.Common.XData
+      Syntax.Common.Annot
       Syntax.Core.Terms
       Syntax.Core.Program
       Syntax.CST.Program
