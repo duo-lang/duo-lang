@@ -9,7 +9,7 @@ import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.Common
 import Syntax.CST.Program
-import Syntax.CST.Types
+import Syntax.Common.TypesUnpol
 import Utils
 
 ---------------------------------------------------------------------------------

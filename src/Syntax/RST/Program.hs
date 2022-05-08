@@ -5,7 +5,7 @@ import Data.Text (Text)
 
 import Syntax.Common
 import Syntax.RST.Terms( Command, Term )
-import Syntax.RST.Types ( TypeScheme, DataDecl, Typ )
+import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------

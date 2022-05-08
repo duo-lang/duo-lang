@@ -4,7 +4,7 @@ import Syntax.AST.Program qualified as AST
 import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
-import Syntax.RST.Types qualified as RST
+import Syntax.Common.TypesPol qualified as RST
 
 forgetTypesSubst :: AST.Substitution  -> RST.Substitution 
 forgetTypesSubst = fmap forgetTypesPCTerm

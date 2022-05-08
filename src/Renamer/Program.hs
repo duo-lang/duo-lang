@@ -11,9 +11,9 @@ import Renamer.SymbolTable
 import Renamer.Terms (renameTerm, renameCommand)
 import Renamer.Types (renameTypeScheme, renameXTorSig, renameTyp)
 import Syntax.CST.Program qualified as CST
-import Syntax.CST.Types qualified as CST
+import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.RST.Program qualified as RST
-import Syntax.RST.Types qualified as RST
+import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common
 import Utils (Loc)
 

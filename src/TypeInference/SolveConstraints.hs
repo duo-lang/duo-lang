@@ -13,7 +13,7 @@ import Data.Set qualified as S
 
 import Driver.Environment (Environment)
 import Errors
-import Syntax.RST.Types
+import Syntax.Common.TypesPol
 import Syntax.Common
 import Pretty.Pretty
 import Pretty.Types ()

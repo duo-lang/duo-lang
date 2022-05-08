@@ -1,4 +1,4 @@
-module Syntax.CST.Types where
+module Syntax.Common.TypesUnpol where
 
 import Syntax.Common
 import Data.List.NonEmpty (NonEmpty)

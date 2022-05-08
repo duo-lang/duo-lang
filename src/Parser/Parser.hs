@@ -14,7 +14,7 @@ import Parser.Lexer
 import Parser.Program
 import Parser.Terms
 import Parser.Types
-import Syntax.CST.Types
+import Syntax.Common.TypesUnpol
 
 ---------------------------------------------------------------------------------
 -- Parsing for Repl

@@ -4,7 +4,7 @@ import Data.Text (Text)
 
 import Syntax.Common
 import Syntax.Core.Terms( Command, Term )
-import Syntax.RST.Types ( DataDecl, TopAnnot, Typ )
+import Syntax.Common.TypesPol ( DataDecl, TopAnnot, Typ )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------

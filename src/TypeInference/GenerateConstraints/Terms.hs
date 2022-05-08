@@ -14,7 +14,7 @@ import Pretty.Pretty ( ppPrint )
 import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Common hiding (primOps)
-import Syntax.RST.Types
+import Syntax.Common.TypesPol
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils

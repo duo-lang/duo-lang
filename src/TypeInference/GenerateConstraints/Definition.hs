@@ -43,7 +43,7 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Syntax.RST.Types
+import Syntax.Common.TypesPol
 import Syntax.Common
 import TypeInference.Constraints
 import TypeTranslation qualified as TT

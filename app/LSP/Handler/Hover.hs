@@ -22,7 +22,7 @@ import Syntax.Common
 import Syntax.AST.Terms hiding (Command)
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
-import Syntax.RST.Types
+import Syntax.Common.TypesPol
 import Utils (Loc)
 
 ---------------------------------------------------------------------------------

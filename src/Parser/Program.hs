@@ -17,7 +17,7 @@ import Parser.Lexer
 import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
-import Syntax.CST.Types
+import Syntax.Common.TypesUnpol
 import Syntax.Common
 import Utils
 

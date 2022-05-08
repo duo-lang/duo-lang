@@ -8,7 +8,7 @@ import Data.GraphViz
 import Pretty.TypeAutomata (typeAutToDot)
 
 import Errors ( Error )    
-import Syntax.RST.Types ( TypeScheme )
+import Syntax.Common.TypesPol ( TypeScheme )
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton ( typeToAut )
 import TypeAutomata.FromAutomaton ( autToType )

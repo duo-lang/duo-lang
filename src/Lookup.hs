@@ -21,7 +21,7 @@ import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.Common
 import Syntax.AST.Terms
-import Syntax.RST.Types
+import Syntax.Common.TypesPol
 import Utils
 
 ---------------------------------------------------------------------------------

@@ -8,9 +8,9 @@ import Errors
 import Renamer.Definition
 import Renamer.SymbolTable
 import Syntax.Common
-import Syntax.RST.Types ( freeTVars )
-import Syntax.RST.Types qualified as RST
-import Syntax.CST.Types
+import Syntax.Common.TypesPol ( freeTVars )
+import Syntax.Common.TypesPol qualified as RST
+import Syntax.Common.TypesUnpol
 import Utils (Loc(..))
 
 ---------------------------------------------------------------------------------

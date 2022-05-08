@@ -1,4 +1,4 @@
-module Syntax.RST.Types where
+module Syntax.Common.TypesPol where
 
 import Data.Set (Set)
 import Data.Set qualified as S

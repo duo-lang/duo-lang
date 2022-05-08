@@ -20,7 +20,7 @@ import Lookup
 import Pretty.Pretty
 import Pretty.Types ()
 import Driver.Environment
-import Syntax.RST.Types
+import Syntax.Common.TypesPol
 import Syntax.Common
 import Utils
 

@@ -20,7 +20,7 @@ import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.Common
-import Syntax.CST.Types
+import Syntax.Common.TypesUnpol
 import Utils ( Loc(..) )
 
 

@@ -142,14 +142,14 @@ library
       Syntax.Common.Types
       Syntax.Common.XData
       Syntax.Common.Annot
+      Syntax.Common.TypesUnpol
+      Syntax.Common.TypesPol
       Syntax.Core.Terms
       Syntax.Core.Program
       Syntax.CST.Program
       Syntax.CST.Terms
-      Syntax.CST.Types
       Syntax.RST.Program
       Syntax.RST.Terms
-      Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize

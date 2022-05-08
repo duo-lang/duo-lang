@@ -10,7 +10,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
 import Syntax.RST.Program qualified as RST
-import Syntax.RST.Types qualified as RST
+import Syntax.Common.TypesPol qualified as RST
 import Syntax.AST.Program qualified as AST
 import Syntax.Core.Program qualified as Core
 import Syntax.Common
