@@ -1,4 +1,18 @@
-module Sugar.CorASTe
+module Sugar.AST (
+  pattern CaseOfCmd,
+  pattern CocaseOfCmd,
+  TermCaseI (..),
+  PatternI (..),
+  pattern CaseOfI,
+  pattern CocaseOfI,
+  SubstitutionI,
+  pattern Semi,
+  pattern Dtor,
+  TermCase (..),
+  pattern CaseOf,
+  pattern CocaseOf,
+  pattern CaseI,
+  pattern CocaseI)
   where
 
 import Syntax.AST.Terms
