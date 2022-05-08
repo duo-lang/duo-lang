@@ -37,7 +37,7 @@ import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Text qualified as T
 
-import Driver.Environment
+import Driver2.Environment
 import Errors
 import Lookup
 import Pretty.Pretty
@@ -46,7 +46,7 @@ import Pretty.Types ()
 import Syntax.Common.TypesPol
 import Syntax.Common
 import TypeInference.Constraints
-import TypeTranslation qualified as TT
+import TypeTranslation2 qualified as TT
 import Utils
 
 ---------------------------------------------------------------------------------------------

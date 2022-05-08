@@ -18,7 +18,7 @@ import Syntax.Common.TypesPol
 import TypeInference.GenerateConstraints2.Definition
 import TypeInference.Constraints
 import Utils
-import Lookup
+import Lookup2
 import TypeInference.GenerateConstraints2.Primitives (primOps)
 
 ---------------------------------------------------------------------------------------------

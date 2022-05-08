@@ -1,17 +1,18 @@
 module Sugar.Desugar2
   ( desugarTerm
   , desugarPCTerm
-  --, desugarProgram
-  --, desugarCmd
-  --, desugarEnvironment
+  , desugarProgram
+  , desugarCmd
+  , desugarEnvironment
+  , desugarDecl
   )
   where
 
 import Data.Foldable (fold)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Driver.Environment (Environment(..))
-import Eval.Definition (EvalEnv)
+import Driver2.Environment (Environment(..))
+import Eval2.Definition (EvalEnv)
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Program qualified as Core
@@ -132,17 +133,16 @@ desugarDecl (RST.TyOpDecl loc doc op prec assoc ty) =
 desugarDecl (RST.TySynDecl loc doc nm ty) = 
   Core.TySynDecl loc doc nm ty
 
-{-
 desugarProgram :: RST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps
 
+-- should be renamed, since it's  not actually desugaring anything anymore
 desugarEnvironment :: Map ModuleName Environment -> EvalEnv
 desugarEnvironment map = fold $ desugarEnvironment' <$> M.elems map
 
 desugarEnvironment' :: Environment -> EvalEnv
 desugarEnvironment' (MkEnvironment { prdEnv, cnsEnv, cmdEnv }) = (prd,cns,cmd)
   where
-    prd = (\(tm,_,_) -> (desugarTerm tm)) <$> prdEnv
-    cns = (\(tm,_,_) -> (desugarTerm tm)) <$> cnsEnv
-    cmd = (\(cmd,_) -> (desugarCmd cmd)) <$> cmdEnv
--}
+    prd = (\(tm,_,_) -> tm) <$> prdEnv
+    cns = (\(tm,_,_) -> tm) <$> cnsEnv
+    cmd = (\(cmd,_) -> cmd) <$> cmdEnv

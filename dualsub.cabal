@@ -103,6 +103,11 @@ library
       Driver.Driver
       Driver.Environment
       Driver.Repl
+      Driver2.Definition
+      Driver2.DepGraph
+      Driver2.Driver
+      Driver2.Environment
+      Driver2.Repl
       Errors
       Eval.Definition
       Eval.Eval
@@ -111,6 +116,7 @@ library
       Eval2.Eval
       Eval2.Primitives
       Lookup
+      Lookup2
       Parser.Common
       Parser.Definition
       Parser.Lexer
@@ -132,6 +138,7 @@ library
       Renamer.Terms
       Renamer.Types
       Sugar.Desugar
+      Sugar.Desugar2
       Sugar.Resugar
       Sugar.Core
       Syntax.AST.Program
@@ -168,10 +175,16 @@ library
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.Primitives
       TypeInference.GenerateConstraints.Terms
+      TypeInference.GenerateConstraints2.Definition
+      TypeInference.GenerateConstraints2.Primitives
+      TypeInference.GenerateConstraints2.Terms
       TypeInference.SolveConstraints
+      TypeInference.SolveConstraints2
       TypeInference.Constraints
       TypeTranslation
+      TypeTranslation2
       Translate.Focusing
+      Translate.Focusing2
       Translate.Reparse
       Translate.ForgetTypes
       Utils
