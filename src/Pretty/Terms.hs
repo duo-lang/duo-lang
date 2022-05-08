@@ -38,9 +38,6 @@ instance PrettyAnn RST.CmdCase where
 
 -- TermCase
 
-instance PrettyAnn (AST.TermCase pc) where
-  prettyAnn termcase = prettyAnn (forgetTypesTermCase termcase)
-
 instance PrettyAnn (RST.TermCase pc) where
   prettyAnn termcase = prettyAnn (reparseTermCase termcase)
 
@@ -50,10 +47,6 @@ instance PrettyAnn CST.TermCase where
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
--- TermCaseI
-
-instance PrettyAnn (AST.TermCaseI pc) where
-  prettyAnn termcasei = prettyAnn (forgetTypesTermCaseI termcasei)
 
 instance PrettyAnn (RST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (reparseTermCaseI termcasei)
@@ -90,9 +83,6 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.Substitution where
   prettyAnn subst = parens' comma (prettyAnn <$> subst)
 
 -- SubstitutionI
-
-instance PrettyAnn (AST.SubstitutionI pc) where
-  prettyAnn substi = prettyAnn (forgetTypesSubstI substi)
 
 instance PrettyAnn (RST.SubstitutionI pc) where
   prettyAnn substi = prettyAnn (reparseSubstI substi)

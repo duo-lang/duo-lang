@@ -9,9 +9,6 @@ import Syntax.Common.TypesPol qualified as RST
 forgetTypesSubst :: AST.Substitution  -> RST.Substitution 
 forgetTypesSubst = fmap forgetTypesPCTerm
 
-forgetTypesSubstI :: AST.SubstitutionI pc  -> RST.SubstitutionI pc
-forgetTypesSubstI (subst1, pc, subst2) = (forgetTypesSubst subst1, pc, forgetTypesSubst subst2)
-
 forgetTypesPCTerm :: AST.PrdCnsTerm  -> RST.PrdCnsTerm
 forgetTypesPCTerm (AST.PrdTerm tm) = RST.PrdTerm (forgetTypesTerm tm)
 forgetTypesPCTerm (AST.CnsTerm tm) = RST.CnsTerm (forgetTypesTerm tm)
@@ -19,31 +16,12 @@ forgetTypesPCTerm (AST.CnsTerm tm) = RST.CnsTerm (forgetTypesTerm tm)
 forgetTypesPat :: AST.Pattern -> RST.Pattern
 forgetTypesPat (AST.XtorPat loc xt args) = RST.XtorPat loc xt args
 
-forgetTypesPatI :: AST.PatternI -> RST.PatternI
-forgetTypesPatI (AST.XtorPatI loc xt args) = RST.XtorPatI loc xt args
-
 forgetTypesCmdCase :: AST.CmdCase  -> RST.CmdCase
 forgetTypesCmdCase AST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     RST.MkCmdCase
       { cmdcase_loc = cmdcase_loc
       , cmdcase_pat = forgetTypesPat cmdcase_pat
       , cmdcase_cmd = forgetTypesCommand cmdcase_cmd 
-      }
-
-forgetTypesTermCase :: AST.TermCase pc -> RST.TermCase pc
-forgetTypesTermCase AST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
-    RST.MkTermCase
-      { tmcase_loc = tmcase_loc
-      , tmcase_pat = forgetTypesPat tmcase_pat
-      , tmcase_term = forgetTypesTerm tmcase_term 
-      }
-
-forgetTypesTermCaseI :: AST.TermCaseI pc -> RST.TermCaseI pc
-forgetTypesTermCaseI AST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
-    RST.MkTermCaseI
-      { tmcasei_loc = tmcasei_loc
-      , tmcasei_pat = forgetTypesPatI tmcasei_pat
-      , tmcasei_term = forgetTypesTerm tmcasei_term 
       }
 
 forgetTypesTerm :: AST.Term pc -> RST.Term pc

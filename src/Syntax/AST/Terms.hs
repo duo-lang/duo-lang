@@ -3,11 +3,7 @@ module Syntax.AST.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution
-  , SubstitutionI
   , Pattern(..)
-  , PatternI(..)
-  , TermCase(..)
-  , TermCaseI(..)
   , CmdCase(..)
   , Command(..)
   -- Functions
@@ -56,13 +52,6 @@ instance Zonk PrdCnsTerm where
 
 type Substitution = [PrdCnsTerm]
 
--- | A SubstitutionI is like a substitution where one of the arguments has been
--- replaced by an implicit argument. The following convention for the use of the
--- `pc` parameter is used:
---
--- SubstitutionI Prd = ... [*] ...
--- SubstitutionI Cns = ... (*) ...
-type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 
 ---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
@@ -73,54 +62,6 @@ data Pattern where
 
 deriving instance Show Pattern
 
-
-data PatternI where
-  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
-
-deriving instance Show PatternI
-
--- | Represents one case in a pattern match or copattern match.
---
---        X(x_1,...,x_n) => e
---        ^ ^^^^^^^^^^^     ^
---        |      |          |
---        |  tmcase_args  tmcase_term
---        |
---    tmcase_name
---
-data TermCase (pc :: PrdCns) = MkTermCase
-  { tmcase_loc  :: Loc
-  , tmcase_pat :: Pattern
-  , tmcase_term :: Term pc
-  }
-
-instance Zonk (TermCase pc) where
-  zonk bisubst (MkTermCase loc pat tm) =
-    MkTermCase loc pat (zonk bisubst tm)
-
-deriving instance Show (TermCase pc)
-
--- | Represents one case in a pattern match or copattern match.
--- Does bind an implicit argument (in contrast to TermCase).
---
---        X(x_1, * ,x_n) => e
---        ^ ^^^^^^^^^^^     ^
---        |      |          |
---        |  tmcasei_args  tmcasei_term
---        |
---    tmcasei_name
---
-data TermCaseI (pc :: PrdCns) = MkTermCaseI
-  { tmcasei_loc  :: Loc
-  , tmcasei_pat :: PatternI
-  , tmcasei_term :: Term pc
-  }
-
-instance Zonk (TermCaseI pc) where
-  zonk bisubst (MkTermCaseI loc pat tm) =
-    MkTermCaseI loc pat (zonk bisubst tm)
-
-deriving instance Show (TermCaseI pc)
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -376,14 +317,6 @@ termLocallyClosedRec env (MuAbs _ _ CnsRep _ _ cmd) = commandLocallyClosedRec ([
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 
-termCaseLocallyClosedRec :: [[(PrdCns,())]] -> TermCase pc -> Either Error ()
-termCaseLocallyClosedRec env (MkTermCase _ (XtorPat _ _ args) e) = do
-  termLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) e
-
-termCaseILocallyClosedRec :: [[(PrdCns,())]] -> TermCaseI pc -> Either Error ()
-termCaseILocallyClosedRec env (MkTermCaseI _ (XtorPatI _ _ (as1, (), as2)) e) =
-  let newArgs = (\(x,_) -> (x,())) <$> as1 ++ [(Cns, Nothing)] ++ as2 in
-  termLocallyClosedRec (newArgs:env) e
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
 cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do 
@@ -431,20 +364,6 @@ shiftTermRec dir n (MuAbs loc annot pcrep ty bs cmd) =
 -- Primitive constructs
 shiftTermRec _ _ lit@PrimLitI64{} = lit
 shiftTermRec _ _ lit@PrimLitF64{} = lit
-
-shiftTermCaseRec :: ShiftDirection -> Int -> TermCase pc -> TermCase pc
-shiftTermCaseRec dir n MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
-  MkTermCase { tmcase_loc = tmcase_loc
-             , tmcase_pat = tmcase_pat
-             , tmcase_term = shiftTermRec dir n tmcase_term
-            }
-
-shiftTermCaseIRec :: ShiftDirection -> Int -> TermCaseI pc -> TermCaseI pc
-shiftTermCaseIRec dir n MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
-  MkTermCaseI { tmcasei_loc = tmcasei_loc
-              , tmcasei_pat = tmcasei_pat
-              , tmcasei_term = shiftTermRec dir n tmcasei_term
-              }
 
 shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
 shiftCmdCaseRec dir n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
