@@ -12,7 +12,11 @@ module Sugar.Core(
   pattern CaseOf,
   pattern CocaseOf,
   pattern CaseI,
-  pattern CocaseI)
+  pattern CocaseI,
+  pattern RawCase,
+  pattern RawXtor, 
+  pattern RawMuAbs,
+  pattern RawApply)
   where
 
 import Syntax.Core.Terms
@@ -113,6 +117,11 @@ pattern CocaseOfI loc rep ns t cases <-
          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseOfIInner $ length as1)  (BoundVar loc PrdRep (0,length as1)) t
      in
        Apply loc ApplyAnnotCocaseOfIOuter (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t
+
+pattern RawApply ::  Loc -> Term Prd -> Term Cns -> Command
+pattern RawApply loc t1 t2 = Apply loc ApplyAnnotOrig t1 t2
+
+{-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd #-}
 
 
 type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
@@ -283,3 +292,14 @@ pattern CocaseI loc rep ns cases <- XCase loc MatchAnnotCocaseI rep ns (map (res
           MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) (BoundVar loc PrdRep (0,length as1)) t
     in
         XCase loc MatchAnnotCocaseI PrdRep ns $ desugarmatchCase <$> cases
+
+pattern RawCase ::  Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+pattern RawCase loc pc ns cases = XCase loc MatchAnnotOrig pc ns cases 
+
+pattern RawXtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
+pattern RawXtor loc pc ns xt subst = Xtor loc XtorAnnotOrig pc ns xt subst 
+
+pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
+pattern RawMuAbs loc pc name cmd = MuAbs loc MuAnnotOrig pc name cmd 
+
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, CocaseI, CaseI, CocaseOf, CaseOf, Dtor, Semi #-}
