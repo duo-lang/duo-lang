@@ -58,19 +58,6 @@ forgetTypesTerm (AST.XCase loc _annot pc _ty ns cases) =
     RST.XCase loc pc ns (forgetTypesCmdCase <$> cases)
 forgetTypesTerm (AST.MuAbs loc _annot pc _ty bs cmd) =
     RST.MuAbs loc pc bs (forgetTypesCommand cmd)
--- Syntactic sugar
-forgetTypesTerm (AST.Semi loc pc _ty ns xt subst cns) =
-    RST.Semi loc pc ns xt (forgetTypesSubstI subst) (forgetTypesTerm cns)
-forgetTypesTerm (AST.Dtor loc pc _ty ns xt tm subst) =
-    RST.Dtor loc pc ns xt (forgetTypesTerm tm) (forgetTypesSubstI subst)
-forgetTypesTerm (AST.CaseOf loc rep _ty ns tm cases) =
-    RST.CaseOf loc rep ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.CocaseOf loc rep _ty ns tm cases) =
-    RST.CocaseOf loc rep ns (forgetTypesTerm tm) (forgetTypesTermCase <$> cases)
-forgetTypesTerm (AST.CaseI loc rep _ty ns tmcasesI) =
-    RST.CaseI loc rep ns (forgetTypesTermCaseI <$> tmcasesI)
-forgetTypesTerm (AST.CocaseI loc rep _ty ns cases) =
-    RST.CocaseI loc rep ns (forgetTypesTermCaseI <$> cases)
 -- Primitive constructs
 forgetTypesTerm (AST.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
@@ -94,14 +81,6 @@ forgetTypesCommand (AST.ExitFailure loc) =
     RST.ExitFailure loc
 forgetTypesCommand (AST.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (forgetTypesSubst subst)
-forgetTypesCommand (AST.CaseOfCmd loc ns t cases) =
-    RST.CaseOfCmd loc ns (forgetTypesTerm t) (forgetTypesCmdCase <$> cases)
-forgetTypesCommand (AST.CocaseOfCmd loc ns t cases) =
-    RST.CocaseOfCmd loc ns (forgetTypesTerm t) (forgetTypesCmdCase <$> cases)
-forgetTypesCommand (AST.CaseOfI loc pcrep ns t cases) =
-    RST.CaseOfI loc pcrep ns (forgetTypesTerm t) (forgetTypesTermCaseI <$> cases)
-forgetTypesCommand (AST.CocaseOfI loc pcrep ns t cases) =
-    RST.CocaseOfI loc pcrep ns (forgetTypesTerm t) (forgetTypesTermCaseI <$> cases)
 
 
 forgetAnnot :: RST.TopAnnot pol -> Maybe (RST.TypeScheme pol)

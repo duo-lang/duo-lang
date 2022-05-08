@@ -1,14 +1,14 @@
 module Eval.Primitives where
 
 import Syntax.Common
-import Syntax.Core.Terms
+import Syntax.AST.Terms
 
 import Eval.Definition
 import Errors (throwEvalError)
 import Utils
 
 applyPrdToCns :: Term Prd -> Term Cns -> EvalM (Maybe Command)
-applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig {-(Just $ CBox CBV)-} x k
+applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (Just $ CBox CBV) x k
 
 evalPrimOp :: PrimitiveType -> PrimitiveOp -> Substitution -> EvalM (Maybe Command)
 -- I64
