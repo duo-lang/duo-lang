@@ -4,7 +4,6 @@ module Sugar.CorASTe
 import Syntax.AST.Terms
 import Syntax.Common
 import Utils
-import Syntax.AST.Terms (ShiftDirection(..) )
 import Syntax.Common.TypesPol
 
 -- CaseOfCmd:
