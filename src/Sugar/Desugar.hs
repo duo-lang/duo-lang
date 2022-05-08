@@ -164,7 +164,7 @@ desugarCmd (AST.CocaseOfI loc rep ns t cases) =
 
 desugarDecl :: AST.Declaration -> Core.Declaration
 desugarDecl (AST.PrdCnsDecl loc doc pc isRec fv annot tm) =
-  Core.PrdCnsDecl loc doc pc isRec fv annot (desugarTerm tm)
+  Core.PrdCnsDecl loc doc pc isRec fv undefined (desugarTerm tm)
 desugarDecl (AST.CmdDecl loc doc fv cmd) =
   Core.CmdDecl loc doc fv (desugarCmd cmd)
 desugarDecl (AST.DataDecl loc doc decl) =
