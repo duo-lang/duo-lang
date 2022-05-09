@@ -129,7 +129,6 @@ library
       Renamer.Terms
       Renamer.Types
       Sugar.Desugar
-      Sugar.Resugar
       Sugar.Core
       Sugar.AST
       Syntax.AST.Program
@@ -172,7 +171,7 @@ library
       TypeTranslation
       Translate.Focusing
       Translate.Reparse
-      Translate.ForgetTypes
+      Translate.Embed
       Utils
   other-modules:
       Paths_dualsub

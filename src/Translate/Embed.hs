@@ -1,19 +1,18 @@
-module Sugar.Resugar where
+module Translate.Embed where
 
-import Syntax.RST.Terms qualified as RST
+import Syntax.AST.Program qualified as AST
+import Syntax.AST.Terms qualified as AST
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
 import Syntax.Common.PrdCns
 
-embedPat :: Core.Pattern -> RST.Pattern
-embedPat (Core.XtorPat loc xt args) = RST.XtorPat loc xt args
-
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                  , cmdcase_pat = embedPat cmdcase_pat
+                  , cmdcase_pat = cmdcase_pat
                   , cmdcase_cmd = embedCoreCommand cmdcase_cmd
                   }
 
@@ -95,3 +94,74 @@ embedCoreDecl (Core.TyOpDecl loc doc op prec assoc ty) =
     RST.TyOpDecl loc doc op prec assoc ty
 embedCoreDecl (Core.TySynDecl loc doc nm ty) =
     RST.TySynDecl loc doc nm ty
+
+embedASTCmdCase :: AST.CmdCase -> Core.CmdCase
+embedASTCmdCase AST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+    Core.MkCmdCase { cmdcase_loc = cmdcase_loc
+                  , cmdcase_pat = cmdcase_pat
+                  , cmdcase_cmd = embedASTCommand cmdcase_cmd
+                  }
+
+embedASTPCTerm :: AST.PrdCnsTerm -> Core.PrdCnsTerm
+embedASTPCTerm (AST.PrdTerm tm) = Core.PrdTerm (embedASTTerm tm)
+embedASTPCTerm (AST.CnsTerm tm) = Core.CnsTerm (embedASTTerm tm)
+
+
+embedASTSubst :: AST.Substitution -> Core.Substitution
+embedASTSubst = fmap embedASTPCTerm
+
+embedASTTerm :: AST.Term pc -> Core.Term pc
+embedASTTerm (AST.BoundVar loc rep _ty idx) =
+    Core.BoundVar loc rep idx
+embedASTTerm (AST.FreeVar loc rep _ty idx) =
+    Core.FreeVar loc rep idx
+embedASTTerm (AST.Xtor loc annot rep _ty ns xs subst) =
+    Core.Xtor loc annot rep ns xs (embedASTSubst subst)
+embedASTTerm (AST.XCase loc annot rep _ty ns cases) =
+    Core.XCase loc annot rep ns (embedASTCmdCase <$> cases)
+embedASTTerm (AST.MuAbs loc annot rep _ty b cmd) =
+    Core.MuAbs loc annot rep b (embedASTCommand cmd)
+embedASTTerm (AST.PrimLitI64 loc i) =
+    Core.PrimLitI64 loc i
+embedASTTerm (AST.PrimLitF64 loc d) =
+    Core.PrimLitF64 loc d
+
+
+embedASTCommand :: AST.Command -> Core.Command
+embedASTCommand (AST.Apply loc annot _kind prd cns ) =
+    Core.Apply loc annot (embedASTTerm prd) (embedASTTerm cns)
+embedASTCommand (AST.Print loc tm cmd) =
+    Core.Print loc (embedASTTerm tm) (embedASTCommand cmd)
+embedASTCommand (AST.Read loc tm) =
+    Core.Read loc (embedASTTerm tm)
+embedASTCommand (AST.Jump loc fv) =
+    Core.Jump loc fv
+embedASTCommand (AST.ExitSuccess loc) =
+    Core.ExitSuccess loc
+embedASTCommand (AST.ExitFailure loc) =
+    Core.ExitFailure loc
+embedASTCommand (AST.PrimOp loc ty op subst) =
+    Core.PrimOp loc ty op (embedASTSubst subst)
+
+embedASTProg :: AST.Program -> Core.Program
+embedASTProg = fmap embedASTDecl
+
+embedASTDecl :: AST.Declaration -> Core.Declaration
+embedASTDecl (AST.PrdCnsDecl loc doc rep isRec fv _tys tm) =
+    Core.PrdCnsDecl loc doc rep isRec fv Nothing (embedASTTerm tm)
+embedASTDecl (AST.CmdDecl loc doc fv cmd) =
+    Core.CmdDecl loc doc fv (embedASTCommand cmd)
+embedASTDecl (AST.DataDecl loc doc decl) =
+    Core.DataDecl loc doc decl
+embedASTDecl (AST.XtorDecl loc doc dc xt knd eo) =
+    Core.XtorDecl loc doc dc xt knd eo
+embedASTDecl (AST.ImportDecl loc doc mn) =
+    Core.ImportDecl loc doc mn
+embedASTDecl (AST.SetDecl loc doc txt) =
+    Core.SetDecl loc doc txt
+embedASTDecl (AST.TyOpDecl loc doc op prec assoc ty) =
+    Core.TyOpDecl loc doc op prec assoc ty
+embedASTDecl (AST.TySynDecl loc doc nm ty) =
+    Core.TySynDecl loc doc nm ty    
+
+   

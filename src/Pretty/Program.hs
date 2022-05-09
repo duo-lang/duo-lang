@@ -15,8 +15,7 @@ import Syntax.AST.Program qualified as AST
 import Syntax.Core.Program qualified as Core
 import Syntax.Common
 import Driver.Environment
-import Translate.ForgetTypes (forgetTypesDecl)
-import Sugar.Resugar
+import Translate.Embed
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
@@ -66,7 +65,7 @@ instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
 instance PrettyAnn AST.Declaration where
-  prettyAnn decl = prettyAnn (forgetTypesDecl decl)
+  prettyAnn decl = prettyAnn (embedASTDecl decl)
     
 instance PrettyAnn RST.Declaration where
   prettyAnn (RST.PrdCnsDecl _ _ pc isRec fv annot tm) =

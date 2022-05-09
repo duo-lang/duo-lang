@@ -33,7 +33,7 @@ import Syntax.Common
 import Syntax.RST.Terms qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.RST.Program qualified as RST
-import Translate.ForgetTypes ( forgetTypesProgram )
+import Translate.Embed
 
 jumpToDefHandler :: Handlers LSPMonad
 jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
@@ -53,7 +53,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
-            responder (generateJumpToDef pos (forgetTypesProgram prog))
+            responder (generateJumpToDef pos (embedCoreProg (embedASTProg prog)))
     
 
 generateJumpToDef :: Position -> RST.Program -> Either ResponseError (Location |? b)
