@@ -54,10 +54,10 @@ data TermCaseI (pc :: PrdCns) = MkTermCaseI
   }
 resugarCmdCase :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseOfIInner i) t (BoundVar _ CnsRep (0,_)))) =
+                (Apply _ (ApplyAnnotXCaseOfIInner i) t {-(BoundVar _ CnsRep (0,_))-} _)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseOfIInner i) (BoundVar _ PrdRep (0,_)) t)) =
+                (Apply _ (ApplyAnnotXCaseOfIInner i) {-(BoundVar _ PrdRep (0,_))-} _ t)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase _ cmd = error $ "cannot resugar " ++ show cmd
 
@@ -137,7 +137,7 @@ resVar = MkFreeVarName "$result"
 
 pattern Semi :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
 pattern Semi loc rep ns xt substi t <-
-    MuAbs loc MuAnnotSemi rep Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi (Xtor _ (XtorAnnotSemi i) PrdRep ns xt (resugarSubst rep i -> substi)) t)
+    MuAbs loc MuAnnotSemi rep _ (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi (Xtor _ (XtorAnnotSemi i) PrdRep ns xt (resugarSubst rep i -> substi)) t)
     where 
         Semi loc PrdRep ns xt (args1, PrdRep, args2) t = 
             let
@@ -158,7 +158,7 @@ pattern Semi loc rep ns xt substi t <-
 
 pattern Dtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
 pattern Dtor loc rep ns xt t substi <-
-    MuAbs loc MuAnnotSemi rep Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi t (Xtor _ (XtorAnnotSemi i) CnsRep ns xt (resugarSubst rep i -> substi)) )
+    MuAbs loc MuAnnotDtor rep _ (shiftCmd ShiftDown -> Apply _ ApplyAnnotDtor t (Xtor _ (XtorAnnotDtor i) CnsRep ns xt (resugarSubst rep i -> substi)) )
     where 
         Dtor loc PrdRep ns xt t (args1, PrdRep, args2)  = 
             let
@@ -181,10 +181,10 @@ data TermCase (pc :: PrdCns) = MkTermCase
 
 resugarTermCase :: PrdCnsRep pc -> CmdCase -> TermCase pc
 resugarTermCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ _ t (FreeVar _ CnsRep _))) =
+                (Apply _ _ t {-(FreeVar _ CnsRep _)-} _ )) =
                      MkTermCase loc (XtorPat loc xt cases) t
 resugarTermCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ _  (FreeVar _ PrdRep _) t)) =
+                (Apply _ _  {-(FreeVar _ PrdRep _)-} _ t)) =
                      MkTermCase loc (XtorPat loc xt cases) t    
 resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar " ++ show cmd                                  
 
@@ -236,10 +236,10 @@ pattern CocaseOf loc rep ns t cases <-
 
 resugarCmdCase' :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase' PrdRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseI i) t (BoundVar _ CnsRep (0,_)))) =
+                (Apply _ (ApplyAnnotXCaseI i) t {-(BoundVar _ CnsRep (0,_))-} _ )) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' CnsRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseI i) (BoundVar _ PrdRep (0,_)) t)) =
+                (Apply _ (ApplyAnnotXCaseI i) {-(BoundVar _ PrdRep (0,_))-} _ t)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 

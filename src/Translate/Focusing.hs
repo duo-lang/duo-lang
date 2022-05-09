@@ -128,8 +128,8 @@ focusTerm eo (isFocusedTerm eo -> Just tm)   = tm
 focusTerm _  (BoundVar loc rep ty var)          = BoundVar loc rep ty var
 focusTerm _  (FreeVar loc rep ty var)           = FreeVar loc rep ty var
 focusTerm eo (Xtor _ _annot pcrep _ty ns xt subst) = focusXtor eo pcrep ns xt subst
-focusTerm eo (XCase loc annot rep ty ns cases) = XCase loc annot rep ty ns (focusCmdCase eo <$> cases)
-focusTerm eo (MuAbs loc annot rep ty v cmd)     = MuAbs loc annot rep ty v (focusCmd eo cmd)
+focusTerm eo (XCase loc _annot rep ty ns cases) = XCase loc MatchAnnotOrig rep ty ns (focusCmdCase eo <$> cases)
+focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty v (focusCmd eo cmd)
 focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
 focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d
 
@@ -199,7 +199,7 @@ focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
 focusCmd :: EvaluationOrder -> Command -> Command
-focusCmd eo (Apply loc annot _kind prd cns) = Apply loc annot (Just (CBox eo)) (focusTerm eo prd) (focusTerm eo cns)
+focusCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd) (focusTerm eo cns)
 focusCmd _  (ExitSuccess loc) = ExitSuccess loc
 focusCmd _  (ExitFailure loc) = ExitFailure loc
 focusCmd _  (Jump loc fv) = Jump loc fv

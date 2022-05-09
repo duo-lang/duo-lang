@@ -14,8 +14,11 @@ import Text.Megaparsec.Pos
 ----------------------------------------------------------------------------------
 
 data Loc = Loc SourcePos SourcePos
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
 
+instance Show Loc where 
+  show (Loc s1 s2) = "<loc>"
+  
 defaultLoc :: Loc
 defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkPos 1))
 

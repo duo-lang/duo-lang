@@ -26,6 +26,7 @@ import Syntax.AST.Terms
 import Syntax.Common
 import Utils
 import Syntax.Common.TypesPol
+import Pretty.Pretty (PrettyAnn(prettyAnn))
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >
@@ -59,10 +60,10 @@ data TermCaseI (pc :: PrdCns) = MkTermCaseI
 
 resugarCmdCase :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseOfIInner i) _ t (BoundVar _ CnsRep _ (0,_) ))) =
+                (Apply _ (ApplyAnnotXCaseOfIInner i) _ t {-(BoundVar _ CnsRep _ (0,_) ) -} _)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseOfIInner i) _ (BoundVar _ PrdRep _ (0,_)) t)) =
+                (Apply _ (ApplyAnnotXCaseOfIInner i) _ {-(BoundVar _ PrdRep _ (0,_))-} _ t)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase _ cmd = error $ "cannot resugar " ++ show cmd
 
@@ -115,7 +116,7 @@ resugarSubst rep n x = (a, rep, tail b)
 
 pattern Semi :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
 pattern Semi loc rep ty ns xt substi t <-
-    MuAbs loc MuAnnotSemi rep ty Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi _ (Xtor _ (XtorAnnotSemi i) PrdRep _ ns xt (resugarSubst rep i -> substi)) t)
+    MuAbs loc MuAnnotSemi rep ty _ (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi _ (Xtor _ (XtorAnnotSemi i) PrdRep _ ns xt (resugarSubst rep i -> substi)) t)
 
 -- Dtor:
 --   [[e.Dtor(as,*,bs)]]    = mu k. <  [[e]]  | Dtor([[as]], k, [[bs]])
@@ -123,7 +124,7 @@ pattern Semi loc rep ty ns xt substi t <-
 
 pattern Dtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
 pattern Dtor loc rep ty ns xt t substi <-
-    MuAbs loc MuAnnotSemi rep ty Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi _ t (Xtor _ (XtorAnnotSemi i) CnsRep _ ns xt (resugarSubst rep i -> substi)) )
+    MuAbs loc MuAnnotDtor rep ty _ (shiftCmd ShiftDown -> Apply _ ApplyAnnotDtor _ t (Xtor _ (XtorAnnotDtor i) CnsRep _ ns xt (resugarSubst rep i -> substi)) )
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -143,12 +144,12 @@ data TermCase (pc :: PrdCns) = MkTermCase
 
 resugarTermCase :: PrdCnsRep pc -> CmdCase -> TermCase pc
 resugarTermCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ _ _ t (FreeVar _ CnsRep _ _))) =
+                (Apply _ _ _ t {-(FreeVar _ CnsRep _ _)-} _ )) =
                      MkTermCase loc (XtorPat loc xt cases) t
 resugarTermCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ _ _ (FreeVar _ PrdRep _ _ ) t)) =
+                (Apply _ _ _ {-(FreeVar _ PrdRep _ _ )-} _ t)) =
                      MkTermCase loc (XtorPat loc xt cases) t    
-resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar " ++ show cmd                                  
+resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar " ++ show cmd                                 
 
 -- CaseOf:
 --  [[case e of { Ctor(xs) => prd }]] = mu k. < [[e]]  |  case { Ctor(xs) => < [[prd]]  |  k > }
@@ -171,10 +172,10 @@ pattern CocaseOf loc rep ty ns t cases <-
 
 resugarCmdCase' :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase' PrdRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseI i) _ t (BoundVar _ CnsRep _ (0,_)))) =
+                (Apply _ (ApplyAnnotXCaseI i) _ t {-(BoundVar _ CnsRep _ (0,_))-} _)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' CnsRep (MkCmdCase loc (XtorPat _ xt cases)
-                (Apply _ (ApplyAnnotXCaseI i) _ (BoundVar _ PrdRep _ (0,_)) t)) =
+                (Apply _ (ApplyAnnotXCaseI i) _ {-(BoundVar _ PrdRep _ (0,_))-} _ t)) =
                       MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 
