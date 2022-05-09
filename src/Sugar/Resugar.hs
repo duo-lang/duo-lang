@@ -54,8 +54,14 @@ embedTermCaseI :: Core.TermCaseI pc -> RST.TermCaseI pc
 embedTermCaseI (Core.MkTermCaseI loc pati t) = RST.MkTermCaseI loc pati (embedCoreTerm t)
 
 embedCoreCommand :: Core.Command -> RST.Command
-embedCoreCommand (Core.Apply loc _annot prd cns ) =
+embedCoreCommand (Core.RawApply loc prd cns ) =
     RST.Apply loc (embedCoreTerm prd) (embedCoreTerm cns)
+embedCoreCommand (Core.CocaseOfI loc rep ns t cases) =
+    RST.CocaseOfI loc rep ns (embedCoreTerm t) (embedTermCaseI <$> cases) 
+embedCoreCommand (Core.CaseOfI loc rep ns t cases) =
+    RST.CaseOfI loc rep ns  (embedCoreTerm t) (embedTermCaseI <$> cases) 
+embedCoreCommand (Core.CocaseOfCmd loc ns t cases) = RST.CocaseOfCmd loc ns (embedCoreTerm t) (embedCmdCase <$> cases)
+embedCoreCommand (Core.CaseOfCmd loc ns t cases) = RST.CaseOfCmd loc ns (embedCoreTerm t) (embedCmdCase <$> cases) 
 embedCoreCommand (Core.Print loc tm cmd) =
     RST.Print loc (embedCoreTerm tm) (embedCoreCommand cmd)
 embedCoreCommand (Core.Read loc tm) =
