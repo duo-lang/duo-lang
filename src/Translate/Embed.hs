@@ -8,6 +8,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
 import Syntax.Common.PrdCns
+import Control.Exception
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -45,12 +46,6 @@ embedCoreTerm (Core.PrimLitI64 loc i) =
     RST.PrimLitI64 loc i
 embedCoreTerm (Core.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
-embedCoreTerm r@(Core.Xtor loc annot PrdRep ns n s) = error $ "embedCoreTerm: Xtor " ++ show r
-embedCoreTerm r@(Core.Xtor loc annot CnsRep ns n s) = error $ "embedCoreTerm: Xtor " ++ show r
-embedCoreTerm Core.XCase {} = error $ "embedCoreTerm: XCase " 
-embedCoreTerm r@(Core.MuAbs loc annot PrdRep n cmd) = error $ "embedCoreTerm: MuAbs " ++ show r  
-embedCoreTerm r@(Core.MuAbs loc annot CnsRep n cmd) = error $ "embedCoreTerm: MuAbs " ++ show r  
-
 
 embedTermCase :: Core.TermCase pc -> RST.TermCase pc
 embedTermCase (Core.MkTermCase loc pat t) = RST.MkTermCase loc pat (embedCoreTerm t)

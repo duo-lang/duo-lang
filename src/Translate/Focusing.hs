@@ -25,12 +25,12 @@ isValueTerm CBN PrdRep fv@(FreeVar {})   = Just fv
 isValueTerm CBV CnsRep fv@(FreeVar {})   = Just fv
 isValueTerm CBN CnsRep (FreeVar {})      = Nothing
 isValueTerm CBV PrdRep MuAbs {}          = Nothing              -- CBV: so Mu is not a value.
-isValueTerm CBV CnsRep (MuAbs loc annot pc ty v cmd) = do
+isValueTerm CBV CnsRep (MuAbs loc _annot pc ty v cmd) = do
     cmd' <- isFocusedCmd CBV cmd -- CBV: so Mu~ is always a Value.
-    pure $ MuAbs loc annot pc ty v cmd'
-isValueTerm CBN PrdRep (MuAbs loc annot pc v ty cmd) = do
+    pure $ MuAbs loc MuAnnotOrig pc ty v cmd'
+isValueTerm CBN PrdRep (MuAbs loc _annot pc v ty cmd) = do
     cmd' <- isFocusedCmd CBN cmd -- CBN: so Mu is always a value.
-    pure $ MuAbs loc annot pc v ty cmd'
+    pure $ MuAbs loc MuAnnotOrig pc v ty cmd'
 isValueTerm CBN CnsRep MuAbs {}          = Nothing              -- CBN: So Mu~ is not a value.
 isValueTerm eo  _      tm                = isFocusedTerm eo tm
 
@@ -46,12 +46,12 @@ isValueSubst eo subst = sequence (isValuePCTerm eo <$> subst)
 isFocusedTerm :: EvaluationOrder -> Term pc -> Maybe (Term pc)
 isFocusedTerm _  bv@BoundVar {} = Just bv
 isFocusedTerm _  fv@FreeVar {} = Just fv
-isFocusedTerm eo (Xtor loc annot pc ty ns xt subst) =
-    Xtor loc annot pc ty ns xt <$> isValueSubst eo subst
-isFocusedTerm eo (XCase loc annot pc ty ns cases) =
-    XCase loc annot pc ty ns <$> sequence (isFocusedCmdCase eo <$> cases)
-isFocusedTerm eo (MuAbs loc annot pc ty v cmd) = 
-    MuAbs loc annot pc ty v <$> isFocusedCmd eo cmd
+isFocusedTerm eo (Xtor loc _annot pc ty ns xt subst) =
+    Xtor loc XtorAnnotOrig pc ty ns xt <$> isValueSubst eo subst
+isFocusedTerm eo (XCase loc _annot pc ty ns cases) =
+    XCase loc MatchAnnotOrig pc ty ns <$> sequence (isFocusedCmdCase eo <$> cases)
+isFocusedTerm eo (MuAbs loc _annot pc ty v cmd) = 
+    MuAbs loc MuAnnotOrig pc ty v <$> isFocusedCmd eo cmd
 isFocusedTerm _  lit@PrimLitI64{} = Just lit
 isFocusedTerm _  lit@PrimLitF64{} = Just lit
 
@@ -60,7 +60,7 @@ isFocusedCmdCase eo (MkCmdCase loc pat cmd) = MkCmdCase loc pat <$> isFocusedCmd
 
 -- | Check whether given command follows the focusing discipline.
 isFocusedCmd :: EvaluationOrder -> Command -> Maybe Command
-isFocusedCmd eo (Apply loc annot _kind prd cns) = Apply loc annot (Just (CBox eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
+isFocusedCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (Just (CBox eo)) <$> isFocusedTerm eo prd <*> isFocusedTerm eo cns
 isFocusedCmd _  (ExitSuccess loc)          = Just (ExitSuccess loc)
 isFocusedCmd _  (ExitFailure loc)          = Just (ExitFailure loc)
 isFocusedCmd _  (Jump loc fv)              = Just (Jump loc fv)
