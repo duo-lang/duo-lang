@@ -11,8 +11,9 @@ import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.Common
-import Syntax.Core.Terms
+import Syntax.AST.Terms
 import Utils
+import Syntax.Common.TypesPol (Typ (TyNominal))
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
@@ -47,10 +48,12 @@ checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
                                    , "Argument lengths don't coincide."
                                    ]
 
+natType :: Typ 'Pos
+natType = TyNominal defaultLoc PosRep (Just (CBox CBV)) peanoNm []
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep Nominal (MkXtorName "Z") []
-convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType Nominal (MkXtorName "Z") []
+convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)

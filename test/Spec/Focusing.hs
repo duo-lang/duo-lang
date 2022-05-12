@@ -7,8 +7,7 @@ import Pretty.Program ()
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-import Sugar.Desugar
-import Sugar.Resugar
+import Translate.Embed
 import Syntax.Common
 import Syntax.AST.Program qualified as AST
 import Syntax.CST.Program qualified as CST
@@ -21,14 +20,14 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
   case decls of
     Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
     Right decls -> do
-      let focusedDecls :: CST.Program = reparseProgram $ embedCoreProg $ focusProgram cbx (desugarProgram decls)
+      let focusedDecls :: CST.Program = reparseProgram $ embedCoreProg $ embedASTProg $ focusProgram cbx decls
       res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") focusedDecls
       case res of
         Left err -> do
            let msg = unlines [ "---------------------------------"
                              , "Prettyprinted declarations:"
                              , ""
-                             ,  ppPrintString (focusProgram cbx (desugarProgram decls))
+                             ,  ppPrintString (focusProgram cbx decls)
                              , ""
                              , "Show instance of declarations:"
                              , ""

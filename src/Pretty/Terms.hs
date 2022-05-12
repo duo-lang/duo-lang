@@ -10,8 +10,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
-import Sugar.Resugar
-import Translate.ForgetTypes
+import Translate.Embed
 import Translate.Reparse
 
 ---------------------------------------------------------------------------------
@@ -31,15 +30,12 @@ instance PrettyAnn Core.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedCmdCase cmdcase)
 
 instance PrettyAnn AST.CmdCase where
-  prettyAnn cmdcase = prettyAnn (forgetTypesCmdCase cmdcase)
+  prettyAnn cmdcase = prettyAnn (embedASTCmdCase cmdcase)
 
 instance PrettyAnn RST.CmdCase where
   prettyAnn cmdcase = prettyAnn (reparseCmdCase cmdcase)
 
 -- TermCase
-
-instance PrettyAnn (AST.TermCase pc) where
-  prettyAnn termcase = prettyAnn (forgetTypesTermCase termcase)
 
 instance PrettyAnn (RST.TermCase pc) where
   prettyAnn termcase = prettyAnn (reparseTermCase termcase)
@@ -50,10 +46,6 @@ instance PrettyAnn CST.TermCase where
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
--- TermCaseI
-
-instance PrettyAnn (AST.TermCaseI pc) where
-  prettyAnn termcasei = prettyAnn (forgetTypesTermCaseI termcasei)
 
 instance PrettyAnn (RST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (reparseTermCaseI termcasei)
@@ -73,7 +65,7 @@ instance PrettyAnn CST.TermOrStar  where
 -- PrdCnsTerm
 
 instance PrettyAnn AST.PrdCnsTerm where
-  prettyAnn pcterm = prettyAnn (forgetTypesPCTerm pcterm)
+  prettyAnn pcterm = prettyAnn (embedPCTerm (embedASTPCTerm pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (reparsePCTerm pcterm)
@@ -81,7 +73,7 @@ instance PrettyAnn RST.PrdCnsTerm where
 -- Substitution
 
 instance {-# OVERLAPPING #-} PrettyAnn AST.Substitution where
-  prettyAnn subst = prettyAnn (forgetTypesSubst subst)
+  prettyAnn subst = prettyAnn (embedSubst (embedASTSubst subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
   prettyAnn subst = prettyAnn (reparseSubst subst)
@@ -90,9 +82,6 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.Substitution where
   prettyAnn subst = parens' comma (prettyAnn <$> subst)
 
 -- SubstitutionI
-
-instance PrettyAnn (AST.SubstitutionI pc) where
-  prettyAnn substi = prettyAnn (forgetTypesSubstI substi)
 
 instance PrettyAnn (RST.SubstitutionI pc) where
   prettyAnn substi = prettyAnn (reparseSubstI substi)
@@ -106,7 +95,7 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (AST.Term pc) where
-  prettyAnn tm = prettyAnn (forgetTypesTerm tm)
+  prettyAnn tm = prettyAnn (embedASTTerm tm)
 
 instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
@@ -200,7 +189,7 @@ instance PrettyAnn CST.Term where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn AST.Command where
-  prettyAnn cmd = prettyAnn (forgetTypesCommand cmd)
+  prettyAnn cmd = prettyAnn (embedASTCommand cmd)
 
 instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)

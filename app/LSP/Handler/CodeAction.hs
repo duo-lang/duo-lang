@@ -13,10 +13,16 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos )
 import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..) )
-import Syntax.Common
+import Syntax.Common.Kinds ( EvaluationOrder(..) )
+import Syntax.Common.Names
+    ( DocComment,
+      FreeVarName(unFreeVarName),
+      ModuleName(MkModuleName) )
+import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.Types ( IsRec(Recursive) )
 import Syntax.AST.Terms qualified as AST
 import Syntax.AST.Program qualified as AST
-import Syntax.Core.Program qualified as Core
+--import Syntax.Core.Program qualified as Core
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
 import Utils
@@ -25,7 +31,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
-import Sugar.Desugar (desugarTerm, desugarCmd, isDesugaredTerm, isDesugaredCommand)
+import Sugar.AST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -63,13 +69,13 @@ generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc doc rep i
 generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc _doc rep _isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
-    cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
-    cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV (desugarTerm tm)), lookupPos start loc]
+    cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
+    cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
 generateCodeAction ident (Range {_start = start}) (AST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN (desugarCmd cmd)), lookupPos start loc]
-    cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN (desugarCmd cmd)), lookupPos start loc]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
+    cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -117,9 +123,9 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
 generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl :: Core.Declaration = case pc of
-                PrdRep -> Core.PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Inferred ty) (focusTerm eo (desugarTerm tm))
-                CnsRep -> Core.PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Inferred ty) (focusTerm eo (desugarTerm tm))
+    newDecl :: AST.Declaration = case pc of
+                PrdRep -> AST.PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm))
+                CnsRep -> AST.PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -142,7 +148,7 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
 generateCmdFocusEdit ::  EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (AST.Command, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = Core.CmdDecl defaultLoc Nothing name (focusCmd eo (desugarCmd cmd))
+    newDecl = AST.CmdDecl defaultLoc Nothing name (focusCmd eo (resetAnnotationCmd cmd))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -169,7 +175,7 @@ generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "
 generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
   let
-    newDecl = Core.PrdCnsDecl defaultLoc Nothing rep Recursive name (Inferred ty) (desugarTerm tm)
+    newDecl = AST.PrdCnsDecl defaultLoc Nothing rep Recursive name (Inferred ty) (resetAnnotationTerm tm)
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in
@@ -191,7 +197,7 @@ generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "D
 generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (AST.Command, Loc)) -> WorkspaceEdit
 generateCmdDesugarEdit (TextDocumentIdentifier uri) (name, (cmd,loc)) =
   let
-    newDecl = Core.CmdDecl defaultLoc Nothing name (desugarCmd cmd)
+    newDecl = AST.CmdDecl defaultLoc Nothing name (resetAnnotationCmd cmd)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange loc, _newText= replacement }
   in

@@ -30,11 +30,11 @@ import Parser.Terms ( termP )
 import Pretty.Pretty ( ppPrintString )
 import Renamer.Definition ( runRenamerM )
 import Renamer.Types ( renameTypeScheme )
-import Sugar.Desugar ( desugarCmd, desugarEnvironment )
+import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
 import Translate.Focusing ( focusCmd, focusEnvironment )
 import Syntax.Common
-import Syntax.RST.Program qualified as RST
 import Syntax.AST.Program qualified as AST
+import Syntax.Core.Program qualified as Core
 import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Renamer.Program (renameDecl)
@@ -77,7 +77,7 @@ letRepl txt = do
     decl <- runInteractiveParser declarationP txt
     sts <- getSymbolTables
     renamedDecl <- liftEitherErr (runRenamerM sts (renameDecl decl))
-    _ <- inferDecl interactiveModule renamedDecl
+    _ <- inferDecl interactiveModule (desugarDecl renamedDecl)
     pure ()
 
 ---------------------------------------------------------------------------------
@@ -91,9 +91,9 @@ runCmd txt steps = do
     (parsedCommand, _) <- runInteractiveParser termP txt
     sts <- getSymbolTables
     renamedDecl <- liftEitherErr (runRenamerM sts (renameCommand parsedCommand))
-    (AST.CmdDecl _ _ _ inferredCmd) <- inferDecl interactiveModule (RST.CmdDecl defaultLoc Nothing (MkFreeVarName "main") renamedDecl)
+    (AST.CmdDecl _ _ _ inferredCmd) <- inferDecl interactiveModule (Core.CmdDecl defaultLoc Nothing (MkFreeVarName "main") (desugarCmd renamedDecl))
     env <- gets drvEnv
-    let compiledCmd = focusCmd CBV (desugarCmd inferredCmd)
+    let compiledCmd = focusCmd CBV inferredCmd   
     let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
     case steps of
         NoSteps -> do
