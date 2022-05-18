@@ -82,6 +82,10 @@ renameDecl (CST.TySynDecl loc doc nm ty) = do
   typ <- renameTyp PosRep ty
   tyn <- renameTyp NegRep ty
   pure (RST.TySynDecl loc doc nm (typ, tyn))
+renameDecl (CST.ClassDecl loc doc className typeVars _) =
+  throwError (OtherError Nothing "Class Declaration: Not implemented yet")
+renameDecl (CST.InstanceDecl loc doc className typ _) =
+  throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
 renameDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 

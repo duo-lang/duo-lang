@@ -24,6 +24,7 @@ data Typ where
   -- should never be directly constructed elsewhere.
   TyBinOp :: Loc -> Typ -> BinOp -> Typ -> Typ
   TyParens :: Loc -> Typ -> Typ
+  -- TyConstraint :: Loc -> Constraint -> Typ -> Typ
   deriving Show
 
 data XtorSig = MkXtorSig

@@ -4,7 +4,7 @@ module Syntax.RST.Program where
 import Data.Text (Text)
 
 import Syntax.Common
-import Syntax.RST.Terms( Command, Term )
+import Syntax.RST.Terms( Command, Term, TermCase )
 import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
 import Utils ( Loc )
 
@@ -20,6 +20,8 @@ data Declaration where
   ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
   TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> RnTypeName                        -> Declaration
+  ClassDecl      :: Loc -> Maybe DocComment -> ClassName -> [(Variance, TVar, MonoKind)] -> [(XtorName, [(PrdCns, Typ pol)])] -> Declaration
+  InstanceDecl   :: Loc -> Maybe DocComment -> ClassName -> Typ pol -> [TermCase pc]                                        -> Declaration
   TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> (Typ Pos, Typ Neg)                                               -> Declaration
   
 
@@ -33,5 +35,7 @@ instance Show Declaration where
   show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt
   show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
   show (TySynDecl loc doc nm ty) = "TySynDecl: " ++ show loc ++ show doc ++ show nm ++ show ty
+  show (ClassDecl loc doc name kinds xtors) = "ClassDecl: " ++ show loc ++ show doc ++ show name ++ show kinds ++ show xtors
+  show (InstanceDecl loc doc name typ cases) = "InstanceDecl: " ++ show loc ++ show doc ++ show name ++ show typ ++ show cases
   
 type Program = [Declaration]

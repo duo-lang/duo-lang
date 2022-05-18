@@ -5,11 +5,13 @@ module Parser.Common
   , xtorNameP
   , typeNameP
   , moduleNameP
+  , classNameP
     -- Type Operators
   , tyOpNameP
   , tyBinOpP
   , precedenceP
   , associativityP
+  , tParamP
     -- Kinds
   , evalOrderP
   , monoKindP
@@ -50,6 +52,11 @@ moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
   (name, pos) <- upperCaseId
   return (MkModuleName name, pos)
+
+classNameP :: Parser (ClassName, SourcePos)
+classNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkClassName name, pos)
 
 ---------------------------------------------------------------------------------
 -- Operators

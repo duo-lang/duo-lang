@@ -1,5 +1,7 @@
 module Parser.Terms
-  ( termP)where
+  ( termP
+  , termCaseP
+  ) where
 
 import Data.Bifunctor (first)
 import Data.Foldable

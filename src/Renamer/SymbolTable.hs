@@ -166,4 +166,6 @@ createSymbolTable' _ (CmdDecl loc _ fv _) st = do
   checkFreshFreeVarName loc fv st
   pure $ st { freeVarMap = M.insert fv FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _ _ _) st = pure st
+createSymbolTable' _ (ClassDecl _ _ _ _ _) _ = throwError (OtherError Nothing "Class Declaration: Not implemented yet")
+createSymbolTable' _ (InstanceDecl _ _ _ _ _) _ = throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
 createSymbolTable' _ ParseErrorDecl st = pure st

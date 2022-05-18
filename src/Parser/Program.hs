@@ -2,8 +2,8 @@ module Parser.Program
   ( declarationP
   , programP
   , returnP
-  ,xtorDeclP
-  ,xtorSignatureP
+  , xtorDeclP
+  , xtorSignatureP
   ) where
 
 import Control.Monad (void)
@@ -186,6 +186,35 @@ xtorDeclarationP doc = do
   pure (XtorDecl (Loc startPos endPos) doc dc xt (Data.Maybe.fromMaybe [] args) ret)
 
 ---------------------------------------------------------------------------------
+-- Parsing a class declaration
+---------------------------------------------------------------------------------
+
+classDeclarationP :: Maybe DocComment -> Parser Declaration
+classDeclarationP doc = do
+  startPos <- getSourcePos
+  try (void (keywordP KwClass))
+  className <- fst <$> classNameP
+  typeVars <- fst <$> parens (tParamP `sepBy` symbolP SymComma)
+  (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
+  endPos <- symbolP SymSemi
+  pure (ClassDecl (Loc startPos endPos) doc className typeVars xtors)
+
+
+---------------------------------------------------------------------------------
+-- Parsing an instance declaration
+---------------------------------------------------------------------------------
+
+instanceDeclarationP :: Maybe DocComment -> Parser Declaration
+instanceDeclarationP doc = do
+  startPos <- getSourcePos
+  try (void (keywordP KwInstance))
+  className <- fst <$> classNameP
+  typ <- fst <$> typP
+  (cases, _) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
+  endPos <- symbolP SymSemi
+  pure (InstanceDecl (Loc startPos endPos) doc className typ cases)
+
+---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
@@ -197,7 +226,8 @@ docDeclarationP doc =
   setDeclP doc <|>
   dataDeclP doc <|>
   xtorDeclarationP doc <|>
-  tySynP doc
+  classDeclarationP doc <|>
+  instanceDeclarationP doc
 
 declarationP :: Parser Declaration
 declarationP = do

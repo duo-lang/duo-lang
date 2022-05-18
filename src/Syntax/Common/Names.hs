@@ -21,6 +21,8 @@ newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
 data RnTypeName = MkRnTypeName { rnTnLoc :: Loc, rnTnDoc :: Maybe DocComment, rnTnModule :: ModuleName, rnTnName :: TypeName }
   deriving (Show, Ord, Eq)
 
+-- | Name of type class instance.
+newtype ClassName = MkClassName { unClassName :: Text } deriving (Eq, Show, Ord)
 
 peanoNm :: RnTypeName
 peanoNm = MkRnTypeName defaultLoc Nothing (MkModuleName "Peano")(MkTypeName "Nat")

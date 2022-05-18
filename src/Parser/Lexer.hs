@@ -201,6 +201,8 @@ data Keyword where
   KwCns         :: Keyword 
   KwCmd         :: Keyword 
   KwReturn      :: Keyword
+  KwClass       :: Keyword
+  KwInstance    :: Keyword
 
   deriving (Eq, Ord, Enum, Bounded)
 
@@ -244,6 +246,8 @@ instance Show Keyword where
   show KwCns         = "cns"
   show KwCmd         = "cmd"
   show KwReturn      = "return"
+  show KwClass       = "class"
+  show KwInstance    = "instance"
 
 
 -- | These keywords start a new declaration at the toplevel and
@@ -289,6 +293,8 @@ isDeclarationKw KwPrd         = False
 isDeclarationKw KwCns         = False 
 isDeclarationKw KwCmd         = False 
 isDeclarationKw KwReturn      = False 
+isDeclarationKw KwClass       = True
+isDeclarationKw KwInstance    = True
 
 
 -- | All keywords of the language
