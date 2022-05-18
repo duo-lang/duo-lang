@@ -217,5 +217,6 @@ typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
   tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
+  tConstraints <- option [] (some (fst <$> tconstraintP) <* symbolP SymDoubleRightArrow)
   (monotype,endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) tvars' monotype)
+  pure (TypeScheme (Loc startPos endPos) tvars' tConstraints monotype)

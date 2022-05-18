@@ -24,7 +24,6 @@ data Typ where
   -- should never be directly constructed elsewhere.
   TyBinOp :: Loc -> Typ -> BinOp -> Typ -> Typ
   TyParens :: Loc -> Typ -> Typ
-  -- TyConstraint :: Loc -> Constraint -> Typ -> Typ
   deriving Show
 
 data XtorSig = MkXtorSig
@@ -49,6 +48,7 @@ linearContextToArity = map f
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [TVar]
+  , ts_constraints :: [(ClassName, TVar)]
   , ts_monotype :: Typ
   }
   deriving Show

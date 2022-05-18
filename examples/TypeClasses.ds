@@ -14,9 +14,9 @@ instance Eq Bool {
   Differ(x, y, k) => mu k1. not Equals(x,y,k1) >> k
 };
 
--- -- | Usage with type class constraint.
--- def rec prd elem : forall a. (Eq a) => a -> List(a) -> Bool :=
---   \e l => case l of {
---         Nil => False,
---         Cons(x, xs) => or Equals(e, x, *) (elem e xs)
---     };
+-- | Usage with type class constraint.
+def rec prd elem : forall a. Eq a => a -> List(a) -> Bool :=
+  \e l => case l of {
+        Nil => False,
+        Cons(x, xs) => or Equals(e,x) (elem e xs)
+    };
