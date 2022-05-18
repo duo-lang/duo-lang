@@ -1,0 +1,22 @@
+
+import Bool;
+
+-- | Class definition.
+class Eq(+a : CBV) {
+  Equals(a, a, return Bool),
+  Differ(a, a, return Bool)
+};
+
+
+-- | Instance definition.
+instance Eq Bool {
+  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
+  Differ(x, y, k) => mu k1. not Equals(x,y,k1) >> k
+};
+
+-- -- | Usage with type class constraint.
+-- def rec prd elem : forall a. (Eq a) => a -> List(a) -> Bool :=
+--   \e l => case l of {
+--         Nil => False,
+--         Cons(x, xs) => or Equals(e, x, *) (elem e xs)
+--     };
