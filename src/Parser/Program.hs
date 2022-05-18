@@ -226,6 +226,7 @@ docDeclarationP doc =
   setDeclP doc <|>
   dataDeclP doc <|>
   xtorDeclarationP doc <|>
+  tySynP doc <|>
   classDeclarationP doc <|>
   instanceDeclarationP doc
 
