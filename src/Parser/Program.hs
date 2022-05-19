@@ -193,11 +193,12 @@ classDeclarationP :: Maybe DocComment -> Parser Declaration
 classDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwClass))
-  className <- fst <$> classNameP
-  typeVars <- fst <$> parens (tParamP `sepBy` symbolP SymComma)
-  (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
-  endPos <- symbolP SymSemi
-  pure (ClassDecl (Loc startPos endPos) doc className typeVars xtors)
+  recoverDeclaration $ do
+    className     <- fst <$> classNameP
+    typeVars      <- fst <$> parens (tParamP `sepBy` symbolP SymComma)
+    (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
+    endPos        <- symbolP SymSemi
+    pure (ClassDecl (Loc startPos endPos) doc className typeVars xtors)
 
 
 ---------------------------------------------------------------------------------
@@ -208,11 +209,12 @@ instanceDeclarationP :: Maybe DocComment -> Parser Declaration
 instanceDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwInstance))
-  className <- fst <$> classNameP
-  typ <- fst <$> typP
-  (cases, _) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
-  endPos <- symbolP SymSemi
-  pure (InstanceDecl (Loc startPos endPos) doc className typ cases)
+  recoverDeclaration $ do
+    className  <- fst <$> classNameP
+    typ        <- fst <$> typP
+    (cases, _) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
+    endPos     <- symbolP SymSemi
+    pure (InstanceDecl (Loc startPos endPos) doc className typ cases)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program
