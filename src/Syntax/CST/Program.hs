@@ -4,7 +4,6 @@ import Data.Text (Text)
 
 import Syntax.CST.Terms
 import Syntax.Common.TypesUnpol
-import Syntax.Common.Class
 import Syntax.Common
 import Utils
 

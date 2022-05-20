@@ -216,6 +216,7 @@ instanceDeclarationP doc = do
     endPos     <- symbolP SymSemi
     pure (InstanceDecl (Loc startPos endPos) doc className typ cases)
 
+
 ---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
