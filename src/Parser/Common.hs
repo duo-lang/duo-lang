@@ -16,8 +16,6 @@ module Parser.Common
   , evalOrderP
   , monoKindP
   , polyKindP
-    -- Constraints
-  , tconstraintP
   ) where
 
 import Text.Megaparsec
@@ -39,12 +37,6 @@ tvarP :: Parser (TVar, SourcePos)
 tvarP = try $ do
   (name, pos) <- lowerCaseId
   return (MkTVar name, pos)
-
-tconstraintP :: Parser ((ClassName, TVar), SourcePos)
-tconstraintP = try $ do
-  cname <- fst <$> upperCaseId
-  (name, pos) <- lowerCaseId
-  return ((MkClassName cname, MkTVar name), pos)
 
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do

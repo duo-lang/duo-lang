@@ -48,7 +48,7 @@ linearContextToArity = map f
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [TVar]
-  , ts_constraints :: [(ClassName, TVar)]
+  , ts_constraints :: [Constraint]
   , ts_monotype :: Typ
   }
   deriving Show
@@ -64,3 +64,12 @@ data DataDecl = NominalDecl
   , data_kind :: Maybe PolyKind
   , data_xtors :: [XtorSig]
   }
+
+---------------------------------------------------------------------------------
+-- Constraints
+---------------------------------------------------------------------------------
+
+data Constraint
+  = SubType Typ Typ
+  | TypeClass ClassName TVar
+ deriving Show
