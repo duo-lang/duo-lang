@@ -376,7 +376,11 @@ renameTerm PrdRep (CST.Xtor loc xtor subst) = do
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Data) $
            throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
-  pctms <- renameTerms loc ar subst
+  analyzedSubst <- analyzeSubstitution loc xtor ar subst
+  subst' <- case analyzedSubst of
+      ExplicitSubst es -> return (map snd es)
+      ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
+  pctms <- renameTerms loc ar subst'
   pure $ RST.Xtor loc PrdRep ns xtor pctms
 renameTerm CnsRep (CST.Xtor loc xtor subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
@@ -384,7 +388,11 @@ renameTerm CnsRep (CST.Xtor loc xtor subst) = do
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
   when (dc /= Codata) $
            throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
-  pctms <- renameTerms loc ar subst
+  analyzedSubst <- analyzeSubstitution loc xtor ar subst
+  subst' <- case analyzedSubst of
+      ExplicitSubst es -> return (map snd es)
+      ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
+  pctms <- renameTerms loc ar subst'
   pure $ RST.Xtor loc CnsRep ns xtor pctms
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
@@ -394,7 +402,7 @@ renameTerm rep    (CST.DtorChain pos tm dtors) =
 renameTerm rep (CST.Semi loc xtor subst tm) = do
   tm' <- renameTerm CnsRep tm
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
-  when (dc /= Codata) $
+  when (dc /= Data) $
            throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
   analyzedSubst <- analyzeSubstitution loc xtor ar subst
   case analyzedSubst of
@@ -402,7 +410,7 @@ renameTerm rep (CST.Semi loc xtor subst tm) = do
       throwError (OtherError (Just loc) "The substitution in a Semi must contain at least one implicit argument")
     ImplicitSubst subst1 Prd subst2 -> do
       case rep of
-        PrdRep -> 
+        PrdRep ->
           throwError (OtherError (Just loc) "Tried to rename Semi to a producer, but implicit argument stands for a producer")
         CnsRep -> do
           subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
@@ -542,7 +550,7 @@ renameTerm CnsRep (CST.Lambda loc _fv _tm) =
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be renamed to commands
 ---------------------------------------------------------------------------------
-renameTerm _ (CST.Apply loc _ _) = 
+renameTerm _ (CST.Apply loc _ _) =
   throwError (OtherError (Just loc) "Cannot rename Apply command to a term.")
 renameTerm _ (CST.PrimCmdTerm _) =
   throwError (OtherError Nothing " Cannot rename primCmdTerm to a term.")

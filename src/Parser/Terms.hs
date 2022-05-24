@@ -77,14 +77,14 @@ xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
-  (subst, _) <- substitutionP
+  (subst, _) <- substitutionIP
   afterSemi <- optional $ fst <$> do
     _ <- symbolP SymDoubleSemi
     termTopP
   endPos <- getSourcePos
   case afterSemi of
     Nothing -> pure (CST.Xtor (Loc startPos endPos) xt subst, endPos)
-    Just _tm -> undefined -- pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
+    Just tm -> pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
 
 
 --------------------------------------------------------------------------------------------
