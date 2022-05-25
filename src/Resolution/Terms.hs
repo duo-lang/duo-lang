@@ -182,7 +182,7 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
                       }
 
 ---------------------------------------------------------------------------------
--- Renaming PrimCommands
+-- Resolving PrimCommands
 ---------------------------------------------------------------------------------
 
 getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolverM Arity
@@ -211,7 +211,7 @@ resolvePrimCommand (CST.PrimOp loc pt op args) = do
   pure $ RST.PrimOp loc pt op args'
 
 ---------------------------------------------------------------------------------
--- Renaming Commands
+-- Resolving Commands
 ---------------------------------------------------------------------------------
 
 resolveCommand :: CST.Term -> ResolverM RST.Command
