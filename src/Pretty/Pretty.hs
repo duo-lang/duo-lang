@@ -45,6 +45,10 @@ instance {-# OVERLAPPING #-} PrettyAnn String where
 instance PrettyAnn a => PrettyAnn [a] where
    prettyAnn xs = list (prettyAnn <$> xs)
 
+instance PrettyAnn a => PrettyAnn (Maybe a) where
+  prettyAnn Nothing = emptyDoc
+  prettyAnn (Just x) = prettyAnn x
+
 instance PrettyAnn Text where
   prettyAnn = pretty
 
@@ -98,7 +102,7 @@ ppPrintIO doc =
     renderConsole (layoutPretty layout (prettyAnn doc))
 
 renderConsole :: SimpleDocStream Annotation -> IO ()
-renderConsole str = (renderConsole' str) >> putStrLn ""
+renderConsole str = renderConsole' str >> putStrLn ""
 
 renderConsole' :: SimpleDocStream Annotation -> IO ()
 renderConsole' = \case
