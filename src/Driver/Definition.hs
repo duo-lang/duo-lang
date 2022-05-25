@@ -13,7 +13,7 @@ import Driver.Environment ( Environment, emptyEnvironment )
 import Errors
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedError )
-import Renamer.SymbolTable
+import Resolution.SymbolTable
 import Syntax.Common.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Utils

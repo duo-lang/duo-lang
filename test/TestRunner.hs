@@ -13,7 +13,7 @@ import Driver.Driver (inferProgramIO)
 import Errors
 import Parser.Definition (runFileParser)
 import Parser.Program (programP)
-import Renamer.SymbolTable (SymbolTable, createSymbolTable)
+import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
 import Spec.Subsumption qualified

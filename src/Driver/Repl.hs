@@ -28,8 +28,8 @@ import Parser.Parser ( subtypingProblemP )
 import Parser.Program ( declarationP )
 import Parser.Terms ( termP )
 import Pretty.Pretty ( ppPrintString )
-import Renamer.Definition ( runRenamerM )
-import Renamer.Types ( renameTypeScheme )
+import Resolution.Definition ( runResolverM )
+import Resolution.Types ( resolveTypeScheme )
 import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
 import Translate.Focusing ( focusCmd, focusEnvironment )
 import Syntax.Common
@@ -37,8 +37,8 @@ import Syntax.TST.Program qualified as TST
 import Syntax.Core.Program qualified as Core
 import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
-import Renamer.Program (renameDecl)
-import Renamer.Terms (renameCommand)
+import Resolution.Program (resolveDecl)
+import Resolution.Terms (resolveCommand)
 
 
 ---------------------------------------------------------------------------------
@@ -76,8 +76,8 @@ letRepl :: Text -> DriverM ()
 letRepl txt = do
     decl <- runInteractiveParser declarationP txt
     sts <- getSymbolTables
-    renamedDecl <- liftEitherErr (runRenamerM sts (renameDecl decl))
-    _ <- inferDecl interactiveModule (desugarDecl renamedDecl)
+    resolvedDecl <- liftEitherErr (runResolverM sts (resolveDecl decl))
+    _ <- inferDecl interactiveModule (desugarDecl resolvedDecl)
     pure ()
 
 ---------------------------------------------------------------------------------
@@ -90,8 +90,8 @@ runCmd :: Text -> EvalSteps ->  DriverM ()
 runCmd txt steps = do
     (parsedCommand, _) <- runInteractiveParser termP txt
     sts <- getSymbolTables
-    renamedDecl <- liftEitherErr (runRenamerM sts (renameCommand parsedCommand))
-    (TST.CmdDecl _ _ _ inferredCmd) <- inferDecl interactiveModule (Core.CmdDecl defaultLoc Nothing (MkFreeVarName "main") (desugarCmd renamedDecl))
+    resolvedDecl <- liftEitherErr (runResolverM sts (resolveCommand parsedCommand))
+    (TST.CmdDecl _ _ _ inferredCmd) <- inferDecl interactiveModule (Core.CmdDecl defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl))
     env <- gets drvEnv
     let compiledCmd = focusCmd CBV inferredCmd   
     let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
@@ -115,9 +115,9 @@ subsumeRepl :: Text -> DriverM ()
 subsumeRepl txt = do
     (t1,t2) <- runInteractiveParser subtypingProblemP txt
     sts <- getSymbolTables
-    renamed_t1 <- liftEitherErr (runRenamerM sts (renameTypeScheme PosRep t1))
-    renamed_t2 <- liftEitherErr (runRenamerM sts (renameTypeScheme PosRep t2))
-    isSubsumed <- liftEitherErr $ subsume PosRep renamed_t1 renamed_t2
+    resolved_t1 <- liftEitherErr (runResolverM sts (resolveTypeScheme PosRep t1))
+    resolved_t2 <- liftEitherErr (runResolverM sts (resolveTypeScheme PosRep t2))
+    isSubsumed <- liftEitherErr $ subsume PosRep resolved_t1 resolved_t2
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"

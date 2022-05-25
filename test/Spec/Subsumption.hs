@@ -7,9 +7,9 @@ import Test.Hspec
 import Parser.Parser
 import Pretty.Pretty (ppPrintString)
 import Pretty.Types ()
-import Renamer.Definition
-import Renamer.SymbolTable
-import Renamer.Types
+import Resolution.Definition
+import Resolution.SymbolTable
+import Resolution.Types
 import Syntax.Common
 import TypeAutomata.Subsume (subsume)
 
@@ -22,8 +22,8 @@ subsumptionCheckPos env bspec s1 s2 = do
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        let lowerResult1 = runRenamerM (M.fromList env) (renameTypeScheme PosRep r1)
-        let lowerResult2 = runRenamerM (M.fromList env) (renameTypeScheme PosRep r2)
+        let lowerResult1 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r1)
+        let lowerResult2 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r2)
         case (lowerResult1, lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"

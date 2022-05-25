@@ -22,9 +22,9 @@ import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
-import Renamer.Program (renameProgram)
-import Renamer.SymbolTable
-import Renamer.Definition
+import Resolution.Program (resolveProgram)
+import Resolution.SymbolTable
+import Resolution.Definition
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
@@ -188,14 +188,14 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- createSymbolTable mn decls
       addSymboltable mn st
-      -- 3. Rename the declarations.
+      -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      renamedDecls <- liftEitherErr (runRenamerM sts (renameProgram decls))
+      resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
       -- 4. Desugar the program
-      let desugaredProg = desugarProgram renamedDecls
+      let desugaredProg = desugarProgram resolvedDecls
       -- 5. Infer the declarations
       inferredDecls <- inferProgram mn desugaredProg
-      -- 6. Add the renamed AST to the cache
+      -- 6. Add the resolved AST to the cache
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
       addTypecheckedProgram mn inferredDecls
 
@@ -215,8 +215,8 @@ inferProgramIO state mn decls = do
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
-        renamedDecls <- liftEitherErr (runRenamerM sts (renameProgram decls))
-        inferProgram mn (desugarProgram renamedDecls)
+        resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
+        inferProgram mn (desugarProgram resolvedDecls)
   res <- execDriverM state action
   case res of
     Left err -> return (Left err)

@@ -1,4 +1,4 @@
-module Resolution.Terms (renameTerm, renameCommand) where
+module Resolution.Terms (resolveTerm, resolveCommand) where
 
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
@@ -22,17 +22,17 @@ import Utils
 ---------------------------------------------------------------------------------
 
 -- can only be called when length ar == length tms
-renameTerms :: Loc -> Arity -> [CST.Term] -> RenamerM [RST.PrdCnsTerm]
-renameTerms _ [] [] = return []
-renameTerms loc (Prd:ar) (t:tms) = do
-  t' <- RST.PrdTerm <$> renameTerm PrdRep t
-  tms' <- renameTerms loc ar tms
+resolveTerms :: Loc -> Arity -> [CST.Term] -> ResolverM [RST.PrdCnsTerm]
+resolveTerms _ [] [] = return []
+resolveTerms loc (Prd:ar) (t:tms) = do
+  t' <- RST.PrdTerm <$> resolveTerm PrdRep t
+  tms' <- resolveTerms loc ar tms
   pure $ t' : tms'
-renameTerms loc (Cns:ar) (t:tms) = do
-  t' <- RST.CnsTerm <$> renameTerm CnsRep t
-  tms' <- renameTerms loc ar tms
+resolveTerms loc (Cns:ar) (t:tms) = do
+  t' <- RST.CnsTerm <$> resolveTerm CnsRep t
+  tms' <- resolveTerms loc ar tms
   pure $ t' : tms'
-renameTerms loc ar t = error $ "compiler bug in renameTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
+resolveTerms loc ar t = error $ "compiler bug in resolveTerms, loc = " ++ show loc ++ ", ar = " ++ show ar ++ ", t = " ++ show t
 
 ---------------------------------------------------------------------------------
 -- Analyze Patterns
@@ -43,7 +43,7 @@ data AnalyzedPattern
   | ImplicitPrdPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
   | ImplicitCnsPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
 
-analyzePattern :: DataCodata -> CST.TermPat -> RenamerM AnalyzedPattern
+analyzePattern :: DataCodata -> CST.TermPat -> ResolverM AnalyzedPattern
 analyzePattern dc (CST.XtorPat loc xt args) = do
   -- Lookup up the arity information in the symbol table.
   (_,XtorNameResult dc' _ arity) <- lookupXtor loc xt
@@ -119,7 +119,7 @@ data SomeIntermediateCases where
 analyzeCase :: DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
-            -> RenamerM SomeIntermediateCase
+            -> ResolverM SomeIntermediateCase
 analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term }) = do
   analyzedPattern <- analyzePattern dc tmcase_pat
   case analyzedPattern of
@@ -144,7 +144,7 @@ analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term }) = do
 
 analyzeCases :: DataCodata
              -> [CST.TermCase]
-             -> RenamerM SomeIntermediateCases
+             -> ResolverM SomeIntermediateCases
 analyzeCases dc cases = do
   cases' <- sequence $ analyzeCase dc <$> cases
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
@@ -154,28 +154,28 @@ analyzeCases dc cases = do
 
 
 ---------------------------------------------------------------------------------
--- Rename Cases
+-- Resolve Cases
 ---------------------------------------------------------------------------------
 
-renameCommandCase :: IntermediateCase -> RenamerM RST.CmdCase
-renameCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
-  cmd' <- renameCommand icase_term
+resolveCommandCase :: IntermediateCase -> ResolverM RST.CmdCase
+resolveCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+  cmd' <- resolveCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
                      , cmdcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                      , cmdcase_cmd = RST.commandClosing icase_args cmd'
                      }
 
-renameTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> RenamerM (RST.TermCaseI pc)
-renameTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
-  tm' <- renameTerm rep icasei_term
+resolveTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> ResolverM (RST.TermCaseI pc)
+resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
+  tm' <- resolveTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
                        , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
                        , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
-renameTermCase :: PrdCnsRep pc -> IntermediateCase -> RenamerM (RST.TermCase pc)
-renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
-  tm' <- renameTerm rep icase_term
+resolveTermCase :: PrdCnsRep pc -> IntermediateCase -> ResolverM (RST.TermCase pc)
+resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
+  tm' <- resolveTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
                       , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
@@ -185,134 +185,134 @@ renameTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase
 -- Renaming PrimCommands
 ---------------------------------------------------------------------------------
 
-getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> RenamerM Arity
+getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolverM Arity
 getPrimOpArity loc primOp = do
   case M.lookup primOp primOps of
     Nothing -> throwError $ LowerError (Just loc) $ UndefinedPrimOp primOp
     Just aritySpecified -> return aritySpecified
 
-renamePrimCommand :: CST.PrimCommand -> RenamerM RST.Command
-renamePrimCommand (CST.Print loc tm cmd) = do
-  tm' <- renameTerm PrdRep tm
-  cmd' <- renameCommand cmd
+resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
+resolvePrimCommand (CST.Print loc tm cmd) = do
+  tm' <- resolveTerm PrdRep tm
+  cmd' <- resolveCommand cmd
   pure $ RST.Print loc tm' cmd'
-renamePrimCommand (CST.Read loc tm) = do
-  tm' <- renameTerm CnsRep tm
+resolvePrimCommand (CST.Read loc tm) = do
+  tm' <- resolveTerm CnsRep tm
   pure $ RST.Read loc tm'
-renamePrimCommand (CST.ExitSuccess loc) =
+resolvePrimCommand (CST.ExitSuccess loc) =
   pure $ RST.ExitSuccess loc
-renamePrimCommand (CST.ExitFailure loc) =
+resolvePrimCommand (CST.ExitFailure loc) =
   pure $ RST.ExitFailure loc
-renamePrimCommand (CST.PrimOp loc pt op args) = do
+resolvePrimCommand (CST.PrimOp loc pt op args) = do
   reqArity <- getPrimOpArity loc (pt, op)
   when (length reqArity /= length args) $
          throwError $ LowerError (Just loc) $ PrimOpArityMismatch (pt,op) (length reqArity) (length args)
-  args' <- renameTerms loc reqArity args
+  args' <- resolveTerms loc reqArity args
   pure $ RST.PrimOp loc pt op args'
 
 ---------------------------------------------------------------------------------
 -- Renaming Commands
 ---------------------------------------------------------------------------------
 
-renameCommand :: CST.Term -> RenamerM RST.Command
-renameCommand (CST.TermParens _loc cmd) =
-  renameCommand cmd
-renameCommand (CST.Var loc fv) =
+resolveCommand :: CST.Term -> ResolverM RST.Command
+resolveCommand (CST.TermParens _loc cmd) =
+  resolveCommand cmd
+resolveCommand (CST.Var loc fv) =
   pure $ RST.Jump loc fv
-renameCommand (CST.PrimCmdTerm cmd) =
-  renamePrimCommand cmd
-renameCommand (CST.Apply loc tm1 tm2) = do
-  tm1' <- renameTerm PrdRep tm1
-  tm2' <- renameTerm CnsRep tm2
+resolveCommand (CST.PrimCmdTerm cmd) =
+  resolvePrimCommand cmd
+resolveCommand (CST.Apply loc tm1 tm2) = do
+  tm1' <- resolveTerm PrdRep tm1
+  tm2' <- resolveTerm CnsRep tm2
   pure $ RST.Apply loc tm1' tm2'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
 ---------------------------------------------------------------------------------
-renameCommand (CST.CaseOf loc tm cases) = do
-  tm' <- renameTerm PrdRep tm
+resolveCommand (CST.CaseOf loc tm cases) = do
+  tm' <- resolveTerm PrdRep tm
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cmdCases <- sequence $ renameCommandCase <$> explicitCases
+      cmdCases <- sequence $ resolveCommandCase <$> explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
     ImplicitCases rep implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI rep <$> implicitCases
+      termCasesI <- sequence $ resolveTermCaseI rep <$> implicitCases
       pure $ RST.CaseOfI loc rep ns tm' termCasesI
-renameCommand (CST.CocaseOf loc tm cases) = do
-  tm' <- renameTerm CnsRep tm
+resolveCommand (CST.CocaseOf loc tm cases) = do
+  tm' <- resolveTerm CnsRep tm
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cmdCases <- sequence $ renameCommandCase <$> explicitCases
+      cmdCases <- sequence $ resolveCommandCase <$> explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
     ImplicitCases rep implicitCases -> do
-      termCasesI <- sequence $ renameTermCaseI rep <$> implicitCases
+      termCasesI <- sequence $ resolveTermCaseI rep <$> implicitCases
       pure $ RST.CocaseOfI loc rep ns tm' termCasesI
 ---------------------------------------------------------------------------------
--- CST constructs which can only be renamed to commands
+-- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
-renameCommand (CST.Xtor loc _ _) =
+resolveCommand (CST.Xtor loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
-renameCommand (CST.Semi loc _ _ _) =
+resolveCommand (CST.Semi loc _ _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Semi")
-renameCommand (CST.Dtor loc _ _ _) =
+resolveCommand (CST.Dtor loc _ _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Dtor")
-renameCommand (CST.Case loc _) =
+resolveCommand (CST.Case loc _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Case")
-renameCommand (CST.Cocase loc _) =
+resolveCommand (CST.Cocase loc _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Cocase")
-renameCommand (CST.MuAbs loc _ _) =
+resolveCommand (CST.MuAbs loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Mu abstraction")
-renameCommand (CST.PrimLitI64 loc _) =
+resolveCommand (CST.PrimLitI64 loc _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found #I64 literal")
-renameCommand (CST.PrimLitF64 loc _) =
+resolveCommand (CST.PrimLitF64 loc _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found #F64 literal")
-renameCommand (CST.NatLit loc _ _) =
+resolveCommand (CST.NatLit loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Nat literal")
-renameCommand (CST.DtorChain _ _ _) =
+resolveCommand (CST.DtorChain _ _ _) =
   throwError $ LowerError Nothing (CmdExpected "Command expected, but found DtorChain")
-renameCommand (CST.FunApp loc _ _) =
+resolveCommand (CST.FunApp loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found function application")
-renameCommand (CST.MultiLambda loc _ _) =
+resolveCommand (CST.MultiLambda loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
-renameCommand (CST.Lambda loc _ _) =
+resolveCommand (CST.Lambda loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
 
 
 
-casesToNS :: [CST.TermCase] -> RenamerM NominalStructural
+casesToNS :: [CST.TermCase] -> ResolverM NominalStructural
 casesToNS [] = pure Structural
 casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name _ }):_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 
 -- | Lower a multi-lambda abstraction
-renameMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> RenamerM (CST.Term)
-renameMultiLambda _ [] tm = pure tm
-renameMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> renameMultiLambda loc fvs tm
+resolveMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> ResolverM (CST.Term)
+resolveMultiLambda _ [] tm = pure tm
+resolveMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> resolveMultiLambda loc fvs tm
 
 -- | Lower a lambda abstraction.
-renameLambda :: Loc -> FreeVarName -> CST.Term -> RenamerM (RST.Term Prd)
-renameLambda loc var tm = do
-  tm' <- renameTerm PrdRep tm
+resolveLambda :: Loc -> FreeVarName -> CST.Term -> ResolverM (RST.Term Prd)
+resolveLambda loc var tm = do
+  tm' <- resolveTerm PrdRep tm
   let pat = RST.XtorPatI loc (MkXtorName "Ap") ([(Prd, Just var)], (), [])
   let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd, var)] tm')
   pure $ RST.CocaseI loc PrdRep Nominal [cs]
 
 -- | Lower a natural number literal.
-renameNatLit :: Loc -> NominalStructural -> Int -> RenamerM (RST.Term Prd)
-renameNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") []
-renameNatLit loc ns n = do
-  n' <- renameNatLit loc ns (n-1)
+resolveNatLit :: Loc -> NominalStructural -> Int -> ResolverM (RST.Term Prd)
+resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") []
+resolveNatLit loc ns n = do
+  n' <- resolveNatLit loc ns (n-1)
   pure $ RST.Xtor loc PrdRep ns (MkXtorName "S") [RST.PrdTerm n']
 
 -- | Lower an application.
-renameApp :: Loc -> CST.Term -> CST.Term -> RenamerM (RST.Term Prd)
-renameApp loc fun arg = do
-  fun' <- renameTerm PrdRep fun
-  arg' <- renameTerm PrdRep arg
+resolveApp :: Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term Prd)
+resolveApp loc fun arg = do
+  fun' <- resolveTerm PrdRep fun
+  arg' <- resolveTerm PrdRep arg
   pure $ RST.Dtor loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
 
 isStarT :: CST.TermOrStar -> Bool
@@ -323,9 +323,9 @@ toTm  :: CST.TermOrStar -> CST.Term
 toTm (CST.ToSTerm t) = t
 toTm _x = error "Compiler bug: toFV"
 
-renameDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar], SourcePos) -> RenamerM CST.Term
-renameDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
-renameDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = renameDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
+resolveDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar], SourcePos) -> ResolverM CST.Term
+resolveDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
+resolveDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = resolveDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
 ---------------------------------------------------------------------------------
 -- Analyze a substitution which (may) contain a star
@@ -334,7 +334,7 @@ data AnalyzedSubstitution where
   ExplicitSubst :: [(PrdCns, CST.Term)] -> AnalyzedSubstitution
   ImplicitSubst :: [(PrdCns, CST.Term)] -> PrdCns -> [(PrdCns, CST.Term)] -> AnalyzedSubstitution
 
-analyzeSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> RenamerM AnalyzedSubstitution
+analyzeSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
 analyzeSubstitution loc xtor arity subst = do
   -- Check whether the arity corresponds to the length of the substitution
   when (length arity /= length subst) $
@@ -349,28 +349,28 @@ analyzeSubstitution loc xtor arity subst = do
         _ -> throwError $ OtherError (Just loc) ("Compiler bug in analyzeSubstitution")
     n -> throwError $ OtherError (Just loc) ("At most one star expected. Got " <> T.pack (show n) <> " stars.")
 
-renamePrdCnsTerm :: PrdCns -> CST.Term -> RenamerM RST.PrdCnsTerm
-renamePrdCnsTerm Prd tm = RST.PrdTerm <$> renameTerm PrdRep tm
-renamePrdCnsTerm Cns tm = RST.CnsTerm <$> renameTerm CnsRep tm
+resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
+resolvePrdCnsTerm Prd tm = RST.PrdTerm <$> resolveTerm PrdRep tm
+resolvePrdCnsTerm Cns tm = RST.CnsTerm <$> resolveTerm CnsRep tm
 
-renameTerm :: PrdCnsRep pc -> CST.Term -> RenamerM (RST.Term pc)
-renameTerm rep (CST.TermParens _loc tm) =
-  renameTerm rep tm
-renameTerm rep (CST.Var loc v) =
+resolveTerm :: PrdCnsRep pc -> CST.Term -> ResolverM (RST.Term pc)
+resolveTerm rep (CST.TermParens _loc tm) =
+  resolveTerm rep tm
+resolveTerm rep (CST.Var loc v) =
   pure $ RST.FreeVar loc rep v
 ---------------------------------------------------------------------------------
 -- Mu abstraction
 ---------------------------------------------------------------------------------
-renameTerm PrdRep (CST.MuAbs loc fv cmd) = do
-  cmd' <- renameCommand cmd
+resolveTerm PrdRep (CST.MuAbs loc fv cmd) = do
+  cmd' <- resolveCommand cmd
   pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
-renameTerm CnsRep (CST.MuAbs loc fv cmd) = do
-  cmd' <- renameCommand cmd
+resolveTerm CnsRep (CST.MuAbs loc fv cmd) = do
+  cmd' <- resolveCommand cmd
   pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
 ---------------------------------------------------------------------------------
 -- Xtor
 ---------------------------------------------------------------------------------
-renameTerm PrdRep (CST.Xtor loc xtor subst) = do
+resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
@@ -380,9 +380,9 @@ renameTerm PrdRep (CST.Xtor loc xtor subst) = do
   subst' <- case analyzedSubst of
       ExplicitSubst es -> return (map snd es)
       ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
-  pctms <- renameTerms loc ar subst'
+  pctms <- resolveTerms loc ar subst'
   pure $ RST.Xtor loc PrdRep ns xtor pctms
-renameTerm CnsRep (CST.Xtor loc xtor subst) = do
+resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (length ar /= length subst) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
@@ -392,15 +392,15 @@ renameTerm CnsRep (CST.Xtor loc xtor subst) = do
   subst' <- case analyzedSubst of
       ExplicitSubst es -> return (map snd es)
       ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
-  pctms <- renameTerms loc ar subst'
+  pctms <- resolveTerms loc ar subst'
   pure $ RST.Xtor loc CnsRep ns xtor pctms
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
 ---------------------------------------------------------------------------------
-renameTerm rep    (CST.DtorChain pos tm dtors) =
-  renameDtorChain pos tm dtors >>= renameTerm rep
-renameTerm rep (CST.Semi loc xtor subst tm) = do
-  tm' <- renameTerm CnsRep tm
+resolveTerm rep    (CST.DtorChain pos tm dtors) =
+  resolveDtorChain pos tm dtors >>= resolveTerm rep
+resolveTerm rep (CST.Semi loc xtor subst tm) = do
+  tm' <- resolveTerm CnsRep tm
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (dc /= Data) $
            throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
@@ -411,21 +411,21 @@ renameTerm rep (CST.Semi loc xtor subst tm) = do
     ImplicitSubst subst1 Prd subst2 -> do
       case rep of
         PrdRep ->
-          throwError (OtherError (Just loc) "Tried to rename Semi to a producer, but implicit argument stands for a producer")
+          throwError (OtherError (Just loc) "Tried to resolve Semi to a producer, but implicit argument stands for a producer")
         CnsRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
           pure $ RST.Semi loc CnsRep ns xtor (subst1', CnsRep, subst2') tm'
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
           pure $ RST.Semi loc PrdRep ns xtor (subst1', PrdRep, subst2') tm'
         CnsRep ->
-          throwError (OtherError (Just loc) "Tried to rename Semi to a producer, but implicit argument stands for a producer")
-renameTerm rep (CST.Dtor loc xtor tm subst) = do
-  tm' <- renameTerm PrdRep tm
+          throwError (OtherError (Just loc) "Tried to resolve Semi to a producer, but implicit argument stands for a producer")
+resolveTerm rep (CST.Dtor loc xtor tm subst) = do
+  tm' <- resolveTerm PrdRep tm
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (dc /= Codata) $
            throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
@@ -436,121 +436,121 @@ renameTerm rep (CST.Dtor loc xtor tm subst) = do
     ImplicitSubst subst1 Prd subst2 -> do
       case rep of
         PrdRep -> do
-          throwError (OtherError (Just loc) "Tried to rename Dtor to a producer, but implicit argument stands for a producer")
+          throwError (OtherError (Just loc) "Tried to resolve Dtor to a producer, but implicit argument stands for a producer")
         CnsRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
           pure $ RST.Dtor loc CnsRep ns xtor tm' (subst1', CnsRep, subst2')
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> renamePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> renamePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
           pure $ RST.Dtor loc PrdRep ns xtor tm' (subst1', PrdRep, subst2')
         CnsRep -> do
-          throwError (OtherError (Just loc) "Tried to rename Dtor to a consumer, but implicit argument stands for consumer")
+          throwError (OtherError (Just loc) "Tried to resolve Dtor to a consumer, but implicit argument stands for consumer")
 ---------------------------------------------------------------------------------
 -- Case / Cocase
 ---------------------------------------------------------------------------------
-renameTerm PrdRep (CST.Case loc _) =
-  throwError (OtherError (Just loc) "Cannot rename pattern match to a producer.")
-renameTerm CnsRep (CST.Cocase loc _) =
-  throwError (OtherError (Just loc) "Cannot rename copattern match to a consumer.")
-renameTerm PrdRep (CST.Cocase loc cases)  = do
+resolveTerm PrdRep (CST.Case loc _) =
+  throwError (OtherError (Just loc) "Cannot resolve pattern match to a producer.")
+resolveTerm CnsRep (CST.Cocase loc _) =
+  throwError (OtherError (Just loc) "Cannot resolve copattern match to a consumer.")
+resolveTerm PrdRep (CST.Cocase loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence $ renameCommandCase <$> explicitCases
+      cases' <- sequence $ resolveCommandCase <$> explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
     ImplicitCases rep implicitCases -> do
-      cases' <- sequence $ renameTermCaseI rep <$> implicitCases
+      cases' <- sequence $ resolveTermCaseI rep <$> implicitCases
       pure $ RST.CocaseI loc rep ns cases'
-renameTerm CnsRep (CST.Case loc cases)  = do
+resolveTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence $ renameCommandCase <$> explicitCases
+      cases' <- sequence $ resolveCommandCase <$> explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
     ImplicitCases rep implicitCases -> do
-      cases' <- sequence $ renameTermCaseI rep <$> implicitCases
+      cases' <- sequence $ resolveTermCaseI rep <$> implicitCases
       pure $ RST.CaseI loc rep ns cases'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
 ---------------------------------------------------------------------------------
-renameTerm PrdRep (CST.CaseOf loc t cases)  = do
+resolveTerm PrdRep (CST.CaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
-      t' <- renameTerm PrdRep t
+      cases' <- sequence (resolveTermCase PrdRep <$> explicitCases)
+      t' <- resolveTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to producer."
-renameTerm PrdRep (CST.CocaseOf loc t cases)  = do
+      throwError $ OtherError (Just loc) "Cannot resolve case-of with implicit cases to producer."
+resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (renameTermCase PrdRep <$> explicitCases)
-      t' <- renameTerm CnsRep t
+      cases' <- sequence (resolveTermCase PrdRep <$> explicitCases)
+      t' <- resolveTerm CnsRep t
       pure $ RST.CocaseOf loc PrdRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to producer"
-renameTerm CnsRep (CST.CaseOf loc t cases) = do
+      throwError $ OtherError (Just loc) "Cannot resolve cocase-of with implicit cases to producer"
+resolveTerm CnsRep (CST.CaseOf loc t cases) = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
-      t' <- renameTerm PrdRep t
+      cases' <- sequence (resolveTermCase CnsRep <$> explicitCases)
+      t' <- resolveTerm PrdRep t
       pure $ RST.CaseOf loc CnsRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename case-of with implicit cases to consumer."
-renameTerm CnsRep (CST.CocaseOf loc t cases) = do
+      throwError $ OtherError (Just loc) "Cannot resolve case-of with implicit cases to consumer."
+resolveTerm CnsRep (CST.CocaseOf loc t cases) = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (renameTermCase CnsRep <$> explicitCases)
-      t' <- renameTerm CnsRep t
+      cases' <- sequence (resolveTermCase CnsRep <$> explicitCases)
+      t' <- resolveTerm CnsRep t
       pure $ RST.CocaseOf loc CnsRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
-      throwError $ OtherError (Just loc) "Cannot rename cocase-of with implicit cases to consumer"
+      throwError $ OtherError (Just loc) "Cannot resolve cocase-of with implicit cases to consumer"
 ---------------------------------------------------------------------------------
 -- Literals
 ---------------------------------------------------------------------------------
-renameTerm PrdRep (CST.PrimLitI64 loc i) =
+resolveTerm PrdRep (CST.PrimLitI64 loc i) =
   pure $ RST.PrimLitI64 loc i
-renameTerm CnsRep (CST.PrimLitI64 loc _) =
-  throwError (OtherError (Just loc) "Cannot rename primitive literal to a consumer.")
-renameTerm PrdRep (CST.PrimLitF64 loc d) =
+resolveTerm CnsRep (CST.PrimLitI64 loc _) =
+  throwError (OtherError (Just loc) "Cannot resolve primitive literal to a consumer.")
+resolveTerm PrdRep (CST.PrimLitF64 loc d) =
   pure $ RST.PrimLitF64 loc d
-renameTerm CnsRep (CST.PrimLitF64 loc _) =
-  throwError (OtherError (Just loc) "Cannot rename primitive literal to a consumer.")
-renameTerm PrdRep (CST.NatLit loc ns i) =
-  renameNatLit loc ns i
-renameTerm CnsRep (CST.NatLit loc _ns _i) =
-  throwError (OtherError (Just loc) "Cannot rename NatLit to a consumer.")
+resolveTerm CnsRep (CST.PrimLitF64 loc _) =
+  throwError (OtherError (Just loc) "Cannot resolve primitive literal to a consumer.")
+resolveTerm PrdRep (CST.NatLit loc ns i) =
+  resolveNatLit loc ns i
+resolveTerm CnsRep (CST.NatLit loc _ns _i) =
+  throwError (OtherError (Just loc) "Cannot resolve NatLit to a consumer.")
 ---------------------------------------------------------------------------------
 -- Function specific syntax sugar
 ---------------------------------------------------------------------------------
-renameTerm rep    (CST.MultiLambda loc fvs tm) =
-  renameMultiLambda loc fvs tm >>= renameTerm rep
-renameTerm PrdRep (CST.FunApp loc fun arg) =
-  renameApp loc fun arg
-renameTerm CnsRep (CST.FunApp loc _fun _arg) =
-  throwError (OtherError (Just loc) "Cannot rename FunApp to a consumer.")
-renameTerm PrdRep (CST.Lambda loc fv tm) =
-  renameLambda loc fv tm
-renameTerm CnsRep (CST.Lambda loc _fv _tm) =
-  throwError (OtherError (Just loc) "Cannot rename Lambda to a consumer.")
+resolveTerm rep    (CST.MultiLambda loc fvs tm) =
+  resolveMultiLambda loc fvs tm >>= resolveTerm rep
+resolveTerm PrdRep (CST.FunApp loc fun arg) =
+  resolveApp loc fun arg
+resolveTerm CnsRep (CST.FunApp loc _fun _arg) =
+  throwError (OtherError (Just loc) "Cannot resolve FunApp to a consumer.")
+resolveTerm PrdRep (CST.Lambda loc fv tm) =
+  resolveLambda loc fv tm
+resolveTerm CnsRep (CST.Lambda loc _fv _tm) =
+  throwError (OtherError (Just loc) "Cannot resolve Lambda to a consumer.")
 ---------------------------------------------------------------------------------
--- CST constructs which can only be renamed to commands
+-- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
-renameTerm _ (CST.Apply loc _ _) =
-  throwError (OtherError (Just loc) "Cannot rename Apply command to a term.")
-renameTerm _ (CST.PrimCmdTerm _) =
-  throwError (OtherError Nothing " Cannot rename primCmdTerm to a term.")
+resolveTerm _ (CST.Apply loc _ _) =
+  throwError (OtherError (Just loc) "Cannot resolve Apply command to a term.")
+resolveTerm _ (CST.PrimCmdTerm _) =
+  throwError (OtherError Nothing " Cannot resolve primCmdTerm to a term.")

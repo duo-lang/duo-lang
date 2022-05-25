@@ -16,7 +16,7 @@ newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)
 -- | Name of nominal type or type synonym.
 newtype TypeName = MkTypeName { unTypeName :: Text } deriving (Eq, Show, Ord)
 
--- | Renamed TypeName
+-- | Resolved TypeName
 -- rnTnLoc contains location of definition site.
 data RnTypeName = MkRnTypeName { rnTnLoc :: Loc, rnTnDoc :: Maybe DocComment, rnTnModule :: ModuleName, rnTnName :: TypeName }
   deriving (Show, Ord, Eq)

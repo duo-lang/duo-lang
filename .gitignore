@@ -25,3 +25,4 @@ graphs/
 .history
 lsplog.txt
 package-lock.json
+.vscode/
