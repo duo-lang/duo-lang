@@ -131,8 +131,8 @@ library
       Sugar.Desugar
       Sugar.Core
       Sugar.AST
-      Syntax.AST.Program
-      Syntax.AST.Terms
+      Syntax.TST.Program
+      Syntax.TST.Terms
       Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names

@@ -9,7 +9,7 @@ import Pretty.Pretty
 import Pretty.Errors ()
 import Pretty.Program ()
 import Syntax.Common
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Program qualified as TST
 import Driver.Definition
 import Driver.Driver
 import Errors
@@ -19,7 +19,7 @@ import Errors
 -- 2. Prettyprinted
 -- 3a. Parsed again from the prettyprinted result.
 -- 3b. Parsed and typechecked again from the prettyprinted result.
-spec :: [(FilePath, Either Error AST.Program)] -> Spec
+spec :: [(FilePath, Either Error TST.Program)] -> Spec
 spec examples = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
     forM_ examples $ \(example,prog) -> do

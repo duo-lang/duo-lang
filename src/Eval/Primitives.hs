@@ -1,7 +1,7 @@
 module Eval.Primitives where
 
 import Syntax.Common
-import Syntax.AST.Terms
+import Syntax.TST.Terms
 
 import Eval.Definition
 import Errors (throwEvalError)

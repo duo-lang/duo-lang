@@ -11,7 +11,7 @@ import Pretty.Types ()
 import Pretty.Common
 import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Program qualified as TST
 import Syntax.Core.Program qualified as Core
 import Syntax.Common
 import Driver.Environment
@@ -64,7 +64,7 @@ prettyTyOpDecl op assoc prec ty =
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
-instance PrettyAnn AST.Declaration where
+instance PrettyAnn TST.Declaration where
   prettyAnn decl = prettyAnn (embedASTDecl decl)
     
 instance PrettyAnn RST.Declaration where
@@ -86,7 +86,7 @@ instance PrettyAnn RST.Declaration where
     annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
 
 
-instance {-# OVERLAPPING #-} PrettyAnn [AST.Declaration] where
+instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)
 
 instance {-# OVERLAPPING #-} PrettyAnn [RST.Declaration] where

@@ -1,4 +1,4 @@
-module Syntax.AST.Terms
+module Syntax.TST.Terms
   ( -- Terms
     Term(..)
   , PrdCnsTerm(..)

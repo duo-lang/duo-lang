@@ -9,7 +9,7 @@ import Data.Text qualified as T
 import Errors
 import Pretty.Pretty
 import Syntax.Common
-import Syntax.AST.Terms
+import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives
 import Utils

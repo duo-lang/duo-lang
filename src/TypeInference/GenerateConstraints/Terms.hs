@@ -11,7 +11,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Constraints ()
 import Pretty.Pretty ( ppPrint )
-import Syntax.AST.Terms qualified as AST
+import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Common hiding (primOps)
 import Syntax.Common.TypesPol
@@ -26,12 +26,12 @@ import TypeInference.GenerateConstraints.Primitives (primOps)
 ---------------------------------------------------------------------------------------------
 
 genConstraintsPCTerm :: Core.PrdCnsTerm
-                     -> GenM AST.PrdCnsTerm
-genConstraintsPCTerm (Core.PrdTerm tm) = AST.PrdTerm <$> genConstraintsTerm tm
-genConstraintsPCTerm (Core.CnsTerm tm) = AST.CnsTerm <$> genConstraintsTerm tm
+                     -> GenM TST.PrdCnsTerm
+genConstraintsPCTerm (Core.PrdTerm tm) = TST.PrdTerm <$> genConstraintsTerm tm
+genConstraintsPCTerm (Core.CnsTerm tm) = TST.CnsTerm <$> genConstraintsTerm tm
 
 genConstraintsSubst :: Core.Substitution
-                    -> GenM AST.Substitution
+                    -> GenM TST.Substitution
 genConstraintsSubst subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
@@ -75,7 +75,7 @@ splitContext n CnsRep sig = case splitAt n sig of
 
 -- | Generate the constraints for a given Term.
 genConstraintsTerm :: Core.Term pc
-                    -> GenM (AST.Term pc)
+                    -> GenM (TST.Term pc)
 --
 -- Bound variables:
 --
@@ -83,7 +83,7 @@ genConstraintsTerm :: Core.Term pc
 --
 genConstraintsTerm (Core.BoundVar loc rep idx) = do
   ty <- lookupContext rep idx
-  return (AST.BoundVar loc rep ty idx)
+  return (TST.BoundVar loc rep ty idx)
 --
 -- Free variables:
 --
@@ -94,23 +94,23 @@ genConstraintsTerm (Core.BoundVar loc rep idx) = do
 genConstraintsTerm (Core.FreeVar loc rep v) = do
   tys <- snd <$> lookupTerm rep v
   ty <- instantiateTypeScheme v loc tys
-  return (AST.FreeVar loc rep ty v)
+  return (TST.FreeVar loc rep ty v)
 --
 -- Structural Xtors:
 --
 genConstraintsTerm (Core.Xtor loc annot rep Structural xt subst) = do
   inferredSubst <- genConstraintsSubst subst
-  let substTypes = AST.getTypArgs inferredSubst
+  let substTypes = TST.getTypArgs inferredSubst
   case rep of
-    PrdRep -> return $ AST.Xtor loc annot rep (TyData   defaultLoc PosRep Nothing [MkXtorSig xt substTypes]) Structural xt inferredSubst
-    CnsRep -> return $ AST.Xtor loc annot rep (TyCodata defaultLoc NegRep Nothing [MkXtorSig xt substTypes]) Structural xt inferredSubst
+    PrdRep -> return $ TST.Xtor loc annot rep (TyData   defaultLoc PosRep Nothing [MkXtorSig xt substTypes]) Structural xt inferredSubst
+    CnsRep -> return $ TST.Xtor loc annot rep (TyCodata defaultLoc NegRep Nothing [MkXtorSig xt substTypes]) Structural xt inferredSubst
 --
 -- Nominal Xtors
 --
 genConstraintsTerm (Core.Xtor loc annot rep Nominal xt subst) = do
   -- First we infer the types of the arguments.
   substInferred <- genConstraintsSubst subst
-  let substTypes = AST.getTypArgs substInferred
+  let substTypes = TST.getTypArgs substInferred
   -- Secondly we look up the argument types of the xtor in the type declaration.
   decl <- lookupDataDecl xt
   xtorSig <- lookupXtorSig xt NegRep
@@ -122,15 +122,15 @@ genConstraintsTerm (Core.Xtor loc annot rep Nominal xt subst) = do
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (AST.Xtor loc annot rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal xt substInferred)
-    CnsRep -> return (AST.Xtor loc annot rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal xt substInferred)
 --
 -- Refinement Xtors
 --
 genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   -- First we infer the types of the arguments.
   substInferred <- genConstraintsSubst subst
-  let substTypes = AST.getTypArgs substInferred
+  let substTypes = TST.getTypArgs substInferred
   -- Secondly we look up the argument types of the xtor in the type declaration.
   -- Since we infer refinement types, we have to look up the translated xtorSig.
   decl <- lookupDataDecl xt
@@ -139,8 +139,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (AST.Xtor loc annot rep (TyData   defaultLoc PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) Refinement xt substInferred)
-    CnsRep -> return (AST.Xtor loc annot rep (TyCodata defaultLoc NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TyData   defaultLoc PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TyCodata defaultLoc NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
@@ -152,11 +152,11 @@ genConstraintsTerm (Core.XCase loc annot rep Structural cases) = do
                       -- Check the command in the context extended with the positive unification variables
                       cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
                       -- Return the negative unification variables in the returned type.
-                      return (AST.MkCmdCase cmdcase_loc (AST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
+                      return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
-    PrdRep -> return $ AST.XCase loc annot rep (TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
-    CnsRep -> return $ AST.XCase loc annot rep (TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
 --
@@ -184,10 +184,10 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
-                   return (AST.MkCmdCase cmdcase_loc (AST.XtorPat loc' xt args) cmdInferred, MkXtorSig xt negTypes'))
+                   return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, MkXtorSig xt negTypes'))
   case rep of
-    PrdRep -> return $ AST.XCase loc annot rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
-    CnsRep -> return $ AST.XCase loc annot rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
@@ -215,54 +215,54 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
                        genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
                        -- For the type, we return the unification variables which are now bounded by the least
                        -- and greatest type translation.
-                       return (AST.MkCmdCase cmdcase_loc (AST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
+                       return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
   case rep of
-    PrdRep -> return $ AST.XCase loc annot rep (TyCodata defaultLoc PosRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
-    CnsRep -> return $ AST.XCase loc annot rep (TyData   defaultLoc NegRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyCodata defaultLoc PosRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyData   defaultLoc NegRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --
 genConstraintsTerm (Core.MuAbs loc annot PrdRep bs cmd) = do
   (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmdInferred <- withContext [PrdCnsType CnsRep uvneg] (genConstraintsCommand cmd)
-  return (AST.MuAbs loc annot PrdRep uvpos bs cmdInferred)
+  return (TST.MuAbs loc annot PrdRep uvpos bs cmdInferred)
 genConstraintsTerm (Core.MuAbs loc annot CnsRep bs cmd) = do
   (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
   cmdInferred <- withContext [PrdCnsType PrdRep uvpos] (genConstraintsCommand cmd)
-  return (AST.MuAbs loc annot CnsRep uvneg bs cmdInferred)
-genConstraintsTerm (Core.PrimLitI64 loc i) = pure $ AST.PrimLitI64 loc i
-genConstraintsTerm (Core.PrimLitF64 loc d) = pure $ AST.PrimLitF64 loc d
+  return (TST.MuAbs loc annot CnsRep uvneg bs cmdInferred)
+genConstraintsTerm (Core.PrimLitI64 loc i) = pure $ TST.PrimLitI64 loc i
+genConstraintsTerm (Core.PrimLitF64 loc d) = pure $ TST.PrimLitF64 loc d
 
-genConstraintsCommand :: Core.Command -> GenM AST.Command
+genConstraintsCommand :: Core.Command -> GenM TST.Command
 genConstraintsCommand (Core.ExitSuccess loc) =
-  return (AST.ExitSuccess loc)
+  return (TST.ExitSuccess loc)
 genConstraintsCommand (Core.ExitFailure loc) =
-  return (AST.ExitFailure loc)
+  return (TST.ExitFailure loc)
 genConstraintsCommand (Core.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
   _ <- lookupCommand fv
-  return (AST.Jump loc fv)
+  return (TST.Jump loc fv)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd
-  return (AST.Print loc prd' cmd')
+  return (TST.Print loc prd' cmd')
 genConstraintsCommand (Core.Read loc cns) = do
   cns' <- genConstraintsTerm cns
-  addConstraint (SubType (ReadConstraint loc)  (TyNominal defaultLoc PosRep Nothing peanoNm []) (AST.getTypeTerm cns'))
-  return (AST.Read loc cns')
+  addConstraint (SubType (ReadConstraint loc)  (TyNominal defaultLoc PosRep Nothing peanoNm []) (TST.getTypeTerm cns'))
+  return (TST.Read loc cns')
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1
   t2' <- genConstraintsTerm t2
-  addConstraint (SubType (CommandConstraint loc) (AST.getTypeTerm t1') (AST.getTypeTerm t2'))
-  return (AST.Apply loc annot Nothing t1' t2')
+  addConstraint (SubType (CommandConstraint loc) (TST.getTypeTerm t1') (TST.getTypeTerm t2'))
+  return (TST.Apply loc annot Nothing t1' t2')
 genConstraintsCommand (Core.PrimOp loc pt op subst) = do
   substInferred <- genConstraintsSubst subst
-  let substTypes = AST.getTypArgs substInferred
+  let substTypes = TST.getTypArgs substInferred
   case M.lookup (pt, op) primOps of
     Nothing -> throwGenError [T.pack $ "Unreachable: Signature for primitive op " ++ primOpKeyword op ++ primTypeKeyword pt ++ " not defined"]
     Just sig -> do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
-      return (AST.PrimOp loc pt op substInferred)
+      return (TST.PrimOp loc pt op substInferred)
 
 ---------------------------------------------------------------------------------------------
 -- Checking recursive terms
@@ -272,14 +272,14 @@ genConstraintsTermRecursive :: ModuleName
                             -> Loc
                             -> FreeVarName
                             -> PrdCnsRep pc -> Core.Term pc
-                            -> GenM (AST.Term pc)
+                            -> GenM (TST.Term pc)
 genConstraintsTermRecursive mn loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm mn PrdRep fv (AST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
-  addConstraint (SubType RecursionConstraint (AST.getTypeTerm tm) y)
+  tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
+  addConstraint (SubType RecursionConstraint (TST.getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm mn CnsRep fv (AST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
-  addConstraint (SubType RecursionConstraint x (AST.getTypeTerm tm))
+  tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
+  addConstraint (SubType RecursionConstraint x (TST.getTypeTerm tm))
   return tm
