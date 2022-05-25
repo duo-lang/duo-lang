@@ -71,9 +71,9 @@ prettyArity [] = mempty
 prettyArity (Prd:rest) = parens "-" <> prettyArity rest
 prettyArity (Cns:rest) = parens "-" <> prettyArity rest
 
-prettyPrdCnsRep :: PrdCnsRep pc -> Doc Annotation
-prettyPrdCnsRep PrdRep = "prd"
-prettyPrdCnsRep CnsRep = "cns"
+prettyPrdCns :: PrdCns -> Doc Annotation
+prettyPrdCns Prd = "prd"
+prettyPrdCns Cns = "cns"
 
 ---------------------------------------------------------------------------------
 -- Data/Codata and Nominal/Structural/Refinement

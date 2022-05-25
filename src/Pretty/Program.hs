@@ -9,20 +9,22 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
+import Syntax.CST.Program qualified as CST
+import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.RST.Program qualified as RST
-import Syntax.Common.TypesPol qualified as RST
 import Syntax.AST.Program qualified as AST
 import Syntax.Core.Program qualified as Core
 import Syntax.Common
 import Driver.Environment
 import Translate.Embed
+import Translate.Reparse
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn RST.DataDecl where
-  prettyAnn (RST.NominalDecl ref tn dc knd xtors) =
+instance PrettyAnn CST.DataDecl where
+  prettyAnn (CST.NominalDecl ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
@@ -30,24 +32,24 @@ instance PrettyAnn RST.DataDecl where
     prettyAnn tn <+>
     colon <+>
     prettyAnn knd <+>
-    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> (fst xtors))) <+> mempty) <>
+    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
-prettyAnnot :: Maybe (RST.TypeScheme pol) -> Doc Annotation
+prettyAnnot :: Maybe CST.TypeScheme -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdCnsDecl :: PrettyAnn a => PrdCnsRep pc -> IsRec -> a -> Maybe (RST.TypeScheme pol) -> Doc Annotation -> Doc Annotation
+prettyPrdCnsDecl :: PrettyAnn a => PrdCns -> IsRec -> a -> Maybe CST.TypeScheme -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
-  annKeyword "def" <+> "rec" <+> prettyPrdCnsRep pc <+> prettyAnn fv   <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  annKeyword "def" <+> "rec" <+> prettyPrdCns pc <+> prettyAnn fv   <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
-  annKeyword "def" <+>        prettyPrdCnsRep pc <+>   prettyAnn fv <+>  prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+  annKeyword "def" <+>        prettyPrdCns pc <+>   prettyAnn fv <+>  prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 
 prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
    annKeyword "def" <+> "cmd" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
 
-prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder -> Doc Annotation
+prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder -> Doc Annotation
 prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 
@@ -55,41 +57,54 @@ prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <>
 prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
-prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> RnTypeName -> Doc Annotation
+prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
 prettyTyOpDecl op assoc prec ty =
   annKeyword "type" <+> annKeyword "operator" <+>
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
   annSymbol ":=" <+> prettyAnn ty <> semi
+
+instance PrettyAnn ClassName where
+  prettyAnn nm = prettyAnn nm
 
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
 instance PrettyAnn AST.Declaration where
   prettyAnn decl = prettyAnn (embedASTDecl decl)
-    
+
 instance PrettyAnn RST.Declaration where
-  prettyAnn (RST.PrdCnsDecl _ _ pc isRec fv annot tm) =
+  prettyAnn decl = prettyAnn (reparseDecl decl)
+
+    
+instance PrettyAnn CST.Declaration where
+  prettyAnn (CST.PrdCnsDecl _ _ pc isRec fv annot tm) =
     prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
-  prettyAnn (RST.CmdDecl _ _ fv cm) =
+  prettyAnn (CST.CmdDecl _ _ fv cm) =
     prettyCmdDecl fv (prettyAnn cm)
-  prettyAnn (RST.DataDecl _ _ decl) =
+  prettyAnn (CST.DataDecl _ _ decl) =
     prettyAnn decl
-  prettyAnn (RST.XtorDecl _ _ dc xt args ret) =
+  prettyAnn (CST.XtorDecl _ _ dc xt args ret) =
     prettyXtorDecl dc xt args ret
-  prettyAnn (RST.ImportDecl _ _ mod) =
+  prettyAnn (CST.ImportDecl _ _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (RST.SetDecl _ _ txt) =
+  prettyAnn (CST.SetDecl _ _ txt) =
     annKeyword "set" <+> prettyAnn txt <> semi
-  prettyAnn (RST.TyOpDecl _ _ op prec assoc ty) =
+  prettyAnn (CST.TyOpDecl _ _ op prec assoc ty) =
     prettyTyOpDecl op assoc prec ty
-  prettyAnn (RST.TySynDecl _ _ nm (ty,_)) =
+  prettyAnn (CST.TySynDecl _ _ nm ty) =
     annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
+  prettyAnn (CST.ClassDecl _ _ nm ts xts) =
+    annKeyword "class" <+> prettyAnn nm -- <+> braces (prettyAnn ts <+> prettyAnn xts) <> semi
+  prettyAnn (CST.InstanceDecl _ _ nm ty tcs) =
+    annKeyword "instance" <+> prettyAnn nm <+> prettyAnn ty  <+> braces (prettyAnn tcs) <> semi
+  prettyAnn CST.ParseErrorDecl =
+    undefined
 
 
 instance {-# OVERLAPPING #-} PrettyAnn [AST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)
 
-instance {-# OVERLAPPING #-} PrettyAnn [RST.Declaration] where
+instance {-# OVERLAPPING #-} PrettyAnn [CST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)
 
 ---------------------------------------------------------------------------------
