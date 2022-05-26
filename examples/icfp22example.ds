@@ -1,6 +1,6 @@
 import Function;
 import LinearLogic;
-import Bool; 
+
 -- example from Fig. 3 from "Introduction and Elimination, Left and Right"
 def prd right : forall a. (Unit & a) & a -> Plus(Unit,Plus(Plus(a,Unit),Unit))  := 
    cocase { Ap(x,k) =>  Right(Left(Left(x.Proj1(*).Proj2(*)))) >> k };
@@ -13,22 +13,3 @@ def prd left :  forall a. (Unit & a) & a -> Plus(Unit,Plus(Plus(a,Unit),Unit))  
 
 def prd elim  :  forall a. (Unit & a) & a -> Plus(Unit,Plus(Plus(a,Unit),Unit))  := 
    cocase { Ap(x,k) => x.Proj1(*).Proj2(*) >> Left(*) ;; Left(*) ;; Right(*) ;; k } ;     
-
-data Foo { Foo };
-
-def cns goal1 : forall a.   Plus(Unit,Plus(Plus(a,Unit),Unit)) -< a   := case { CoAp(e,k) => e >> Left(*) ;; Left(*) ;; Right(*) ;; k };   
-def cns part1 : forall a.   Plus(Unit,Plus(a,           Unit)) -< a   := case { CoAp(e,k) => e >> Left(*) ;; Right(*) ;; k };   
---                                              extension inside                           
-def cns whole1 : forall a.  Plus(Unit,Plus(Plus(a,Unit),Unit)) -< a := case { CoAp(e,k) => e >> Left(*) ;; CoAp(*,k) ;; part1 }; 
-
-def prd goal2 : forall a.  (a -> Plus(Unit,Plus(Plus(a,Unit),Unit)))  := \y =>  Right(Left(Left(y)));
-def prd part2 : forall a.  (a ->           Plus(Plus(a,Unit),Unit))   := \y =>  Left(Left(y));
---                               extension outside
-def prd whole2 : forall a. (a -> Plus(Unit,Plus(Plus(a,Unit),Unit)))  := \y =>  Right(part2 y);
-
-def prd whole1to2 : forall a. (a -> Plus(Unit,Plus(Plus(a,Unit),Unit))) := cocase { Ap(x,k) => CoAp(x,k) >> whole1};
---def prd whole3  := \y =>  part2 (Right(y));
-
-def prd goal4 : Plus(Unit,Plus(Plus(Bool,Unit),Unit))  := Right(Left(Left(True)));
-
---def cns part5 : CoFun(Plus(Unit,Plus(a,           Unit)),a)   := case { CoAp(e,k) => e >> Left(*) ;; Right(*) ;; k };   

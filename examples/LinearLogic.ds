@@ -1,5 +1,4 @@
 import Function;
-import Cofunction;
 --------------------------------------------------------------------------------------------
 -- Disjunction and its unit as a data type.
 --
@@ -35,10 +34,6 @@ def prd plusElim : forall a b c. (a -> c) -> (b -> c) -> Plus(a,b) -> c :=
                       , Right(y) => g y
                       };
 
-
-
-def cns out1 : forall a b. Plus(a,b) -< a := case { CoAp(e,f) => Left(e) >>f };
-def cns out2 : forall a b. Plus(a,b) -< b := case { CoAp(e,f) => Right(e) >>f };
 
 --------------------------------------------------------------------------------------------
 -- Conjunction and its unit as a data type.
