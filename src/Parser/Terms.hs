@@ -320,9 +320,14 @@ lambdaP = do
   startPos <- getSourcePos
   _ <- symbolP SymBackslash
   bvars <- some $ fst <$> freeVarNameP
-  _ <- symbolP SymDoubleRightArrow
-  (tm, endPos) <- termTopP
-  return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)
+  (do 
+    _ <- symbolP SymDoubleRightArrow
+    (tm, endPos) <- termTopP
+    return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)) <|>   
+   (do 
+    _ <- symbolP SymDoubleCoRightArrow
+    (tm, endPos) <- termTopP
+    return (CST.MultiCoLambda (Loc startPos endPos) bvars tm, endPos)) 
 
 
 termParensP :: Parser (CST.Term, SourcePos)
