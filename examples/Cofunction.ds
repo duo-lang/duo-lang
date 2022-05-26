@@ -1,5 +1,3 @@
--- strangely I cannot swap the order of f and e
--- I'm not quite sure about the variance annotations here
 data CoFun : (-f : CBV, +e : CBV) -> CBV {
     CoAp(e,return f)
 };
@@ -10,18 +8,10 @@ type operator -< rightassoc at 0 := CoFun;
 def cns id : forall a. a -< a  :=
   case { CoAp(e,f) => e >>f };
 
+def cns id2 : forall a. a -< a := \f =< f; 
 
 def cns compose : forall a b c . (a -< b) -<  (b -< c) -< (a -< c) :=
-  case {
-   CoAp(k5,x3) => 
-      k5 
-      >>
-      case {
-         CoAp(k4,x2) => 
-            k4
-            >> 
-            case {CoAp(x1,k3) => (mu k2.(CoAp( mu k1.(CoAp( x1 , k1 ) >> x2 ) , k2 ) >> x3)) >> k3}
-            }
-      };
+  \f g x =< g (f x);
+
   
 

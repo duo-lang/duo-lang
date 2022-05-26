@@ -4,8 +4,10 @@ import Cofunction;
 def prd peirce : forall a b. ((a -> b) -> a) -> a := 
   \y => mu k. (y (\x => mu c.x >> k)) >> k;
 
+def cns copeirce : forall a b. ((a -< b) -< a) -< a := 
+  \y =< mu k. k >> (y (\x =< mu c.k >> x)) ;
 
-def cns copeirce : forall a b. ((a -< b) -< a) -< a := case {
+def cns copeircedesugared : forall a b. ((a -< b) -< a) -< a := case {
  CoAp(y5,k2) =>
      y5 
      >>
@@ -17,3 +19,4 @@ def cns copeirce : forall a b. ((a -< b) -< a) -< a := case {
           
          )
      };
+

@@ -17,6 +17,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
 
+
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
 ---------------------------------------------------------------------------------
@@ -277,8 +278,12 @@ resolveCommand (CST.FunApp loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found function application")
 resolveCommand (CST.MultiLambda loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
+resolveCommand (CST.MultiCoLambda loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found cofunction abstraction")
 resolveCommand (CST.Lambda loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
+resolveCommand (CST.CoLambda loc _ _) =
+  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found cofunction abstraction")
 
 
 
@@ -293,6 +298,11 @@ resolveMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> ResolverM (CST.Term)
 resolveMultiLambda _ [] tm = pure tm
 resolveMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> resolveMultiLambda loc fvs tm
 
+-- | Lower a multi-lambda abstraction
+resolveMultiCoLambda :: Loc -> [FreeVarName] -> CST.Term -> ResolverM (CST.Term)
+resolveMultiCoLambda _ [] tm = pure tm
+resolveMultiCoLambda loc (fv:fvs) tm = CST.CoLambda loc fv <$> resolveMultiCoLambda loc fvs tm
+
 -- | Lower a lambda abstraction.
 resolveLambda :: Loc -> FreeVarName -> CST.Term -> ResolverM (RST.Term Prd)
 resolveLambda loc var tm = do
@@ -300,6 +310,13 @@ resolveLambda loc var tm = do
   let pat = RST.XtorPatI loc (MkXtorName "Ap") ([(Prd, Just var)], (), [])
   let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd, var)] tm')
   pure $ RST.CocaseI loc PrdRep Nominal [cs]
+
+resolveCoLambda :: Loc -> FreeVarName -> CST.Term -> ResolverM (RST.Term Cns)
+resolveCoLambda loc var tm = do
+  tm' <- resolveTerm CnsRep tm
+  let pat = RST.XtorPatI loc (MkXtorName "CoAp") ([], (), [(Cns, Just var)])
+  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd,MkFreeVarName "*"),(Cns, var)] tm')
+  pure $ RST.CaseI loc CnsRep Nominal [cs]
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> NominalStructural -> Int -> ResolverM (RST.Term Prd)
@@ -309,11 +326,15 @@ resolveNatLit loc ns n = do
   pure $ RST.Xtor loc PrdRep ns (MkXtorName "S") [RST.PrdTerm n']
 
 -- | Lower an application.
-resolveApp :: Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term Prd)
-resolveApp loc fun arg = do
+resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term pc)
+resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
   pure $ RST.Dtor loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
+resolveApp CnsRep loc fun arg = do
+  fun' <- resolveTerm CnsRep fun
+  arg' <- resolveTerm CnsRep arg
+  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([],CnsRep,[RST.CnsTerm arg']) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
@@ -539,14 +560,18 @@ resolveTerm CnsRep (CST.NatLit loc _ns _i) =
 ---------------------------------------------------------------------------------
 resolveTerm rep    (CST.MultiLambda loc fvs tm) =
   resolveMultiLambda loc fvs tm >>= resolveTerm rep
-resolveTerm PrdRep (CST.FunApp loc fun arg) =
-  resolveApp loc fun arg
-resolveTerm CnsRep (CST.FunApp loc _fun _arg) =
-  throwError (OtherError (Just loc) "Cannot resolve FunApp to a consumer.")
+resolveTerm rep    (CST.MultiCoLambda loc fvs tm) =
+  resolveMultiCoLambda loc fvs tm >>= resolveTerm rep
+resolveTerm rep (CST.FunApp loc fun arg) =
+  resolveApp rep loc fun arg
 resolveTerm PrdRep (CST.Lambda loc fv tm) =
   resolveLambda loc fv tm
 resolveTerm CnsRep (CST.Lambda loc _fv _tm) =
   throwError (OtherError (Just loc) "Cannot resolve Lambda to a consumer.")
+resolveTerm PrdRep (CST.CoLambda loc _fv _tm) =
+  throwError (OtherError (Just loc) "Cannot resolve Cofunction to a producer.")
+resolveTerm CnsRep (CST.CoLambda loc fv tm) =
+  resolveCoLambda loc fv tm
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------

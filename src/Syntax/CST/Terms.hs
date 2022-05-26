@@ -103,6 +103,7 @@ data Term where
     MultiLambda :: Loc -> [FreeVarName] -> Term -> Term
     MultiCoLambda :: Loc -> [FreeVarName] -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
+    CoLambda :: Loc -> FreeVarName -> Term -> Term
     Apply :: Loc -> Term -> Term -> Term 
 
 deriving instance Show Term
@@ -125,6 +126,8 @@ getLoc (NatLit loc _ _) = loc
 getLoc (TermParens loc _) = loc
 getLoc (FunApp loc _ _) = loc
 getLoc (MultiLambda loc _ _) = loc
+getLoc (MultiCoLambda loc _ _) = loc
 getLoc (Lambda loc _ _) = loc
+getLoc (CoLambda loc _ _) = loc
 getLoc (Apply loc _ _) = loc 
 getLoc (PrimCmdTerm pc) = getLocPC pc 
