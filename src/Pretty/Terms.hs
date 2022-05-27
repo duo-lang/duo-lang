@@ -156,6 +156,16 @@ instance PrettyAnn CST.Term where
     prettyAnn var <+>
     annSymbol "=>" <+>
     prettyAnn tm
+  prettyAnn (CST.MultiCoLambda _ vars tm) =
+    annSymbol "\\" <>
+    hsep (prettyAnn <$> vars) <+>
+    annSymbol "=<" <+>
+    prettyAnn tm
+  prettyAnn (CST.CoLambda _ var tm) =
+    annSymbol "\\" <>
+    prettyAnn var <+>
+    annSymbol "=<" <+>
+    prettyAnn tm
   prettyAnn (CST.NatLit _ Structural n) =
     prettyAnn ("'" :: String) <> prettyAnn (show n)
   prettyAnn (CST.NatLit _ Nominal n) =
