@@ -63,6 +63,38 @@ prettyTyOpDecl op assoc prec ty =
   prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
   annSymbol ":=" <+> prettyAnn ty <> semi
 
+-- | Prettyprint list of type variables for class declaration.
+prettyTVars :: [(Variance, TVar, MonoKind)] -> Doc Annotation
+prettyTVars tvs =
+  parens
+    $   mempty
+    <+> cat
+          (punctuate
+            comma
+            (   (\(var, v, k) -> prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k)
+            <$> tvs
+            )
+          )
+    <+> mempty
+
+-- | Prettyprint list of xtors for class declaration.
+prettyXTors :: [(XtorName, [(PrdCns, CST.Typ)])] -> Doc Annotation
+prettyXTors xtors = braces $ group
+  (nest
+    3
+    (line' <> vsep
+      (punctuate
+        comma
+        (   (\(nm, ts) ->
+              prettyAnn nm <> parens
+                (cat $ (\(pc, t) -> prettyAnn pc <+> prettyAnn t) <$> ts)
+            )
+        <$> xtors
+        )
+      )
+    )
+  )
+
 instance PrettyAnn ClassName where
   prettyAnn nm = prettyAnn nm
 
@@ -93,10 +125,15 @@ instance PrettyAnn CST.Declaration where
     prettyTyOpDecl op assoc prec ty
   prettyAnn (CST.TySynDecl _ _ nm ty) =
     annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
-  prettyAnn (CST.ClassDecl _ _ nm ts xts) =
-    annKeyword "class" <+> prettyAnn nm -- <+> braces (prettyAnn ts <+> prettyAnn xts) <> semi
-  prettyAnn (CST.InstanceDecl _ _ nm ty tcs) =
-    annKeyword "instance" <+> prettyAnn nm <+> prettyAnn ty  <+> braces (prettyAnn tcs) <> semi
+  prettyAnn (CST.ClassDecl _ _ nm tvs xtors) =
+    annKeyword "class" <+> prettyAnn nm <+>
+    prettyTVars tvs <+> 
+    prettyXTors xtors <>
+    semi
+  prettyAnn (CST.InstanceDecl _ _ nm ty cases) =
+    annKeyword "instance" <+> prettyAnn nm <+> prettyAnn ty <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases))))) <>
+    semi
   prettyAnn CST.ParseErrorDecl =
     undefined
 
