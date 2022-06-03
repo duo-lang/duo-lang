@@ -35,7 +35,6 @@ import Sugar.AST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, rese
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import Syntax.Common.Polarity
 import Data.Text (pack, append)
-import qualified Debug.Trace
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
