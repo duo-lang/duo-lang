@@ -12,7 +12,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..) )
+import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..), data_name, DataDecl )
 import Syntax.Common.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
     ( DocComment,
@@ -35,6 +35,7 @@ import Sugar.AST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, rese
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import Syntax.Common.Polarity
 import Data.Text (pack, append)
+import Dualize.Program (dualDataDecl)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -80,7 +81,9 @@ generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) 
     desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
     cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
-    
+generateCodeAction ident (Range {_start = start}) (TST.DataDecl loc doc decl) = dualizeDecl
+  where     
+    dualizeDecl = [generateDualizeDeclCodeAction ident loc doc decl]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -138,6 +141,31 @@ generateDualizeEdit uri loc doc rep isrec fv tys tm  =
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
+
+
+generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> DataDecl -> Command |? CodeAction
+generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc doc decl = InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (data_name decl)
+                                                                             , _kind = Just CodeActionQuickFix
+                                                                             , _diagnostics = Nothing
+                                                                             , _isPreferred = Nothing
+                                                                             , _disabled = Nothing
+                                                                             , _edit = Just (generateDualizeDeclEdit uri loc doc decl)
+                                                                             , _command = Nothing
+                                                                             , _xdata = Nothing
+                                                                             }
+
+
+generateDualizeDeclEdit :: Uri -> Loc -> Maybe DocComment -> DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit uri loc doc decl =
+  let
+    decl' = dualDataDecl decl
+    replacement = ppPrint (TST.DataDecl loc doc decl')
+    edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
+
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions

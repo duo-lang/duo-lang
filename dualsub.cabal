@@ -129,6 +129,7 @@ library
       Resolution.Terms
       Resolution.Types
       Dualize.Terms
+      Dualize.Program
       Sugar.Desugar
       Sugar.Core
       Sugar.AST
