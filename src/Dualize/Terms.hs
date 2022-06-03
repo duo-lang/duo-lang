@@ -12,7 +12,7 @@ data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc S
 
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
 dualTerm rep (BoundVar _ _ ty i) = return $ BoundVar defaultLoc (flipPrdCns rep) (dualType' rep ty) i
-dualTerm rep (FreeVar _ _ ty i) = return $ FreeVar defaultLoc (flipPrdCns rep) (dualType' rep ty) i
+dualTerm rep (FreeVar _ _ ty i) = return $ FreeVar defaultLoc (flipPrdCns rep) (dualType' rep ty) (dualFVName i)
 dualTerm rep (Xtor _ annot pc ty ns xtor subst) = do 
     subst' <- dualSubst subst
     return $ Xtor defaultLoc (dualXtorAnnot annot) (flipPrdCns pc) (dualType' rep ty) ns (dualXtorName xtor) subst'
@@ -109,7 +109,17 @@ dualType :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
 dualType pol (TyVar _loc _ kind x) = TyVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
 dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyPrim loc _ pt) = TyPrim loc (flipPolarityRep pol) pt
-dualType _ _ = undefined
+-- @BinderDavid please check
+dualType _ (TyBot loc mk) = TyTop loc mk  
+dualType _ (TyTop loc mk) = TyBot loc mk  
+dualType pol (TyUnion loc mk t1 t2) = TyInter loc mk (dualType pol t1) (dualType pol t2)
+dualType pol (TyInter loc mk t1 t2) = TyUnion loc mk (dualType pol t1) (dualType pol t2)
+dualType pol (TyRec loc p x t) = TyRec loc (flipPolarityRep p) x (dualType pol t)
+dualType pol (TySyn loc _ rn ty) = TySyn loc (flipPolarityRep pol) (dualRnTypeName rn) (dualType pol ty)
+dualType PosRep (TyData loc _ rn xtors) = TyCodata loc NegRep  (dualRnTypeName <$> rn) xtors 
+dualType NegRep (TyData loc _ rn xtors) = TyCodata loc PosRep  (dualRnTypeName <$> rn) xtors 
+dualType PosRep (TyCodata loc _ rn xtors) = TyData loc NegRep  (dualRnTypeName <$> rn) xtors 
+dualType NegRep (TyCodata loc _ rn xtors) = TyData loc PosRep  (dualRnTypeName <$> rn) xtors 
 
 dualVariantType :: PolarityRep pol -> VariantType pol -> VariantType (FlipPol pol)
 dualVariantType pol (CovariantType ty) = CovariantType (dualType pol ty) 
@@ -117,7 +127,10 @@ dualVariantType PosRep (ContravariantType ty) = ContravariantType (dualType NegR
 dualVariantType NegRep (ContravariantType ty) = ContravariantType (dualType PosRep ty)
 
 dualRnTypeName :: RnTypeName -> RnTypeName
-dualRnTypeName x = x
+dualRnTypeName (MkRnTypeName _loc _doc mn tn) = MkRnTypeName defaultLoc Nothing mn (dualTypeName tn)
+
+dualTypeName :: TypeName -> TypeName 
+dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
 dualMonoKind :: MonoKind -> MonoKind
 dualMonoKind mk = mk
