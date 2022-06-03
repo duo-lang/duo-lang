@@ -18,7 +18,7 @@ import Syntax.Common.Names
     ( DocComment,
       FreeVarName(unFreeVarName),
       ModuleName(MkModuleName) )
-import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol, flipPrdCns )
 import Syntax.Common.Types ( IsRec(Recursive) )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -32,6 +32,10 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
 import Sugar.AST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
+import Dualize.Terms (dualTerm, dualTypeScheme)
+import Syntax.Common.Polarity
+import Data.Text (pack)
+import qualified Debug.Trace
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -65,17 +69,19 @@ generateCodeActions ident rng program = List (join ls)
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
 generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc doc rep isrec fv (Inferred tys) tm) | lookupPos start loc =
-  [generateAnnotCodeAction ident loc doc rep isrec fv tys tm]
-generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc _doc rep _isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus
+  [generateAnnotCodeAction ident loc doc rep isrec fv tys tm,generateDualizeCodeAction ident loc doc rep isrec fv tys tm ]
+generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc doc rep isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus ++ dualize
   where
     desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
     cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
     cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
-generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
+    dualize = [generateDualizeCodeAction ident loc doc rep isrec fv tys tm]
+generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus  
   where
     desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
     cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
+    
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -88,7 +94,7 @@ generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm
                                                                              , _diagnostics = Nothing
                                                                              , _isPreferred = Nothing
                                                                              , _disabled = Nothing
-                                                                             , _edit = Just (generateAnnotEdit uri loc doc rep isrec fv tys tm) 
+                                                                             , _edit = Just (generateAnnotEdit uri loc doc rep isrec fv tys tm)
                                                                              , _command = Nothing
                                                                              , _xdata = Nothing
                                                                              }
@@ -103,6 +109,36 @@ generateAnnotEdit uri loc doc rep isrec fv tys tm  =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
 
+
+---------------------------------------------------------------------------------
+-- Provide Dualize Action
+---------------------------------------------------------------------------------
+generateDualizeCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
+generateDualizeCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Dualize term " <> ppPrint fv
+                                                                             , _kind = Just CodeActionQuickFix
+                                                                             , _diagnostics = Nothing
+                                                                             , _isPreferred = Nothing
+                                                                             , _disabled = Nothing
+                                                                             , _edit = Just (generateDualizeEdit uri loc doc rep isrec fv tys tm)
+                                                                             , _command = Nothing
+                                                                             , _xdata = Nothing
+                                                                             }
+
+
+generateDualizeEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
+generateDualizeEdit uri loc doc rep isrec fv tys tm  =
+  let
+    tm' = dualTerm rep tm
+    replacement = case tm' of
+      (Left error) -> ppPrint $ pack (show error)
+      (Right tm'') -> case rep of
+        PrdRep -> ppPrint (TST.PrdCnsDecl loc doc CnsRep isrec fv (Annotated (dualTypeScheme PosRep tys)) tm'')
+        CnsRep -> ppPrint (TST.PrdCnsDecl loc doc PrdRep isrec fv (Annotated (dualTypeScheme NegRep tys)) tm'')
+    edit = TextEdit {_range = locToRange loc, _newText = replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
 
 ---------------------------------------------------------------------------------
 -- Provide Focus Actions

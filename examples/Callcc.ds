@@ -1,22 +1,31 @@
 import Function;
-import Cofunction;
+-- import Cofunction;
+import Peano;
 
-def prd peirce : forall a b. ((a -> b) -> a) -> a := 
-  \y => mu k. (y (\x => mu c.x >> k)) >> k;
+data CoFun : (-f : CBV, +e : CBV) -> CBV {
+    CoAp(return f,e)
+};
 
-def cns copeirce : forall a b. ((a -< b) -< a) -< a := 
-  \y =< mu k. k >> (y (\x =< mu c.k >> x)) ;
+def cns foo  := case {CoAp(k1,*) => k1}; 
 
-def cns copeircedesugared : forall a b. ((a -< b) -< a) -< a := case {
- CoAp(y5,k2) =>
-     y5 
-     >>
-     (mu y4.
-         y4 
-         >> 
-         (mu y3.
-           CoAp(y3, case {CoAp(y2,k1) => y2 >> (mu y1.(y4 >> k1))}  ) >> k2)
-          
-         )
-     };
+def rec prd compose := \f g x => f (g x);
+
+def rec prd peirce  := cocase {
+   Ap(x1,k1) => 
+      (mu k5.((mu k4.((x1) >> Ap( cocase {Ap(x2,k2) => (mu k3.((x2) >> k5)) >> k2} , k4 ))) >> k5))
+      >>
+      k1};
+
+
+--def cns copeirce : forall a b. ((a -< b) -< a) -< a := 
+--  \y =< mu k. k >> (y (\x =< mu c.k >> x)) ;
+
+--def prd copeircedesugared  := cocase {
+--   CoCoAp(k1,x1) => 
+--      (mu k5.(
+--         (mu k4.((x1) >> CoCoAp( k4 , cocase {CoCoAp(k2,x2) => (mu k3.((x2) >> k5)) >> k2} )))
+--         >>
+--         k5))
+--      >>
+--      k1};
 
