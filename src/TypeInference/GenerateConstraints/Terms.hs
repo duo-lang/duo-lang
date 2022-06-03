@@ -56,19 +56,6 @@ genConstraintsCtxts (_:_) [] info =
   throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
 
 
-splitContext :: Int -- ^ The offset of the projected type
-             -> PrdCnsRep pc -- ^ The expected mode of the type
-             -> LinearContext pol -- ^ The context to be split
-             -> GenM (LinearContext pol, Typ (PrdCnsFlip pc pol), LinearContext pol)
-splitContext n PrdRep sig = case splitAt n sig of
-                              (_, []) -> throwGenError ["splitContext: Too short."]
-                              (_, PrdCnsType CnsRep _:_) -> throwGenError ["splitContext: Found CnsType, expected PrdType."]
-                              (tys1, PrdCnsType PrdRep ty:tys2) -> pure (tys1, ty, tys2)
-splitContext n CnsRep sig = case splitAt n sig of
-                              (_, []) -> throwGenError ["splitContext: Too short."]
-                              (_, PrdCnsType PrdRep _:_) -> throwGenError ["splitContext: Found PrdType, expected CnsType."]
-                              (tys1, PrdCnsType CnsRep ty:tys2) -> pure (tys1, ty, tys2)
-
 ---------------------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------------------
