@@ -11,7 +11,7 @@ import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
 import Syntax.Common
-import Syntax.AST.Terms
+import Syntax.TST.Terms
 import Utils
 import Syntax.Common.TypesPol (Typ (TyNominal))
 

@@ -1,4 +1,4 @@
-module Syntax.AST.Terms
+module Syntax.TST.Terms
   ( -- Terms
     Term(..)
   , PrdCnsTerm(..)
@@ -121,8 +121,6 @@ instance Zonk (Term pc) where
   -- Primitive constructs  
   zonk _ lit@PrimLitI64{} = lit
   zonk _ lit@PrimLitF64{} = lit
-
-
 
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
 -- Core constructs
@@ -297,11 +295,11 @@ pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 -- Core constructs
 termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
-termLocallyClosedRec _ (FreeVar _ _ _ _) = Right ()
+termLocallyClosedRec _ FreeVar {} = Right ()
 termLocallyClosedRec env (Xtor _ _  _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
+  sequence_ (cmdCaseLocallyClosedRec env <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 -- Primitive constructs  

@@ -22,11 +22,10 @@ module Sugar.AST (
   resetAnnotationCmd)
   where
 
-import Syntax.AST.Terms
+import Syntax.TST.Terms
 import Syntax.Common
 import Utils
 import Syntax.Common.TypesPol
-import Pretty.Pretty (PrettyAnn(prettyAnn))
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >

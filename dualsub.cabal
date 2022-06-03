@@ -123,16 +123,16 @@ library
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
-      Renamer.Definition
-      Renamer.Program
-      Renamer.SymbolTable
-      Renamer.Terms
-      Renamer.Types
+      Resolution.Definition
+      Resolution.Program
+      Resolution.SymbolTable
+      Resolution.Terms
+      Resolution.Types
       Sugar.Desugar
       Sugar.Core
       Sugar.AST
-      Syntax.AST.Program
-      Syntax.AST.Terms
+      Syntax.TST.Program
+      Syntax.TST.Terms
       Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names

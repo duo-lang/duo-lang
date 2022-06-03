@@ -5,7 +5,7 @@ import Prettyprinter
 
 import Pretty.Common ()
 import Pretty.Pretty
-import Syntax.AST.Terms qualified as AST
+import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
@@ -29,7 +29,7 @@ instance PrettyAnn CST.TermPat where
 instance PrettyAnn Core.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedCmdCase cmdcase)
 
-instance PrettyAnn AST.CmdCase where
+instance PrettyAnn TST.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedASTCmdCase cmdcase)
 
 instance PrettyAnn RST.CmdCase where
@@ -64,7 +64,7 @@ instance PrettyAnn CST.TermOrStar  where
 
 -- PrdCnsTerm
 
-instance PrettyAnn AST.PrdCnsTerm where
+instance PrettyAnn TST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (embedPCTerm (embedASTPCTerm pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
@@ -72,7 +72,7 @@ instance PrettyAnn RST.PrdCnsTerm where
 
 -- Substitution
 
-instance {-# OVERLAPPING #-} PrettyAnn AST.Substitution where
+instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
   prettyAnn subst = prettyAnn (embedSubst (embedASTSubst subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
@@ -94,7 +94,7 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
 -- Terms
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn (AST.Term pc) where
+instance PrettyAnn (TST.Term pc) where
   prettyAnn tm = prettyAnn (embedASTTerm tm)
 
 instance PrettyAnn (RST.Term pc) where
@@ -156,6 +156,16 @@ instance PrettyAnn CST.Term where
     prettyAnn var <+>
     annSymbol "=>" <+>
     prettyAnn tm
+  prettyAnn (CST.MultiCoLambda _ vars tm) =
+    annSymbol "\\" <>
+    hsep (prettyAnn <$> vars) <+>
+    annSymbol "=<" <+>
+    prettyAnn tm
+  prettyAnn (CST.CoLambda _ var tm) =
+    annSymbol "\\" <>
+    prettyAnn var <+>
+    annSymbol "=<" <+>
+    prettyAnn tm
   prettyAnn (CST.NatLit _ Structural n) =
     prettyAnn ("'" :: String) <> prettyAnn (show n)
   prettyAnn (CST.NatLit _ Nominal n) =
@@ -188,7 +198,7 @@ instance PrettyAnn CST.Term where
 -- Commands
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn AST.Command where
+instance PrettyAnn TST.Command where
   prettyAnn cmd = prettyAnn (embedASTCommand cmd)
 
 instance PrettyAnn RST.Command where

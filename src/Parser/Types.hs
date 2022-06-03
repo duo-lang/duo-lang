@@ -223,12 +223,13 @@ typeSchemeP = do
   (monotype, endPos) <- typP
   pure (TypeScheme (Loc startPos endPos) tvars' tConstraints monotype)
 
-typeClassConstraintP, subTypeConstraintP :: Parser (Constraint, SourcePos)
+typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
   cname <- fst <$> upperCaseId
   (tvar, pos) <- tvarP
   return (TypeClass (MkClassName cname) tvar, pos)
 
+subTypeConstraintP :: Parser (Constraint, SourcePos)
 subTypeConstraintP = try $ do
   t1 <- fst <$> typP
   void $ symbolP SymSubtype

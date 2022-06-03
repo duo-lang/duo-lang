@@ -347,6 +347,7 @@ data Symbol where
   SymBackslash        :: Symbol
   SymColoneq          :: Symbol
   SymDoubleRightArrow :: Symbol
+  SymDoubleCoRightArrow :: Symbol
   SymSimpleRightArrow :: Symbol
   SymCommand          :: Symbol
   SymUnion            :: Symbol
@@ -378,6 +379,7 @@ instance Show Symbol where
   show SymBackslash        = "\\"
   show SymColoneq          = ":="
   show SymDoubleRightArrow = "=>"
+  show SymDoubleCoRightArrow = "=<"
   show SymSimpleRightArrow = "->"
   show SymCommand          = ">>"
   show SymUnion            = "\\/"

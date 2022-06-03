@@ -19,9 +19,9 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Common ()
 import Pretty.Types ()
 import Syntax.Common
-import Syntax.AST.Terms hiding (Command)
-import Syntax.AST.Terms qualified as AST
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Terms hiding (Command)
+import Syntax.TST.Terms qualified as TST
+import Syntax.TST.Program qualified as TST
 import Sugar.AST
 import Syntax.Common.TypesPol
 import Utils (Loc)
@@ -43,7 +43,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Just cache -> responder (Right (lookupInRangeMap pos cache))
 
 
-updateHoverCache :: Uri -> AST.Program -> LSPMonad ()
+updateHoverCache :: Uri -> TST.Program -> LSPMonad ()
 updateHoverCache uri prog = do
   MkLSPConfig ref <- getConfig
   liftIO $ modifyIORef ref (M.insert uri (toHoverMap prog))
@@ -199,7 +199,7 @@ applyToHoverMap :: Range -> Maybe MonoKind -> HoverMap
 applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
 applyToHoverMap rng (Just cc) = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
-instance ToHoverMap AST.Command where
+instance ToHoverMap TST.Command where
   toHoverMap (RawApply loc kind prd cns) =
     M.unions [toHoverMap prd, toHoverMap cns, applyToHoverMap (locToRange loc) kind]
   toHoverMap (Print _ prd cmd) =
@@ -351,27 +351,27 @@ instance ToHoverMap (TypeScheme pol) where
 -- Converting a program to a HoverMap
 ---------------------------------------------------------------------------------
 
-instance ToHoverMap AST.Declaration where
-  toHoverMap (AST.PrdCnsDecl loc _doc _rep _isrec _fv (Inferred tys) tm) =
+instance ToHoverMap TST.Declaration where
+  toHoverMap (TST.PrdCnsDecl loc _doc _rep _isrec _fv (Inferred tys) tm) =
     -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
     -- defaultLoc.
     M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
-  toHoverMap (AST.PrdCnsDecl _loc _doc _rep _isrec _fv (Annotated tys) tm) =
+  toHoverMap (TST.PrdCnsDecl _loc _doc _rep _isrec _fv (Annotated tys) tm) =
     M.union (toHoverMap tm) (toHoverMap tys)
-  toHoverMap (AST.CmdDecl _loc _doc _fv cmd)  =
+  toHoverMap (TST.CmdDecl _loc _doc _fv cmd)  =
     toHoverMap cmd
-  toHoverMap (AST.DataDecl _loc _doc _decl) =
+  toHoverMap (TST.DataDecl _loc _doc _decl) =
     M.empty
-  toHoverMap (AST.XtorDecl _loc _doc _dc _xt _args _eo) =
+  toHoverMap (TST.XtorDecl _loc _doc _dc _xt _args _eo) =
     M.empty
-  toHoverMap (AST.ImportDecl _loc _doc _mn) =
+  toHoverMap (TST.ImportDecl _loc _doc _mn) =
     M.empty
-  toHoverMap (AST.SetDecl _loc _doc _txt) =
+  toHoverMap (TST.SetDecl _loc _doc _txt) =
     M.empty
-  toHoverMap (AST.TyOpDecl _loc _doc _op _prec _assoc _tn) =
+  toHoverMap (TST.TyOpDecl _loc _doc _op _prec _assoc _tn) =
     M.empty
-  toHoverMap (AST.TySynDecl _loc _doc _nm _ty) =
+  toHoverMap (TST.TySynDecl _loc _doc _nm _ty) =
     M.empty
 
-instance ToHoverMap AST.Program where
+instance ToHoverMap TST.Program where
   toHoverMap prog = M.unions (toHoverMap <$> prog)

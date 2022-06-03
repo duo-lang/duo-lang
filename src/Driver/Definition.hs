@@ -13,9 +13,9 @@ import Driver.Environment ( Environment, emptyEnvironment )
 import Errors
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedError )
-import Renamer.SymbolTable
+import Resolution.SymbolTable
 import Syntax.Common.Names ( ModuleName(MkModuleName) )
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Program qualified as TST
 import Utils
 
 ------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ data DriverState = MkDriverState
   , drvEnv     :: Map ModuleName Environment
   , drvFiles   :: Map ModuleName FilePath
   , drvSymbols :: Map ModuleName SymbolTable
-  , drvASTs    :: Map ModuleName AST.Program
+  , drvASTs    :: Map ModuleName TST.Program
   }
 
 defaultDriverState :: DriverState
@@ -94,12 +94,12 @@ getSymbolTables = gets drvSymbols
 
 -- AST Cache
 
-addTypecheckedProgram :: ModuleName -> AST.Program -> DriverM ()
+addTypecheckedProgram :: ModuleName -> TST.Program -> DriverM ()
 addTypecheckedProgram mn prog = modify f
   where
     f state@MkDriverState { drvASTs } = state { drvASTs = M.insert mn prog  drvASTs }
 
-queryTypecheckedProgram :: ModuleName -> DriverM AST.Program
+queryTypecheckedProgram :: ModuleName -> DriverM TST.Program
 queryTypecheckedProgram mn = do
   cache <- gets drvASTs
   case M.lookup mn cache of

@@ -1,4 +1,4 @@
-module Renamer.SymbolTable where
+module Resolution.SymbolTable where
 
 import Control.Monad.Except
 import Data.Map (Map)

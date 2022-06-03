@@ -79,14 +79,14 @@ xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
-  (subst, _) <- substitutionP
+  (subst, _) <- substitutionIP
   afterSemi <- optional $ fst <$> do
     _ <- symbolP SymDoubleSemi
     termTopP
   endPos <- getSourcePos
   case afterSemi of
     Nothing -> pure (CST.Xtor (Loc startPos endPos) xt subst, endPos)
-    Just _tm -> undefined -- pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
+    Just tm -> pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
 
 
 --------------------------------------------------------------------------------------------
@@ -322,9 +322,14 @@ lambdaP = do
   startPos <- getSourcePos
   _ <- symbolP SymBackslash
   bvars <- some $ fst <$> freeVarNameP
-  _ <- symbolP SymDoubleRightArrow
-  (tm, endPos) <- termTopP
-  return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)
+  (do 
+    _ <- symbolP SymDoubleRightArrow
+    (tm, endPos) <- termTopP
+    return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)) <|>   
+   (do 
+    _ <- symbolP SymDoubleCoRightArrow
+    (tm, endPos) <- termTopP
+    return (CST.MultiCoLambda (Loc startPos endPos) bvars tm, endPos)) 
 
 
 termParensP :: Parser (CST.Term, SourcePos)

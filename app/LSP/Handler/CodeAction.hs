@@ -20,8 +20,8 @@ import Syntax.Common.Names
       ModuleName(MkModuleName) )
 import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
 import Syntax.Common.Types ( IsRec(Recursive) )
-import Syntax.AST.Terms qualified as AST
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Terms qualified as TST
+import Syntax.TST.Program qualified as TST
 --import Syntax.Core.Program qualified as Core
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
@@ -57,21 +57,21 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
         Right (_,prog) -> do
           responder (Right (generateCodeActions ident range prog))
 
-generateCodeActions :: TextDocumentIdentifier -> Range -> AST.Program -> List (Command  |? CodeAction)
+generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Program -> List (Command  |? CodeAction)
 generateCodeActions ident rng program = List (join ls)
   where
     ls = generateCodeAction ident rng <$> program
 
 
-generateCodeAction :: TextDocumentIdentifier -> Range -> AST.Declaration -> [Command |? CodeAction]
-generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc doc rep isrec fv (Inferred tys) tm) | lookupPos start loc =
+generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
+generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc doc rep isrec fv (Inferred tys) tm) | lookupPos start loc =
   [generateAnnotCodeAction ident loc doc rep isrec fv tys tm]
-generateCodeAction ident (Range {_start = start }) (AST.PrdCnsDecl loc _doc rep _isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus
+generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc _doc rep _isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
     cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
     cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
-generateCodeAction ident (Range {_start = start}) (AST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
+generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
     cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
@@ -82,7 +82,7 @@ generateCodeAction _ _ _ = []
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
 
-generateAnnotCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> AST.Term pc -> Command |? CodeAction
+generateAnnotCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
 generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Annotate type for " <> ppPrint fv
                                                                              , _kind = Just CodeActionQuickFix
                                                                              , _diagnostics = Nothing
@@ -92,10 +92,10 @@ generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm
                                                                              , _command = Nothing
                                                                              , _xdata = Nothing
                                                                              }
-generateAnnotEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> AST.Term pc -> WorkspaceEdit
+generateAnnotEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
 generateAnnotEdit uri loc doc rep isrec fv tys tm  =
   let
-    newDecl :: AST.Declaration = AST.PrdCnsDecl loc doc rep isrec fv (Annotated tys) tm
+    newDecl :: TST.Declaration = TST.PrdCnsDecl loc doc rep isrec fv (Annotated tys) tm
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange loc, _newText = replacement }
   in
@@ -109,7 +109,7 @@ generateAnnotEdit uri loc doc rep isrec fv tys tm  =
 ---------------------------------------------------------------------------------
 
 
-generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
+generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
 generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName name
                                                                   , _kind = Just CodeActionQuickFix
                                                                   , _diagnostics = Nothing
@@ -120,12 +120,12 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
                                                                   , _xdata = Nothing
                                                                   }
 
-generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
+generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
-    newDecl :: AST.Declaration = case pc of
-                PrdRep -> AST.PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm))
-                CnsRep -> AST.PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm))
+    newDecl :: TST.Declaration = case pc of
+                PrdRep -> TST.PrdCnsDecl defaultLoc Nothing PrdRep Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm))
+                CnsRep -> TST.PrdCnsDecl defaultLoc Nothing CnsRep Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -134,7 +134,7 @@ generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
                   , _changeAnnotations = Nothing
                   }
 
-generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (AST.Command, Loc)) -> Command |? CodeAction
+generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (TST.Command, Loc)) -> Command |? CodeAction
 generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName name
                                                                   , _kind = Just CodeActionQuickFix
                                                                   , _diagnostics = Nothing
@@ -145,10 +145,10 @@ generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = 
                                                                   , _xdata = Nothing
                                                                   }
 
-generateCmdFocusEdit ::  EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (AST.Command, Loc)) -> WorkspaceEdit
+generateCmdFocusEdit ::  EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (TST.Command, Loc)) -> WorkspaceEdit
 generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
   let
-    newDecl = AST.CmdDecl defaultLoc Nothing name (focusCmd eo (resetAnnotationCmd cmd))
+    newDecl = TST.CmdDecl defaultLoc Nothing name (focusCmd eo (resetAnnotationCmd cmd))
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange loc, _newText= replacement }
   in
@@ -161,7 +161,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Desugar Actions
 ---------------------------------------------------------------------------------
 
-generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
+generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
 generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> unFreeVarName name
                                                                     , _kind = Just CodeActionQuickFix
                                                                     , _diagnostics = Nothing
@@ -172,10 +172,10 @@ generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "
                                                                     , _xdata = Nothing
                                                                     }
 
-generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(AST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
+generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
 generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
   let
-    newDecl = AST.PrdCnsDecl defaultLoc Nothing rep Recursive name (Inferred ty) (resetAnnotationTerm tm)
+    newDecl = TST.PrdCnsDecl defaultLoc Nothing rep Recursive name (Inferred ty) (resetAnnotationTerm tm)
     replacement = ppPrint newDecl
     edit = TextEdit {_range=locToRange loc, _newText=replacement}
   in
@@ -183,7 +183,7 @@ generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
                   , _documentChanges=Nothing
                   , _changeAnnotations=Nothing}
 
-generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (AST.Command, Loc)) -> Command |? CodeAction
+generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (TST.Command, Loc)) -> Command |? CodeAction
 generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> unFreeVarName name
                                                                    , _kind = Just CodeActionQuickFix
                                                                    , _diagnostics = Nothing
@@ -194,10 +194,10 @@ generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "D
                                                                    , _xdata = Nothing
                                                                    }
 
-generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (AST.Command, Loc)) -> WorkspaceEdit
+generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (TST.Command, Loc)) -> WorkspaceEdit
 generateCmdDesugarEdit (TextDocumentIdentifier uri) (name, (cmd,loc)) =
   let
-    newDecl = AST.CmdDecl defaultLoc Nothing name (resetAnnotationCmd cmd)
+    newDecl = TST.CmdDecl defaultLoc Nothing name (resetAnnotationCmd cmd)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange loc, _newText= replacement }
   in

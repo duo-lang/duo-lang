@@ -10,9 +10,9 @@ module Translate.Focusing
 import Data.Text qualified as T
 
 import Eval.Definition (EvalEnv)
-import Syntax.AST.Program 
+import Syntax.TST.Program 
 import Syntax.Common
-import Syntax.AST.Terms 
+import Syntax.TST.Terms 
 import Utils
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues

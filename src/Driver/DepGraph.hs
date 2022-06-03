@@ -30,7 +30,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintString )
 import Driver.Definition ( DriverM, findModule )
-import Renamer.SymbolTable
+import Resolution.SymbolTable
     ( SymbolTable(imports), createSymbolTable )
 import Syntax.Common ( ModuleName(..) )
 import Errors ( Error(OtherError) )

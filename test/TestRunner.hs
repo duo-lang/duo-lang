@@ -13,7 +13,7 @@ import Driver.Driver (inferProgramIO)
 import Errors
 import Parser.Definition (runFileParser)
 import Parser.Program (programP)
-import Renamer.SymbolTable (SymbolTable, createSymbolTable)
+import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
 import Spec.Subsumption qualified
@@ -21,7 +21,7 @@ import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Program qualified as TST
 
 
 getAvailableCounterExamples :: IO [FilePath]
@@ -41,7 +41,7 @@ getParsedDeclarations fp = do
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getTypecheckedDecls :: FilePath -> IO (Either Error AST.Program)
+getTypecheckedDecls :: FilePath -> IO (Either Error TST.Program)
 getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of

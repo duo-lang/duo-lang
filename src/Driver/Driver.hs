@@ -22,14 +22,14 @@ import Errors
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
-import Renamer.Program (renameProgram)
-import Renamer.SymbolTable
-import Renamer.Definition
+import Resolution.Program (resolveProgram)
+import Resolution.SymbolTable
+import Resolution.Definition
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
-import Syntax.AST.Program qualified as AST
-import Syntax.AST.Terms qualified as AST
+import Syntax.TST.Program qualified as TST
+import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
@@ -70,7 +70,7 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
 
 inferDecl :: ModuleName
           -> Core.Declaration
-          -> DriverM AST.Declaration
+          -> DriverM TST.Declaration
 --
 -- PrdCnsDecl
 --
@@ -90,7 +90,7 @@ inferDecl mn (Core.PrdCnsDecl loc doc pc isRec fv annot term) = do
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
-  let typ = zonk bisubst (AST.getTypeTerm tmInferred)
+  let typ = zonk bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
@@ -105,11 +105,11 @@ inferDecl mn (Core.PrdCnsDecl loc doc pc isRec fv annot term) = do
     PrdRep -> do
       let f env = env { prdEnv  = M.insert fv (tmInferred ,loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
       modifyEnvironment mn f
-      return (AST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
+      return (TST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
     CnsRep -> do
       let f env = env { cnsEnv  = M.insert fv (tmInferred, loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
       modifyEnvironment mn f
-      return (AST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
+      return (TST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
 --
 -- CmdDecl
 --
@@ -125,7 +125,7 @@ inferDecl mn (Core.CmdDecl loc doc v cmd) = do
   -- Insert into environment
   let f env = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
   modifyEnvironment mn f
-  return (AST.CmdDecl loc doc v cmdInferred)
+  return (TST.CmdDecl loc doc v cmdInferred)
 --
 -- DataDecl
 --
@@ -133,17 +133,17 @@ inferDecl mn (Core.DataDecl loc doc dcl) = do
   -- Insert into environment
   let f env = env { declEnv = (loc,dcl) : declEnv env }
   modifyEnvironment mn f
-  pure (AST.DataDecl loc doc dcl)
+  pure (TST.DataDecl loc doc dcl)
 --
 -- XtorDecl
 --
 inferDecl _mn (Core.XtorDecl loc doc dc xt args ret) = do
-  pure (AST.XtorDecl loc doc dc xt args ret)
+  pure (TST.XtorDecl loc doc dc xt args ret)
 --
 -- ImportDecl
 --
 inferDecl _mn (Core.ImportDecl loc doc mod) = do
-  pure (AST.ImportDecl loc doc mod)
+  pure (TST.ImportDecl loc doc mod)
 --
 -- SetDecl
 --
@@ -153,14 +153,14 @@ inferDecl _mn (Core.SetDecl _ _ txt) = case T.unpack txt of
 -- TyOpDecl
 --
 inferDecl _mn (Core.TyOpDecl loc doc op prec assoc ty) = do
-  pure (AST.TyOpDecl loc doc op prec assoc ty)
+  pure (TST.TyOpDecl loc doc op prec assoc ty)
 --
 -- TySynDecl
 --
 inferDecl _mn (Core.TySynDecl loc doc nm ty) = do
-  pure (AST.TySynDecl loc doc nm ty)
+  pure (TST.TySynDecl loc doc nm ty)
 
-inferProgram :: ModuleName -> Core.Program -> DriverM AST.Program
+inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls
 
 ---------------------------------------------------------------------------------
@@ -188,14 +188,14 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- createSymbolTable mn decls
       addSymboltable mn st
-      -- 3. Rename the declarations.
+      -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      renamedDecls <- liftEitherErr (runRenamerM sts (renameProgram decls))
+      resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
       -- 4. Desugar the program
-      let desugaredProg = desugarProgram renamedDecls
+      let desugaredProg = desugarProgram resolvedDecls
       -- 5. Infer the declarations
       inferredDecls <- inferProgram mn desugaredProg
-      -- 6. Add the renamed AST to the cache
+      -- 6. Add the resolved AST to the cache
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
       addTypecheckedProgram mn inferredDecls
 
@@ -207,16 +207,16 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> ModuleName
                 -> [CST.Declaration]
-                -> IO (Either Error (Map ModuleName Environment, AST.Program))
+                -> IO (Either Error (Map ModuleName Environment, TST.Program))
 inferProgramIO state mn decls = do
-  let action :: DriverM (AST.Program)
+  let action :: DriverM (TST.Program)
       action = do
         st <- createSymbolTable mn decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
-        renamedDecls <- liftEitherErr (runRenamerM sts (renameProgram decls))
-        inferProgram mn (desugarProgram renamedDecls)
+        resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
+        inferProgram mn (desugarProgram resolvedDecls)
   res <- execDriverM state action
   case res of
     Left err -> return (Left err)

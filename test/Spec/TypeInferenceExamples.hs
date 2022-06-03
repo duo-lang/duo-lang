@@ -4,14 +4,14 @@ import Test.Hspec
 import Control.Monad (forM_)
 
 import Data.Either( isRight, isLeft )
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Errors
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
-spec :: [(FilePath, Either Error AST.Program)] -- ^ examples
+spec :: [(FilePath, Either Error TST.Program)] -- ^ examples
      -> [(FilePath, Either Error CST.Program)]
-     -> [(FilePath, Either Error AST.Program)]
+     -> [(FilePath, Either Error TST.Program)]
      -> Spec
 spec examples counterExamplesParsed counterExamplesChecked = do
   describe "All the programs in the toplevel \"examples/\" folder typecheck." $ do

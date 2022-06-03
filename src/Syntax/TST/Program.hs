@@ -1,10 +1,10 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Syntax.AST.Program where
+module Syntax.TST.Program where
 
 import Data.Text (Text)
 
 import Syntax.Common
-import Syntax.AST.Terms( Command, Term )
+import Syntax.TST.Terms( Command, Term )
 import Syntax.Common.TypesPol ( DataDecl, TopAnnot, Typ )
 import Utils ( Loc )
 

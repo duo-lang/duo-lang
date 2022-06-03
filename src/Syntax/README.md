@@ -4,7 +4,7 @@ We use multiple representations of the syntax in the compiler.
 In the normal (i.e. forward) direction, we encounter them in the following order:
 
 ```
-Text -parse-> CST -rename-> RST -infer-> AST -desugar-> Core
+Text -parse-> CST -resolve-> RST -infer-> AST -desugar-> Core
 ```
 
 This direction generally adds information to the syntax trees.
@@ -28,7 +28,7 @@ Operators are not yet resolved according to their precedence and associativity.
 
 ### RST
 
-In the renamed syntax tree (RST), the precedence and associativity of operators have been resolved.
+In the resolved syntax tree (RST), the precedence and associativity of operators have been resolved.
 Every name is fully resolved with the module + declaration it has been introduced.
 Every unpolarized `Typ` has been replaced by a polarized `Typ Pos` resp. `Typ Neg`, and every `Term` has
 been replaced by the corresponding `Term Prd` and `Term Cns`.

@@ -1,5 +1,4 @@
 import Function;
-
 --------------------------------------------------------------------------------------------
 -- Disjunction and its unit as a data type.
 --
@@ -34,6 +33,7 @@ def prd plusElim : forall a b c. (a -> c) -> (b -> c) -> Plus(a,b) -> c :=
   \f g e => case e of { Left(x) => f x
                       , Right(y) => g y
                       };
+
 
 --------------------------------------------------------------------------------------------
 -- Conjunction and its unit as a data type.
@@ -76,6 +76,8 @@ type operator & leftassoc at 5 := With;
 -- | The singleton type defined as a codata type.
 codata UnitN {};
 
+--def cns in1 : forall a b. a -> a & b := 
+--  cocase {Ap(x,k) => };
 
 -- TODO: Allow this to typecheck
 -- def prd mkUnitN : UnitN :=

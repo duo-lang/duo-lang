@@ -1,4 +1,4 @@
-module Renamer.Definition where
+module Resolution.Definition where
 
 import Control.Monad.Except (MonadError, Except, throwError, runExcept)
 import Control.Monad.Reader
@@ -11,25 +11,25 @@ import Data.Text qualified as T
 import Pretty.Pretty
 import Pretty.Common ()
 import Pretty.Types ()
-import Renamer.SymbolTable
+import Resolution.SymbolTable
 import Syntax.Common
 import Utils
 import Errors
 
 ------------------------------------------------------------------------------
--- Renamer Monad
+-- Resolver Monad
 ------------------------------------------------------------------------------
 
-type RenameReader = Map ModuleName SymbolTable
+type ResolveReader = Map ModuleName SymbolTable
 
-newtype RenamerM a = MkRenamerM { unRenamerM :: ReaderT RenameReader (Except Error) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader RenameReader)
+newtype ResolverM a = MkResolverM { unResolverM :: ReaderT ResolveReader (Except Error) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader ResolveReader)
 
-instance MonadFail RenamerM where
+instance MonadFail ResolverM where
   fail str = throwError (OtherError Nothing (T.pack str))
 
-runRenamerM :: RenameReader -> RenamerM a -> Either Error a
-runRenamerM reader action = runExcept (runReaderT (unRenamerM action) reader)
+runResolverM :: ResolveReader -> ResolverM a -> Either Error a
+runResolverM reader action = runExcept (runReaderT (unResolverM action) reader)
 
 ------------------------------------------------------------------------------
 -- Helper Functions
@@ -44,7 +44,7 @@ lookupXtor :: Loc
            -- ^ The location of the xtor to be looked up
            -> XtorName
            -- ^ The name of the xtor and whether we expect a ctor or dtor
-           -> RenamerM (ModuleName, XtorNameResolve)
+           -> ResolverM (ModuleName, XtorNameResolve)
            -- ^ The module where the xtor comes from, its sort and arity.
 lookupXtor loc xtor = do
   symbolTables <- M.toList <$> ask
@@ -61,8 +61,8 @@ lookupTypeConstructor :: Loc
                       -- ^ The location of the typename to be looked up
                       -> TypeName
                       -- ^ The typename to look up
-                      -> RenamerM TypeNameResolve
-                      -- ^ The renamed typename, and the relevant info.
+                      -> ResolverM TypeNameResolve
+                      -- ^ The resolved typename, and the relevant info.
 lookupTypeConstructor loc tn = do
     symbolTables <- M.toList <$> ask
     let results :: [(ModuleName, Maybe TypeNameResolve)]
@@ -92,7 +92,7 @@ interTyOp = MkTyOp
 
 lookupTyOp :: Loc
            -> BinOp
-           -> RenamerM (ModuleName, TyOp)
+           -> ResolverM (ModuleName, TyOp)
 lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
 lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
 lookupTyOp loc op = do

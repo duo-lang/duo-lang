@@ -21,7 +21,7 @@ module Sugar.Core(
 import Syntax.Core.Terms
 import Syntax.Common
 import Utils
-import Syntax.AST.Terms (ShiftDirection(..) )
+import Syntax.TST.Terms (ShiftDirection(..) )
 import Syntax.Common.Pattern
 
 -- CaseOfCmd:

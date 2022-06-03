@@ -133,7 +133,7 @@ desugarDecl (RST.TySynDecl loc doc nm ty) =
 desugarProgram :: RST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps
 
--- should be renamed, since it's  not actually desugaring anything anymore
+-- should be resolved, since it's  not actually desugaring anything anymore
 desugarEnvironment :: Map ModuleName Environment -> EvalEnv
 desugarEnvironment map = fold $ desugarEnvironment' <$> M.elems map
 

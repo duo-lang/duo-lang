@@ -20,7 +20,7 @@ import Syntax.Common.Annot
 import Utils
 import Errors
 import Syntax.Common
-import Syntax.AST.Terms (ShiftDirection(..))
+import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.Common.Pattern
 
 ---------------------------------------------------------------------------------

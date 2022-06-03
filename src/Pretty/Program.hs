@@ -1,21 +1,21 @@
 module Pretty.Program where
 
+import Data.List (intersperse)
 import Data.Map qualified as M
 import Prettyprinter
 
-import Data.List (intersperse)
-
+import Driver.Environment
+import Pretty.Common
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Pretty.Common
-import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesUnpol qualified as CST
-import Syntax.RST.Program qualified as RST
-import Syntax.AST.Program qualified as AST
-import Syntax.Core.Program qualified as Core
 import Syntax.Common
-import Driver.Environment
+import Syntax.Common.TypesUnpol qualified as UnPol
+import Syntax.Common.TypesPol qualified as Pol
+import Syntax.Core.Program qualified as Core
+import Syntax.CST.Program qualified as CST
+import Syntax.RST.Program qualified as RST
+import Syntax.TST.Program qualified as TST
 import Translate.Embed
 import Translate.Reparse
 
@@ -23,8 +23,8 @@ import Translate.Reparse
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn CST.DataDecl where
-  prettyAnn (CST.NominalDecl ref tn dc knd xtors) =
+instance PrettyAnn UnPol.DataDecl where
+  prettyAnn (UnPol.NominalDecl ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
@@ -35,11 +35,15 @@ instance PrettyAnn CST.DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
-prettyAnnot :: Maybe CST.TypeScheme -> Doc Annotation
+
+instance PrettyAnn Pol.DataDecl where
+  prettyAnn decl = prettyAnn (embedTyDecl decl)
+
+prettyAnnot :: Maybe UnPol.TypeScheme -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdCnsDecl :: PrettyAnn a => PrdCns -> IsRec -> a -> Maybe CST.TypeScheme -> Doc Annotation -> Doc Annotation
+prettyPrdCnsDecl :: PrettyAnn a => PrdCns -> IsRec -> a -> Maybe UnPol.TypeScheme -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
   annKeyword "def" <+> "rec" <+> prettyPrdCns pc <+> prettyAnn fv   <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
@@ -78,7 +82,7 @@ prettyTVars tvs =
     <+> mempty
 
 -- | Prettyprint list of xtors for class declaration.
-prettyXTors :: [(XtorName, [(PrdCns, CST.Typ)])] -> Doc Annotation
+prettyXTors :: [(XtorName, [(PrdCns, UnPol.Typ)])] -> Doc Annotation
 prettyXTors xtors = braces $ group
   (nest
     3
@@ -101,7 +105,7 @@ instance PrettyAnn ClassName where
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
-instance PrettyAnn AST.Declaration where
+instance PrettyAnn TST.Declaration where
   prettyAnn decl = prettyAnn (embedASTDecl decl)
 
 instance PrettyAnn RST.Declaration where
@@ -138,7 +142,7 @@ instance PrettyAnn CST.Declaration where
     undefined
 
 
-instance {-# OVERLAPPING #-} PrettyAnn [AST.Declaration] where
+instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)
 
 instance {-# OVERLAPPING #-} PrettyAnn [CST.Declaration] where

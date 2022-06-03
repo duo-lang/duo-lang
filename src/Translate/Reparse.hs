@@ -16,6 +16,7 @@ module Translate.Reparse
   , embedPrdCnsType
   , embedTypeScheme
   , embedLinearContext
+  , embedTyDecl
   )where
 
 
@@ -35,6 +36,7 @@ import Utils
 import Syntax.CST.Terms (FVOrStar(FoSStar))
 import GHC.Base (NonEmpty ((:|)))
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
+import Syntax.Common.TypesUnpol (TypeScheme(ts_constraints))
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -297,7 +299,7 @@ embedTerm RST.BoundVar{} =
 embedTerm (RST.FreeVar loc _ fv) =
   CST.Var loc fv
 embedTerm (RST.Xtor loc _ _ xt subst) =
-  CST.Xtor loc xt (embedSubst subst)
+  CST.Xtor loc xt (CST.ToSTerm <$> (embedSubst subst))
 embedTerm (RST.XCase loc PrdRep _ cases) =
   CST.Cocase loc (embedCmdCase <$> cases)
 embedTerm (RST.XCase loc CnsRep _ cases) =
@@ -444,6 +446,7 @@ embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
                  , ts_vars = ts_vars
+                 , ts_constraints = []
                  , ts_monotype = embedType ts_monotype
                  }
 

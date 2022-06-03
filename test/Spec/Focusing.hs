@@ -9,13 +9,13 @@ import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Translate.Embed
 import Syntax.Common
-import Syntax.AST.Program qualified as AST
+import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
 import Translate.Reparse
 import Errors
 
-testHelper :: (FilePath, Either Error AST.Program) -> EvaluationOrder -> SpecWith ()
+testHelper :: (FilePath, Either Error TST.Program) -> EvaluationOrder -> SpecWith ()
 testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ do
   case decls of
     Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
@@ -41,7 +41,7 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
            it "Could not load examples" $ expectationFailure msg
         Right _env -> pure ()
 
-spec :: [(FilePath,Either Error AST.Program)] -> Spec
+spec :: [(FilePath,Either Error TST.Program)] -> Spec
 spec examples = do
     describe "Focusing an entire program still typechecks" $ do
       forM_ examples $ \example -> do
