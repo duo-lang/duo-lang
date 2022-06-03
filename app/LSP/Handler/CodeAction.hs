@@ -11,14 +11,14 @@ import Data.HashMap.Strict qualified as Map
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange, lookupPos )
+import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..) )
 import Syntax.Common.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
     ( DocComment,
       FreeVarName(unFreeVarName),
       ModuleName(MkModuleName) )
-import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol, flipPrdCns )
+import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
 import Syntax.Common.Types ( IsRec(Recursive) )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -32,9 +32,9 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
 import Sugar.AST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Dualize.Terms (dualTerm, dualTypeScheme)
+import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import Syntax.Common.Polarity
-import Data.Text (pack)
+import Data.Text (pack, append)
 import qualified Debug.Trace
 
 ---------------------------------------------------------------------------------
@@ -132,9 +132,9 @@ generateDualizeEdit uri loc doc rep isrec fv tys tm  =
     replacement = case tm' of
       (Left error) -> ppPrint $ pack (show error)
       (Right tm'') -> case rep of
-        PrdRep -> ppPrint (TST.PrdCnsDecl loc doc CnsRep isrec fv (Annotated (dualTypeScheme PosRep tys)) tm'')
-        CnsRep -> ppPrint (TST.PrdCnsDecl loc doc PrdRep isrec fv (Annotated (dualTypeScheme NegRep tys)) tm'')
-    edit = TextEdit {_range = locToRange loc, _newText = replacement }
+        PrdRep -> ppPrint (TST.PrdCnsDecl loc doc CnsRep isrec (dualFVName fv) (Annotated (dualTypeScheme PosRep tys)) tm'')
+        CnsRep -> ppPrint (TST.PrdCnsDecl loc doc PrdRep isrec (dualFVName fv) (Annotated (dualTypeScheme NegRep tys)) tm'')
+    edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
