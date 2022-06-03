@@ -5,15 +5,15 @@ import Data.Map qualified as M
 import Prettyprinter
 
 import Driver.Environment
-import Pretty.Common
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
+import Pretty.Common
 import Syntax.Common
-import Syntax.Common.TypesUnpol qualified as UnPol
+import Syntax.CST.Program qualified as CST
+import Syntax.Common.TypesUnpol qualified as Unpol
 import Syntax.Common.TypesPol qualified as Pol
 import Syntax.Core.Program qualified as Core
-import Syntax.CST.Program qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Translate.Embed
@@ -23,8 +23,8 @@ import Translate.Reparse
 -- Prettyprinting of Declarations
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn UnPol.DataDecl where
-  prettyAnn (UnPol.NominalDecl ref tn dc knd xtors) =
+instance PrettyAnn Unpol.DataDecl where
+  prettyAnn (Unpol.NominalDecl ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
@@ -35,15 +35,14 @@ instance PrettyAnn UnPol.DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
-
 instance PrettyAnn Pol.DataDecl where
   prettyAnn decl = prettyAnn (embedTyDecl decl)
 
-prettyAnnot :: Maybe UnPol.TypeScheme -> Doc Annotation
+prettyAnnot :: Maybe Unpol.TypeScheme -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdCnsDecl :: PrettyAnn a => PrdCns -> IsRec -> a -> Maybe UnPol.TypeScheme -> Doc Annotation -> Doc Annotation
+prettyPrdCnsDecl :: PrettyAnn a => PrdCns -> IsRec -> a -> Maybe Unpol.TypeScheme -> Doc Annotation -> Doc Annotation
 prettyPrdCnsDecl pc Recursive fv annot ptm =
   annKeyword "def" <+> "rec" <+> prettyPrdCns pc <+> prettyAnn fv   <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
 prettyPrdCnsDecl pc NonRecursive fv annot ptm =
@@ -82,7 +81,7 @@ prettyTVars tvs =
     <+> mempty
 
 -- | Prettyprint list of xtors for class declaration.
-prettyXTors :: [(XtorName, [(PrdCns, UnPol.Typ)])] -> Doc Annotation
+prettyXTors :: [(XtorName, [(PrdCns, Unpol.Typ)])] -> Doc Annotation
 prettyXTors xtors = braces $ group
   (nest
     3
