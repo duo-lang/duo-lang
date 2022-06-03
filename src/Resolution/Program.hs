@@ -82,6 +82,10 @@ resolveDecl (CST.TySynDecl loc doc nm ty) = do
   typ <- resolveTyp PosRep ty
   tyn <- resolveTyp NegRep ty
   pure (RST.TySynDecl loc doc nm (typ, tyn))
+resolveDecl (CST.ClassDecl _loc _doc _className _typeVars _) =
+  throwError (OtherError Nothing "Class Declaration: Not implemented yet")
+resolveDecl (CST.InstanceDecl _loc _doc _className _typ _) =
+  throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
 resolveDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 

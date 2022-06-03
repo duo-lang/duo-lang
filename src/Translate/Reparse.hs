@@ -511,6 +511,10 @@ reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
   CST.TyOpDecl loc doc op prec assoc (rnTnName ty)
 reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =
   CST.TySynDecl loc doc nm (embedType ty)
+reparseDecl (RST.ClassDecl loc doc cls args ops) =
+  CST.ClassDecl loc doc cls args (undefined ops)
+reparseDecl (RST.InstanceDecl loc doc cls ty cases) =
+  CST.InstanceDecl loc doc cls (undefined ty) (undefined cases)
 
 reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl

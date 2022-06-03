@@ -199,6 +199,8 @@ instance ToJumpMap RST.Declaration where
   toJumpMap RST.SetDecl {} = M.empty
   toJumpMap (RST.TyOpDecl loc _ _ _ _ rnTn) =
     M.fromList [(locToRange loc, toLocation rnTn)]
+  toJumpMap RST.ClassDecl {} = M.empty
+  toJumpMap RST.InstanceDecl {} = M.empty
   toJumpMap RST.TySynDecl {} = M.empty
 
 instance ToLocation RnTypeName where
