@@ -16,6 +16,7 @@ module Translate.Reparse
   , embedPrdCnsType
   , embedTypeScheme
   , embedLinearContext
+  , embedTyDecl
   )where
 
 
