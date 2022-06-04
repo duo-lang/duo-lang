@@ -314,8 +314,8 @@ resolveLambda loc var tm = do
 resolveCoLambda :: Loc -> FreeVarName -> CST.Term -> ResolverM (RST.Term Cns)
 resolveCoLambda loc var tm = do
   tm' <- resolveTerm CnsRep tm
-  let pat = RST.XtorPatI loc (MkXtorName "CoAp") ([], (), [(Cns, Just var)])
-  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd,MkFreeVarName "*"),(Cns, var)] tm')
+  let pat = RST.XtorPatI loc (MkXtorName "CoAp") ([(Cns, Just var)], (), [])
+  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Cns, var)] tm')
   pure $ RST.CaseI loc CnsRep Nominal [cs]
 
 -- | Lower a natural number literal.
@@ -334,7 +334,7 @@ resolveApp PrdRep loc fun arg = do
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([],CnsRep,[RST.CnsTerm arg']) fun'
+  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
