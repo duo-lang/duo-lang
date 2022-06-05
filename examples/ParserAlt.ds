@@ -20,14 +20,14 @@ def prd lit : Nat -> Parser := \n => cocase {
     Parse(xs,m) => xs >> case {
         Nil =>  throw MkUnit >> m,
         Cons(y, ys) => nateq y n >> case {
-            True => unit CoAp(ys,mu z.throw z >> m) >> m,
+            True => unit CoAp(mu z.throw z >> m,ys) >> m,
             False => throw MkUnit >> m
         }            
     } 
 } ; 
 
 def prd success : Parser := cocase {
-    Parse(xs,m) => unit CoAp(xs,mu z.throw z >> m)  >> m
+    Parse(xs,m) => unit CoAp(mu z.throw z >> m,xs)  >> m
 };
 
 def prd failure : Parser := cocase {
@@ -38,7 +38,7 @@ def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
     Parse(xs,m) => 
       p1 >> 
         Parse(xs,  MkPar(case { MkUnit => throw MkUnit >> m} ,
-                           case { CoAp(l,f) => p2 >> Parse(l,MkPar(f,mu z. unit z >> m)) }) ) };
+                           case { CoAp(f,l) => p2 >> Parse(l,MkPar(f,mu z. unit z >> m)) }) ) };
 
 def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
     Parse(xs,m) => p1 >> Parse(xs,MkPar(case { MkUnit => p2 >> Parse(xs,m) },mu z. unit z >> m) )
@@ -47,7 +47,7 @@ def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
 
 def rec prd many1 : Parser -> Parser := \p => cocase {
     Parse(xs,m) => p >> Parse(xs, MkPar(case { MkUnit => throw MkUnit >> m} , 
-                                            case { CoAp(l,f2) => alt success (many1 p) >> Parse(l,MkPar(f2, mu z. unit z >> m)) }))
+                                            case { CoAp(f2,l) => alt success (many1 p) >> Parse(l,MkPar(f2, mu z. unit z >> m)) }))
 };
 
 def prd many : Parser -> Parser := \p => alt success (many1 p);

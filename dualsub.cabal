@@ -132,7 +132,7 @@ library
       Dualize.Program
       Sugar.Desugar
       Sugar.Core
-      Sugar.AST
+      Sugar.TST
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.Common

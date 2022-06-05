@@ -96,16 +96,13 @@ data Term where
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
     PrimLitF64 :: Loc -> Double -> Term
-    DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
+    --DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
-    MultiLambda :: Loc -> [FreeVarName] -> Term -> Term
-    MultiCoLambda :: Loc -> [FreeVarName] -> Term -> Term
     Lambda :: Loc -> FreeVarName -> Term -> Term
     CoLambda :: Loc -> FreeVarName -> Term -> Term
     Apply :: Loc -> Term -> Term -> Term 
-
 deriving instance Show Term
 deriving instance Eq Term
 
@@ -121,12 +118,10 @@ getLoc (Cocase loc _) = loc
 getLoc (CocaseOf loc _ _) = loc
 getLoc (PrimLitI64 loc _) = loc
 getLoc (PrimLitF64 loc _) = loc
-getLoc (DtorChain _ tm _)  = getLoc tm
+--getLoc (DtorChain _ tm _)  = getLoc tm
 getLoc (NatLit loc _ _) = loc
 getLoc (TermParens loc _) = loc
 getLoc (FunApp loc _ _) = loc
-getLoc (MultiLambda loc _ _) = loc
-getLoc (MultiCoLambda loc _ _) = loc
 getLoc (Lambda loc _ _) = loc
 getLoc (CoLambda loc _ _) = loc
 getLoc (Apply loc _ _) = loc 

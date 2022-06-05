@@ -103,12 +103,25 @@ instance PrettyAnn (RST.Term pc) where
 instance PrettyAnn (Core.Term pc) where
   prettyAnn tm = prettyAnn (embedCoreTerm tm)
 
+
+collectLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
+collectLambdaVarsAndBody (CST.Lambda _ var tm) = (var:fvs,t)
+  where (fvs, t) = collectLambdaVarsAndBody tm
+collectLambdaVarsAndBody t = ([],t) 
+
+collectCoLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
+collectCoLambdaVarsAndBody (CST.CoLambda _ var tm) = (var:fvs,t)
+  where (fvs, t) = collectCoLambdaVarsAndBody tm
+collectCoLambdaVarsAndBody t = ([],t) 
+
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
     prettyAnn v
   prettyAnn (CST.Xtor _ xt args) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args)
+  prettyAnn (CST.Semi _ (MkXtorName "CoAp")  [CST.ToSTerm tm, CST.ToSStar] t) =
+       prettyAnn t <+> prettyAnn tm
   prettyAnn (CST.Semi _ xt args c) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args) <>
@@ -144,37 +157,28 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.TermParens _ tm) =
     parens (prettyAnn tm)
   prettyAnn (CST.FunApp _ tm1 tm2) =
-    prettyAnn tm1 <+>
-    prettyAnn tm2
-  prettyAnn (CST.MultiLambda _ vars tm) =
-    annSymbol "\\" <>
-    hsep (prettyAnn <$> vars) <+>
-    annSymbol "=>" <+>
-    prettyAnn tm
+    parens (prettyAnn tm1 <+> prettyAnn tm2)
   prettyAnn (CST.Lambda _ var tm) =
+    let (params,body) = collectLambdaVarsAndBody tm in
     annSymbol "\\" <>
-    prettyAnn var <+>
+    hsep (prettyAnn <$> (var:params)) <+>
     annSymbol "=>" <+>
-    prettyAnn tm
-  prettyAnn (CST.MultiCoLambda _ vars tm) =
-    annSymbol "\\" <>
-    hsep (prettyAnn <$> vars) <+>
-    annSymbol "=<" <+>
-    prettyAnn tm
+    prettyAnn body
   prettyAnn (CST.CoLambda _ var tm) =
+    let (params,body) = collectCoLambdaVarsAndBody tm in
     annSymbol "\\" <>
-    prettyAnn var <+>
+    hsep (prettyAnn <$> (var:params)) <+>
     annSymbol "=<" <+>
-    prettyAnn tm
+    prettyAnn body
   prettyAnn (CST.NatLit _ Structural n) =
     prettyAnn ("'" :: String) <> prettyAnn (show n)
   prettyAnn (CST.NatLit _ Nominal n) =
     prettyAnn (show n)
   prettyAnn (CST.NatLit _ Refinement n) =
     prettyAnn (show n)
-  prettyAnn (CST.DtorChain _ fst rst) =
-    prettyAnn fst <>
-    hsep (NE.toList ((\(xt,substi,_) -> annSymbol "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi)) <$> rst))
+--  prettyAnn (CST.DtorChain _ fst rst) =
+--    prettyAnn fst <>
+--    hsep (NE.toList ((\(xt,substi,_) -> annSymbol "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi)) <$> rst))
   prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
     annKeyword "ExitSuccess"
   prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =

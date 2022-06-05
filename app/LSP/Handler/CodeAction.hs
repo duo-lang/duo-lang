@@ -31,7 +31,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
-import Sugar.AST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
+import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import Syntax.Common.Polarity
 import Data.Text (pack, append)
@@ -81,7 +81,7 @@ generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) 
     desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
     cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
-generateCodeAction ident (Range {_start = start}) (TST.DataDecl loc doc decl) = dualizeDecl
+generateCodeAction ident (Range {_start = _start}) (TST.DataDecl loc doc decl) = dualizeDecl
   where     
     dualizeDecl = [generateDualizeDeclCodeAction ident loc doc decl]
 generateCodeAction _ _ _ = []

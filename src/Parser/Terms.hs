@@ -3,7 +3,6 @@ module Parser.Terms
 
 import Data.Bifunctor (first)
 import Data.Foldable
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (keys)
 import Data.Maybe qualified
 import Text.Megaparsec
@@ -323,11 +322,15 @@ lambdaP = do
   (do 
     _ <- symbolP SymDoubleRightArrow
     (tm, endPos) <- termTopP
-    return (CST.MultiLambda (Loc startPos endPos) bvars tm, endPos)) <|>   
+    let t = foldr (\fv t -> CST.Lambda (Loc startPos endPos) fv t) tm bvars
+    return (t,endPos) 
+   ) 
+   <|>   
    (do 
     _ <- symbolP SymDoubleCoRightArrow
     (tm, endPos) <- termTopP
-    return (CST.MultiCoLambda (Loc startPos endPos) bvars tm, endPos)) 
+    let t = foldl (\t fv -> CST.CoLambda (Loc startPos endPos) fv t) tm bvars
+    return (t,endPos) )
 
 
 termParensP :: Parser (CST.Term, SourcePos)
@@ -408,9 +411,8 @@ dtorP =  do
   startPos <- getSourcePos
   (destructee, endPos) <- termMiddleP
   destructorChain <- destructorChainP
-  case destructorChain of
-    [] -> return (destructee, endPos)
-    (x:xs) -> return (CST.DtorChain startPos destructee (x :| xs), endPos)
+  let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
+  return $ (res, endPos)
 
 termTopP :: Parser (CST.Term, SourcePos)
 termTopP =  do

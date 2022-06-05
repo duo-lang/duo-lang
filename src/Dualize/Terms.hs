@@ -78,7 +78,7 @@ dualApplyAnnot ApplyAnnotCocaseOfCmd = ApplyAnnotCaseOfCmd
 dualApplyAnnot (ApplyAnnotXCaseOfIInner i) = ApplyAnnotXCaseOfIInner i
 dualApplyAnnot ApplyAnnotCaseOfIOuter = ApplyAnnotCocaseOfIOuter
 dualApplyAnnot ApplyAnnotCocaseOfIOuter = ApplyAnnotCaseOfIOuter
-
+dualApplyAnnot ApplyAnnotLambda = ApplyAnnotLambda
 
 dualMatchAnnot :: MatchAnnot pc -> MatchAnnot (FlipPrdCns pc)
 dualMatchAnnot MatchAnnotOrig = MatchAnnotOrig
@@ -89,6 +89,7 @@ dualMatchAnnot MatchAnnotCaseOfI = MatchAnnotCocaseOfI
 dualMatchAnnot MatchAnnotCocaseOfI = MatchAnnotCaseOfI
 dualMatchAnnot MatchAnnotCaseOfCmd = MatchAnnotCocaseOfCmd
 dualMatchAnnot MatchAnnotCocaseOfCmd = MatchAnnotCaseOfCmd
+dualMatchAnnot MatchAnnotLambda = MatchAnnotLambda
 
 dualMuAnnot :: MuAnnot -> MuAnnot
 dualMuAnnot MuAnnotOrig = MuAnnotOrig

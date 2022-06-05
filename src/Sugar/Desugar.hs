@@ -57,6 +57,7 @@ desugarTerm (RST.CaseOf loc rep ns t cases) = Core.CaseOf loc rep ns (desugarTer
 desugarTerm (RST.CocaseOf loc rep ns t cases) = Core.CocaseOf loc rep ns (desugarTerm t) (desugarTermCase <$> cases)
 desugarTerm (RST.CaseI loc rep ns tmcasesI) = Core.XCaseI loc rep CnsRep ns (desugarTermCaseI <$> tmcasesI)
 desugarTerm (RST.CocaseI loc rep ns cocases) = Core.XCaseI loc rep PrdRep ns (desugarTermCaseI <$> cocases)
+desugarTerm (RST.Lambda loc pc fv tm) = Core.Lambda loc pc fv (desugarTerm tm)
 
 ---------------------------------------------------------------------------------
 -- Primitive constructs

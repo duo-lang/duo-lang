@@ -34,7 +34,6 @@ import Syntax.Common.TypesPol qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.CST.Terms (FVOrStar(FoSStar))
-import GHC.Base (NonEmpty ((:|)))
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 
 ---------------------------------------------------------------------------------
@@ -106,6 +105,14 @@ openTermComplete (RST.CaseI loc rep ns cases) =
   RST.CaseI loc rep ns (openTermCaseI <$> cases)
 openTermComplete (RST.CocaseI loc rep ns cocases) =
   RST.CocaseI loc rep ns (openTermCaseI <$> cocases)
+openTermComplete (RST.Lambda loc pc fv tm) =
+  let 
+    tm' = openTermComplete tm 
+    tm'' = case pc of PrdRep -> RST.termOpening [(RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv))] tm'  
+                      CnsRep -> RST.termOpening [(RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv))] tm' 
+                        
+  in
+  RST.Lambda loc pc fv tm''
 -- Primitive constructs
 openTermComplete (RST.PrimLitI64 loc i) =
   RST.PrimLitI64 loc i
@@ -204,6 +211,9 @@ createNamesTerm (RST.CaseI loc rep ns cases) = do
 createNamesTerm (RST.CocaseI loc rep ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
   pure $ RST.CocaseI loc rep ns cases'
+createNamesTerm (RST.Lambda loc rep fvs tm) = do 
+  tm' <- createNamesTerm tm 
+  pure $ RST.Lambda loc rep fvs tm'   
 -- Primitive constructs
 createNamesTerm (RST.PrimLitI64 loc i) =
   pure (RST.PrimLitI64 loc i)
@@ -308,8 +318,12 @@ embedTerm (RST.MuAbs loc _ fv cmd) =
 -- Syntactic sugar
 embedTerm (RST.Semi loc _ _ xt substi tm) =
   CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
-embedTerm (RST.Dtor (Loc s1 s2) _ _ xt tm substi) =
-  CST.DtorChain s1  (embedTerm tm) ((xt,embedSubstI substi,s2) :| []  )
+embedTerm (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],CnsRep,[])) =
+  CST.FunApp loc (embedTerm tm) (embedTerm t) 
+embedTerm (RST.Dtor loc _ _ (MkXtorName "CoAp") tm ([RST.CnsTerm t],PrdRep,[])) =
+  CST.FunApp loc (embedTerm tm) (embedTerm t) 
+embedTerm (RST.Dtor loc _ _ xt tm substi) =
+  CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)
 embedTerm (RST.CaseOf loc _ _ tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedTermCase <$> cases)
 embedTerm (RST.CocaseOf loc _ _ tm cases) =
@@ -318,6 +332,10 @@ embedTerm (RST.CaseI loc _ _ cases) =
   CST.Case loc (embedTermCaseI <$> cases)
 embedTerm (RST.CocaseI loc _ _ cases) =
   CST.Cocase loc (embedTermCaseI <$> cases)
+embedTerm (RST.Lambda loc PrdRep fvs tm) = 
+  CST.Lambda loc fvs (embedTerm tm)
+embedTerm (RST.Lambda loc CnsRep fvs tm) = 
+  CST.CoLambda loc fvs (embedTerm tm)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
 embedTerm (RST.PrimLitF64 loc d) =
@@ -412,6 +430,8 @@ embedVariantType (RST.ContravariantType ty) = embedType ty
 resugarType :: RST.Typ pol -> Maybe CST.Typ
 resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
   Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "->")) (embedType tr))
+resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
+  Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "-<")) (embedType tr))
 resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
   Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
 resugarType _ = Nothing

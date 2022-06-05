@@ -45,8 +45,10 @@ embedCoreTerm (Core.Dtor loc rep ns xt t (subst,r,subst2)) = RST.Dtor loc rep ns
 embedCoreTerm (Core.Semi loc rep ns xt (subst,r,subst2) t ) = RST.Semi loc rep ns xt (embedSubst subst, r, embedSubst subst2) (embedCoreTerm t) 
 embedCoreTerm (Core.XCaseI loc rep PrdRep ns cases) = RST.CocaseI loc rep ns (embedTermCaseI <$> cases)
 embedCoreTerm (Core.XCaseI loc rep CnsRep ns cases) = RST.CaseI loc rep ns (embedTermCaseI <$> cases)
-embedCoreTerm (Core.PrimLitI64 loc i) =
-    RST.PrimLitI64 loc i
+embedCoreTerm (Core.Lambda loc rep fv tm)  = RST.Lambda loc rep fv (embedCoreTerm tm) 
+embedCoreTerm (Core.XCase loc _ pc ns cases) = RST.XCase loc pc ns (embedCmdCase <$> cases) -- revisit
+embedCoreTerm (Core.PrimLitI64 loc d) =
+    RST.PrimLitI64 loc d
 embedCoreTerm (Core.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
 
@@ -77,6 +79,9 @@ embedCoreCommand (Core.ExitFailure loc) =
     RST.ExitFailure loc
 embedCoreCommand (Core.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (embedSubst subst)
+embedCoreCommand (Core.Apply loc _ tmp tmc) = 
+    RST.Apply loc (embedCoreTerm tmp) (embedCoreTerm tmc)
+
 
 embedCoreProg :: Core.Program -> RST.Program
 embedCoreProg = fmap embedCoreDecl
