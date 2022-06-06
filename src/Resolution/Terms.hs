@@ -3,10 +3,8 @@ module Resolution.Terms (resolveTerm, resolveCommand) where
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Text.Megaparsec.Pos (SourcePos)
 
 import Errors
 import Pretty.Pretty ( ppPrint )
@@ -313,10 +311,6 @@ isStarT _ = False
 toTm  :: CST.TermOrStar -> CST.Term
 toTm (CST.ToSTerm t) = t
 toTm _x = error "Compiler bug: toFV"
-
-resolveDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar], SourcePos) -> ResolverM CST.Term
-resolveDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
-resolveDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = resolveDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
 ---------------------------------------------------------------------------------
 -- Analyze a substitution which (may) contain a star

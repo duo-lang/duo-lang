@@ -79,8 +79,6 @@ embedCoreCommand (Core.ExitFailure loc) =
     RST.ExitFailure loc
 embedCoreCommand (Core.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (embedSubst subst)
-embedCoreCommand (Core.Apply loc _ tmp tmc) = 
-    RST.Apply loc (embedCoreTerm tmp) (embedCoreTerm tmc)
 
 
 embedCoreProg :: Core.Program -> RST.Program

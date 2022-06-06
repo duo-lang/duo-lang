@@ -1,6 +1,5 @@
 module Pretty.Terms where
 
-import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Common ()

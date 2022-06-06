@@ -1,8 +1,5 @@
 module Syntax.CST.Terms where
 
-import Data.List.NonEmpty (NonEmpty(..))
-import Text.Megaparsec.Pos (SourcePos)
-
 import Syntax.Common
 import Utils
 
@@ -96,7 +93,6 @@ data Term where
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
     PrimLitF64 :: Loc -> Double -> Term
-    --DtorChain :: SourcePos -> Term -> NonEmpty (XtorName, SubstitutionI, SourcePos) -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
@@ -118,7 +114,6 @@ getLoc (Cocase loc _) = loc
 getLoc (CocaseOf loc _ _) = loc
 getLoc (PrimLitI64 loc _) = loc
 getLoc (PrimLitF64 loc _) = loc
---getLoc (DtorChain _ tm _)  = getLoc tm
 getLoc (NatLit loc _ _) = loc
 getLoc (TermParens loc _) = loc
 getLoc (FunApp loc _ _) = loc
