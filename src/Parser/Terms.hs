@@ -329,7 +329,7 @@ lambdaP = do
    (do 
     _ <- symbolP SymDoubleCoRightArrow
     (tm, endPos) <- termTopP
-    let t = foldl (\t fv -> CST.CoLambda (Loc startPos endPos) fv t) tm bvars
+    let t = foldr (\fv t -> CST.CoLambda (Loc startPos endPos) fv t) tm bvars
     return (t,endPos) )
 
 
