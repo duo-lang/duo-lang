@@ -175,9 +175,6 @@ instance PrettyAnn CST.Term where
     prettyAnn (show n)
   prettyAnn (CST.NatLit _ Refinement n) =
     prettyAnn (show n)
---  prettyAnn (CST.DtorChain _ fst rst) =
---    prettyAnn fst <>
---    hsep (NE.toList ((\(xt,substi,_) -> annSymbol "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi)) <$> rst))
   prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
     annKeyword "ExitSuccess"
   prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =
