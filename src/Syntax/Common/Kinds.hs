@@ -49,5 +49,16 @@ deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
 
 allTypeVars :: PolyKind -> Set TVar
-allTypeVars (MkPolyKind { kindArgs }) =
+allTypeVars MkPolyKind{ kindArgs } =
   S.fromList ((\(_,var,_) -> var) <$> kindArgs)
+
+lookupPolyKind :: TVar -> PolyKind -> Maybe (Variance, TVar, MonoKind)
+lookupPolyKind tv MkPolyKind{ kindArgs } = go kindArgs
+  where
+    go :: [(Variance, TVar, MonoKind)] -> Maybe (Variance, TVar, MonoKind)
+    go [] = Nothing
+    go (k@(_,tv',_) : ks) = if tv == tv'
+                           then Just k
+                           else go ks
+lookupPolyKindVariance :: TVar -> PolyKind -> Maybe Variance
+lookupPolyKindVariance tv pk = (\(v,_,_) -> v) <$> lookupPolyKind tv pk
