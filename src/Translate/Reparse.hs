@@ -318,7 +318,7 @@ embedTerm (RST.MuAbs loc _ fv cmd) =
 -- Syntactic sugar
 embedTerm (RST.Semi loc _ _ (MkXtorName "CoAp")  ([RST.CnsTerm t],CnsRep,[]) tm) =
   CST.FunApp loc (embedTerm tm) (embedTerm t) 
-embedTerm (RST.Semi loc _ _ (MkXtorName "CoAp")  other tm) =
+embedTerm (RST.Semi _loc _ _ (MkXtorName "CoAp")  other _tm) =
   error $ "embedTerm: " ++ show  other
 embedTerm (RST.Semi loc _ _ xt substi tm) =
   CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
