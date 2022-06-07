@@ -533,6 +533,17 @@ reparseCommandDeclaration RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, c
                            , cmddecl_cmd= reparseCommand cmddecl_cmd
                            }
 
+reparseStructuralXtorDeclaration :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
+reparseStructuralXtorDeclaration RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
+  CST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
+                                  , strxtordecl_doc = strxtordecl_doc
+                                  , strxtordecl_xdata = strxtordecl_xdata
+                                  , strxtordecl_name = strxtordecl_name
+                                  , strxtordecl_arity= strxtordecl_arity
+                                  , strxtordecl_evalOrder = Just strxtordecl_evalOrder
+                                  }
+
+
 reparseDecl :: RST.Declaration -> CST.Declaration
 reparseDecl (RST.PrdCnsDecl _ decl) = 
   CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
@@ -540,8 +551,8 @@ reparseDecl (RST.CmdDecl decl) =
   CST.CmdDecl (reparseCommandDeclaration decl)
 reparseDecl (RST.DataDecl loc doc decl) =
   CST.DataDecl loc doc (embedTyDecl decl)
-reparseDecl (RST.XtorDecl loc doc dc xt args ret) =
-  CST.XtorDecl loc doc dc xt args (Just ret)
+reparseDecl (RST.XtorDecl decl) =
+  CST.XtorDecl (reparseStructuralXtorDeclaration decl)
 reparseDecl (RST.ImportDecl loc doc mn) =
   CST.ImportDecl loc doc mn
 reparseDecl (RST.SetDecl loc doc txt) =

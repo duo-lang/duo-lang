@@ -379,7 +379,7 @@ instance ToHoverMap TST.Declaration where
   toHoverMap (TST.CmdDecl decl)  = toHoverMap decl
   toHoverMap (TST.DataDecl _loc _doc _decl) =
     M.empty
-  toHoverMap (TST.XtorDecl _loc _doc _dc _xt _args _eo) =
+  toHoverMap (TST.XtorDecl _) =
     M.empty
   toHoverMap (TST.ImportDecl _loc _doc _mn) =
     M.empty

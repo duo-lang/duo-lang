@@ -199,7 +199,14 @@ xtorDeclarationP doc = do
   args <- optional $ fst <$> (parens (returnP monoKindP `sepBy` symbolP SymComma) <?> "argument list") --argListsP False monoKindP
   ret <- optional (try (symbolP SymColon) >> evalOrderP)
   endPos <- symbolP SymSemi
-  pure (XtorDecl (Loc startPos endPos) doc dc xt (Data.Maybe.fromMaybe [] args) ret)
+  let decl = MkStructuralXtorDeclaration { strxtordecl_loc = Loc startPos endPos
+                                         , strxtordecl_doc = doc
+                                         , strxtordecl_xdata = dc
+                                         , strxtordecl_name = xt
+                                         , strxtordecl_arity = Data.Maybe.fromMaybe [] args
+                                         , strxtordecl_evalOrder = ret
+                                         }
+  pure (XtorDecl decl)
 
 ---------------------------------------------------------------------------------
 -- Parsing a program

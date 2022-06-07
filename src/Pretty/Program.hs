@@ -81,20 +81,25 @@ instance PrettyAnn CST.CommandDeclaration where
     semi
 
 ---------------------------------------------------------------------------------
--- Other
+-- Structural Xtor Declaration
 ---------------------------------------------------------------------------------
-
-prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
-prettyCmdDecl fv pcmd =
-   annKeyword "def" <+> "cmd" <+> prettyAnn fv <+> annSymbol ":=" <+> pcmd <> semi
-
-prettyXtorDecl :: DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder -> Doc Annotation
-prettyXtorDecl Data   xt args ret = annKeyword "constructor" <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
-prettyXtorDecl Codata xt args ret = annKeyword "destructor"  <+> prettyAnn xt <> prettyCCList args <+> colon <+> prettyAnn ret <> semi
 
 -- | Prettyprint the list of MonoKinds
 prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
+
+instance PrettyAnn CST.StructuralXtorDeclaration where
+  prettyAnn CST.MkStructuralXtorDeclaration { strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder } =
+    annKeyword (case strxtordecl_xdata of Data -> "constructor"; Codata -> "destructor") <+>
+    prettyAnn strxtordecl_name <>
+    prettyCCList strxtordecl_arity <+>
+    colon <+>
+    prettyAnn strxtordecl_evalOrder <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Other
+---------------------------------------------------------------------------------
 
 prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
 prettyTyOpDecl op assoc prec ty =
@@ -115,10 +120,8 @@ instance PrettyAnn RST.Declaration where
 instance PrettyAnn CST.Declaration where
   prettyAnn (CST.PrdCnsDecl decl) = prettyAnn decl
   prettyAnn (CST.CmdDecl decl) = prettyAnn decl
-  prettyAnn (CST.DataDecl _ _ decl) =
-    prettyAnn decl
-  prettyAnn (CST.XtorDecl _ _ dc xt args ret) =
-    prettyXtorDecl dc xt args ret
+  prettyAnn (CST.DataDecl _ _ decl) = prettyAnn decl
+  prettyAnn (CST.XtorDecl decl) = prettyAnn decl
   prettyAnn (CST.ImportDecl _ _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi
   prettyAnn (CST.SetDecl _ _ txt) =

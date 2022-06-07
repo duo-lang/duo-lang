@@ -7,6 +7,7 @@ import Syntax.Common
 import Syntax.TST.Terms( Command, Term )
 import Syntax.Common.TypesPol ( DataDecl, TopAnnot, Typ )
 import Utils ( Loc )
+import qualified Syntax.RST.Program as RST
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -59,8 +60,8 @@ deriving instance (Show CommandDeclaration)
 data Declaration where
   PrdCnsDecl     :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
   CmdDecl        :: CommandDeclaration                   -> Declaration
-  DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
-  XtorDecl       :: Loc -> Maybe DocComment -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration
+  DataDecl       :: Loc -> Maybe DocComment -> DataDecl  -> Declaration
+  XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
   ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
   TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> RnTypeName                        -> Declaration
@@ -72,7 +73,7 @@ instance Show Declaration where
   show (PrdCnsDecl CnsRep decl) = show decl
   show (CmdDecl decl) = show decl
   show (DataDecl loc doc dcl)= "DataDecl: " ++ show loc ++ show doc ++ show dcl
-  show (XtorDecl loc doc dc xt args res) = "XtorDecl: " ++ show loc ++ show doc ++ show dc ++ show xt ++ show args ++ show res
+  show (XtorDecl decl) = show decl
   show (ImportDecl loc doc mn) = "ImportDecl: " ++ show loc ++ show doc ++ show mn
   show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt
   show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty

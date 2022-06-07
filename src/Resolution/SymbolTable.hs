@@ -122,11 +122,11 @@ createSymbolTable' :: MonadError Error m
                    -> Declaration 
                    -> SymbolTable 
                    -> m SymbolTable
-createSymbolTable' _ (XtorDecl loc _ dc xt args _) st = do
+createSymbolTable' _ (XtorDecl (MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity })) st = do
   -- Check whether the xtor name is already declared in this module
-  checkFreshXtorName loc xt st
-  let xtorResolve = XtorNameResult dc Structural (fst <$> args)
-  pure $ st { xtorNameMap = M.insert xt xtorResolve (xtorNameMap st)}
+  checkFreshXtorName strxtordecl_loc strxtordecl_name st
+  let xtorResolve = XtorNameResult strxtordecl_xdata Structural (fst <$> strxtordecl_arity)
+  pure $ st { xtorNameMap = M.insert strxtordecl_name xtorResolve (xtorNameMap st)}
 createSymbolTable' mn (DataDecl loc doc NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
   checkFreshTypeName loc data_name st

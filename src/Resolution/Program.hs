@@ -98,6 +98,24 @@ resolveCommandDeclaration CST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, c
                                   }
 
 ---------------------------------------------------------------------------------
+-- Structural Xtor Declaration
+---------------------------------------------------------------------------------
+
+resolveStructuralXtorDeclaration :: CST.StructuralXtorDeclaration
+                                 -> ResolverM RST.StructuralXtorDeclaration
+resolveStructuralXtorDeclaration CST.MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} = do
+  let evalOrder = case strxtordecl_evalOrder of
+                  Just eo -> eo
+                  Nothing -> case strxtordecl_xdata of Data -> CBV; Codata -> CBN
+  pure $ RST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
+                                         , strxtordecl_doc = strxtordecl_doc
+                                         , strxtordecl_xdata = strxtordecl_xdata
+                                         , strxtordecl_name = strxtordecl_name
+                                         , strxtordecl_arity = strxtordecl_arity
+                                         , strxtordecl_evalOrder = evalOrder
+                                         }
+
+---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
@@ -116,11 +134,9 @@ resolveDecl (CST.CmdDecl decl) = do
 resolveDecl (CST.DataDecl loc doc dd) = do
   lowered <- resolveDataDecl loc dd
   pure $ RST.DataDecl loc doc lowered
-resolveDecl (CST.XtorDecl loc doc dc xt args ret) = do
-  let ret' = case ret of
-               Just eo -> eo
-               Nothing -> case dc of Data -> CBV; Codata -> CBN
-  pure $ RST.XtorDecl loc doc dc xt args ret'
+resolveDecl (CST.XtorDecl decl) = do
+  decl' <- resolveStructuralXtorDeclaration decl
+  pure $ RST.XtorDecl decl'
 resolveDecl (CST.ImportDecl loc doc mod) = do
   pure $ RST.ImportDecl loc doc mod
 resolveDecl (CST.SetDecl loc doc txt) =

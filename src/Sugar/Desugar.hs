@@ -139,8 +139,8 @@ desugarDecl (RST.CmdDecl decl) =
   Core.CmdDecl (desugarCommandDeclaration decl)
 desugarDecl (RST.DataDecl loc doc decl) =
   Core.DataDecl loc doc decl
-desugarDecl (RST.XtorDecl loc doc dc xt args ret) =
-  Core.XtorDecl loc doc dc xt args ret
+desugarDecl (RST.XtorDecl decl) =
+  Core.XtorDecl decl
 desugarDecl (RST.ImportDecl loc doc mn) =
   Core.ImportDecl loc doc mn
 desugarDecl (RST.SetDecl loc doc txt) =

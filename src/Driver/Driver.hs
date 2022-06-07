@@ -170,8 +170,8 @@ inferDecl mn (Core.DataDecl loc doc dcl) = do
 --
 -- XtorDecl
 --
-inferDecl _mn (Core.XtorDecl loc doc dc xt args ret) = do
-  pure (TST.XtorDecl loc doc dc xt args ret)
+inferDecl _mn (Core.XtorDecl decl) = do
+  pure (TST.XtorDecl decl)
 --
 -- ImportDecl
 --
