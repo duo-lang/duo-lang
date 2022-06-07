@@ -72,18 +72,18 @@ generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc doc rep i
   [generateAnnotCodeAction ident loc doc rep isrec fv tys tm,generateDualizeCodeAction ident loc doc rep isrec fv tys tm ]
 generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc doc rep isrec fv (Annotated tys) tm) = desugar ++ cbvfocus ++ cbnfocus ++ dualize
   where
-    desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys)) | not (isDesugaredTerm tm), lookupPos start loc]
+    desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys))   | not (isDesugaredTerm tm), lookupPos start loc]
     cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
     cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
-    dualize = [generateDualizeCodeAction ident loc doc rep isrec fv tys tm]
-generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus  
+    dualize =  [generateDualizeCodeAction ident loc doc rep isrec fv tys tm | lookupPos start loc]
+generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
   where
-    desugar = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc)) | not (isDesugaredCommand cmd), lookupPos start loc]
+    desugar  = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc))  | not (isDesugaredCommand cmd), lookupPos start loc]
     cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
-generateCodeAction ident (Range {_start = _start}) (TST.DataDecl loc doc decl) = dualizeDecl
-  where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident loc doc decl]
+generateCodeAction ident Range {_start = start} (TST.DataDecl loc doc decl) = dualizeDecl
+  where
+    dualizeDecl = [generateDualizeDeclCodeAction ident loc doc decl | lookupPos start loc]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
