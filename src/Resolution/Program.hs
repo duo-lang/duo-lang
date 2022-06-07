@@ -9,7 +9,7 @@ import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Terms (resolveTerm, resolveCommand)
-import Resolution.Types (resolveTypeScheme, resolveXTorSig, resolveTyp)
+import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp)
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.RST.Program qualified as RST
@@ -20,8 +20,8 @@ import Utils (Loc)
 resolveXtors :: [CST.XtorSig]
            -> ResolverM ([RST.XtorSig Pos], [RST.XtorSig Neg])
 resolveXtors sigs = do
-    posSigs <- sequence $ resolveXTorSig PosRep <$> sigs
-    negSigs <- sequence $ resolveXTorSig NegRep <$> sigs
+    posSigs <- resolveXTorSigs PosRep sigs
+    negSigs <- resolveXTorSigs NegRep sigs
     pure (posSigs, negSigs)
 
 resolveDataDecl :: Loc -> CST.DataDecl -> ResolverM RST.DataDecl
