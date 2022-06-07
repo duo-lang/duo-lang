@@ -13,6 +13,11 @@ import Syntax.Common.Primitives
 data Variance = Covariant | Contravariant
   deriving (Eq, Show, Ord)
 
+instance Semigroup Variance where
+  Covariant <> v         = v
+  v         <> Covariant = v
+  _         <> _         = Covariant
+
 ---------------------------------------------------------------------------------
 -- Evaluation Order
 ---------------------------------------------------------------------------------
