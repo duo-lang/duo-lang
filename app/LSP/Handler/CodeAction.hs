@@ -74,12 +74,12 @@ generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl loc doc rep i
   where
     desugar  = [ generateDesugarCodeAction rep ident (fv, (tm, loc, tys))   | not (isDesugaredTerm tm), lookupPos start loc]
     cbvfocus = [ generateFocusCodeAction rep ident CBV (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
-    cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBV tm), lookupPos start loc]
+    cbnfocus = [ generateFocusCodeAction rep ident CBN (fv, (tm, loc, tys)) | isDesugaredTerm tm, isNothing (isFocusedTerm CBN tm), lookupPos start loc]
     dualize =  [generateDualizeCodeAction ident loc doc rep isrec fv tys tm | lookupPos start loc]
 generateCodeAction ident (Range {_start = start}) (TST.CmdDecl loc _doc fv cmd) = desugar ++ cbvfocus ++ cbnfocus
   where
     desugar  = [ generateCmdDesugarCodeAction ident (fv, (cmd, loc))  | not (isDesugaredCommand cmd), lookupPos start loc]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBV (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBV cmd), lookupPos start loc]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (fv, (cmd,loc)) | isDesugaredCommand cmd, isNothing (isFocusedCmd CBN cmd), lookupPos start loc]
 generateCodeAction ident Range {_start = start} (TST.DataDecl loc doc decl) = dualizeDecl
   where
