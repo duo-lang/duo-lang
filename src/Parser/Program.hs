@@ -174,14 +174,14 @@ dataDeclP doc = do
           else pure (Just knd)
     (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
     endPos <- symbolP SymSemi
-    let decl = NominalDecl
-              { data_refined = refined
-              , data_name = tn
-              , data_polarity = dataCodata
-              , data_kind = knd'
-              , data_xtors = combineXtors xtors
-              }
-    pure (DataDecl (Loc startPos endPos) doc decl)
+    pure $ DataDecl $ NominalDecl { data_loc = Loc startPos endPos
+                                  , data_doc = doc
+                                  , data_refined = refined
+                                  , data_name = tn
+                                  , data_polarity = dataCodata
+                                  , data_kind = knd'
+                                  , data_xtors = combineXtors xtors
+                                  }
 
 ---------------------------------------------------------------------------------
 -- Xtor Declaration Parser

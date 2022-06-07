@@ -162,11 +162,11 @@ inferDecl mn (Core.CmdDecl decl) = do
 --
 -- DataDecl
 --
-inferDecl mn (Core.DataDecl loc doc dcl) = do
+inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (loc,dcl) : declEnv env }
+  let f env = env { declEnv = (data_loc decl,decl) : declEnv env }
   modifyEnvironment mn f
-  pure (TST.DataDecl loc doc dcl)
+  pure (TST.DataDecl decl)
 --
 -- XtorDecl
 --

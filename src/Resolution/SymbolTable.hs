@@ -127,10 +127,10 @@ createSymbolTable' _ (XtorDecl (MkStructuralXtorDeclaration {strxtordecl_loc, st
   checkFreshXtorName strxtordecl_loc strxtordecl_name st
   let xtorResolve = XtorNameResult strxtordecl_xdata Structural (fst <$> strxtordecl_arity)
   pure $ st { xtorNameMap = M.insert strxtordecl_name xtorResolve (xtorNameMap st)}
-createSymbolTable' mn (DataDecl loc doc NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
+createSymbolTable' mn (DataDecl NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
-  checkFreshTypeName loc data_name st
-  forM_ (sig_name <$> data_xtors) $ \xtorName -> checkFreshXtorName loc xtorName st
+  checkFreshTypeName data_loc data_name st
+  forM_ (sig_name <$> data_xtors) $ \xtorName -> checkFreshXtorName data_loc xtorName st
   -- Create the default polykind
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
@@ -139,7 +139,7 @@ createSymbolTable' mn (DataDecl loc doc NominalDecl { data_refined, data_name, d
                Refined -> Refinement
                NotRefined -> Nominal
   let xtors = M.fromList [(sig_name xt, XtorNameResult data_polarity ns (linearContextToArity (sig_args xt)))| xt <- data_xtors]
-  let rnTypeName = MkRnTypeName { rnTnLoc = loc, rnTnDoc = doc, rnTnModule = mn , rnTnName = data_name }
+  let rnTypeName = MkRnTypeName { rnTnLoc = data_loc, rnTnDoc = data_doc, rnTnModule = mn , rnTnName = data_name }
   let nominalResult = NominalResult rnTypeName data_polarity data_refined polyKind
   pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
             , typeNameMap = M.insert data_name nominalResult (typeNameMap st)}

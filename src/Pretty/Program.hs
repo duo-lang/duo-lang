@@ -26,7 +26,7 @@ import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn Unpol.DataDecl where
-  prettyAnn (Unpol.NominalDecl ref tn dc knd xtors) =
+  prettyAnn (Unpol.NominalDecl _ _ ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
@@ -120,7 +120,7 @@ instance PrettyAnn RST.Declaration where
 instance PrettyAnn CST.Declaration where
   prettyAnn (CST.PrdCnsDecl decl) = prettyAnn decl
   prettyAnn (CST.CmdDecl decl) = prettyAnn decl
-  prettyAnn (CST.DataDecl _ _ decl) = prettyAnn decl
+  prettyAnn (CST.DataDecl decl) = prettyAnn decl
   prettyAnn (CST.XtorDecl decl) = prettyAnn decl
   prettyAnn (CST.ImportDecl _ _ mod) =
     annKeyword "import" <+> prettyAnn mod <> semi

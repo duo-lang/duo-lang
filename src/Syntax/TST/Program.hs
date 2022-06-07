@@ -60,7 +60,7 @@ deriving instance (Show CommandDeclaration)
 data Declaration where
   PrdCnsDecl     :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
   CmdDecl        :: CommandDeclaration                   -> Declaration
-  DataDecl       :: Loc -> Maybe DocComment -> DataDecl  -> Declaration
+  DataDecl       :: DataDecl                             -> Declaration
   XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
   ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
@@ -72,7 +72,7 @@ instance Show Declaration where
   show (PrdCnsDecl PrdRep decl) = show decl
   show (PrdCnsDecl CnsRep decl) = show decl
   show (CmdDecl decl) = show decl
-  show (DataDecl loc doc dcl)= "DataDecl: " ++ show loc ++ show doc ++ show dcl
+  show (DataDecl decl) = show decl
   show (XtorDecl decl) = show decl
   show (ImportDecl loc doc mn) = "ImportDecl: " ++ show loc ++ show doc ++ show mn
   show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt

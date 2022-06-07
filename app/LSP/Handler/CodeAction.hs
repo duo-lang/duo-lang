@@ -12,7 +12,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..), data_name, DataDecl )
+import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..), DataDecl(..) )
 import Syntax.Common.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
     ( DocComment,
@@ -95,9 +95,9 @@ generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl _ decl) | loo
 generateCodeAction ident (Range {_start = start}) (TST.CmdDecl decl) | lookupPos start (TST.cmddecl_loc decl) =
   generateCodeActionCommandDeclaration ident decl
 
-generateCodeAction ident (Range {_start = _start}) (TST.DataDecl loc doc decl) = dualizeDecl
+generateCodeAction ident (Range {_start = _start}) (TST.DataDecl decl) = dualizeDecl
   where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident loc doc decl]
+    dualizeDecl = [generateDualizeDeclCodeAction ident (data_loc decl) decl]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -160,23 +160,23 @@ generateDualizeEdit uri loc doc rep isrec fv tys tm  =
                   , _changeAnnotations = Nothing }
 
 
-generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> DataDecl -> Command |? CodeAction
-generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc doc decl = InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (data_name decl)
+generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> DataDecl -> Command |? CodeAction
+generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl = InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (data_name decl)
                                                                              , _kind = Just CodeActionQuickFix
                                                                              , _diagnostics = Nothing
                                                                              , _isPreferred = Nothing
                                                                              , _disabled = Nothing
-                                                                             , _edit = Just (generateDualizeDeclEdit uri loc doc decl)
+                                                                             , _edit = Just (generateDualizeDeclEdit uri loc decl)
                                                                              , _command = Nothing
                                                                              , _xdata = Nothing
                                                                              }
 
 
-generateDualizeDeclEdit :: Uri -> Loc -> Maybe DocComment -> DataDecl -> WorkspaceEdit
-generateDualizeDeclEdit uri loc doc decl =
+generateDualizeDeclEdit :: Uri -> Loc -> DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
-    replacement = ppPrint (TST.DataDecl loc doc decl')
+    replacement = ppPrint (TST.DataDecl decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))

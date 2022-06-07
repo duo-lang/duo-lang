@@ -108,8 +108,8 @@ embedCoreDecl (Core.PrdCnsDecl pcrep decl) =
     RST.PrdCnsDecl pcrep (embedPrdCnsDeclaration decl)
 embedCoreDecl (Core.CmdDecl decl) =
     RST.CmdDecl (embedCommandDeclaration decl)
-embedCoreDecl (Core.DataDecl loc doc decl) =
-    RST.DataDecl loc doc decl
+embedCoreDecl (Core.DataDecl decl) =
+    RST.DataDecl decl
 embedCoreDecl (Core.XtorDecl decl) =
     RST.XtorDecl decl
 embedCoreDecl (Core.ImportDecl loc doc mn) =
@@ -208,8 +208,8 @@ embedTSTDecl (TST.PrdCnsDecl pcrep decl) =
     Core.PrdCnsDecl pcrep (embedTSTPrdCnsDecl decl)
 embedTSTDecl (TST.CmdDecl decl) =
     Core.CmdDecl (embedTSTCommandDecl decl)
-embedTSTDecl (TST.DataDecl loc doc decl) =
-    Core.DataDecl loc doc decl
+embedTSTDecl (TST.DataDecl decl) =
+    Core.DataDecl decl
 embedTSTDecl (TST.XtorDecl decl) =
     Core.XtorDecl decl
 embedTSTDecl (TST.ImportDecl loc doc mn) =

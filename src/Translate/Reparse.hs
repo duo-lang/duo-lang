@@ -472,8 +472,10 @@ embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
 
 
 embedTyDecl :: RST.DataDecl -> CST.DataDecl
-embedTyDecl RST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } =
-  CST.NominalDecl { data_refined = data_refined
+embedTyDecl RST.NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } =
+  CST.NominalDecl { data_loc = data_loc
+                  , data_doc = data_doc
+                  , data_refined = data_refined
                   , data_name = rnTnName data_name
                   , data_polarity = data_polarity
                   , data_kind = Just data_kind
@@ -549,8 +551,8 @@ reparseDecl (RST.PrdCnsDecl _ decl) =
   CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
 reparseDecl (RST.CmdDecl decl) =
   CST.CmdDecl (reparseCommandDeclaration decl)
-reparseDecl (RST.DataDecl loc doc decl) =
-  CST.DataDecl loc doc (embedTyDecl decl)
+reparseDecl (RST.DataDecl decl) =
+  CST.DataDecl (embedTyDecl decl)
 reparseDecl (RST.XtorDecl decl) =
   CST.XtorDecl (reparseStructuralXtorDeclaration decl)
 reparseDecl (RST.ImportDecl loc doc mn) =

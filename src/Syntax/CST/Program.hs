@@ -83,9 +83,9 @@ deriving instance (Show StructuralXtorDeclaration)
 ---------------------------------------------------------------------------------
 
 data Declaration where 
-  PrdCnsDecl     :: PrdCnsDeclaration  -> Declaration
-  CmdDecl        :: CommandDeclaration -> Declaration
-  DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
+  PrdCnsDecl     :: PrdCnsDeclaration         -> Declaration
+  CmdDecl        :: CommandDeclaration        -> Declaration
+  DataDecl       :: DataDecl                  -> Declaration
   XtorDecl       :: StructuralXtorDeclaration -> Declaration
   ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
   SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration

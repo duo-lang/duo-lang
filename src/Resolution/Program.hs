@@ -15,7 +15,6 @@ import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common
-import Utils (Loc)
 
 ---------------------------------------------------------------------------------
 -- Data Declarations
@@ -28,9 +27,9 @@ resolveXtors sigs = do
     negSigs <- sequence $ resolveXTorSig NegRep <$> sigs
     pure (posSigs, negSigs)
 
-resolveDataDecl :: Loc -> CST.DataDecl -> ResolverM RST.DataDecl
-resolveDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } = do
-  NominalResult data_name' _ _ _ <- lookupTypeConstructor loc data_name
+resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
+resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+  NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
   -- Default the kind if none was specified:
   let polyKind = case data_kind of
                     Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
@@ -44,7 +43,9 @@ resolveDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, da
   xtors <- local f (resolveXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl
-                { data_refined = data_refined
+                { data_loc = data_loc
+                , data_doc = data_doc
+                , data_refined = data_refined
                 , data_name = data_name'
                 , data_polarity = data_polarity
                 , data_kind = polyKind
@@ -131,9 +132,9 @@ resolveDecl (CST.PrdCnsDecl decl) = do
 resolveDecl (CST.CmdDecl decl) = do
   decl' <- resolveCommandDeclaration decl
   pure (RST.CmdDecl decl')
-resolveDecl (CST.DataDecl loc doc dd) = do
-  lowered <- resolveDataDecl loc dd
-  pure $ RST.DataDecl loc doc lowered
+resolveDecl (CST.DataDecl decl) = do
+  lowered <- resolveDataDecl decl
+  pure $ RST.DataDecl lowered
 resolveDecl (CST.XtorDecl decl) = do
   decl' <- resolveStructuralXtorDeclaration decl
   pure $ RST.XtorDecl decl'
