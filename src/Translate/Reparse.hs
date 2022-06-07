@@ -318,9 +318,9 @@ embedTerm (RST.MuAbs loc _ fv cmd) =
 -- Syntactic sugar
 embedTerm (RST.Semi loc _ _ xt substi tm) =
   CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
-embedTerm (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],CnsRep,[])) =
+embedTerm (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],PrdRep,[])) =
   CST.FunApp loc (embedTerm tm) (embedTerm t) 
-embedTerm (RST.Dtor loc _ _ (MkXtorName "CoAp") tm ([RST.CnsTerm t],PrdRep,[])) =
+embedTerm (RST.Dtor loc _ _ (MkXtorName "CoAp") tm ([RST.CnsTerm t],CnsRep,[])) =
   CST.FunApp loc (embedTerm tm) (embedTerm t) 
 embedTerm (RST.Dtor loc _ _ xt tm substi) =
   CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)
