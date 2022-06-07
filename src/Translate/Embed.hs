@@ -8,6 +8,10 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
 import Syntax.Common.PrdCns
+import Syntax.Common.TypesPol
+import Translate.Reparse ()
+import qualified Syntax.Common.TypesPol as TST
+import qualified Syntax.Common.TypesPol as Core
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -41,8 +45,10 @@ embedCoreTerm (Core.Dtor loc rep ns xt t (subst,r,subst2)) = RST.Dtor loc rep ns
 embedCoreTerm (Core.Semi loc rep ns xt (subst,r,subst2) t ) = RST.Semi loc rep ns xt (embedSubst subst, r, embedSubst subst2) (embedCoreTerm t) 
 embedCoreTerm (Core.XCaseI loc rep PrdRep ns cases) = RST.CocaseI loc rep ns (embedTermCaseI <$> cases)
 embedCoreTerm (Core.XCaseI loc rep CnsRep ns cases) = RST.CaseI loc rep ns (embedTermCaseI <$> cases)
-embedCoreTerm (Core.PrimLitI64 loc i) =
-    RST.PrimLitI64 loc i
+embedCoreTerm (Core.Lambda loc rep fv tm)  = RST.Lambda loc rep fv (embedCoreTerm tm) 
+embedCoreTerm (Core.XCase loc _ pc ns cases) = RST.XCase loc pc ns (embedCmdCase <$> cases) -- revisit
+embedCoreTerm (Core.PrimLitI64 loc d) =
+    RST.PrimLitI64 loc d
 embedCoreTerm (Core.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
 
@@ -74,12 +80,13 @@ embedCoreCommand (Core.ExitFailure loc) =
 embedCoreCommand (Core.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (embedSubst subst)
 
+
 embedCoreProg :: Core.Program -> RST.Program
 embedCoreProg = fmap embedCoreDecl
 
 embedCoreDecl :: Core.Declaration -> RST.Declaration
-embedCoreDecl (Core.PrdCnsDecl loc doc rep isRec fv _tys tm) =
-    RST.PrdCnsDecl loc doc rep isRec fv Nothing (embedCoreTerm tm)
+embedCoreDecl (Core.PrdCnsDecl loc doc rep isRec fv tys tm) =
+    RST.PrdCnsDecl loc doc rep isRec fv (embedTypeScheme <$> tys) (embedCoreTerm tm)
 embedCoreDecl (Core.CmdDecl loc doc fv cmd) =
     RST.CmdDecl loc doc fv (embedCoreCommand cmd)
 embedCoreDecl (Core.DataDecl loc doc decl) =
@@ -146,8 +153,13 @@ embedASTCommand (TST.PrimOp loc ty op subst) =
 embedASTProg :: TST.Program -> Core.Program
 embedASTProg = fmap embedASTDecl
 
+embedTypeScheme :: TST.TypeScheme pol -> Core.TypeScheme pol
+embedTypeScheme (TypeScheme loc tvars mt) = Core.TypeScheme loc tvars mt
+  
 embedASTDecl :: TST.Declaration -> Core.Declaration
-embedASTDecl (TST.PrdCnsDecl loc doc rep isRec fv _tys tm) =
+embedASTDecl (TST.PrdCnsDecl loc doc rep isRec fv (Annotated tys) tm) =
+    Core.PrdCnsDecl loc doc rep isRec fv (Just $ embedTypeScheme tys) (embedASTTerm tm)
+embedASTDecl (TST.PrdCnsDecl loc doc rep isRec fv (Inferred _tys) tm) =
     Core.PrdCnsDecl loc doc rep isRec fv Nothing (embedASTTerm tm)
 embedASTDecl (TST.CmdDecl loc doc fv cmd) =
     Core.CmdDecl loc doc fv (embedASTCommand cmd)

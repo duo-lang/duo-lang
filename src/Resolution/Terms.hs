@@ -3,10 +3,8 @@ module Resolution.Terms (resolveTerm, resolveCommand) where
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Text.Megaparsec.Pos (SourcePos)
 
 import Errors
 import Pretty.Pretty ( ppPrint )
@@ -272,14 +270,8 @@ resolveCommand (CST.PrimLitF64 loc _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found #F64 literal")
 resolveCommand (CST.NatLit loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Nat literal")
-resolveCommand (CST.DtorChain _ _ _) =
-  throwError $ LowerError Nothing (CmdExpected "Command expected, but found DtorChain")
 resolveCommand (CST.FunApp loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found function application")
-resolveCommand (CST.MultiLambda loc _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
-resolveCommand (CST.MultiCoLambda loc _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found cofunction abstraction")
 resolveCommand (CST.Lambda loc _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found lambda abstraction")
 resolveCommand (CST.CoLambda loc _ _) =
@@ -293,30 +285,6 @@ casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name 
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 
--- | Lower a multi-lambda abstraction
-resolveMultiLambda :: Loc -> [FreeVarName] -> CST.Term -> ResolverM (CST.Term)
-resolveMultiLambda _ [] tm = pure tm
-resolveMultiLambda loc (fv:fvs) tm = CST.Lambda loc fv <$> resolveMultiLambda loc fvs tm
-
--- | Lower a multi-lambda abstraction
-resolveMultiCoLambda :: Loc -> [FreeVarName] -> CST.Term -> ResolverM (CST.Term)
-resolveMultiCoLambda _ [] tm = pure tm
-resolveMultiCoLambda loc (fv:fvs) tm = CST.CoLambda loc fv <$> resolveMultiCoLambda loc fvs tm
-
--- | Lower a lambda abstraction.
-resolveLambda :: Loc -> FreeVarName -> CST.Term -> ResolverM (RST.Term Prd)
-resolveLambda loc var tm = do
-  tm' <- resolveTerm PrdRep tm
-  let pat = RST.XtorPatI loc (MkXtorName "Ap") ([(Prd, Just var)], (), [])
-  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd, var)] tm')
-  pure $ RST.CocaseI loc PrdRep Nominal [cs]
-
-resolveCoLambda :: Loc -> FreeVarName -> CST.Term -> ResolverM (RST.Term Cns)
-resolveCoLambda loc var tm = do
-  tm' <- resolveTerm CnsRep tm
-  let pat = RST.XtorPatI loc (MkXtorName "CoAp") ([], (), [(Cns, Just var)])
-  let cs = RST.MkTermCaseI loc pat (RST.termClosing [(Prd,MkFreeVarName "*"),(Cns, var)] tm')
-  pure $ RST.CaseI loc CnsRep Nominal [cs]
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> NominalStructural -> Int -> ResolverM (RST.Term Prd)
@@ -334,7 +302,7 @@ resolveApp PrdRep loc fun arg = do
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([],CnsRep,[RST.CnsTerm arg']) fun'
+  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
@@ -343,10 +311,6 @@ isStarT _ = False
 toTm  :: CST.TermOrStar -> CST.Term
 toTm (CST.ToSTerm t) = t
 toTm _x = error "Compiler bug: toFV"
-
-resolveDtorChain :: SourcePos -> CST.Term -> NonEmpty (XtorName, [CST.TermOrStar], SourcePos) -> ResolverM CST.Term
-resolveDtorChain startPos tm ((xtor, subst, endPos) :| [])   = pure $ CST.Dtor (Loc startPos endPos) xtor tm subst
-resolveDtorChain startPos tm ((xtor, subst, endPos) :| (x:xs)) = resolveDtorChain startPos (CST.Dtor (Loc startPos endPos) xtor tm subst) (x :| xs)
 
 ---------------------------------------------------------------------------------
 -- Analyze a substitution which (may) contain a star
@@ -418,8 +382,6 @@ resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
 ---------------------------------------------------------------------------------
-resolveTerm rep    (CST.DtorChain pos tm dtors) =
-  resolveDtorChain pos tm dtors >>= resolveTerm rep
 resolveTerm rep (CST.Semi loc xtor subst tm) = do
   tm' <- resolveTerm CnsRep tm
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
@@ -558,20 +520,22 @@ resolveTerm CnsRep (CST.NatLit loc _ns _i) =
 ---------------------------------------------------------------------------------
 -- Function specific syntax sugar
 ---------------------------------------------------------------------------------
-resolveTerm rep    (CST.MultiLambda loc fvs tm) =
-  resolveMultiLambda loc fvs tm >>= resolveTerm rep
-resolveTerm rep    (CST.MultiCoLambda loc fvs tm) =
-  resolveMultiCoLambda loc fvs tm >>= resolveTerm rep
+resolveTerm PrdRep (CST.Lambda loc fv tm) =
+  do 
+    tm' <- resolveTerm PrdRep tm 
+    let tm'' = RST.termClosing [(Prd,fv)] tm'  
+    return $ RST.Lambda loc PrdRep fv tm''
+resolveTerm CnsRep (CST.CoLambda loc fv tm) =
+  do 
+    tm' <- resolveTerm CnsRep tm 
+    let tm'' = RST.termClosing [(Cns,fv)] tm'  
+    return $ RST.Lambda loc CnsRep fv tm''
 resolveTerm rep (CST.FunApp loc fun arg) =
   resolveApp rep loc fun arg
-resolveTerm PrdRep (CST.Lambda loc fv tm) =
-  resolveLambda loc fv tm
-resolveTerm CnsRep (CST.Lambda loc _fv _tm) =
-  throwError (OtherError (Just loc) "Cannot resolve Lambda to a consumer.")
 resolveTerm PrdRep (CST.CoLambda loc _fv _tm) =
   throwError (OtherError (Just loc) "Cannot resolve Cofunction to a producer.")
-resolveTerm CnsRep (CST.CoLambda loc fv tm) =
-  resolveCoLambda loc fv tm
+resolveTerm CnsRep (CST.Lambda loc _fv _tm) =
+  throwError (OtherError (Just loc) "Cannot resolve Function to a consumer.")
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------

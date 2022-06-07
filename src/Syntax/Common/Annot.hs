@@ -26,6 +26,8 @@ data MatchAnnot (pc :: PrdCns) where
   -- CaseOfCmd / CocaseOfCmd
   MatchAnnotCaseOfCmd :: MatchAnnot pc 
   MatchAnnotCocaseOfCmd :: MatchAnnot pc 
+  -- Lambda / Colambda
+  MatchAnnotLambda :: MatchAnnot pc 
   deriving (Eq, Show)
 
 data XtorAnnot where
@@ -56,6 +58,8 @@ data ApplyAnnot where
   ApplyAnnotXCaseOfIInner :: Int -> ApplyAnnot
   ApplyAnnotCaseOfIOuter :: ApplyAnnot
   ApplyAnnotCocaseOfIOuter :: ApplyAnnot
+
+  ApplyAnnotLambda :: ApplyAnnot
   deriving (Ord, Eq, Show)
 
     

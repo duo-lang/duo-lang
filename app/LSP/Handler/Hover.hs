@@ -22,7 +22,7 @@ import Syntax.Common
 import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
-import Sugar.AST
+import Sugar.TST
 import Syntax.Common.TypesPol
 import Utils (Loc)
 
@@ -141,6 +141,15 @@ dtorToHoverMap loc ty ns = mkHoverMap loc msg
                     , "- Type: `" <> ppPrint ty <> "`"
                     ]
 
+lambdaToHoverMap :: Loc -> Typ pol ->  HoverMap
+lambdaToHoverMap loc ty = mkHoverMap loc msg
+  where
+    msg :: Text
+    msg = T.unlines [ "#### " <>  " lambda"
+                    , "- **Right-Elim**"
+                    , "- Type: `" <> ppPrint ty <> "`"
+                    ]
+
 caseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
 caseToHoverMap loc ty ns = mkHoverMap loc msg
   where
@@ -176,6 +185,8 @@ instance ToHoverMap (Term pc) where
     M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
   toHoverMap (XCaseI loc _pcrep PrdRep ty ns cocases) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> cocases)
+  toHoverMap (Lambda loc _pc ty _fvs tm) = 
+    M.unions $ [lambdaToHoverMap loc ty ] <> [toHoverMap tm]
   toHoverMap (PrimLitI64 loc _) =
     mkHoverMap loc $ T.unlines [ "#### Literal"
                                , "- Raw `#I64` literal"

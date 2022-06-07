@@ -132,6 +132,7 @@ instance ToJumpMap (RST.Term pc) where
   toJumpMap (RST.CocaseOf _ _ _ tm cases) = M.unions (toJumpMap tm : (toJumpMap <$> cases))
   toJumpMap (RST.CaseI _ _ _ cases) = M.unions (toJumpMap <$> cases)
   toJumpMap (RST.CocaseI _ _ _ cases) = M.unions (toJumpMap <$> cases)
+  toJumpMap (RST.Lambda _ _ _ tm) = toJumpMap tm 
   toJumpMap RST.PrimLitI64 {} = M.empty
   toJumpMap RST.PrimLitF64 {} = M.empty
 
