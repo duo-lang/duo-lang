@@ -57,6 +57,7 @@ dualSubst subst = mapM dualPrdCnsTerm subst
       dualPrdCnsTerm (CnsTerm t) = dualTerm CnsRep t >>= (return . PrdTerm)
 
 dualXtorName :: XtorName -> XtorName
+dualXtorName (MkXtorName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkXtorName n 
 dualXtorName (MkXtorName x) = MkXtorName (T.pack "Co" `T.append` x)
 
 dualXtorAnnot :: XtorAnnot -> XtorAnnot
@@ -99,6 +100,7 @@ dualMuAnnot MuAnnotCaseOf = MuAnnotCocaseOf
 dualMuAnnot MuAnnotCocaseOf = MuAnnotCaseOf
 
 dualFVName :: FreeVarName -> FreeVarName
+dualFVName (MkFreeVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeVarName n 
 dualFVName (MkFreeVarName x) = MkFreeVarName (T.pack "co" `T.append` x)
 
 
@@ -130,7 +132,14 @@ dualVariantType NegRep (ContravariantType ty) = ContravariantType (dualType PosR
 dualRnTypeName :: RnTypeName -> RnTypeName
 dualRnTypeName (MkRnTypeName _loc _doc mn tn) = MkRnTypeName defaultLoc Nothing mn (dualTypeName tn)
 
+-- >>> dualTypeName (MkTypeName "Foo")
+-- MkTypeName {unTypeName = "CoFoo"}
+
+-- >>> dualTypeName (MkTypeName "CoApp")
+-- MkTypeName {unTypeName = "App"}
+
 dualTypeName :: TypeName -> TypeName 
+dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n 
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
 dualMonoKind :: MonoKind -> MonoKind
