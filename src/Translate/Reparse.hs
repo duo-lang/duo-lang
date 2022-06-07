@@ -316,11 +316,13 @@ embedTerm (RST.XCase loc CnsRep _ cases) =
 embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
 -- Syntactic sugar
+embedTerm (RST.Semi loc _ _ (MkXtorName "CoAp")  ([RST.CnsTerm t],CnsRep,[]) tm) =
+  CST.FunApp loc (embedTerm tm) (embedTerm t) 
+embedTerm (RST.Semi loc _ _ (MkXtorName "CoAp")  other tm) =
+  error $ "embedTerm: " ++ show  other
 embedTerm (RST.Semi loc _ _ xt substi tm) =
   CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
 embedTerm (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],PrdRep,[])) =
-  CST.FunApp loc (embedTerm tm) (embedTerm t) 
-embedTerm (RST.Dtor loc _ _ (MkXtorName "CoAp") tm ([RST.CnsTerm t],CnsRep,[])) =
   CST.FunApp loc (embedTerm tm) (embedTerm t) 
 embedTerm (RST.Dtor loc _ _ xt tm substi) =
   CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)

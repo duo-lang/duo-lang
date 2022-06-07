@@ -119,8 +119,6 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.Xtor _ xt args) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args)
-  prettyAnn (CST.Semi _ (MkXtorName "CoAp")  [CST.ToSTerm tm, CST.ToSStar] t) =
-       prettyAnn t <+> prettyAnn tm
   prettyAnn (CST.Semi _ xt args c) =
     prettyAnn xt <>
     parens' comma (prettyAnn <$> args) <>
