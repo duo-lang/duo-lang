@@ -17,6 +17,10 @@ import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common
 import Utils (Loc)
 
+---------------------------------------------------------------------------------
+-- Data Declarations
+---------------------------------------------------------------------------------
+
 resolveXtors :: [CST.XtorSig]
            -> ResolverM ([RST.XtorSig Pos], [RST.XtorSig Neg])
 resolveXtors sigs = do
@@ -48,21 +52,67 @@ resolveDataDecl loc CST.NominalDecl { data_refined, data_name, data_polarity, da
                 }
   pure dcl
 
-resolveAnnot :: PrdCnsRep pc -> CST.TypeScheme -> ResolverM (RST.TypeScheme (PrdCnsToPol pc))
+---------------------------------------------------------------------------------
+-- Producer / Consumer Declarations
+---------------------------------------------------------------------------------
+
+resolveAnnot :: PrdCnsRep pc
+             -> CST.TypeScheme
+             -> ResolverM (RST.TypeScheme (PrdCnsToPol pc))
 resolveAnnot PrdRep ts = resolveTypeScheme PosRep ts
 resolveAnnot CnsRep ts = resolveTypeScheme NegRep ts
 
-resolveMaybeAnnot :: PrdCnsRep pc -> Maybe (CST.TypeScheme) -> ResolverM (Maybe (RST.TypeScheme (PrdCnsToPol pc)))
+resolveMaybeAnnot :: PrdCnsRep pc
+                  -> Maybe CST.TypeScheme
+                  -> ResolverM (Maybe (RST.TypeScheme (PrdCnsToPol pc)))
 resolveMaybeAnnot _ Nothing = pure Nothing
 resolveMaybeAnnot pc (Just annot) = Just <$> resolveAnnot pc annot
 
+resolvePrdCnsDeclaration :: PrdCnsRep pc
+                         -> CST.PrdCnsDeclaration
+                         -> ResolverM (RST.PrdCnsDeclaration pc)
+resolvePrdCnsDeclaration pcrep CST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } = do
+  pcdecl_annot' <- resolveMaybeAnnot pcrep pcdecl_annot
+  pcdecl_term' <- resolveTerm pcrep pcdecl_term
+  pure $ RST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                                 , pcdecl_doc = pcdecl_doc
+                                 , pcdecl_pc = pcrep
+                                 , pcdecl_isRec =pcdecl_isRec
+                                 , pcdecl_name = pcdecl_name
+                                 , pcdecl_annot = pcdecl_annot'
+                                 , pcdecl_term = pcdecl_term'
+                                 }
+
+---------------------------------------------------------------------------------
+-- Command Declarations
+---------------------------------------------------------------------------------
+
+resolveCommandDeclaration :: CST.CommandDeclaration
+                          -> ResolverM RST.CommandDeclaration
+resolveCommandDeclaration CST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
+  cmddecl_cmd' <- resolveCommand cmddecl_cmd
+  pure $ RST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                                  , cmddecl_doc = cmddecl_doc
+                                  , cmddecl_name = cmddecl_name
+                                  , cmddecl_cmd= cmddecl_cmd'
+                                  }
+
+---------------------------------------------------------------------------------
+-- Declarations
+---------------------------------------------------------------------------------
+
 resolveDecl :: CST.Declaration -> ResolverM RST.Declaration
-resolveDecl (CST.PrdCnsDecl loc doc Prd isrec fv annot tm) =
-  RST.PrdCnsDecl loc doc PrdRep isrec fv <$> (resolveMaybeAnnot PrdRep annot) <*> (resolveTerm PrdRep tm)
-resolveDecl (CST.PrdCnsDecl loc doc Cns isrec fv annot tm) =
-  RST.PrdCnsDecl loc doc CnsRep isrec fv <$> (resolveMaybeAnnot CnsRep annot) <*> (resolveTerm CnsRep tm)
-resolveDecl (CST.CmdDecl loc doc fv cmd) =
-  RST.CmdDecl loc doc fv <$> (resolveCommand cmd)
+resolveDecl (CST.PrdCnsDecl decl) = do
+  case CST.pcdecl_pc decl of
+    Prd -> do
+      decl' <- resolvePrdCnsDeclaration PrdRep decl
+      pure (RST.PrdCnsDecl PrdRep decl')
+    Cns -> do
+      decl' <- resolvePrdCnsDeclaration CnsRep decl
+      pure (RST.PrdCnsDecl CnsRep decl')
+resolveDecl (CST.CmdDecl decl) = do
+  decl' <- resolveCommandDeclaration decl
+  pure (RST.CmdDecl decl')
 resolveDecl (CST.DataDecl loc doc dd) = do
   lowered <- resolveDataDecl loc dd
   pure $ RST.DataDecl loc doc lowered

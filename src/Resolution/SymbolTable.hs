@@ -158,12 +158,12 @@ createSymbolTable' mn (TySynDecl loc doc tyname ty) st = do
   let rnTypeName = MkRnTypeName { rnTnLoc = loc, rnTnDoc = doc, rnTnModule = mn , rnTnName = tyname }
   let synonymResult = SynonymResult rnTypeName ty
   pure $ st { typeNameMap = M.insert tyname synonymResult (typeNameMap st) }
-createSymbolTable' _ (PrdCnsDecl loc _ _ _ fv _ _) st = do
+createSymbolTable' _ (PrdCnsDecl MkPrdCnsDeclaration { pcdecl_loc, pcdecl_name }) st = do
   -- Check if the FreeVarName is already declared in this module
-  checkFreshFreeVarName loc fv st
-  pure $ st { freeVarMap = M.insert fv FreeVarResult (freeVarMap st) }
-createSymbolTable' _ (CmdDecl loc _ fv _) st = do
-  checkFreshFreeVarName loc fv st
-  pure $ st { freeVarMap = M.insert fv FreeVarResult (freeVarMap st) }
+  checkFreshFreeVarName pcdecl_loc pcdecl_name st
+  pure $ st { freeVarMap = M.insert pcdecl_name FreeVarResult (freeVarMap st) }
+createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }) st = do
+  checkFreshFreeVarName cmddecl_loc cmddecl_name st
+  pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _ _ _) st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st

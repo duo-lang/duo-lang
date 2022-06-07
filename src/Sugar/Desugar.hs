@@ -113,11 +113,30 @@ desugarCmd (RST.CocaseOfI loc rep ns t cases) =
 -- Translate Program
 ---------------------------------------------------------------------------------
 
+desugarPrdCnsDeclaration :: RST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
+desugarPrdCnsDeclaration RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term} =
+  Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                           , pcdecl_doc = pcdecl_doc
+                           , pcdecl_pc = pcdecl_pc
+                           , pcdecl_isRec = pcdecl_isRec
+                           , pcdecl_name = pcdecl_name
+                           , pcdecl_annot = pcdecl_annot
+                           , pcdecl_term = desugarTerm pcdecl_term
+                           }
+
+desugarCommandDeclaration :: RST.CommandDeclaration -> Core.CommandDeclaration
+desugarCommandDeclaration RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+  Core.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                            , cmddecl_doc = cmddecl_doc
+                            , cmddecl_name =cmddecl_name
+                            , cmddecl_cmd = desugarCmd cmddecl_cmd
+                            }
+
 desugarDecl :: RST.Declaration -> Core.Declaration
-desugarDecl (RST.PrdCnsDecl loc doc pc isRec fv annot tm) =
-  Core.PrdCnsDecl loc doc pc isRec fv annot (desugarTerm tm)
-desugarDecl (RST.CmdDecl loc doc fv cmd) =
-  Core.CmdDecl loc doc fv (desugarCmd cmd)
+desugarDecl (RST.PrdCnsDecl pcrep decl) =
+  Core.PrdCnsDecl pcrep (desugarPrdCnsDeclaration decl)
+desugarDecl (RST.CmdDecl decl) =
+  Core.CmdDecl (desugarCommandDeclaration decl)
 desugarDecl (RST.DataDecl loc doc decl) =
   Core.DataDecl loc doc decl
 desugarDecl (RST.XtorDecl loc doc dc xt args ret) =

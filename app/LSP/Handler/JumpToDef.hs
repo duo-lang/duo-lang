@@ -53,7 +53,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
-            responder (generateJumpToDef pos (embedCoreProg (embedASTProg prog)))
+            responder (generateJumpToDef pos (embedCoreProg (embedTSTProg prog)))
     
 
 generateJumpToDef :: Position -> RST.Program -> Either ResponseError (Location |? b)
@@ -188,12 +188,19 @@ instance ToJumpMap (RST.TypeScheme pol) where
 instance ToJumpMap RST.Program where
   toJumpMap prog = M.unions (toJumpMap <$> prog)
 
+instance ToJumpMap (RST.PrdCnsDeclaration pc) where
+  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =
+    toJumpMap pcdecl_term
+  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Just tys} =
+    M.union (toJumpMap tys) (toJumpMap pcdecl_term)
+
+instance ToJumpMap RST.CommandDeclaration where
+  toJumpMap RST.MkCommandDeclaration { cmddecl_cmd } =
+    toJumpMap cmddecl_cmd
+
 instance ToJumpMap RST.Declaration where
-  toJumpMap (RST.PrdCnsDecl _ _ _ _ _ Nothing tm) =
-    toJumpMap tm
-  toJumpMap (RST.PrdCnsDecl _ _ _ _ _ (Just tys) tm) =
-    M.union (toJumpMap tys) (toJumpMap tm)
-  toJumpMap (RST.CmdDecl _ _ _ cmd) = toJumpMap cmd
+  toJumpMap (RST.PrdCnsDecl _ decl) = toJumpMap decl
+  toJumpMap (RST.CmdDecl decl) = toJumpMap decl
   toJumpMap RST.DataDecl {} = M.empty
   toJumpMap RST.XtorDecl {} = M.empty
   toJumpMap RST.ImportDecl {} = M.empty

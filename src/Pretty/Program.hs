@@ -19,9 +19,10 @@ import Syntax.Common
 import Driver.Environment
 import Translate.Embed
 import Translate.Reparse
+import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 
 ---------------------------------------------------------------------------------
--- Prettyprinting of Declarations
+-- Data declarations
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn Unpol.DataDecl where
@@ -39,15 +40,49 @@ instance PrettyAnn Unpol.DataDecl where
 instance PrettyAnn Pol.DataDecl where
   prettyAnn decl = prettyAnn (embedTyDecl decl)
 
+---------------------------------------------------------------------------------
+-- Producer / Consumer Declarations
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.PrdCnsDeclaration where
+  prettyAnn CST.MkPrdCnsDeclaration { pcdecl_pc, pcdecl_isRec = Recursive, pcdecl_name, pcdecl_annot, pcdecl_term} =
+    annKeyword "def" <+>
+    annKeyword "rec" <+>
+    prettyPrdCns pcdecl_pc <+>
+    prettyAnn pcdecl_name <+>
+    prettyAnnot pcdecl_annot <+>
+    annSymbol ":=" <+>
+    prettyAnn pcdecl_term <>
+    semi
+  prettyAnn CST.MkPrdCnsDeclaration { pcdecl_pc, pcdecl_isRec = NonRecursive, pcdecl_name, pcdecl_annot, pcdecl_term} =
+    annKeyword "def" <+>
+    prettyPrdCns pcdecl_pc <+>
+    prettyAnn pcdecl_name <+>
+    prettyAnnot pcdecl_annot <+>
+    annSymbol ":=" <+>
+    prettyAnn pcdecl_term <>
+    semi
+
 prettyAnnot :: Maybe Unpol.TypeScheme -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
-prettyPrdCnsDecl :: PrettyAnn a => PrdCns -> IsRec -> a -> Maybe Unpol.TypeScheme -> Doc Annotation -> Doc Annotation
-prettyPrdCnsDecl pc Recursive fv annot ptm =
-  annKeyword "def" <+> "rec" <+> prettyPrdCns pc <+> prettyAnn fv   <+> prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
-prettyPrdCnsDecl pc NonRecursive fv annot ptm =
-  annKeyword "def" <+>        prettyPrdCns pc <+>   prettyAnn fv <+>  prettyAnnot annot <+> annSymbol ":=" <+> ptm <> semi
+---------------------------------------------------------------------------------
+-- Command Declarations
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.CommandDeclaration where
+  prettyAnn CST.MkCommandDeclaration { cmddecl_name, cmddecl_cmd } =
+    annKeyword "def" <+>
+    annKeyword "cmd" <+>
+    prettyAnn cmddecl_name <+>
+    annSymbol ":=" <+>
+    prettyAnn cmddecl_cmd <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Other
+---------------------------------------------------------------------------------
 
 prettyCmdDecl :: PrettyAnn a => a -> Doc Annotation -> Doc Annotation
 prettyCmdDecl fv pcmd =
@@ -71,17 +106,15 @@ instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
 
 instance PrettyAnn TST.Declaration where
-  prettyAnn decl = prettyAnn (embedASTDecl decl)
+  prettyAnn decl = prettyAnn (embedTSTDecl decl)
 
 instance PrettyAnn RST.Declaration where
   prettyAnn decl = prettyAnn (reparseDecl decl)
 
     
 instance PrettyAnn CST.Declaration where
-  prettyAnn (CST.PrdCnsDecl _ _ pc isRec fv annot tm) =
-    prettyPrdCnsDecl pc isRec fv annot (prettyAnn tm)
-  prettyAnn (CST.CmdDecl _ _ fv cm) =
-    prettyCmdDecl fv (prettyAnn cm)
+  prettyAnn (CST.PrdCnsDecl decl) = prettyAnn decl
+  prettyAnn (CST.CmdDecl decl) = prettyAnn decl
   prettyAnn (CST.DataDecl _ _ decl) =
     prettyAnn decl
   prettyAnn (CST.XtorDecl _ _ dc xt args ret) =
@@ -96,7 +129,6 @@ instance PrettyAnn CST.Declaration where
     annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
   prettyAnn CST.ParseErrorDecl =
     undefined
-
 
 instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)

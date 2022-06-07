@@ -362,15 +362,21 @@ instance ToHoverMap (TypeScheme pol) where
 -- Converting a program to a HoverMap
 ---------------------------------------------------------------------------------
 
-instance ToHoverMap TST.Declaration where
-  toHoverMap (TST.PrdCnsDecl loc _doc _rep _isrec _fv (Inferred tys) tm) =
+instance ToHoverMap (TST.PrdCnsDeclaration pc) where
+  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_annot = Inferred tys, pcdecl_term } =
     -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
     -- defaultLoc.
-    M.union (toHoverMap tm) (M.fromList [(locToRange loc, mkHover (ppPrint tys) (locToRange loc))])
-  toHoverMap (TST.PrdCnsDecl _loc _doc _rep _isrec _fv (Annotated tys) tm) =
-    M.union (toHoverMap tm) (toHoverMap tys)
-  toHoverMap (TST.CmdDecl _loc _doc _fv cmd)  =
-    toHoverMap cmd
+    M.union (toHoverMap pcdecl_term) (M.fromList [(locToRange pcdecl_loc, mkHover (ppPrint tys) (locToRange pcdecl_loc))])
+  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated tys, pcdecl_term } =
+    M.union (toHoverMap pcdecl_term) (toHoverMap tys)
+
+instance ToHoverMap TST.CommandDeclaration where
+  toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
+    toHoverMap cmddecl_cmd
+
+instance ToHoverMap TST.Declaration where
+  toHoverMap (TST.PrdCnsDecl _ decl) = toHoverMap decl
+  toHoverMap (TST.CmdDecl decl)  = toHoverMap decl
   toHoverMap (TST.DataDecl _loc _doc _decl) =
     M.empty
   toHoverMap (TST.XtorDecl _loc _doc _dc _xt _args _eo) =

@@ -47,7 +47,15 @@ prdCnsDeclarationP doc startPos pc = do
     _ <- symbolP SymColoneq
     (tm,_) <- termP
     endPos <- symbolP SymSemi
-    pure (PrdCnsDecl (Loc startPos endPos) doc pc isRec v annot tm)
+    let decl = MkPrdCnsDeclaration { pcdecl_loc = Loc startPos endPos
+                                   , pcdecl_doc = doc
+                                   , pcdecl_pc = pc
+                                   , pcdecl_isRec = isRec
+                                   , pcdecl_name = v
+                                   , pcdecl_annot = annot
+                                   , pcdecl_term = tm
+                                   }
+    pure (PrdCnsDecl decl)
 
 cmdDeclarationP :: Maybe DocComment -> SourcePos -> Parser Declaration
 cmdDeclarationP doc startPos = do
@@ -58,13 +66,21 @@ cmdDeclarationP doc startPos = do
       pure v
     (cmd,_) <- termP
     endPos <- symbolP SymSemi
-    pure (CmdDecl (Loc startPos endPos) doc v cmd)
+    let decl = MkCommandDeclaration { cmddecl_loc = Loc startPos endPos
+                                    , cmddecl_doc = doc
+                                    , cmddecl_name = v
+                                    , cmddecl_cmd = cmd
+                                    }
+    pure (CmdDecl decl)
 
 defDeclarationP :: Maybe DocComment -> Parser Declaration
 defDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwDef))
-  recoverDeclaration $ cmdDeclarationP doc startPos <|> prdCnsDeclarationP doc startPos Prd <|> prdCnsDeclarationP doc startPos Cns
+  recoverDeclaration $
+    cmdDeclarationP doc startPos <|>
+    prdCnsDeclarationP doc startPos Prd <|>
+    prdCnsDeclarationP doc startPos Cns
 
 ---------------------------------------------------------------------------------
 -- Import Declaration

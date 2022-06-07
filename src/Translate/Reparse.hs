@@ -514,11 +514,30 @@ reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
   embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
 
+reparsePrdCnsDeclaration :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
+reparsePrdCnsDeclaration RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+  CST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                          , pcdecl_doc = pcdecl_doc
+                          , pcdecl_pc = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
+                          , pcdecl_isRec = pcdecl_isRec
+                          , pcdecl_name = pcdecl_name
+                          , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                          , pcdecl_term = reparseTerm pcdecl_term
+                          }
+
+reparseCommandDeclaration :: RST.CommandDeclaration -> CST.CommandDeclaration
+reparseCommandDeclaration RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+  CST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                           , cmddecl_doc = cmddecl_doc
+                           , cmddecl_name = cmddecl_name
+                           , cmddecl_cmd= reparseCommand cmddecl_cmd
+                           }
+
 reparseDecl :: RST.Declaration -> CST.Declaration
-reparseDecl (RST.PrdCnsDecl loc doc rep isRec fv ts tm) =
-  CST.PrdCnsDecl loc doc (case rep of PrdRep -> Prd; CnsRep -> Cns) isRec fv (embedTypeScheme <$> ts) (reparseTerm tm)
-reparseDecl (RST.CmdDecl loc doc fv cmd) =
-  CST.CmdDecl loc doc fv (reparseCommand cmd)
+reparseDecl (RST.PrdCnsDecl _ decl) = 
+  CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
+reparseDecl (RST.CmdDecl decl) =
+  CST.CmdDecl (reparseCommandDeclaration decl)
 reparseDecl (RST.DataDecl loc doc decl) =
   CST.DataDecl loc doc (embedTyDecl decl)
 reparseDecl (RST.XtorDecl loc doc dc xt args ret) =
