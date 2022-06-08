@@ -1,4 +1,4 @@
-module Resolution.Types (resolveTyp, resolveTypeScheme, resolveXTorSig) where
+module Resolution.Types (resolveTyp, resolveTypeScheme, resolveXTorSigs) where
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
@@ -81,8 +81,8 @@ resolveTyp rep (TyPrim loc pt) =
 
 
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
-resolveTypeArgs loc rep tn (MkPolyKind { kindArgs }) args = do
-    if (length args) /= length kindArgs  then
+resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
+    if length args /= length kindArgs  then
         throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
