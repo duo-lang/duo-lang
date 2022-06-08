@@ -75,7 +75,7 @@ generateCodeActionPrdCnsDeclaration ident TST.MkPrdCnsDeclaration {pcdecl_loc, p
   let
     desugar  = [ generateDesugarCodeAction pcdecl_pc ident (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | not (isDesugaredTerm pcdecl_term)]
     cbvfocus = [ generateFocusCodeAction pcdecl_pc ident CBV (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
-    cbnfocus = [ generateFocusCodeAction pcdecl_pc ident CBN (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
+    cbnfocus = [ generateFocusCodeAction pcdecl_pc ident CBN (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
     dualize = [generateDualizeCodeAction ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term]
   in
     desugar ++ cbvfocus ++ cbnfocus ++ dualize
@@ -84,7 +84,7 @@ generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDec
 generateCodeActionCommandDeclaration ident TST.MkCommandDeclaration {cmddecl_loc, cmddecl_name, cmddecl_cmd } =
   let
     desugar = [ generateCmdDesugarCodeAction ident (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | not (isDesugaredCommand cmddecl_cmd)]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBN (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBV (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBV cmddecl_cmd)]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
   in
     desugar ++ cbvfocus ++ cbnfocus

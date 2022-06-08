@@ -215,6 +215,7 @@ isDesugaredTerm CocaseOf {} = False
 isDesugaredTerm CaseOf {} = False 
 isDesugaredTerm Dtor {} = False 
 isDesugaredTerm Semi {} = False 
+isDesugaredTerm Lambda {} = False
 isDesugaredTerm (RawCase _ _ _ _ cases) = 
   and $ (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases 
 isDesugaredTerm (RawXtor _ _ _ _ _ subst) = 
