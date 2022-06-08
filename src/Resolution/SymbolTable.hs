@@ -150,8 +150,8 @@ createSymbolTable' _ (TyOpDecl _ _ op prec assoc ty) st = do
                       , desugar = NominalDesugaring ty
                       }
     pure $ st { tyOps = tyOp : (tyOps st) }
-createSymbolTable' _ (ImportDecl loc _ mn) st =
-  pure $ st { imports = (mn,loc):(imports st) }
+createSymbolTable' _ (ImportDecl (MkImportDeclaration { imprtdecl_loc, imprtdecl_module })) st =
+  pure $ st { imports = (imprtdecl_module,imprtdecl_loc):(imports st) }
 createSymbolTable' mn (TySynDecl loc doc tyname ty) st = do
   -- Check whether the TypeName is already declared in this module
   checkFreshTypeName loc tyname st
@@ -165,5 +165,5 @@ createSymbolTable' _ (PrdCnsDecl MkPrdCnsDeclaration { pcdecl_loc, pcdecl_name }
 createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }) st = do
   checkFreshFreeVarName cmddecl_loc cmddecl_name st
   pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
-createSymbolTable' _ (SetDecl _ _ _) st = pure st
+createSymbolTable' _ (SetDecl _) st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st

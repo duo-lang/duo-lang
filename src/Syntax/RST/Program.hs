@@ -1,12 +1,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.RST.Program where
 
-import Data.Text (Text)
 
 import Syntax.Common
 import Syntax.RST.Terms( Command, Term )
 import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
 import Utils ( Loc )
+import Syntax.CST.Program qualified as CST
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -87,8 +87,8 @@ data Declaration where
   CmdDecl    :: CommandDeclaration                   -> Declaration
   DataDecl   :: DataDecl                             -> Declaration
   XtorDecl   :: StructuralXtorDeclaration            -> Declaration
-  ImportDecl :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
-  SetDecl    :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
+  ImportDecl :: CST.ImportDeclaration                -> Declaration
+  SetDecl    :: CST.SetDeclaration                   -> Declaration
   TyOpDecl   :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> RnTypeName                        -> Declaration
   TySynDecl  :: Loc -> Maybe DocComment -> TypeName -> (Typ Pos, Typ Neg)                                               -> Declaration
   
@@ -99,8 +99,8 @@ instance Show Declaration where
   show (CmdDecl decl) = show decl
   show (DataDecl decl) = show decl
   show (XtorDecl decl) = show decl
-  show (ImportDecl loc doc mn) = "ImportDecl: " ++ show loc ++ show doc ++ show mn
-  show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt
+  show (ImportDecl decl) = show decl
+  show (SetDecl decl) = show decl
   show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
   show (TySynDecl loc doc nm ty) = "TySynDecl: " ++ show loc ++ show doc ++ show nm ++ show ty
   

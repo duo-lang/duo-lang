@@ -381,9 +381,9 @@ instance ToHoverMap TST.Declaration where
     M.empty
   toHoverMap (TST.XtorDecl _) =
     M.empty
-  toHoverMap (TST.ImportDecl _loc _doc _mn) =
+  toHoverMap (TST.ImportDecl _) =
     M.empty
-  toHoverMap (TST.SetDecl _loc _doc _txt) =
+  toHoverMap (TST.SetDecl _) =
     M.empty
   toHoverMap (TST.TyOpDecl _loc _doc _op _prec _assoc _tn) =
     M.empty

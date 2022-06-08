@@ -112,10 +112,10 @@ embedCoreDecl (Core.DataDecl decl) =
     RST.DataDecl decl
 embedCoreDecl (Core.XtorDecl decl) =
     RST.XtorDecl decl
-embedCoreDecl (Core.ImportDecl loc doc mn) =
-    RST.ImportDecl loc doc mn
-embedCoreDecl (Core.SetDecl loc doc txt) =
-    RST.SetDecl loc doc txt
+embedCoreDecl (Core.ImportDecl decl) =
+    RST.ImportDecl decl
+embedCoreDecl (Core.SetDecl decl) =
+    RST.SetDecl decl
 embedCoreDecl (Core.TyOpDecl loc doc op prec assoc ty) =
     RST.TyOpDecl loc doc op prec assoc ty
 embedCoreDecl (Core.TySynDecl loc doc nm ty) =
@@ -212,10 +212,10 @@ embedTSTDecl (TST.DataDecl decl) =
     Core.DataDecl decl
 embedTSTDecl (TST.XtorDecl decl) =
     Core.XtorDecl decl
-embedTSTDecl (TST.ImportDecl loc doc mn) =
-    Core.ImportDecl loc doc mn
-embedTSTDecl (TST.SetDecl loc doc txt) =
-    Core.SetDecl loc doc txt
+embedTSTDecl (TST.ImportDecl decl) =
+    Core.ImportDecl decl
+embedTSTDecl (TST.SetDecl decl) =
+    Core.SetDecl decl
 embedTSTDecl (TST.TyOpDecl loc doc op prec assoc ty) =
     Core.TyOpDecl loc doc op prec assoc ty
 embedTSTDecl (TST.TySynDecl loc doc nm ty) =

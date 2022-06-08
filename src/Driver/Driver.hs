@@ -175,13 +175,13 @@ inferDecl _mn (Core.XtorDecl decl) = do
 --
 -- ImportDecl
 --
-inferDecl _mn (Core.ImportDecl loc doc mod) = do
-  pure (TST.ImportDecl loc doc mod)
+inferDecl _mn (Core.ImportDecl decl) = do
+  pure (TST.ImportDecl decl)
 --
 -- SetDecl
 --
-inferDecl _mn (Core.SetDecl _ _ txt) = case T.unpack txt of
-  _ -> throwOtherError ["Unknown option: " <> txt]
+inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) = 
+  throwOtherError ["Unknown option: " <> setdecl_option]
 --
 -- TyOpDecl
 --

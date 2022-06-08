@@ -29,7 +29,7 @@ data PrdCnsDeclaration = MkPrdCnsDeclaration
     -- ^ The term itself.
 }
 
-deriving instance (Show PrdCnsDeclaration)
+deriving instance Show PrdCnsDeclaration
 
 ---------------------------------------------------------------------------------
 -- Command Declaration
@@ -47,7 +47,7 @@ data CommandDeclaration = MkCommandDeclaration
     -- ^ The command itself.
   }
 
-deriving instance (Show CommandDeclaration)
+deriving instance Show CommandDeclaration
 
 ---------------------------------------------------------------------------------
 -- Structural Xtor Declaration
@@ -76,7 +76,39 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
     -- and CBN for destructors.
   }
 
-deriving instance (Show StructuralXtorDeclaration)
+deriving instance Show StructuralXtorDeclaration
+
+---------------------------------------------------------------------------------
+-- Import Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel import statment.
+data ImportDeclaration = MkImportDeclaration
+  { imprtdecl_loc :: Loc
+    -- ^ The source code location of the import.
+  , imprtdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the import.
+  , imprtdecl_module :: ModuleName
+    -- ^ The imported module.
+  }
+
+deriving instance Show ImportDeclaration
+
+---------------------------------------------------------------------------------
+-- Set Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel configuration option.
+data SetDeclaration = MkSetDeclaration
+  { setdecl_loc :: Loc
+    -- ^ The source code location of the option.
+  , setdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the option.
+  , setdecl_option :: Text
+    -- ^ The option itself.
+  }
+
+deriving instance Show SetDeclaration
 
 ---------------------------------------------------------------------------------
 -- Declarations
@@ -87,8 +119,8 @@ data Declaration where
   CmdDecl        :: CommandDeclaration        -> Declaration
   DataDecl       :: DataDecl                  -> Declaration
   XtorDecl       :: StructuralXtorDeclaration -> Declaration
-  ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
-  SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
+  ImportDecl     :: ImportDeclaration         -> Declaration
+  SetDecl        :: SetDeclaration            -> Declaration
   TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
   TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> Typ                                                              -> Declaration
   ParseErrorDecl ::                                                                                                            Declaration

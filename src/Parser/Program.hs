@@ -92,7 +92,11 @@ importDeclP doc = do
   try (void (keywordP KwImport))
   (mn, _) <- moduleNameP
   endPos <- symbolP SymSemi
-  return (ImportDecl (Loc startPos endPos) doc mn)
+  let decl = MkImportDeclaration { imprtdecl_loc = Loc startPos endPos
+                                 , imprtdecl_doc = doc
+                                 , imprtdecl_module = mn
+                                 }
+  return (ImportDecl decl)
 
 ---------------------------------------------------------------------------------
 -- Set Option Declaration
@@ -104,7 +108,11 @@ setDeclP doc = do
   try (void (keywordP KwSet))
   (txt,_) <- allCaseId
   endPos <- symbolP SymSemi
-  return (SetDecl (Loc startPos endPos) doc txt)
+  let decl = MkSetDeclaration { setdecl_loc = Loc startPos endPos
+                              , setdecl_doc = doc
+                              , setdecl_option = txt
+                              }
+  return (SetDecl decl)
 
 ---------------------------------------------------------------------------------
 -- Type Operator Declaration

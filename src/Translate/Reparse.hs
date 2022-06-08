@@ -555,10 +555,10 @@ reparseDecl (RST.DataDecl decl) =
   CST.DataDecl (embedTyDecl decl)
 reparseDecl (RST.XtorDecl decl) =
   CST.XtorDecl (reparseStructuralXtorDeclaration decl)
-reparseDecl (RST.ImportDecl loc doc mn) =
-  CST.ImportDecl loc doc mn
-reparseDecl (RST.SetDecl loc doc txt) =
-  CST.SetDecl loc doc txt
+reparseDecl (RST.ImportDecl decl) =
+  CST.ImportDecl decl
+reparseDecl (RST.SetDecl decl) =
+  CST.SetDecl decl
 reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
   CST.TyOpDecl loc doc op prec assoc (rnTnName ty)
 reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =

@@ -138,10 +138,10 @@ resolveDecl (CST.DataDecl decl) = do
 resolveDecl (CST.XtorDecl decl) = do
   decl' <- resolveStructuralXtorDeclaration decl
   pure $ RST.XtorDecl decl'
-resolveDecl (CST.ImportDecl loc doc mod) = do
-  pure $ RST.ImportDecl loc doc mod
-resolveDecl (CST.SetDecl loc doc txt) =
-  pure $ RST.SetDecl loc doc txt
+resolveDecl (CST.ImportDecl decl) = do
+  pure $ RST.ImportDecl decl
+resolveDecl (CST.SetDecl decl) =
+  pure $ RST.SetDecl decl
 resolveDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
   NominalResult tyname' _ _ _ <- lookupTypeConstructor loc tyname
   pure $ RST.TyOpDecl loc doc op prec assoc tyname'

@@ -98,6 +98,26 @@ instance PrettyAnn CST.StructuralXtorDeclaration where
     semi
 
 ---------------------------------------------------------------------------------
+-- Import Declaration
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.ImportDeclaration where
+  prettyAnn CST.MkImportDeclaration { imprtdecl_module } =
+    annKeyword "import" <+>
+    prettyAnn imprtdecl_module <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Set Declaration
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.SetDeclaration where
+  prettyAnn CST.MkSetDeclaration { setdecl_option } =
+    annKeyword "set" <+>
+    prettyAnn setdecl_option <>
+    semi
+
+---------------------------------------------------------------------------------
 -- Other
 ---------------------------------------------------------------------------------
 
@@ -122,16 +142,13 @@ instance PrettyAnn CST.Declaration where
   prettyAnn (CST.CmdDecl decl) = prettyAnn decl
   prettyAnn (CST.DataDecl decl) = prettyAnn decl
   prettyAnn (CST.XtorDecl decl) = prettyAnn decl
-  prettyAnn (CST.ImportDecl _ _ mod) =
-    annKeyword "import" <+> prettyAnn mod <> semi
-  prettyAnn (CST.SetDecl _ _ txt) =
-    annKeyword "set" <+> prettyAnn txt <> semi
+  prettyAnn (CST.ImportDecl decl) = prettyAnn decl
+  prettyAnn (CST.SetDecl decl) = prettyAnn decl
   prettyAnn (CST.TyOpDecl _ _ op prec assoc ty) =
     prettyTyOpDecl op assoc prec ty
   prettyAnn (CST.TySynDecl _ _ nm ty) =
     annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
-  prettyAnn CST.ParseErrorDecl =
-    undefined
+  prettyAnn CST.ParseErrorDecl = "<PARSE ERROR: SHOULD NOT OCCUR>"
 
 instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)
