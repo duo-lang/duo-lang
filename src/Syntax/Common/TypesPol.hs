@@ -89,6 +89,29 @@ data Typ (pol :: Polarity) where
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
 
+flipTyp :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
+flipTyp pr (TyVar loc _ mk tv) = TyVar loc (flipPolarityRep pr) mk tv
+flipTyp pr (TyData loc _ rn xtors) = TyData loc (flipPolarityRep pr) rn (flipXtorSig pr <$> xtors)
+flipTyp pr (TyCodata loc _ rn xtors) = TyCodata loc (flipPolarityRep pr) rn (flipXtorSig (flipPolarityRep pr) <$> xtors)
+flipTyp pr (TyNominal loc _ mk rn vts) = TyNominal loc (flipPolarityRep pr) mk rn (flipVariantType pr <$> vts)
+flipTyp pr (TySyn loc _ rn ty) = TySyn loc (flipPolarityRep pr) rn (flipTyp pr ty)
+flipTyp pr (TyRec loc _ tv ty) = TyRec loc (flipPolarityRep pr) tv (flipTyp pr ty)
+flipTyp pr (TyPrim loc _ pt) = TyPrim loc (flipPolarityRep pr) pt
+flipTyp _pr t = error $ "flipTyp: Cannot flip type " ++ show t
+
+flipXtorSig :: PolarityRep pol -> XtorSig pol -> XtorSig (FlipPol pol)
+flipXtorSig pr (MkXtorSig xt args) = MkXtorSig xt (f pr <$> args)
+  where 
+    f :: PolarityRep pol -> PrdCnsType pol -> PrdCnsType (FlipPol pol)
+    f PosRep  (PrdCnsType PrdRep t) = PrdCnsType CnsRep t
+    f NegRep  (PrdCnsType CnsRep t) = PrdCnsType PrdRep t
+    f PosRep  (PrdCnsType CnsRep t) = PrdCnsType PrdRep t
+    f NegRep  (PrdCnsType PrdRep t) = PrdCnsType CnsRep t
+
+flipVariantType :: PolarityRep pol ->  VariantType pol -> VariantType (FlipPol pol)
+flipVariantType pr (CovariantType x)= CovariantType (flipTyp pr x)
+flipVariantType pr (ContravariantType x)= ContravariantType (flipTyp (flipPolarityRep pr) x)
+
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
@@ -160,7 +183,7 @@ instance FreeTVars (Typ pol) where
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
-    
+
 instance FreeTVars (VariantType pol) where
   freeTVars (CovariantType ty)     = freeTVars ty
   freeTVars (ContravariantType ty) = freeTVars ty
