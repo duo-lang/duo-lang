@@ -214,16 +214,34 @@ focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
+focusPrdCnsDeclaration :: EvaluationOrder -> PrdCnsDeclaration pc -> PrdCnsDeclaration pc
+focusPrdCnsDeclaration eo MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+    MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                        , pcdecl_doc = pcdecl_doc
+                        , pcdecl_pc = pcdecl_pc
+                        , pcdecl_isRec = pcdecl_isRec
+                        , pcdecl_name = pcdecl_name
+                        , pcdecl_annot = pcdecl_annot
+                        , pcdecl_term = focusTerm eo pcdecl_term
+                        }
+
+focusCommandDeclaration :: EvaluationOrder -> CommandDeclaration -> CommandDeclaration
+focusCommandDeclaration eo MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+    MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                         , cmddecl_doc = cmddecl_doc
+                         , cmddecl_name = cmddecl_name
+                         , cmddecl_cmd = focusCmd eo cmddecl_cmd
+                         }
 
 focusDecl :: EvaluationOrder -> Declaration -> Declaration
-focusDecl eo (PrdCnsDecl loc doc pc isRec name annot prd) = PrdCnsDecl loc doc pc isRec name annot (focusTerm eo prd)
-focusDecl eo (CmdDecl loc doc name cmd)       = CmdDecl loc doc name (focusCmd eo cmd)
-focusDecl _  decl@DataDecl {}                 = decl
-focusDecl _  decl@XtorDecl {}                 = decl
-focusDecl _  decl@ImportDecl {}               = decl
-focusDecl _  decl@SetDecl {}                  = decl
-focusDecl _  decl@TyOpDecl {}                 = decl
-focusDecl _  decl@TySynDecl {}                = decl
+focusDecl eo (PrdCnsDecl pcrep decl) = PrdCnsDecl pcrep (focusPrdCnsDeclaration eo decl)
+focusDecl eo (CmdDecl decl)          = CmdDecl (focusCommandDeclaration eo decl)
+focusDecl _  decl@DataDecl {}        = decl
+focusDecl _  decl@XtorDecl {}        = decl
+focusDecl _  decl@ImportDecl {}      = decl
+focusDecl _  decl@SetDecl {}         = decl
+focusDecl _  decl@TyOpDecl {}        = decl
+focusDecl _  decl@TySynDecl {}       = decl
 
 focusProgram :: EvaluationOrder -> Program -> Program
 focusProgram eo = fmap (focusDecl eo)
@@ -231,6 +249,6 @@ focusProgram eo = fmap (focusDecl eo)
 focusEnvironment :: EvaluationOrder -> EvalEnv -> EvalEnv
 focusEnvironment cc (prd, cns, cmd) = (prd', cns', cmd')
   where
-      prd' = (\tm -> focusTerm cc tm) <$> prd
-      cns' = (\tm -> focusTerm cc tm) <$> cns
-      cmd' = (\tm -> focusCmd cc tm) <$> cmd
+      prd' = focusTerm cc <$> prd
+      cns' = focusTerm cc <$> cns
+      cmd' = focusCmd cc <$> cmd

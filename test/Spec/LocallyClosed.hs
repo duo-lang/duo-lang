@@ -16,7 +16,7 @@ getProducers prog = go prog []
   where
     go :: TST.Program -> [(FreeVarName, Term Prd)] -> [(FreeVarName, Term Prd)]
     go [] acc = acc
-    go ((TST.PrdCnsDecl _ _ PrdRep _ fv _ tm):rest) acc = go rest ((fv,tm):acc)
+    go ((TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration _ _ PrdRep _ fv _ tm)):rest) acc = go rest ((fv,tm):acc)
     go (_:rest) acc = go rest acc
 
 

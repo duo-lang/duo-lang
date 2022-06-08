@@ -472,8 +472,10 @@ embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
 
 
 embedTyDecl :: RST.DataDecl -> CST.DataDecl
-embedTyDecl RST.NominalDecl { data_refined, data_name, data_polarity, data_kind, data_xtors } =
-  CST.NominalDecl { data_refined = data_refined
+embedTyDecl RST.NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } =
+  CST.NominalDecl { data_loc = data_loc
+                  , data_doc = data_doc
+                  , data_refined = data_refined
                   , data_name = rnTnName data_name
                   , data_polarity = data_polarity
                   , data_kind = Just data_kind
@@ -514,23 +516,70 @@ reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
   embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
 
+reparsePrdCnsDeclaration :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
+reparsePrdCnsDeclaration RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+  CST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                          , pcdecl_doc = pcdecl_doc
+                          , pcdecl_pc = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
+                          , pcdecl_isRec = pcdecl_isRec
+                          , pcdecl_name = pcdecl_name
+                          , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                          , pcdecl_term = reparseTerm pcdecl_term
+                          }
+
+reparseCommandDeclaration :: RST.CommandDeclaration -> CST.CommandDeclaration
+reparseCommandDeclaration RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+  CST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                           , cmddecl_doc = cmddecl_doc
+                           , cmddecl_name = cmddecl_name
+                           , cmddecl_cmd= reparseCommand cmddecl_cmd
+                           }
+
+reparseStructuralXtorDeclaration :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
+reparseStructuralXtorDeclaration RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
+  CST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
+                                  , strxtordecl_doc = strxtordecl_doc
+                                  , strxtordecl_xdata = strxtordecl_xdata
+                                  , strxtordecl_name = strxtordecl_name
+                                  , strxtordecl_arity= strxtordecl_arity
+                                  , strxtordecl_evalOrder = Just strxtordecl_evalOrder
+                                  }
+
+reparseTySynDeclaration :: RST.TySynDeclaration -> CST.TySynDeclaration
+reparseTySynDeclaration RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
+  CST.MkTySynDeclaration { tysyndecl_loc = tysyndecl_loc
+                         , tysyndecl_doc = tysyndecl_doc
+                         , tysyndecl_name = tysyndecl_name
+                         , tysyndecl_res = embedType (fst tysyndecl_res)
+                         }
+
+reparseTyOpDecl :: RST.TyOpDeclaration -> CST.TyOpDeclaration
+reparseTyOpDecl RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
+  CST.MkTyOpDeclaration { tyopdecl_loc = tyopdecl_loc
+                        , tyopdecl_doc = tyopdecl_doc
+                        , tyopdecl_sym = tyopdecl_sym
+                        , tyopdecl_prec = tyopdecl_prec
+                        , tyopdecl_assoc = tyopdecl_assoc
+                        , tyopdecl_res = rnTnName tyopdecl_res
+                        }
+
 reparseDecl :: RST.Declaration -> CST.Declaration
-reparseDecl (RST.PrdCnsDecl loc doc rep isRec fv ts tm) =
-  CST.PrdCnsDecl loc doc (case rep of PrdRep -> Prd; CnsRep -> Cns) isRec fv (embedTypeScheme <$> ts) (reparseTerm tm)
-reparseDecl (RST.CmdDecl loc doc fv cmd) =
-  CST.CmdDecl loc doc fv (reparseCommand cmd)
-reparseDecl (RST.DataDecl loc doc decl) =
-  CST.DataDecl loc doc (embedTyDecl decl)
-reparseDecl (RST.XtorDecl loc doc dc xt args ret) =
-  CST.XtorDecl loc doc dc xt args (Just ret)
-reparseDecl (RST.ImportDecl loc doc mn) =
-  CST.ImportDecl loc doc mn
-reparseDecl (RST.SetDecl loc doc txt) =
-  CST.SetDecl loc doc txt
-reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
-  CST.TyOpDecl loc doc op prec assoc (rnTnName ty)
-reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =
-  CST.TySynDecl loc doc nm (embedType ty)
+reparseDecl (RST.PrdCnsDecl _ decl) = 
+  CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
+reparseDecl (RST.CmdDecl decl) =
+  CST.CmdDecl (reparseCommandDeclaration decl)
+reparseDecl (RST.DataDecl decl) =
+  CST.DataDecl (embedTyDecl decl)
+reparseDecl (RST.XtorDecl decl) =
+  CST.XtorDecl (reparseStructuralXtorDeclaration decl)
+reparseDecl (RST.ImportDecl decl) =
+  CST.ImportDecl decl
+reparseDecl (RST.SetDecl decl) =
+  CST.SetDecl decl
+reparseDecl (RST.TyOpDecl decl) =
+  CST.TyOpDecl (reparseTyOpDecl decl)
+reparseDecl (RST.TySynDecl decl) =
+  CST.TySynDecl (reparseTySynDeclaration decl)
 
 reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl
