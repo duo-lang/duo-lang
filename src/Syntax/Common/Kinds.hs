@@ -60,5 +60,6 @@ lookupPolyKind tv MkPolyKind{ kindArgs } = go kindArgs
     go (k@(_,tv',_) : ks) = if tv == tv'
                            then Just k
                            else go ks
+
 lookupPolyKindVariance :: TVar -> PolyKind -> Maybe Variance
 lookupPolyKindVariance tv pk = (\(v,_,_) -> v) <$> lookupPolyKind tv pk

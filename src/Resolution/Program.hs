@@ -30,8 +30,8 @@ resolveXtors sigs = do
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
 checkVarianceTyp loc var polyKind (TyVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
-    --  Nothing   -> throwError (OtherError (Just loc) $ "Type variable not bound by declaration: " <> T.pack (show tVar))
-    Nothing   -> return ()
+    -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
+    Nothing   -> throwError (OtherError (Just loc) $ "Type variable not bound by declaration: " <> T.pack (show tVar))
     Just var' -> if var == var'
                  then return ()
                  else throwError (OtherError (Just loc) $ "Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var'))
