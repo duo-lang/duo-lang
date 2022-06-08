@@ -79,6 +79,46 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
 deriving instance (Show StructuralXtorDeclaration)
 
 ---------------------------------------------------------------------------------
+-- Type Operator Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a type operator.
+data TyOpDeclaration = MkTyOpDeclaration
+  { tyopdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , tyopdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , tyopdecl_sym :: TyOpName
+    -- ^ The symbol used for the type operator.
+  , tyopdecl_prec :: Precedence
+    -- ^ The precedence level of the type operator.
+  , tyopdecl_assoc :: Associativity
+    -- ^ The associativity of the type operator.
+  , tyopdecl_res :: RnTypeName
+    -- ^ The typename that the operator should stand for.
+  }
+
+deriving instance Show TyOpDeclaration
+
+---------------------------------------------------------------------------------
+-- Type Synonym Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a type synonym.
+data TySynDeclaration = MkTySynDeclaration
+  { tysyndecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , tysyndecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , tysyndecl_name :: TypeName
+    -- ^ The name of the type synonym that is being introduced.
+  , tysyndecl_res :: (Typ Pos, Typ Neg)
+    -- ^ What the type synonym should be replaced with.
+  }
+
+deriving instance Show TySynDeclaration
+
+---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
@@ -89,8 +129,8 @@ data Declaration where
   XtorDecl   :: StructuralXtorDeclaration            -> Declaration
   ImportDecl :: CST.ImportDeclaration                -> Declaration
   SetDecl    :: CST.SetDeclaration                   -> Declaration
-  TyOpDecl   :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> RnTypeName                        -> Declaration
-  TySynDecl  :: Loc -> Maybe DocComment -> TypeName -> (Typ Pos, Typ Neg)                                               -> Declaration
+  TyOpDecl   :: TyOpDeclaration                      -> Declaration
+  TySynDecl  :: TySynDeclaration                     -> Declaration
   
 
 instance Show Declaration where
@@ -101,7 +141,7 @@ instance Show Declaration where
   show (XtorDecl decl) = show decl
   show (ImportDecl decl) = show decl
   show (SetDecl decl) = show decl
-  show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
-  show (TySynDecl loc doc nm ty) = "TySynDecl: " ++ show loc ++ show doc ++ show nm ++ show ty
+  show (TyOpDecl decl) = show decl
+  show (TySynDecl decl) = show decl
   
 type Program = [Declaration]

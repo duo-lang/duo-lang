@@ -118,14 +118,36 @@ instance PrettyAnn CST.SetDeclaration where
     semi
 
 ---------------------------------------------------------------------------------
--- Other
+-- Type Operator Declaration
 ---------------------------------------------------------------------------------
 
-prettyTyOpDecl :: TyOpName -> Associativity -> Precedence -> TypeName -> Doc Annotation
-prettyTyOpDecl op assoc prec ty =
-  annKeyword "type" <+> annKeyword "operator" <+>
-  prettyAnn op <+> prettyAnn assoc <+> annKeyword "at" <+> prettyAnn prec <+>
-  annSymbol ":=" <+> prettyAnn ty <> semi
+instance PrettyAnn CST.TyOpDeclaration where
+  prettyAnn CST.MkTyOpDeclaration { tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
+    annKeyword "type" <+>
+    annKeyword "operator" <+>
+    prettyAnn tyopdecl_sym <+>
+    prettyAnn tyopdecl_assoc <+>
+    annKeyword "at" <+>
+    prettyAnn tyopdecl_prec <+>
+    annSymbol ":=" <+>
+    prettyAnn tyopdecl_res <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Type Synonym Declaration
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.TySynDeclaration where
+  prettyAnn CST.MkTySynDeclaration { tysyndecl_name, tysyndecl_res } =
+    annKeyword "type" <+>
+    prettyAnn tysyndecl_name <+>
+    annSymbol ":=" <+>
+    prettyAnn tysyndecl_res <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Declaration
+---------------------------------------------------------------------------------
 
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
@@ -144,11 +166,13 @@ instance PrettyAnn CST.Declaration where
   prettyAnn (CST.XtorDecl decl) = prettyAnn decl
   prettyAnn (CST.ImportDecl decl) = prettyAnn decl
   prettyAnn (CST.SetDecl decl) = prettyAnn decl
-  prettyAnn (CST.TyOpDecl _ _ op prec assoc ty) =
-    prettyTyOpDecl op assoc prec ty
-  prettyAnn (CST.TySynDecl _ _ nm ty) =
-    annKeyword "type" <+> prettyAnn nm <+> annSymbol ":=" <+> prettyAnn ty <> semi
+  prettyAnn (CST.TyOpDecl decl) = prettyAnn decl
+  prettyAnn (CST.TySynDecl decl) = prettyAnn decl
   prettyAnn CST.ParseErrorDecl = "<PARSE ERROR: SHOULD NOT OCCUR>"
+
+---------------------------------------------------------------------------------
+-- Program
+---------------------------------------------------------------------------------
 
 instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
   prettyAnn decls = vsep (prettyAnn <$> decls)

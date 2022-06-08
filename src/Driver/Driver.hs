@@ -185,13 +185,13 @@ inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) =
 --
 -- TyOpDecl
 --
-inferDecl _mn (Core.TyOpDecl loc doc op prec assoc ty) = do
-  pure (TST.TyOpDecl loc doc op prec assoc ty)
+inferDecl _mn (Core.TyOpDecl decl) = do
+  pure (TST.TyOpDecl decl)
 --
 -- TySynDecl
 --
-inferDecl _mn (Core.TySynDecl loc doc nm ty) = do
-  pure (TST.TySynDecl loc doc nm ty)
+inferDecl _mn (Core.TySynDecl decl) = do
+  pure (TST.TySynDecl decl)
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls

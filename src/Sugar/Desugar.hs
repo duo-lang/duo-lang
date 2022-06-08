@@ -145,10 +145,10 @@ desugarDecl (RST.ImportDecl decl) =
   Core.ImportDecl decl
 desugarDecl (RST.SetDecl decl) =
   Core.SetDecl decl
-desugarDecl (RST.TyOpDecl loc doc op prec assoc ty) =
-  Core.TyOpDecl loc doc op prec assoc ty
-desugarDecl (RST.TySynDecl loc doc nm ty) = 
-  Core.TySynDecl loc doc nm ty
+desugarDecl (RST.TyOpDecl decl) =
+  Core.TyOpDecl decl
+desugarDecl (RST.TySynDecl decl) = 
+  Core.TySynDecl decl
 
 desugarProgram :: RST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps

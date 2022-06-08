@@ -133,7 +133,14 @@ typeOperatorDeclP doc = do
     _ <- symbolP SymColoneq
     (tyname,_) <- typeNameP
     endPos <- symbolP SymSemi
-    pure (TyOpDecl (Loc startPos endPos) doc sym prec assoc tyname)
+    let decl = MkTyOpDeclaration { tyopdecl_loc = Loc startPos endPos
+                                 , tyopdecl_doc = doc
+                                 , tyopdecl_sym = sym
+                                 , tyopdecl_prec = prec
+                                 , tyopdecl_assoc = assoc
+                                 , tyopdecl_res = tyname
+                                 }
+    pure (TyOpDecl decl)
 
 ---------------------------------------------------------------------------------
 -- Type Synonym parser
@@ -148,15 +155,16 @@ tySynP doc = do
     _ <- symbolP SymColoneq
     (ty, _) <- typP
     endPos <- symbolP SymSemi
-    pure (TySynDecl (Loc startPos endPos) doc tn ty)
+    let decl = MkTySynDeclaration { tysyndecl_loc = Loc startPos endPos
+                                  , tysyndecl_doc = doc
+                                  , tysyndecl_name = tn
+                                  , tysyndecl_res = ty
+                                  }
+    pure (TySynDecl decl)
 
 ---------------------------------------------------------------------------------
 -- Nominal type declaration parser
 ---------------------------------------------------------------------------------
-
-
-
-
 
 dataCodataPrefixP :: Parser (IsRefined,DataCodata)
 dataCodataPrefixP = do

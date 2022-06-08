@@ -377,18 +377,12 @@ instance ToHoverMap TST.CommandDeclaration where
 instance ToHoverMap TST.Declaration where
   toHoverMap (TST.PrdCnsDecl _ decl) = toHoverMap decl
   toHoverMap (TST.CmdDecl decl)  = toHoverMap decl
-  toHoverMap (TST.DataDecl _decl) =
-    M.empty
-  toHoverMap (TST.XtorDecl _) =
-    M.empty
-  toHoverMap (TST.ImportDecl _) =
-    M.empty
-  toHoverMap (TST.SetDecl _) =
-    M.empty
-  toHoverMap (TST.TyOpDecl _loc _doc _op _prec _assoc _tn) =
-    M.empty
-  toHoverMap (TST.TySynDecl _loc _doc _nm _ty) =
-    M.empty
+  toHoverMap (TST.DataDecl _decl) = M.empty
+  toHoverMap (TST.XtorDecl _) = M.empty
+  toHoverMap (TST.ImportDecl _) = M.empty
+  toHoverMap (TST.SetDecl _) = M.empty
+  toHoverMap (TST.TyOpDecl _) = M.empty
+  toHoverMap (TST.TySynDecl _) = M.empty
 
 instance ToHoverMap TST.Program where
   toHoverMap prog = M.unions (toHoverMap <$> prog)

@@ -2,7 +2,7 @@ module Syntax.Core.Program where
 
 import Syntax.Common
 import Syntax.Core.Terms( Command, Term )
-import Syntax.Common.TypesPol ( DataDecl, Typ, TypeScheme )
+import Syntax.Common.TypesPol ( DataDecl, TypeScheme )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Utils ( Loc )
@@ -62,8 +62,8 @@ data Declaration where
   XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
   ImportDecl     :: CST.ImportDeclaration                -> Declaration
   SetDecl        :: CST.SetDeclaration                   -> Declaration
-  TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> RnTypeName                        -> Declaration
-  TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> (Typ Pos, Typ Neg)                                               -> Declaration
+  TyOpDecl       :: RST.TyOpDeclaration                  -> Declaration
+  TySynDecl      :: RST.TySynDeclaration                 -> Declaration
   
 
 instance Show Declaration where
@@ -74,7 +74,7 @@ instance Show Declaration where
   show (XtorDecl decl) = show decl
   show (ImportDecl decl) = show decl
   show (SetDecl decl) = show decl
-  show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
-  show (TySynDecl loc doc nm ty) = "TySynDecl: " ++ show loc ++ show doc ++ show nm ++ show ty
+  show (TyOpDecl decl) = show decl
+  show (TySynDecl decl) = show decl
   
 type Program = [Declaration]

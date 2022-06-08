@@ -111,6 +111,46 @@ data SetDeclaration = MkSetDeclaration
 deriving instance Show SetDeclaration
 
 ---------------------------------------------------------------------------------
+-- Type Operator Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a type operator.
+data TyOpDeclaration = MkTyOpDeclaration
+  { tyopdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , tyopdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , tyopdecl_sym :: TyOpName
+    -- ^ The symbol used for the type operator.
+  , tyopdecl_prec :: Precedence
+    -- ^ The precedence level of the type operator.
+  , tyopdecl_assoc :: Associativity
+    -- ^ The associativity of the type operator.
+  , tyopdecl_res :: TypeName
+    -- ^ The typename that the operator should stand for.
+  }
+
+deriving instance Show TyOpDeclaration
+
+---------------------------------------------------------------------------------
+-- Type Synonym Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a type synonym.
+data TySynDeclaration = MkTySynDeclaration
+  { tysyndecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , tysyndecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , tysyndecl_name :: TypeName
+    -- ^ The name of the type synonym that is being introduced.
+  , tysyndecl_res :: Typ
+    -- ^ What the type synonym should be replaced with.
+  }
+
+deriving instance Show TySynDeclaration
+
+---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
@@ -121,9 +161,9 @@ data Declaration where
   XtorDecl       :: StructuralXtorDeclaration -> Declaration
   ImportDecl     :: ImportDeclaration         -> Declaration
   SetDecl        :: SetDeclaration            -> Declaration
-  TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
-  TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> Typ                                                              -> Declaration
-  ParseErrorDecl ::                                                                                                            Declaration
+  TyOpDecl       :: TyOpDeclaration           -> Declaration
+  TySynDecl      :: TySynDeclaration          -> Declaration
+  ParseErrorDecl ::                              Declaration
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"

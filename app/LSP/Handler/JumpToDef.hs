@@ -198,6 +198,10 @@ instance ToJumpMap RST.CommandDeclaration where
   toJumpMap RST.MkCommandDeclaration { cmddecl_cmd } =
     toJumpMap cmddecl_cmd
 
+instance ToJumpMap RST.TyOpDeclaration where
+  toJumpMap RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_res } =
+    M.fromList [(locToRange tyopdecl_loc, toLocation tyopdecl_res)]
+
 instance ToJumpMap RST.Declaration where
   toJumpMap (RST.PrdCnsDecl _ decl) = toJumpMap decl
   toJumpMap (RST.CmdDecl decl) = toJumpMap decl
@@ -205,8 +209,7 @@ instance ToJumpMap RST.Declaration where
   toJumpMap RST.XtorDecl {} = M.empty
   toJumpMap RST.ImportDecl {} = M.empty
   toJumpMap RST.SetDecl {} = M.empty
-  toJumpMap (RST.TyOpDecl loc _ _ _ _ rnTn) =
-    M.fromList [(locToRange loc, toLocation rnTn)]
+  toJumpMap (RST.TyOpDecl decl) = toJumpMap decl
   toJumpMap RST.TySynDecl {} = M.empty
 
 instance ToLocation RnTypeName where

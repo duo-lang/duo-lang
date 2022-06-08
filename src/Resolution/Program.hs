@@ -117,6 +117,37 @@ resolveStructuralXtorDeclaration CST.MkStructuralXtorDeclaration {strxtordecl_lo
                                          }
 
 ---------------------------------------------------------------------------------
+-- Type Operator Declaration
+---------------------------------------------------------------------------------
+
+resolveTyOpDeclaration :: CST.TyOpDeclaration
+                       -> ResolverM RST.TyOpDeclaration
+resolveTyOpDeclaration CST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } = do
+  NominalResult tyname' _ _ _ <- lookupTypeConstructor tyopdecl_loc tyopdecl_res
+  pure RST.MkTyOpDeclaration { tyopdecl_loc = tyopdecl_loc
+                             , tyopdecl_doc = tyopdecl_doc
+                             , tyopdecl_sym = tyopdecl_sym
+                             , tyopdecl_prec = tyopdecl_prec
+                             , tyopdecl_assoc = tyopdecl_assoc
+                             , tyopdecl_res = tyname'
+                             }
+
+---------------------------------------------------------------------------------
+-- Type Synonym Declaration
+---------------------------------------------------------------------------------
+
+resolveTySynDeclaration :: CST.TySynDeclaration
+                        -> ResolverM RST.TySynDeclaration
+resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } = do
+  typ <- resolveTyp PosRep tysyndecl_res
+  tyn <- resolveTyp NegRep tysyndecl_res
+  pure RST.MkTySynDeclaration { tysyndecl_loc = tysyndecl_loc
+                              , tysyndecl_doc = tysyndecl_doc
+                              , tysyndecl_name = tysyndecl_name
+                              , tysyndecl_res = (typ, tyn)
+                              }
+
+---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
@@ -142,13 +173,12 @@ resolveDecl (CST.ImportDecl decl) = do
   pure $ RST.ImportDecl decl
 resolveDecl (CST.SetDecl decl) =
   pure $ RST.SetDecl decl
-resolveDecl (CST.TyOpDecl loc doc op prec assoc tyname) = do
-  NominalResult tyname' _ _ _ <- lookupTypeConstructor loc tyname
-  pure $ RST.TyOpDecl loc doc op prec assoc tyname'
-resolveDecl (CST.TySynDecl loc doc nm ty) = do
-  typ <- resolveTyp PosRep ty
-  tyn <- resolveTyp NegRep ty
-  pure (RST.TySynDecl loc doc nm (typ, tyn))
+resolveDecl (CST.TyOpDecl decl) = do
+  decl' <- resolveTyOpDeclaration decl
+  pure $ RST.TyOpDecl decl'
+resolveDecl (CST.TySynDecl decl) = do
+  decl' <- resolveTySynDeclaration decl
+  pure (RST.TySynDecl decl')
 resolveDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 

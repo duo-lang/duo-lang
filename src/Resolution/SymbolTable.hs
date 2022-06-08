@@ -143,21 +143,21 @@ createSymbolTable' mn (DataDecl NominalDecl { data_loc, data_doc, data_refined, 
   let nominalResult = NominalResult rnTypeName data_polarity data_refined polyKind
   pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
             , typeNameMap = M.insert data_name nominalResult (typeNameMap st)}
-createSymbolTable' _ (TyOpDecl _ _ op prec assoc ty) st = do
-    let tyOp = MkTyOp { symbol = CustomOp op
-                      , prec = prec
-                      , assoc = assoc
-                      , desugar = NominalDesugaring ty
+createSymbolTable' _ (TyOpDecl MkTyOpDeclaration { tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res}) st = do
+    let tyOp = MkTyOp { symbol = CustomOp tyopdecl_sym
+                      , prec = tyopdecl_prec
+                      , assoc = tyopdecl_assoc
+                      , desugar = NominalDesugaring tyopdecl_res
                       }
     pure $ st { tyOps = tyOp : (tyOps st) }
 createSymbolTable' _ (ImportDecl (MkImportDeclaration { imprtdecl_loc, imprtdecl_module })) st =
   pure $ st { imports = (imprtdecl_module,imprtdecl_loc):(imports st) }
-createSymbolTable' mn (TySynDecl loc doc tyname ty) st = do
+createSymbolTable' mn (TySynDecl MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res }) st = do
   -- Check whether the TypeName is already declared in this module
-  checkFreshTypeName loc tyname st
-  let rnTypeName = MkRnTypeName { rnTnLoc = loc, rnTnDoc = doc, rnTnModule = mn , rnTnName = tyname }
-  let synonymResult = SynonymResult rnTypeName ty
-  pure $ st { typeNameMap = M.insert tyname synonymResult (typeNameMap st) }
+  checkFreshTypeName tysyndecl_loc tysyndecl_name st
+  let rnTypeName = MkRnTypeName { rnTnLoc = tysyndecl_loc, rnTnDoc = tysyndecl_doc, rnTnModule = mn , rnTnName = tysyndecl_name }
+  let synonymResult = SynonymResult rnTypeName tysyndecl_res
+  pure $ st { typeNameMap = M.insert tysyndecl_name synonymResult (typeNameMap st) }
 createSymbolTable' _ (PrdCnsDecl MkPrdCnsDeclaration { pcdecl_loc, pcdecl_name }) st = do
   -- Check if the FreeVarName is already declared in this module
   checkFreshFreeVarName pcdecl_loc pcdecl_name st

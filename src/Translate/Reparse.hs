@@ -545,6 +545,23 @@ reparseStructuralXtorDeclaration RST.MkStructuralXtorDeclaration { strxtordecl_l
                                   , strxtordecl_evalOrder = Just strxtordecl_evalOrder
                                   }
 
+reparseTySynDeclaration :: RST.TySynDeclaration -> CST.TySynDeclaration
+reparseTySynDeclaration RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
+  CST.MkTySynDeclaration { tysyndecl_loc = tysyndecl_loc
+                         , tysyndecl_doc = tysyndecl_doc
+                         , tysyndecl_name = tysyndecl_name
+                         , tysyndecl_res = embedType (fst tysyndecl_res)
+                         }
+
+reparseTyOpDecl :: RST.TyOpDeclaration -> CST.TyOpDeclaration
+reparseTyOpDecl RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
+  CST.MkTyOpDeclaration { tyopdecl_loc = tyopdecl_loc
+                        , tyopdecl_doc = tyopdecl_doc
+                        , tyopdecl_sym = tyopdecl_sym
+                        , tyopdecl_prec = tyopdecl_prec
+                        , tyopdecl_assoc = tyopdecl_assoc
+                        , tyopdecl_res = rnTnName tyopdecl_res
+                        }
 
 reparseDecl :: RST.Declaration -> CST.Declaration
 reparseDecl (RST.PrdCnsDecl _ decl) = 
@@ -559,10 +576,10 @@ reparseDecl (RST.ImportDecl decl) =
   CST.ImportDecl decl
 reparseDecl (RST.SetDecl decl) =
   CST.SetDecl decl
-reparseDecl (RST.TyOpDecl loc doc op prec assoc ty) =
-  CST.TyOpDecl loc doc op prec assoc (rnTnName ty)
-reparseDecl (RST.TySynDecl loc doc nm (ty,_)) =
-  CST.TySynDecl loc doc nm (embedType ty)
+reparseDecl (RST.TyOpDecl decl) =
+  CST.TyOpDecl (reparseTyOpDecl decl)
+reparseDecl (RST.TySynDecl decl) =
+  CST.TySynDecl (reparseTySynDeclaration decl)
 
 reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl
