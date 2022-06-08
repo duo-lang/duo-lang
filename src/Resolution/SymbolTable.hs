@@ -50,21 +50,22 @@ data FreeVarNameResolve where
   FreeVarResult :: FreeVarNameResolve
 
 data SymbolTable = MkSymbolTable
-  { xtorNameMap :: Map XtorName    XtorNameResolve
-  , typeNameMap :: Map TypeName    TypeNameResolve
-  , freeVarMap  :: Map FreeVarName FreeVarNameResolve
-  , tyOps :: [TyOp]
-  , imports :: [(ModuleName, Loc)]
+  { xtorNameMap  :: Map XtorName XtorNameResolve
+  , typeNameMap  :: Map TypeName TypeNameResolve
+  , freeVarMap   :: Map FreeVarName FreeVarNameResolve
+  , classMethods :: Map ClassName [XtorName] -- TODO: use MethodName instead
+  , tyOps        :: [TyOp]
+  , imports      :: [(ModuleName, Loc)]
   }
 
 emptySymbolTable :: SymbolTable
-emptySymbolTable  = MkSymbolTable
-    { xtorNameMap = M.empty
-    , typeNameMap =  M.empty
-    , freeVarMap  = M.empty
-    , tyOps       = []
-    , imports     = []
-    }
+emptySymbolTable = MkSymbolTable { xtorNameMap  = M.empty
+                                 , typeNameMap  = M.empty
+                                 , freeVarMap   = M.empty
+                                 , classMethods = M.empty
+                                 , tyOps        = []
+                                 , imports      = []
+                                 }
 
 instance Show SymbolTable where
   show _ = "<SymbolTable>"
@@ -166,6 +167,7 @@ createSymbolTable' _ (CmdDecl loc _ fv _) st = do
   checkFreshFreeVarName loc fv st
   pure $ st { freeVarMap = M.insert fv FreeVarResult (freeVarMap st) }
 createSymbolTable' _ SetDecl {} st = pure st
-createSymbolTable' _ ClassDecl {} st = pure st
+createSymbolTable' _ (ClassDecl _ _ nm _ ms) st =
+  pure $ st { classMethods = M.insert nm (fst <$> ms) (classMethods st) }
 createSymbolTable' _ InstanceDecl {} st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st
