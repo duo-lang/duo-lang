@@ -216,6 +216,8 @@ insertType (TyPrim _ rep pt) = do
   newNode <- newNodeM
   insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton pt })
   return newNode
+insertType (TyFlipPol _ _) =
+  throwAutomatonError ["Tried to insert TyFlipPol into type automaton"]
 
 --------------------------------------------------------------------------
 --
