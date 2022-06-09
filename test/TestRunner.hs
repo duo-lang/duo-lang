@@ -27,12 +27,15 @@ import Syntax.TST.Program qualified as TST
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
   examples <- listDirectory "test/counterexamples/"
-  return (("test/counterexamples/" ++) <$> examples)
+  return (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
+
+excluded :: [FilePath]
+excluded = ["fix.ds"]
 
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
   examples <- listDirectory "examples/"
-  return (("examples/" ++) <$> filter (\s -> head s /= '.') examples)
+  return (("examples/" ++) <$> filter (\s -> head s /= '.' && notElem s excluded) examples)
 
 getParsedDeclarations :: FilePath -> IO (Either Error CST.Program)
 getParsedDeclarations fp = do

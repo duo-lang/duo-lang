@@ -8,21 +8,165 @@ import Syntax.Common
 import Utils
 
 ---------------------------------------------------------------------------------
+-- Producer / Consumer Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel producer or consumer declaration.
+data PrdCnsDeclaration = MkPrdCnsDeclaration
+  { pcdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , pcdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , pcdecl_pc :: PrdCns
+    -- ^ Whether a producer or consumer is declared.
+  , pcdecl_isRec :: IsRec
+    -- ^ Whether the declaration can refer to itself recursively.
+  , pcdecl_name :: FreeVarName
+    -- ^ The name of the producer / consumer.
+  , pcdecl_annot :: Maybe TypeScheme
+    -- ^ The type signature.
+  , pcdecl_term :: Term
+    -- ^ The term itself.
+}
+
+deriving instance Show PrdCnsDeclaration
+
+---------------------------------------------------------------------------------
+-- Command Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel command declaration.
+data CommandDeclaration = MkCommandDeclaration
+  { cmddecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , cmddecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , cmddecl_name :: FreeVarName
+    -- ^ The name of the command.
+  , cmddecl_cmd :: Term
+    -- ^ The command itself.
+  }
+
+deriving instance Show CommandDeclaration
+
+---------------------------------------------------------------------------------
+-- Structural Xtor Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a constructor or destructor.
+-- These declarations are needed for structural data and codata types.
+data StructuralXtorDeclaration = MkStructuralXtorDeclaration
+  { 
+    strxtordecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , strxtordecl_doc :: Maybe DocComment
+    -- ^ The documenation string of the declaration.
+  , strxtordecl_xdata :: DataCodata
+    -- ^ Indicates whether a constructor (Data) or destructor (Codata) is declared.
+  , strxtordecl_name :: XtorName
+    -- ^ The name of the declared constructor or destructor.
+  , strxtordecl_arity :: [(PrdCns, MonoKind)]
+    -- ^ The arguments of the constructor/destructor.
+    -- Each argument can either be a constructor or destructor.
+    -- The MonoKind (CBV or CBN) of each argument has to be specified.
+  , strxtordecl_evalOrder :: Maybe EvaluationOrder
+    -- Optional evaluation order of the structural type to which the
+    -- constructor/destructor belongs.
+    -- If no evaluation order is indicated, then it will default to CBV for constructors
+    -- and CBN for destructors.
+  }
+
+deriving instance Show StructuralXtorDeclaration
+
+---------------------------------------------------------------------------------
+-- Import Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel import statment.
+data ImportDeclaration = MkImportDeclaration
+  { imprtdecl_loc :: Loc
+    -- ^ The source code location of the import.
+  , imprtdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the import.
+  , imprtdecl_module :: ModuleName
+    -- ^ The imported module.
+  }
+
+deriving instance Show ImportDeclaration
+
+---------------------------------------------------------------------------------
+-- Set Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel configuration option.
+data SetDeclaration = MkSetDeclaration
+  { setdecl_loc :: Loc
+    -- ^ The source code location of the option.
+  , setdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the option.
+  , setdecl_option :: Text
+    -- ^ The option itself.
+  }
+
+deriving instance Show SetDeclaration
+
+---------------------------------------------------------------------------------
+-- Type Operator Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a type operator.
+data TyOpDeclaration = MkTyOpDeclaration
+  { tyopdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , tyopdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , tyopdecl_sym :: TyOpName
+    -- ^ The symbol used for the type operator.
+  , tyopdecl_prec :: Precedence
+    -- ^ The precedence level of the type operator.
+  , tyopdecl_assoc :: Associativity
+    -- ^ The associativity of the type operator.
+  , tyopdecl_res :: TypeName
+    -- ^ The typename that the operator should stand for.
+  }
+
+deriving instance Show TyOpDeclaration
+
+---------------------------------------------------------------------------------
+-- Type Synonym Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a type synonym.
+data TySynDeclaration = MkTySynDeclaration
+  { tysyndecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , tysyndecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , tysyndecl_name :: TypeName
+    -- ^ The name of the type synonym that is being introduced.
+  , tysyndecl_res :: Typ
+    -- ^ What the type synonym should be replaced with.
+  }
+
+deriving instance Show TySynDeclaration
+
+---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
 data Declaration where 
-  PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCns-> IsRec -> FreeVarName -> Maybe TypeScheme -> Term                    -> Declaration
-  CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Term                                                          -> Declaration
-  DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
-  XtorDecl       :: Loc -> Maybe DocComment -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> Maybe EvaluationOrder      -> Declaration
-  ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
-  SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
-  TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> TypeName                          -> Declaration
-  TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> Typ                                                              -> Declaration
+  PrdCnsDecl     :: PrdCnsDeclaration         -> Declaration
+  CmdDecl        :: CommandDeclaration        -> Declaration
+  DataDecl       :: DataDecl                  -> Declaration
+  XtorDecl       :: StructuralXtorDeclaration -> Declaration
+  ImportDecl     :: ImportDeclaration         -> Declaration
+  SetDecl        :: SetDeclaration            -> Declaration
+  TyOpDecl       :: TyOpDeclaration           -> Declaration
+  TySynDecl      :: TySynDeclaration          -> Declaration
   ClassDecl      :: Loc -> Maybe DocComment -> ClassName -> [(Variance, TVar, MonoKind)] -> [(XtorName, [(PrdCns, Typ)])]   -> Declaration
   InstanceDecl   :: Loc -> Maybe DocComment -> ClassName -> Typ -> [TermCase]                                               -> Declaration
-  ParseErrorDecl ::                                                                                                            Declaration
+  ParseErrorDecl ::                              Declaration
+
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"

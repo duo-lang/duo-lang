@@ -24,6 +24,18 @@ locToRange (Loc startPos endPos) =
         , _end   = posToPosition endPos
         }
 
+locToStartRange :: Loc -> Range         
+locToStartRange (Loc startPos _endPos) =
+  Range { _start = posToPosition startPos
+        , _end   = posToPosition startPos
+        }
+
+locToEndRange :: Loc -> Range         
+locToEndRange (Loc _startPos endPos) =
+  Range { _start = posToPosition endPos
+        , _end   = posToPosition endPos
+        }
+
 lookupPos :: Position -> Loc -> Bool 
 lookupPos (Position l _) (Loc begin end) =
   let

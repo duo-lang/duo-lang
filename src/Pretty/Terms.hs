@@ -1,6 +1,5 @@
 module Pretty.Terms where
 
-import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
 import Pretty.Common ()
@@ -30,7 +29,7 @@ instance PrettyAnn Core.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedCmdCase cmdcase)
 
 instance PrettyAnn TST.CmdCase where
-  prettyAnn cmdcase = prettyAnn (embedASTCmdCase cmdcase)
+  prettyAnn cmdcase = prettyAnn (embedTSTCmdCase cmdcase)
 
 instance PrettyAnn RST.CmdCase where
   prettyAnn cmdcase = prettyAnn (reparseCmdCase cmdcase)
@@ -65,7 +64,7 @@ instance PrettyAnn CST.TermOrStar  where
 -- PrdCnsTerm
 
 instance PrettyAnn TST.PrdCnsTerm where
-  prettyAnn pcterm = prettyAnn (embedPCTerm (embedASTPCTerm pcterm))
+  prettyAnn pcterm = prettyAnn (embedPCTerm (embedTSTPCTerm pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (reparsePCTerm pcterm)
@@ -73,7 +72,7 @@ instance PrettyAnn RST.PrdCnsTerm where
 -- Substitution
 
 instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
-  prettyAnn subst = prettyAnn (embedSubst (embedASTSubst subst))
+  prettyAnn subst = prettyAnn (embedSubst (embedTSTSubst subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
   prettyAnn subst = prettyAnn (reparseSubst subst)
@@ -95,13 +94,24 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (TST.Term pc) where
-  prettyAnn tm = prettyAnn (embedASTTerm tm)
+  prettyAnn tm = prettyAnn (embedTSTTerm tm)
 
 instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
 
 instance PrettyAnn (Core.Term pc) where
   prettyAnn tm = prettyAnn (embedCoreTerm tm)
+
+
+collectLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
+collectLambdaVarsAndBody (CST.Lambda _ var tm) = (var:fvs,t)
+  where (fvs, t) = collectLambdaVarsAndBody tm
+collectLambdaVarsAndBody t = ([],t) 
+
+collectCoLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
+collectCoLambdaVarsAndBody (CST.CoLambda _ var tm) = (var:fvs,t)
+  where (fvs, t) = collectCoLambdaVarsAndBody tm
+collectCoLambdaVarsAndBody t = ([],t) 
 
 instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
@@ -144,37 +154,25 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.TermParens _ tm) =
     parens (prettyAnn tm)
   prettyAnn (CST.FunApp _ tm1 tm2) =
-    prettyAnn tm1 <+>
-    prettyAnn tm2
-  prettyAnn (CST.MultiLambda _ vars tm) =
-    annSymbol "\\" <>
-    hsep (prettyAnn <$> vars) <+>
-    annSymbol "=>" <+>
-    prettyAnn tm
+    parens (prettyAnn tm1 <+> prettyAnn tm2)
   prettyAnn (CST.Lambda _ var tm) =
+    let (params,body) = collectLambdaVarsAndBody tm in
     annSymbol "\\" <>
-    prettyAnn var <+>
+    hsep (prettyAnn <$> (var:params)) <+>
     annSymbol "=>" <+>
-    prettyAnn tm
-  prettyAnn (CST.MultiCoLambda _ vars tm) =
-    annSymbol "\\" <>
-    hsep (prettyAnn <$> vars) <+>
-    annSymbol "=<" <+>
-    prettyAnn tm
+    prettyAnn body
   prettyAnn (CST.CoLambda _ var tm) =
+    let (params,body) = collectCoLambdaVarsAndBody tm in
     annSymbol "\\" <>
-    prettyAnn var <+>
+    hsep (prettyAnn <$> (var:params)) <+>
     annSymbol "=<" <+>
-    prettyAnn tm
+    prettyAnn body
   prettyAnn (CST.NatLit _ Structural n) =
     prettyAnn ("'" :: String) <> prettyAnn (show n)
   prettyAnn (CST.NatLit _ Nominal n) =
     prettyAnn (show n)
   prettyAnn (CST.NatLit _ Refinement n) =
     prettyAnn (show n)
-  prettyAnn (CST.DtorChain _ fst rst) =
-    prettyAnn fst <>
-    hsep (NE.toList ((\(xt,substi,_) -> annSymbol "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi)) <$> rst))
   prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
     annKeyword "ExitSuccess"
   prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =
@@ -199,7 +197,7 @@ instance PrettyAnn CST.Term where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn TST.Command where
-  prettyAnn cmd = prettyAnn (embedASTCommand cmd)
+  prettyAnn cmd = prettyAnn (embedTSTCommand cmd)
 
 instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)

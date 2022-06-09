@@ -1,4 +1,4 @@
-module Sugar.AST (
+module Sugar.TST (
   pattern CaseOfCmd,
   pattern CocaseOfCmd,
   TermCaseI (..),
@@ -16,6 +16,7 @@ module Sugar.AST (
   pattern RawCase, 
   pattern RawXtor, 
   pattern RawMuAbs,
+  pattern Lambda, 
   isDesugaredTerm,
   isDesugaredCommand,
   resetAnnotationTerm,
@@ -89,7 +90,6 @@ pattern CaseOfI loc rep ns t cases <-
 pattern CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 pattern CocaseOfI loc rep ns t cases <-
   Apply loc ApplyAnnotCocaseOfIOuter _ (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) _ ns (map (resugarCmdCase rep) -> cases)) t
-
 
 pattern RawApply ::  Loc -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
 pattern RawApply loc kind t1 t2 = Apply loc ApplyAnnotOrig kind t1 t2
@@ -190,6 +190,14 @@ resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> Typ (PrdCnsToPol pc') -> NominalStructural -> [TermCaseI pc] -> Term pc'            
 pattern XCaseI loc rep rep' ty ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ty ns (map (resugarCmdCase' rep) -> cases)   
 
+extractCmdCase :: PrdCnsRep pc -> [CmdCase] -> Maybe (FreeVarName,Term pc) 
+extractCmdCase PrdRep [MkCmdCase _ (XtorPat _ (MkXtorName "Ap") [(Prd,Just fv),(Cns,Nothing)]) (Apply _ ApplyAnnotLambda _ tm (BoundVar _ CnsRep _ (0,1)))] = Just (fv,tm)
+extractCmdCase CnsRep [MkCmdCase _ (XtorPat _ (MkXtorName "CoAp") [(Cns,Just fv),(Prd,Nothing)]) (Apply _ ApplyAnnotLambda _ (BoundVar _ PrdRep _ (0,1)) tm)] = Just (fv,tm)
+extractCmdCase _ _ = Nothing 
+
+pattern Lambda  :: Loc ->  PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc  -> Term pc 
+pattern Lambda loc pc ty fv tm <- XCase loc MatchAnnotLambda pc ty Nominal (extractCmdCase pc -> Just (fv,tm))
+
 pattern RawCase ::  Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
 pattern RawCase loc pc ty ns cases = XCase loc MatchAnnotOrig pc ty ns cases 
 
@@ -199,7 +207,7 @@ pattern RawXtor loc pc ty ns xt subst = Xtor loc XtorAnnotOrig pc ty ns xt subst
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
 pattern RawMuAbs loc pc ty name cmd = MuAbs loc MuAnnotOrig pc ty name cmd 
 
-{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, CaseOf, Dtor, Semi, Lambda, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
 
 isDesugaredTerm :: Term pc -> Bool 
 isDesugaredTerm XCaseI {} = False 
@@ -207,6 +215,7 @@ isDesugaredTerm CocaseOf {} = False
 isDesugaredTerm CaseOf {} = False 
 isDesugaredTerm Dtor {} = False 
 isDesugaredTerm Semi {} = False 
+isDesugaredTerm Lambda {} = False
 isDesugaredTerm (RawCase _ _ _ _ cases) = 
   and $ (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases 
 isDesugaredTerm (RawXtor _ _ _ _ _ subst) = 

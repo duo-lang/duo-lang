@@ -68,23 +68,20 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
 -- Infer Declarations
 ---------------------------------------------------------------------------------
 
-inferDecl :: ModuleName
-          -> Core.Declaration
-          -> DriverM TST.Declaration
---
--- PrdCnsDecl
---
-inferDecl mn (Core.PrdCnsDecl loc doc pc isRec fv annot term) = do
+inferPrdCnsDeclaration :: ModuleName
+                       -> Core.PrdCnsDeclaration pc
+                       -> DriverM (TST.PrdCnsDeclaration pc)
+inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term} = do
   infopts <- gets drvOpts
   env <- gets drvEnv
   -- 1. Generate the constraints.
-  let genFun = case isRec of
-        Recursive -> genConstraintsTermRecursive mn loc fv pc term
-        NonRecursive -> genConstraintsTerm term
-  (tmInferred, constraintSet) <- liftEitherErrLoc loc $ runGenM env genFun
+  let genFun = case pcdecl_isRec of
+        Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
+        NonRecursive -> genConstraintsTerm pcdecl_term
+  (tmInferred, constraintSet) <- liftEitherErrLoc pcdecl_loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc loc $ solveConstraints constraintSet env
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -95,70 +92,106 @@ inferDecl mn (Core.PrdCnsDecl loc doc pc isRec fv annot term) = do
   -- 5. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName fv))
+                     tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (generalize typ)
   -- 6. Check type annotation.
-  ty <- checkAnnot (prdCnsToPol pc) typSimplified annot loc
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
   -- 7. Insert into environment
-  case pc of
+  case pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert fv (tmInferred ,loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
       modifyEnvironment mn f
-      return (TST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
+      pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                                   , pcdecl_doc = pcdecl_doc
+                                   , pcdecl_pc = pcdecl_pc
+                                   , pcdecl_isRec = pcdecl_isRec
+                                   , pcdecl_name = pcdecl_name
+                                   , pcdecl_annot = ty
+                                   , pcdecl_term = tmInferred
+                                   }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert fv (tmInferred, loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
       modifyEnvironment mn f
-      return (TST.PrdCnsDecl loc doc pc isRec fv ty tmInferred)
---
--- CmdDecl
---
-inferDecl mn (Core.CmdDecl loc doc v cmd) = do
+      pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                                   , pcdecl_doc = pcdecl_doc
+                                   , pcdecl_pc = pcdecl_pc
+                                   , pcdecl_isRec = pcdecl_isRec
+                                   , pcdecl_name = pcdecl_name
+                                   , pcdecl_annot = ty
+                                   , pcdecl_term = tmInferred
+                                   }
+
+
+inferCommandDeclaration :: ModuleName
+                        -> Core.CommandDeclaration
+                        -> DriverM TST.CommandDeclaration
+inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErrLoc loc $ runGenM env (genConstraintsCommand cmd)
+  (cmdInferred,constraints) <- liftEitherErrLoc cmddecl_loc $ runGenM env (genConstraintsCommand cmddecl_cmd)
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc loc $ solveConstraints constraints env
+  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { cmdEnv  = M.insert v (cmdInferred, loc) (cmdEnv env)}
+  let f env = env { cmdEnv  = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
-  return (TST.CmdDecl loc doc v cmdInferred)
+  pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                                , cmddecl_doc = cmddecl_doc
+                                , cmddecl_name = cmddecl_name
+                                , cmddecl_cmd = cmdInferred
+                                }
+
+inferDecl :: ModuleName
+          -> Core.Declaration
+          -> DriverM TST.Declaration
+--
+-- PrdCnsDecl
+--
+inferDecl mn (Core.PrdCnsDecl pcrep decl) = do
+  decl' <- inferPrdCnsDeclaration mn decl
+  pure $ (TST.PrdCnsDecl pcrep decl')
+--
+-- CmdDecl
+--
+inferDecl mn (Core.CmdDecl decl) = do
+  decl' <- inferCommandDeclaration mn decl
+  pure (TST.CmdDecl decl')
 --
 -- DataDecl
 --
-inferDecl mn (Core.DataDecl loc doc dcl) = do
+inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (loc,dcl) : declEnv env }
+  let f env = env { declEnv = (data_loc decl,decl) : declEnv env }
   modifyEnvironment mn f
-  pure (TST.DataDecl loc doc dcl)
+  pure (TST.DataDecl decl)
 --
 -- XtorDecl
 --
-inferDecl _mn (Core.XtorDecl loc doc dc xt args ret) = do
-  pure (TST.XtorDecl loc doc dc xt args ret)
+inferDecl _mn (Core.XtorDecl decl) = do
+  pure (TST.XtorDecl decl)
 --
 -- ImportDecl
 --
-inferDecl _mn (Core.ImportDecl loc doc mod) = do
-  pure (TST.ImportDecl loc doc mod)
+inferDecl _mn (Core.ImportDecl decl) = do
+  pure (TST.ImportDecl decl)
 --
 -- SetDecl
 --
-inferDecl _mn (Core.SetDecl _ _ txt) = case T.unpack txt of
-  _ -> throwOtherError ["Unknown option: " <> txt]
+inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) = 
+  throwOtherError ["Unknown option: " <> setdecl_option]
 --
 -- TyOpDecl
 --
-inferDecl _mn (Core.TyOpDecl loc doc op prec assoc ty) = do
-  pure (TST.TyOpDecl loc doc op prec assoc ty)
+inferDecl _mn (Core.TyOpDecl decl) = do
+  pure (TST.TyOpDecl decl)
 --
 -- TySynDecl
 --
-inferDecl _mn (Core.TySynDecl loc doc nm ty) = do
-  pure (TST.TySynDecl loc doc nm ty)
+inferDecl _mn (Core.TySynDecl decl) = do
+  pure (TST.TySynDecl decl)
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls
