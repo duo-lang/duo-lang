@@ -145,7 +145,7 @@ instance PrettyAnn CST.TySynDeclaration where
     semi
 
 ---------------------------------------------------------------------------------
--- Declaration
+-- Class Declaration
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint list of type variables for class declaration.
@@ -180,6 +180,30 @@ prettyXTors xtors = braces $ group
     )
   )
 
+instance PrettyAnn CST.ClassDeclaration where
+  prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors} =
+    annKeyword "class" <+>
+    prettyAnn classdecl_name <+>
+    prettyTVars classdecl_kinds <+> 
+    prettyXTors classdecl_xtors <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Instance Declaration
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.InstanceDeclaration where
+  prettyAnn CST.MkInstanceDeclaration { instancedecl_name, instancedecl_typ, instancedecl_cases } =
+    annKeyword "instance" <+>
+    prettyAnn instancedecl_name <+>
+    prettyAnn instancedecl_typ <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> instancedecl_cases))))) <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Declaration
+---------------------------------------------------------------------------------
+
 instance PrettyAnn ClassName where
   prettyAnn nm = prettyAnn nm
 
@@ -202,15 +226,8 @@ instance PrettyAnn CST.Declaration where
   prettyAnn (CST.SetDecl decl) = prettyAnn decl
   prettyAnn (CST.TyOpDecl decl) = prettyAnn decl
   prettyAnn (CST.TySynDecl decl) = prettyAnn decl
-  prettyAnn (CST.ClassDecl _ _ nm tvs xtors) =
-    annKeyword "class" <+> prettyAnn nm <+>
-    prettyTVars tvs <+> 
-    prettyXTors xtors <>
-    semi
-  prettyAnn (CST.InstanceDecl _ _ nm ty cases) =
-    annKeyword "instance" <+> prettyAnn nm <+> prettyAnn ty <+>
-    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> cases))))) <>
-    semi
+  prettyAnn (CST.ClassDecl decl) = prettyAnn decl
+  prettyAnn (CST.InstanceDecl decl) = prettyAnn decl  
   prettyAnn CST.ParseErrorDecl = "<PARSE ERROR: SHOULD NOT OCCUR>"
 
 ---------------------------------------------------------------------------------

@@ -565,6 +565,24 @@ reparseTyOpDecl RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym
                         , tyopdecl_res = rnTnName tyopdecl_res
                         }
 
+reparseClassDecl :: RST.ClassDeclaration -> CST.ClassDeclaration
+reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors }
+  = CST.MkClassDeclaration { classdecl_loc   = classdecl_loc
+                           , classdecl_doc   = classdecl_doc
+                           , classdecl_name  = classdecl_name
+                           , classdecl_kinds = classdecl_kinds
+                           , classdecl_xtors = second (map (\(p,t,_) -> (p, embedType t))) <$> classdecl_xtors
+                           }
+
+reparseInstanceDecl :: RST.InstanceDeclaration -> CST.InstanceDeclaration
+reparseInstanceDecl RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases }
+  = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
+                              , instancedecl_doc   = instancedecl_doc
+                              , instancedecl_name  = instancedecl_name
+                              , instancedecl_typ   = embedType (fst instancedecl_typ)
+                              , instancedecl_cases = reparseTermCase <$> instancedecl_cases
+                              }
+
 reparseDecl :: RST.Declaration -> CST.Declaration
 reparseDecl (RST.PrdCnsDecl _ decl) = 
   CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
@@ -582,10 +600,10 @@ reparseDecl (RST.TyOpDecl decl) =
   CST.TyOpDecl (reparseTyOpDecl decl)
 reparseDecl (RST.TySynDecl decl) =
   CST.TySynDecl (reparseTySynDeclaration decl)
--- reparseDecl (RST.ClassDecl loc doc cls args ops) =
---   CST.ClassDecl loc doc cls args (undefined ops)
--- reparseDecl (RST.InstanceDecl loc doc cls ty cases) =
---   CST.InstanceDecl loc doc cls (undefined ty) (undefined cases)
+reparseDecl (RST.ClassDecl decl) =
+  CST.ClassDecl (reparseClassDecl decl)
+reparseDecl (RST.InstanceDecl decl) =
+  CST.InstanceDecl (reparseInstanceDecl decl)
 
 reparseProgram :: RST.Program -> CST.Program
 reparseProgram = fmap reparseDecl

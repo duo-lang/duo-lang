@@ -242,9 +242,9 @@ resolveDecl (CST.TyOpDecl decl) = do
 resolveDecl (CST.TySynDecl decl) = do
   decl' <- resolveTySynDeclaration decl
   pure (RST.TySynDecl decl')
-resolveDecl (CST.ClassDecl _loc _doc _className _typeVars _) =
+resolveDecl (CST.ClassDecl _decl) =
   throwError (OtherError Nothing "Class Declaration: Not implemented yet")
-resolveDecl (CST.InstanceDecl _loc _doc _className _typ _) =
+resolveDecl (CST.InstanceDecl _decl) =
   throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
 resolveDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")

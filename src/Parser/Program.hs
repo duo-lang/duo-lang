@@ -237,7 +237,8 @@ classDeclarationP doc = do
     typeVars      <- fst <$> parens (tParamP `sepBy` symbolP SymComma)
     (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
     endPos        <- symbolP SymSemi
-    pure (ClassDecl (Loc startPos endPos) doc className typeVars xtors)
+    let decl = MkClassDeclaration (Loc startPos endPos) doc className typeVars xtors
+    pure (ClassDecl decl)
 
 
 ---------------------------------------------------------------------------------
@@ -253,7 +254,8 @@ instanceDeclarationP doc = do
     typ        <- fst <$> typP
     (cases, _) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
     endPos     <- symbolP SymSemi
-    pure (InstanceDecl (Loc startPos endPos) doc className typ cases)
+    let decl = MkInstanceDeclaration (Loc startPos endPos) doc className typ cases
+    pure (InstanceDecl decl)
 
 
 ---------------------------------------------------------------------------------

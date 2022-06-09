@@ -75,7 +75,8 @@ data DataDecl = NominalDecl
     -- The constructors/destructors of the declaration.
   }
 
-<<<<<<< HEAD
+deriving instance (Show DataDecl)
+
 ---------------------------------------------------------------------------------
 -- Constraints
 ---------------------------------------------------------------------------------
@@ -84,6 +85,4 @@ data Constraint
   = SubType Typ Typ
   | TypeClass ClassName TVar
  deriving Show
-=======
-deriving instance (Show DataDecl)
->>>>>>> origin/main
+
