@@ -8,6 +8,10 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
 import Syntax.Common.PrdCns
+import Syntax.Common.TypesPol
+import Translate.Reparse ()
+import qualified Syntax.Common.TypesPol as TST
+import qualified Syntax.Common.TypesPol as Core
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -41,8 +45,10 @@ embedCoreTerm (Core.Dtor loc rep ns xt t (subst,r,subst2)) = RST.Dtor loc rep ns
 embedCoreTerm (Core.Semi loc rep ns xt (subst,r,subst2) t ) = RST.Semi loc rep ns xt (embedSubst subst, r, embedSubst subst2) (embedCoreTerm t) 
 embedCoreTerm (Core.XCaseI loc rep PrdRep ns cases) = RST.CocaseI loc rep ns (embedTermCaseI <$> cases)
 embedCoreTerm (Core.XCaseI loc rep CnsRep ns cases) = RST.CaseI loc rep ns (embedTermCaseI <$> cases)
-embedCoreTerm (Core.PrimLitI64 loc i) =
-    RST.PrimLitI64 loc i
+embedCoreTerm (Core.Lambda loc rep fv tm)  = RST.Lambda loc rep fv (embedCoreTerm tm) 
+embedCoreTerm (Core.XCase loc _ pc ns cases) = RST.XCase loc pc ns (embedCmdCase <$> cases) -- revisit
+embedCoreTerm (Core.PrimLitI64 loc d) =
+    RST.PrimLitI64 loc d
 embedCoreTerm (Core.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
 
@@ -74,94 +80,145 @@ embedCoreCommand (Core.ExitFailure loc) =
 embedCoreCommand (Core.PrimOp loc ty op subst) =
     RST.PrimOp loc ty op (embedSubst subst)
 
+
 embedCoreProg :: Core.Program -> RST.Program
 embedCoreProg = fmap embedCoreDecl
 
+embedPrdCnsDeclaration :: Core.PrdCnsDeclaration pc -> RST.PrdCnsDeclaration pc
+embedPrdCnsDeclaration Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+    RST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                            , pcdecl_doc = pcdecl_doc
+                            , pcdecl_pc = pcdecl_pc
+                            , pcdecl_isRec = pcdecl_isRec
+                            , pcdecl_name = pcdecl_name
+                            , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                            , pcdecl_term = embedCoreTerm pcdecl_term
+                            }
+
+embedCommandDeclaration :: Core.CommandDeclaration -> RST.CommandDeclaration
+embedCommandDeclaration Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+    RST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                             , cmddecl_doc = cmddecl_doc
+                             , cmddecl_name = cmddecl_name
+                             , cmddecl_cmd = embedCoreCommand cmddecl_cmd
+                             }
+
 embedCoreDecl :: Core.Declaration -> RST.Declaration
-embedCoreDecl (Core.PrdCnsDecl loc doc rep isRec fv _tys tm) =
-    RST.PrdCnsDecl loc doc rep isRec fv Nothing (embedCoreTerm tm)
-embedCoreDecl (Core.CmdDecl loc doc fv cmd) =
-    RST.CmdDecl loc doc fv (embedCoreCommand cmd)
-embedCoreDecl (Core.DataDecl loc doc decl) =
-    RST.DataDecl loc doc decl
-embedCoreDecl (Core.XtorDecl loc doc dc xt knd eo) =
-    RST.XtorDecl loc doc dc xt knd eo
-embedCoreDecl (Core.ImportDecl loc doc mn) =
-    RST.ImportDecl loc doc mn
-embedCoreDecl (Core.SetDecl loc doc txt) =
-    RST.SetDecl loc doc txt
-embedCoreDecl (Core.TyOpDecl loc doc op prec assoc ty) =
-    RST.TyOpDecl loc doc op prec assoc ty
-embedCoreDecl (Core.TySynDecl loc doc nm ty) =
-    RST.TySynDecl loc doc nm ty
+embedCoreDecl (Core.PrdCnsDecl pcrep decl) =
+    RST.PrdCnsDecl pcrep (embedPrdCnsDeclaration decl)
+embedCoreDecl (Core.CmdDecl decl) =
+    RST.CmdDecl (embedCommandDeclaration decl)
+embedCoreDecl (Core.DataDecl decl) =
+    RST.DataDecl decl
+embedCoreDecl (Core.XtorDecl decl) =
+    RST.XtorDecl decl
+embedCoreDecl (Core.ImportDecl decl) =
+    RST.ImportDecl decl
+embedCoreDecl (Core.SetDecl decl) =
+    RST.SetDecl decl
+embedCoreDecl (Core.TyOpDecl decl) =
+    RST.TyOpDecl decl
+embedCoreDecl (Core.TySynDecl decl) =
+    RST.TySynDecl decl
 
-embedASTCmdCase :: TST.CmdCase -> Core.CmdCase
-embedASTCmdCase TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+embedTSTCmdCase :: TST.CmdCase -> Core.CmdCase
+embedTSTCmdCase TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     Core.MkCmdCase { cmdcase_loc = cmdcase_loc
-                  , cmdcase_pat = cmdcase_pat
-                  , cmdcase_cmd = embedASTCommand cmdcase_cmd
-                  }
+                   , cmdcase_pat = cmdcase_pat
+                   , cmdcase_cmd = embedTSTCommand cmdcase_cmd
+                   }
 
-embedASTPCTerm :: TST.PrdCnsTerm -> Core.PrdCnsTerm
-embedASTPCTerm (TST.PrdTerm tm) = Core.PrdTerm (embedASTTerm tm)
-embedASTPCTerm (TST.CnsTerm tm) = Core.CnsTerm (embedASTTerm tm)
+embedTSTPCTerm :: TST.PrdCnsTerm -> Core.PrdCnsTerm
+embedTSTPCTerm (TST.PrdTerm tm) = Core.PrdTerm (embedTSTTerm tm)
+embedTSTPCTerm (TST.CnsTerm tm) = Core.CnsTerm (embedTSTTerm tm)
 
 
-embedASTSubst :: TST.Substitution -> Core.Substitution
-embedASTSubst = fmap embedASTPCTerm
+embedTSTSubst :: TST.Substitution -> Core.Substitution
+embedTSTSubst = fmap embedTSTPCTerm
 
-embedASTTerm :: TST.Term pc -> Core.Term pc
-embedASTTerm (TST.BoundVar loc rep _ty idx) =
+embedTSTTerm :: TST.Term pc -> Core.Term pc
+embedTSTTerm (TST.BoundVar loc rep _ty idx) =
     Core.BoundVar loc rep idx
-embedASTTerm (TST.FreeVar loc rep _ty idx) =
+embedTSTTerm (TST.FreeVar loc rep _ty idx) =
     Core.FreeVar loc rep idx
-embedASTTerm (TST.Xtor loc annot rep _ty ns xs subst) =
-    Core.Xtor loc annot rep ns xs (embedASTSubst subst)
-embedASTTerm (TST.XCase loc annot rep _ty ns cases) =
-    Core.XCase loc annot rep ns (embedASTCmdCase <$> cases)
-embedASTTerm (TST.MuAbs loc annot rep _ty b cmd) =
-    Core.MuAbs loc annot rep b (embedASTCommand cmd)
-embedASTTerm (TST.PrimLitI64 loc i) =
+embedTSTTerm (TST.Xtor loc annot rep _ty ns xs subst) =
+    Core.Xtor loc annot rep ns xs (embedTSTSubst subst)
+embedTSTTerm (TST.XCase loc annot rep _ty ns cases) =
+    Core.XCase loc annot rep ns (embedTSTCmdCase <$> cases)
+embedTSTTerm (TST.MuAbs loc annot rep _ty b cmd) =
+    Core.MuAbs loc annot rep b (embedTSTCommand cmd)
+embedTSTTerm (TST.PrimLitI64 loc i) =
     Core.PrimLitI64 loc i
-embedASTTerm (TST.PrimLitF64 loc d) =
+embedTSTTerm (TST.PrimLitF64 loc d) =
     Core.PrimLitF64 loc d
 
 
-embedASTCommand :: TST.Command -> Core.Command
-embedASTCommand (TST.Apply loc annot _kind prd cns ) =
-    Core.Apply loc annot (embedASTTerm prd) (embedASTTerm cns)
-embedASTCommand (TST.Print loc tm cmd) =
-    Core.Print loc (embedASTTerm tm) (embedASTCommand cmd)
-embedASTCommand (TST.Read loc tm) =
-    Core.Read loc (embedASTTerm tm)
-embedASTCommand (TST.Jump loc fv) =
+embedTSTCommand :: TST.Command -> Core.Command
+embedTSTCommand (TST.Apply loc annot _kind prd cns ) =
+    Core.Apply loc annot (embedTSTTerm prd) (embedTSTTerm cns)
+embedTSTCommand (TST.Print loc tm cmd) =
+    Core.Print loc (embedTSTTerm tm) (embedTSTCommand cmd)
+embedTSTCommand (TST.Read loc tm) =
+    Core.Read loc (embedTSTTerm tm)
+embedTSTCommand (TST.Jump loc fv) =
     Core.Jump loc fv
-embedASTCommand (TST.ExitSuccess loc) =
+embedTSTCommand (TST.ExitSuccess loc) =
     Core.ExitSuccess loc
-embedASTCommand (TST.ExitFailure loc) =
+embedTSTCommand (TST.ExitFailure loc) =
     Core.ExitFailure loc
-embedASTCommand (TST.PrimOp loc ty op subst) =
-    Core.PrimOp loc ty op (embedASTSubst subst)
+embedTSTCommand (TST.PrimOp loc ty op subst) =
+    Core.PrimOp loc ty op (embedTSTSubst subst)
 
-embedASTProg :: TST.Program -> Core.Program
-embedASTProg = fmap embedASTDecl
+embedTSTProg :: TST.Program -> Core.Program
+embedTSTProg = fmap embedTSTDecl
 
-embedASTDecl :: TST.Declaration -> Core.Declaration
-embedASTDecl (TST.PrdCnsDecl loc doc rep isRec fv _tys tm) =
-    Core.PrdCnsDecl loc doc rep isRec fv Nothing (embedASTTerm tm)
-embedASTDecl (TST.CmdDecl loc doc fv cmd) =
-    Core.CmdDecl loc doc fv (embedASTCommand cmd)
-embedASTDecl (TST.DataDecl loc doc decl) =
-    Core.DataDecl loc doc decl
-embedASTDecl (TST.XtorDecl loc doc dc xt knd eo) =
-    Core.XtorDecl loc doc dc xt knd eo
-embedASTDecl (TST.ImportDecl loc doc mn) =
-    Core.ImportDecl loc doc mn
-embedASTDecl (TST.SetDecl loc doc txt) =
-    Core.SetDecl loc doc txt
-embedASTDecl (TST.TyOpDecl loc doc op prec assoc ty) =
-    Core.TyOpDecl loc doc op prec assoc ty
-embedASTDecl (TST.TySynDecl loc doc nm ty) =
-    Core.TySynDecl loc doc nm ty    
+embedTypeScheme :: TST.TypeScheme pol -> Core.TypeScheme pol
+embedTypeScheme (TypeScheme loc tvars mt) = Core.TypeScheme loc tvars mt
+
+embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
+    Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                             , pcdecl_doc = pcdecl_doc
+                             , pcdecl_pc = pcdecl_pc
+                             , pcdecl_isRec = pcdecl_isRec
+                             , pcdecl_name = pcdecl_name
+                             , pcdecl_annot = Just $ embedTypeScheme tys
+                             , pcdecl_term = embedTSTTerm pcdecl_term
+                             }
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Inferred _, pcdecl_term } =
+    Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                             , pcdecl_doc = pcdecl_doc
+                             , pcdecl_pc = pcdecl_pc
+                             , pcdecl_isRec = pcdecl_isRec
+                             , pcdecl_name = pcdecl_name
+                             , pcdecl_annot = Nothing
+                             , pcdecl_term = embedTSTTerm pcdecl_term
+                             }
+
+embedTSTCommandDecl :: TST.CommandDeclaration -> Core.CommandDeclaration
+embedTSTCommandDecl TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+    Core.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                              , cmddecl_doc = cmddecl_doc
+                              , cmddecl_name = cmddecl_name
+                              , cmddecl_cmd = embedTSTCommand cmddecl_cmd
+                              }
+
+embedTSTDecl :: TST.Declaration -> Core.Declaration
+embedTSTDecl (TST.PrdCnsDecl pcrep decl) =
+    Core.PrdCnsDecl pcrep (embedTSTPrdCnsDecl decl)
+embedTSTDecl (TST.CmdDecl decl) =
+    Core.CmdDecl (embedTSTCommandDecl decl)
+embedTSTDecl (TST.DataDecl decl) =
+    Core.DataDecl decl
+embedTSTDecl (TST.XtorDecl decl) =
+    Core.XtorDecl decl
+embedTSTDecl (TST.ImportDecl decl) =
+    Core.ImportDecl decl
+embedTSTDecl (TST.SetDecl decl) =
+    Core.SetDecl decl
+embedTSTDecl (TST.TyOpDecl decl) =
+    Core.TyOpDecl decl
+embedTSTDecl (TST.TySynDecl decl) =
+    Core.TySynDecl decl
 
    
