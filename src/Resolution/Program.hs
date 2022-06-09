@@ -82,10 +82,16 @@ resolveDecl (CST.TySynDecl loc doc nm ty) = do
   typ <- resolveTyp PosRep ty
   tyn <- resolveTyp NegRep ty
   pure (RST.TySynDecl loc doc nm (typ, tyn))
-resolveDecl (CST.ClassDecl _loc _doc _className _typeVars _) =
-  throwError (OtherError Nothing "Class Declaration: Not implemented yet")
-resolveDecl (CST.InstanceDecl _loc _doc _className _typ _) =
-  throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
+resolveDecl (CST.ClassDecl loc doc className typeVars xtors) = do
+  ty <- mapM (mapM (resolveTyp PosRep)) ((snd <$>) . snd <$> xtors)
+                            -- TODO: fix pos & neg variance
+  let xtorsRes = zipWith (\(x,ts) tys -> (x,zip (fst <$> ts) tys)) xtors ty
+  pure (RST.ClassDecl loc doc className typeVars xtorsRes)
+resolveDecl (CST.InstanceDecl loc doc className typ cases) = do
+  ty <- resolveTyp PosRep typ 
+  tc <- undefined cases -- TODO: resolve term cases
+  pure (RST.InstanceDecl loc doc className ty tc)
+  -- throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
 resolveDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
