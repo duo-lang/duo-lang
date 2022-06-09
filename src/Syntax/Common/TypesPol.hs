@@ -88,29 +88,8 @@ data Typ (pol :: Polarity) where
   TyRec :: Loc -> PolarityRep pol -> TVar -> Typ pol -> Typ pol
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
-
-flipTyp :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
-flipTyp pr (TyVar loc _ mk tv) = TyVar loc (flipPolarityRep pr) mk tv
-flipTyp pr (TyData loc _ rn xtors) = TyData loc (flipPolarityRep pr) rn (flipXtorSig pr <$> xtors)
-flipTyp pr (TyCodata loc _ rn xtors) = TyCodata loc (flipPolarityRep pr) rn (flipXtorSig (flipPolarityRep pr) <$> xtors)
-flipTyp pr (TyNominal loc _ mk rn vts) = TyNominal loc (flipPolarityRep pr) mk rn (flipVariantType pr <$> vts)
-flipTyp pr (TySyn loc _ rn ty) = TySyn loc (flipPolarityRep pr) rn (flipTyp pr ty)
-flipTyp pr (TyRec loc _ tv ty) = TyRec loc (flipPolarityRep pr) tv (flipTyp pr ty)
-flipTyp pr (TyPrim loc _ pt) = TyPrim loc (flipPolarityRep pr) pt
-flipTyp _pr t = error $ "flipTyp: Cannot flip type " ++ show t
-
-flipXtorSig :: PolarityRep pol -> XtorSig pol -> XtorSig (FlipPol pol)
-flipXtorSig pr (MkXtorSig xt args) = MkXtorSig xt (f pr <$> args)
-  where 
-    f :: PolarityRep pol -> PrdCnsType pol -> PrdCnsType (FlipPol pol)
-    f PosRep  (PrdCnsType PrdRep t) = PrdCnsType CnsRep t
-    f NegRep  (PrdCnsType CnsRep t) = PrdCnsType PrdRep t
-    f PosRep  (PrdCnsType CnsRep t) = PrdCnsType PrdRep t
-    f NegRep  (PrdCnsType PrdRep t) = PrdCnsType CnsRep t
-
-flipVariantType :: PolarityRep pol ->  VariantType pol -> VariantType (FlipPol pol)
-flipVariantType pr (CovariantType x)= CovariantType (flipTyp pr x)
-flipVariantType pr (ContravariantType x)= ContravariantType (flipTyp (flipPolarityRep pr) x)
+  -- | TyFlipPol is only generated during focusing, and cannot be parsed!
+  TyFlipPol :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
@@ -138,6 +117,9 @@ getPolarity TyUnion {}                = PosRep
 getPolarity TyInter {}                = NegRep
 getPolarity (TyRec _ rep _ _)         = rep
 getPolarity (TyPrim _ rep _)          = rep
+getPolarity (TyFlipPol rep _) = rep
+
+
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -180,6 +162,7 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyData _ _ _ xtors)     = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
   freeTVars (TyPrim _ _ _)           = S.empty
+  freeTVars (TyFlipPol _ ty)         = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
@@ -234,6 +217,7 @@ instance Zonk (Typ pol) where
   zonk bisubst (TyRec loc rep tv ty) =
      TyRec loc rep tv (zonk bisubst ty)
   zonk _ t@TyPrim {} = t
+  zonk bisubst (TyFlipPol rep ty) = TyFlipPol rep (zonk bisubst ty)
 
 instance Zonk (VariantType pol) where
   zonk bisubst (CovariantType ty) = CovariantType (zonk bisubst ty)
