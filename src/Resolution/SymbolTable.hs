@@ -44,6 +44,8 @@ data TypeNameResolve where
 data XtorNameResolve where
   -- | Xtor was introduced in a data or codata declaration
   XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
+  -- | Xtor was introduced as a method in a class declaration
+  MethodNameResult :: ClassName -> Arity -> XtorNameResolve
 
 -- | What a toplevel definition can resolve to during name resolution
 data FreeVarNameResolve where
@@ -123,7 +125,7 @@ createSymbolTable' :: MonadError Error m
                    -> Declaration 
                    -> SymbolTable 
                    -> m SymbolTable
-createSymbolTable' _ (XtorDecl (MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity })) st = do
+createSymbolTable' _ (XtorDecl MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity }) st = do
   -- Check whether the xtor name is already declared in this module
   checkFreshXtorName strxtordecl_loc strxtordecl_name st
   let xtorResolve = XtorNameResult strxtordecl_xdata Structural (fst <$> strxtordecl_arity)
@@ -168,7 +170,7 @@ createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }
   pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _) st = pure st
 createSymbolTable' _ (ClassDecl MkClassDeclaration {classdecl_name, classdecl_xtors})  st =
-  -- createSymbolTable' _ (ClassDecl _ _ nm _ ms) st =
-  pure $ st { classMethods = M.insert classdecl_name (fst <$> classdecl_xtors) (classMethods st) }
+  pure $ st { classMethods = M.insert classdecl_name (fst <$> classdecl_xtors) (classMethods st)
+            , xtorNameMap = M.union (M.fromList $ zip (fst <$> classdecl_xtors) (MethodNameResult classdecl_name . fmap fst . snd <$> classdecl_xtors)) (xtorNameMap st) }
 createSymbolTable' _ InstanceDecl {} st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st
