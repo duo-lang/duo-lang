@@ -463,6 +463,7 @@ embedType (RST.TyRec loc _ tv ty) =
   CST.TyRec loc tv (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
+embedType (RST.TyFlipPol _ ty) = embedType ty
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =

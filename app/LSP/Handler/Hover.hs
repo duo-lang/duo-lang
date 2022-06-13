@@ -354,6 +354,7 @@ instance ToHoverMap (Typ pol) where
                       ]
     in
       mkHoverMap loc msg
+  toHoverMap (TyFlipPol _ ty) = toHoverMap ty
 
 instance ToHoverMap (TypeScheme pol) where
   toHoverMap (TypeScheme { ts_monotype }) = toHoverMap ts_monotype

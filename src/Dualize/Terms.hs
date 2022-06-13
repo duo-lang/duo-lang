@@ -123,6 +123,7 @@ dualType PosRep (TyData loc _ rn xtors) = TyCodata loc NegRep  (dualRnTypeName <
 dualType NegRep (TyData loc _ rn xtors) = TyCodata loc PosRep  (dualRnTypeName <$> rn) xtors 
 dualType PosRep (TyCodata loc _ rn xtors) = TyData loc NegRep  (dualRnTypeName <$> rn) xtors 
 dualType NegRep (TyCodata loc _ rn xtors) = TyData loc PosRep  (dualRnTypeName <$> rn) xtors 
+dualType _ (TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> VariantType pol -> VariantType (FlipPol pol)
 dualVariantType pol (CovariantType ty) = CovariantType (dualType pol ty) 

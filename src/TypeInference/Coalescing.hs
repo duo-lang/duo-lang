@@ -123,6 +123,8 @@ coalesceType (TyRec loc NegRep tv ty) = do
     ty' <- local f $ coalesceType ty
     return $ TyRec loc NegRep tv ty'
 coalesceType t@(TyPrim _ _ _) = return t
+coalesceType (TyFlipPol _ _) = error "Tried to coalesce TyFlipPol"
+
 
 coalesceVariantType :: VariantType pol -> CoalesceM (VariantType pol)
 coalesceVariantType (CovariantType ty) = CovariantType <$> coalesceType ty
