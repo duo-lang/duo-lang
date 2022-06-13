@@ -57,6 +57,26 @@ deriving instance Eq TermCase
 
 
 --------------------------------------------------------------------------------------------
+-- Cases/Cocases
+--------------------------------------------------------------------------------------------
+
+data InstancePat where
+  MethodPat :: Loc -> MethodName -> BindingSite -> InstancePat
+
+deriving instance Show InstancePat
+deriving instance Eq InstancePat
+
+data InstanceCase  = MkInstanceCase
+  { instancecase_loc  :: Loc
+  , instancecase_pat  :: InstancePat
+  , instancecase_term :: Term
+  }
+
+deriving instance Show InstanceCase
+deriving instance Eq InstanceCase
+
+
+--------------------------------------------------------------------------------------------
 -- Terms
 --------------------------------------------------------------------------------------------
 

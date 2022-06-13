@@ -1,4 +1,4 @@
-module Resolution.Terms (resolveTerm, resolveCommand) where
+module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase) where
 
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
@@ -543,3 +543,23 @@ resolveTerm _ (CST.Apply loc _ _) =
   throwError (OtherError (Just loc) "Cannot resolve Apply command to a term.")
 resolveTerm _ (CST.PrimCmdTerm _) =
   throwError (OtherError Nothing " Cannot resolve primCmdTerm to a term.")
+
+---------------------------------------------------------------------------------
+
+-- | Type ought to be changed to InstanceCase
+analyzeInstancePattern :: CST.TermPat -> ResolverM AnalyzedPattern
+analyzeInstancePattern (CST.XtorPat loc xt args) = do
+  (_,MethodNameResult cn arity) <- lookupXtor loc xt
+  when (length arity /= length args) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
+  pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
+
+
+-- | Type ought to be changed to InstanceCase
+resolveInstanceCase :: CST.TermCase -> ResolverM (RST.TermCase Cns)
+resolveInstanceCase (CST.MkTermCase loc tc t) = do
+  intermediateCase <- analyzeInstancePattern tc
+  case intermediateCase of
+    (ExplicitPattern loc' xtor args) ->
+      resolveTermCase CnsRep (MkIntermediateCase loc' xtor args t)
+    _ -> throwError (OtherError Nothing "Expected explicit patterns in instance definition.")

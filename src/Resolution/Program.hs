@@ -10,7 +10,7 @@ import Data.Text qualified as T
 import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
-import Resolution.Terms (resolveTerm, resolveCommand)
+import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp)
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
@@ -242,7 +242,7 @@ resolveInstanceDeclaration :: CST.InstanceDeclaration
 resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
   typ <- resolveTyp PosRep instancedecl_typ
   tyn <- resolveTyp NegRep instancedecl_typ
-  tc <- undefined instancedecl_cases -- TODO: resolve term cases
+  tc <- sequence (resolveInstanceCase <$> instancedecl_cases)
   pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
