@@ -8,7 +8,9 @@ module Syntax.Core.Terms
   , Command(..)
   -- Functions
   , commandClosing
+  , termClosing
   , shiftCmd
+  , shiftTerm
   , commandOpening
   , termLocallyClosed
   ) where
@@ -203,6 +205,9 @@ commandClosingRec k args (PrimOp ext pt op subst) =
 commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
 
+termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
+termClosing = termClosingRec 0 
+
 ---------------------------------------------------------------------------------
 -- Check for locally closedness
 ---------------------------------------------------------------------------------
@@ -295,3 +300,5 @@ shiftCmdRec dir n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec di
 shiftCmd :: ShiftDirection -> Command -> Command
 shiftCmd dir = shiftCmdRec dir 0
 
+shiftTerm :: ShiftDirection -> Term pc -> Term pc 
+shiftTerm dir = shiftTermRec dir 0

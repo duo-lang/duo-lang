@@ -1,37 +1,82 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.TST.Program where
 
-import Data.Text (Text)
-
 import Syntax.Common
 import Syntax.TST.Terms( Command, Term )
-import Syntax.Common.TypesPol ( DataDecl, TopAnnot, Typ )
+import Syntax.RST.Program qualified as RST
+import Syntax.CST.Program qualified as CST
+import Syntax.Common.TypesPol ( DataDecl, TopAnnot )
 import Utils ( Loc )
+
+
+---------------------------------------------------------------------------------
+-- Producer / Consumer Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel producer or consumer declaration.
+data PrdCnsDeclaration pc = MkPrdCnsDeclaration
+  { pcdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , pcdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , pcdecl_pc :: PrdCnsRep pc
+    -- ^ Whether a producer or consumer is declared.
+  , pcdecl_isRec :: IsRec
+    -- ^ Whether the declaration can refer to itself recursively.
+  , pcdecl_name :: FreeVarName
+    -- ^ The name of the producer / consumer.
+  , pcdecl_annot :: TopAnnot (PrdCnsToPol pc)
+    -- ^ The type signature.
+  , pcdecl_term :: Term pc
+    -- ^ The term itself.
+}
+
+deriving instance (Show (PrdCnsDeclaration Prd))
+deriving instance (Show (PrdCnsDeclaration Cns))
+
+---------------------------------------------------------------------------------
+-- Command Declaration
+---------------------------------------------------------------------------------
+
+-- | A toplevel command declaration.
+data CommandDeclaration = MkCommandDeclaration
+  { cmddecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , cmddecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , cmddecl_name :: FreeVarName
+    -- ^ The name of the command.
+  , cmddecl_cmd :: Command
+    -- ^ The command itself.
+  }
+
+deriving instance (Show CommandDeclaration)
+
 
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
 data Declaration where
-  PrdCnsDecl     :: Loc -> Maybe DocComment -> PrdCnsRep pc -> IsRec -> FreeVarName -> TopAnnot (PrdCnsToPol pc) -> Term pc -> Declaration
-  CmdDecl        :: Loc -> Maybe DocComment -> FreeVarName -> Command                                                       -> Declaration
-  DataDecl       :: Loc -> Maybe DocComment -> DataDecl                                                                     -> Declaration
-  XtorDecl       :: Loc -> Maybe DocComment -> DataCodata -> XtorName -> [(PrdCns, MonoKind)] -> EvaluationOrder            -> Declaration
-  ImportDecl     :: Loc -> Maybe DocComment -> ModuleName                                                                   -> Declaration
-  SetDecl        :: Loc -> Maybe DocComment -> Text                                                                         -> Declaration
-  TyOpDecl       :: Loc -> Maybe DocComment -> TyOpName -> Precedence -> Associativity -> RnTypeName                        -> Declaration
-  TySynDecl      :: Loc -> Maybe DocComment -> TypeName -> (Typ Pos, Typ Neg)                                               -> Declaration
+  PrdCnsDecl     :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
+  CmdDecl        :: CommandDeclaration                   -> Declaration
+  DataDecl       :: DataDecl                             -> Declaration
+  XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
+  ImportDecl     :: CST.ImportDeclaration                -> Declaration
+  SetDecl        :: CST.SetDeclaration                   -> Declaration
+  TyOpDecl       :: RST.TyOpDeclaration                  -> Declaration
+  TySynDecl      :: RST.TySynDeclaration                 -> Declaration
   
 
 instance Show Declaration where
-  show (PrdCnsDecl loc doc PrdRep isrec fv annot tm) = "PrdDecl: " ++ show loc ++ show doc ++ show isrec ++ show fv ++ show annot ++ show tm
-  show (PrdCnsDecl loc doc CnsRep isrec fv annot tm) = "CnsDecl: " ++ show loc ++ show doc ++ show isrec ++ show fv ++ show annot ++ show tm
-  show (CmdDecl loc doc fv cmd) = "CmdDecl: " ++ show loc ++ show doc ++ show fv ++ show cmd
-  show (DataDecl loc doc dcl)= "DataDecl: " ++ show loc ++ show doc ++ show dcl
-  show (XtorDecl loc doc dc xt args res) = "XtorDecl: " ++ show loc ++ show doc ++ show dc ++ show xt ++ show args ++ show res
-  show (ImportDecl loc doc mn) = "ImportDecl: " ++ show loc ++ show doc ++ show mn
-  show (SetDecl loc doc txt) = "SetDecl: " ++ show loc ++ show doc ++ show txt
-  show (TyOpDecl loc doc op prec assoc ty) = "TyOpDecl: " ++ show loc ++ show doc ++ show op ++ show prec ++ show assoc ++ show ty
-  show (TySynDecl loc doc nm ty) = "TySynDecl: " ++ show loc ++ show doc ++ show nm ++ show ty
+  show (PrdCnsDecl PrdRep decl) = show decl
+  show (PrdCnsDecl CnsRep decl) = show decl
+  show (CmdDecl decl) = show decl
+  show (DataDecl decl) = show decl
+  show (XtorDecl decl) = show decl
+  show (ImportDecl decl) = show decl
+  show (SetDecl decl) = show decl
+  show (TyOpDecl decl) = show decl
+  show (TySynDecl decl) = show decl
   
 type Program = [Declaration]

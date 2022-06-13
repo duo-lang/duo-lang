@@ -12,6 +12,7 @@ module Syntax.RST.Terms
   , Command(..)
    -- Functions
   , termOpening
+  , termOpeningRec
   , commandOpening
   , termClosing
   , commandClosing
@@ -161,6 +162,10 @@ data Term (pc :: PrdCns) where
   -- cocase { X(xs,*,ys) => cns}
   CaseI   :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Cns
   CocaseI :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Prd
+  
+  -- \x y z -> t 
+  Lambda  :: Loc  -> PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc 
+  
   ---------------------------------------------------------------------------------
   -- Primitive constructs
   ---------------------------------------------------------------------------------
@@ -206,7 +211,7 @@ termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
 termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, subst !! j) of
                                                                       (PrdRep, PrdTerm tm) -> tm
                                                                       (CnsRep, CnsTerm tm) -> tm
-                                                                      _                    -> error "termOpeningRec BOOM"
+                                                                      t                    -> error $ "termOpeningRec BOOM: " ++ show t
                                                    | otherwise = bv
 termOpeningRec _ _ fv@FreeVar {}= fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
@@ -236,6 +241,8 @@ termOpeningRec k args (CaseI loc pcrep ns tmcasesI) =
   CaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
 termOpeningRec k args (CocaseI loc pcrep ns cocases) =
   CocaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+termOpeningRec k args (Lambda loc pcrep ns tm) = 
+  Lambda loc pcrep ns (termOpeningRec (k+1) args tm)  
 -- Primitive constructs
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
@@ -315,6 +322,8 @@ termClosingRec k args (CaseI loc pcrep ns tmcasesI) =
   CaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
 termClosingRec k args (CocaseI loc pcrep ns cocases) =
   CocaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+termClosingRec k args (Lambda loc pcrep fv tm) = 
+  Lambda loc pcrep fv (termClosingRec (k+1) args tm)  
 -- Primitive constructs
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit

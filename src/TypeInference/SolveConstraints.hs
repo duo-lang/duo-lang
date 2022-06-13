@@ -338,7 +338,10 @@ subConstraints (SubType _ t1@TyPrim{} t2@TyCodata{}) = do
   throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
 subConstraints (SubType _ t1@TyCodata{} t2@TyPrim{}) = do
   throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
-
+subConstraints (SubType _ TyFlipPol {} _) = do
+  throwSolverError ["Cannot compute subconstraints for TyFlipPol"]
+subConstraints (SubType _ _ TyFlipPol {}) = do
+  throwSolverError ["Cannot compute subconstraints for TyFlipPol"]
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------

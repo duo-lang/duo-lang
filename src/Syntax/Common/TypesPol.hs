@@ -88,6 +88,8 @@ data Typ (pol :: Polarity) where
   TyRec :: Loc -> PolarityRep pol -> TVar -> Typ pol -> Typ pol
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
+  -- | TyFlipPol is only generated during focusing, and cannot be parsed!
+  TyFlipPol :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
@@ -115,6 +117,9 @@ getPolarity TyUnion {}                = PosRep
 getPolarity TyInter {}                = NegRep
 getPolarity (TyRec _ rep _ _)         = rep
 getPolarity (TyPrim _ rep _)          = rep
+getPolarity (TyFlipPol rep _) = rep
+
+
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -157,10 +162,11 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyData _ _ _ xtors)     = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
   freeTVars (TyPrim _ _ _)           = S.empty
+  freeTVars (TyFlipPol _ ty)         = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
-    
+
 instance FreeTVars (VariantType pol) where
   freeTVars (CovariantType ty)     = freeTVars ty
   freeTVars (ContravariantType ty) = freeTVars ty
@@ -211,6 +217,7 @@ instance Zonk (Typ pol) where
   zonk bisubst (TyRec loc rep tv ty) =
      TyRec loc rep tv (zonk bisubst ty)
   zonk _ t@TyPrim {} = t
+  zonk bisubst (TyFlipPol rep ty) = TyFlipPol rep (zonk bisubst ty)
 
 instance Zonk (VariantType pol) where
   zonk bisubst (CovariantType ty) = CovariantType (zonk bisubst ty)
@@ -237,10 +244,22 @@ unfoldRecType ty = ty
 -- Data Type declarations
 ------------------------------------------------------------------------------
 
+-- | A toplevel declaration of a data or codata type.
 data DataDecl = NominalDecl
-  { data_refined :: IsRefined
+  { data_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , data_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , data_refined :: IsRefined
+    -- ^ Whether an ordinary or a refinement type is declared.
   , data_name :: RnTypeName
+    -- ^ The name of the type. E.g. "List".
   , data_polarity :: DataCodata
+    -- ^ Whether a data or codata type is declared.
   , data_kind :: PolyKind
+    -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
-  } deriving (Show)
+    -- The constructors/destructors of the declaration.
+  }
+
+deriving instance (Show DataDecl)

@@ -53,7 +53,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
-            responder (generateJumpToDef pos (embedCoreProg (embedASTProg prog)))
+            responder (generateJumpToDef pos (embedCoreProg (embedTSTProg prog)))
     
 
 generateJumpToDef :: Position -> RST.Program -> Either ResponseError (Location |? b)
@@ -132,6 +132,7 @@ instance ToJumpMap (RST.Term pc) where
   toJumpMap (RST.CocaseOf _ _ _ tm cases) = M.unions (toJumpMap tm : (toJumpMap <$> cases))
   toJumpMap (RST.CaseI _ _ _ cases) = M.unions (toJumpMap <$> cases)
   toJumpMap (RST.CocaseI _ _ _ cases) = M.unions (toJumpMap <$> cases)
+  toJumpMap (RST.Lambda _ _ _ tm) = toJumpMap tm 
   toJumpMap RST.PrimLitI64 {} = M.empty
   toJumpMap RST.PrimLitF64 {} = M.empty
 
@@ -171,6 +172,7 @@ instance ToJumpMap (RST.Typ pol) where
   toJumpMap (RST.TyRec _ _ _ ty) =
     toJumpMap ty
   toJumpMap RST.TyPrim {} = M.empty
+  toJumpMap (RST.TyFlipPol _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.XtorSig pol) where
   toJumpMap (RST.MkXtorSig _ ctx) =
@@ -187,21 +189,32 @@ instance ToJumpMap (RST.TypeScheme pol) where
 instance ToJumpMap RST.Program where
   toJumpMap prog = M.unions (toJumpMap <$> prog)
 
+instance ToJumpMap (RST.PrdCnsDeclaration pc) where
+  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =
+    toJumpMap pcdecl_term
+  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Just tys} =
+    M.union (toJumpMap tys) (toJumpMap pcdecl_term)
+
+instance ToJumpMap RST.CommandDeclaration where
+  toJumpMap RST.MkCommandDeclaration { cmddecl_cmd } =
+    toJumpMap cmddecl_cmd
+
+instance ToJumpMap RST.TyOpDeclaration where
+  toJumpMap RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_res } =
+    M.fromList [(locToRange tyopdecl_loc, toLocation tyopdecl_res)]
+
 instance ToJumpMap RST.Declaration where
-  toJumpMap (RST.PrdCnsDecl _ _ _ _ _ Nothing tm) =
-    toJumpMap tm
-  toJumpMap (RST.PrdCnsDecl _ _ _ _ _ (Just tys) tm) =
-    M.union (toJumpMap tys) (toJumpMap tm)
-  toJumpMap (RST.CmdDecl _ _ _ cmd) = toJumpMap cmd
+  toJumpMap (RST.PrdCnsDecl _ decl) = toJumpMap decl
+  toJumpMap (RST.CmdDecl decl) = toJumpMap decl
   toJumpMap RST.DataDecl {} = M.empty
   toJumpMap RST.XtorDecl {} = M.empty
   toJumpMap RST.ImportDecl {} = M.empty
   toJumpMap RST.SetDecl {} = M.empty
-  toJumpMap (RST.TyOpDecl loc _ _ _ _ rnTn) =
-    M.fromList [(locToRange loc, toLocation rnTn)]
+  toJumpMap (RST.TyOpDecl decl) = toJumpMap decl
   toJumpMap RST.ClassDecl {} = M.empty
   toJumpMap RST.InstanceDecl {} = M.empty
   toJumpMap RST.TySynDecl {} = M.empty
+  
 
 instance ToLocation RnTypeName where
   toLocation MkRnTypeName { rnTnLoc, rnTnModule } =

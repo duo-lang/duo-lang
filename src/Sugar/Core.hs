@@ -13,6 +13,7 @@ module Sugar.Core(
   pattern CocaseOf,
   pattern XCaseI,
   pattern RawCase,
+  pattern Lambda,
   pattern RawXtor, 
   pattern RawMuAbs,
   pattern RawApply)
@@ -21,7 +22,7 @@ module Sugar.Core(
 import Syntax.Core.Terms
 import Syntax.Common
 import Utils
-import Syntax.TST.Terms (ShiftDirection(..) )
+import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.Common.Pattern
 
 -- CaseOfCmd:
@@ -115,6 +116,8 @@ pattern CocaseOfI loc rep ns t cases <-
          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseOfIInner $ length as1)  (BoundVar loc PrdRep (0,length as1)) t
      in
        Apply loc ApplyAnnotCocaseOfIOuter (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t
+
+
 
 pattern RawApply ::  Loc -> Term Prd -> Term Cns -> Command
 pattern RawApply loc t1 t2 = Apply loc ApplyAnnotOrig t1 t2
@@ -270,6 +273,22 @@ pattern XCaseI loc rep rep' ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ns
     in
         XCase loc (MatchAnnotXCaseI CnsRep) rep' ns $ desugarmatchCase <$> cases
 
+
+-- Lambda:
+--   [[\x -> t }]] = cocase { Ap(x,k) => [[t]] >> k}  
+
+
+extractCmdCase :: PrdCnsRep pc -> [CmdCase] -> Maybe (FreeVarName,Term pc) 
+extractCmdCase PrdRep [MkCmdCase _ (XtorPat _ (MkXtorName "Ap") [(Prd,Just fv),(Cns,Nothing)]) (Apply _ ApplyAnnotLambda tm (BoundVar _ CnsRep (0,1)))] = Just (fv,tm)
+extractCmdCase CnsRep [MkCmdCase _ (XtorPat _ (MkXtorName "CoAp") [(Cns,Just fv),(Prd,Nothing)]) (Apply _ ApplyAnnotLambda  (BoundVar _ PrdRep (0,1)) tm)] = Just (fv,tm)
+extractCmdCase _ _ = Nothing 
+
+pattern Lambda  :: Loc ->  PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc 
+pattern Lambda loc pc fv tm <- XCase loc MatchAnnotLambda pc Nominal (extractCmdCase pc -> Just (fv,tm))
+  where 
+    Lambda loc PrdRep x tm = XCase loc MatchAnnotLambda PrdRep Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]  
+    Lambda loc CnsRep x tm = XCase loc MatchAnnotLambda CnsRep Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )]  
+
 pattern RawCase ::  Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
 pattern RawCase loc pc ns cases = XCase loc MatchAnnotOrig pc ns cases 
 
@@ -279,4 +298,4 @@ pattern RawXtor loc pc ns xt subst = Xtor loc XtorAnnotOrig pc ns xt subst
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
 pattern RawMuAbs loc pc name cmd = MuAbs loc MuAnnotOrig pc name cmd 
 
-{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, Lambda, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
