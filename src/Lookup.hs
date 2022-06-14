@@ -54,7 +54,7 @@ lookupTerm :: EnvReader a m
            => PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
   env <- asks fst
-  let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> (ppPrint $ M.keys env))
+  let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
   let f env = case M.lookup fv (prdEnv env) of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> Just (res1,res2)

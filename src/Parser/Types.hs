@@ -66,13 +66,13 @@ combineXtors = fmap combineXtor
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos = (parens ((fst <$> typP) `sepBy` symbolP SymComma)) <|> pure ([], endPos)
+nominalTypeArgsP endPos = parens ((fst <$> typP) `sepBy` symbolP SymComma) <|> pure ([], endPos)
 
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
 nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
-  startPos <- getSourcePos 
+  startPos <- getSourcePos
   (name, endPos) <- typeNameP
   (args, endPos') <- nominalTypeArgsP endPos
   pure (TyNominal (Loc startPos endPos') name args, endPos')
@@ -86,7 +86,7 @@ xdataTypeP Data = do
   (xtorSigs, endPos) <- angles (xtorSignatureP `sepBy` symbolP SymComma)
   pure (TyXData (Loc startPos endPos) Data Nothing xtorSigs, endPos)
 xdataTypeP Codata = do
-  startPos <- getSourcePos 
+  startPos <- getSourcePos
   (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` symbolP SymComma)
   pure (TyXData (Loc startPos endPos) Codata Nothing xtorSigs, endPos)
 
@@ -192,11 +192,11 @@ tyOpChainP = do
           startPos <- getSourcePos
           (op, endPos) <- tyBinOpP
           (typ,pos) <- typAtomP
-          pure (((Loc startPos endPos), op, typ), pos)
+          pure ((Loc startPos endPos, op, typ), pos)
   lst <- some f
   case lst of
     [] -> error "Cannot occur, \"some\" parses non-empty list"
-    (x:xs) -> pure (((fst x) :| (fst <$> xs)), snd (last (x:xs)))
+    (x:xs) -> pure (fst x :| (fst <$> xs), snd (last (x:xs)))
 
 -- | Parse a type
 typP :: Parser (Typ, SourcePos)

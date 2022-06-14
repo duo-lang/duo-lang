@@ -246,4 +246,4 @@ resolveDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 
 resolveProgram :: CST.Program -> ResolverM RST.Program
-resolveProgram = sequence . fmap resolveDecl
+resolveProgram = mapM resolveDecl

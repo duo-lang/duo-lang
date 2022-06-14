@@ -27,14 +27,14 @@ spec examples = do
         it "Can be parsed again." $
           case prog of
             Left err -> expectationFailure (ppPrintString err)
-            Right decls -> (runFileParser example programP (ppPrint decls)) `shouldSatisfy` isRight
+            Right decls -> runFileParser example programP (ppPrint decls) `shouldSatisfy` isRight
   
   describe "All the examples in the \"examples/\" folder can be parsed and typechecked after prettyprinting." $ do
     forM_ examples $ \(example,prog) -> do
       describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
         case prog of 
             Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
-            Right decls -> case (runFileParser example programP (ppPrint decls)) of
+            Right decls -> case runFileParser example programP (ppPrint decls) of
               Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
               Right decls -> do
                 res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") decls

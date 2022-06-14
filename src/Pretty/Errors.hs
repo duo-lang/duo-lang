@@ -65,7 +65,7 @@ printLocatedError err@(getLoc -> Just loc) = liftIO $ do
 printLocatedError _ = error "unreachable: Satisfy the pattern match checker :/"
 
 printRegion :: Loc -> IO ()
-printRegion (Loc (SourcePos "<interactive>" _ _) (SourcePos _ _ _)) = return ()
+printRegion (Loc (SourcePos "<interactive>" _ _) SourcePos {}) = return ()
 printRegion (Loc (SourcePos fp line1 _) (SourcePos _ line2 _)) = do
   T.putStrLn ""
   file <- readFile fp

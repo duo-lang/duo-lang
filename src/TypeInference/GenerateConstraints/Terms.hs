@@ -153,7 +153,7 @@ genConstraintsTerm (Core.XCase _ _ _ Nominal []) =
   throwGenError ["Unreachable: A nominal match needs to have at least one case."]
 genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl (case (Core.cmdcase_pat pmcase) of (Core.XtorPat _ xt _) -> xt)
+  decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
   checkCorrectness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   -- We check that all xtors in the type declaration are matched against.
@@ -184,7 +184,7 @@ genConstraintsTerm (Core.XCase _ _ _ Refinement []) =
   throwGenError ["Unreachable: A refinement match needs to have at least one case."]
 genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl (case (Core.cmdcase_pat pmcase) of (Core.XtorPat _ xt _) -> xt)
+  decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
   checkCorrectness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do

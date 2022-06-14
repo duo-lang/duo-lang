@@ -54,7 +54,7 @@ bindingP =  (do _ <- symbolP SymImplicit ;  pos <- getSourcePos; return (CST.FoS
 
 bindingSiteP :: Parser (CST.BindingSite, SourcePos)
 bindingSiteP = do
-  s <- optional $ fst <$> (parens ((fst <$> bindingP) `sepBy` symbolP SymComma))
+  s <- optional $ fst <$> parens ((fst <$> bindingP) `sepBy` symbolP SymComma)
   endPos <- getSourcePos
   return (Data.Maybe.fromMaybe [] s, endPos)
 
@@ -319,17 +319,17 @@ lambdaP = do
   startPos <- getSourcePos
   _ <- symbolP SymBackslash
   bvars <- some $ fst <$> freeVarNameP
-  (do 
+  (do
     _ <- symbolP SymDoubleRightArrow
     (tm, endPos) <- termTopP
-    let t = foldr (\fv t -> CST.Lambda (Loc startPos endPos) fv t) tm bvars
-    return (t,endPos) 
-   ) 
-   <|>   
-   (do 
+    let t = foldr (CST.Lambda (Loc startPos endPos)) tm bvars
+    return (t,endPos)
+   )
+   <|>
+   (do
     _ <- symbolP SymDoubleCoRightArrow
     (tm, endPos) <- termTopP
-    let t = foldr (\fv t -> CST.CoLambda (Loc startPos endPos) fv t) tm bvars
+    let t = foldr (CST.CoLambda (Loc startPos endPos)) tm bvars
     return (t,endPos) )
 
 
@@ -412,13 +412,13 @@ dtorP =  do
   (destructee, endPos) <- termMiddleP
   destructorChain <- destructorChainP
   let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
-  return $ (res, endPos)
+  return (res, endPos)
 
 termTopP :: Parser (CST.Term, SourcePos)
 termTopP =  do
   startPos <- getSourcePos
   d <- dtorP
-  m <- optional $ applyCmdP
+  m <- optional applyCmdP
   endPos <- getSourcePos
   return $ case m of
     Nothing -> d

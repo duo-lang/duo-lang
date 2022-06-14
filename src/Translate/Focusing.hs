@@ -10,9 +10,9 @@ module Translate.Focusing
 import Data.Text qualified as T
 
 import Eval.Definition (EvalEnv)
-import Syntax.TST.Program 
+import Syntax.TST.Program
 import Syntax.Common
-import Syntax.TST.Terms 
+import Syntax.TST.Terms
 import Utils
 import Syntax.Common.TypesPol (Typ(..))
 ---------------------------------------------------------------------------------
@@ -22,9 +22,9 @@ import Syntax.Common.TypesPol (Typ(..))
 -- | Check whether given sterms is substitutable.
 isValueTerm :: EvaluationOrder -> PrdCnsRep pc -> Term pc -> Maybe (Term pc)
 isValueTerm CBV PrdRep FreeVar {}        = Nothing
-isValueTerm CBN PrdRep fv@(FreeVar {})   = Just fv
-isValueTerm CBV CnsRep fv@(FreeVar {})   = Just fv
-isValueTerm CBN CnsRep (FreeVar {})      = Nothing
+isValueTerm CBN PrdRep fv@FreeVar {}   = Just fv
+isValueTerm CBV CnsRep fv@FreeVar {}   = Just fv
+isValueTerm CBN CnsRep FreeVar {}      = Nothing
 isValueTerm CBV PrdRep MuAbs {}          = Nothing              -- CBV: so Mu is not a value.
 isValueTerm CBV CnsRep (MuAbs loc _annot pc ty v cmd) = do
     cmd' <- isFocusedCmd CBV cmd -- CBV: so Mu~ is always a Value.
@@ -51,7 +51,7 @@ isFocusedTerm eo (Xtor loc _annot pc ty ns xt subst) =
     Xtor loc XtorAnnotOrig pc ty ns xt <$> isValueSubst eo subst
 isFocusedTerm eo (XCase loc _annot pc ty ns cases) =
     XCase loc MatchAnnotOrig pc ty ns <$> sequence (isFocusedCmdCase eo <$> cases)
-isFocusedTerm eo (MuAbs loc _annot pc ty v cmd) = 
+isFocusedTerm eo (MuAbs loc _annot pc ty v cmd) =
     MuAbs loc MuAnnotOrig pc ty v <$> isFocusedCmd eo cmd
 isFocusedTerm _  lit@PrimLitI64{} = Just lit
 isFocusedTerm _  lit@PrimLitF64{} = Just lit
@@ -128,7 +128,7 @@ focusTerm :: EvaluationOrder  -> Term pc -> Term pc
 focusTerm eo (isFocusedTerm eo -> Just tm)   = tm
 focusTerm _  (BoundVar loc rep ty var)          = BoundVar loc rep ty var
 focusTerm _  (FreeVar loc rep ty var)           = FreeVar loc rep ty var
-focusTerm eo (Xtor _ _annot pcrep ty ns xt subst) = focusXtor eo pcrep ty ns xt subst 
+focusTerm eo (Xtor _ _annot pcrep ty ns xt subst) = focusXtor eo pcrep ty ns xt subst
 focusTerm eo (XCase loc _annot rep ty ns cases) = XCase loc MatchAnnotOrig rep ty ns (focusCmdCase eo <$> cases)
 focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty v (focusCmd eo cmd)
 focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
@@ -160,7 +160,7 @@ focusXtor' eo CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Ju
 focusXtor' eo PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (reverse pcterms'))
                                                                            (FreeVar defaultLoc CnsRep (TyFlipPol NegRep ty) alphaVar)
 focusXtor' eo pc     ty ns xt (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc ty ns xt pcterms (PrdTerm prd : pcterms')
-focusXtor' eo pc     ty ns xt (PrdTerm                                 prd:pcterms) pcterms' =  
+focusXtor' eo pc     ty ns xt (PrdTerm                                 prd:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tprd = getTypeTerm prd
@@ -207,7 +207,7 @@ focusCmd _  (ExitSuccess loc) = ExitSuccess loc
 focusCmd _  (ExitFailure loc) = ExitFailure loc
 focusCmd _  (Jump loc fv) = Jump loc fv
 focusCmd eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focusCmd eo cmd)
-focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd) 
+focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd)
                                                              (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focusCmd eo cmd)))
 focusCmd eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
 focusCmd eo (Read loc cns) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0))))

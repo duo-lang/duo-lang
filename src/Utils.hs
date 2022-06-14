@@ -16,9 +16,9 @@ import Text.Megaparsec.Pos
 data Loc = Loc SourcePos SourcePos
   deriving (Eq, Ord)
 
-instance Show Loc where 
+instance Show Loc where
   show (Loc _s1 _s2) = "<loc>"
-  
+
 defaultLoc :: Loc
 defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkPos 1))
 
@@ -34,7 +34,7 @@ intersections :: Ord a => NonEmpty (Set a) -> Set a
 intersections (s :| ss) = foldl' S.intersection s ss
 
 enumerate :: [a] -> [(Int,a)]
-enumerate xs = zip [0..] xs
+enumerate = zip [0..]
 
 trimStr :: String -> String
 trimStr = f . f
@@ -46,7 +46,7 @@ trim = f . f
 
 
 indexMaybe :: [a] -> Int -> Maybe a
-indexMaybe xs i | 0 <= i && i <= (length xs) -1 = Just (xs !! i)
+indexMaybe xs i | 0 <= i && i <= length xs -1 = Just (xs !! i)
                 | otherwise = Nothing
 
 data Verbosity = Verbose | Silent

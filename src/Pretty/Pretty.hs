@@ -109,7 +109,7 @@ renderConsole' = \case
   SFail        -> return ()
   SEmpty       -> return ()
   SChar c x    -> do
-    putStr $ c : []
+    putStr [c]
     renderConsole' x
   SText _l t x -> do
     putStr (T.unpack t)

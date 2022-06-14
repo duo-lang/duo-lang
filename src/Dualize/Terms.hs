@@ -1,6 +1,8 @@
 module Dualize.Terms where
 
 import Data.Text qualified as T
+import Data.Bifunctor ( Bifunctor(bimap) )
+import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
 import Syntax.Common
@@ -13,10 +15,10 @@ data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc S
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
 dualTerm rep (BoundVar _ _ ty i) = return $ BoundVar defaultLoc (flipPrdCns rep) (dualType' rep ty) i
 dualTerm rep (FreeVar _ _ ty i) = return $ FreeVar defaultLoc (flipPrdCns rep) (dualType' rep ty) (dualFVName i)
-dualTerm rep (Xtor _ annot pc ty ns xtor subst) = do 
+dualTerm rep (Xtor _ annot pc ty ns xtor subst) = do
     subst' <- dualSubst subst
     return $ Xtor defaultLoc (dualXtorAnnot annot) (flipPrdCns pc) (dualType' rep ty) ns (dualXtorName xtor) subst'
-dualTerm rep (XCase _ annot pc ty ns cases) = do 
+dualTerm rep (XCase _ annot pc ty ns cases) = do
     cases' <- mapM dualCmdCase cases
     return $ XCase defaultLoc (dualMatchAnnot annot) (flipPrdCns pc) (dualType' rep ty) ns cases'
 dualTerm rep (MuAbs _ annot pc ty fv cmd) = do
@@ -47,17 +49,17 @@ flipPC Prd = Cns
 flipPC Cns = Prd
 
 dualPattern :: Pattern -> Pattern
-dualPattern (XtorPat _ xtor vars) = XtorPat defaultLoc (dualXtorName xtor) (map (\(pc,fv) -> (flipPC pc, dualFVName <$> fv)) vars)
+dualPattern (XtorPat _ xtor vars) = XtorPat defaultLoc (dualXtorName xtor) (map (bimap flipPC (dualFVName <$>)) vars)
 
 dualSubst :: Substitution -> Either DualizeError Substitution
-dualSubst subst = mapM dualPrdCnsTerm subst
+dualSubst = mapM dualPrdCnsTerm
   where
       dualPrdCnsTerm :: PrdCnsTerm -> Either DualizeError PrdCnsTerm
-      dualPrdCnsTerm (PrdTerm t) = dualTerm PrdRep t >>= (return . CnsTerm)
-      dualPrdCnsTerm (CnsTerm t) = dualTerm CnsRep t >>= (return . PrdTerm)
+      dualPrdCnsTerm (PrdTerm t) = dualTerm PrdRep t <&> CnsTerm
+      dualPrdCnsTerm (CnsTerm t) = dualTerm CnsRep t <&> PrdTerm
 
 dualXtorName :: XtorName -> XtorName
-dualXtorName (MkXtorName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkXtorName n 
+dualXtorName (MkXtorName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkXtorName n
 dualXtorName (MkXtorName x) = MkXtorName (T.pack "Co" `T.append` x)
 
 dualXtorAnnot :: XtorAnnot -> XtorAnnot
@@ -100,7 +102,7 @@ dualMuAnnot MuAnnotCaseOf = MuAnnotCocaseOf
 dualMuAnnot MuAnnotCocaseOf = MuAnnotCaseOf
 
 dualFVName :: FreeVarName -> FreeVarName
-dualFVName (MkFreeVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeVarName n 
+dualFVName (MkFreeVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeVarName n
 dualFVName (MkFreeVarName x) = MkFreeVarName (T.pack "co" `T.append` x)
 
 
@@ -113,20 +115,20 @@ dualType pol (TyVar _loc _ kind x) = TyVar defaultLoc (flipPolarityRep pol) (dua
 dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyPrim loc _ pt) = TyPrim loc (flipPolarityRep pol) pt
 -- @BinderDavid please check
-dualType _ (TyBot loc mk) = TyTop loc mk  
-dualType _ (TyTop loc mk) = TyBot loc mk  
+dualType _ (TyBot loc mk) = TyTop loc mk
+dualType _ (TyTop loc mk) = TyBot loc mk
 dualType pol (TyUnion loc mk t1 t2) = TyInter loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyInter loc mk t1 t2) = TyUnion loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyRec loc p x t) = TyRec loc (flipPolarityRep p) x (dualType pol t)
 dualType pol (TySyn loc _ rn ty) = TySyn loc (flipPolarityRep pol) (dualRnTypeName rn) (dualType pol ty)
-dualType PosRep (TyData loc _ rn xtors) = TyCodata loc NegRep  (dualRnTypeName <$> rn) xtors 
-dualType NegRep (TyData loc _ rn xtors) = TyCodata loc PosRep  (dualRnTypeName <$> rn) xtors 
-dualType PosRep (TyCodata loc _ rn xtors) = TyData loc NegRep  (dualRnTypeName <$> rn) xtors 
-dualType NegRep (TyCodata loc _ rn xtors) = TyData loc PosRep  (dualRnTypeName <$> rn) xtors 
+dualType PosRep (TyData loc _ rn xtors) = TyCodata loc NegRep  (dualRnTypeName <$> rn) xtors
+dualType NegRep (TyData loc _ rn xtors) = TyCodata loc PosRep  (dualRnTypeName <$> rn) xtors
+dualType PosRep (TyCodata loc _ rn xtors) = TyData loc NegRep  (dualRnTypeName <$> rn) xtors
+dualType NegRep (TyCodata loc _ rn xtors) = TyData loc PosRep  (dualRnTypeName <$> rn) xtors
 dualType _ (TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> VariantType pol -> VariantType (FlipPol pol)
-dualVariantType pol (CovariantType ty) = CovariantType (dualType pol ty) 
+dualVariantType pol (CovariantType ty) = CovariantType (dualType pol ty)
 dualVariantType PosRep (ContravariantType ty) = ContravariantType (dualType NegRep ty)
 dualVariantType NegRep (ContravariantType ty) = ContravariantType (dualType PosRep ty)
 
@@ -139,8 +141,8 @@ dualRnTypeName (MkRnTypeName _loc _doc mn tn) = MkRnTypeName defaultLoc Nothing 
 -- >>> dualTypeName (MkTypeName "CoApp")
 -- MkTypeName {unTypeName = "App"}
 
-dualTypeName :: TypeName -> TypeName 
-dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n 
+dualTypeName :: TypeName -> TypeName
+dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
 dualMonoKind :: MonoKind -> MonoKind
