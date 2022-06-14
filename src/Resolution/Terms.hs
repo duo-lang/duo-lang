@@ -151,7 +151,15 @@ analyzeCases dc cases = do
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwError $ OtherError Nothing "Cases mix the use of both explicit and implicit patterns."
 
-
+analyzeInstancePattern :: CST.InstancePat -> ResolverM AnalyzedPattern
+analyzeInstancePattern (CST.MethodPat loc m args) = do
+  let xt :: XtorName
+      xt = MkXtorName $ unMethodName m
+  (_,MethodNameResult _cn arity) <- lookupXtor loc xt
+  when (length arity /= length args) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
+  pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
+  
 ---------------------------------------------------------------------------------
 -- Resolve Cases
 ---------------------------------------------------------------------------------
@@ -179,6 +187,18 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
                       , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
+
+resolveInstanceCase :: CST.InstanceCase -> ResolverM (RST.InstanceCase Cns)
+resolveInstanceCase (CST.MkInstanceCase loc pat t) = do
+  intermediateCase <- analyzeInstancePattern pat
+  case intermediateCase of
+    (ExplicitPattern loc' xtor args) -> do
+      tm' <- resolveTerm CnsRep t
+      pure RST.MkInstanceCase { instancecase_loc  = loc
+                              , instancecase_pat = RST.XtorPat loc' xtor (second Just <$> args)
+                              , instancecase_term = RST.termClosing args tm'
+                              }
+    _ -> throwError (OtherError Nothing "Expected explicit patterns in instance definition.")
 
 ---------------------------------------------------------------------------------
 -- Resolving PrimCommands
@@ -543,23 +563,3 @@ resolveTerm _ (CST.Apply loc _ _) =
   throwError (OtherError (Just loc) "Cannot resolve Apply command to a term.")
 resolveTerm _ (CST.PrimCmdTerm _) =
   throwError (OtherError Nothing " Cannot resolve primCmdTerm to a term.")
-
----------------------------------------------------------------------------------
-
--- | Type ought to be changed to InstanceCase
-analyzeInstancePattern :: CST.TermPat -> ResolverM AnalyzedPattern
-analyzeInstancePattern (CST.XtorPat loc xt args) = do
-  (_,MethodNameResult cn arity) <- lookupXtor loc xt
-  when (length arity /= length args) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
-  pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
-
-
--- | Type ought to be changed to InstanceCase
-resolveInstanceCase :: CST.TermCase -> ResolverM (RST.TermCase Cns)
-resolveInstanceCase (CST.MkTermCase loc tc t) = do
-  intermediateCase <- analyzeInstancePattern tc
-  case intermediateCase of
-    (ExplicitPattern loc' xtor args) ->
-      resolveTermCase CnsRep (MkIntermediateCase loc' xtor args t)
-    _ -> throwError (OtherError Nothing "Expected explicit patterns in instance definition.")

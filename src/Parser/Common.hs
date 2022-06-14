@@ -16,7 +16,7 @@ module Parser.Common
   , evalOrderP
   , monoKindP
   , polyKindP
-  ) where
+  ,methodNameP) where
 
 import Text.Megaparsec
 
@@ -57,6 +57,11 @@ classNameP :: Parser (ClassName, SourcePos)
 classNameP = try $ do
   (name, pos) <- upperCaseId
   return (MkClassName name, pos)
+
+methodNameP :: Parser (MethodName, SourcePos)
+methodNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkMethodName name, pos)
 
 ---------------------------------------------------------------------------------
 -- Operators

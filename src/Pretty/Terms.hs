@@ -23,6 +23,11 @@ instance PrettyAnn CST.TermPat where
     prettyAnn xt <>
     parens (intercalateComma (map prettyAnn args))
 
+instance PrettyAnn CST.InstancePat where
+  prettyAnn (CST.MethodPat _ m args) =
+    prettyAnn m <>
+    parens (intercalateComma (map prettyAnn args))
+
 -- CmdCase
 
 instance PrettyAnn Core.CmdCase where
@@ -56,6 +61,17 @@ instance PrettyAnn CST.FVOrStar where
 instance PrettyAnn CST.TermOrStar  where
   prettyAnn (CST.ToSTerm t) = prettyAnn t
   prettyAnn CST.ToSStar  = "*"
+
+-- InstanceCase
+
+instance PrettyAnn (RST.InstanceCase pc) where
+  prettyAnn instancecase = prettyAnn (reparseInstanceCase instancecase)
+
+instance PrettyAnn CST.InstanceCase where
+  prettyAnn CST.MkInstanceCase{ instancecase_pat, instancecase_term } =
+      prettyAnn instancecase_pat <+>
+      annSymbol "=>" <+>
+      prettyAnn instancecase_term
 
 ---------------------------------------------------------------------------------
 -- Substitutions

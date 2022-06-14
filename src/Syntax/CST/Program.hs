@@ -163,7 +163,7 @@ data InstanceDeclaration = MkInstanceDeclaration
     -- ^ The name of the type class the instance is for.
   , instancedecl_typ :: Typ
     -- ^ The type the instance is being defined for.
-  , instancedecl_cases :: [TermCase]
+  , instancedecl_cases :: [InstanceCase]
     -- ^ The method definitions for the class.
   }
 
