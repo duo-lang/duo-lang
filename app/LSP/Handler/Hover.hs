@@ -384,6 +384,8 @@ instance ToHoverMap TST.Declaration where
   toHoverMap (TST.SetDecl _) = M.empty
   toHoverMap (TST.TyOpDecl _) = M.empty
   toHoverMap (TST.TySynDecl _) = M.empty
+  toHoverMap (TST.ClassDecl _decl) = M.empty
+  toHoverMap (TST.InstanceDecl _decl) = M.empty
 
 instance ToHoverMap TST.Program where
   toHoverMap prog = M.unions (toHoverMap <$> prog)
