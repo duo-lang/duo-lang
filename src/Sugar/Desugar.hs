@@ -149,10 +149,10 @@ desugarDecl (RST.TyOpDecl decl) =
   Core.TyOpDecl decl
 desugarDecl (RST.TySynDecl decl) = 
   Core.TySynDecl decl
-desugarDecl (RST.ClassDecl _decl) = undefined
-  -- Core.ClassDecl loc doc cls args ops
-desugarDecl (RST.InstanceDecl _decl) = undefined
-  -- Core.InstanceDecl loc doc cls ty cases
+desugarDecl (RST.ClassDecl decl) =
+  Core.ClassDecl decl
+desugarDecl (RST.InstanceDecl decl) =
+  Core.InstanceDecl decl
 
 desugarProgram :: RST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps
