@@ -70,10 +70,10 @@ typeAutParams = defaultParams
     , fillColor $ case nl_pol nl of {Pos -> White; Neg -> Gray}
     , textLabel (pack (ppPrintString (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
-                              el@(EdgeSymbol _ _ _ _) -> regularEdgeStyle el
+                              el@EdgeSymbol {} -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
                               RefineEdge tn -> refEdgeStyle tn
-                              el@(TypeArgEdge _ _ _) -> typeArgEdgeStyle el
+                              el@TypeArgEdge {} -> typeArgEdgeStyle el
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]

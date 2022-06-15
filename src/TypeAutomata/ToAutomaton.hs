@@ -42,7 +42,7 @@ import Control.Monad
 --
 -- Unification variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(Just n, Just m)`
-data LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
+newtype LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 
 type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
 
@@ -58,7 +58,7 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 -- | Every type variable is mapped to a pair of nodes.
 createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
-createNodes tvars = createNode <$> (createPairs tvars)
+createNodes tvars = createNode <$> createPairs tvars
   where
     createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
     createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
@@ -117,11 +117,11 @@ lookupTVar PosRep tv = do
                                    , "    " <> unTVar tv
                                    , "is not available in the automaton."
                                    ]
-    Just (Nothing,_) -> throwAutomatonError $ [ "Could not insert type into automaton."
-                                              , "The type variable:"
-                                              , "    " <> unTVar tv
-                                              , "exists only at negative polarity."
-                                              ]
+    Just (Nothing,_) -> throwAutomatonError [ "Could not insert type into automaton."
+                                            , "The type variable:"
+                                            , "    " <> unTVar tv
+                                            , "exists only at negative polarity."
+                                            ]
     Just (Just pos,_) -> return pos
 lookupTVar NegRep tv = do
   tvarEnv <- asks tvarEnv
@@ -131,11 +131,11 @@ lookupTVar NegRep tv = do
                                    , "    " <> unTVar tv
                                    , "is not available in the automaton."
                                    ]
-    Just (_,Nothing) -> throwAutomatonError $ [ "Could not insert type into automaton."
-                                              , "The type variable:"
-                                              , "    " <> unTVar tv
-                                              , "exists only at positive polarity."
-                                              ]
+    Just (_,Nothing) -> throwAutomatonError [ "Could not insert type into automaton."
+                                            , "The type variable:"
+                                            , "    " <> unTVar tv
+                                            , "exists only at positive polarity."
+                                            ]
     Just (_,Just neg) -> return neg
 
 
@@ -226,7 +226,7 @@ insertType (TyFlipPol _ _) =
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
-typeToAut (TypeScheme { ts_vars, ts_monotype }) = do
+typeToAut TypeScheme { ts_vars, ts_monotype } = do
   (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]

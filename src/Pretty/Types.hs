@@ -92,7 +92,7 @@ instance PrettyAnn CST.XtorSig where
 
 instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embedType typ)
-  
+
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
   prettyAnn CST.TyTop {} = topSym
@@ -136,9 +136,9 @@ instance PrettyAnn (RST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTypeScheme tys)
 
 instance PrettyAnn CST.TypeScheme where
-  prettyAnn (CST.TypeScheme { ts_vars = [], ts_monotype }) =
+  prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
     prettyAnn ts_monotype
-  prettyAnn (CST.TypeScheme { ts_vars, ts_monotype }) =
+  prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
     forallSym <+>
     sep (prettyAnn <$> ts_vars ) <>
     "." <+>

@@ -18,9 +18,9 @@ import Utils (Loc(..))
 ---------------------------------------------------------------------------------
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
-resolveTypeScheme rep (TypeScheme { ts_loc, ts_vars, ts_monotype }) = do
+resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if (freeTVars monotype) `S.isSubsetOf` (S.fromList ts_vars)
+    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
         then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
@@ -90,7 +90,7 @@ resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)
-        
+
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]
 resolveXTorSigs rep sigs = sequence $ resolveXTorSig rep <$> sigs
@@ -152,7 +152,7 @@ associateOps lhs ((loc, s, rhs) :| []) = pure $ TyBinOp loc lhs s rhs
 associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
     (_,op1) <- lookupTyOp loc1 s1
     (_,op2) <- lookupTyOp loc2 s2
-    if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
+    if prec op2 > prec op1 || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
         pure $ TyBinOp loc1 lhs s1 rhs

@@ -74,7 +74,7 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 -- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
-data GenerateReader = GenerateReader { context :: [LinearContext Pos]
+newtype GenerateReader = GenerateReader { context :: [LinearContext Pos]
                                      }
 
 initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
@@ -149,8 +149,7 @@ freshTVarsForTypeParams rep dd = do
 ---------------------------------------------------------------------------------------------
 
 withContext :: LinearContext 'Pos -> GenM a -> GenM a
-withContext ctx m =
-  local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ctx:context })) m
+withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ctx:context }))
 
 ---------------------------------------------------------------------------------------------
 -- Looking up types in the context and environment
@@ -162,7 +161,7 @@ lookupContext rep (i,j) = do
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
     Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
-    Just (lctxt) -> case indexMaybe lctxt j of
+    Just lctxt -> case indexMaybe lctxt j of
       Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
       Just ty -> case (rep, ty) of
         (PrdRep, PrdCnsType PrdRep ty) -> return ty

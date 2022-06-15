@@ -45,13 +45,13 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 ------------------------------------------------------------------------------
 
 addToCache :: Constraint ConstraintInfo -> SolverM ()
-addToCache cs = modifyCache (S.insert (const () <$> cs)) -- We delete the annotation when inserting into cache
+addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation when inserting into cache
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
     modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
-inCache cs = gets sst_cache >>= \cache -> pure ((const () <$> cs) `elem` cache)
+inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
@@ -302,13 +302,13 @@ subConstraints (SubType _ t1@TyNominal{} t2@TyCodata{}) =
 -- dealt with in the function `solve`. Calling the function `subConstraints` with an
 -- atomic constraint is an implementation bug.
 --
-subConstraints (SubType _ ty1@(TyVar _ _ _ _ ) ty2) =
+subConstraints (SubType _ ty1@TyVar {} ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"
                    , ppPrint ty2
                    ]
-subConstraints (SubType _ ty1 ty2@(TyVar _ _ _ _)) =
+subConstraints (SubType _ ty1 ty2@TyVar {}) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"

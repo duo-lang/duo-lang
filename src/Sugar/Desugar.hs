@@ -71,13 +71,13 @@ desugarCmdCase :: RST.CmdCase -> Core.CmdCase
 desugarCmdCase (RST.MkCmdCase loc pat cmd) =
   Core.MkCmdCase loc (desugarPat pat) (desugarCmd cmd)
 
-desugarTermCaseI :: RST.TermCaseI pc -> Core.TermCaseI pc 
+desugarTermCaseI :: RST.TermCaseI pc -> Core.TermCaseI pc
 desugarTermCaseI (RST.MkTermCaseI loc pti t) = Core.MkTermCaseI loc (desugarPatI pti) (desugarTerm t)
 
-desugarPatI :: RST.PatternI -> Core.PatternI 
+desugarPatI :: RST.PatternI -> Core.PatternI
 desugarPatI (RST.XtorPatI loc xt args) = Core.XtorPatI loc xt args
 
-desugarTermCase :: RST.TermCase pc -> Core.TermCase pc 
+desugarTermCase :: RST.TermCase pc -> Core.TermCase pc
 desugarTermCase (RST.MkTermCase loc pat t) = Core.MkTermCase loc (desugarPat pat) (desugarTerm t)
 
 desugarCmd :: RST.Command -> Core.Command
@@ -101,12 +101,12 @@ desugarCmd (RST.PrimOp loc pt op subst) =
 ---------------------------------------------------------------------------------
 
 desugarCmd (RST.CaseOfCmd loc ns t cases) =
-  Core.CaseOfCmd loc ns (desugarTerm t) (desugarCmdCase <$> cases) 
+  Core.CaseOfCmd loc ns (desugarTerm t) (desugarCmdCase <$> cases)
 desugarCmd (RST.CocaseOfCmd loc ns t cases) =
-  Core.CocaseOfCmd loc ns (desugarTerm t) (desugarCmdCase <$> cases) 
-desugarCmd (RST.CaseOfI loc rep ns t cases) = 
+  Core.CocaseOfCmd loc ns (desugarTerm t) (desugarCmdCase <$> cases)
+desugarCmd (RST.CaseOfI loc rep ns t cases) =
   Core.CaseOfI loc rep ns (desugarTerm t) (desugarTermCaseI  <$> cases )
-desugarCmd (RST.CocaseOfI loc rep ns t cases) = 
+desugarCmd (RST.CocaseOfI loc rep ns t cases) =
   Core.CocaseOfI loc rep ns (desugarTerm t) (desugarTermCaseI  <$> cases )
 
 ---------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ desugarDecl (RST.SetDecl decl) =
   Core.SetDecl decl
 desugarDecl (RST.TyOpDecl decl) =
   Core.TyOpDecl decl
-desugarDecl (RST.TySynDecl decl) = 
+desugarDecl (RST.TySynDecl decl) =
   Core.TySynDecl decl
 
 desugarProgram :: RST.Program -> Core.Program
@@ -158,7 +158,7 @@ desugarEnvironment :: Map ModuleName Environment -> EvalEnv
 desugarEnvironment map = fold $ desugarEnvironment' <$> M.elems map
 
 desugarEnvironment' :: Environment -> EvalEnv
-desugarEnvironment' (MkEnvironment { prdEnv, cnsEnv, cmdEnv }) = (prd,cns,cmd)
+desugarEnvironment' MkEnvironment { prdEnv, cnsEnv, cmdEnv } = (prd,cns,cmd)
   where
     prd = (\(tm,_,_) -> tm) <$> prdEnv
     cns = (\(tm,_,_) -> tm) <$> cnsEnv

@@ -38,7 +38,7 @@ runResolverM reader action = runExcept (runReaderT (unResolverM action) reader)
 filterJusts :: [(a, Maybe b)] -> [(a,b)]
 filterJusts [] = []
 filterJusts ((_,Nothing):xs) = filterJusts xs
-filterJusts ((x,Just y):xs) = (x,y):(filterJusts xs)
+filterJusts ((x,Just y):xs) = (x,y):filterJusts xs
 
 lookupXtor :: Loc
            -- ^ The location of the xtor to be looked up
@@ -49,12 +49,12 @@ lookupXtor :: Loc
 lookupXtor loc xtor = do
   symbolTables <- M.toList <$> ask
   let results :: [(ModuleName, Maybe XtorNameResolve)]
-      results = second (\st -> M.lookup xtor (xtorNameMap st)) <$> symbolTables
+      results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
   case filterJusts results of
     []    -> throwError $ OtherError (Just loc) ("Constructor/Destructor not in symbol table: " <> ppPrint xtor)
     [res] -> pure res
     _     -> throwError $ OtherError (Just loc) ("Constructor/Destructor found in multiple modules: " <> ppPrint xtor)
-    
+
 
 -- | Find the Arity of a given typename
 lookupTypeConstructor :: Loc
@@ -66,7 +66,7 @@ lookupTypeConstructor :: Loc
 lookupTypeConstructor loc tn = do
     symbolTables <- M.toList <$> ask
     let results :: [(ModuleName, Maybe TypeNameResolve)]
-        results = second (\st -> M.lookup tn (typeNameMap st)) <$> symbolTables
+        results = second (M.lookup tn . typeNameMap) <$> symbolTables
     case filterJusts results of
       []         -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " not found in symbol table."))
       [(_,res)]  -> pure res
@@ -96,9 +96,9 @@ lookupTyOp :: Loc
 lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
 lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
 lookupTyOp loc op = do
-  symbolTables <- M.toList <$> ask
+  symbolTables <- asks M.toList
   let results :: [(ModuleName, Maybe TyOp)]
-      results = second (\st -> find (\tyop -> symbol tyop == op) (tyOps st)) <$> symbolTables
+      results = second (find (\tyop -> symbol tyop == op) . tyOps) <$> symbolTables
   case filterJusts results of
     []    -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)))
     [res] -> pure res
