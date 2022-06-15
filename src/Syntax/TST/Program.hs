@@ -66,6 +66,8 @@ data Declaration where
   SetDecl        :: CST.SetDeclaration                   -> Declaration
   TyOpDecl       :: RST.TyOpDeclaration                  -> Declaration
   TySynDecl      :: RST.TySynDeclaration                 -> Declaration
+  ClassDecl      :: RST.ClassDeclaration                 -> Declaration
+  InstanceDecl   :: RST.InstanceDeclaration              -> Declaration
   
 
 instance Show Declaration where
@@ -78,5 +80,7 @@ instance Show Declaration where
   show (SetDecl decl) = show decl
   show (TyOpDecl decl) = show decl
   show (TySynDecl decl) = show decl
+  show (ClassDecl decl) = show decl
+  show (InstanceDecl decl) = show decl
   
 type Program = [Declaration]

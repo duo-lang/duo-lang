@@ -192,6 +192,16 @@ inferDecl _mn (Core.TyOpDecl decl) = do
 --
 inferDecl _mn (Core.TySynDecl decl) = do
   pure (TST.TySynDecl decl)
+--
+-- ClassDecl
+--
+inferDecl _mn (Core.ClassDecl decl) =
+  pure (TST.ClassDecl decl)
+--
+-- InstanceDecl
+--
+inferDecl _mn (Core.InstanceDecl decl) =
+  pure (TST.InstanceDecl decl)
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls
