@@ -175,7 +175,7 @@ instance FreeTVars (LinearContext pol) where
   freeTVars ctxt = S.unions (freeTVars <$> ctxt)
 
 instance FreeTVars (XtorSig pol) where
-  freeTVars (MkXtorSig { sig_args }) = freeTVars sig_args
+  freeTVars MkXtorSig { sig_args } = freeTVars sig_args
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
@@ -185,7 +185,7 @@ generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
 -- Bisubstitution and Zonking
 ------------------------------------------------------------------------------
 
-data Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg) }
+newtype Bisubstitution = MkBisubstitution { uvarSubst :: Map TVar (Typ Pos, Typ Neg) }
 
 -- | Class of types for which a Bisubstitution can be applied.
 class Zonk (a :: Type) where

@@ -1,6 +1,7 @@
 module TypeAutomata.RemoveEpsilon ( removeEpsilonEdges ) where
 
 import Data.Graph.Inductive.Graph
+import Data.Bifunctor ( Bifunctor(first) )
 
 import TypeAutomata.Definition
 
@@ -49,17 +50,17 @@ removeEpsilonEdgesFromNode n (gr,starts) = (newGraph, newStarts)
                 else starts
 
 fromEpsGr :: TypeGrEps -> TypeGr
-fromEpsGr gr = gmap mapfun gr
+fromEpsGr = gmap mapfun
   where
     foo :: Adj EdgeLabelEpsilon -> Adj EdgeLabelNormal
-    foo = fmap (\(el, node) -> (unsafeEmbedEdgeLabel el, node))
+    foo = fmap (first unsafeEmbedEdgeLabel)
     mapfun :: Context NodeLabel EdgeLabelEpsilon -> Context NodeLabel EdgeLabelNormal
     mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
 removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
 removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowEdges, ta_gr } } =
   let
-    (gr', starts') = foldr (.) id (map removeEpsilonEdgesFromNode (nodes ta_gr)) (ta_gr, ta_starts)
+    (gr', starts') = foldr ((.) . removeEpsilonEdgesFromNode) id (nodes ta_gr) (ta_gr, ta_starts)
   in
    TypeAut { ta_pol = ta_pol
            , ta_starts = starts'

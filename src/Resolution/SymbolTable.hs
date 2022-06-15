@@ -121,9 +121,9 @@ createSymbolTable mn prog = createSymbolTableAcc prog emptySymbolTable
       createSymbolTableAcc xs acc'
 
 createSymbolTable' :: MonadError Error m
-                   => ModuleName 
-                   -> Declaration 
-                   -> SymbolTable 
+                   => ModuleName
+                   -> Declaration
+                   -> SymbolTable
                    -> m SymbolTable
 createSymbolTable' _ (XtorDecl MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity }) st = do
   -- Check whether the xtor name is already declared in this module
@@ -152,9 +152,9 @@ createSymbolTable' _ (TyOpDecl MkTyOpDeclaration { tyopdecl_sym, tyopdecl_prec, 
                       , assoc = tyopdecl_assoc
                       , desugar = NominalDesugaring tyopdecl_res
                       }
-    pure $ st { tyOps = tyOp : (tyOps st) }
-createSymbolTable' _ (ImportDecl (MkImportDeclaration { imprtdecl_loc, imprtdecl_module })) st =
-  pure $ st { imports = (imprtdecl_module,imprtdecl_loc):(imports st) }
+    pure $ st { tyOps = tyOp : tyOps st }
+createSymbolTable' _ (ImportDecl MkImportDeclaration { imprtdecl_loc, imprtdecl_module }) st =
+  pure $ st { imports = (imprtdecl_module,imprtdecl_loc):imports st }
 createSymbolTable' mn (TySynDecl MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res }) st = do
   -- Check whether the TypeName is already declared in this module
   checkFreshTypeName tysyndecl_loc tysyndecl_name st

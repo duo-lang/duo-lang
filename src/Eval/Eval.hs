@@ -23,10 +23,10 @@ evalTermOnce :: Command -> EvalM (Maybe Command)
 evalTermOnce (ExitSuccess _) = return Nothing
 evalTermOnce (ExitFailure _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
-  liftIO $ ppPrintIO prd 
+  liftIO $ ppPrintIO prd
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
-  tm <- liftIO $ readInt
+  tm <- liftIO readInt
   return (Just (Apply defaultLoc ApplyAnnotOrig (Just (CBox CBV)) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
@@ -100,7 +100,7 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 ---------------------------------------------------------------------------------
 
 eval :: Command -> EvalEnv -> IO (Either Error Command)
-eval cmd env = runEval (evalM cmd) env
+eval cmd = runEval (evalM cmd)
 
 evalSteps :: Command -> EvalEnv -> IO (Either Error [Command])
-evalSteps cmd env = runEval (evalStepsM cmd) env
+evalSteps cmd = runEval (evalStepsM cmd)

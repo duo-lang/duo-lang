@@ -108,11 +108,11 @@ openTermComplete (RST.CaseI loc rep ns cases) =
 openTermComplete (RST.CocaseI loc rep ns cocases) =
   RST.CocaseI loc rep ns (openTermCaseI <$> cocases)
 openTermComplete (RST.Lambda loc pc fv tm) =
-  let 
-    tm' = openTermComplete tm 
-    tm'' = case pc of PrdRep -> RST.termOpening [(RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv))] tm'  
-                      CnsRep -> RST.termOpening [(RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv))] tm' 
-                        
+  let
+    tm' = openTermComplete tm
+    tm'' = case pc of PrdRep -> RST.termOpening [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] tm'
+                      CnsRep -> RST.termOpening [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] tm'
+
   in
   RST.Lambda loc pc fv tm''
 -- Primitive constructs
@@ -213,9 +213,9 @@ createNamesTerm (RST.CaseI loc rep ns cases) = do
 createNamesTerm (RST.CocaseI loc rep ns cases) = do
   cases' <- sequence (createNamesTermCaseI <$> cases)
   pure $ RST.CocaseI loc rep ns cases'
-createNamesTerm (RST.Lambda loc rep fvs tm) = do 
-  tm' <- createNamesTerm tm 
-  pure $ RST.Lambda loc rep fvs tm'   
+createNamesTerm (RST.Lambda loc rep fvs tm) = do
+  tm' <- createNamesTerm tm
+  pure $ RST.Lambda loc rep fvs tm'
 -- Primitive constructs
 createNamesTerm (RST.PrimLitI64 loc i) =
   pure (RST.PrimLitI64 loc i)
@@ -262,7 +262,7 @@ createNamesCommand (RST.CocaseOfI loc rep ns tm cases) = do
 
 createNamesPat :: RST.Pattern -> CreateNameM RST.Pattern
 createNamesPat (RST.XtorPat loc xt args) = do
-  args' <- sequence $ (\(pc,_) -> (fresh pc >>= \v -> return (pc,v))) <$> args
+  args' <- sequence $ (\(pc,_) -> fresh pc >>= \v -> return (pc,v)) <$> args
   pure $ RST.XtorPat loc xt args'
 
 createNamesPatI :: RST.PatternI -> CreateNameM RST.PatternI
@@ -316,7 +316,7 @@ embedTerm RST.BoundVar{} =
 embedTerm (RST.FreeVar loc _ fv) =
   CST.Var loc fv
 embedTerm (RST.Xtor loc _ _ xt subst) =
-  CST.Xtor loc xt (CST.ToSTerm <$> (embedSubst subst))
+  CST.Xtor loc xt (CST.ToSTerm <$> embedSubst subst)
 embedTerm (RST.XCase loc PrdRep _ cases) =
   CST.Cocase loc (embedCmdCase <$> cases)
 embedTerm (RST.XCase loc CnsRep _ cases) =
@@ -325,13 +325,13 @@ embedTerm (RST.MuAbs loc _ fv cmd) =
   CST.MuAbs loc (fromJust fv) (embedCommand cmd)
 -- Syntactic sugar
 embedTerm (RST.Semi loc _ _ (MkXtorName "CoAp")  ([RST.CnsTerm t],CnsRep,[]) tm) =
-  CST.FunApp loc (embedTerm tm) (embedTerm t) 
+  CST.FunApp loc (embedTerm tm) (embedTerm t)
 embedTerm (RST.Semi _loc _ _ (MkXtorName "CoAp")  other _tm) =
   error $ "embedTerm: " ++ show  other
 embedTerm (RST.Semi loc _ _ xt substi tm) =
   CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
 embedTerm (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],PrdRep,[])) =
-  CST.FunApp loc (embedTerm tm) (embedTerm t) 
+  CST.FunApp loc (embedTerm tm) (embedTerm t)
 embedTerm (RST.Dtor loc _ _ xt tm substi) =
   CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)
 embedTerm (RST.CaseOf loc _ _ tm cases) =
@@ -342,9 +342,9 @@ embedTerm (RST.CaseI loc _ _ cases) =
   CST.Case loc (embedTermCaseI <$> cases)
 embedTerm (RST.CocaseI loc _ _ cases) =
   CST.Cocase loc (embedTermCaseI <$> cases)
-embedTerm (RST.Lambda loc PrdRep fvs tm) = 
+embedTerm (RST.Lambda loc PrdRep fvs tm) =
   CST.Lambda loc fvs (embedTerm tm)
-embedTerm (RST.Lambda loc CnsRep fvs tm) = 
+embedTerm (RST.Lambda loc CnsRep fvs tm) =
   CST.CoLambda loc fvs (embedTerm tm)
 embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
@@ -378,7 +378,7 @@ embedCommand (RST.ExitFailure loc) =
   CST.PrimCmdTerm $ CST.ExitFailure loc
 embedCommand (RST.PrimOp loc ty op subst) =
   CST.PrimCmdTerm $ CST.PrimOp loc ty op (embedSubst subst)
-embedCommand (RST.CaseOfCmd loc _ns tm cases) = 
+embedCommand (RST.CaseOfCmd loc _ns tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
 embedCommand (RST.CocaseOfCmd loc _ns tm cases) =
   CST.CocaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
@@ -606,7 +606,7 @@ reparseInstanceDecl RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_d
                               }
 
 reparseDecl :: RST.Declaration -> CST.Declaration
-reparseDecl (RST.PrdCnsDecl _ decl) = 
+reparseDecl (RST.PrdCnsDecl _ decl) =
   CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
 reparseDecl (RST.CmdDecl decl) =
   CST.CmdDecl (reparseCommandDeclaration decl)

@@ -13,10 +13,10 @@ module Sugar.TST (
   pattern CocaseOf,
   pattern XCaseI,
   pattern RawApply,
-  pattern RawCase, 
-  pattern RawXtor, 
+  pattern RawCase,
+  pattern RawXtor,
   pattern RawMuAbs,
-  pattern Lambda, 
+  pattern Lambda,
   isDesugaredTerm,
   isDesugaredCommand,
   resetAnnotationTerm,
@@ -139,7 +139,7 @@ data TermCase (pc :: PrdCns) = MkTermCase
   { tmcase_loc  :: Loc
   , tmcase_pat :: Pattern
   , tmcase_term :: Term pc
-  }        
+  }
 
 resugarTermCase :: PrdCnsRep pc -> CmdCase -> TermCase pc
 resugarTermCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
@@ -147,8 +147,8 @@ resugarTermCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
                      MkTermCase loc (XtorPat loc xt cases) t
 resugarTermCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
                 (Apply _ _ _ {-(FreeVar _ PrdRep _ _ )-} _ t)) =
-                     MkTermCase loc (XtorPat loc xt cases) t    
-resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar " ++ show cmd                                 
+                     MkTermCase loc (XtorPat loc xt cases) t
+resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar " ++ show cmd
 
 -- CaseOf:
 --  [[case e of { Ctor(xs) => prd }]] = mu k. < [[e]]  |  case { Ctor(xs) => < [[prd]]  |  k > }
@@ -156,7 +156,7 @@ resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar 
 --  Annotations used on RHS: MuAnnotCaseOf, ApplyAnnotCaseOfOuter, ApplyAnnotCaseOfInner, MatchAnnotCaseOf
 
 pattern CaseOf   :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
-pattern CaseOf loc rep ty ns t cases <- 
+pattern CaseOf loc rep ty ns t cases <-
   MuAbs loc MuAnnotCaseOf rep ty Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotCaseOfOuter _ t (XCase _ MatchAnnotCaseOf CnsRep _ ns (map (resugarTermCase rep) -> cases)))
 
 
@@ -166,7 +166,7 @@ pattern CaseOf loc rep ty ns t cases <-
 --  Annotations used on RHS: MuAnnotCocaseOf, ApplyAnnotCocaseOfOuter, ApplyAnnotCocaseOfInner, MatchAnnotCocaseOf
 
 pattern CocaseOf   :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
-pattern CocaseOf loc rep ty ns t cases <- 
+pattern CocaseOf loc rep ty ns t cases <-
   MuAbs loc MuAnnotCocaseOf rep ty Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotCocaseOfOuter _ (XCase _ MatchAnnotCocaseOf PrdRep _ ns (map (resugarTermCase rep) -> cases)) t)
 
 resugarCmdCase' :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
@@ -186,48 +186,48 @@ resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 --   [[cocase { Dtor(xs,*,ys) => prd }]] = cocase { Dtor(xs,k,ys) => < [[prd]] | k > }
 --   [[cocase { Dtor(xs,*,ys) => cns }]] = cocase { Dtor(xs,k,ys) => < k | [[cns]] > }
 --   Annotations used on RHS: MatchAnnotXCaseI, ApplyAnnotXCaseI
- 
-pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> Typ (PrdCnsToPol pc') -> NominalStructural -> [TermCaseI pc] -> Term pc'            
-pattern XCaseI loc rep rep' ty ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ty ns (map (resugarCmdCase' rep) -> cases)   
 
-extractCmdCase :: PrdCnsRep pc -> [CmdCase] -> Maybe (FreeVarName,Term pc) 
+pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> Typ (PrdCnsToPol pc') -> NominalStructural -> [TermCaseI pc] -> Term pc'
+pattern XCaseI loc rep rep' ty ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ty ns (map (resugarCmdCase' rep) -> cases)
+
+extractCmdCase :: PrdCnsRep pc -> [CmdCase] -> Maybe (FreeVarName,Term pc)
 extractCmdCase PrdRep [MkCmdCase _ (XtorPat _ (MkXtorName "Ap") [(Prd,Just fv),(Cns,Nothing)]) (Apply _ ApplyAnnotLambda _ tm (BoundVar _ CnsRep _ (0,1)))] = Just (fv,tm)
 extractCmdCase CnsRep [MkCmdCase _ (XtorPat _ (MkXtorName "CoAp") [(Cns,Just fv),(Prd,Nothing)]) (Apply _ ApplyAnnotLambda _ (BoundVar _ PrdRep _ (0,1)) tm)] = Just (fv,tm)
-extractCmdCase _ _ = Nothing 
+extractCmdCase _ _ = Nothing
 
-pattern Lambda  :: Loc ->  PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc  -> Term pc 
+pattern Lambda  :: Loc ->  PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc  -> Term pc
 pattern Lambda loc pc ty fv tm <- XCase loc MatchAnnotLambda pc ty Nominal (extractCmdCase pc -> Just (fv,tm))
 
 pattern RawCase ::  Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
-pattern RawCase loc pc ty ns cases = XCase loc MatchAnnotOrig pc ty ns cases 
+pattern RawCase loc pc ty ns cases = XCase loc MatchAnnotOrig pc ty ns cases
 
 pattern RawXtor :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
-pattern RawXtor loc pc ty ns xt subst = Xtor loc XtorAnnotOrig pc ty ns xt subst 
+pattern RawXtor loc pc ty ns xt subst = Xtor loc XtorAnnotOrig pc ty ns xt subst
 
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
-pattern RawMuAbs loc pc ty name cmd = MuAbs loc MuAnnotOrig pc ty name cmd 
+pattern RawMuAbs loc pc ty name cmd = MuAbs loc MuAnnotOrig pc ty name cmd
 
 {-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, CaseOf, Dtor, Semi, Lambda, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
 
-isDesugaredTerm :: Term pc -> Bool 
-isDesugaredTerm XCaseI {} = False 
-isDesugaredTerm CocaseOf {} = False 
-isDesugaredTerm CaseOf {} = False 
-isDesugaredTerm Dtor {} = False 
-isDesugaredTerm Semi {} = False 
+isDesugaredTerm :: Term pc -> Bool
+isDesugaredTerm XCaseI {} = False
+isDesugaredTerm CocaseOf {} = False
+isDesugaredTerm CaseOf {} = False
+isDesugaredTerm Dtor {} = False
+isDesugaredTerm Semi {} = False
 isDesugaredTerm Lambda {} = False
-isDesugaredTerm (RawCase _ _ _ _ cases) = 
-  and $ (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases 
-isDesugaredTerm (RawXtor _ _ _ _ _ subst) = 
+isDesugaredTerm (RawCase _ _ _ _ cases) =
+  and $ (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases
+isDesugaredTerm (RawXtor _ _ _ _ _ subst) =
   and $ isDesugaredPCTerm <$> subst
-isDesugaredTerm (RawMuAbs _ _ _ _ cmd) = isDesugaredCommand cmd 
-isDesugaredTerm _ = True 
+isDesugaredTerm (RawMuAbs _ _ _ _ cmd) = isDesugaredCommand cmd
+isDesugaredTerm _ = True
 
-isDesugaredCommand :: Command -> Bool 
-isDesugaredCommand CocaseOfI {} = False  
-isDesugaredCommand CaseOfI {} = False  
-isDesugaredCommand CocaseOfCmd {} = False  
-isDesugaredCommand CaseOfCmd {} = False  
+isDesugaredCommand :: Command -> Bool
+isDesugaredCommand CocaseOfI {} = False
+isDesugaredCommand CaseOfI {} = False
+isDesugaredCommand CocaseOfCmd {} = False
+isDesugaredCommand CaseOfCmd {} = False
 isDesugaredCommand (PrimOp _ _ _ subst) =
   and (isDesugaredPCTerm <$> subst)
 isDesugaredCommand (RawApply _ _ prd cns) =
@@ -235,27 +235,27 @@ isDesugaredCommand (RawApply _ _ prd cns) =
 isDesugaredCommand (Print _ prd cmd) =
   isDesugaredTerm prd && isDesugaredCommand cmd
 isDesugaredCommand (Read _ cns) =
-  isDesugaredTerm cns  
-isDesugaredCommand _ = True 
+  isDesugaredTerm cns
+isDesugaredCommand _ = True
 
 isDesugaredPCTerm :: PrdCnsTerm -> Bool
 isDesugaredPCTerm (PrdTerm tm) = isDesugaredTerm tm
 isDesugaredPCTerm (CnsTerm tm) = isDesugaredTerm tm
 
-resetAnnotationPC :: PrdCnsTerm -> PrdCnsTerm 
+resetAnnotationPC :: PrdCnsTerm -> PrdCnsTerm
 resetAnnotationPC (PrdTerm t) = PrdTerm (resetAnnotationTerm t)
 resetAnnotationPC (CnsTerm t) = CnsTerm (resetAnnotationTerm t)
 
-resetAnnotationTerm :: Term pc -> Term pc 
+resetAnnotationTerm :: Term pc -> Term pc
 resetAnnotationTerm (Xtor loc _ rep ns ty xt subst) = Xtor loc XtorAnnotOrig rep ns ty xt (resetAnnotationPC <$> subst)
 resetAnnotationTerm (MuAbs loc _ rep ty fn cmd) = MuAbs loc MuAnnotOrig rep ty fn (resetAnnotationCmd cmd)
-resetAnnotationTerm (XCase loc _ pc ty ns cases) = XCase loc MatchAnnotOrig pc ty ns ((\(MkCmdCase a b cmd) -> (MkCmdCase a b (resetAnnotationCmd cmd)) ) <$> cases )
-resetAnnotationTerm t = t 
+resetAnnotationTerm (XCase loc _ pc ty ns cases) = XCase loc MatchAnnotOrig pc ty ns ((\(MkCmdCase a b cmd) -> MkCmdCase a b (resetAnnotationCmd cmd) ) <$> cases )
+resetAnnotationTerm t = t
 
-resetAnnotationCmd :: Command -> Command 
+resetAnnotationCmd :: Command -> Command
 resetAnnotationCmd (PrimOp a b c subst) =
   PrimOp a b c (resetAnnotationPC <$> subst)
-resetAnnotationCmd (Apply l _ kind t1 t2) = Apply l ApplyAnnotOrig kind (resetAnnotationTerm t1) (resetAnnotationTerm t2)  
+resetAnnotationCmd (Apply l _ kind t1 t2) = Apply l ApplyAnnotOrig kind (resetAnnotationTerm t1) (resetAnnotationTerm t2)
 resetAnnotationCmd (Print loc t cmd) = Print loc (resetAnnotationTerm t) (resetAnnotationCmd cmd)
 resetAnnotationCmd (Read loc t) = Read loc (resetAnnotationTerm t)
-resetAnnotationCmd cmd = cmd   
+resetAnnotationCmd cmd = cmd
