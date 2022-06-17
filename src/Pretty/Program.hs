@@ -156,7 +156,9 @@ prettyTVars tvs =
     <+> cat
           (punctuate
             comma
-            (   (\(var, v, k) -> prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k)
+            (   (\(var, v, k) ->
+                  prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k
+                )
             <$> tvs
             )
           )
@@ -170,9 +172,18 @@ prettyXTors xtors = braces $ group
     (line' <> vsep
       (punctuate
         comma
-        (   (\(nm, ts) ->
-              prettyAnn nm <> parens
-                (cat $ (\(pc, t) -> prettyAnn pc <+> prettyAnn t) <$> ts)
+        (   (\(nm, ts) -> prettyAnn nm <> parens
+              (   cat
+              $   punctuate comma
+              $   (\(pc, typ) ->
+                    (case pc of
+                        Prd -> emptyDoc
+                        Cns -> annKeyword "return"
+                      )
+                      <+> prettyAnn typ
+                  )
+              <$> ts
+              )
             )
         <$> xtors
         )
