@@ -21,3 +21,12 @@ def rec prd  mul : Nat -> Nat -> Nat :=
 def rec prd nateq : Nat -> Nat -> Bool :=
   \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};
+
+def rec prd natmax : Nat -> Nat -> Nat := 
+ \n m => case n of { Z => m
+				   , S(n) => case m of { Z => S(n), S(m) => S(natmax n m)}};
+
+def rec prd natgeq : Nat -> Nat -> Bool := 
+ \n m => case n of { Z => False
+				   , S(n) => case m of { Z=>True, S(m) => natgeq n m}};
+
