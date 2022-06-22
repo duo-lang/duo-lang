@@ -189,10 +189,10 @@ subConstraints (SubType _ ty' ty@TyRec{}) =
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TyData _ PosRep Nothing ctors1) (TyData _ NegRep Nothing ctors2)) = do
+subConstraints (SubType _ (TyData _ PosRep ctors1) (TyData _ NegRep ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure $ concat constraints
-subConstraints (SubType _ (TyCodata _ PosRep Nothing dtors1) (TyCodata _ NegRep Nothing dtors2)) = do
+subConstraints (SubType _ (TyCodata _ PosRep dtors1) (TyCodata _ NegRep dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
 -- Constraints between refinement data or codata types:
@@ -203,7 +203,7 @@ subConstraints (SubType _ (TyCodata _ PosRep Nothing dtors1) (TyCodata _ NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ t1@(TyData _ PosRep (Just tn1) ctors1) t2@(TyData _ NegRep (Just tn2) ctors2)) = do
+subConstraints (SubType _ t1@(TyDataRefined _ PosRep tn1 ctors1) t2@(TyDataRefined _ NegRep tn2 ctors2)) = do
   if tn1 == tn2 then do
     constraints <- forM ctors1 (checkXtor ctors2)
     pure $ concat constraints
@@ -211,7 +211,7 @@ subConstraints (SubType _ t1@(TyData _ PosRep (Just tn1) ctors1) t2@(TyData _ Ne
                         , "    " <> ppPrint t1
                         , "and"
                         , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata _ PosRep (Just tn1) dtors1) t2@(TyCodata _ NegRep (Just tn2) dtors2)) = do
+subConstraints (SubType _ t1@(TyCodataRefined _ PosRep tn1 dtors1) t2@(TyCodataRefined _ NegRep tn2 dtors2)) = do
   if tn1 == tn2 then do
     constraints <- forM dtors2 (checkXtor dtors1)
     pure $ concat constraints
@@ -226,22 +226,22 @@ subConstraints (SubType _ t1@(TyCodata _ PosRep (Just tn1) dtors1) t2@(TyCodata 
 --     < ctors > <: {{ TyName :>> < ctors > }}    ~>     FAIL
 --     { dtors } <: {{ TyName :>> { dtors } }}    ~>     FAIL
 --
-subConstraints (SubType _ t1@(TyData _ PosRep (Just _) _) t2@(TyData _ NegRep Nothing _)) = do
+subConstraints (SubType _ t1@(TyDataRefined _ PosRep _ _) t2@(TyData _ NegRep  _)) = do
   throwSolverError ["Cannot constraint refinement data type"
                    , "    " <> ppPrint t1
                    , "by structural data type"
                    , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyData _ PosRep Nothing _) t2@(TyData _ NegRep (Just _) _)) = do
+subConstraints (SubType _ t1@(TyData _ PosRep _) t2@(TyDataRefined _ NegRep _ _)) = do
   throwSolverError ["Cannot constraint structural data type"
                    , "    " <> ppPrint t1
                    , "by refinement data type"
                    , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata _ PosRep (Just _) _) t2@(TyCodata _ NegRep Nothing _)) = do
+subConstraints (SubType _ t1@(TyCodataRefined _ PosRep _ _) t2@(TyCodata _ NegRep _)) = do
   throwSolverError ["Cannot constraint refinement codata type"
                    , "    " <> ppPrint t1
                    , "by structural codata type"
                    , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata _ PosRep Nothing _) t2@(TyCodata _ NegRep (Just _) _)) = do
+subConstraints (SubType _ t1@(TyCodata _ PosRep _) t2@(TyCodataRefined _ NegRep _ _)) = do
   throwSolverError ["Cannot constraint structural codata type"
                    , "    " <> ppPrint t1
                    , "by refinement codata type"

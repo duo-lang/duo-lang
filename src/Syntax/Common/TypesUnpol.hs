@@ -10,7 +10,8 @@ import Utils ( Loc )
 
 data Typ where
   TyVar :: Loc -> TVar -> Typ
-  TyXData :: Loc -> DataCodata -> Maybe TypeName -> [XtorSig] -> Typ
+  TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
+  TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> [Typ] -> Typ
   TyRec :: Loc -> TVar -> Typ -> Typ
   TyTop :: Loc -> Typ
