@@ -84,7 +84,7 @@ instance PrettyAnn CST.CommandDeclaration where
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint the list of MonoKinds
-prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
+prettyCCList :: PrettyAnn a => [(PrdCns, a)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
@@ -170,23 +170,8 @@ prettyXTors xtors = braces $ group
   (nest
     3
     (line' <> vsep
-      (punctuate
-        comma
-        (   (\(nm, ts) -> prettyAnn nm <> parens
-              (   cat
-              $   punctuate comma
-              $   (\(pc, typ) ->
-                    (case pc of
-                        Prd -> emptyDoc
-                        Cns -> annKeyword "return"
-                      )
-                      <+> prettyAnn typ
-                  )
-              <$> ts
-              )
-            )
-        <$> xtors
-        )
+      (punctuate comma
+                 ((\(nm, ts) -> prettyAnn nm <> prettyCCList ts) <$> xtors)
       )
     )
   )
