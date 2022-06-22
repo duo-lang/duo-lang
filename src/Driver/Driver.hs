@@ -27,6 +27,7 @@ import Resolution.SymbolTable
 import Resolution.Definition
 
 import Syntax.Common
+import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
@@ -39,7 +40,8 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
-      genConstraintsTermRecursive )
+      genConstraintsTermRecursive,
+      genConstraintsInstanceCase )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
@@ -144,6 +146,28 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
                                 , cmddecl_cmd = cmdInferred
                                 }
 
+inferInstanceDeclaration :: ModuleName
+                         -> RST.InstanceDeclaration
+                         -> DriverM RST.InstanceDeclaration
+inferInstanceDeclaration mn RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  env <- gets drvEnv
+  -- Generate the constraints
+  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (mapM genConstraintsInstanceCase instancedecl_cases)
+  -- Solve the constraints
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
+  guardVerbose $ do
+      ppPrintIO constraints
+      ppPrintIO solverResult
+  -- Insert into environment
+  let f env = env { instanceEnv  = M.insert instancedecl_name instancedecl_typ (instanceEnv env)}
+  modifyEnvironment mn f
+  pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                                 , instancedecl_doc = instancedecl_doc
+                                 , instancedecl_name = instancedecl_name
+                                 , instancedecl_typ = instancedecl_typ
+                                 , instancedecl_cases = instanceInferred
+                                 }
+
 inferDecl :: ModuleName
           -> Core.Declaration
           -> DriverM TST.Declaration
@@ -200,8 +224,9 @@ inferDecl _mn (Core.ClassDecl decl) =
 --
 -- InstanceDecl
 --
-inferDecl _mn (Core.InstanceDecl decl) =
-  pure (TST.InstanceDecl decl)
+inferDecl mn (Core.InstanceDecl decl) = do
+  decl' <- inferInstanceDeclaration mn decl
+  pure (TST.InstanceDecl decl')
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls

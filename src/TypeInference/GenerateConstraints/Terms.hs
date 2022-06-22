@@ -2,6 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( genConstraintsTerm
   , genConstraintsTermRecursive
   , genConstraintsCommand
+  , genConstraintsInstanceCase
   ) where
 
 import Control.Monad.Reader
@@ -13,6 +14,7 @@ import Pretty.Constraints ()
 import Pretty.Pretty ( ppPrint )
 import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Terms qualified as Core
+import Syntax.RST.Terms qualified as RST
 import Syntax.Common hiding (primOps)
 import Syntax.Common.TypesPol
 import TypeInference.GenerateConstraints.Definition
@@ -250,6 +252,9 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
     Just sig -> do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
       return (TST.PrimOp loc pt op substInferred)
+
+genConstraintsInstanceCase :: RST.InstanceCase Cns -> GenM (RST.InstanceCase Cns)
+genConstraintsInstanceCase = pure -- TODO
 
 ---------------------------------------------------------------------------------------------
 -- Checking recursive terms

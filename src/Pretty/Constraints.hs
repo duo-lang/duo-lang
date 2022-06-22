@@ -44,6 +44,8 @@ instance PrettyAnn UVarProvenance where
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
+  prettyAnn (TypeClass ann (MkClassName cn) typ) =
+    prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
 printUVar :: (TVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
