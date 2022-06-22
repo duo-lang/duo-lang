@@ -25,7 +25,7 @@ import TypeInference.Constraints
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: Map TVar VariableState
+  { sst_bounds :: Map TUniVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   }
 
@@ -53,10 +53,10 @@ addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation wh
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
-modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
+modifyBounds :: (VariableState -> VariableState) -> TUniVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getBounds :: TVar -> SolverM VariableState
+getBounds :: TUniVar -> SolverM VariableState
 getBounds uv = do
   bounds <- gets sst_bounds
   case M.lookup uv bounds of
@@ -66,14 +66,14 @@ getBounds uv = do
                                 ]
     Just vs -> return vs
 
-addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
+addUpperBound :: TUniVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs kind) -> VariableState (ty:ubs) lbs kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
-addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
+addLowerBound :: TUniVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs kind) -> VariableState ubs (ty:lbs) kind) uv
   bounds <- getBounds uv
@@ -91,10 +91,10 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
-      (SubType _ (TyVar _ PosRep _ uv) ub) -> do
+      (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType _ lb (TyVar _ NegRep _ uv)) -> do
+      (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
       _ -> do
@@ -302,13 +302,26 @@ subConstraints (SubType _ t1@TyNominal{} t2@TyCodata{}) =
 -- dealt with in the function `solve`. Calling the function `subConstraints` with an
 -- atomic constraint is an implementation bug.
 --
-subConstraints (SubType _ ty1@TyVar {} ty2) =
+subConstraints (SubType _ ty1@TySkolemVar {} ty2) = 
+  throwSolverError ["subConstraints should only be called if neither upper or lower bound are Skolem variables"
+                   , ppPrint ty1
+                   , "<:"
+                   , ppPrint ty2
+                   ]
+subConstraints (SubType _ ty1 ty2@TySkolemVar {}) = 
+ throwSolverError ["subConstraints should only be called if neither upper or lower bound are Skolem variables"
+                   , ppPrint ty1
+                   , "<:"
+                   , ppPrint ty2
+                  ]
+
+subConstraints (SubType _ ty1@TyUniVar {} ty2) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"
                    , ppPrint ty2
                    ]
-subConstraints (SubType _ ty1 ty2@TyVar {}) =
+subConstraints (SubType _ ty1 ty2@TyUniVar {}) =
   throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
                    , ppPrint ty1
                    , "<:"

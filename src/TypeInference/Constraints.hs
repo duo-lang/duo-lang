@@ -39,17 +39,17 @@ data Constraint a where
 
 -- | Information about the provenance of a unification variable.
 data UVarProvenance
-  = RecursiveUVar   FreeVarName        -- ^ UVar generated for recursive binding.
-  | ProgramVariable FreeVarName        -- ^ UVar generated for program variable.
+  = RecursiveUVar   FreeUniVarName        -- ^ UVar generated for recursive binding.
+  | ProgramVariable FreeUniVarName        -- ^ UVar generated for program variable.
   | PatternMatch Loc                   -- ^ UVar generated for return type of pattern match.
   | DtorAp Loc                         -- ^ UVar generated for result of Dtor application.
-  | TypeSchemeInstance FreeVarName Loc -- ^ UVar generated for the instantiation of a type scheme.
-  | TypeParameter RnTypeName TVar      -- ^ UVar generated for a type parameter of a nominal type
+  | TypeSchemeInstance FreeUniVarName Loc -- ^ UVar generated for the instantiation of a type scheme.
+  | TypeParameter RnTypeName TUniVar      -- ^ UVar generated for a type parameter of a nominal type
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
-                                   , cs_uvars :: [(TVar, UVarProvenance)]
+                                   , cs_uvars :: [(TUniVar, UVarProvenance)]
                                    }
 
 ------------------------------------------------------------------------------
@@ -66,5 +66,5 @@ emptyVarState :: MonoKind -> VariableState
 emptyVarState = VariableState [] []
 
 newtype SolverResult = MkSolverResult
-  { tvarSolution :: Map TVar VariableState
+  { tvarSolution :: Map TUniVar VariableState
     }

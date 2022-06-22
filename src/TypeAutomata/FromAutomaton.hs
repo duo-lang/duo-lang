@@ -20,6 +20,7 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
+import Control.Exception.Base (noMethodBindingError)
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
@@ -40,10 +41,10 @@ initializeFromAutomaton TypeAut{..} =
 -- Type automata -> Types
 --------------------------------------------------------------------------
 
-data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
+data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TUniVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
-                                     , tvars :: [TVar]
+                                     , tvars :: [TUniVar]
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
 
@@ -55,7 +56,8 @@ autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  , ts_vars = tvars startState
+                  , ts_univars = tvars startState
+                  , ts_skolemvars = []
                   , ts_monotype = monotype
                   }
 
@@ -72,7 +74,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TyUniVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -113,7 +115,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache then
-    return $ TyVar defaultLoc rep Nothing (MkTVar ("r" <> T.pack (show i)))
+    return $ TyUniVar defaultLoc rep Nothing (MkTUniVar ("r" <> T.pack (show i)))
   else
     nodeToTypeNoCache rep i
 
@@ -186,5 +188,5 @@ nodeToTypeNoCache rep i = do
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
-    then return $ TyRec defaultLoc rep (MkTVar ("r" <> T.pack (show i))) resType
+    then return $ TyRec defaultLoc rep (MkTSkolemVar ("r" <> T.pack (show i))) resType
     else return resType

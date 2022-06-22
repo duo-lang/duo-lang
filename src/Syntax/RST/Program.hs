@@ -22,7 +22,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ Whether a producer or consumer is declared.
   , pcdecl_isRec :: IsRec
     -- ^ Whether the declaration can refer to itself recursively.
-  , pcdecl_name :: FreeVarName
+  , pcdecl_name :: FreeSkolemVarName
     -- ^ The name of the producer / consumer.
   , pcdecl_annot :: Maybe (TypeScheme (PrdCnsToPol pc))
     -- ^ The type signature.
@@ -43,7 +43,7 @@ data CommandDeclaration = MkCommandDeclaration
     -- ^ The source code location of the declaration.
   , cmddecl_doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , cmddecl_name :: FreeVarName
+  , cmddecl_name :: FreeSkolemVarName
     -- ^ The name of the command.
   , cmddecl_cmd :: Command
     -- ^ The command itself.

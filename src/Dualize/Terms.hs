@@ -14,7 +14,8 @@ data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc S
 
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
 dualTerm rep (BoundVar _ _ ty i) = return $ BoundVar defaultLoc (flipPrdCns rep) (dualType' rep ty) i
-dualTerm rep (FreeVar _ _ ty i) = return $ FreeVar defaultLoc (flipPrdCns rep) (dualType' rep ty) (dualFVName i)
+dualTerm rep (FreeUniVar _ _ ty i) = return $ FreeUniVar defaultLoc (flipPrdCns rep) (dualType' rep ty) (dualFUVName i)
+dualTerm rep (FreeSkolemVar _ _ ty i) = return $ FreeSkolemVar defaultLoc (flipPrdCns rep) (dualType' rep ty) (dualFSVName i)
 dualTerm rep (Xtor _ annot pc ty ns xtor subst) = do
     subst' <- dualSubst subst
     return $ Xtor defaultLoc (dualXtorAnnot annot) (flipPrdCns pc) (dualType' rep ty) ns (dualXtorName xtor) subst'
@@ -23,7 +24,7 @@ dualTerm rep (XCase _ annot pc ty ns cases) = do
     return $ XCase defaultLoc (dualMatchAnnot annot) (flipPrdCns pc) (dualType' rep ty) ns cases'
 dualTerm rep (MuAbs _ annot pc ty fv cmd) = do
     cmd' <- dualCmd cmd
-    return $ MuAbs defaultLoc (dualMuAnnot annot)  (flipPrdCns pc)  (dualType' rep ty) (dualFVName <$> fv) cmd'
+    return $ MuAbs defaultLoc (dualMuAnnot annot)  (flipPrdCns pc)  (dualType' rep ty) (dualFSVName <$> fv) cmd'
 dualTerm _ (PrimLitI64 loc i) = Left $ DualPrim loc $ "Cannot dualize integer literal: " ++ show i
 dualTerm _ (PrimLitF64 loc i) = Left $ DualPrim loc $ "Cannot dualize floating point literal: " ++ show i
 
@@ -34,7 +35,7 @@ dualCmd (Apply _ annot kind prd cns) = do
     return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind <$> kind) t1 t2
 dualCmd (Print loc _ _) = Left $ DualPrint loc $ "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc $ "Cannot dualize Read command"
-dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
+dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFUVName fv)
 dualCmd (PrimOp loc _ op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
 dualCmd (ExitSuccess _) = return $ ExitSuccess defaultLoc
 dualCmd (ExitFailure _) = return $ ExitFailure defaultLoc
@@ -49,7 +50,7 @@ flipPC Prd = Cns
 flipPC Cns = Prd
 
 dualPattern :: Pattern -> Pattern
-dualPattern (XtorPat _ xtor vars) = XtorPat defaultLoc (dualXtorName xtor) (map (bimap flipPC (dualFVName <$>)) vars)
+dualPattern (XtorPat _ xtor vars) = XtorPat defaultLoc (dualXtorName xtor) (map (bimap flipPC (dualFSVName <$>)) vars)
 
 dualSubst :: Substitution -> Either DualizeError Substitution
 dualSubst = mapM dualPrdCnsTerm
@@ -101,9 +102,13 @@ dualMuAnnot MuAnnotDtor = MuAnnotSemi
 dualMuAnnot MuAnnotCaseOf = MuAnnotCocaseOf
 dualMuAnnot MuAnnotCocaseOf = MuAnnotCaseOf
 
-dualFVName :: FreeVarName -> FreeVarName
-dualFVName (MkFreeVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeVarName n
-dualFVName (MkFreeVarName x) = MkFreeVarName (T.pack "co" `T.append` x)
+dualFSVName :: FreeSkolemVarName -> FreeSkolemVarName
+dualFSVName (MkFreeSkolemVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeSkolemVarName n
+dualFSVName (MkFreeSkolemVarName x) = MkFreeSkolemVarName (T.pack "co" `T.append` x)
+
+dualFUVName :: FreeUniVarName -> FreeUniVarName
+dualFUVName (MkFreeUniVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeUniVarName n
+dualFUVName (MkFreeUniVarName x) = MkFreeUniVarName (T.pack "co"  `T.append` x)
 
 
 dualType' :: PrdCnsRep pc -> Typ (PrdCnsToPol pc)  -> Typ (PrdCnsToPol (FlipPrdCns pc))
@@ -111,7 +116,8 @@ dualType' PrdRep t = dualType PosRep t
 dualType' CnsRep t = dualType NegRep t
 
 dualType :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
-dualType pol (TyVar _loc _ kind x) = TyVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
+dualType pol (TyUniVar _loc _ kind x) = TyUniVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
+dualType pol (TySkolemVar _loc _ kind x) = TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
 dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyPrim loc _ pt) = TyPrim loc (flipPolarityRep pol) pt
 -- @BinderDavid please check
@@ -149,4 +155,4 @@ dualMonoKind :: MonoKind -> MonoKind
 dualMonoKind mk = mk
 
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)
-dualTypeScheme pol (TypeScheme _  ts_vars ty) = TypeScheme defaultLoc ts_vars (dualType pol ty)
+dualTypeScheme pol (TypeScheme _  ts_univars ts_skolemvars ty) = TypeScheme defaultLoc ts_univars ts_skolemvars (dualType pol ty)

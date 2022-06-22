@@ -40,8 +40,10 @@ desugarTerm :: RST.Term pc -> Core.Term pc
 ---------------------------------------------------------------------------------
 desugarTerm (RST.BoundVar loc pc  idx) =
   Core.BoundVar loc pc idx
-desugarTerm (RST.FreeVar loc pc fv) =
-  Core.FreeVar loc pc fv
+desugarTerm (RST.FreeUniVar loc pc fv) =
+  Core.FreeUniVar loc pc fv
+desugarTerm(RST.FreeSkolemVar loc pc fv) = 
+  Core.FreeSkolemVar loc pc fv
 desugarTerm (RST.Xtor loc pc ns xt args) =
   Core.Xtor loc XtorAnnotOrig pc ns xt (desugarPCTerm <$> args)
 desugarTerm (RST.MuAbs loc pc  bs cmd) =

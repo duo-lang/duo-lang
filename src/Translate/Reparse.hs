@@ -43,13 +43,13 @@ import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 -- and do not fulfil any semantic properties w.r.t shadowing etc.!
 ---------------------------------------------------------------------------------
 
-freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> RST.Substitution
+freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeSkolemVarName)] -> RST.Substitution
 freeVarNamesToXtorArgs bs = f <$> bs
   where
     f (Prd, Nothing) = error "Create Names first!"
-    f (Prd, Just fv) = RST.PrdTerm $ RST.FreeVar defaultLoc PrdRep fv
+    f (Prd, Just fv) = RST.PrdTerm $ RST.FreeSkolemVar defaultLoc PrdRep fv
     f (Cns, Nothing) = error "Create Names first!"
-    f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
+    f (Cns, Just fv) = RST.CnsTerm $ RST.FreeSkolemVar defaultLoc CnsRep fv
 
 openTermCase :: RST.TermCase pc -> RST.TermCase pc
 openTermCase RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat loc xt args , tmcase_term } =
@@ -80,16 +80,18 @@ openTermComplete :: RST.Term pc -> RST.Term pc
 -- Core constructs
 openTermComplete (RST.BoundVar loc pc idx) =
   RST.BoundVar loc pc idx
-openTermComplete (RST.FreeVar loc pc v) =
-  RST.FreeVar loc pc v
+openTermComplete (RST.FreeSkolemVar loc pc v) =
+  RST.FreeSkolemVar loc pc v
+openTermComplete (RST.FreeUniVar loc pc v) = 
+  RST.FreeUniVar loc pc v
 openTermComplete (RST.Xtor loc pc ns xt args) =
   RST.Xtor loc pc ns xt (openPCTermComplete <$> args)
 openTermComplete (RST.XCase loc pc ns cases) =
   RST.XCase loc pc ns (openCmdCase <$> cases)
 openTermComplete (RST.MuAbs loc PrdRep (Just fv) cmd) =
-  RST.MuAbs loc PrdRep (Just fv) (RST.commandOpening [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] (openCommandComplete cmd))
+  RST.MuAbs loc PrdRep (Just fv) (RST.commandOpening [RST.CnsTerm (RST.FreeSkolemVar defaultLoc CnsRep fv)] (openCommandComplete cmd))
 openTermComplete (RST.MuAbs loc CnsRep (Just fv) cmd) =
-  RST.MuAbs loc CnsRep (Just fv) (RST.commandOpening [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] (openCommandComplete cmd))
+  RST.MuAbs loc CnsRep (Just fv) (RST.commandOpening [RST.PrdTerm (RST.FreeSkolemVar defaultLoc PrdRep fv)] (openCommandComplete cmd))
 openTermComplete (RST.MuAbs _ _ Nothing _) =
   error "Create names first!"
 -- Syntactic sugar
@@ -108,8 +110,8 @@ openTermComplete (RST.CocaseI loc rep ns cocases) =
 openTermComplete (RST.Lambda loc pc fv tm) =
   let
     tm' = openTermComplete tm
-    tm'' = case pc of PrdRep -> RST.termOpening [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] tm'
-                      CnsRep -> RST.termOpening [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] tm'
+    tm'' = case pc of PrdRep -> RST.termOpening [RST.PrdTerm (RST.FreeSkolemVar defaultLoc PrdRep fv)] tm'
+                      CnsRep -> RST.termOpening [RST.CnsTerm (RST.FreeSkolemVar defaultLoc CnsRep fv)] tm'
 
   in
   RST.Lambda loc pc fv tm''
@@ -147,13 +149,14 @@ openCommandComplete (RST.CocaseOfI loc rep ns tm cases) =
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-type CreateNameM a = State ([FreeVarName],[FreeVarName]) a
+--here Unification variables not needed?
+type CreateNameM a = State ([FreeSkolemVarName],[FreeSkolemVarName]) a
 
-names :: ([FreeVarName], [FreeVarName])
-names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
-         ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
+names :: ([FreeSkolemVarName], [FreeSkolemVarName])
+names =  ((\y -> MkFreeSkolemVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
+         ,(\y -> MkFreeSkolemVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
 
-fresh :: PrdCns -> CreateNameM (Maybe FreeVarName)
+fresh :: PrdCns -> CreateNameM (Maybe FreeSkolemVarName)
 fresh Prd = do
   var <- gets (head . fst)
   modify (first tail)
@@ -174,8 +177,10 @@ createNamesTerm :: RST.Term pc -> CreateNameM (RST.Term pc)
 -- Core constructs
 createNamesTerm (RST.BoundVar loc pc idx) =
   pure $ RST.BoundVar loc pc idx
-createNamesTerm (RST.FreeVar loc pc nm) =
-  pure $ RST.FreeVar loc pc nm
+createNamesTerm (RST.FreeUniVar loc pc nm) =
+  pure $ RST.FreeUniVar loc pc nm
+createNamesTerm (RST.FreeSkolemVar loc pc nm) = 
+  pure $ RST.FreeSkolemVar loc pc nm
 createNamesTerm (RST.Xtor loc pc ns xt subst) = do
   subst' <- createNamesSubstitution subst
   pure $ RST.Xtor loc pc ns xt subst'
@@ -305,8 +310,10 @@ embedTerm (isNumSTermRST -> Just i) =
 -- Core constructs
 embedTerm RST.BoundVar{} =
   error "Should have been removed by opening"
-embedTerm (RST.FreeVar loc _ fv) =
-  CST.Var loc fv
+embedTerm (RST.FreeUniVar loc _ fv) =
+  CST.UniVar loc fv
+embedTerm (RST.FreeSkolemVar loc _ fv) = 
+  CST.SkolemVar loc fv
 embedTerm (RST.Xtor loc _ _ xt subst) =
   CST.Xtor loc xt (CST.ToSTerm <$> embedSubst subst)
 embedTerm (RST.XCase loc PrdRep _ cases) =
@@ -363,7 +370,8 @@ embedCommand (RST.Print loc tm cmd) =
 embedCommand (RST.Read loc cns) =
   CST.PrimCmdTerm $ CST.Read loc (embedTerm cns)
 embedCommand (RST.Jump loc fv) =
-  CST.Var loc fv
+-- here should be skolem i think
+  CST.UniVar loc fv
 embedCommand (RST.ExitSuccess loc) =
   CST.PrimCmdTerm $ CST.ExitSuccess loc
 embedCommand (RST.ExitFailure loc) =
@@ -440,8 +448,10 @@ resugarType _ = Nothing
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyVar loc _ _ tv) =
-  CST.TyVar loc tv
+embedType (RST.TyUniVar loc _ _ tv) =
+  CST.TyUniVar loc tv
+embedType (RST.TySkolemVar loc _ _ tv) =
+  CST.TySkolemVar loc tv
 embedType (RST.TyData loc _ tn xtors) =
   CST.TyXData loc Data (rnTnName <$> tn) (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ tn xtors) =
@@ -465,9 +475,10 @@ embedType (RST.TyPrim loc _ pt) =
 embedType (RST.TyFlipPol _ ty) = embedType ty
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
-embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
+embedTypeScheme RST.TypeScheme { ts_loc, ts_skolemvars, ts_univars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
-                 , ts_vars = ts_vars
+                 , ts_skolemvars = ts_skolemvars
+				 , ts_univars = ts_univars
                  , ts_monotype = embedType ts_monotype
                  }
 

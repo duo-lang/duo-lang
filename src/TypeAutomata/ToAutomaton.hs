@@ -11,6 +11,7 @@ import Data.Graph.Inductive.Graph qualified as G
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
+import Data.Text (Text)
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
@@ -42,6 +43,8 @@ import Control.Monad
 --
 -- Unification variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(Just n, Just m)`
+newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
+ 
 newtype LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 
 type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
@@ -167,9 +170,16 @@ insertVariantType (CovariantType ty) = do
 insertVariantType (ContravariantType ty) = do
   node <- insertType ty
   pure (node, Contravariant)
+  
+tUniVarToTVar :: TUniVar -> TVar
+tUniVarToTVar (MkTUniVar name) = MkTVar name
+
+tSkolemVarToTVar :: TSkolemVar -> TVar 
+tSkolemVarToTVar (MkTSkolemVar name) = MkTVar name
 
 insertType :: Typ pol -> TTA Node
-insertType (TyVar _ rep _ tv) = lookupTVar rep tv
+insertType (TyUniVar _ rep _ tv) = lookupTVar rep (tUniVarToTVar tv)
+insertType (TySkolemVar _ rep _ tv) = lookupTVar rep (tSkolemVarToTVar tv)
 insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
@@ -196,8 +206,8 @@ insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol)
-  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
-      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
+  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert (tSkolemVarToTVar rv) (Just newNode, Nothing) tvars
+      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert (tSkolemVarToTVar rv) (Nothing, Just newNode) tvars
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
@@ -226,8 +236,8 @@ insertType (TyFlipPol _ _) =
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
-typeToAut TypeScheme { ts_vars, ts_monotype } = do
-  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
+typeToAut TypeScheme { ts_univars, ts_skolemvars, ts_monotype } = do
+  (start, aut) <- runTypeAutTvars ((map tUniVarToTVar ts_univars)++(map tSkolemVarToTVar ts_skolemvars)) (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut

@@ -38,10 +38,10 @@ evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
 evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
 -- Free variables have to be looked up in the environment.
-evalApplyOnce kind (FreeVar _ PrdRep _ fv) cns = do
+evalApplyOnce kind (FreeUniVar _ PrdRep _ fv) cns = do
   prd <- lookupTerm PrdRep fv
   return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
-evalApplyOnce kind prd (FreeVar _ CnsRep _ fv) = do
+evalApplyOnce kind prd (FreeUniVar _ CnsRep _ fv) = do
   cns <- lookupTerm CnsRep fv
   return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.

@@ -78,10 +78,16 @@ genConstraintsTerm (Core.BoundVar loc rep idx) = do
 -- where they correspond to typing schemes. This typing
 -- scheme has to be instantiated with fresh unification variables.
 --
-genConstraintsTerm (Core.FreeVar loc rep v) = do
+genConstraintsTerm (Core.FreeUniVar loc rep v) = do
   tys <- snd <$> lookupTerm rep v
   ty <- instantiateTypeScheme v loc tys
-  return (TST.FreeVar loc rep ty v)
+  return (TST.FreeUniVar loc rep ty v)
+
+genConstraintsTerm (Core.FreeSkolemVar loc rep v) = error "Can't happen" 
+--do 
+--  tys <- snd <$> lookupTerm rep v
+--  ty <- instantiateTypeScheme v loc tys
+--  return (TST.FreeSkolemVar loc rep ty v)
 --
 -- Structural Xtors:
 --
@@ -135,7 +141,7 @@ genConstraintsTerm (Core.XCase loc annot rep Structural cases) = do
   inferredCases <- forM cases (\Core.MkCmdCase{ cmdcase_pat = Core.XtorPat loc xt args, cmdcase_loc, cmdcase_cmd} -> do
                       -- Generate positive and negative unification variables for all variables
                       -- bound in the pattern.
-                      (uvarsPos, uvarsNeg) <- freshTVars args
+                      (uvarsPos, uvarsNeg) <- freshTVarsFromSkolem args
                       -- Check the command in the context extended with the positive unification variables
                       cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
                       -- Return the negative unification variables in the returned type.
@@ -190,7 +196,7 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
                        -- Generate positive and negative unification variables for all variables
                        -- bound in the pattern.
-                       (uvarsPos, uvarsNeg) <- freshTVars args
+                       (uvarsPos, uvarsNeg) <- freshTVarsFromSkolem args
                        -- Check the command in the context extended with the positive unification variables
                        cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
                        -- We have to bound the unification variables with the lower and upper bounds generated
@@ -210,11 +216,11 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
 -- Mu and TildeMu abstractions:
 --
 genConstraintsTerm (Core.MuAbs loc annot PrdRep bs cmd) = do
-  (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
+  (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVarSkolem bs))
   cmdInferred <- withContext [PrdCnsType CnsRep uvneg] (genConstraintsCommand cmd)
   return (TST.MuAbs loc annot PrdRep uvpos bs cmdInferred)
 genConstraintsTerm (Core.MuAbs loc annot CnsRep bs cmd) = do
-  (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
+  (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVarSkolem bs))
   cmdInferred <- withContext [PrdCnsType PrdRep uvpos] (genConstraintsCommand cmd)
   return (TST.MuAbs loc annot CnsRep uvneg bs cmdInferred)
 genConstraintsTerm (Core.PrimLitI64 loc i) = pure $ TST.PrimLitI64 loc i
@@ -257,16 +263,16 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
 
 genConstraintsTermRecursive :: ModuleName
                             -> Loc
-                            -> FreeVarName
+                            -> FreeUniVarName
                             -> PrdCnsRep pc -> Core.Term pc
                             -> GenM (TST.Term pc)
 genConstraintsTermRecursive mn loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TypeScheme loc [] x) (genConstraintsTerm tm)
+  tm <- withTerm mn PrdRep fv (TST.FreeUniVar loc PrdRep x fv) loc (TypeScheme loc [] [] x) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint (TST.getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv)
-  tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TypeScheme loc [] y) (genConstraintsTerm tm)
+  tm <- withTerm mn CnsRep fv (TST.FreeUniVar loc CnsRep y fv) loc (TypeScheme loc [] [] y) (genConstraintsTerm tm)
   addConstraint (SubType RecursionConstraint x (TST.getTypeTerm tm))
   return tm

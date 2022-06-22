@@ -77,7 +77,8 @@ data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
   BoundVar :: Loc -> PrdCnsRep pc -> Index -> Term pc
   -- | A free variable in the locally nameless system.
-  FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
+  FreeSkolemVar :: Loc -> PrdCnsRep pc -> FreeSkolemVarName -> Term pc
+  FreeUniVar :: Loc -> PrdCnsRep pc -> FreeUniVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
   Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
@@ -88,7 +89,7 @@ data Term (pc :: PrdCns) where
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: Loc -> MuAnnot -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
+  MuAbs :: Loc -> MuAnnot -> PrdCnsRep pc -> Maybe FreeSkolemVarName -> Command -> Term pc
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
@@ -110,7 +111,7 @@ data Command where
   Apply  :: Loc -> ApplyAnnot -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
-  Jump   :: Loc -> FreeVarName -> Command
+  Jump   :: Loc -> FreeUniVarName -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
@@ -133,7 +134,8 @@ termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, sub
                                                                      (CnsRep, CnsTerm tm) -> tm
                                                                      _                    -> error "termOpeningRec BOOM"
                                                   | otherwise = bv
-termOpeningRec _ _ fv@FreeVar{} = fv
+termOpeningRec _ _ fv@FreeSkolemVar{} = fv
+termOpeningRec _ _ fv@FreeUniVar{} = fv
 termOpeningRec k args (Xtor loc annot rep ns xt subst) =
   Xtor loc annot rep ns xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XCase loc annot rep ns cases) =
@@ -167,16 +169,17 @@ commandOpening = commandOpeningRec 0
 -- Variable Closing
 ---------------------------------------------------------------------------------
 
-pctermClosingRec :: Int -> [(PrdCns, FreeVarName)] -> PrdCnsTerm -> PrdCnsTerm
+pctermClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> PrdCnsTerm -> PrdCnsTerm
 pctermClosingRec k vars (PrdTerm tm) = PrdTerm $ termClosingRec k vars tm
 pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
-termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
+termClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> Term pc -> Term pc
 termClosingRec _ _ bv@BoundVar{} = bv
-termClosingRec k vars (FreeVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
-                                             | otherwise = FreeVar loc PrdRep v
-termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
-                                             | otherwise = FreeVar loc CnsRep v
+termClosingRec _ _ FreeUniVar {} = error "Not implemented"
+termClosingRec k vars (FreeSkolemVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
+                                             | otherwise = FreeSkolemVar loc PrdRep v
+termClosingRec k vars (FreeSkolemVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
+                                             | otherwise = FreeSkolemVar loc CnsRep v
 termClosingRec k vars (Xtor loc annot pc ns xt subst) =
   Xtor loc annot pc ns xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XCase loc annot pc sn cases) =
@@ -186,7 +189,7 @@ termClosingRec k vars (MuAbs loc annot pc fv cmd) =
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
-commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
+commandClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> Command -> Command
 commandClosingRec _ _ (ExitSuccess ext) =
   ExitSuccess ext
 commandClosingRec _ _ (ExitFailure ext) =
@@ -202,10 +205,10 @@ commandClosingRec k args (Apply ext annot t1 t2) =
 commandClosingRec k args (PrimOp ext pt op subst) =
   PrimOp ext pt op (pctermClosingRec k args <$> subst)
 
-commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
+commandClosing :: [(PrdCns, FreeSkolemVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
 
-termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
+termClosing :: [(PrdCns, FreeSkolemVarName)] -> Term pc -> Term pc
 termClosing = termClosingRec 0 
 
 ---------------------------------------------------------------------------------
@@ -236,7 +239,8 @@ pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 
 termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
-termLocallyClosedRec _ FreeVar{} = Right ()
+termLocallyClosedRec _ FreeSkolemVar{} = Right()
+termLocallyClosedRec _ FreeUniVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
@@ -274,7 +278,8 @@ shiftTermRec ShiftUp n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcr
                                                   | otherwise = BoundVar loc pcrep (i    , j)
 shiftTermRec ShiftDown n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i - 1, j)
                                                     | otherwise = BoundVar loc pcrep (i    , j)                                        
-shiftTermRec _ _ var@FreeVar {} = var
+shiftTermRec _ _ var@FreeUniVar {} = var
+shiftTermRec _ _ var@FreeSkolemVar {} = var
 shiftTermRec dir n (Xtor loc annot pcrep ns xt subst) =
     Xtor loc annot pcrep ns xt (shiftPCTermRec dir n <$> subst)
 shiftTermRec dir n (XCase loc annot pcrep ns cases) =

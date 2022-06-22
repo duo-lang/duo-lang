@@ -38,9 +38,9 @@ resolveTerms loc ar t = error $ "compiler bug in resolveTerms, loc = " ++ show l
 ---------------------------------------------------------------------------------
 
 data AnalyzedPattern
-  = ExplicitPattern Loc XtorName [(PrdCns, FreeVarName)]
-  | ImplicitPrdPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
-  | ImplicitCnsPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
+  = ExplicitPattern Loc XtorName [(PrdCns, FreeSkolemVarName)]
+  | ImplicitPrdPattern Loc XtorName ([(PrdCns, FreeSkolemVarName)], PrdCnsRep Prd,[(PrdCns,FreeSkolemVarName)])
+  | ImplicitCnsPattern Loc XtorName ([(PrdCns, FreeSkolemVarName)], PrdCnsRep Cns,[(PrdCns,FreeSkolemVarName)])
 
 analyzePattern :: DataCodata -> CST.TermPat -> ResolverM AnalyzedPattern
 analyzePattern dc (CST.XtorPat loc xt args) = do
@@ -75,7 +75,7 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
 data IntermediateCase  = MkIntermediateCase
   { icase_loc  :: Loc
   , icase_name :: XtorName
-  , icase_args :: [(PrdCns, FreeVarName)]
+  , icase_args :: [(PrdCns, FreeSkolemVarName)]
   , icase_term :: CST.Term
   }
 
@@ -83,7 +83,7 @@ data IntermediateCase  = MkIntermediateCase
 data IntermediateCaseI pc = MkIntermediateCaseI
   { icasei_loc  :: Loc
   , icasei_name :: XtorName
-  , icasei_args :: ([(PrdCns, FreeVarName)], PrdCnsRep pc,[(PrdCns,FreeVarName)])
+  , icasei_args :: ([(PrdCns, FreeSkolemVarName)], PrdCnsRep pc,[(PrdCns,FreeSkolemVarName)])
   , icasei_term :: CST.Term
   }
 
@@ -169,7 +169,7 @@ resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args 
   tm' <- resolveTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
                        , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
-                       , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
+                       , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeSkolemVarName "*")] ++ args2) tm'
                        }
 
 resolveTermCase :: PrdCnsRep pc -> IntermediateCase -> ResolverM (RST.TermCase pc)
@@ -216,7 +216,9 @@ resolvePrimCommand (CST.PrimOp loc pt op args) = do
 resolveCommand :: CST.Term -> ResolverM RST.Command
 resolveCommand (CST.TermParens _loc cmd) =
   resolveCommand cmd
-resolveCommand (CST.Var loc fv) =
+resolveCommand (CST.SkolemVar loc fv) =
+  error "Can't happen"
+resolveCommand(CST.UniVar loc fv) = 
   pure $ RST.Jump loc fv
 resolveCommand (CST.PrimCmdTerm cmd) =
   resolvePrimCommand cmd
@@ -341,8 +343,10 @@ resolvePrdCnsTerm Cns tm = RST.CnsTerm <$> resolveTerm CnsRep tm
 resolveTerm :: PrdCnsRep pc -> CST.Term -> ResolverM (RST.Term pc)
 resolveTerm rep (CST.TermParens _loc tm) =
   resolveTerm rep tm
-resolveTerm rep (CST.Var loc v) =
-  pure $ RST.FreeVar loc rep v
+resolveTerm rep (CST.UniVar loc v) =
+  pure $ RST.FreeUniVar loc rep v
+resolveTerm rep(CST.SkolemVar loc v)=
+  pure $ RST.FreeSkolemVar loc rep v
 ---------------------------------------------------------------------------------
 -- Mu abstraction
 ---------------------------------------------------------------------------------

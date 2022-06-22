@@ -30,7 +30,7 @@ import Utils (trim)
 showCmd :: Text -> Repl ()
 showCmd "" = prettyText ":show needs an argument"
 showCmd str = do
-  let s = MkFreeVarName (trim str)
+  let s = MkFreeUniVarName (trim str)
   env <- gets (M.elems . (drvEnv . replDriverState))
   let concatPrdEnv = M.unions (prdEnv  <$> env)
   let concatCnsEnv = M.unions (cnsEnv <$> env)

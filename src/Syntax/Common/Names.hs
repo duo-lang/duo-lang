@@ -26,10 +26,12 @@ peanoNm :: RnTypeName
 peanoNm = MkRnTypeName defaultLoc Nothing (MkModuleName "Peano")(MkTypeName "Nat")
 
 -- | Name of a free variable. Starts with a lowercase letter.
-newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show)
+newtype FreeSkolemVarName = MkFreeSkolemVarName { unFreeSkolemVarName :: Text } deriving (Eq, Ord, Show)
+newtype FreeUniVarName = MkFreeUniVarName { unFreeUniVarName :: Text } deriving (Eq, Ord, Show)
 
 -- | Type variables
-newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
+newtype TUniVar = MkTUniVar { unTUVar :: Text } deriving (Eq, Show, Ord)
+newtype TSkolemVar = MkTSkolemVar { unTSVar :: Text} deriving(Eq,Show,Ord)
 
 ---------------------------------------------------------------------------------
 -- Doc comments

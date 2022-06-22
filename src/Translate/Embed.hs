@@ -30,8 +30,10 @@ embedSubst = fmap embedPCTerm
 embedCoreTerm :: Core.Term pc -> RST.Term pc
 embedCoreTerm (Core.BoundVar loc rep idx) =
     RST.BoundVar loc rep idx
-embedCoreTerm (Core.FreeVar loc rep idx) =
-    RST.FreeVar loc rep idx
+embedCoreTerm (Core.FreeUniVar loc rep idx) =
+    RST.FreeUniVar loc rep idx
+embedCoreTerm (Core.FreeSkolemVar loc rep idx) = 
+    RST.FreeSkolemVar loc rep idx
 embedCoreTerm (Core.RawXtor loc rep ns xs subst) =
     RST.Xtor loc rep ns xs (embedSubst subst)
 embedCoreTerm (Core.RawCase loc rep ns cases) =
@@ -139,8 +141,10 @@ embedTSTSubst = fmap embedTSTPCTerm
 embedTSTTerm :: TST.Term pc -> Core.Term pc
 embedTSTTerm (TST.BoundVar loc rep _ty idx) =
     Core.BoundVar loc rep idx
-embedTSTTerm (TST.FreeVar loc rep _ty idx) =
-    Core.FreeVar loc rep idx
+embedTSTTerm (TST.FreeUniVar loc rep _ty idx) =
+    Core.FreeUniVar loc rep idx
+embedTSTTerm (TST.FreeSkolemVar loc rep _ty idx) =
+    Core.FreeSkolemVar loc rep idx
 embedTSTTerm (TST.Xtor loc annot rep _ty ns xs subst) =
     Core.Xtor loc annot rep ns xs (embedTSTSubst subst)
 embedTSTTerm (TST.XCase loc annot rep _ty ns cases) =
@@ -173,7 +177,7 @@ embedTSTProg :: TST.Program -> Core.Program
 embedTSTProg = fmap embedTSTDecl
 
 embedTypeScheme :: TST.TypeScheme pol -> Core.TypeScheme pol
-embedTypeScheme (TypeScheme loc tvars mt) = Core.TypeScheme loc tvars mt
+embedTypeScheme (TypeScheme loc tunivars tskolemvars mt) = Core.TypeScheme loc tunivars tskolemvars mt
 
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
 embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =

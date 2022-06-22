@@ -7,12 +7,12 @@ import Syntax.Common.PrdCns
 ---------------------------------------------------------------------------------
 
 data Pattern where
-  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeSkolemVarName)] -> Pattern
 
 deriving instance Eq Pattern
 deriving instance Show Pattern
 
 data PatternI where
-  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
+  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeSkolemVarName)], (), [(PrdCns, Maybe FreeSkolemVarName)]) -> PatternI
 deriving instance Eq PatternI
 deriving instance Show PatternI

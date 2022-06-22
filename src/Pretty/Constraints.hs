@@ -45,7 +45,7 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
 
-printUVar :: (TVar, UVarProvenance) -> Doc Annotation
+printUVar :: (TUniVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
@@ -97,7 +97,7 @@ instance PrettyAnn SolverResult where
     , ""
     ]
     where
-      solvedConstraintsToDoc :: (TVar,VariableState) -> Doc Annotation
+      solvedConstraintsToDoc :: (TUniVar,VariableState) -> Doc Annotation
       solvedConstraintsToDoc (v, vs) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
                                                      , prettyAnn vs
                                                      ]
@@ -107,7 +107,7 @@ instance PrettyAnn SolverResult where
 -- Bisubstitutions
 ---------------------------------------------------------------------------------
 
-prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyBisubst :: (TUniVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
 prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn

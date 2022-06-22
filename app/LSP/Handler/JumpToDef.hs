@@ -122,7 +122,8 @@ instance ToJumpMap RST.Command where
 
 instance ToJumpMap (RST.Term pc) where
   toJumpMap RST.BoundVar {} = M.empty
-  toJumpMap RST.FreeVar {} = M.empty
+  toJumpMap RST.FreeUniVar {} = M.empty
+  toJumpMap RST.FreeSkolemVar {} = M.empty
   toJumpMap (RST.Xtor _ _ _ _ subst) = toJumpMap subst
   toJumpMap (RST.XCase _ _ _ cases) = M.unions (toJumpMap <$> cases)
   toJumpMap (RST.MuAbs _ _ _ cmd) = toJumpMap cmd
@@ -149,7 +150,9 @@ instance ToJumpMap (RST.PrdCnsType pol) where
   toJumpMap (RST.PrdCnsType _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.Typ pol) where
-  toJumpMap RST.TyVar {} =
+  toJumpMap RST.TyUniVar {} =
+    M.empty
+  toJumpMap RST.TySkolemVar {} = 
     M.empty
   toJumpMap (RST.TyData loc _ (Just tn) xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))

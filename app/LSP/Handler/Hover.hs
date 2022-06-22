@@ -171,7 +171,9 @@ cocaseToHoverMap loc ty ns = mkHoverMap loc msg
 instance ToHoverMap (Term pc) where
   toHoverMap (BoundVar loc _ ty _) =
     boundVarToHoverMap loc ty
-  toHoverMap (FreeVar loc _ ty _) =
+  toHoverMap (FreeUniVar loc _ ty _) =
+    freeVarToHoverMap loc ty
+  toHoverMap (FreeSkolemVar loc _ ty _)=
     freeVarToHoverMap loc ty
   toHoverMap (RawXtor loc pc ty ns _ args) =
     M.unions [xtorToHoverMap loc pc ty ns, toHoverMap args]
@@ -254,7 +256,16 @@ prettyPolRep PosRep = "**+**"
 prettyPolRep NegRep = "**-**"
 
 instance ToHoverMap (Typ pol) where
-  toHoverMap (TyVar loc rep _knd var) =
+  toHoverMap (TySkolemVar loc rep _knd var) =
+    let
+      msg = T.unlines [ "#### Type variable "
+                      , "- Name: `" <> ppPrint var <> "`"
+                      , "- Polarity: " <> prettyPolRep rep
+                      ]
+    in 
+      mkHoverMap loc msg
+
+  toHoverMap (TyUniVar loc rep _knd var) =
     let
       msg = T.unlines [ "#### Type variable "
                       , "- Name: `" <> ppPrint var <> "`"

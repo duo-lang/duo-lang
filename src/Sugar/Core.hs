@@ -131,8 +131,11 @@ resugarSubst ::  PrdCnsRep pc -> Int -> Substitution -> SubstitutionI pc
 resugarSubst rep n x = (a, rep, tail b)
   where (a,b) = splitAt n x
 
-resVar :: FreeVarName
-resVar = MkFreeVarName "$result"
+resSkolemVar :: FreeSkolemVarName
+resSkolemVar = MkFreeSkolemVarName "$result"
+
+resUniVar :: FreeUniVarName
+resUniVar = MkFreeUniVarName "$result"
 
 -- Semi:
 --   [[Ctor(as,*,bs) ;; e]] = mu k. <  Ctor([[as]],k,[[bs]])  |  [[e]]  >
@@ -144,16 +147,16 @@ pattern Semi loc rep ns xt substi t <-
     where 
         Semi loc PrdRep ns xt (args1, PrdRep, args2) t = 
             let
-                args = args1 ++ [CnsTerm $ FreeVar loc CnsRep resVar] ++ args2
+                args = args1 ++ [CnsTerm $ FreeSkolemVar loc CnsRep resSkolemVar] ++ args2
                 cmd = Apply loc ApplyAnnotSemi  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
             in
-            MuAbs loc MuAnnotSemi PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotSemi PrdRep Nothing $ commandClosing [(Cns, resSkolemVar)] $ shiftCmd ShiftUp cmd
         Semi loc CnsRep ns xt (args1, CnsRep, args2) t =  
             let
-                args = args1 ++ [PrdTerm $ FreeVar loc PrdRep resVar] ++ args2
+                args = args1 ++ [PrdTerm $ FreeSkolemVar loc PrdRep resSkolemVar] ++ args2
                 cmd = Apply loc ApplyAnnotSemi  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
             in
-            MuAbs loc MuAnnotSemi CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotSemi CnsRep Nothing $ commandClosing [(Prd, resSkolemVar)] $ shiftCmd ShiftUp cmd
 
 -- Dtor:
 --   [[e.Dtor(as,*,bs)]]    = mu k. <  [[e]]  | Dtor([[as]], k, [[bs]])
@@ -165,16 +168,16 @@ pattern Dtor loc rep ns xt t substi <-
     where 
         Dtor loc PrdRep ns xt t (args1, PrdRep, args2)  = 
             let
-                args = args1 ++ [CnsTerm $ FreeVar loc CnsRep resVar] ++ args2
+                args = args1 ++ [CnsTerm $ FreeSkolemVar loc CnsRep resSkolemVar] ++ args2
                 cmd = Apply loc ApplyAnnotDtor t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt args) 
             in
-            MuAbs loc MuAnnotDtor PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotDtor PrdRep Nothing $ commandClosing [(Cns, resSkolemVar)] $ shiftCmd ShiftUp cmd
         Dtor loc CnsRep ns xt t (args1, CnsRep, args2)  =  
             let
-                args = args1 ++ [PrdTerm $ FreeVar loc PrdRep resVar] ++ args2
+                args = args1 ++ [PrdTerm $ FreeSkolemVar loc PrdRep resSkolemVar] ++ args2
                 cmd = Apply loc ApplyAnnotDtor  t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt args) 
             in
-            MuAbs loc MuAnnotDtor CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotDtor CnsRep Nothing $ commandClosing [(Prd, resSkolemVar)] $ shiftCmd ShiftUp cmd
 
 data TermCase (pc :: PrdCns) = MkTermCase
   { tmcase_loc  :: Loc
@@ -202,16 +205,16 @@ pattern CaseOf loc rep ns t cases <-
   where   
     CaseOf loc PrdRep ns t cases =      
         let
-            desugarMatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCaseOfInner t (FreeVar loc CnsRep resVar)
+            desugarMatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCaseOfInner t (FreeSkolemVar loc CnsRep resSkolemVar)
             cmd = Apply loc ApplyAnnotCaseOfOuter t (XCase loc MatchAnnotCaseOf CnsRep ns  (desugarMatchCase <$> cases))
         in
-            MuAbs loc MuAnnotCaseOf PrdRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotCaseOf PrdRep Nothing $ commandClosing [(Cns, resSkolemVar)] $ shiftCmd ShiftUp cmd
     CaseOf loc CnsRep ns t cases =        
         let
-            desugarMatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCaseOfInner (FreeVar loc PrdRep  resVar) t
+            desugarMatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCaseOfInner (FreeSkolemVar loc PrdRep  resSkolemVar) t
             cmd = Apply loc ApplyAnnotCaseOfOuter t (XCase loc MatchAnnotCaseOf CnsRep ns  (desugarMatchCase <$> cases))
         in
-            MuAbs loc MuAnnotCaseOf CnsRep Nothing $ commandClosing [(Cns, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotCaseOf CnsRep Nothing $ commandClosing [(Cns, resSkolemVar)] $ shiftCmd ShiftUp cmd
 
 
 
@@ -226,16 +229,16 @@ pattern CocaseOf loc rep ns t cases <-
   where   
     CocaseOf loc PrdRep ns t cases =      
         let
-            desugarComatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCocaseOfInner t (FreeVar loc CnsRep resVar)
+            desugarComatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCocaseOfInner t (FreeSkolemVar loc CnsRep resSkolemVar)
             cmd = Apply loc ApplyAnnotCocaseOfOuter (XCase loc MatchAnnotCocaseOf PrdRep ns  (desugarComatchCase <$> cases) ) t  
         in
-            MuAbs loc MuAnnotCocaseOf PrdRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotCocaseOf PrdRep Nothing $ commandClosing [(Prd, resSkolemVar)] $ shiftCmd ShiftUp cmd
     CocaseOf loc CnsRep ns t cases =        
         let
-            desugarComatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCocaseOfInner (FreeVar loc PrdRep  resVar) t
+            desugarComatchCase (MkTermCase _ pat t) = MkCmdCase loc pat  $ Apply loc ApplyAnnotCocaseOfInner (FreeSkolemVar loc PrdRep  resSkolemVar) t
             cmd = Apply loc ApplyAnnotCocaseOfOuter (XCase loc MatchAnnotCocaseOf PrdRep ns  (desugarComatchCase <$> cases)) t
         in
-            MuAbs loc MuAnnotCocaseOf CnsRep Nothing $ commandClosing [(Prd, resVar)] $ shiftCmd ShiftUp cmd
+            MuAbs loc MuAnnotCocaseOf CnsRep Nothing $ commandClosing [(Prd, resSkolemVar)] $ shiftCmd ShiftUp cmd
 
 resugarCmdCase' :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase' PrdRep (MkCmdCase loc (XtorPat _ xt cases)
@@ -278,12 +281,12 @@ pattern XCaseI loc rep rep' ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ns
 --   [[\x -> t }]] = cocase { Ap(x,k) => [[t]] >> k}  
 
 
-extractCmdCase :: PrdCnsRep pc -> [CmdCase] -> Maybe (FreeVarName,Term pc) 
+extractCmdCase :: PrdCnsRep pc -> [CmdCase] -> Maybe (FreeSkolemVarName,Term pc) 
 extractCmdCase PrdRep [MkCmdCase _ (XtorPat _ (MkXtorName "Ap") [(Prd,Just fv),(Cns,Nothing)]) (Apply _ ApplyAnnotLambda tm (BoundVar _ CnsRep (0,1)))] = Just (fv,tm)
 extractCmdCase CnsRep [MkCmdCase _ (XtorPat _ (MkXtorName "CoAp") [(Cns,Just fv),(Prd,Nothing)]) (Apply _ ApplyAnnotLambda  (BoundVar _ PrdRep (0,1)) tm)] = Just (fv,tm)
 extractCmdCase _ _ = Nothing 
 
-pattern Lambda  :: Loc ->  PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc 
+pattern Lambda  :: Loc ->  PrdCnsRep pc -> FreeSkolemVarName -> Term pc  -> Term pc 
 pattern Lambda loc pc fv tm <- XCase loc MatchAnnotLambda pc Nominal (extractCmdCase pc -> Just (fv,tm))
   where 
     Lambda loc PrdRep x tm = XCase loc MatchAnnotLambda PrdRep Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]  
@@ -295,7 +298,7 @@ pattern RawCase loc pc ns cases = XCase loc MatchAnnotOrig pc ns cases
 pattern RawXtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
 pattern RawXtor loc pc ns xt subst = Xtor loc XtorAnnotOrig pc ns xt subst 
 
-pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
+pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeSkolemVarName -> Command -> Term pc
 pattern RawMuAbs loc pc name cmd = MuAbs loc MuAnnotOrig pc name cmd 
 
-{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, Lambda, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, Lambda, CaseOf, Dtor, Semi, BoundVar, FreeUniVar, FreeSkolemVar, PrimLitI64, PrimLitF64 #-}

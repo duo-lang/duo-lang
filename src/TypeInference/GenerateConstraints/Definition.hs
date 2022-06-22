@@ -6,6 +6,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Generating fresh unification variables
   , freshTVar
   , freshTVars
+  , freshTVarsFromSkolem
   , freshTVarsForTypeParams
     -- Throwing errors
   , throwGenError
@@ -21,6 +22,7 @@ module TypeInference.GenerateConstraints.Definition
   , PrdCnsToPol
   , foo
   , fromMaybeVar
+  , fromMaybeVarSkolem
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
@@ -99,15 +101,15 @@ runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReade
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
   var <- gets varCount
-  let tvar = MkTVar ("u" <> T.pack (show var))
+  let tvar = MkTUniVar ("u" <> T.pack (show var))
   -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TyVar defaultLoc PosRep Nothing tvar, TyVar defaultLoc NegRep Nothing tvar)
+  return (TyUniVar defaultLoc PosRep Nothing tvar, TyUniVar defaultLoc NegRep Nothing tvar)
 
-freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
+freshTVars :: [(PrdCns, Maybe FreeUniVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
 freshTVars ((Prd,fv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
@@ -118,17 +120,28 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
+freshTVarsFromSkolem :: [(PrdCns, Maybe FreeSkolemVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
+freshTVarsFromSkolem [] = return ([],[])
+freshTVarsFromSkolem ((Prd,fv):rest) = do
+  (lctxtP, lctxtN) <- freshTVarsFromSkolem rest
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVarSkolem fv))
+  return (PrdCnsType PrdRep tp:lctxtP, PrdCnsType PrdRep tn:lctxtN)
+freshTVarsFromSkolem ((Cns,fv):rest) = do
+  (lctxtP, lctxtN) <- freshTVarsFromSkolem rest
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVarSkolem fv))
+  return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
+
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution)
 freshTVarsForTypeParams rep dd = do
   let MkPolyKind { kindArgs } = data_kind dd
   let tn = data_name dd
-  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+  (varTypes, vars) <- freshTVars tn (map (\x -> (tSkolemVarToTUniVar (fst x), (snd x))) ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs))
   let map = paramsMap dd vars
   case rep of
     PosRep -> pure (varTypes, map)
     NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  RnTypeName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars ::  RnTypeName -> [(TUniVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
@@ -142,7 +155,10 @@ freshTVarsForTypeParams rep dd = do
    paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
-     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+     MkBisubstitution (M.fromList (zip (map tSkolemVarToTUniVar ((\(_,tv,_) -> tv) <$> kindArgs)) freshVars))
+
+tSkolemVarToTUniVar :: TSkolemVar -> TUniVar
+tSkolemVarToTUniVar (MkTSkolemVar name) = MkTUniVar name
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -174,9 +190,9 @@ lookupContext rep (i,j) = do
 -- Instantiating type schemes with fresh unification variables.
 ---------------------------------------------------------------------------------------------
 
-instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
-instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
+instantiateTypeScheme :: FreeUniVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
+instantiateTypeScheme fv loc TypeScheme { ts_univars,ts_skolemvars, ts_monotype } = do
+  freshVars <- forM ts_univars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
   pure $ zonk (MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
@@ -238,9 +254,14 @@ foo :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
 foo PrdRep = PosRep
 foo CnsRep = NegRep
 
-fromMaybeVar :: Maybe FreeVarName -> FreeVarName
-fromMaybeVar Nothing = MkFreeVarName "generated"
+fromMaybeVar :: Maybe FreeUniVarName -> FreeUniVarName
+fromMaybeVar Nothing = MkFreeUniVarName "generated"
 fromMaybeVar (Just fv) = fv
+
+fromMaybeVarSkolem :: Maybe FreeSkolemVarName -> FreeUniVarName
+fromMaybeVarSkolem Nothing = MkFreeUniVarName "generated"
+fromMaybeVarSkolem (Just (MkFreeSkolemVarName name)) = MkFreeUniVarName name
+
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).

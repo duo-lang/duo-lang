@@ -19,7 +19,7 @@ import Syntax.Common.TypesPol (Typ (TyNominal))
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
+type EvalEnv = (Map FreeUniVarName (Term Prd), Map FreeUniVarName (Term Cns), Map FreeUniVarName Command)
 
 newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT Error IO) a }
   deriving (Functor, Applicative, Monad, MonadError Error, MonadReader EvalEnv, MonadIO)
@@ -65,14 +65,14 @@ readInt = do
     Just i | i < 0 -> putStrLn "Incorrect input." >> readInt
     Just i         -> pure (convertInt i)
 
-lookupCommand :: FreeVarName -> EvalM Command
+lookupCommand :: FreeUniVarName -> EvalM Command
 lookupCommand fv = do
   (_,_,env) <- ask
   case M.lookup fv env of
     Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
     Just cmd -> pure cmd
 
-lookupTerm :: PrdCnsRep pc -> FreeVarName -> EvalM (Term pc)
+lookupTerm :: PrdCnsRep pc -> FreeUniVarName -> EvalM (Term pc)
 lookupTerm PrdRep fv = do
   (env,_,_) <- ask
   case M.lookup fv env of

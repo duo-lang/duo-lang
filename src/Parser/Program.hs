@@ -41,7 +41,7 @@ prdCnsDeclarationP doc startPos pc = do
     (isRec, v) <- try $ do
       isRec <- isRecP
       _ <- (case pc of Prd -> keywordP KwPrd ; Cns -> keywordP KwCns)
-      (v, _pos) <- freeVarNameP
+      (v, _pos) <- freeSkolemVarNameP
       pure (isRec, v)
     annot <- annotP
     _ <- symbolP SymColoneq
@@ -61,7 +61,7 @@ cmdDeclarationP :: Maybe DocComment -> SourcePos -> Parser Declaration
 cmdDeclarationP doc startPos = do
     v <- try $ do
       _ <- keywordP KwCmd
-      (v, _pos) <- freeVarNameP
+      (v, _pos) <- freeSkolemVarNameP
       _ <- symbolP SymColoneq
       pure v
     (cmd,_) <- termP

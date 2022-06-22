@@ -8,7 +8,7 @@ import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.Common
-import Syntax.Common.TypesPol ( freeTVars )
+import Syntax.Common.TypesPol ( freeUniTVars,freeSkolemTVars )
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common.TypesUnpol
 import Utils (Loc(..))
@@ -18,15 +18,17 @@ import Utils (Loc(..))
 ---------------------------------------------------------------------------------
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
-resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
+resolveTypeScheme rep TypeScheme { ts_loc, ts_univars, ts_skolemvars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
-        then pure (RST.TypeScheme ts_loc ts_vars monotype)
+    if freeUniTVars monotype `S.isSubsetOf` S.fromList ts_univars && freeSkolemTVars monotype `S.isSubsetOf` S.fromList ts_skolemvars
+        then pure (RST.TypeScheme ts_loc ts_univars ts_skolemvars monotype)
         else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyVar loc v) =
-    pure $ RST.TyVar loc rep Nothing v
+resolveTyp rep (TyUniVar loc v) = 
+    pure $ RST.TyUniVar loc rep Nothing v
+resolveTyp rep (TySkolemVar loc v) =
+    pure $ RST.TySkolemVar loc rep Nothing v
 -- Nominal Data
 resolveTyp rep (TyXData loc Data Nothing sigs) = do
     sigs <- resolveXTorSigs rep sigs
@@ -86,7 +88,7 @@ resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
         throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
-            f :: ((Variance, TVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
+            f :: ((Variance, TSkolemVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)

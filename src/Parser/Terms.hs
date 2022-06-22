@@ -49,7 +49,7 @@ substitutionIP = do
 --------------------------------------------------------------------------------------------
 
 bindingP :: Parser (CST.FVOrStar , SourcePos)
-bindingP =  (do _ <- symbolP SymImplicit ;  pos <- getSourcePos; return (CST.FoSStar ,pos))  <|> (first CST.FoSFV <$> freeVarNameP)
+bindingP =  (do _ <- symbolP SymImplicit ;  pos <- getSourcePos; return (CST.FoSStar ,pos))  <|> (first CST.FoSFV <$> freeSkolemVarNameP)
 
 
 bindingSiteP :: Parser (CST.BindingSite, SourcePos)
@@ -69,8 +69,8 @@ bindingSiteP = do
 freeVar :: Parser (CST.Term, SourcePos)
 freeVar = do
   startPos <- getSourcePos
-  (v, endPos) <- freeVarNameP
-  return (CST.Var (Loc startPos endPos) v, endPos)
+  (v, endPos) <- freeSkolemVarNameP
+  return (CST.SkolemVar (Loc startPos endPos) v, endPos)
 
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
@@ -123,7 +123,7 @@ muAbstraction :: Parser (CST.Term, SourcePos)
 muAbstraction =  do
   startPos <- getSourcePos
   _ <- keywordP KwMu
-  (v, _pos) <- freeVarNameP
+  (v, _pos) <- freeSkolemVarNameP
   _ <- symbolP SymDot
   (cmd, endPos) <- termTopP
   return (CST.MuAbs (Loc startPos endPos) v cmd, endPos)
@@ -318,7 +318,7 @@ lambdaP :: Parser (CST.Term, SourcePos)
 lambdaP = do
   startPos <- getSourcePos
   _ <- symbolP SymBackslash
-  bvars <- some $ fst <$> freeVarNameP
+  bvars <- some $ fst <$> freeSkolemVarNameP
   (do
     _ <- symbolP SymDoubleRightArrow
     (tm, endPos) <- termTopP
