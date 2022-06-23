@@ -30,9 +30,10 @@ data SolverState = SolverState
   }
 
 createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) = SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
-                                                       , sst_cache = S.empty
-                                                       }
+createInitState (ConstraintSet _ uvs) =
+  SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
+              , sst_cache = S.empty
+              }
 
 
 type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except Error))) a
@@ -126,10 +127,14 @@ checkContexts (PrdCnsType PrdRep ty1:rest1) (PrdCnsType PrdRep ty2:rest2) = do
 checkContexts (PrdCnsType CnsRep ty1:rest1) (PrdCnsType CnsRep ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty2 ty1:xs)
-checkContexts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) = throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
-checkContexts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) = throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
-checkContexts []    (_:_) = throwSolverError ["checkContexts: Linear contexts have unequal length."]
-checkContexts (_:_) []    = throwSolverError ["checkContexts: Linear contexts have unequal length."]
+checkContexts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) =
+  throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
+checkContexts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) =
+  throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
+checkContexts []    (_:_) =
+  throwSolverError ["checkContexts: Linear contexts have unequal length."]
+checkContexts (_:_) []    =
+  throwSolverError ["checkContexts: Linear contexts have unequal length."]
 
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
@@ -189,10 +194,10 @@ subConstraints (SubType _ ty' ty@TyRec{}) =
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TyData _ PosRep Nothing ctors1) (TyData _ NegRep Nothing ctors2)) = do
+subConstraints (SubType _ (TyData _ PosRep ctors1) (TyData _ NegRep ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure $ concat constraints
-subConstraints (SubType _ (TyCodata _ PosRep Nothing dtors1) (TyCodata _ NegRep Nothing dtors2)) = do
+subConstraints (SubType _ (TyCodata _ PosRep dtors1) (TyCodata _ NegRep dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
 -- Constraints between refinement data or codata types:
@@ -203,49 +208,12 @@ subConstraints (SubType _ (TyCodata _ PosRep Nothing dtors1) (TyCodata _ NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ t1@(TyData _ PosRep (Just tn1) ctors1) t2@(TyData _ NegRep (Just tn2) ctors2)) = do
-  if tn1 == tn2 then do
-    constraints <- forM ctors1 (checkXtor ctors2)
-    pure $ concat constraints
-  else throwSolverError ["The following refinement types are incompatible:"
-                        , "    " <> ppPrint t1
-                        , "and"
-                        , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata _ PosRep (Just tn1) dtors1) t2@(TyCodata _ NegRep (Just tn2) dtors2)) = do
-  if tn1 == tn2 then do
-    constraints <- forM dtors2 (checkXtor dtors1)
-    pure $ concat constraints
-  else throwSolverError ["The following refinement types are incompatible:"
-                        , "    " <> ppPrint t1
-                        , "and"
-                        , "    " <> ppPrint t2 ]
--- Constraints between structural (co)data types and refinement (co)data types:
---
--- These constraints are unsolvable. E.g.
---
---     < ctors > <: {{ TyName :>> < ctors > }}    ~>     FAIL
---     { dtors } <: {{ TyName :>> { dtors } }}    ~>     FAIL
---
-subConstraints (SubType _ t1@(TyData _ PosRep (Just _) _) t2@(TyData _ NegRep Nothing _)) = do
-  throwSolverError ["Cannot constraint refinement data type"
-                   , "    " <> ppPrint t1
-                   , "by structural data type"
-                   , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyData _ PosRep Nothing _) t2@(TyData _ NegRep (Just _) _)) = do
-  throwSolverError ["Cannot constraint structural data type"
-                   , "    " <> ppPrint t1
-                   , "by refinement data type"
-                   , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata _ PosRep (Just _) _) t2@(TyCodata _ NegRep Nothing _)) = do
-  throwSolverError ["Cannot constraint refinement codata type"
-                   , "    " <> ppPrint t1
-                   , "by structural codata type"
-                   , "    " <> ppPrint t2 ]
-subConstraints (SubType _ t1@(TyCodata _ PosRep Nothing _) t2@(TyCodata _ NegRep (Just _) _)) = do
-  throwSolverError ["Cannot constraint structural codata type"
-                   , "    " <> ppPrint t1
-                   , "by refinement codata type"
-                   , "    " <> ppPrint t2 ]
+subConstraints (SubType _ (TyDataRefined _ PosRep tn1 ctors1) (TyDataRefined _ NegRep tn2 ctors2)) | tn1 == tn2= do
+  constraints <- forM ctors1 (checkXtor ctors2)
+  pure $ concat constraints
+subConstraints (SubType _ (TyCodataRefined _ PosRep tn1 dtors1) (TyCodataRefined _ NegRep tn2 dtors2))  | tn1 == tn2 = do
+  constraints <- forM dtors2 (checkXtor dtors1)
+  pure $ concat constraints
 -- Constraints between nominal types:
 --
 -- We currently do not have any subtyping relationships between nominal types.
@@ -254,94 +222,20 @@ subConstraints (SubType _ t1@(TyCodata _ PosRep Nothing _) t2@(TyCodata _ NegRep
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) =
-  if tn1 == tn2 then do
+subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
     let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
         f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
         f _ _ = error "cannot occur"
     pure (zipWith f args1 args2)
-  else
-    throwSolverError ["The following nominal types are incompatible:"
-                     , "    " <> ppPrint tn1
-                     , "and"
-                     , "    " <> ppPrint tn2 ]
--- Constraints between structural data and codata types:
---
--- A constraint between a structural data type and a structural codata type
--- cannot be solved. E.g.:
---
---     < ctors > <: { dtors }    ~>     FAIL
---     { dtors } <: < ctors >    ~>     FAIL
---
-subConstraints cs@(SubType _ TyData{} TyCodata{}) =
-  throwSolverError [ "Constraint:"
-                   , "     " <> ppPrint cs
-                   , "is unsolvable. A data type can't be a subtype of a codata type!" ]
-subConstraints cs@(SubType _ TyCodata{} TyData{}) =
-  throwSolverError [ "Constraint:"
-                   , "     " <> ppPrint cs
-                   , "is unsolvable. A codata type can't be a subtype of a data type!" ]
--- Constraints between nominal and structural types:
---
--- These constraints cannot be solved. E.g.:
---
---     < ctors > <: Nat     ~>     FAIL
---     Nat <: < ctors >     ~>     FAIL
---
-subConstraints (SubType _ t1@TyData{} t2@TyNominal{}) = do
-  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by nominal type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyCodata{} t2@TyNominal{}) = do
-  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by nominal type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyNominal{} t2@TyData{}) =
-  throwSolverError ["Cannot constrain nominal type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyNominal{} t2@TyCodata{}) =
-  throwSolverError ["Cannot constrain nominal type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
--- Atomic constraints:
---
--- Atomic constraints, i.e. constraints between a type and a type variable, should be
--- dealt with in the function `solve`. Calling the function `subConstraints` with an
--- atomic constraint is an implementation bug.
---
-subConstraints (SubType _ ty1@TyVar {} ty2) =
-  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
-                   , ppPrint ty1
-                   , "<:"
-                   , ppPrint ty2
-                   ]
-subConstraints (SubType _ ty1 ty2@TyVar {}) =
-  throwSolverError ["subConstraints should only be called if neither upper nor lower bound are unification variables"
-                   , ppPrint ty1
-                   , "<:"
-                   , ppPrint ty2
-                   ]
--- Primitive types:
-subConstraints (SubType _ t1@(TyPrim _ _ pt1) t2@(TyPrim _ _ pt2)) =
-  if pt1 == pt2 then do
-    pure []
-  else
-    throwSolverError ["The following primitive types are incompatible:"
-                     , "    " <> ppPrint t1
-                     , "and"
-                     , "    " <> ppPrint t2 ]
--- Constraints between primitive types and other types
---
--- These constraints cannot be solved.
-subConstraints (SubType _ t1@TyPrim{} t2@TyNominal{}) = do
-  throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by nominal type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyNominal{} t2@TyPrim{}) = do
-  throwSolverError ["Cannot constrain nominal type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyPrim{} t2@TyData{}) = do
-  throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyData{} t2@TyPrim{}) = do
-  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyPrim{} t2@TyCodata{}) = do
-  throwSolverError ["Cannot constrain primitive type " <> ppPrint t1 <> " by structural type " <> ppPrint t2]
-subConstraints (SubType _ t1@TyCodata{} t2@TyPrim{}) = do
-  throwSolverError ["Cannot constrain structural type " <> ppPrint t1 <> " by primitive type " <> ppPrint t2]
-subConstraints (SubType _ TyFlipPol {} _) = do
-  throwSolverError ["Cannot compute subconstraints for TyFlipPol"]
-subConstraints (SubType _ _ TyFlipPol {}) = do
-  throwSolverError ["Cannot compute subconstraints for TyFlipPol"]
+-- Constraints between primitive types:
+subConstraints (SubType _ (TyPrim _ _ pt1) (TyPrim _ _ pt2)) | pt1 == pt2 = pure []
+-- All other constraints cannot be solved.
+subConstraints (SubType _ t1 t2) = do
+  throwSolverError ["Cannot constraint type"
+                   , "    " <> ppPrint t1
+                   , "by type"
+                   , "    " <> ppPrint t2 ]
+
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
