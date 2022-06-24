@@ -29,7 +29,8 @@ peanoNm = MkRnTypeName defaultLoc Nothing (MkModuleName "Peano")(MkTypeName "Nat
 newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show)
 
 -- | Type variables
-newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
+newtype UniTVar = MkUniTVar { unUniTVar :: Text } deriving (Eq, Show, Ord)
+newtype SkolemTVar = MkSkolemTVar { unSkolemTVar :: Text} deriving (Eq,Show,Ord)
 
 ---------------------------------------------------------------------------------
 -- Doc comments
