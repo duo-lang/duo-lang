@@ -40,22 +40,25 @@ initializeFromAutomaton TypeAut{..} =
 -- Type automata -> Types
 --------------------------------------------------------------------------
 
-data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
+data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set UniTVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
-                                     , tvars :: [TVar]
+                                     , tvars :: [UniTVar]
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
 
 runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either Error a
 runAutToTypeM m state = runExcept (runReaderT m state)
 
+tUniVarToTVar :: UniTVar->TVar
+tUniVarToTVar (MkUniTVar name) = MkTVar name
+
 autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  , ts_vars = tvars startState
+                  , ts_vars = map tUniVarToTVar (tvars startState)
                   , ts_monotype = monotype
                   }
 
@@ -72,7 +75,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TyVar defaultLoc rep Nothing <$> map tUniVarToTVar (S.toList (fromJust $ M.lookup i tvMap)))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
