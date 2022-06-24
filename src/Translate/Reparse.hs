@@ -462,16 +462,19 @@ embedType (RST.TyUnion loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ tv ty) =
-  CST.TyRec loc tv (embedType ty)
+embedType (RST.TyRec loc _ (RST.MkTVar name) ty) =
+  CST.TyRec loc (MkSkolemTVar name) (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
 embedType (RST.TyFlipPol _ ty) = embedType ty
 
+tVarToSkolemTVar :: RST.TVar -> SkolemTVar
+tVarToSkolemTVar (RST.MkTVar name) = MkSkolemTVar name
+
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
-                 , ts_vars = ts_vars
+                 , ts_vars = map tVarToSkolemTVar ts_vars
                  , ts_monotype = embedType ts_monotype
                  }
 
