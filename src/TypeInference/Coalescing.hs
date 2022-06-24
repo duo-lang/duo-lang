@@ -17,6 +17,11 @@ import Utils
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
+uniTVarToTVar :: UniTVar -> TVar 
+uniTVarToTVar (MkUniTVar name) = MkTVar name
+
+tVarToUniTVar :: TVar -> UniTVar
+tVarToUniTVar (MkTVar name) = MkUniTVar name
 
 type CoalesceState  = (Int, Map (TVar, Polarity) TVar)
 type CoalesceReader = (SolverResult, Set (TVar, Polarity))
@@ -40,7 +45,7 @@ inProcess ptv = do
 getVariableState :: TVar -> CoalesceM VariableState
 getVariableState tv = do
     mp <- asks (tvarSolution . fst)
-    case M.lookup tv mp of
+    case M.lookup (tVarToUniTVar tv) mp of
       Nothing -> error ("Not in variable states: " ++ show (unTVar tv))
       Just vs -> return vs
 
@@ -60,7 +65,7 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
         res = M.keys tvarSolution
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar defaultLoc PosRep Nothing tvar
                         , runCoalesceM result $ coalesceType $ TyVar defaultLoc NegRep Nothing tvar))
-        xs = f <$> res
+        xs = f <$> map uniTVarToTVar res
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (TyVar _ PosRep _ tv) = do
