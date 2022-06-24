@@ -98,7 +98,8 @@ instance PrettyAnn CST.Typ where
   prettyAnn CST.TyTop {} = topSym
   prettyAnn CST.TyBot {} = botSym
   -- Type Variables
-  prettyAnn (CST.TyVar _ tv) = prettyAnn tv
+  prettyAnn (CST.TyUniVar _ tv) = prettyAnn tv
+  prettyAnn (CST.TySkolemVar _ tv) = prettyAnn tv
   -- Recursive types
   prettyAnn (CST.TyRec _ rv t) =
     parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
