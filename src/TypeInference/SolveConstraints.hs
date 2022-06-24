@@ -25,7 +25,7 @@ import TypeInference.Constraints
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: Map TVar VariableState
+  { sst_bounds :: Map UniTVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   }
 
@@ -54,10 +54,10 @@ addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation wh
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
-modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
+modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getBounds :: TVar -> SolverM VariableState
+getBounds :: UniTVar -> SolverM VariableState
 getBounds uv = do
   bounds <- gets sst_bounds
   case M.lookup uv bounds of
