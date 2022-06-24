@@ -55,6 +55,17 @@ import Utils
 -- We use varCount for generating fresh type variables.
 -- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
+skolemTVarToTVar :: SkolemTVar -> TVar
+skolemTVarToTVar (MkSkolemTVar name) = MkTVar name
+
+uniTVarToTVar :: UniTVar -> TVar 
+uniTVarToTVar (MkUniTVar name) = MkTVar name
+
+tVarToUniTVar :: TVar -> UniTVar
+tVarToUniTVar (MkTVar name) = MkUniTVar name
+
+tVarToSkolemTVar :: TVar -> SkolemTVar
+tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
 
 data GenerateState = GenerateState
   { varCount :: Int
@@ -104,7 +115,7 @@ freshTVar uvp = do
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVarToUniTVar tvar, uvp)] } })
   return (TyVar defaultLoc PosRep Nothing tvar, TyVar defaultLoc NegRep Nothing tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
@@ -122,7 +133,7 @@ freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([Var
 freshTVarsForTypeParams rep dd = do
   let MkPolyKind { kindArgs } = data_kind dd
   let tn = data_name dd
-  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (skolemTVarToTVar tv,variance)) <$> kindArgs)
   let map = paramsMap dd vars
   case rep of
     PosRep -> pure (varTypes, map)
@@ -132,7 +143,7 @@ freshTVarsForTypeParams rep dd = do
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv)
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn (tVarToUniTVar tv))
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
@@ -142,7 +153,7 @@ freshTVarsForTypeParams rep dd = do
    paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
-     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
