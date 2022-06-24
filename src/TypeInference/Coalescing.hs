@@ -91,12 +91,18 @@ coalesceType (TyVar _ NegRep _ tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> return $                                 mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs'))
-coalesceType (TyData loc rep tn xtors) = do
+coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyData loc rep tn xtors')
-coalesceType (TyCodata loc rep tn xtors) = do
+    return (TyData loc rep xtors')
+coalesceType (TyCodata loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodata loc rep tn xtors')
+    return (TyCodata loc rep xtors')
+coalesceType (TyDataRefined loc rep tn xtors) = do
+    xtors' <- sequence $ coalesceXtor <$> xtors
+    return (TyDataRefined loc rep tn xtors')
+coalesceType (TyCodataRefined loc rep tn xtors) = do
+    xtors' <- sequence $ coalesceXtor <$> xtors
+    return (TyCodataRefined loc rep tn xtors')
 coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'

@@ -30,15 +30,19 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
 
-    - uses: actions/cache@v1
-      name: Cache ~/.stack
+    - uses: freckle/stack-cache-action@main
       with:
-        path: |
-          ~/.stack
-          .stack-work
-        key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('stack.yaml.lock', 'dualsub.cabal') }}
-        restore-keys: |
-          $${{ runner.os }}-stack
+        prefix: ${{ runner.os }}-${{ matrix.ghc }}
+
+    #- uses: actions/cache@v1
+      #name: Cache ~/.stack
+      #with:
+        #path: |
+          #~/.stack
+          #.stack-work
+        #key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('stack.yaml.lock', 'dualsub.cabal') }}
+        #restore-keys: |
+          #$${{ runner.os }}-stack
 
     - name: Build
       run: |

@@ -28,23 +28,23 @@ resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyVar loc v) =
     pure $ RST.TyVar loc rep Nothing v
 -- Nominal Data
-resolveTyp rep (TyXData loc Data Nothing sigs) = do
+resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyData loc rep Nothing sigs
+    pure $ RST.TyData loc rep sigs
 -- Refinement Data
-resolveTyp rep (TyXData loc Data (Just tn) sigs) = do
+resolveTyp rep (TyXRefined loc Data tn sigs) = do
     NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyData loc rep (Just tn') sigs
+    pure $ RST.TyDataRefined loc rep tn' sigs
 -- Nominal Codata
-resolveTyp rep (TyXData loc Codata Nothing sigs) = do
+resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodata loc rep Nothing sigs
+    pure $ RST.TyCodata loc rep sigs
 -- Refinement Codata
-resolveTyp rep (TyXData loc Codata (Just tn) sigs) = do
+resolveTyp rep (TyXRefined loc Codata tn sigs) = do
     NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodata loc rep (Just tn') sigs
+    pure $ RST.TyCodataRefined loc rep tn' sigs
 resolveTyp rep (TyNominal loc name args) = do
     res <- lookupTypeConstructor loc name
     case res of
