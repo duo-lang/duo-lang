@@ -29,6 +29,8 @@ import Utils (Loc)
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
 ---------------------------------------------------------------------------------
+tVarToUniTVar :: TVar -> UniTVar 
+tVarToUniTVar (MkTVar name) = MkUniTVar name
 
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
@@ -257,7 +259,7 @@ instance ToHoverMap (Typ pol) where
   toHoverMap (TyVar loc rep _knd var) =
     let
       msg = T.unlines [ "#### Type variable "
-                      , "- Name: `" <> ppPrint var <> "`"
+                      , "- Name: `" <> ppPrint (tVarToUniTVar var) <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in 
