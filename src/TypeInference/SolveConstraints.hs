@@ -19,19 +19,23 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
+import Syntax.Common.TypesUnpol (Typ(TyUniVar))
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: Map UniTVar VariableState
+  { sst_bounds :: Map TVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   }
 
+tUniVarToTVar :: UniTVar -> TVar
+tUniVarToTVar (MkUniTVar name) = MkTVar name
+
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs) =
-  SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
+  SolverState { sst_bounds = M.fromList [(tUniVarToTVar (fst uv),emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
               , sst_cache = S.empty
               }
 
@@ -54,27 +58,27 @@ addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation wh
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
-modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
+modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getBounds :: UniTVar -> SolverM VariableState
+getBounds :: TVar -> SolverM VariableState
 getBounds uv = do
   bounds <- gets sst_bounds
   case M.lookup uv bounds of
     Nothing -> throwSolverError [ "Tried to retrieve bounds for variable:"
-                                , ppPrint uv
+                                , ppPrint (tVarToTUniVar uv)
                                 , "which is not a valid unification variable."
                                 ]
     Just vs -> return vs
 
-addUpperBound :: TVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
+addUpperBound :: TVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs kind) -> VariableState (ty:ubs) lbs kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
-addLowerBound :: TVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
+addLowerBound :: TVar -> Syntax.Common.TypesPol.Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs kind) -> VariableState ubs (ty:lbs) kind) uv
   bounds <- getBounds uv
@@ -239,10 +243,15 @@ subConstraints (SubType _ t1 t2) = do
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
+tVarToTUniVar :: TVar -> UniTVar
+tVarToTUniVar (MkTVar name) = MkUniTVar name
 
+convertMap :: Map TVar VariableState -> Map UniTVar VariableState
+convertMap m = M.fromList (map (\x -> ( tVarToTUniVar (fst x), snd x)) (M.toList m))
+--convertMap m = m.ToList()
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  pure (MkSolverResult (sst_bounds solverState))
+  pure (MkSolverResult (convertMap (sst_bounds solverState)))
 
