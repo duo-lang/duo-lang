@@ -67,8 +67,6 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
 ---------------------------------------------------------------------------------
 -- Infer Declarations
 ---------------------------------------------------------------------------------
-freeSkolemToUni :: FreeSkolemVarName -> FreeUniVarName
-freeSkolemToUni (MkFreeSkolemVarName name) = MkFreeUniVarName name
 
 inferPrdCnsDeclaration :: ModuleName
                        -> Core.PrdCnsDeclaration pc
@@ -78,7 +76,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   env <- gets drvEnv
   -- 1. Generate the constraints.
   let genFun = case pcdecl_isRec of
-        Recursive -> genConstraintsTermRecursive mn pcdecl_loc (freeSkolemToUni pcdecl_name) pcdecl_pc pcdecl_term
+        Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErrLoc pcdecl_loc $ runGenM env genFun
   guardVerbose $ ppPrintIO constraintSet
@@ -94,7 +92,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 5. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeUniVarName (freeSkolemToUni pcdecl_name)))
+                     tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (generalize typ)
   -- 6. Check type annotation.
@@ -102,7 +100,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert (freeSkolemToUni pcdecl_name) (tmInferred ,pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -113,7 +111,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                                    , pcdecl_term = tmInferred
                                    }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert (freeSkolemToUni pcdecl_name) (tmInferred, pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -138,7 +136,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { cmdEnv  = M.insert (freeSkolemToUni cmddecl_name) (cmdInferred, cmddecl_loc) (cmdEnv env)}
+  let f env = env { cmdEnv  = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
   pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
                                 , cmddecl_doc = cmddecl_doc

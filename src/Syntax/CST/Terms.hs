@@ -17,9 +17,8 @@ deriving instance Eq TermOrStar
 type Substitution = [Term]
 type SubstitutionI = [TermOrStar]
 
--- here only skolem var?
 data FVOrStar where
-    FoSFV :: FreeSkolemVarName -> FVOrStar
+    FoSFV :: FreeVarName -> FVOrStar
     FoSStar :: FVOrStar
 
 deriving instance Show FVOrStar
@@ -30,7 +29,7 @@ isStar FoSStar   = True
 isStar (FoSFV _) = False
 
 -- | Partial function!
-fromFVOrStar :: FVOrStar -> FreeSkolemVarName
+fromFVOrStar :: FVOrStar -> FreeVarName
 fromFVOrStar (FoSFV fv) = fv
 fromFVOrStar FoSStar = error "fromFVOrStar called on FoSStar"
 
@@ -83,30 +82,28 @@ getLocPC (PrimOp loc _ _ _) = loc
 
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 
-    UniVar :: Loc -> FreeUniVarName -> Term
-    SkolemVar :: Loc -> FreeSkolemVarName -> Term
+    Var :: Loc -> FreeVarName -> Term
     Xtor :: Loc -> XtorName -> SubstitutionI -> Term
     Semi :: Loc -> XtorName -> SubstitutionI -> Term -> Term
     Case :: Loc -> [TermCase] -> Term
     CaseOf :: Loc -> Term -> [TermCase] -> Term
     Cocase :: Loc -> [TermCase] -> Term
     CocaseOf :: Loc -> Term -> [TermCase] -> Term
-    MuAbs :: Loc -> FreeSkolemVarName -> Term -> Term
+    MuAbs :: Loc -> FreeVarName -> Term -> Term
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
     PrimLitF64 :: Loc -> Double -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
-    Lambda :: Loc -> FreeSkolemVarName -> Term -> Term
-    CoLambda :: Loc -> FreeSkolemVarName -> Term -> Term
+    Lambda :: Loc -> FreeVarName -> Term -> Term
+    CoLambda :: Loc -> FreeVarName -> Term -> Term
     Apply :: Loc -> Term -> Term -> Term 
 deriving instance Show Term
 deriving instance Eq Term
 
 getLoc :: Term -> Loc
-getLoc (UniVar loc _) = loc
-getLoc (SkolemVar loc _) = loc
+getLoc (Var loc _) = loc
 getLoc (Xtor loc _ _) = loc
 getLoc (Semi loc _ _ _) = loc
 getLoc (MuAbs loc _ _) = loc

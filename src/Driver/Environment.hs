@@ -13,9 +13,9 @@ import Utils ( Loc )
 ---------------------------------------------------------------------------------
 
 data Environment = MkEnvironment
-  { prdEnv :: Map FreeUniVarName (Term Prd, Loc, TypeScheme Pos)
-  , cnsEnv :: Map FreeUniVarName (Term Cns, Loc, TypeScheme Neg)
-  , cmdEnv :: Map FreeUniVarName (Command, Loc)
+  { prdEnv :: Map FreeVarName (Term Prd, Loc, TypeScheme Pos)
+  , cnsEnv :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg)
+  , cmdEnv :: Map FreeVarName (Command, Loc)
   , declEnv :: [(Loc,DataDecl)]
   }
 

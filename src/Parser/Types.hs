@@ -100,14 +100,14 @@ xdataTypeP Codata = do
 typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
-  (tvar, endPos) <- tskolemvarP
-  return (TySkolemVar (Loc startPos endPos) tvar, endPos)
+  (tvar, endPos) <- tvarP
+  return (TyVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
   startPos <- getSourcePos
   _ <- keywordP KwRec
-  (rv,_) <- tskolemvarP
+  (rv,_) <- tvarP
   _ <- symbolP SymDot
   (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)
@@ -216,7 +216,6 @@ typP = do
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tunivars' <- option [] (keywordP KwForall >> some (fst <$> tunivarP) <* symbolP SymDot)
-  tskolemvars' <- option [] (keywordP KwForall >> some (fst <$> tskolemvarP) <* symbolP SymDot)
+  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
   (monotype,endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) tunivars' tskolemvars' monotype)
+  pure (TypeScheme (Loc startPos endPos) tvars' monotype)

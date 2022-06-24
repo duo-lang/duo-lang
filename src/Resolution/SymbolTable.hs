@@ -46,17 +46,13 @@ data XtorNameResolve where
   XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
 
 -- | What a toplevel definition can resolve to during name resolution
-data FreeSkolemVarNameResolve where
-  FreeSkolemVarResult :: FreeSkolemVarNameResolve
-
-data FreeUniVarNameResolve where
-  FreeUniVarResult :: FreeUniVarNameResolve
+data FreeVarNameResolve where
+  FreeVarResult :: FreeVarNameResolve
 
 data SymbolTable = MkSymbolTable
   { xtorNameMap :: Map XtorName    XtorNameResolve
   , typeNameMap :: Map TypeName    TypeNameResolve
-  , freeSkolemVarMap  :: Map FreeSkolemVarName FreeSkolemVarNameResolve
-  , freeUniVarMap :: Map FreeUniVarName FreeUniVarNameResolve
+  , freeVarMap  :: Map FreeVarName FreeVarNameResolve
   , tyOps :: [TyOp]
   , imports :: [(ModuleName, Loc)]
   }
@@ -65,8 +61,7 @@ emptySymbolTable :: SymbolTable
 emptySymbolTable  = MkSymbolTable
     { xtorNameMap = M.empty
     , typeNameMap =  M.empty
-    , freeSkolemVarMap  = M.empty
-    , freeUniVarMap = M.empty
+    , freeVarMap  = M.empty
     , tyOps       = []
     , imports     = []
     }
@@ -98,24 +93,14 @@ checkFreshXtorName loc xt st =
   then throwError (OtherError (Just loc) ("XtorName is already used: " <> ppPrint xt))
   else pure ()
 
-checkFreshFreeSkolemVarName :: MonadError Error m
+checkFreshFreeVarName :: MonadError Error m
                    => Loc
-                   -> FreeSkolemVarName
+                   -> FreeVarName
                    -> SymbolTable
                    -> m ()
-checkFreshFreeSkolemVarName loc fv st =
-  if fv `elem` M.keys (freeSkolemVarMap st)
-  then throwError (OtherError (Just loc) ("FreeSkolemVarName is already used: " <> ppPrint fv))
-  else pure ()
-
-checkFreshFreeUniVarName :: MonadError Error m
-                   => Loc
-                   -> FreeUniVarName
-                   -> SymbolTable
-                   -> m ()
-checkFreshFreeUniVarName loc fv st =
-  if fv `elem` M.keys (freeUniVarMap st)
-  then throwError (OtherError (Just loc) ("FreeUniVarName is already used: " <> ppPrint fv))
+checkFreshFreeVarName loc fv st =
+  if fv `elem` M.keys (freeVarMap st)
+  then throwError (OtherError (Just loc) ("FreeVarName is already used: " <> ppPrint fv))
   else pure ()
 
 
@@ -175,10 +160,10 @@ createSymbolTable' mn (TySynDecl MkTySynDeclaration { tysyndecl_loc, tysyndecl_d
   pure $ st { typeNameMap = M.insert tysyndecl_name synonymResult (typeNameMap st) }
 createSymbolTable' _ (PrdCnsDecl MkPrdCnsDeclaration { pcdecl_loc, pcdecl_name }) st = do
   -- Check if the FreeVarName is already declared in this module
-  checkFreshFreeSkolemVarName pcdecl_loc pcdecl_name st
-  pure $ st { freeSkolemVarMap = M.insert pcdecl_name FreeSkolemVarResult (freeSkolemVarMap st) }
+  checkFreshFreeVarName pcdecl_loc pcdecl_name st
+  pure $ st { freeVarMap = M.insert pcdecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }) st = do
-  checkFreshFreeSkolemVarName cmddecl_loc cmddecl_name st
-  pure $ st { freeSkolemVarMap = M.insert cmddecl_name FreeSkolemVarResult (freeSkolemVarMap st) }
+  checkFreshFreeVarName cmddecl_loc cmddecl_name st
+  pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _) st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st

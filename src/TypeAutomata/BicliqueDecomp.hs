@@ -15,7 +15,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Syntax.Common ( TUniVar(MkTUniVar), TSkolemVar(MkTSkolemVar) )
+import Syntax.Common ( TVar(MkTVar) )
 
 -------------------------------------------------------------------------------------
 -- Compute Biclique Decomposition
@@ -69,20 +69,20 @@ computeBicliqueDecomposition flgr = go flgr []
 -- Compute FlowMap
 -------------------------------------------------------------------------------------
 
-decompositionToFlowMap :: [Node] -> [Biclique] -> Map Node (Set TUniVar)
+decompositionToFlowMap :: [Node] -> [Biclique] -> Map Node (Set TVar)
 decompositionToFlowMap nodes bicliques = go bicliqueTvars (M.fromList [(n, S.empty ) | n <- nodes])
   where
-      go :: [(Biclique, TUniVar)] -> Map Node (Set TUniVar) -> Map Node (Set TUniVar)
+      go :: [(Biclique, TVar)] -> Map Node (Set TVar) -> Map Node (Set TVar)
       go [] acc = acc
       go (x:xs) acc = go xs (insertBicliqueIntoMap x acc)
 
-      bicliqueTvars :: [(Biclique, TUniVar)]
-      bicliqueTvars = zip bicliques [MkTUniVar ("t" <> T.pack (show n)) | n <- [0 :: Int ..] ]
+      bicliqueTvars :: [(Biclique, TVar)]
+      bicliqueTvars = zip bicliques [MkTVar ("t" <> T.pack (show n)) | n <- [0 :: Int ..] ]
 
-      insertBicliqueIntoMap :: (Biclique, TUniVar) -> Map Node (Set TUniVar) -> Map Node (Set TUniVar)
+      insertBicliqueIntoMap :: (Biclique, TVar) -> Map Node (Set TVar) -> Map Node (Set TVar)
       insertBicliqueIntoMap (MkBiclique biclique, tv) m = foldr (M.adjust (S.insert tv)) m biclique
 
 
 
-computeFlowMap :: FlowGraph -> Map Node (Set TUniVar)
+computeFlowMap :: FlowGraph -> Map Node (Set TVar)
 computeFlowMap flgr = decompositionToFlowMap (nodes flgr) (computeBicliqueDecomposition flgr)

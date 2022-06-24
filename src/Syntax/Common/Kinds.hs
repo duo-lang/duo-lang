@@ -41,25 +41,25 @@ data MonoKind
 ------------------------------------------------------------------------------
 
 data PolyKind =
-  MkPolyKind { kindArgs :: [(Variance, TSkolemVar, MonoKind)]
+  MkPolyKind { kindArgs :: [(Variance, TVar, MonoKind)]
              , returnKind :: EvaluationOrder
              }
 
 deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
 
-allTypeVars :: PolyKind -> Set TSkolemVar
+allTypeVars :: PolyKind -> Set TVar
 allTypeVars MkPolyKind{ kindArgs } =
   S.fromList ((\(_,var,_) -> var) <$> kindArgs)
 
-lookupPolyKind :: TSkolemVar -> PolyKind -> Maybe (Variance, TSkolemVar, MonoKind)
+lookupPolyKind :: TVar -> PolyKind -> Maybe (Variance, TVar, MonoKind)
 lookupPolyKind tv MkPolyKind{ kindArgs } = go kindArgs
   where
-    go :: [(Variance, TSkolemVar, MonoKind)] -> Maybe (Variance, TSkolemVar, MonoKind)
+    go :: [(Variance, TVar, MonoKind)] -> Maybe (Variance, TVar, MonoKind)
     go [] = Nothing
     go (k@(_,tv',_) : ks) = if tv == tv'
                            then Just k
                            else go ks
 
-lookupPolyKindVariance :: TSkolemVar -> PolyKind -> Maybe Variance
+lookupPolyKindVariance :: TVar -> PolyKind -> Maybe Variance
 lookupPolyKindVariance tv pk = (\(v,_,_) -> v) <$> lookupPolyKind tv pk

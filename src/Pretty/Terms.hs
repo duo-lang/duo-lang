@@ -103,20 +103,18 @@ instance PrettyAnn (Core.Term pc) where
   prettyAnn tm = prettyAnn (embedCoreTerm tm)
 
 
-collectLambdaVarsAndBody ::  CST.Term -> ([FreeSkolemVarName], CST.Term)
+collectLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
 collectLambdaVarsAndBody (CST.Lambda _ var tm) = (var:fvs,t)
   where (fvs, t) = collectLambdaVarsAndBody tm
 collectLambdaVarsAndBody t = ([],t) 
 
-collectCoLambdaVarsAndBody ::  CST.Term -> ([FreeSkolemVarName], CST.Term)
+collectCoLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
 collectCoLambdaVarsAndBody (CST.CoLambda _ var tm) = (var:fvs,t)
   where (fvs, t) = collectCoLambdaVarsAndBody tm
 collectCoLambdaVarsAndBody t = ([],t) 
 
 instance PrettyAnn CST.Term where
-  prettyAnn (CST.UniVar _ v) =
-    prettyAnn v
-  prettyAnn (CST.SkolemVar _ v) = 
+  prettyAnn (CST.Var _ v) =
     prettyAnn v
   prettyAnn (CST.Xtor _ xt args) =
     prettyAnn xt <>

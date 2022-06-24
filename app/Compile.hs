@@ -28,7 +28,7 @@ runCompile mn = do
     Right (_, MkDriverState { drvEnv }) -> do
       -- Run program
       let compiledEnv :: EvalEnv = focusEnvironment CBV (desugarEnvironment drvEnv)
-      evalCmd <- liftIO $ eval (TST.Jump defaultLoc (MkFreeUniVarName "main")) compiledEnv
+      evalCmd <- liftIO $ eval (TST.Jump defaultLoc (MkFreeVarName "main")) compiledEnv
       case evalCmd of
           Left err -> ppPrintIO err
           Right res -> ppPrintIO res

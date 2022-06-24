@@ -91,7 +91,7 @@ runCmd txt steps = do
     (parsedCommand, _) <- runInteractiveParser termP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM sts (resolveCommand parsedCommand))
-    let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeSkolemVarName "main") (desugarCmd resolvedDecl)
+    let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl)
     (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- inferDecl interactiveModule (Core.CmdDecl cmdDecl)
     env <- gets drvEnv
     let compiledCmd = focusCmd CBV cmddecl_cmd

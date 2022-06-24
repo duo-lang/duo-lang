@@ -21,14 +21,10 @@ import Syntax.Common.TypesPol (Typ(..))
 
 -- | Check whether given sterms is substitutable.
 isValueTerm :: EvaluationOrder -> PrdCnsRep pc -> Term pc -> Maybe (Term pc)
-isValueTerm CBV PrdRep FreeUniVar {}        = Nothing
-isValueTerm CBV PrdRep FreeSkolemVar {} = Nothing
-isValueTerm CBN PrdRep fv@FreeSkolemVar {}   = Just fv
-isValueTerm CBN PrdRep fv@FreeUniVar {} = Just fv
-isValueTerm CBV CnsRep fv@FreeUniVar {}   = Just fv
-isValueTerm CBV CnsRep fv@FreeSkolemVar {} = Just fv
-isValueTerm CBN CnsRep FreeUniVar {}      = Nothing
-isValueTerm CBN CnsRep FreeSkolemVar {} = Nothing
+isValueTerm CBV PrdRep FreeVar {}        = Nothing
+isValueTerm CBN PrdRep fv@FreeVar {}   = Just fv
+isValueTerm CBV CnsRep fv@FreeVar {}   = Just fv
+isValueTerm CBN CnsRep FreeVar {}      = Nothing
 isValueTerm CBV PrdRep MuAbs {}          = Nothing              -- CBV: so Mu is not a value.
 isValueTerm CBV CnsRep (MuAbs loc _annot pc ty v cmd) = do
     cmd' <- isFocusedCmd CBV cmd -- CBV: so Mu~ is always a Value.
@@ -50,8 +46,7 @@ isValueSubst eo subst = sequence (isValuePCTerm eo <$> subst)
 -- | Check whether given term follows the focusing discipline.
 isFocusedTerm :: EvaluationOrder -> Term pc -> Maybe (Term pc)
 isFocusedTerm _  bv@BoundVar {} = Just bv
-isFocusedTerm _  fv@FreeUniVar {} = Just fv
-isFocusedTerm _ fv@FreeSkolemVar {} = Just fv
+isFocusedTerm _  fv@FreeVar {} = Just fv
 isFocusedTerm eo (Xtor loc _annot pc ty ns xt subst) =
     Xtor loc XtorAnnotOrig pc ty ns xt <$> isValueSubst eo subst
 isFocusedTerm eo (XCase loc _annot pc ty ns cases) =
@@ -132,8 +127,7 @@ focusTerm :: EvaluationOrder  -> Term pc -> Term pc
 -- If the term is already focused, we don't want to do anything
 focusTerm eo (isFocusedTerm eo -> Just tm)   = tm
 focusTerm _  (BoundVar loc rep ty var)          = BoundVar loc rep ty var
-focusTerm _  (FreeSkolemVar loc rep ty var)           = FreeSkolemVar loc rep ty var
-focusTerm _  (FreeUniVar loc rep ty var) = FreeUniVar loc rep ty var
+focusTerm _  (FreeVar loc rep ty var)           = FreeVar loc rep ty var
 focusTerm eo (Xtor _ _annot pcrep ty ns xt subst) = focusXtor eo pcrep ty ns xt subst
 focusTerm eo (XCase loc _annot rep ty ns cases) = XCase loc MatchAnnotOrig rep ty ns (focusCmdCase eo <$> cases)
 focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty v (focusCmd eo cmd)
@@ -143,13 +137,13 @@ focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
-alphaVar :: FreeSkolemVarName
-alphaVar = MkFreeSkolemVarName "$alpha"
+alphaVar :: FreeVarName
+alphaVar = MkFreeVarName "$alpha"
 
 -- | The variable used for focusing the individual arguments of the Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
-betaVar :: Int -> FreeSkolemVarName
-betaVar i = MkFreeSkolemVarName ("$beta" <> T.pack (show i))
+betaVar :: Int -> FreeVarName
+betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
@@ -161,16 +155,16 @@ focusXtor eo CnsRep ty ns xt subst =
 
 
 focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
-focusXtor' eo CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (FreeSkolemVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
+focusXtor' eo CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (FreeVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
                                                                            (Xtor defaultLoc XtorAnnotOrig CnsRep ty ns xt (reverse pcterms'))
 focusXtor' eo PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (reverse pcterms'))
-                                                                           (FreeSkolemVar defaultLoc CnsRep (TyFlipPol NegRep ty) alphaVar)
+                                                                           (FreeVar defaultLoc CnsRep (TyFlipPol NegRep ty) alphaVar)
 focusXtor' eo pc     ty ns xt (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc ty ns xt pcterms (PrdTerm prd : pcterms')
 focusXtor' eo pc     ty ns xt (PrdTerm                                 prd:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tprd = getTypeTerm prd
-                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (PrdTerm (FreeSkolemVar defaultLoc PrdRep tprd var) : pcterms')))
+                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (PrdTerm (FreeVar defaultLoc PrdRep tprd var) : pcterms')))
                                                               in
                                                                   Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep tprd) Nothing cmd)
 focusXtor' eo pc     ty ns xt (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc ty ns xt pcterms (CnsTerm cns : pcterms')
@@ -178,7 +172,7 @@ focusXtor' eo pc     ty ns xt (CnsTerm                                 cns:pcter
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tcns = getTypeTerm cns
-                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (CnsTerm (FreeSkolemVar defaultLoc CnsRep tcns var) : pcterms')))
+                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (CnsTerm (FreeVar defaultLoc CnsRep tcns var) : pcterms')))
                                                               in Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep tcns) Nothing cmd) (focusTerm eo cns)
 
 
@@ -194,14 +188,14 @@ focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms'
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
-        cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusPrimOp eo op pcterms (PrdTerm (FreeSkolemVar defaultLoc PrdRep (getTypeTerm prd) var) : pcterms')))
+        cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusPrimOp eo op pcterms (PrdTerm (FreeVar defaultLoc PrdRep (getTypeTerm prd) var) : pcterms')))
     in
         Apply defaultLoc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing cmd)
 focusPrimOp eo op (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp eo op pcterms (CnsTerm cns : pcterms')
 focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
-        cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusPrimOp eo op pcterms (CnsTerm (FreeSkolemVar defaultLoc CnsRep (getTypeTerm cns) var) : pcterms')))
+        cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusPrimOp eo op pcterms (CnsTerm (FreeVar defaultLoc CnsRep (getTypeTerm cns) var) : pcterms')))
     in
         Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing cmd) (focusTerm eo cns)
 

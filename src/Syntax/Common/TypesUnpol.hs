@@ -9,11 +9,10 @@ import Utils ( Loc )
 ---------------------------------------------------------------------------------
 
 data Typ where
-  TyUniVar :: Loc -> TUniVar -> Typ
-  TySkolemVar :: Loc -> TSkolemVar -> Typ
+  TyVar :: Loc -> TVar -> Typ
   TyXData :: Loc -> DataCodata -> Maybe TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> [Typ] -> Typ
-  TyRec :: Loc -> TSkolemVar -> Typ -> Typ
+  TyRec :: Loc -> TVar -> Typ -> Typ
   TyTop :: Loc -> Typ
   TyBot :: Loc -> Typ
   TyPrim :: Loc -> PrimitiveType -> Typ
@@ -48,8 +47,7 @@ linearContextToArity = map f
 
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
-  , ts_univars :: [TUniVar]
-  , ts_skolemvars :: [TSkolemVar]
+  , ts_vars :: [TVar]
   , ts_monotype :: Typ
   }
   deriving Show

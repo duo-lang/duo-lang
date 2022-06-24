@@ -86,8 +86,7 @@ data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
   BoundVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Index -> Term pc
   -- | A free variable in the locally nameless system.
-  FreeSkolemVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeSkolemVarName -> Term pc
-  FreeUniVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeUniVarName -> Term pc
+  FreeVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
   Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
@@ -98,7 +97,7 @@ data Term (pc :: PrdCns) where
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: Loc -> MuAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeSkolemVarName -> Command -> Term pc
+  MuAbs :: Loc -> MuAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> Maybe FreeVarName -> Command -> Term pc
   ---------------------------------------------------------------------------------
   -- Primitive constructs
   ---------------------------------------------------------------------------------
@@ -111,10 +110,8 @@ instance Zonk (Term pc) where
   -- Core constructs
   zonk bisubst (BoundVar loc rep ty idx) =
     BoundVar loc rep (zonk bisubst ty) idx
-  zonk bisubst (FreeUniVar loc rep ty nm)  =
-    FreeUniVar loc rep (zonk bisubst ty) nm
-  zonk bisubst (FreeSkolemVar loc rep ty nm) =
-    FreeSkolemVar loc rep (zonk bisubst ty) nm
+  zonk bisubst (FreeVar loc rep ty nm)  =
+    FreeVar loc rep (zonk bisubst ty) nm
   zonk bisubst (Xtor loc annot rep ty ns xt subst) =
     Xtor loc annot rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst)
   zonk bisubst (XCase loc annot rep ty ns cases) =
@@ -128,8 +125,7 @@ instance Zonk (Term pc) where
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
 -- Core constructs
 getTypeTerm (BoundVar _ _ ty _) = ty
-getTypeTerm (FreeUniVar  _ _ ty _) = ty
-getTypeTerm (FreeSkolemVar _ _ ty _) = ty
+getTypeTerm (FreeVar  _ _ ty _) = ty
 getTypeTerm (Xtor _ _ _ ty _ _ _) = ty
 getTypeTerm (XCase _ _ _ ty _ _)  = ty
 getTypeTerm (MuAbs _ _ _ ty _ _)  = ty
@@ -156,7 +152,7 @@ data Command where
   Apply  :: Loc -> ApplyAnnot -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
-  Jump   :: Loc -> FreeUniVarName -> Command
+  Jump   :: Loc -> FreeVarName -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
@@ -195,8 +191,7 @@ termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, 
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       _                    -> error "termOpeningRec BOOM"
                                                    | otherwise = bv
-termOpeningRec _ _ fv@FreeSkolemVar {} = fv
-termOpeningRec _ _ fv@FreeUniVar {} = fv
+termOpeningRec _ _ fv@FreeVar {} = fv
 termOpeningRec k args (Xtor loc annot rep ty ns xt subst) =
   Xtor loc annot rep ty ns xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XCase loc annot rep ty ns cases) =
@@ -230,18 +225,17 @@ commandOpening = commandOpeningRec 0
 -- Variable Closing
 ---------------------------------------------------------------------------------
 
-pctermClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> PrdCnsTerm -> PrdCnsTerm
+pctermClosingRec :: Int -> [(PrdCns, FreeVarName)] -> PrdCnsTerm -> PrdCnsTerm
 pctermClosingRec k vars (PrdTerm tm) = PrdTerm $ termClosingRec k vars tm
 pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
-termClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> Term pc -> Term pc
+termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 -- Core constructs
 termClosingRec _ _ bv@BoundVar {} = bv
-termClosingRec _ _ FreeUniVar {} = error "Can't happen"
-termClosingRec k vars (FreeSkolemVar loc PrdRep ty v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep ty (k, fromJust ((Prd,v) `elemIndex` vars))
-                                                   | otherwise = FreeSkolemVar loc PrdRep ty v
-termClosingRec k vars (FreeSkolemVar loc CnsRep ty v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep ty (k, fromJust ((Cns,v) `elemIndex` vars))
-                                                   | otherwise = FreeSkolemVar loc CnsRep ty v
+termClosingRec k vars (FreeVar loc PrdRep ty v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep ty (k, fromJust ((Prd,v) `elemIndex` vars))
+                                                   | otherwise = FreeVar loc PrdRep ty v
+termClosingRec k vars (FreeVar loc CnsRep ty v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep ty (k, fromJust ((Cns,v) `elemIndex` vars))
+                                                   | otherwise = FreeVar loc CnsRep ty v
 termClosingRec k vars (Xtor loc ty pc annot ns xt subst) =
   Xtor loc ty pc annot ns xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XCase loc annot pc ty sn cases) =
@@ -253,7 +247,7 @@ termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
 
-commandClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> Command -> Command
+commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosingRec _ _ (ExitSuccess ext) =
   ExitSuccess ext
 commandClosingRec _ _ (ExitFailure ext) =
@@ -269,7 +263,7 @@ commandClosingRec k args (Apply ext annot kind t1 t2) =
 commandClosingRec k args (PrimOp ext pt op subst) =
   PrimOp ext pt op (pctermClosingRec k args <$> subst)
 
-commandClosing :: [(PrdCns, FreeSkolemVarName)] -> Command -> Command
+commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
 
 ---------------------------------------------------------------------------------
@@ -301,7 +295,7 @@ pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 -- Core constructs
 termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
-termLocallyClosedRec _ FreeSkolemVar {} = Right ()
+termLocallyClosedRec _ FreeVar {} = Right ()
 termLocallyClosedRec env (Xtor _ _  _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ _ cases) = do
@@ -345,7 +339,7 @@ shiftPCTermRec dir n (CnsTerm tm) = CnsTerm $ shiftTermRec dir n tm
 
 shiftTermRec :: ShiftDirection -> Int -> Term pc -> Term pc
 -- Core constructs
-shiftTermRec _ _ var@FreeSkolemVar {} = var
+shiftTermRec _ _ var@FreeVar {} = var
 shiftTermRec ShiftUp n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i + 1, j)
                                                         | otherwise = BoundVar loc pcrep ty (i    , j)
 shiftTermRec ShiftDown n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i - 1, j)

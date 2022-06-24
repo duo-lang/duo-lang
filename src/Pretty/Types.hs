@@ -98,8 +98,7 @@ instance PrettyAnn CST.Typ where
   prettyAnn CST.TyTop {} = topSym
   prettyAnn CST.TyBot {} = botSym
   -- Type Variables
-  prettyAnn (CST.TyUniVar _ tv) = prettyAnn tv
-  prettyAnn (CST.TySkolemVar _ tv) = prettyAnn tv
+  prettyAnn (CST.TyVar _ tv) = prettyAnn tv
   -- Recursive types
   prettyAnn (CST.TyRec _ rv t) =
     parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
@@ -137,10 +136,10 @@ instance PrettyAnn (RST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTypeScheme tys)
 
 instance PrettyAnn CST.TypeScheme where
-  prettyAnn CST.TypeScheme { ts_univars = [], ts_skolemvars = [], ts_monotype } =
+  prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
     prettyAnn ts_monotype
-  prettyAnn CST.TypeScheme { ts_univars,ts_skolemvars, ts_monotype } =
+  prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
     forallSym <+>
-    sep ((prettyAnn <$> ts_univars )++(prettyAnn<$>ts_skolemvars)) <> 
+    sep (prettyAnn <$> ts_vars ) <>
     "." <+>
     prettyAnn ts_monotype

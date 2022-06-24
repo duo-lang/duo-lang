@@ -123,8 +123,7 @@ data Term (pc :: PrdCns) where
   -- | A bound variable in the locally nameless system.
   BoundVar :: Loc -> PrdCnsRep pc -> Index -> Term pc
   -- | A free variable in the locally nameless system.
-  FreeUniVar :: Loc -> PrdCnsRep pc -> FreeUniVarName -> Term pc
-  FreeSkolemVar :: Loc -> PrdCnsRep pc -> FreeSkolemVarName -> Term pc
+  FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
   Xtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
@@ -135,7 +134,7 @@ data Term (pc :: PrdCns) where
   --
   --  mu k.c    =   MuAbs PrdRep c
   -- ~mu x.c    =   MuAbs CnsRep c
-  MuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeSkolemVarName -> Command -> Term pc
+  MuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   ---------------------------------------------------------------------------------
@@ -165,7 +164,7 @@ data Term (pc :: PrdCns) where
   CocaseI :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Prd
   
   -- \x y z -> t 
-  Lambda  :: Loc  -> PrdCnsRep pc -> FreeSkolemVarName -> Term pc  -> Term pc 
+  Lambda  :: Loc  -> PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc 
   
   ---------------------------------------------------------------------------------
   -- Primitive constructs
@@ -188,7 +187,7 @@ data Command where
   Apply  :: Loc -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
-  Jump   :: Loc -> FreeUniVarName -> Command
+  Jump   :: Loc -> FreeVarName -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
@@ -214,8 +213,7 @@ termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, su
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       t                    -> error $ "termOpeningRec BOOM: " ++ show t
                                                    | otherwise = bv
-termOpeningRec _ _ fv@FreeSkolemVar {}= fv
-termOpeningRec _ _ fv@FreeUniVar {} = fv
+termOpeningRec _ _ fv@FreeVar {}= fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
   Xtor loc rep ns xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XCase loc rep ns cases) =
@@ -286,19 +284,17 @@ termOpening = termOpeningRec 0
 -- Variable Closing
 ---------------------------------------------------------------------------------
 
-pctermClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> PrdCnsTerm -> PrdCnsTerm
+pctermClosingRec :: Int -> [(PrdCns, FreeVarName)] -> PrdCnsTerm -> PrdCnsTerm
 pctermClosingRec k vars (PrdTerm tm) = PrdTerm $ termClosingRec k vars tm
 pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
-termClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> Term pc -> Term pc
+termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 -- Core constructs
 termClosingRec _ _ bv@BoundVar {} = bv
-termClosingRec _ _ (FreeUniVar _ PrdRep _)  = error "Not implemented"
-termClosingRec _ _ (FreeUniVar _ CnsRep _)  = error "Not implemented" 
-termClosingRec k vars (FreeSkolemVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
-                                             | otherwise = FreeSkolemVar loc PrdRep v
-termClosingRec k vars (FreeSkolemVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
-                                             | otherwise = FreeSkolemVar loc CnsRep v
+termClosingRec k vars (FreeVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
+                                             | otherwise = FreeVar loc PrdRep v
+termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
+                                             | otherwise = FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc pc ns xt subst) =
   Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XCase loc pc sn cases) =
@@ -333,7 +329,7 @@ termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
 
 
-commandClosingRec :: Int -> [(PrdCns, FreeSkolemVarName)] -> Command -> Command
+commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosingRec _ _ (ExitSuccess ext) =
   ExitSuccess ext
 commandClosingRec _ _ (ExitFailure ext) =
@@ -358,8 +354,8 @@ commandClosingRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
   CocaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
 
 
-termClosing :: [(PrdCns, FreeSkolemVarName)] -> Term pc -> Term pc
+termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 termClosing = termClosingRec 0
 
-commandClosing :: [(PrdCns, FreeSkolemVarName)] -> Command -> Command
+commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0

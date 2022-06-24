@@ -31,13 +31,13 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data TranslateState = TranslateState
-  { recVarsUsed :: Set TSkolemVar
+  { recVarsUsed :: Set TVar
   , varCount :: Int }
 
 initialState :: TranslateState
 initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName TSkolemVar }
+newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName TVar }
 
 initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
@@ -52,22 +52,22 @@ runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReade
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-withVarMap :: (M.Map RnTypeName TSkolemVar -> M.Map RnTypeName TSkolemVar) -> TranslateM a -> TranslateM a
+withVarMap :: (M.Map RnTypeName TVar -> M.Map RnTypeName TVar) -> TranslateM a -> TranslateM a
 withVarMap f m = do
   local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m
 
-modifyVarsUsed :: (Set TSkolemVar -> Set TSkolemVar) -> TranslateM ()
+modifyVarsUsed :: (Set TVar -> Set TVar) -> TranslateM ()
 modifyVarsUsed f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed = f recVarsUsed, varCount })
 
-freshSkolemTVar :: TranslateM TSkolemVar
-freshSkolemTVar = do
+freshTVar :: TranslateM TVar
+freshTVar = do
   i <- gets varCount
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed, varCount = varCount + 1 })
-  return $ MkTSkolemVar ("g" <> T.pack (show i))
+  return $ MkTVar ("g" <> T.pack (show i))
 
 ---------------------------------------------------------------------------------------------
 -- Upper bound translation functions
@@ -95,10 +95,10 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TySkolemVar defaultLoc NegRep Nothing tv
+    return $ TyVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
-    tv <- freshSkolemTVar
+    tv <- freshTVar
     case data_polarity of
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
@@ -107,7 +107,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       Codata -> do
         -- Upper bound translation of codata is empty
         return $ TyRec defaultLoc NegRep tv $ TyCodata defaultLoc NegRep (Just tn) []
-translateTypeUpper' tv@TySkolemVar{} = return tv
+translateTypeUpper' tv@TyVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
@@ -136,10 +136,10 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TySkolemVar defaultLoc pr Nothing tv
+    return $ TyVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
-    tv <- freshSkolemTVar
+    tv <- freshTVar
     case data_polarity of
       Data -> do
         -- Lower bound translation of data is empty
@@ -148,7 +148,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
         return $ TyRec defaultLoc pr tv $ TyCodata defaultLoc pr (Just tn) xtss
-translateTypeLower' tv@TySkolemVar{} = return tv
+translateTypeLower' tv@TyVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ cleanUpType ty = case ty of
     xtss' <- mapM cleanUpXtorSig xtss
     return $ TyCodata loc pr mtn xtss'
   -- Type variables remain unchanged
-  tv@TySkolemVar{} -> return tv
+  tv@TyVar{} -> return tv
   -- Other types imply incorrect translation
   t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
 

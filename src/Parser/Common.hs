@@ -1,9 +1,7 @@
 module Parser.Common
   ( -- Names
-    freeUniVarNameP
-  , freeSkolemVarNameP
-  , tunivarP
-  , tskolemvarP
+    freeVarNameP
+  , tvarP
   , xtorNameP
   , typeNameP
   , moduleNameP
@@ -29,25 +27,15 @@ import Data.Functor ( ($>) )
 -- Names
 ---------------------------------------------------------------------------------
 
-freeUniVarNameP :: Parser (FreeUniVarName, SourcePos)
-freeUniVarNameP = try $ do
+freeVarNameP :: Parser (FreeVarName, SourcePos)
+freeVarNameP = try $ do
   (name, pos) <- lowerCaseId
-  return (MkFreeUniVarName name, pos)
+  return (MkFreeVarName name, pos)
 
-freeSkolemVarNameP :: Parser (FreeSkolemVarName, SourcePos)
-freeSkolemVarNameP = try $ do
+tvarP :: Parser (TVar, SourcePos)
+tvarP = try $ do
   (name, pos) <- lowerCaseId
-  return (MkFreeSkolemVarName name, pos)
-
-tunivarP :: Parser (TUniVar, SourcePos)
-tunivarP = try $ do
-  (name, pos) <- lowerCaseId
-  return (MkTUniVar name, pos)
-
-tskolemvarP :: Parser (TSkolemVar, SourcePos)
-tskolemvarP = try $ do
-  (name, pos) <- lowerCaseId
-  return (MkTSkolemVar name, pos)
+  return (MkTVar name, pos)
 
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
@@ -119,10 +107,10 @@ polyKindP = f <|> g
       _ <- symbolP SymSimpleRightArrow
       MkPolyKind kindArgs <$> evalOrderP
 
-tParamP :: Parser (Variance, TSkolemVar, MonoKind)
+tParamP :: Parser (Variance, TVar, MonoKind)
 tParamP = do
   v <- varianceP
-  (tvar,_) <- tskolemvarP
+  (tvar,_) <- tvarP
   _ <- symbolP SymColon
   kind <- monoKindP
   pure (v, tvar, kind)

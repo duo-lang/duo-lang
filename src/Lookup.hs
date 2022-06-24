@@ -51,7 +51,7 @@ findFirstM f err = asks fst >>= \env -> go (M.toList env)
 
 -- | Lookup the term and the type of a term bound in the environment.
 lookupTerm :: EnvReader a m
-           => PrdCnsRep pc -> FreeUniVarName -> m (TST.Term pc, TypeScheme (PrdCnsToPol pc))
+           => PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
   env <- asks fst
   let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
@@ -71,7 +71,7 @@ lookupTerm CnsRep fv = do
 ---------------------------------------------------------------------------------
 
 -- | Lookup a command in the environment.
-lookupCommand :: EnvReader a m => FreeUniVarName -> m TST.Command
+lookupCommand :: EnvReader a m => FreeVarName -> m TST.Command
 lookupCommand fv = do
   let err = OtherError Nothing ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
   let f env = case M.lookup fv (cmdEnv env) of
@@ -123,7 +123,7 @@ lookupXtorSig xtn NegRep = do
 ---------------------------------------------------------------------------------
 
 withTerm :: forall a m b pc. EnvReader a m
-         => ModuleName -> PrdCnsRep pc -> FreeUniVarName -> TST.Term pc -> Loc -> TypeScheme (PrdCnsToPol pc)
+         => ModuleName -> PrdCnsRep pc -> FreeVarName -> TST.Term pc -> Loc -> TypeScheme (PrdCnsToPol pc)
          -> (m b -> m b)
 withTerm mn PrdRep fv tm loc tys action = do
   let modifyEnv :: Environment -> Environment
