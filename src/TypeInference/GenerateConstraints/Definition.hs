@@ -58,14 +58,14 @@ import Utils
 skolemTVarToTVar :: SkolemTVar -> TVar
 skolemTVarToTVar (MkSkolemTVar name) = MkTVar name
 
-uniTVarToTVar :: UniTVar -> TVar 
-uniTVarToTVar (MkUniTVar name) = MkTVar name
+--uniTVarToTVar :: UniTVar -> TVar 
+--uniTVarToTVar (MkUniTVar name) = MkTVar name
 
 tVarToUniTVar :: TVar -> UniTVar
 tVarToUniTVar (MkTVar name) = MkUniTVar name
 
-tVarToSkolemTVar :: TVar -> SkolemTVar
-tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
+--tVarToSkolemTVar :: TVar -> SkolemTVar
+--tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
 
 data GenerateState = GenerateState
   { varCount :: Int

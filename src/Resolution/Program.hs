@@ -33,7 +33,7 @@ resolveXtors sigs = do
     pure (posSigs, negSigs)
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
-checkVarianceTyp loc var polyKind (TyUniVar _loc' tVar) = error "Not implemented"
+checkVarianceTyp _ _ _(TyUniVar _loc' _) = return ()
 checkVarianceTyp loc var polyKind (TySkolemVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
