@@ -56,7 +56,7 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
   -- Check whether the number of arguments in the given binding site
   -- corresponds to the number of arguments specified for the constructor/destructor.
   when (length arity /= length args) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
   case length (filter CST.isStar args) of
     0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
     1 -> do
