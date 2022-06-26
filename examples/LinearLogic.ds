@@ -193,3 +193,10 @@ def cns codemorgan5 : forall p q.  Notp( p ⊗ q  ) -<  Notn( p ) ⅋  Notn( q )
 --def prd demorgan8 : forall p q. Notp(p) ⅋ Notp(q) -> Notn(p ⊗ q) := ...
 
 -- todo : codemorgan 6-8  
+
+def prd doublenegelim : forall p. Notp(Notp(p)) -> p := 
+  cocase { Ap(x,k) => x >> case { MkNotp(ka) => MkNotp(k) >> ka }} ;
+
+def cns codoublenegelim : forall p.  Notn( Notn( p ) ) -< p  := 
+  case { CoAp(k1,x1) => cocase {MkNotn(x2) => x2 >> MkNotn( x1 )} >> k1};
+
