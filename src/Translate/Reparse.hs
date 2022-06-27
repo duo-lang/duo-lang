@@ -440,8 +440,10 @@ resugarType _ = Nothing
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyVar loc _ _ (RST.MkTVar name)) =
-  CST.TyUniVar loc (MkUniTVar name)
+embedType (RST.UniTyVar loc _ _ tv) =
+  CST.UniTyVar loc tv
+embedType (RST.SkolemTyVar loc _ _ tv) = 
+  CST.SkolemTyVar loc tv
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =

@@ -19,7 +19,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
---import Syntax.Common.TypesUnpol (Typ(TyUniVar))
+--import Syntax.Common.TypesUnpol (Typ(UniTyVar))
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

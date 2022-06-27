@@ -9,8 +9,8 @@ import Utils ( Loc )
 ---------------------------------------------------------------------------------
 
 data Typ where
-  TyUniVar :: Loc -> UniTVar -> Typ
-  TySkolemVar :: Loc -> SkolemTVar -> Typ
+  UniTyVar :: Loc -> UniTVar -> Typ
+  SkolemTyVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> [Typ] -> Typ

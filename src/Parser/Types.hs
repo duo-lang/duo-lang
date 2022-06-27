@@ -101,7 +101,7 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
-  return (TySkolemVar (Loc startPos endPos) tvar, endPos)
+  return (SkolemTyVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do

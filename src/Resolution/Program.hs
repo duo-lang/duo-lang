@@ -33,8 +33,8 @@ resolveXtors sigs = do
     pure (posSigs, negSigs)
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
-checkVarianceTyp _ _ _(TyUniVar _loc' _) = return ()
-checkVarianceTyp loc var polyKind (TySkolemVar _loc' tVar) =
+checkVarianceTyp _ _ _(UniTyVar _loc' _) = return ()
+checkVarianceTyp loc var polyKind (SkolemTyVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
     Nothing   -> throwError (OtherError (Just loc) $ "Type variable not bound by declaration: " <> T.pack (show tVar))

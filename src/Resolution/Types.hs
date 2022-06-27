@@ -32,9 +32,9 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
         else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyUniVar loc v) =
+resolveTyp rep (UniTyVar loc v) =
     pure $ RST.TyVar loc rep Nothing (uniTVarToTVar v)
-resolveTyp rep (TySkolemVar loc v) = 
+resolveTyp rep (SkolemTyVar loc v) = 
     pure $ RST.TyVar loc rep Nothing (skolemTVarToTVar v)
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
