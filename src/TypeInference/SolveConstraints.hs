@@ -32,7 +32,7 @@ data SolverState = SolverState
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs) =
-  SolverState { sst_bounds = M.fromList [(tUniVarToTVar (fst uv),emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
+  SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
               , sst_cache = S.empty
               }
 
@@ -63,7 +63,7 @@ getBounds uv = do
   bounds <- gets sst_bounds
   case M.lookup uv bounds of
     Nothing -> throwSolverError [ "Tried to retrieve bounds for variable:"
-                                , ppPrint (tVarToTUniVar uv)
+                                , ppPrint uv 
                                 , "which is not a valid unification variable."
                                 ]
     Just vs -> return vs

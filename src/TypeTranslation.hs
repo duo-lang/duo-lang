@@ -67,7 +67,7 @@ freshTVar = do
   i <- gets varCount
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed, varCount = varCount + 1 })
-  return $ MkTVar ("g" <> T.pack (show i))
+  return $ MkSkolemTVar ("g" <> T.pack (show i))
 
 ---------------------------------------------------------------------------------------------
 -- Upper bound translation functions
@@ -95,7 +95,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar defaultLoc NegRep Nothing tv
+    return $ SkolemTyVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -136,7 +136,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar defaultLoc pr Nothing tv
+    return $ SkolemTyVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
