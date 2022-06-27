@@ -77,7 +77,7 @@ coalesceType (UniTyVar _ PosRep _ tv) = do
             recVarMap <- gets snd
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> return $                                 mkUnion defaultLoc Nothing (UniTyVar defaultLoc PosRep Nothing tv:lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc Nothing (UniTyVar defaultLoc PosRep Nothing tv:lbs'))
+                Just (MkUniTVar recVar) -> return $ TyRec defaultLoc PosRep (MkSkolemTVar recVar) (mkUnion defaultLoc Nothing (UniTyVar defaultLoc PosRep Nothing tv:lbs'))
 coalesceType (UniTyVar _ NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
@@ -91,7 +91,7 @@ coalesceType (UniTyVar _ NegRep _ tv) = do
             recVarMap <- gets snd
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> return $                                 mkInter defaultLoc Nothing (UniTyVar defaultLoc NegRep Nothing tv:ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (UniTyVar defaultLoc NegRep Nothing tv:ubs'))
+                Just (MkUniTVar recVar) -> return $ TyRec defaultLoc NegRep (MkSkolemTVar recVar) (mkInter defaultLoc Nothing (UniTyVar defaultLoc NegRep Nothing tv:ubs'))
 coalesceType ty@SkolemTyVar{} = return ty
 coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
@@ -121,16 +121,16 @@ coalesceType (TyInter loc knd ty1 ty2) = do
     ty1' <- coalesceType ty1
     ty2' <- coalesceType ty2
     pure (TyInter loc knd ty1' ty2')
-coalesceType (TyRec loc PosRep tv ty) = do
-    modify (second (M.insert (tv, Pos) tv))
-    let f = second (S.insert (tv, Pos))
+coalesceType (TyRec loc PosRep (MkSkolemTVar tv) ty) = do
+    modify (second (M.insert (MkUniTVar tv, Pos) (MkUniTVar tv)))
+    let f = second (S.insert (MkUniTVar tv, Pos))
     ty' <- local f $ coalesceType ty
-    return $ TyRec loc PosRep tv ty'
-coalesceType (TyRec loc NegRep tv ty) = do
-    modify (second (M.insert (tv, Neg) tv))
-    let f = second (S.insert (tv, Neg))
+    return $ TyRec loc PosRep (MkSkolemTVar tv) ty'
+coalesceType (TyRec loc NegRep (MkSkolemTVar tv) ty) = do
+    modify (second (M.insert (MkUniTVar tv, Neg) (MkUniTVar tv)))
+    let f = second (S.insert (MkUniTVar tv, Neg))
     ty' <- local f $ coalesceType ty
-    return $ TyRec loc NegRep tv ty'
+    return $ TyRec loc NegRep (MkSkolemTVar tv) ty'
 coalesceType t@TyPrim {} = return t
 coalesceType (TyFlipPol _ _) = error "Tried to coalesce TyFlipPol"
 
