@@ -107,10 +107,8 @@ instance PrettyAnn SolverResult where
 -- Bisubstitutions
 ---------------------------------------------------------------------------------
 
-uniTVarToTVar :: TVar -> UniTVar
-uniTVarToTVar (MkTVar name) = MkUniTVar name
-prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn (uniTVarToTVar v)
+prettyBisubst :: (UniTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
