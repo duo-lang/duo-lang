@@ -93,3 +93,9 @@ throwAutomatonError = throwError . TypeAutomatonError Nothing . T.unlines
 throwOtherError :: MonadError Error m
                 => [Text] -> m a
 throwOtherError = throwError . OtherError Nothing . T.unlines
+
+
+-- Warnings
+
+data Warning where
+  Warning     :: Maybe Loc -> Text -> Warning

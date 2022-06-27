@@ -45,6 +45,7 @@ import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
 
+
 checkAnnot :: PolarityRep pol
            -> TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type
@@ -180,7 +181,7 @@ inferDecl _mn (Core.ImportDecl decl) = do
 --
 -- SetDecl
 --
-inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) = 
+inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) =
   throwOtherError ["Unknown option: " <> setdecl_option]
 --
 -- TyOpDecl
@@ -240,7 +241,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> ModuleName
                 -> [CST.Declaration]
-                -> IO (Either Error (Map ModuleName Environment, TST.Program))
+                -> IO ((Either Error (Map ModuleName Environment, TST.Program)),[Warning])
 inferProgramIO state mn decls = do
   let action :: DriverM (TST.Program)
       action = do
@@ -252,6 +253,6 @@ inferProgramIO state mn decls = do
         inferProgram mn (desugarProgram resolvedDecls)
   res <- execDriverM state action
   case res of
-    Left err -> return (Left err)
-    Right (res,x) -> return (Right ((drvEnv x), res))
+    (Left err, warnings) -> return (Left err, warnings)
+    (Right (res,x), warnings) -> return (Right ((drvEnv x), res), warnings)
 

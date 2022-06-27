@@ -1,6 +1,6 @@
 module Resolution.Terms (resolveTerm, resolveCommand) where
 
-import Control.Monad (when, forM)
+import Control.Monad (when, forM, unless)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.Map qualified as M
@@ -14,6 +14,8 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common
 import Utils
+import Syntax.CST.Terms (FVOrStar(..))
+import Control.Monad.Writer (tell)
 
 
 ---------------------------------------------------------------------------------
@@ -61,12 +63,19 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
     0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
     1 -> do
       let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
+      mapM_ (checkVarName loc) zipped
       let (args1,(pc,_):args2) = break (\(_,x) -> CST.isStar x) zipped
       case pc of
         Cns -> pure $ ImplicitPrdPattern loc xt (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
         Prd -> pure $ ImplicitCnsPattern loc xt (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
     n -> throwError $ LowerError (Just loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
+checkVarName :: Loc -> (PrdCns, CST.FVOrStar) -> ResolverM ()
+checkVarName _ (_,FoSStar) = return ()
+checkVarName loc (Prd,FoSFV (MkFreeVarName name)) = 
+  when ("k" `T.isPrefixOf` name) $ tell [Warning (Just loc) (T.pack "Producer variable " `T.append` name `T.append` " should not start with letter k")  ]
+checkVarName loc (Cns,FoSFV (MkFreeVarName name)) = 
+  unless ("k" `T.isPrefixOf` name) $ tell [Warning (Just loc) (T.pack "Consumer variable " `T.append` name `T.append` " should start with letter k")  ]
 ---------------------------------------------------------------------------------
 -- Analyze Cases
 ---------------------------------------------------------------------------------

@@ -60,7 +60,8 @@ fromRight (Left err) = prettyRepl err >> abort
 runDriver :: DriverM a -> Repl a
 runDriver act = do
   ds <- gets replDriverState
-  res <- liftIO $ execDriverM ds act
+  (res, warnings) <- liftIO $ execDriverM ds act
+  mapM_ prettyRepl warnings
   case res of
     Left err -> do
       prettyRepl err

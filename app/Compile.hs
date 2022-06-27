@@ -22,7 +22,8 @@ driverAction mn = do
 
 runCompile :: ModuleName -> IO ()
 runCompile mn = do
-  res <- liftIO $ execDriverM defaultDriverState (driverAction mn)
+  (res, warnings) <- liftIO $ execDriverM defaultDriverState (driverAction mn)
+  mapM_ ppPrintIO warnings
   case res of
     Left err -> ppPrintIO err
     Right (_, MkDriverState { drvEnv }) -> do

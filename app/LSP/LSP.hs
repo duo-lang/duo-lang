@@ -68,7 +68,7 @@ serverOptions = Options
 
 definition :: IO (ServerDefinition LSPConfig)
 definition = do
-  initialCache <- newIORef M.empty 
+  initialCache <- newIORef M.empty
   return ServerDefinition
     { defaultConfig = MkLSPConfig initialCache
     , onConfigurationChange = \config _ -> pure config
@@ -138,7 +138,7 @@ cancelRequestHandler :: Handlers LSPMonad
 cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
   liftIO $ debugM "lspserver.cancelRequestHandler" "Received cancel request"
   return ()
-  
+
 -- File Open + Change + Close Handlers
 
 didOpenHandler :: Handlers LSPMonad
@@ -184,11 +184,28 @@ errorToDiags err = [diag]
                       , _relatedInformation = Nothing
                       }
 
+warningToDiags :: Warning -> [Diagnostic]
+warningToDiags (Warning loc txt) = [diag]
+  where
+    diag = Diagnostic { _range = locToRange (fromMaybe defaultLoc loc)
+                      , _severity = Just DsWarning
+                      , _code = Nothing
+                      , _source = Nothing
+                      , _message = ppPrint txt
+                      , _tags = Nothing
+                      , _relatedInformation = Nothing
+                      }
+
 sendLocatedError :: NormalizedUri -> Error -> LSPMonad ()
 sendLocatedError uri le = do
   let diags = errorToDiags le
   publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList diags)]))
 
+
+sendLocatedWarning :: NormalizedUri -> Warning -> LSPMonad ()
+sendLocatedWarning uri w = do
+  let diags = warningToDiags w
+  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "DualSub", SL.toSortedList diags)]))
 
 publishErrors :: Uri -> LSPMonad ()
 publishErrors uri = do
@@ -204,7 +221,8 @@ publishErrors uri = do
         Left err -> do
           sendLocatedError (toNormalizedUri uri) err
         Right decls -> do
-          res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+          mapM_ (sendLocatedWarning (toNormalizedUri uri)) warnings 
           case res of
             Left err -> do
               sendLocatedError (toNormalizedUri uri) err

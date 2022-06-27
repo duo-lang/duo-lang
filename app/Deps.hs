@@ -18,7 +18,9 @@ runDeps mn = do
             printCompilationOrder compilationOrder
 
 createDeps :: ModuleName -> IO (Either Error (DepGraph,CompilationOrder))
-createDeps fp = fmap fst <$> execDriverM defaultDriverState (createDeps' fp)
+createDeps fp =  do 
+    (res, _) <-  execDriverM defaultDriverState (createDeps' fp) -- ignore warnings
+    return (fst <$> res)
 
 createDeps' :: ModuleName -> DriverM (DepGraph, CompilationOrder)
 createDeps' fp = do

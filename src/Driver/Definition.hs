@@ -17,6 +17,7 @@ import Resolution.SymbolTable
 import Syntax.Common.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Utils
+import Control.Monad.Writer
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -68,14 +69,14 @@ defaultDriverState = MkDriverState
 -- Driver Monad
 ---------------------------------------------------------------------------------
 
-newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO)
+newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT Error (WriterT [Warning] IO))) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadWriter [Warning])
 
 instance MonadFail DriverM where
   fail str = throwError (OtherError Nothing (T.pack str))
-  
-execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
-execDriverM state act = runExceptT $ runStateT (unDriverM act) state
+
+execDriverM :: DriverState ->  DriverM a -> IO (Either Error ((a),DriverState),[Warning])
+execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
 
 ---------------------------------------------------------------------------------
 -- Utility functions
@@ -153,9 +154,9 @@ liftErrLoc loc err = do
     guardVerbose $ printLocatedError locerr
     throwError locerr
 
-liftEitherErr :: Either Error a -> DriverM a
-liftEitherErr x = case x of
-    Left err -> liftErr err
+liftEitherErr :: (Either Error a,[Warning]) -> DriverM a
+liftEitherErr (x,warnings) = tell warnings >> case x of
+    Left err ->  liftErr err
     Right res -> return res
 
 liftEitherErrLoc :: Loc -> Either Error a -> DriverM a

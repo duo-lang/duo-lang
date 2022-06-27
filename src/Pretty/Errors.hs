@@ -83,4 +83,5 @@ generatePrefixes lines = foo <$> lines
     foo (line, content) = show line ++ " | " ++ content
 
 
-
+instance PrettyAnn Warning where
+  prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt

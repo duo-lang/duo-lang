@@ -118,7 +118,7 @@ subsumeRepl txt = do
     sts <- getSymbolTables
     resolved_t1 <- liftEitherErr (runResolverM sts (resolveTypeScheme PosRep t1))
     resolved_t2 <- liftEitherErr (runResolverM sts (resolveTypeScheme PosRep t2))
-    isSubsumed <- liftEitherErr $ subsume PosRep resolved_t1 resolved_t2
+    isSubsumed <- liftEitherErr $ (subsume PosRep resolved_t1 resolved_t2,[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"

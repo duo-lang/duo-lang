@@ -1,6 +1,6 @@
 module Resolution.Definition where
 
-import Control.Monad.Except (MonadError, Except, throwError, runExcept)
+import Control.Monad.Except (MonadError, Except, throwError, runExcept, ExceptT, runExceptT)
 import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.Map (Map)
@@ -15,6 +15,8 @@ import Resolution.SymbolTable
 import Syntax.Common
 import Utils
 import Errors
+import Control.Monad.Writer
+import Control.Monad.Identity
 
 ------------------------------------------------------------------------------
 -- Resolver Monad
@@ -22,14 +24,16 @@ import Errors
 
 type ResolveReader = Map ModuleName SymbolTable
 
-newtype ResolverM a = MkResolverM { unResolverM :: ReaderT ResolveReader (Except Error) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader ResolveReader)
+type WarningWriter = Writer [Warning]
+
+newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT Error WarningWriter)) a }
+  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader ResolveReader, MonadWriter [Warning])
 
 instance MonadFail ResolverM where
   fail str = throwError (OtherError Nothing (T.pack str))
 
-runResolverM :: ResolveReader -> ResolverM a -> Either Error a
-runResolverM reader action = runExcept (runReaderT (unResolverM action) reader)
+runResolverM :: ResolveReader -> ResolverM a -> (Either Error a,[Warning])
+runResolverM reader action = runWriter $ runExceptT (runReaderT  (unResolverM action) reader)
 
 ------------------------------------------------------------------------------
 -- Helper Functions
