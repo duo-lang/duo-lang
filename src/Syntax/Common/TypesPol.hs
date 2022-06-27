@@ -133,7 +133,7 @@ getPolarity (TyFlipPol rep _)           = rep
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [UniTVar]
+  , ts_vars :: [SkolemTVar]
   , ts_monotype :: Typ pol
   }
 
@@ -188,8 +188,8 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
-
+--generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
+generalize = TypeScheme defaultLoc []
 ------------------------------------------------------------------------------
 -- Bisubstitution and Zonking
 ------------------------------------------------------------------------------
