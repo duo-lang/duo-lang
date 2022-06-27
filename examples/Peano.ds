@@ -27,6 +27,6 @@ def rec prd natmax : Nat -> Nat -> Nat :=
 				   , S(n) => case m of { Z => S(n), S(m) => S(natmax n m)}};
 
 def rec prd natgeq : Nat -> Nat -> Bool := 
- \n m => case n of { Z => False
+ \n m => case n of { Z => nateq m Z
 				   , S(n) => case m of { Z=>True, S(m) => natgeq n m}};
 
