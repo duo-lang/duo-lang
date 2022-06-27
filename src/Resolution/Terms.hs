@@ -59,11 +59,11 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
   -- corresponds to the number of arguments specified for the constructor/destructor.
   when (length arity /= length args) $
            throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
+  let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
+  mapM_ (checkVarName loc) zipped
   case length (filter CST.isStar args) of
     0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
     1 -> do
-      let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
-      mapM_ (checkVarName loc) zipped
       let (args1,(pc,_):args2) = break (\(_,x) -> CST.isStar x) zipped
       case pc of
         Cns -> pure $ ImplicitPrdPattern loc xt (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
