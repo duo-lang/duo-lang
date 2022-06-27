@@ -42,7 +42,7 @@ import Control.Monad
 --
 -- Unification variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(Just n, Just m)`
-newtype LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
+newtype LookupEnv = LookupEnv { tvarEnv :: Map UniTVar (Maybe Node, Maybe Node) }
 
 type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
 
@@ -57,17 +57,17 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes :: [UniTVar] -> [(UniTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
 createNodes tvars = createNode <$> createPairs tvars
   where
-    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode :: (UniTVar, Node, Node) -> (UniTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
     createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
 
-    createPairs :: [TVar] -> [(TVar,Node,Node)]
+    createPairs :: [UniTVar] -> [(UniTVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [UniTVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -81,7 +81,7 @@ initialize tvars =
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
-runTypeAutTvars :: [TVar]
+runTypeAutTvars :: [UniTVar]
                 -> TTA a
                 -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
@@ -108,7 +108,7 @@ newNodeM = do
   graph <- gets ta_gr
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: PolarityRep pol -> TVar -> TTA Node
+lookupTVar :: PolarityRep pol -> UniTVar -> TTA Node
 lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
@@ -169,7 +169,8 @@ insertVariantType (ContravariantType ty) = do
   pure (node, Contravariant)
 
 insertType :: Typ pol -> TTA Node
-insertType (TyVar _ rep _ tv) = lookupTVar rep tv
+insertType (UniTyVar _ rep _ tv) = lookupTVar rep tv
+insertType (SkolemTyVar _ _ _ _) = error "should never happen"
 insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
@@ -192,13 +193,13 @@ insertType (TyInter _ _ ty1 ty2) = do
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
-insertType (TyRec _ rep rv ty) = do
+insertType (TyRec _ rep _ ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol)
-  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
-      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
-  n <- local (extendEnv rep) (insertType ty)
+  --let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
+  --    extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
+  n <- insertType ty
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType (TyData _ polrep xtors)   = insertXtors Data   (polarityRepToPol polrep) Nothing xtors
@@ -229,7 +230,7 @@ insertType (TyFlipPol _ _) =
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
 typeToAut TypeScheme { ts_vars, ts_monotype } = do
-  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
+  (start, aut) <- runTypeAutTvars [] (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut
