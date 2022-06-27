@@ -111,7 +111,8 @@ dualType' PrdRep t = dualType PosRep t
 dualType' CnsRep t = dualType NegRep t
 
 dualType :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
-dualType pol (TyVar _loc _ kind x) = TyVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
+dualType pol (UniTyVar _loc _ kind x) = UniTyVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
+dualType pol (SkolemTyVar _loc _ kind x) = SkolemTyVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
 dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyPrim loc _ pt) = TyPrim loc (flipPolarityRep pol) pt
 -- @BinderDavid please check
