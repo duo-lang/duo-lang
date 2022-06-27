@@ -14,6 +14,11 @@ import Driver.Definition
 import Driver.Driver
 import Errors
 
+type Reason = String
+
+pendingFiles :: [(FilePath, Reason)]
+pendingFiles = [("examples/TypeClasses.ds", "Backend not implemented for type classes")]
+
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed
 -- 2. Prettyprinted
@@ -31,14 +36,16 @@ spec examples = do
   
   describe "All the examples in the \"examples/\" folder can be parsed and typechecked after prettyprinting." $ do
     forM_ examples $ \(example,prog) -> do
-      describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
-        case prog of 
-            Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
-            Right decls -> case (runFileParser example programP (ppPrint decls)) of
-              Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
-              Right decls -> do
-                res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") decls
-                it "Can be parsed and typechecked again." $
-                    res `shouldSatisfy` isRight
+      case example `lookup` pendingFiles of
+         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
+         Nothing     -> describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
+            case prog of 
+                Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
+                Right decls -> case (runFileParser example programP (ppPrint decls)) of
+                  Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
+                  Right decls -> do
+                    res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") decls
+                    it "Can be parsed and typechecked again." $
+                        res `shouldSatisfy` isRight
 
 

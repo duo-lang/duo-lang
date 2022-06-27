@@ -11,6 +11,11 @@ import Syntax.TST.Program qualified as TST
 import Syntax.Common
 import Errors ( Error )
 
+type Reason = String
+
+pendingFiles :: [(FilePath, Reason)]
+pendingFiles = [("examples/TypeClasses.ds", "Backend not implemented for type classes")]
+
 getProducers :: TST.Program -> [(FreeVarName, Term Prd)]
 getProducers prog = go prog []
   where
@@ -24,11 +29,13 @@ spec :: [(FilePath, Either Error TST.Program)] -> Spec
 spec examples = do
   describe "All examples are locally closed." $ do
     forM_ examples $ \(example, eitherEnv) -> do
-      describe ("Examples in " ++ example ++ " are locally closed") $ do
-        case eitherEnv of
-          Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
-          Right env -> do
-            forM_ (getProducers env) $ \(name,term) -> do
-              it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes") $
-                termLocallyClosed term `shouldBe` Right ()
+      case example `lookup` pendingFiles of
+        Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ example ++ "\nReason: " ++ reason
+        Nothing     -> describe ("Examples in " ++ example ++ " are locally closed") $ do
+          case eitherEnv of
+            Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
+            Right env -> do
+              forM_ (getProducers env) $ \(name,term) -> do
+                it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes") $
+                  termLocallyClosed term `shouldBe` Right ()
 
