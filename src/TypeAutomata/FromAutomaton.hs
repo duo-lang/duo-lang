@@ -50,15 +50,13 @@ type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
 runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either Error a
 runAutToTypeM m state = runExcept (runReaderT m state)
 
-tUniVarToTVar :: UniTVar->TVar
-tUniVarToTVar (MkUniTVar name) = MkTVar name
 
 autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  , ts_vars = map tUniVarToTVar (tvars startState)
+                  , ts_vars = [] --tvars startState
                   , ts_monotype = monotype
                   }
 
@@ -75,7 +73,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar defaultLoc rep Nothing <$> map tUniVarToTVar (S.toList (fromJust $ M.lookup i tvMap)))
+  return (UniTyVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -116,7 +114,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache then
-    return $ TyVar defaultLoc rep Nothing (MkTVar ("r" <> T.pack (show i)))
+    return $ UniTyVar defaultLoc rep Nothing (MkUniTVar ("r" <> T.pack (show i)))
   else
     nodeToTypeNoCache rep i
 
@@ -189,5 +187,5 @@ nodeToTypeNoCache rep i = do
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
-    then return $ TyRec defaultLoc rep (MkTVar ("r" <> T.pack (show i))) resType
+    then return $ TyRec defaultLoc rep (MkSkolemTVar ("r" <> T.pack (show i))) resType
     else return resType
