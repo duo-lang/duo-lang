@@ -22,15 +22,15 @@ def rec prd splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         }
     };
 
-def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(a), List(a))) -> Void :=
+def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Notp(Tensor(List(a), List(a))) -> Void :=
     \xs ys k => case k of {
-        MkNot(k) => case xs of {
+        MkNotp(k) => case xs of {
             Nil => mu j. MkTensor(Nil, ys) >> k,
             Cons(x1, xs) => case xs of {
                 Nil => mu j. MkTensor(Nil, ys) >> k,
                 Cons(x2, xs) => case ys of {
                     Nil => impossiblePrd,
-                    Cons(y, ys) => splitHalvesHelper xs ys (MkNot(
+                    Cons(y, ys) => splitHalvesHelper xs ys (MkNotp(
                         mu tensor. case tensor of {
                             MkTensor(left, right) =>
                                 MkTensor(Cons(y, left), right)
@@ -42,7 +42,7 @@ def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Not(Tensor(List(
     };
 
 def prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
-    \xs => mu k. splitHalvesHelper xs xs MkNot(k) >> impossibleCns;
+    \xs => mu k. splitHalvesHelper xs xs MkNotp(k) >> impossibleCns;
 
 def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
     \f left right => case left of {

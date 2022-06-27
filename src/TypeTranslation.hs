@@ -103,10 +103,10 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc NegRep tv $ TyData defaultLoc NegRep (Just tn) xtss
+        return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
       Codata -> do
         -- Upper bound translation of codata is empty
-        return $ TyRec defaultLoc NegRep tv $ TyCodata defaultLoc NegRep (Just tn) []
+        return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
 translateTypeUpper' tv@TyVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -143,11 +143,11 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
     case data_polarity of
       Data -> do
         -- Lower bound translation of data is empty
-        return $ TyRec defaultLoc pr tv $ TyData defaultLoc pr (Just tn) []
+        return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc pr tv $ TyCodata defaultLoc pr (Just tn) xtss
+        return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
 translateTypeLower' tv@TyVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
@@ -176,12 +176,18 @@ cleanUpType ty = case ty of
     if S.member tv s then return $ TyRec loc pr tv tyClean
     else return tyClean
   -- Propagate cleanup for data and codata types
-  TyData loc pr mtn xtss -> do
+  TyData loc pr xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
-    return $ TyData loc pr mtn xtss'
-  TyCodata loc pr mtn xtss -> do
+    return $ TyData loc pr xtss'
+  TyDataRefined loc pr tn xtss -> do
     xtss' <- mapM cleanUpXtorSig xtss
-    return $ TyCodata loc pr mtn xtss'
+    return $ TyDataRefined loc pr tn xtss'
+  TyCodata loc pr xtss -> do
+    xtss' <- mapM cleanUpXtorSig xtss
+    return $ TyCodata loc pr xtss'
+  TyCodataRefined loc pr tn xtss -> do
+    xtss' <- mapM cleanUpXtorSig xtss
+    return $ TyCodataRefined loc pr tn xtss'
   -- Type variables remain unchanged
   tv@TyVar{} -> return tv
   -- Other types imply incorrect translation

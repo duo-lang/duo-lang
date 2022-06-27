@@ -92,7 +92,7 @@ instance PrettyAnn CST.XtorSig where
 
 instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embedType typ)
-  
+
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
   prettyAnn CST.TyTop {} = topSym
@@ -114,14 +114,14 @@ instance PrettyAnn CST.Typ where
     in
       prettyAnn ty <> hsep (NE.toList (f <$> tys))
   -- Structural data and codata types
-  prettyAnn (CST.TyXData _ Data   Nothing xtors) =
+  prettyAnn (CST.TyXData _ Data   xtors) =
     angles' commaSym  (prettyAnn <$> xtors)
-  prettyAnn (CST.TyXData _ Codata Nothing xtors) =
+  prettyAnn (CST.TyXData _ Codata xtors) =
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (CST.TyXData _ Data   (Just tn) xtors) =
+  prettyAnn (CST.TyXRefined _ Data   tn xtors) =
     angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (CST.TyXData _ Codata (Just tn) xtors) =
+  prettyAnn (CST.TyXRefined _ Codata tn xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   -- Primitive types
   prettyAnn (CST.TyPrim _ pt) = "#" <> prettyAnn pt
@@ -136,9 +136,9 @@ instance PrettyAnn (RST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTypeScheme tys)
 
 instance PrettyAnn CST.TypeScheme where
-  prettyAnn (CST.TypeScheme { ts_vars = [], ts_monotype }) =
+  prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
     prettyAnn ts_monotype
-  prettyAnn (CST.TypeScheme { ts_vars, ts_monotype }) =
+  prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
     forallSym <+>
     sep (prettyAnn <$> ts_vars ) <>
     "." <+>

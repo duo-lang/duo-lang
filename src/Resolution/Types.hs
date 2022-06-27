@@ -18,9 +18,9 @@ import Utils (Loc(..))
 ---------------------------------------------------------------------------------
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
-resolveTypeScheme rep (TypeScheme { ts_loc, ts_vars, ts_monotype }) = do
+resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if (freeTVars monotype) `S.isSubsetOf` (S.fromList ts_vars)
+    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
         then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
@@ -28,23 +28,23 @@ resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyVar loc v) =
     pure $ RST.TyVar loc rep Nothing v
 -- Nominal Data
-resolveTyp rep (TyXData loc Data Nothing sigs) = do
+resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyData loc rep Nothing sigs
+    pure $ RST.TyData loc rep sigs
 -- Refinement Data
-resolveTyp rep (TyXData loc Data (Just tn) sigs) = do
+resolveTyp rep (TyXRefined loc Data tn sigs) = do
     NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyData loc rep (Just tn') sigs
+    pure $ RST.TyDataRefined loc rep tn' sigs
 -- Nominal Codata
-resolveTyp rep (TyXData loc Codata Nothing sigs) = do
+resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodata loc rep Nothing sigs
+    pure $ RST.TyCodata loc rep sigs
 -- Refinement Codata
-resolveTyp rep (TyXData loc Codata (Just tn) sigs) = do
+resolveTyp rep (TyXRefined loc Codata tn sigs) = do
     NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodata loc rep (Just tn') sigs
+    pure $ RST.TyCodataRefined loc rep tn' sigs
 resolveTyp rep (TyNominal loc name args) = do
     res <- lookupTypeConstructor loc name
     case res of
@@ -90,7 +90,7 @@ resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)
-        
+
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]
 resolveXTorSigs rep sigs = sequence $ resolveXTorSig rep <$> sigs
@@ -152,7 +152,7 @@ associateOps lhs ((loc, s, rhs) :| []) = pure $ TyBinOp loc lhs s rhs
 associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
     (_,op1) <- lookupTyOp loc1 s1
     (_,op2) <- lookupTyOp loc2 s2
-    if (prec op2) > (prec op1) || (assoc op1 == RightAssoc)
+    if prec op2 > prec op1 || (assoc op1 == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
         pure $ TyBinOp loc1 lhs s1 rhs

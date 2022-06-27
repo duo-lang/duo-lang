@@ -58,7 +58,7 @@ data Associativity where
   RightAssoc :: Associativity
   deriving (Eq, Show, Ord)
 
-data Precedence = MkPrecedence Int
+newtype Precedence = MkPrecedence Int
   deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------

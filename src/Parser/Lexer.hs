@@ -68,7 +68,7 @@ commentP = do
   try $ do
     _ <- string "--"
     notFollowedBy (string " |")
-  _ <- (takeWhileP (Just "character") (/= '\n'))
+  _ <- takeWhileP (Just "character") (/= '\n')
   pure ()
 
 -- | Parses a doc comment starting with "-- |" until the end of the line, and does
@@ -123,7 +123,7 @@ floatP = do
 
 lowerCaseId :: Parser (Text, SourcePos)
 lowerCaseId = do
-  (name, pos) <- lexeme $ (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
+  (name, pos) <- lexeme (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
   checkReserved name
   pure (name, pos)
 
@@ -197,9 +197,9 @@ data Keyword where
   KwCodata      :: Keyword
   KwSet         :: Keyword
   KwImport      :: Keyword
-  KwPrd         :: Keyword 
-  KwCns         :: Keyword 
-  KwCmd         :: Keyword 
+  KwPrd         :: Keyword
+  KwCns         :: Keyword
+  KwCmd         :: Keyword
   KwReturn      :: Keyword
   KwClass       :: Keyword
   KwInstance    :: Keyword

@@ -23,6 +23,7 @@ import Text.Megaparsec
 import Parser.Definition
 import Parser.Lexer
 import Syntax.Common
+import Data.Functor ( ($>) )
 
 ---------------------------------------------------------------------------------
 -- Names
@@ -89,7 +90,7 @@ associativityP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|>
 ---------------------------------------------------------------------------------
 
 evalOrderP :: Parser EvaluationOrder
-evalOrderP = (keywordP KwCBV *> pure CBV) <|> (keywordP KwCBN *> pure CBN)
+evalOrderP = (keywordP KwCBV $> CBV) <|> (keywordP KwCBN $> CBN)
 
 -- | Parses one of the keywords "CBV" or "CBN"
 monoKindP :: Parser MonoKind
@@ -102,19 +103,16 @@ monoKindP = CBox <$> evalOrderP
 ---------------------------------------------------------------------------------
 
 varianceP :: Parser Variance
-varianceP = (symbolP SymPlus *> pure Covariant) <|> (symbolP SymMinus *> pure Contravariant)
+varianceP = (symbolP SymPlus $> Covariant) <|> (symbolP SymMinus $> Contravariant)
 
 polyKindP :: Parser PolyKind
 polyKindP = f <|> g
   where
-    f = do
-      eo <- evalOrderP
-      pure (MkPolyKind [] eo)
+    f = MkPolyKind [] <$> evalOrderP
     g = do
       (kindArgs,_) <- parens (tParamP `sepBy` symbolP SymComma)
       _ <- symbolP SymSimpleRightArrow
-      ret <- evalOrderP
-      pure (MkPolyKind kindArgs ret)
+      MkPolyKind kindArgs <$> evalOrderP
 
 tParamP :: Parser (Variance, TVar, MonoKind)
 tParamP = do

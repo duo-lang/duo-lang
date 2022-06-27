@@ -30,7 +30,7 @@ shiftGraph shift = mapTypeAut (+shift)
 
 -- Constructs the union of two TypeAuts, assumes that the node ranges don't overlap.
 unsafeUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
-unsafeUnion (TypeAut polrep (Identity starts1) (TypeAutCore gr1 flowEdges1)) 
+unsafeUnion (TypeAut polrep (Identity starts1) (TypeAutCore gr1 flowEdges1))
             (TypeAut _      (Identity starts2) (TypeAutCore gr2 flowEdges2)) =
   TypeAut { ta_pol = polrep
           , ta_starts = [starts1, starts2]
@@ -56,7 +56,7 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
     fun = minimize . removeAdmissableFlowEdges . determinize
 
 typeAutEqual :: TypeAutDet pol -> TypeAutDet pol -> Bool
-typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1)) 
+typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1))
              (TypeAut _ (Identity start2) (TypeAutCore gr2 flowEdges2))
   = case runStateT (typeAutEqualM (gr1, start1) (gr2, start2)) M.empty of
       Nothing -> False
@@ -82,8 +82,8 @@ typeAutEqualM (gr1, n) (gr2, m) = do
 
 subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either Error Bool
 subsume polrep ty1 ty2 = do
-  aut1 <- (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut ty1
-  aut2 <- (minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges) <$> typeToAut ty2
+  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
+  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
   case polrep of
     PosRep -> pure (isSubtype aut1 aut2)
     NegRep -> pure (isSubtype aut2 aut1)

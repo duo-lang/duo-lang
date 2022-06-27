@@ -5,7 +5,7 @@ import Bool;
 
 def rec prd filterHelper := \p l => case l of {
     Nil => cocase {
-        MkPar(k1,k2) => MkUnit >> k2
+        MkPar(k1,*) => MkUnit
     },
     Cons(x,xs) => case p x of {
         True =>

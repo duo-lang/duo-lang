@@ -2,6 +2,7 @@ module TypeInference.Coalescing ( coalesce ) where
 
 import Control.Monad.State
 import Control.Monad.Reader
+import Data.Bifunctor ( Bifunctor(second) )
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -49,12 +50,12 @@ getRecVar ptv = do
     case M.lookup ptv mp of
       Nothing -> do
           recVar <- freshRecVar
-          modify (\(i,m) -> (i,M.insert ptv recVar m))
+          modify (second (M.insert ptv recVar))
           return recVar
       Just tv -> return tv
 
 coalesce :: SolverResult -> Bisubstitution
-coalesce result@(MkSolverResult { tvarSolution }) = MkBisubstitution (M.fromList xs)
+coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs)
     where
         res = M.keys tvarSolution
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar defaultLoc PosRep Nothing tvar
@@ -90,12 +91,18 @@ coalesceType (TyVar _ NegRep _ tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> return $                                 mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs'))
-coalesceType (TyData loc rep tn xtors) = do
+coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyData loc rep tn xtors')
-coalesceType (TyCodata loc rep tn xtors) = do
+    return (TyData loc rep xtors')
+coalesceType (TyCodata loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodata loc rep tn xtors')
+    return (TyCodata loc rep xtors')
+coalesceType (TyDataRefined loc rep tn xtors) = do
+    xtors' <- sequence $ coalesceXtor <$> xtors
+    return (TyDataRefined loc rep tn xtors')
+coalesceType (TyCodataRefined loc rep tn xtors) = do
+    xtors' <- sequence $ coalesceXtor <$> xtors
+    return (TyCodataRefined loc rep tn xtors')
 coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'
@@ -113,16 +120,16 @@ coalesceType (TyInter loc knd ty1 ty2) = do
     ty2' <- coalesceType ty2
     pure (TyInter loc knd ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
-    modify (\(i,m) -> (i, M.insert (tv, Pos) tv m))
-    let f = (\(x,s) -> (x, S.insert (tv,Pos) s))
+    modify (second (M.insert (tv, Pos) tv))
+    let f = second (S.insert (tv, Pos))
     ty' <- local f $ coalesceType ty
     return $ TyRec loc PosRep tv ty'
 coalesceType (TyRec loc NegRep tv ty) = do
-    modify (\(i,m) -> (i, M.insert (tv, Neg) tv m))
-    let f = (\(x,s) -> (x, S.insert (tv,Neg) s))
+    modify (second (M.insert (tv, Neg) tv))
+    let f = second (S.insert (tv, Neg))
     ty' <- local f $ coalesceType ty
     return $ TyRec loc NegRep tv ty'
-coalesceType t@(TyPrim _ _ _) = return t
+coalesceType t@TyPrim {} = return t
 coalesceType (TyFlipPol _ _) = error "Tried to coalesce TyFlipPol"
 
 

@@ -191,7 +191,7 @@ termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, 
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       _                    -> error "termOpeningRec BOOM"
                                                    | otherwise = bv
-termOpeningRec _ _ fv@(FreeVar _ _ _ _)       = fv
+termOpeningRec _ _ fv@FreeVar {} = fv
 termOpeningRec k args (Xtor loc annot rep ty ns xt subst) =
   Xtor loc annot rep ty ns xt (pctermOpeningRec k args <$> subst)
 termOpeningRec k args (XCase loc annot rep ty ns cases) =
@@ -231,7 +231,7 @@ pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 
 termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 -- Core constructs
-termClosingRec _ _ bv@(BoundVar _ _ _ _) = bv
+termClosingRec _ _ bv@BoundVar {} = bv
 termClosingRec k vars (FreeVar loc PrdRep ty v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep ty (k, fromJust ((Prd,v) `elemIndex` vars))
                                                    | otherwise = FreeVar loc PrdRep ty v
 termClosingRec k vars (FreeVar loc CnsRep ty v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep ty (k, fromJust ((Cns,v) `elemIndex` vars))
@@ -379,5 +379,5 @@ shiftCmdRec dir n (PrimOp ext pt op subst) =
 
 -- | Shift all unbound BoundVars up by one.
 shiftCmd :: ShiftDirection -> Command -> Command
-shiftCmd dir cmd = shiftCmdRec dir 0 cmd
+shiftCmd dir = shiftCmdRec dir 0
 

@@ -85,7 +85,7 @@ instance PrettyAnn VariableState where
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  } = printLowerBounds lbs
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs } = printUpperBounds ubs
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs } =
-    (printLowerBounds lbs) <> line <> (printUpperBounds ubs)
+    printLowerBounds lbs <> line <> printUpperBounds ubs
 
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution } = vsep

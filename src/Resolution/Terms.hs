@@ -56,12 +56,12 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
   -- Check whether the number of arguments in the given binding site
   -- corresponds to the number of arguments specified for the constructor/destructor.
   when (length arity /= length args) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
   case length (filter CST.isStar args) of
     0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
     1 -> do
       let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
-      let (args1,((pc,_):args2)) = break (\(_,x) -> CST.isStar x) zipped
+      let (args1,(pc,_):args2) = break (\(_,x) -> CST.isStar x) zipped
       case pc of
         Cns -> pure $ ImplicitPrdPattern loc xt (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
         Prd -> pure $ ImplicitCnsPattern loc xt (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
@@ -119,7 +119,7 @@ analyzeCase :: DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
             -> ResolverM SomeIntermediateCase
-analyzeCase dc (CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term }) = do
+analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
   analyzedPattern <- analyzePattern dc tmcase_pat
   case analyzedPattern of
     ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
@@ -281,7 +281,7 @@ resolveCommand (CST.CoLambda loc _ _) =
 
 casesToNS :: [CST.TermCase] -> ResolverM NominalStructural
 casesToNS [] = pure Structural
-casesToNS ((CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name _ }):_) = do
+casesToNS (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.XtorPat _ tmcase_name _ }:_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
 
@@ -325,13 +325,13 @@ analyzeSubstitution loc xtor arity subst = do
   when (length arity /= length subst) $
     throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length arity) (length subst)
   -- Dispatch on the number of stars in the substitution
-  case (length (filter isStarT subst)) of
+  case length (filter isStarT subst) of
     0 -> pure $ ExplicitSubst (zip arity (toTm <$> subst))
     1 -> do
       let zipped :: [(PrdCns, CST.TermOrStar)] = zip arity subst
       case span (not . isStarT . snd) zipped of
         (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
-        _ -> throwError $ OtherError (Just loc) ("Compiler bug in analyzeSubstitution")
+        _ -> throwError $ OtherError (Just loc) "Compiler bug in analyzeSubstitution"
     n -> throwError $ OtherError (Just loc) ("At most one star expected. Got " <> T.pack (show n) <> " stars.")
 
 resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
@@ -396,14 +396,14 @@ resolveTerm rep (CST.Semi loc xtor subst tm) = do
         PrdRep ->
           throwError (OtherError (Just loc) "Tried to resolve Semi to a producer, but implicit argument stands for a producer")
         CnsRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
+          subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
           pure $ RST.Semi loc CnsRep ns xtor (subst1', CnsRep, subst2') tm'
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
+          subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
           pure $ RST.Semi loc PrdRep ns xtor (subst1', PrdRep, subst2') tm'
         CnsRep ->
           throwError (OtherError (Just loc) "Tried to resolve Semi to a producer, but implicit argument stands for a producer")
@@ -421,13 +421,13 @@ resolveTerm rep (CST.Dtor loc xtor tm subst) = do
         PrdRep -> do
           throwError (OtherError (Just loc) "Tried to resolve Dtor to a producer, but implicit argument stands for a producer")
         CnsRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
-          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
+          subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
           pure $ RST.Dtor loc CnsRep ns xtor tm' (subst1', CnsRep, subst2')
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
-          subst1' <- forM subst1 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
           pure $ RST.Dtor loc PrdRep ns xtor tm' (subst1', PrdRep, subst2')
         CnsRep -> do
@@ -521,14 +521,14 @@ resolveTerm CnsRep (CST.NatLit loc _ns _i) =
 -- Function specific syntax sugar
 ---------------------------------------------------------------------------------
 resolveTerm PrdRep (CST.Lambda loc fv tm) =
-  do 
-    tm' <- resolveTerm PrdRep tm 
-    let tm'' = RST.termClosing [(Prd,fv)] tm'  
+  do
+    tm' <- resolveTerm PrdRep tm
+    let tm'' = RST.termClosing [(Prd,fv)] tm'
     return $ RST.Lambda loc PrdRep fv tm''
 resolveTerm CnsRep (CST.CoLambda loc fv tm) =
-  do 
-    tm' <- resolveTerm CnsRep tm 
-    let tm'' = RST.termClosing [(Cns,fv)] tm'  
+  do
+    tm' <- resolveTerm CnsRep tm
+    let tm'' = RST.termClosing [(Cns,fv)] tm'
     return $ RST.Lambda loc CnsRep fv tm''
 resolveTerm rep (CST.FunApp loc fun arg) =
   resolveApp rep loc fun arg
