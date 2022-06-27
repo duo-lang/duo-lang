@@ -49,7 +49,7 @@ linearContextToArity = map f
 
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
+  , ts_vars :: [UniTVar]
   , ts_monotype :: Typ
   }
   deriving Show

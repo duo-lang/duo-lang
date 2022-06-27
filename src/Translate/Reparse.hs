@@ -464,8 +464,8 @@ embedType (RST.TyUnion loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ (RST.MkTVar name) ty) =
-  CST.TyRec loc (MkSkolemTVar name) (embedType ty)
+embedType (RST.TyRec loc _ tv ty) =
+  CST.TyRec loc tv (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
 embedType (RST.TyFlipPol _ ty) = embedType ty

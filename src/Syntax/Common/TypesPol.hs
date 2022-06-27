@@ -88,7 +88,7 @@ data Typ (pol :: Polarity) where
   TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
   TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
-  TyRec :: Loc -> PolarityRep pol -> UniTVar -> Typ pol -> Typ pol
+  TyRec :: Loc -> PolarityRep pol -> SkolemTVar -> Typ pol -> Typ pol
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
@@ -163,7 +163,7 @@ instance FreeTVars (Typ pol) where
   freeTVars TyBot {}                 = S.empty
   freeTVars (TyUnion _ _ ty ty')     = S.union (freeTVars ty) (freeTVars ty')
   freeTVars (TyInter _ _ ty ty')     = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ v t)          = S.delete v (freeTVars t)
+  freeTVars (TyRec _ _ _ t)          = freeTVars t
   freeTVars (TyNominal _ _ _ _ args) = S.unions (freeTVars <$> args)
   freeTVars (TySyn _ _ _ ty)         = freeTVars ty
   freeTVars (TyData _ _ xtors)     = S.unions (freeTVars <$> xtors)
