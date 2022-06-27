@@ -26,12 +26,9 @@ import TypeInference.Constraints
 ------------------------------------------------------------------------------
 
 data SolverState = SolverState
-  { sst_bounds :: Map TVar VariableState
+  { sst_bounds :: Map UniTVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
   }
-
-tUniVarToTVar :: UniTVar -> TVar
-tUniVarToTVar (MkUniTVar name) = MkTVar name
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs) =
@@ -58,10 +55,10 @@ addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation wh
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
-modifyBounds :: (VariableState -> VariableState) -> TVar -> SolverM ()
+modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
 
-getBounds :: TVar -> SolverM VariableState
+getBounds :: UniTVar -> SolverM VariableState
 getBounds uv = do
   bounds <- gets sst_bounds
   case M.lookup uv bounds of
@@ -71,14 +68,14 @@ getBounds uv = do
                                 ]
     Just vs -> return vs
 
-addUpperBound :: TVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
+addUpperBound :: UniTVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs kind) -> VariableState (ty:ubs) lbs kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
-addLowerBound :: TVar -> Syntax.Common.TypesPol.Typ Pos -> SolverM [Constraint ConstraintInfo]
+addLowerBound :: UniTVar -> Syntax.Common.TypesPol.Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs kind) -> VariableState ubs (ty:lbs) kind) uv
   bounds <- getBounds uv
@@ -96,10 +93,10 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
-      (SubType _ (TyVar _ PosRep _ uv) ub) -> do
+      (SubType _ (UniTyVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType _ lb (TyVar _ NegRep _ uv)) -> do
+      (SubType _ lb (UniTyVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
       _ -> do
@@ -243,15 +240,10 @@ subConstraints (SubType _ t1 t2) = do
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
-tVarToTUniVar :: TVar -> UniTVar
-tVarToTUniVar (MkTVar name) = MkUniTVar name
 
-convertMap :: Map TVar VariableState -> Map UniTVar VariableState
-convertMap m = M.fromList (map (\x -> ( tVarToTUniVar (fst x), snd x)) (M.toList m))
---convertMap m = m.ToList()
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either Error SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  pure (MkSolverResult (convertMap (sst_bounds solverState)))
+  pure (MkSolverResult (sst_bounds solverState))
 
