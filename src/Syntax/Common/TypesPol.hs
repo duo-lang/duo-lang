@@ -154,24 +154,24 @@ deriving instance Show (TopAnnot Neg)
 
 -- | Typeclass for computing free type variables
 class FreeTVars (a :: Type) where
-  freeTVars :: a -> Set UniTVar
+  freeTVars :: a -> Set SkolemTVar
 
 instance FreeTVars (Typ pol) where
-  freeTVars (UniTyVar _ _ _ tv)      = S.singleton tv
-  freeTVars SkolemTyVar{}            = S.empty
-  freeTVars TyTop {}                 = S.empty
-  freeTVars TyBot {}                 = S.empty
-  freeTVars (TyUnion _ _ ty ty')     = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyInter _ _ ty ty')     = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ _ t)          = freeTVars t
-  freeTVars (TyNominal _ _ _ _ args) = S.unions (freeTVars <$> args)
-  freeTVars (TySyn _ _ _ ty)         = freeTVars ty
-  freeTVars (TyData _ _ xtors)     = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodata _ _ xtors)   = S.unions (freeTVars <$> xtors)
+  freeTVars (SkolemTyVar _ _ _ tv)        = S.singleton tv
+  freeTVars UniTyVar{}                    = S.empty
+  freeTVars TyTop {}                      = S.empty
+  freeTVars TyBot {}                      = S.empty
+  freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyRec _ _ _ t)               = freeTVars t
+  freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
+  freeTVars (TySyn _ _ _ ty)              = freeTVars ty
+  freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
   freeTVars (TyDataRefined _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodataRefined _ _ _ xtors) = S.unions (freeTVars <$> xtors)
-  freeTVars (TyPrim _ _ _)           = S.empty
-  freeTVars (TyFlipPol _ ty)         = freeTVars ty
+  freeTVars (TyPrim _ _ _)                = S.empty
+  freeTVars (TyFlipPol _ ty)              = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
@@ -188,8 +188,7 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
---generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
-generalize = TypeScheme defaultLoc []
+generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
 ------------------------------------------------------------------------------
 -- Bisubstitution and Zonking
 ------------------------------------------------------------------------------
