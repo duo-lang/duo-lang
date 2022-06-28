@@ -113,13 +113,13 @@ data CmdCase = MkCmdCase
 deriving instance Show CmdCase
 
 
-data InstanceCase (pc :: PrdCns) = MkInstanceCase
-  { instancecase_loc  :: Loc
-  , instancecase_pat  :: Pattern
-  , instancecase_term :: Term pc
+data InstanceCase = MkInstanceCase
+  { instancecase_loc :: Loc
+  , instancecase_pat :: Pattern
+  , instancecase_cmd :: Command
   }
 
-deriving instance Show (InstanceCase pc)
+deriving instance Show InstanceCase
 
 
 

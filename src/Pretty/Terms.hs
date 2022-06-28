@@ -64,7 +64,7 @@ instance PrettyAnn CST.TermOrStar  where
 
 -- InstanceCase
 
-instance PrettyAnn (RST.InstanceCase pc) where
+instance PrettyAnn RST.InstanceCase where
   prettyAnn instancecase = prettyAnn (reparseInstanceCase instancecase)
 
 instance PrettyAnn CST.InstanceCase where

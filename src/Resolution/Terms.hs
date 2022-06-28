@@ -188,15 +188,15 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
 
-resolveInstanceCase :: CST.InstanceCase -> ResolverM (RST.InstanceCase Cns)
-resolveInstanceCase (CST.MkInstanceCase loc pat t) = do
-  intermediateCase <- analyzeInstancePattern pat
+resolveInstanceCase :: CST.InstanceCase -> ResolverM RST.InstanceCase
+resolveInstanceCase CST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_term } = do
+  intermediateCase <- analyzeInstancePattern instancecase_pat
   case intermediateCase of
     (ExplicitPattern loc' xtor args) -> do
-      tm' <- resolveTerm CnsRep t
-      pure RST.MkInstanceCase { instancecase_loc  = loc
+      cmd <- resolveCommand instancecase_term
+      pure RST.MkInstanceCase { instancecase_loc = instancecase_loc
                               , instancecase_pat = RST.XtorPat loc' xtor (second Just <$> args)
-                              , instancecase_term = RST.termClosing args tm'
+                              , instancecase_cmd = RST.commandClosing args cmd
                               }
     _ -> throwError (OtherError Nothing "Expected explicit patterns in instance definition.")
 

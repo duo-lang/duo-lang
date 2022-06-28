@@ -74,6 +74,13 @@ openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat loc xt args, 
                 , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete cmdcase_cmd)
                 }
 
+openInstanceCase :: RST.InstanceCase -> RST.InstanceCase
+openInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat = RST.XtorPat loc xt args, instancecase_cmd } =
+  RST.MkInstanceCase { instancecase_loc = instancecase_loc
+                     , instancecase_pat = RST.XtorPat loc xt args
+                     , instancecase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete instancecase_cmd)
+                     }
+
 openPCTermComplete :: RST.PrdCnsTerm -> RST.PrdCnsTerm
 openPCTermComplete (RST.PrdTerm tm) = RST.PrdTerm $ openTermComplete tm
 openPCTermComplete (RST.CnsTerm tm) = RST.CnsTerm $ openTermComplete tm
@@ -290,11 +297,11 @@ createNamesTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } 
   pat <- createNamesPatI tmcasei_pat
   pure $ RST.MkTermCaseI tmcasei_loc pat term
 
-createNamesInstanceCase :: RST.InstanceCase pc -> CreateNameM (RST.InstanceCase pc)
-createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_term } = do
-  term <- createNamesTerm instancecase_term
+createNamesInstanceCase :: RST.InstanceCase -> CreateNameM RST.InstanceCase
+createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
+  cmd <- createNamesCommand instancecase_cmd
   pat <- createNamesPat instancecase_pat
-  pure $ RST.MkInstanceCase instancecase_loc pat term
+  pure $ RST.MkInstanceCase instancecase_loc pat cmd
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
@@ -420,11 +427,11 @@ embedInstancePat :: RST.Pattern -> CST.InstancePat
 embedInstancePat (RST.XtorPat loc xt args) =
   CST.MethodPat loc (MkMethodName $ unXtorName xt) (CST.FoSFV . fromJust . snd <$> args)
 
-embedInstanceCase :: RST.InstanceCase pc -> CST.InstanceCase
-embedInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_term } =
+embedInstanceCase :: RST.InstanceCase -> CST.InstanceCase
+embedInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
   CST.MkInstanceCase { instancecase_loc = instancecase_loc
                      , instancecase_pat = embedInstancePat instancecase_pat
-                     , instancecase_term = embedTerm instancecase_term}
+                     , instancecase_term = embedCommand instancecase_cmd}
 
 embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp
 embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
@@ -539,7 +546,7 @@ reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
   embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
 
-reparseInstanceCase :: RST.InstanceCase pc -> CST.InstanceCase
+reparseInstanceCase :: RST.InstanceCase -> CST.InstanceCase
 reparseInstanceCase instancecase =
   embedInstanceCase (evalState (createNamesInstanceCase instancecase) names)
 
@@ -606,7 +613,7 @@ reparseInstanceDecl RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_d
                               , instancedecl_doc   = instancedecl_doc
                               , instancedecl_name  = instancedecl_name
                               , instancedecl_typ   = embedType (fst instancedecl_typ)
-                              , instancedecl_cases = reparseInstanceCase <$> instancedecl_cases
+                              , instancedecl_cases = reparseInstanceCase . openInstanceCase <$> instancedecl_cases
                               }
 
 reparseDecl :: RST.Declaration -> CST.Declaration
