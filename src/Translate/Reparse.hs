@@ -473,7 +473,7 @@ embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
                  , ts_vars = ts_vars
-                 , ts_constraints = []
+                 , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
                  , ts_monotype = embedType ts_monotype
                  }
 
