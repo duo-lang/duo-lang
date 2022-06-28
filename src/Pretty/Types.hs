@@ -114,14 +114,14 @@ instance PrettyAnn CST.Typ where
     in
       prettyAnn ty <> hsep (NE.toList (f <$> tys))
   -- Structural data and codata types
-  prettyAnn (CST.TyXData _ Data   Nothing xtors) =
+  prettyAnn (CST.TyXData _ Data   xtors) =
     angles' commaSym  (prettyAnn <$> xtors)
-  prettyAnn (CST.TyXData _ Codata Nothing xtors) =
+  prettyAnn (CST.TyXData _ Codata xtors) =
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (CST.TyXData _ Data   (Just tn) xtors) =
+  prettyAnn (CST.TyXRefined _ Data   tn xtors) =
     angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (CST.TyXData _ Codata (Just tn) xtors) =
+  prettyAnn (CST.TyXRefined _ Codata tn xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   -- Primitive types
   prettyAnn (CST.TyPrim _ pt) = "#" <> prettyAnn pt

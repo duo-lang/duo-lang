@@ -459,10 +459,14 @@ embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
 embedType (RST.TyVar loc _ _ tv) =
   CST.TyVar loc tv
-embedType (RST.TyData loc _ tn xtors) =
-  CST.TyXData loc Data (rnTnName <$> tn) (embedXtorSig <$> xtors)
-embedType (RST.TyCodata loc _ tn xtors) =
-  CST.TyXData loc Codata (rnTnName <$> tn) (embedXtorSig <$> xtors)
+embedType (RST.TyData loc _ xtors) =
+  CST.TyXData loc Data (embedXtorSig <$> xtors)
+embedType (RST.TyCodata loc _ xtors) =
+  CST.TyXData loc Codata (embedXtorSig <$> xtors)
+embedType (RST.TyDataRefined loc _ tn xtors) =
+  CST.TyXRefined loc Data (rnTnName tn) (embedXtorSig <$> xtors)
+embedType (RST.TyCodataRefined loc _ tn xtors) =
+  CST.TyXRefined loc Codata (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyNominal loc _ _ nm args) =
   CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =

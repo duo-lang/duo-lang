@@ -40,7 +40,12 @@ checkVarianceTyp loc var polyKind (TyVar _loc' tVar) =
     Just var' -> if var == var'
                  then return ()
                  else throwError (OtherError (Just loc) $ "Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var'))
-checkVarianceTyp loc var polyKind (TyXData _loc' dataCodata _mTypeName xtorSigs) = do
+checkVarianceTyp loc var polyKind (TyXData _loc' dataCodata  xtorSigs) = do
+  let var' = var <> case dataCodata of
+                      Data   -> Covariant
+                      Codata -> Contravariant
+  sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
+checkVarianceTyp loc var polyKind (TyXRefined _loc' dataCodata  _tn xtorSigs) = do
   let var' = var <> case dataCodata of
                       Data   -> Covariant
                       Codata -> Contravariant
