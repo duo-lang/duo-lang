@@ -11,8 +11,8 @@ class Eq(+a : CBV) {
 
 -- | Instance definition.
 instance Eq Bool {
-  Equals(x, y, k) => mu k1. or (and x y) (not (or x y)) >> k,
-  Differ(x, y, k) => mu k1. and (or x y) (not (and x y)) >> k
+  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
+  Differ(x, y, k) => and (or x y) (not (and x y)) >> k
 };
 
 -- | Usage with type class constraint.
