@@ -10,7 +10,7 @@ import Data.Text qualified as T
 import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
-import Resolution.Terms (resolveTerm, resolveCommand)
+import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp)
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
@@ -217,6 +217,47 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
                               }
 
 ---------------------------------------------------------------------------------
+-- Type Class Declaration
+---------------------------------------------------------------------------------
+
+resolveClassDeclaration :: CST.ClassDeclaration 
+                        -> ResolverM RST.ClassDeclaration
+resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
+  let go :: (PrdCns, Typ) -> ResolverM (PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)
+      go (prdcns, typ) = do
+            typos <- resolveTyp PosRep typ
+            tyneg <- resolveTyp NegRep typ
+            pure (prdcns, typos, tyneg)
+      go' :: (XtorName, [(PrdCns, Typ)]) -> ResolverM (XtorName, [(PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)])
+      go' (xtor, typs) = do
+            types <- forM typs go
+            pure (xtor, types)
+  xtorRes <- forM classdecl_xtors go'
+  pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
+                              , classdecl_doc = classdecl_doc
+                              , classdecl_name = classdecl_name
+                              , classdecl_kinds = classdecl_kinds
+                              , classdecl_xtors = xtorRes
+                              }
+
+---------------------------------------------------------------------------------
+-- Instance Declaration
+---------------------------------------------------------------------------------
+
+resolveInstanceDeclaration :: CST.InstanceDeclaration 
+                        -> ResolverM RST.InstanceDeclaration
+resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  typ <- resolveTyp PosRep instancedecl_typ
+  tyn <- resolveTyp NegRep instancedecl_typ
+  tc <- resolveInstanceCases instancedecl_cases
+  pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                                 , instancedecl_doc = instancedecl_doc
+                                 , instancedecl_name = instancedecl_name
+                                 , instancedecl_typ = (typ, tyn)
+                                 , instancedecl_cases = tc
+                                 }
+
+---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
@@ -248,10 +289,12 @@ resolveDecl (CST.TyOpDecl decl) = do
 resolveDecl (CST.TySynDecl decl) = do
   decl' <- resolveTySynDeclaration decl
   pure (RST.TySynDecl decl')
-resolveDecl (CST.ClassDecl _decl) =
-  throwError (OtherError Nothing "Class Declaration: Not implemented yet")
-resolveDecl (CST.InstanceDecl _decl) =
-  throwError (OtherError Nothing "Instance Declaration: Not implemented yet")
+resolveDecl (CST.ClassDecl decl) = do
+  decl' <- resolveClassDeclaration decl
+  pure (RST.ClassDecl decl')
+resolveDecl (CST.InstanceDecl decl) = do
+  decl' <- resolveInstanceDeclaration decl
+  pure (RST.InstanceDecl decl')
 resolveDecl CST.ParseErrorDecl =
   throwError (OtherError Nothing "Unreachable: ParseErrorDecl cannot be parsed")
 

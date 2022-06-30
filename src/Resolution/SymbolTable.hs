@@ -44,27 +44,30 @@ data TypeNameResolve where
 data XtorNameResolve where
   -- | Xtor was introduced in a data or codata declaration
   XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
+  -- | Xtor was introduced as a method in a class declaration
+  MethodNameResult :: ClassName -> Arity -> XtorNameResolve
 
 -- | What a toplevel definition can resolve to during name resolution
 data FreeVarNameResolve where
   FreeVarResult :: FreeVarNameResolve
 
 data SymbolTable = MkSymbolTable
-  { xtorNameMap :: Map XtorName    XtorNameResolve
-  , typeNameMap :: Map TypeName    TypeNameResolve
-  , freeVarMap  :: Map FreeVarName FreeVarNameResolve
-  , tyOps :: [TyOp]
-  , imports :: [(ModuleName, Loc)]
+  { xtorNameMap  :: Map XtorName XtorNameResolve
+  , typeNameMap  :: Map TypeName TypeNameResolve
+  , freeVarMap   :: Map FreeVarName FreeVarNameResolve
+  , classMethods :: Map ClassName [XtorName] -- TODO: use MethodName instead
+  , tyOps        :: [TyOp]
+  , imports      :: [(ModuleName, Loc)]
   }
 
 emptySymbolTable :: SymbolTable
-emptySymbolTable  = MkSymbolTable
-    { xtorNameMap = M.empty
-    , typeNameMap =  M.empty
-    , freeVarMap  = M.empty
-    , tyOps       = []
-    , imports     = []
-    }
+emptySymbolTable = MkSymbolTable { xtorNameMap  = M.empty
+                                 , typeNameMap  = M.empty
+                                 , freeVarMap   = M.empty
+                                 , classMethods = M.empty
+                                 , tyOps        = []
+                                 , imports      = []
+                                 }
 
 instance Show SymbolTable where
   show _ = "<SymbolTable>"
@@ -166,6 +169,10 @@ createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }
   checkFreshFreeVarName cmddecl_loc cmddecl_name st
   pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _) st = pure st
-createSymbolTable' _ ClassDecl {} st = pure st
+createSymbolTable' _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_name, classdecl_xtors})  st = do
+  let xtor_names = fst <$> classdecl_xtors
+  mapM_ (flip (checkFreshXtorName classdecl_loc) st) xtor_names
+  pure $ st { classMethods = M.insert classdecl_name xtor_names (classMethods st)
+            , xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . fmap fst . snd <$> classdecl_xtors)) (xtorNameMap st) }
 createSymbolTable' _ InstanceDecl {} st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st

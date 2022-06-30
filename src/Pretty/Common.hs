@@ -36,6 +36,9 @@ instance PrettyAnn DocComment where
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
+instance PrettyAnn MethodName where
+  prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
+
 instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm
 

@@ -2,7 +2,7 @@
 module Syntax.RST.Program where
 
 import Syntax.Common
-import Syntax.RST.Terms( Command, Term, TermCase )
+import Syntax.RST.Terms( Command, Term, InstanceCase )
 import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
@@ -130,7 +130,7 @@ data InstanceDeclaration = MkInstanceDeclaration
     -- ^ The name of the type class the instance is for.
   , instancedecl_typ :: (Typ Pos, Typ Neg)
     -- ^ The type the instance is being defined for.
-  , instancedecl_cases :: [TermCase Cns] -- replace with [(TermCase Prd, TermCase Cns)] ?
+  , instancedecl_cases :: [InstanceCase]
     -- ^ The method definitions for the class.
   }
 

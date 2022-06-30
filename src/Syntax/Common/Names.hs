@@ -31,8 +31,11 @@ newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord,
 newtype UniTVar = MkUniTVar { unUniTVar :: Text } deriving (Eq, Show, Ord)
 newtype SkolemTVar = MkSkolemTVar { unSkolemTVar :: Text} deriving (Eq,Show,Ord)
 
--- | Name of a free variable. Starts with an uppercase letter.
+-- | Name of a type class. Starts with an uppercase letter.
 newtype ClassName = MkClassName { unClassName :: Text } deriving (Eq, Show, Ord)
+
+-- | Name of a type class method. Starts with an uppercase letter.
+newtype MethodName = MkMethodName { unMethodName :: Text } deriving (Eq, Show, Ord)
 
 ---------------------------------------------------------------------------------
 -- Doc comments

@@ -1,4 +1,4 @@
-module Resolution.Terms (resolveTerm, resolveCommand) where
+module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases) where
 
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
@@ -151,7 +151,7 @@ analyzeCases dc cases = do
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwError $ OtherError Nothing "Cases mix the use of both explicit and implicit patterns."
 
-
+  
 ---------------------------------------------------------------------------------
 -- Resolve Cases
 ---------------------------------------------------------------------------------
@@ -179,6 +179,25 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
                       , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
+
+resolveInstanceCase :: IntermediateCase -> ResolverM RST.InstanceCase
+resolveInstanceCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+  cmd' <- resolveCommand icase_term
+  pure RST.MkInstanceCase { instancecase_loc = icase_loc
+                          , instancecase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
+                          , instancecase_cmd = RST.commandClosing icase_args cmd'
+                          }
+
+
+resolveInstanceCases :: [CST.TermCase] -> ResolverM [RST.InstanceCase]
+resolveInstanceCases cases = do
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    ExplicitCases explicitCases ->
+      sequence $ resolveInstanceCase <$> explicitCases
+    ImplicitCases _rep _implicitCases ->
+      throwError (OtherError Nothing "Expected explicit patterns in instance definition.")
+
 
 ---------------------------------------------------------------------------------
 -- Resolving PrimCommands

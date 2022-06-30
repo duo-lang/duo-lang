@@ -1,7 +1,6 @@
 module Parser.Terms
   ( termP
-  , termCaseP
-  ) where
+  , termCaseP) where
 
 import Data.Bifunctor (first)
 import Data.Foldable
@@ -309,8 +308,6 @@ termCaseP =  do
                               , tmcase_pat = pat
                               , tmcase_term  = t }
   return (pmcase, endPos)
-
-
 
 --------------------------------------------------------------------------------------------
 -- CST-Sugar
