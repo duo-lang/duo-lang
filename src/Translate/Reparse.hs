@@ -441,8 +441,8 @@ resugarType _ = Nothing
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyVar loc _ _ (RST.MkTVar name)) =
-  CST.TySkolemVar loc (MkSkolemTVar name)
+embedType (RST.TyVar loc _ _ tv@(RST.MkTVar _name)) =
+  CST.TySkolemVar loc (RST.tVarToSkolemTVar tv)
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
@@ -463,8 +463,8 @@ embedType (RST.TyUnion loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ (RST.MkTVar name) ty) =
-  CST.TyRec loc (MkSkolemTVar name) (embedType ty)
+embedType (RST.TyRec loc _ tv@(RST.MkTVar _name) ty) =
+  CST.TyRec loc (RST.tVarToSkolemTVar tv) (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
 embedType (RST.TyFlipPol _ ty) = embedType ty
