@@ -161,12 +161,7 @@ prettyTVars tvs =
     $   mempty
     <+> cat
           (punctuate
-            comma
-            (   (\(var, v, k) ->
-                  prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k
-                )
-            <$> tvs
-            )
+            comma (prettyTParam <$> tvs)
           )
     <+> mempty
 

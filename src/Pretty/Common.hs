@@ -125,4 +125,4 @@ instance PrettyAnn PolyKind where
     prettyAnn returnKind
 
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
-prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> ":" <+> prettyAnn k
+prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k
