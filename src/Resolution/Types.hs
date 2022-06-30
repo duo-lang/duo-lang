@@ -20,13 +20,15 @@ import Utils (Loc(..))
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
-        then pure (RST.TypeScheme ts_loc ts_vars monotype)
+    if freeTVars monotype `S.isSubsetOf` S.fromList (map RST.skolemTVarToTVar ts_vars)
+        then pure (RST.TypeScheme ts_loc (map RST.skolemTVarToTVar ts_vars) monotype)
         else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyVar loc v) =
-    pure $ RST.TyVar loc rep Nothing v
+resolveTyp rep (TyUniVar loc v) =
+    pure $ RST.TyVar loc rep Nothing (RST.uniTVarToTVar v)
+resolveTyp rep (TySkolemVar loc v) = 
+    pure $ RST.TyVar loc rep Nothing (RST.skolemTVarToTVar v)
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
@@ -59,7 +61,7 @@ resolveTyp rep (TyNominal loc name args) = do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 resolveTyp rep (TyRec loc v typ) =
-    RST.TyRec loc rep v <$> resolveTyp rep typ
+    RST.TyRec loc rep (RST.skolemTVarToTVar v) <$> resolveTyp rep typ
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
     throwError (LowerError (Just loc) TopInPosPolarity)
@@ -86,7 +88,7 @@ resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
         throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
-            f :: ((Variance, TVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
+            f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)

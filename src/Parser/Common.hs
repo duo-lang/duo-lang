@@ -34,10 +34,10 @@ freeVarNameP = try $ do
   (name, pos) <- lowerCaseId
   return (MkFreeVarName name, pos)
 
-tvarP :: Parser (TVar, SourcePos)
+tvarP :: Parser (SkolemTVar, SourcePos)
 tvarP = try $ do
   (name, pos) <- lowerCaseId
-  return (MkTVar name, pos)
+  return (MkSkolemTVar name, pos)
 
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
@@ -119,7 +119,7 @@ polyKindP = f <|> g
       _ <- symbolP SymSimpleRightArrow
       MkPolyKind kindArgs <$> evalOrderP
 
-tParamP :: Parser (Variance, TVar, MonoKind)
+tParamP :: Parser (Variance, SkolemTVar, MonoKind)
 tParamP = do
   v <- varianceP
   (tvar,_) <- tvarP
