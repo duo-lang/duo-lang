@@ -73,6 +73,18 @@ deriving instance Show (XtorSig pol)
 
 newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
 
+tVarToUniTVar :: TVar -> UniTVar 
+tVarToUniTVar (MkTVar name) = MkUniTVar name
+
+skolemTVarToTVar :: SkolemTVar -> TVar
+skolemTVarToTVar (MkSkolemTVar name) = MkTVar name
+
+uniTVarToTVar :: UniTVar -> TVar 
+uniTVarToTVar (MkUniTVar name) = MkTVar name
+
+tVarToSkolemTVar :: TVar -> SkolemTVar
+tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
+
 data Typ (pol :: Polarity) where
   TyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> TVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.

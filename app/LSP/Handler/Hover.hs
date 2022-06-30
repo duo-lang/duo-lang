@@ -29,8 +29,6 @@ import Utils (Loc)
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
 ---------------------------------------------------------------------------------
-tVarToUniTVar :: TVar -> UniTVar 
-tVarToUniTVar (MkTVar name) = MkUniTVar name
 
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do

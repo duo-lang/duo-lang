@@ -17,11 +17,6 @@ import Utils
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
-uniTVarToTVar :: UniTVar -> TVar 
-uniTVarToTVar (MkUniTVar name) = MkTVar name
-
-tVarToUniTVar :: TVar -> UniTVar
-tVarToUniTVar (MkTVar name) = MkUniTVar name
 
 type CoalesceState  = (Int, Map (TVar, Polarity) TVar)
 type CoalesceReader = (SolverResult, Set (TVar, Polarity))

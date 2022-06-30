@@ -55,18 +55,6 @@ import Utils
 -- We use varCount for generating fresh type variables.
 -- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
-skolemTVarToTVar :: SkolemTVar -> TVar
-skolemTVarToTVar (MkSkolemTVar name) = MkTVar name
-
---uniTVarToTVar :: UniTVar -> TVar 
---uniTVarToTVar (MkUniTVar name) = MkTVar name
-
-tVarToUniTVar :: TVar -> UniTVar
-tVarToUniTVar (MkTVar name) = MkUniTVar name
-
---tVarToSkolemTVar :: TVar -> SkolemTVar
---tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
-
 data GenerateState = GenerateState
   { varCount :: Int
   , constraintSet :: ConstraintSet
