@@ -19,6 +19,7 @@ import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common
 import Utils (Loc)
+import Data.Bifunctor (second)
 
 
 ---------------------------------------------------------------------------------
@@ -222,20 +223,21 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 resolveClassDeclaration :: CST.ClassDeclaration 
                         -> ResolverM RST.ClassDeclaration
 resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
-  let biAp :: Monad m => (a -> m b) -> (a -> m c) -> a -> m (b, c)
-      biAp f g x = do
-        fst' <- f x
-        snd' <- g x
-        pure (fst', snd')
-  ty <- mapM (mapM (biAp (resolveTyp PosRep) (resolveTyp NegRep))) ((snd <$>) . snd <$> classdecl_xtors)
-  let zip3 :: [a] -> [(b,c)] -> [(a,b,c)]
-      zip3  = zipWith (\x (y,z) -> (x,y,z))
-  let xtorsRes = zipWith (\(x,ts) tys -> (x,zip3 (fst <$> ts) tys)) classdecl_xtors ty
+  let -- go :: (PrdCns, Typ) -> ResolverM (PrdCns, Typ 'Pos, Typ 'Neg)
+      go (prdcns, typ) = do
+        typos <- resolveTyp PosRep typ
+        tyneg <- resolveTyp NegRep typ
+        pure (prdcns, typos, tyneg)
+  let -- go' :: [(XtorName, [(PrdCns, Typ)])] -> ResolverM [(XtorName, [(PrdCns, Typ 'Pos, Typ 'Neg)])]
+      go' (xtor, typs) = do
+        types <- forM typs go
+        pure (xtor, types)
+  xtorRes <- forM classdecl_xtors go'
   pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
                               , classdecl_doc = classdecl_doc
                               , classdecl_name = classdecl_name
                               , classdecl_kinds = classdecl_kinds
-                              , classdecl_xtors = xtorsRes
+                              , classdecl_xtors = xtorRes
                               }
 
 ---------------------------------------------------------------------------------
