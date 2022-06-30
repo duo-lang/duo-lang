@@ -223,15 +223,15 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 resolveClassDeclaration :: CST.ClassDeclaration 
                         -> ResolverM RST.ClassDeclaration
 resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
-  let -- go :: (PrdCns, Typ) -> ResolverM (PrdCns, Typ 'Pos, Typ 'Neg)
+  let go :: (PrdCns, Typ) -> ResolverM (PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)
       go (prdcns, typ) = do
-        typos <- resolveTyp PosRep typ
-        tyneg <- resolveTyp NegRep typ
-        pure (prdcns, typos, tyneg)
-  let -- go' :: [(XtorName, [(PrdCns, Typ)])] -> ResolverM [(XtorName, [(PrdCns, Typ 'Pos, Typ 'Neg)])]
+            typos <- resolveTyp PosRep typ
+            tyneg <- resolveTyp NegRep typ
+            pure (prdcns, typos, tyneg)
+      go' :: (XtorName, [(PrdCns, Typ)]) -> ResolverM (XtorName, [(PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)])
       go' (xtor, typs) = do
-        types <- forM typs go
-        pure (xtor, types)
+            types <- forM typs go
+            pure (xtor, types)
   xtorRes <- forM classdecl_xtors go'
   pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
                               , classdecl_doc = classdecl_doc
