@@ -19,7 +19,6 @@ import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common
 import Utils (Loc)
-import Data.Bifunctor (second)
 
 
 ---------------------------------------------------------------------------------
