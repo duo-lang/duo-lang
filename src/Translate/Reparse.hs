@@ -75,9 +75,9 @@ openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat loc xt args, 
                 }
 
 openInstanceCase :: RST.InstanceCase -> RST.InstanceCase
-openInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat = RST.XtorPat loc xt args, instancecase_cmd } =
+openInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat = pat@(RST.XtorPat _loc _xt args), instancecase_cmd } =
   RST.MkInstanceCase { instancecase_loc = instancecase_loc
-                     , instancecase_pat = RST.XtorPat loc xt args
+                     , instancecase_pat = pat
                      , instancecase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete instancecase_cmd)
                      }
 
