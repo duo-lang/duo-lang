@@ -252,7 +252,7 @@ instanceDeclarationP doc = do
   recoverDeclaration $ do
     className  <- fst <$> classNameP
     typ        <- fst <$> typP
-    (cases, _) <- braces ((fst <$> instanceCaseP) `sepBy` symbolP SymComma)
+    (cases, _) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
     endPos     <- symbolP SymSemi
     let decl = MkInstanceDeclaration (Loc startPos endPos) doc className typ cases
     pure (InstanceDecl decl)

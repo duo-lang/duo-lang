@@ -423,15 +423,12 @@ embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
                  , tmcase_term = embedTerm tmcasei_term
                  }
 
-embedInstancePat :: RST.Pattern -> CST.InstancePat
-embedInstancePat (RST.XtorPat loc xt args) =
-  CST.MethodPat loc (MkMethodName $ unXtorName xt) (CST.FoSFV . fromJust . snd <$> args)
-
-embedInstanceCase :: RST.InstanceCase -> CST.InstanceCase
+embedInstanceCase :: RST.InstanceCase -> CST.TermCase
 embedInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
-  CST.MkInstanceCase { instancecase_loc = instancecase_loc
-                     , instancecase_pat = embedInstancePat instancecase_pat
-                     , instancecase_term = embedCommand instancecase_cmd}
+  CST.MkTermCase { tmcase_loc = instancecase_loc
+                 , tmcase_pat = embedPat instancecase_pat
+                 , tmcase_term = embedCommand instancecase_cmd
+                 }
 
 embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp
 embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
@@ -546,7 +543,7 @@ reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
   embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
 
-reparseInstanceCase :: RST.InstanceCase -> CST.InstanceCase
+reparseInstanceCase :: RST.InstanceCase -> CST.TermCase
 reparseInstanceCase instancecase =
   embedInstanceCase (evalState (createNamesInstanceCase instancecase) names)
 
