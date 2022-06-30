@@ -1,5 +1,6 @@
 
 import Bool;
+import List;
 
 -- | Class definition.
 class Eq(+a : CBV) {
@@ -14,9 +15,9 @@ instance Eq Bool {
   Differ(x, y, k) => and (or x y) (not (and x y)) >> k
 };
 
--- -- | Usage with type class constraint.
--- def rec prd elem : forall a. Eq a, a <: a => a -> List(a) -> Bool :=
---   \e l => case l of {
---         Nil => False,
---         Cons(x, xs) => or Equals(e,x) (elem e xs)
---     };
+-- | Usage with type class constraint.
+def rec prd elem : forall a. Eq a, a <: a => a -> List(a) -> Bool :=
+  \e l => case l of {
+        Nil => False,
+        Cons(x, xs) => or Equals(e,x) (elem e xs)
+    };

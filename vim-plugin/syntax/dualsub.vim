@@ -4,7 +4,7 @@ if exists("b:current_syntax")
 endif
 
 "syn keyword dsKeyword match comatch prd cns cmd def with Done Print forall data codata rec mu
-syn keyword dsKeyword case cocase def of ExitSuccess ExitFailure Print forall data codata rec mu import return set Top Bot CBV CBN refinement constructor destructor type operator at leftassoc rightassoc cmd prd cns
+syn keyword dsKeyword case cocase def of ExitSuccess ExitFailure Print forall data codata rec mu import return set Top Bot CBV CBN refinement constructor destructor type operator at leftassoc rightassoc cmd prd cns class instance
 
 "syn match dsSymbs ':=\|=>\|>>\|\\/\|/\\\|<:\|<<:\|:>>'
 syn match dsSymbs ':=\|=>\|>>\|\\/\|/\\\|<:'

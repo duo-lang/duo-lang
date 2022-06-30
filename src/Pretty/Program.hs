@@ -31,8 +31,11 @@ instance PrettyAnn Unpol.DataDecl where
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
-    colon <+>
-    prettyAnn knd <+>
+    (case knd of
+        Nothing -> mempty
+        Just knd' ->
+            colon <+>
+            prettyAnn knd') <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
@@ -92,8 +95,11 @@ instance PrettyAnn CST.StructuralXtorDeclaration where
     annKeyword (case strxtordecl_xdata of Data -> "constructor"; Codata -> "destructor") <+>
     prettyAnn strxtordecl_name <>
     prettyCCList strxtordecl_arity <+>
-    colon <+>
-    prettyAnn strxtordecl_evalOrder <>
+    (case strxtordecl_evalOrder of
+        Nothing -> mempty
+        Just strxtordecl_evalOrder' ->
+            colon <+>
+            prettyAnn strxtordecl_evalOrder') <>
     semi
 
 ---------------------------------------------------------------------------------
