@@ -2,8 +2,8 @@ module Parser.Program
   ( declarationP
   , programP
   , returnP
-  ,xtorDeclP
-  ,xtorSignatureP
+  , xtorDeclP
+  , xtorSignatureP
   ) where
 
 import Control.Monad (void)
@@ -225,6 +225,40 @@ xtorDeclarationP doc = do
   pure (XtorDecl decl)
 
 ---------------------------------------------------------------------------------
+-- Parsing a class declaration
+---------------------------------------------------------------------------------
+
+classDeclarationP :: Maybe DocComment -> Parser Declaration
+classDeclarationP doc = do
+  startPos <- getSourcePos
+  try (void (keywordP KwClass))
+  recoverDeclaration $ do
+    className     <- fst <$> classNameP
+    typeVars      <- fst <$> parens (tParamP `sepBy` symbolP SymComma)
+    (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
+    endPos        <- symbolP SymSemi
+    let decl = MkClassDeclaration (Loc startPos endPos) doc className typeVars xtors
+    pure (ClassDecl decl)
+
+
+---------------------------------------------------------------------------------
+-- Parsing an instance declaration
+---------------------------------------------------------------------------------
+
+instanceDeclarationP :: Maybe DocComment -> Parser Declaration
+instanceDeclarationP doc = do
+  startPos <- getSourcePos
+  try (void (keywordP KwInstance))
+  recoverDeclaration $ do
+    className  <- fst <$> classNameP
+    typ        <- fst <$> typP
+    (cases, _) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
+    endPos     <- symbolP SymSemi
+    let decl = MkInstanceDeclaration (Loc startPos endPos) doc className typ cases
+    pure (InstanceDecl decl)
+
+
+---------------------------------------------------------------------------------
 -- Parsing a program
 ---------------------------------------------------------------------------------
 
@@ -236,7 +270,9 @@ docDeclarationP doc =
   setDeclP doc <|>
   dataDeclP doc <|>
   xtorDeclarationP doc <|>
-  tySynP doc
+  tySynP doc <|>
+  classDeclarationP doc <|>
+  instanceDeclarationP doc
 
 declarationP :: Parser Declaration
 declarationP = do

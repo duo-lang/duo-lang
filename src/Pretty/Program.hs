@@ -1,22 +1,21 @@
 module Pretty.Program where
 
+import Data.List (intersperse)
 import Data.Map qualified as M
 import Prettyprinter
 
-import Data.List (intersperse)
-
+import Driver.Environment
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
+import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as Unpol
 import Syntax.Common.TypesPol qualified as Pol
+import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
-import Syntax.Core.Program qualified as Core
-import Syntax.Common
-import Driver.Environment
 import Translate.Embed
 import Translate.Reparse
 import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
@@ -32,8 +31,11 @@ instance PrettyAnn Unpol.DataDecl where
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
-    colon <+>
-    prettyAnn knd <+>
+    (case knd of
+        Nothing -> mempty
+        Just knd' ->
+            colon <+>
+            prettyAnn knd') <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
@@ -85,7 +87,7 @@ instance PrettyAnn CST.CommandDeclaration where
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint the list of MonoKinds
-prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
+prettyCCList :: PrettyAnn a => [(PrdCns, a)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
@@ -93,8 +95,11 @@ instance PrettyAnn CST.StructuralXtorDeclaration where
     annKeyword (case strxtordecl_xdata of Data -> "constructor"; Codata -> "destructor") <+>
     prettyAnn strxtordecl_name <>
     prettyCCList strxtordecl_arity <+>
-    colon <+>
-    prettyAnn strxtordecl_evalOrder <>
+    (case strxtordecl_evalOrder of
+        Nothing -> mempty
+        Just strxtordecl_evalOrder' ->
+            colon <+>
+            prettyAnn strxtordecl_evalOrder') <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -146,8 +151,63 @@ instance PrettyAnn CST.TySynDeclaration where
     semi
 
 ---------------------------------------------------------------------------------
+-- Class Declaration
+---------------------------------------------------------------------------------
+
+-- | Prettyprint list of type variables for class declaration.
+prettyTVars :: [(Variance, SkolemTVar, MonoKind)] -> Doc Annotation
+prettyTVars tvs =
+  parens
+    $   mempty
+    <+> cat
+          (punctuate
+            comma
+            (   (\(var, v, k) ->
+                  prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k
+                )
+            <$> tvs
+            )
+          )
+    <+> mempty
+
+-- | Prettyprint list of xtors for class declaration.
+prettyXTors :: [(XtorName, [(PrdCns, Unpol.Typ)])] -> Doc Annotation
+prettyXTors xtors = braces $ group
+  (nest
+    3
+    (line' <> vsep
+      (punctuate comma
+                 ((\(nm, ts) -> prettyAnn nm <> prettyCCList ts) <$> xtors)
+      )
+    )
+  )
+
+instance PrettyAnn CST.ClassDeclaration where
+  prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors} =
+    annKeyword "class" <+>
+    prettyAnn classdecl_name <+>
+    prettyTVars classdecl_kinds <+> 
+    prettyXTors classdecl_xtors <>
+    semi
+
+---------------------------------------------------------------------------------
+-- Instance Declaration
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.InstanceDeclaration where
+  prettyAnn CST.MkInstanceDeclaration { instancedecl_name, instancedecl_typ, instancedecl_cases } =
+    annKeyword "instance" <+>
+    prettyAnn instancedecl_name <+>
+    prettyAnn instancedecl_typ <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> instancedecl_cases))))) <>
+    semi
+
+---------------------------------------------------------------------------------
 -- Declaration
 ---------------------------------------------------------------------------------
+
+instance PrettyAnn ClassName where
+  prettyAnn (MkClassName nm) = prettyAnn nm
 
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
@@ -168,6 +228,8 @@ instance PrettyAnn CST.Declaration where
   prettyAnn (CST.SetDecl decl) = prettyAnn decl
   prettyAnn (CST.TyOpDecl decl) = prettyAnn decl
   prettyAnn (CST.TySynDecl decl) = prettyAnn decl
+  prettyAnn (CST.ClassDecl decl) = prettyAnn decl
+  prettyAnn (CST.InstanceDecl decl) = prettyAnn decl  
   prettyAnn CST.ParseErrorDecl = "<PARSE ERROR: SHOULD NOT OCCUR>"
 
 ---------------------------------------------------------------------------------

@@ -1,9 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.RST.Program where
 
-
 import Syntax.Common
-import Syntax.RST.Terms( Command, Term )
+import Syntax.RST.Terms( Command, Term, TermCase )
 import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
@@ -118,30 +117,73 @@ data TySynDeclaration = MkTySynDeclaration
 
 deriving instance Show TySynDeclaration
 
+------------------------------------------------------------------------------
+-- Instance Declaration
+------------------------------------------------------------------------------
+
+data InstanceDeclaration = MkInstanceDeclaration
+  { instancedecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , instancedecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , instancedecl_name :: ClassName
+    -- ^ The name of the type class the instance is for.
+  , instancedecl_typ :: (Typ Pos, Typ Neg)
+    -- ^ The type the instance is being defined for.
+  , instancedecl_cases :: [TermCase Cns] -- replace with [(TermCase Prd, TermCase Cns)] ?
+    -- ^ The method definitions for the class.
+  }
+
+deriving instance Show InstanceDeclaration
+
+------------------------------------------------------------------------------
+-- Class Declaration
+------------------------------------------------------------------------------
+
+data ClassDeclaration = MkClassDeclaration
+  { classdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , classdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , classdecl_name :: ClassName
+    -- ^ The name of the type class that is being introduced.
+  , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
+    -- ^ The kind of the type class variables.
+  , classdecl_xtors :: [(XtorName, [(PrdCns, Typ Pos, Typ Neg)])]
+    -- ^ The type class methods and their types.
+  }
+
+deriving instance Show ClassDeclaration
+
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
 data Declaration where
-  PrdCnsDecl :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
-  CmdDecl    :: CommandDeclaration                   -> Declaration
-  DataDecl   :: DataDecl                             -> Declaration
-  XtorDecl   :: StructuralXtorDeclaration            -> Declaration
-  ImportDecl :: CST.ImportDeclaration                -> Declaration
-  SetDecl    :: CST.SetDeclaration                   -> Declaration
-  TyOpDecl   :: TyOpDeclaration                      -> Declaration
-  TySynDecl  :: TySynDeclaration                     -> Declaration
+  PrdCnsDecl   :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
+  CmdDecl      :: CommandDeclaration                   -> Declaration
+  DataDecl     :: DataDecl                             -> Declaration
+  XtorDecl     :: StructuralXtorDeclaration            -> Declaration
+  ImportDecl   :: CST.ImportDeclaration                -> Declaration
+  SetDecl      :: CST.SetDeclaration                   -> Declaration
+  TyOpDecl     :: TyOpDeclaration                      -> Declaration
+  TySynDecl    :: TySynDeclaration                     -> Declaration
+  ClassDecl    :: ClassDeclaration                     -> Declaration
+  InstanceDecl :: InstanceDeclaration                  -> Declaration
   
 
 instance Show Declaration where
   show (PrdCnsDecl PrdRep decl) = show decl
   show (PrdCnsDecl CnsRep decl) = show decl
-  show (CmdDecl decl) = show decl
-  show (DataDecl decl) = show decl
-  show (XtorDecl decl) = show decl
-  show (ImportDecl decl) = show decl
-  show (SetDecl decl) = show decl
-  show (TyOpDecl decl) = show decl
-  show (TySynDecl decl) = show decl
+  show (CmdDecl      decl     ) = show decl
+  show (DataDecl     decl     ) = show decl
+  show (XtorDecl     decl     ) = show decl
+  show (ImportDecl   decl     ) = show decl
+  show (SetDecl      decl     ) = show decl
+  show (TyOpDecl     decl     ) = show decl
+  show (TySynDecl    decl     ) = show decl
+  show (ClassDecl    decl     ) = show decl
+  show (InstanceDecl decl     ) = show decl
+
   
 type Program = [Declaration]

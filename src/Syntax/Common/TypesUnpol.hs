@@ -50,6 +50,7 @@ linearContextToArity = map f
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [SkolemTVar]
+  , ts_constraints :: [Constraint]
   , ts_monotype :: Typ
   }
   deriving Show
@@ -77,3 +78,13 @@ data DataDecl = NominalDecl
   }
 
 deriving instance (Show DataDecl)
+
+---------------------------------------------------------------------------------
+-- Constraints
+---------------------------------------------------------------------------------
+
+data Constraint
+  = SubType Typ Typ
+  | TypeClass ClassName SkolemTVar
+ deriving Show
+
