@@ -166,4 +166,6 @@ createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }
   checkFreshFreeVarName cmddecl_loc cmddecl_name st
   pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _) st = pure st
+createSymbolTable' _ ClassDecl {} st = pure st
+createSymbolTable' _ InstanceDecl {} st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st
