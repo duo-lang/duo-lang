@@ -441,8 +441,8 @@ resugarType _ = Nothing
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyVar loc _ _ tv) =
-  CST.TyVar loc tv
+embedType (RST.TyVar loc _ _ tv@(RST.MkTVar _name)) =
+  CST.TySkolemVar loc (RST.tVarToSkolemTVar tv)
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
@@ -463,8 +463,8 @@ embedType (RST.TyUnion loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ tv ty) =
-  CST.TyRec loc tv (embedType ty)
+embedType (RST.TyRec loc _ tv@(RST.MkTVar _name) ty) =
+  CST.TyRec loc (RST.tVarToSkolemTVar tv) (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
 embedType (RST.TyFlipPol _ ty) = embedType ty
@@ -472,7 +472,7 @@ embedType (RST.TyFlipPol _ ty) = embedType ty
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
-                 , ts_vars = ts_vars
+                 , ts_vars = map RST.tVarToSkolemTVar ts_vars
                  , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
                  , ts_monotype = embedType ts_monotype
                  }

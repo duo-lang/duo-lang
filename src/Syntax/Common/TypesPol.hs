@@ -9,6 +9,8 @@ import Data.Kind ( Type )
 import Syntax.Common
 import Utils
 
+import Data.Text (Text)
+
 ------------------------------------------------------------------------------
 -- CovContraList
 ------------------------------------------------------------------------------
@@ -68,6 +70,20 @@ data XtorSig (pol :: Polarity) = MkXtorSig
 deriving instance Eq (XtorSig pol)
 deriving instance Ord (XtorSig pol)
 deriving instance Show (XtorSig pol)
+
+newtype TVar = MkTVar { unTVar :: Text } deriving (Eq, Show, Ord)
+
+tVarToUniTVar :: TVar -> UniTVar 
+tVarToUniTVar (MkTVar name) = MkUniTVar name
+
+skolemTVarToTVar :: SkolemTVar -> TVar
+skolemTVarToTVar (MkSkolemTVar name) = MkTVar name
+
+uniTVarToTVar :: UniTVar -> TVar 
+uniTVarToTVar (MkUniTVar name) = MkTVar name
+
+tVarToSkolemTVar :: TVar -> SkolemTVar
+tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
 
 data Typ (pol :: Polarity) where
   TyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> TVar -> Typ pol

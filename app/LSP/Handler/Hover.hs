@@ -257,7 +257,7 @@ instance ToHoverMap (Typ pol) where
   toHoverMap (TyVar loc rep _knd var) =
     let
       msg = T.unlines [ "#### Type variable "
-                      , "- Name: `" <> ppPrint var <> "`"
+                      , "- Name: `" <> ppPrint (tVarToUniTVar var) <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in 

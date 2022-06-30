@@ -155,18 +155,13 @@ instance PrettyAnn CST.TySynDeclaration where
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint list of type variables for class declaration.
-prettyTVars :: [(Variance, TVar, MonoKind)] -> Doc Annotation
+prettyTVars :: [(Variance, SkolemTVar, MonoKind)] -> Doc Annotation
 prettyTVars tvs =
   parens
     $   mempty
     <+> cat
           (punctuate
-            comma
-            (   (\(var, v, k) ->
-                  prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k
-                )
-            <$> tvs
-            )
+            comma (prettyTParam <$> tvs)
           )
     <+> mempty
 
