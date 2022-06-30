@@ -31,8 +31,11 @@ instance PrettyAnn Unpol.DataDecl where
       NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
-    colon <+>
-    prettyAnn knd <+>
+    (case knd of
+        Nothing -> mempty
+        Just knd' ->
+            colon <+>
+            prettyAnn knd') <+>
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
@@ -84,7 +87,7 @@ instance PrettyAnn CST.CommandDeclaration where
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint the list of MonoKinds
-prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
+prettyCCList :: PrettyAnn a => [(PrdCns, a)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
@@ -92,8 +95,11 @@ instance PrettyAnn CST.StructuralXtorDeclaration where
     annKeyword (case strxtordecl_xdata of Data -> "constructor"; Codata -> "destructor") <+>
     prettyAnn strxtordecl_name <>
     prettyCCList strxtordecl_arity <+>
-    colon <+>
-    prettyAnn strxtordecl_evalOrder <>
+    (case strxtordecl_evalOrder of
+        Nothing -> mempty
+        Just strxtordecl_evalOrder' ->
+            colon <+>
+            prettyAnn strxtordecl_evalOrder') <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -149,18 +155,13 @@ instance PrettyAnn CST.TySynDeclaration where
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint list of type variables for class declaration.
-prettyTVars :: [(Variance, TVar, MonoKind)] -> Doc Annotation
+prettyTVars :: [(Variance, SkolemTVar, MonoKind)] -> Doc Annotation
 prettyTVars tvs =
   parens
     $   mempty
     <+> cat
           (punctuate
-            comma
-            (   (\(var, v, k) ->
-                  prettyAnn var <> prettyAnn v <+> annSymbol ":" <+> prettyAnn k
-                )
-            <$> tvs
-            )
+            comma (prettyTParam <$> tvs)
           )
     <+> mempty
 
@@ -170,23 +171,8 @@ prettyXTors xtors = braces $ group
   (nest
     3
     (line' <> vsep
-      (punctuate
-        comma
-        (   (\(nm, ts) -> prettyAnn nm <> parens
-              (   cat
-              $   punctuate comma
-              $   (\(pc, typ) ->
-                    (case pc of
-                        Prd -> emptyDoc
-                        Cns -> annKeyword "return"
-                      )
-                      <+> prettyAnn typ
-                  )
-              <$> ts
-              )
-            )
-        <$> xtors
-        )
+      (punctuate comma
+                 ((\(nm, ts) -> prettyAnn nm <> prettyCCList ts) <$> xtors)
       )
     )
   )

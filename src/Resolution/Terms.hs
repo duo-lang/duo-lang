@@ -1,4 +1,4 @@
-module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase) where
+module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases) where
 
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
@@ -56,7 +56,7 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
   -- Check whether the number of arguments in the given binding site
   -- corresponds to the number of arguments specified for the constructor/destructor.
   when (length arity /= length args) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
   case length (filter CST.isStar args) of
     0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
     1 -> do
@@ -151,14 +151,6 @@ analyzeCases dc cases = do
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwError $ OtherError Nothing "Cases mix the use of both explicit and implicit patterns."
 
-analyzeInstancePattern :: CST.InstancePat -> ResolverM AnalyzedPattern
-analyzeInstancePattern (CST.MethodPat loc m args) = do
-  let xt :: XtorName
-      xt = MkXtorName $ unMethodName m
-  (_,MethodNameResult _cn arity) <- lookupXtor loc xt
-  when (length arity /= length args) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch undefined (length arity) (length args)
-  pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
   
 ---------------------------------------------------------------------------------
 -- Resolve Cases
@@ -188,17 +180,24 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
 
-resolveInstanceCase :: CST.InstanceCase -> ResolverM (RST.InstanceCase Cns)
-resolveInstanceCase (CST.MkInstanceCase loc pat t) = do
-  intermediateCase <- analyzeInstancePattern pat
-  case intermediateCase of
-    (ExplicitPattern loc' xtor args) -> do
-      tm' <- resolveTerm CnsRep t
-      pure RST.MkInstanceCase { instancecase_loc  = loc
-                              , instancecase_pat = RST.XtorPat loc' xtor (second Just <$> args)
-                              , instancecase_term = RST.termClosing args tm'
-                              }
-    _ -> throwError (OtherError Nothing "Expected explicit patterns in instance definition.")
+resolveInstanceCase :: IntermediateCase -> ResolverM RST.InstanceCase
+resolveInstanceCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+  cmd' <- resolveCommand icase_term
+  pure RST.MkInstanceCase { instancecase_loc = icase_loc
+                          , instancecase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
+                          , instancecase_cmd = RST.commandClosing icase_args cmd'
+                          }
+
+
+resolveInstanceCases :: [CST.TermCase] -> ResolverM [RST.InstanceCase]
+resolveInstanceCases cases = do
+  intermediateCases <- analyzeCases Data cases
+  case intermediateCases of
+    ExplicitCases explicitCases ->
+      sequence $ resolveInstanceCase <$> explicitCases
+    ImplicitCases _rep _implicitCases ->
+      throwError (OtherError Nothing "Expected explicit patterns in instance definition.")
+
 
 ---------------------------------------------------------------------------------
 -- Resolving PrimCommands

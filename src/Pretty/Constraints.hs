@@ -47,7 +47,7 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (TypeClass ann (MkClassName cn) typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (TVar, UVarProvenance) -> Doc Annotation
+printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
@@ -99,7 +99,7 @@ instance PrettyAnn SolverResult where
     , ""
     ]
     where
-      solvedConstraintsToDoc :: (TVar,VariableState) -> Doc Annotation
+      solvedConstraintsToDoc :: (UniTVar,VariableState) -> Doc Annotation
       solvedConstraintsToDoc (v, vs) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
                                                      , prettyAnn vs
                                                      ]
@@ -110,7 +110,7 @@ instance PrettyAnn SolverResult where
 ---------------------------------------------------------------------------------
 
 prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
+prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn (tVarToUniTVar v)
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]

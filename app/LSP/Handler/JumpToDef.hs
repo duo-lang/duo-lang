@@ -151,13 +151,13 @@ instance ToJumpMap (RST.PrdCnsType pol) where
 instance ToJumpMap (RST.Typ pol) where
   toJumpMap RST.TyVar {} =
     M.empty
-  toJumpMap (RST.TyData loc _ (Just tn) xtors) =
+  toJumpMap (RST.TyDataRefined loc _ tn xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
-  toJumpMap (RST.TyData _ _ Nothing xtors) =
+  toJumpMap (RST.TyData _ _ xtors) =
     M.unions (toJumpMap <$> xtors)
-  toJumpMap (RST.TyCodata loc _ (Just tn) xtors) =
+  toJumpMap (RST.TyCodataRefined loc _ tn xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
-  toJumpMap (RST.TyCodata _ _ Nothing xtors) =
+  toJumpMap (RST.TyCodata _ _ xtors) =
     M.unions (toJumpMap <$> xtors)
   toJumpMap (RST.TyNominal loc _ _ rn args) =
     M.unions (M.fromList [(locToRange loc, toLocation rn)] : (toJumpMap <$> args))

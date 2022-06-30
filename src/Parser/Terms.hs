@@ -1,7 +1,6 @@
 module Parser.Terms
   ( termP
-  , termCaseP
-  ,instanceCaseP) where
+  , termCaseP) where
 
 import Data.Bifunctor (first)
 import Data.Foldable
@@ -308,24 +307,6 @@ termCaseP =  do
   let pmcase = CST.MkTermCase { tmcase_loc  = Loc startPos endPos
                               , tmcase_pat = pat
                               , tmcase_term  = t }
-  return (pmcase, endPos)
-
-instancePatternP :: Parser (CST.InstancePat, SourcePos)
-instancePatternP = do
-  startPos <- getSourcePos
-  (method, _pos) <- methodNameP
-  (args,endPos) <- bindingSiteP
-  pure (CST.MethodPat (Loc startPos endPos) method args, endPos)
-
-instanceCaseP :: Parser (CST.InstanceCase, SourcePos)
-instanceCaseP =  do
-  startPos <- getSourcePos
-  (pat,_) <- instancePatternP
-  _ <- symbolP SymDoubleRightArrow
-  (t, endPos) <- termTopP
-  let pmcase = CST.MkInstanceCase { instancecase_loc  = Loc startPos endPos
-                                  , instancecase_pat = pat
-                                  , instancecase_term  = t }
   return (pmcase, endPos)
 
 --------------------------------------------------------------------------------------------

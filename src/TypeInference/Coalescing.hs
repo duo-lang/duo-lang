@@ -40,7 +40,7 @@ inProcess ptv = do
 getVariableState :: TVar -> CoalesceM VariableState
 getVariableState tv = do
     mp <- asks (tvarSolution . fst)
-    case M.lookup tv mp of
+    case M.lookup (tVarToUniTVar tv) mp of
       Nothing -> error ("Not in variable states: " ++ show (unTVar tv))
       Just vs -> return vs
 
@@ -60,7 +60,7 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
         res = M.keys tvarSolution
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ TyVar defaultLoc PosRep Nothing tvar
                         , runCoalesceM result $ coalesceType $ TyVar defaultLoc NegRep Nothing tvar))
-        xs = f <$> res
+        xs = f <$> map uniTVarToTVar res
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (TyVar _ PosRep _ tv) = do
@@ -91,12 +91,18 @@ coalesceType (TyVar _ NegRep _ tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> return $                                 mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyVar defaultLoc NegRep Nothing tv:ubs'))
-coalesceType (TyData loc rep tn xtors) = do
+coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyData loc rep tn xtors')
-coalesceType (TyCodata loc rep tn xtors) = do
+    return (TyData loc rep xtors')
+coalesceType (TyCodata loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodata loc rep tn xtors')
+    return (TyCodata loc rep xtors')
+coalesceType (TyDataRefined loc rep tn xtors) = do
+    xtors' <- sequence $ coalesceXtor <$> xtors
+    return (TyDataRefined loc rep tn xtors')
+coalesceType (TyCodataRefined loc rep tn xtors) = do
+    xtors' <- sequence $ coalesceXtor <$> xtors
+    return (TyCodataRefined loc rep tn xtors')
 coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'

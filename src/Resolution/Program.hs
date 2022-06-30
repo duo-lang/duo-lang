@@ -10,7 +10,7 @@ import Data.Text qualified as T
 import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
-import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase)
+import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp)
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
@@ -33,14 +33,20 @@ resolveXtors sigs = do
     pure (posSigs, negSigs)
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
-checkVarianceTyp loc var polyKind (TyVar _loc' tVar) =
+checkVarianceTyp _ _ tv(TyUniVar loc _) = throwError (OtherError (Just loc) $ "The Unification Variable " <> T.pack (show  tv) <> " should not appear in the program at this point")
+checkVarianceTyp loc var polyKind (TySkolemVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
     Nothing   -> throwError (OtherError (Just loc) $ "Type variable not bound by declaration: " <> T.pack (show tVar))
     Just var' -> if var == var'
                  then return ()
                  else throwError (OtherError (Just loc) $ "Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var'))
-checkVarianceTyp loc var polyKind (TyXData _loc' dataCodata _mTypeName xtorSigs) = do
+checkVarianceTyp loc var polyKind (TyXData _loc' dataCodata  xtorSigs) = do
+  let var' = var <> case dataCodata of
+                      Data   -> Covariant
+                      Codata -> Contravariant
+  sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
+checkVarianceTyp loc var polyKind (TyXRefined _loc' dataCodata  _tn xtorSigs) = do
   let var' = var <> case dataCodata of
                       Data   -> Covariant
                       Codata -> Contravariant
@@ -217,24 +223,25 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 resolveClassDeclaration :: CST.ClassDeclaration 
                         -> ResolverM RST.ClassDeclaration
 resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
-  let biAp :: Monad m => (a -> m b) -> (a -> m c) -> a -> m (b, c)
-      biAp f g x = do
-        fst' <- f x
-        snd' <- g x
-        pure (fst', snd')
-  ty <- mapM (mapM (biAp (resolveTyp PosRep) (resolveTyp NegRep))) ((snd <$>) . snd <$> classdecl_xtors)
-  let zip3 :: [a] -> [(b,c)] -> [(a,b,c)]
-      zip3  = zipWith (\x (y,z) -> (x,y,z))
-  let xtorsRes = zipWith (\(x,ts) tys -> (x,zip3 (fst <$> ts) tys)) classdecl_xtors ty
+  let go :: (PrdCns, Typ) -> ResolverM (PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)
+      go (prdcns, typ) = do
+            typos <- resolveTyp PosRep typ
+            tyneg <- resolveTyp NegRep typ
+            pure (prdcns, typos, tyneg)
+      go' :: (XtorName, [(PrdCns, Typ)]) -> ResolverM (XtorName, [(PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)])
+      go' (xtor, typs) = do
+            types <- forM typs go
+            pure (xtor, types)
+  xtorRes <- forM classdecl_xtors go'
   pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
                               , classdecl_doc = classdecl_doc
                               , classdecl_name = classdecl_name
                               , classdecl_kinds = classdecl_kinds
-                              , classdecl_xtors = xtorsRes
+                              , classdecl_xtors = xtorRes
                               }
 
 ---------------------------------------------------------------------------------
--- Type Class Declaration
+-- Instance Declaration
 ---------------------------------------------------------------------------------
 
 resolveInstanceDeclaration :: CST.InstanceDeclaration 
@@ -242,7 +249,7 @@ resolveInstanceDeclaration :: CST.InstanceDeclaration
 resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
   typ <- resolveTyp PosRep instancedecl_typ
   tyn <- resolveTyp NegRep instancedecl_typ
-  tc <- sequence (resolveInstanceCase <$> instancedecl_cases)
+  tc <- resolveInstanceCases instancedecl_cases
   pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name

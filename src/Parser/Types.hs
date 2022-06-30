@@ -85,11 +85,11 @@ xdataTypeP :: DataCodata -> Parser (Typ, SourcePos)
 xdataTypeP Data = do
   startPos <- getSourcePos
   (xtorSigs, endPos) <- angles (xtorSignatureP `sepBy` symbolP SymComma)
-  pure (TyXData (Loc startPos endPos) Data Nothing xtorSigs, endPos)
+  pure (TyXData (Loc startPos endPos) Data xtorSigs, endPos)
 xdataTypeP Codata = do
   startPos <- getSourcePos
   (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` symbolP SymComma)
-  pure (TyXData (Loc startPos endPos) Codata Nothing xtorSigs, endPos)
+  pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
 
 
 
@@ -102,7 +102,7 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
-  return (TyVar (Loc startPos endPos) tvar, endPos)
+  return (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
@@ -125,7 +125,7 @@ refinementTypeP Data = do
     _ <- symbolP SymPipe
     ctors <- xtorSignatureP `sepBy` symbolP SymComma
     pure (tn, ctors))
-  pure (TyXData (Loc startPos endPos) Data (Just tn) ctors, endPos)
+  pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
 refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, dtors), endPos) <- braces (do
@@ -133,7 +133,7 @@ refinementTypeP Codata = do
     _ <- symbolP SymPipe
     dtors <- xtorSignatureP `sepBy` symbolP SymComma
     pure (tn, dtors))
-  pure (TyXData (Loc startPos endPos) Codata (Just tn) dtors, endPos)
+  pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
 
 ---------------------------------------------------------------------------------
 -- Primitive types

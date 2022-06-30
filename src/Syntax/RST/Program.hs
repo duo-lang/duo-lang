@@ -130,7 +130,7 @@ data InstanceDeclaration = MkInstanceDeclaration
     -- ^ The name of the type class the instance is for.
   , instancedecl_typ :: (Typ Pos, Typ Neg)
     -- ^ The type the instance is being defined for.
-  , instancedecl_cases :: [InstanceCase Cns]
+  , instancedecl_cases :: [InstanceCase]
     -- ^ The method definitions for the class.
   }
 
@@ -147,7 +147,7 @@ data ClassDeclaration = MkClassDeclaration
     -- ^ The documentation string of the declaration.
   , classdecl_name :: ClassName
     -- ^ The name of the type class that is being introduced.
-  , classdecl_kinds :: [(Variance, TVar, MonoKind)]
+  , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
     -- ^ The kind of the type class variables.
   , classdecl_xtors :: [(XtorName, [(PrdCns, Typ Pos, Typ Neg)])]
     -- ^ The type class methods and their types.

@@ -98,7 +98,8 @@ instance PrettyAnn CST.Typ where
   prettyAnn CST.TyTop {} = topSym
   prettyAnn CST.TyBot {} = botSym
   -- Type Variables
-  prettyAnn (CST.TyVar _ tv) = prettyAnn tv
+  prettyAnn (CST.TyUniVar _ tv) = prettyAnn tv
+  prettyAnn (CST.TySkolemVar _ tv) = prettyAnn tv
   -- Recursive types
   prettyAnn (CST.TyRec _ rv t) =
     parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
@@ -114,14 +115,14 @@ instance PrettyAnn CST.Typ where
     in
       prettyAnn ty <> hsep (NE.toList (f <$> tys))
   -- Structural data and codata types
-  prettyAnn (CST.TyXData _ Data   Nothing xtors) =
+  prettyAnn (CST.TyXData _ Data   xtors) =
     angles' commaSym  (prettyAnn <$> xtors)
-  prettyAnn (CST.TyXData _ Codata Nothing xtors) =
+  prettyAnn (CST.TyXData _ Codata xtors) =
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (CST.TyXData _ Data   (Just tn) xtors) =
+  prettyAnn (CST.TyXRefined _ Data   tn xtors) =
     angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (CST.TyXData _ Codata (Just tn) xtors) =
+  prettyAnn (CST.TyXRefined _ Codata tn xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   -- Primitive types
   prettyAnn (CST.TyPrim _ pt) = "#" <> prettyAnn pt

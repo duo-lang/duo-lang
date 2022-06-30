@@ -40,22 +40,25 @@ initializeFromAutomaton TypeAut{..} =
 -- Type automata -> Types
 --------------------------------------------------------------------------
 
-data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set TVar)
+data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set UniTVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
-                                     , tvars :: [TVar]
+                                     , tvars :: [UniTVar]
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
 
 runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either Error a
 runAutToTypeM m state = runExcept (runReaderT m state)
 
+tUniVarToTVar :: UniTVar->TVar
+tUniVarToTVar (MkUniTVar name) = MkTVar name
+
 autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  , ts_vars = tvars startState
+                  , ts_vars = map tUniVarToTVar (tvars startState)
                   , ts_monotype = monotype
                   }
 
@@ -72,7 +75,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TyVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TyVar defaultLoc rep Nothing <$> map tUniVarToTVar (S.toList (fromJust $ M.lookup i tvMap)))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -137,7 +140,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Data xt
           argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyData defaultLoc rep Nothing sig]
+        return [TyData defaultLoc rep sig]
     -- Creating codata types
     codatL <- case maybeCodat of
       Nothing -> return []
@@ -146,7 +149,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Codata xt
           argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
-        return [TyCodata defaultLoc rep Nothing sig]
+        return [TyCodata defaultLoc rep sig]
     -- Creating ref data types
     refDatL <- do
       forM refDatTypes $ \(tn,xtors) -> do
@@ -154,7 +157,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Data xt
           argTypes <- argNodesToArgTypes nodes rep
           return (MkXtorSig (labelName xt) argTypes)
-        return $ TyData defaultLoc rep (Just tn) sig
+        return $ TyDataRefined defaultLoc rep tn sig
     -- Creating ref codata types
     refCodatL <- do
       forM refCodatTypes $ \(tn,xtors) -> do
@@ -162,7 +165,7 @@ nodeToTypeNoCache rep i = do
           let nodes = computeArgNodes outs Codata xt
           argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
           return (MkXtorSig (labelName xt) argTypes)
-        return $ TyCodata defaultLoc rep (Just tn) sig
+        return $ TyCodataRefined defaultLoc rep tn sig
     -- Creating Nominal types
     let adjEdges = lsuc gr i
     let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]

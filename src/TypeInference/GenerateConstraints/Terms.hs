@@ -91,8 +91,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Structural xt subst) = do
   inferredSubst <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs inferredSubst
   case rep of
-    PrdRep -> return $ TST.Xtor loc annot rep (TyData   defaultLoc PosRep Nothing [MkXtorSig xt substTypes]) Structural xt inferredSubst
-    CnsRep -> return $ TST.Xtor loc annot rep (TyCodata defaultLoc NegRep Nothing [MkXtorSig xt substTypes]) Structural xt inferredSubst
+    PrdRep -> return $ TST.Xtor loc annot rep (TyData   defaultLoc PosRep [MkXtorSig xt substTypes]) Structural xt inferredSubst
+    CnsRep -> return $ TST.Xtor loc annot rep (TyCodata defaultLoc NegRep [MkXtorSig xt substTypes]) Structural xt inferredSubst
 --
 -- Nominal Xtors
 --
@@ -128,8 +128,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (TST.Xtor loc annot rep (TyData   defaultLoc PosRep (Just (data_name decl)) [MkXtorSig xt substTypes]) Refinement xt substInferred)
-    CnsRep -> return (TST.Xtor loc annot rep (TyCodata defaultLoc NegRep (Just (data_name decl)) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TyDataRefined   defaultLoc PosRep (data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TyCodataRefined defaultLoc NegRep (data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
@@ -144,8 +144,8 @@ genConstraintsTerm (Core.XCase loc annot rep Structural cases) = do
                       return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
-    PrdRep -> return $ TST.XCase loc annot rep (TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) Structural (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyCodata defaultLoc PosRep (snd <$> inferredCases)) Structural (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyData   defaultLoc NegRep (snd <$> inferredCases)) Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
 --
@@ -206,8 +206,8 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
                        -- and greatest type translation.
                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
   case rep of
-    PrdRep -> return $ TST.XCase loc annot rep (TyCodata defaultLoc PosRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TyData   defaultLoc NegRep (Just (data_name decl)) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyCodataRefined defaultLoc PosRep (data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyDataRefined   defaultLoc NegRep (data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --
@@ -253,7 +253,7 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
       return (TST.PrimOp loc pt op substInferred)
 
-genConstraintsInstanceCase :: RST.InstanceCase Cns -> GenM (RST.InstanceCase Cns)
+genConstraintsInstanceCase :: RST.InstanceCase -> GenM RST.InstanceCase
 genConstraintsInstanceCase = pure -- TODO
 
 ---------------------------------------------------------------------------------------------

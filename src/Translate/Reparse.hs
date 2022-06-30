@@ -74,6 +74,13 @@ openCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat loc xt args, 
                 , cmdcase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete cmdcase_cmd)
                 }
 
+openInstanceCase :: RST.InstanceCase -> RST.InstanceCase
+openInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat = pat@(RST.XtorPat _loc _xt args), instancecase_cmd } =
+  RST.MkInstanceCase { instancecase_loc = instancecase_loc
+                     , instancecase_pat = pat
+                     , instancecase_cmd = RST.commandOpening (freeVarNamesToXtorArgs args) (openCommandComplete instancecase_cmd)
+                     }
+
 openPCTermComplete :: RST.PrdCnsTerm -> RST.PrdCnsTerm
 openPCTermComplete (RST.PrdTerm tm) = RST.PrdTerm $ openTermComplete tm
 openPCTermComplete (RST.CnsTerm tm) = RST.CnsTerm $ openTermComplete tm
@@ -290,11 +297,11 @@ createNamesTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } 
   pat <- createNamesPatI tmcasei_pat
   pure $ RST.MkTermCaseI tmcasei_loc pat term
 
-createNamesInstanceCase :: RST.InstanceCase pc -> CreateNameM (RST.InstanceCase pc)
-createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_term } = do
-  term <- createNamesTerm instancecase_term
+createNamesInstanceCase :: RST.InstanceCase -> CreateNameM RST.InstanceCase
+createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
+  cmd <- createNamesCommand instancecase_cmd
   pat <- createNamesPat instancecase_pat
-  pure $ RST.MkInstanceCase instancecase_loc pat term
+  pure $ RST.MkInstanceCase instancecase_loc pat cmd
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
@@ -416,15 +423,12 @@ embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
                  , tmcase_term = embedTerm tmcasei_term
                  }
 
-embedInstancePat :: RST.Pattern -> CST.InstancePat
-embedInstancePat (RST.XtorPat loc xt args) =
-  CST.MethodPat loc (MkMethodName $ unXtorName xt) (CST.FoSFV . fromJust . snd <$> args)
-
-embedInstanceCase :: RST.InstanceCase pc -> CST.InstanceCase
-embedInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_term } =
-  CST.MkInstanceCase { instancecase_loc = instancecase_loc
-                     , instancecase_pat = embedInstancePat instancecase_pat
-                     , instancecase_term = embedTerm instancecase_term}
+embedInstanceCase :: RST.InstanceCase -> CST.TermCase
+embedInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
+  CST.MkTermCase { tmcase_loc = instancecase_loc
+                 , tmcase_pat = embedPat instancecase_pat
+                 , tmcase_term = embedCommand instancecase_cmd
+                 }
 
 embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp
 embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
@@ -457,12 +461,16 @@ resugarType _ = Nothing
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyVar loc _ _ tv) =
-  CST.TyVar loc tv
-embedType (RST.TyData loc _ tn xtors) =
-  CST.TyXData loc Data (rnTnName <$> tn) (embedXtorSig <$> xtors)
-embedType (RST.TyCodata loc _ tn xtors) =
-  CST.TyXData loc Codata (rnTnName <$> tn) (embedXtorSig <$> xtors)
+embedType (RST.TyVar loc _ _ tv@(RST.MkTVar _name)) =
+  CST.TySkolemVar loc (RST.tVarToSkolemTVar tv)
+embedType (RST.TyData loc _ xtors) =
+  CST.TyXData loc Data (embedXtorSig <$> xtors)
+embedType (RST.TyCodata loc _ xtors) =
+  CST.TyXData loc Codata (embedXtorSig <$> xtors)
+embedType (RST.TyDataRefined loc _ tn xtors) =
+  CST.TyXRefined loc Data (rnTnName tn) (embedXtorSig <$> xtors)
+embedType (RST.TyCodataRefined loc _ tn xtors) =
+  CST.TyXRefined loc Codata (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyNominal loc _ _ nm args) =
   CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =
@@ -475,8 +483,8 @@ embedType (RST.TyUnion loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ tv ty) =
-  CST.TyRec loc tv (embedType ty)
+embedType (RST.TyRec loc _ tv@(RST.MkTVar _name) ty) =
+  CST.TyRec loc (RST.tVarToSkolemTVar tv) (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
 embedType (RST.TyFlipPol _ ty) = embedType ty
@@ -484,8 +492,8 @@ embedType (RST.TyFlipPol _ ty) = embedType ty
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
-                 , ts_vars = ts_vars
-                 , ts_constraints = []
+                 , ts_vars = map RST.tVarToSkolemTVar ts_vars
+                 , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
                  , ts_monotype = embedType ts_monotype
                  }
 
@@ -535,7 +543,7 @@ reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
   embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
 
-reparseInstanceCase :: RST.InstanceCase pc -> CST.InstanceCase
+reparseInstanceCase :: RST.InstanceCase -> CST.TermCase
 reparseInstanceCase instancecase =
   embedInstanceCase (evalState (createNamesInstanceCase instancecase) names)
 
@@ -602,7 +610,7 @@ reparseInstanceDecl RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_d
                               , instancedecl_doc   = instancedecl_doc
                               , instancedecl_name  = instancedecl_name
                               , instancedecl_typ   = embedType (fst instancedecl_typ)
-                              , instancedecl_cases = reparseInstanceCase <$> instancedecl_cases
+                              , instancedecl_cases = reparseInstanceCase . openInstanceCase <$> instancedecl_cases
                               }
 
 reparseDecl :: RST.Declaration -> CST.Declaration

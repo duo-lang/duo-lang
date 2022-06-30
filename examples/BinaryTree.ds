@@ -1,0 +1,61 @@
+import Peano;
+import Bool;
+import List;
+
+-- The type of Binary trees
+-- unsure if CBV or CBN
+data BinTree : (+a : CBV) -> CBV{
+	Leaf,
+	Branch(BinTree(a),a,BinTree(a))
+};
+
+def rec prd depth : forall a. BinTree(a) -> Nat :=
+    \t => case t of {
+        Leaf => Z,
+        Branch(left,val,right) => S(natmax (depth left) (depth right))
+};
+
+def rec prd insertTree: forall a. BinTree(a) -> a -> BinTree(a) := 
+ \t n => case t of {
+ 	Leaf => Branch(Leaf, n, Leaf),
+	Branch(left,val,right) =>  ifthenelse (natgeq (depth left) (depth right)) Branch((insertTree left n),val,right) Branch(left,val,(insertTree right n))
+};
+
+def rec prd toList: forall a. BinTree(a) -> List(a) := 
+ \t => case t of {
+     Leaf => Nil,
+     Branch(left,val,right) => append (toList left) Cons(val, toList right)
+};
+
+def rec prd fromList: forall a. List(a) -> BinTree(a) := 
+ \l => case l of {
+ 	Nil => Leaf,
+	Cons(x,xs) => insertTree (fromList xs) x
+};
+
+def rec prd mapTree: forall a b. (a->b) -> BinTree(a) -> BinTree(b) := 
+  \f t => case t of {
+  	Leaf => Leaf,
+	Branch(left,val,right) => Branch((mapTree f left), (f val), (mapTree f right))
+};
+
+def rec prd appendTree: forall a.  BinTree(a) -> BinTree(a) -> BinTree(a) := 
+  \t1 t2 => case t1 of{
+ 	Leaf => t2,
+	Branch(left, val, right) => insertTree (appendTree right (appendTree left t2)) val
+};
+
+def rec prd filterTree: forall a. (a->Bool) -> BinTree(a) -> BinTree(a) := 
+ \f t => case t of{
+     Leaf => Leaf,
+     Branch(left, val, right) => ifthenelse 
+								  (f val) 
+								  Branch((filterTree f left),val,(filterTree f right)) 
+								  (appendTree (filterTree f left) (filterTree f right))
+};
+
+def rec prd foldTree: forall a b. (a->b->b) -> b -> BinTree(a) -> b := 
+  \f init t => case t of{ 
+  	Leaf => init,
+	Branch(left,val,right) => (foldTree f (foldTree f (f val init) left) right)
+};
