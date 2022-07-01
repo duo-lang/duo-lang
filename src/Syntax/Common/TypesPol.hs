@@ -194,7 +194,7 @@ generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
 -- Bisubstitution and Zonking
 ------------------------------------------------------------------------------
 
-newtype Bisubstitution = MkBisubstitution { uvarSubst :: Map UniTVar (Typ Pos, Typ Neg) }
+data Bisubstitution = MkBisubstitution { uvarSubst :: Map UniTVar (Typ Pos, Typ Neg), recvarSubst :: Map SkolemTVar (Typ Pos, Typ Neg) }
 
 -- | Class of types for which a Bisubstitution can be applied.
 class Zonk (a :: Type) where

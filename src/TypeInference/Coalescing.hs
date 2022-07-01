@@ -55,7 +55,7 @@ getRecVar ptv = do
       Just tv -> return tv
 
 coalesce :: SolverResult -> Bisubstitution
-coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs)
+coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs) M.empty
     where
         res = M.keys tvarSolution
         f tvar = (tvar, ( runCoalesceM result $ coalesceType $ UniTyVar defaultLoc PosRep Nothing tvar

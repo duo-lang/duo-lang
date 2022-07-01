@@ -142,7 +142,7 @@ freshTVarsForTypeParams rep dd = do
    paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
-     MkBisubstitution (M.fromList (zip ((\(_,MkSkolemTVar tv,_) ->  MkUniTVar tv) <$> kindArgs) freshVars))
+     MkBisubstitution (M.fromList (zip ((\(_,MkSkolemTVar tv,_) ->  MkUniTVar tv) <$> kindArgs) freshVars)) M.empty
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -179,7 +179,7 @@ skolemTVarToUniTVar (MkSkolemTVar name) = MkUniTVar name
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (skolemTVarToUniTVar tv, ty))
-  pure $ zonk (MkBisubstitution (M.fromList freshVars)) ts_monotype
+  pure $ zonk (MkBisubstitution (M.fromList freshVars) M.empty) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint
