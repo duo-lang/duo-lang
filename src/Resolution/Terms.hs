@@ -83,7 +83,7 @@ analyzeInstancePattern (CST.XtorPat loc xt args) = do
         -- Analyze the pattern
   -- Check whether the number of arguments in the given binding site
   -- corresponds to the number of arguments specified for the constructor/destructor.
-  
+
 
 ---------------------------------------------------------------------------------
 -- Analyze Cases
@@ -180,7 +180,7 @@ analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
                                     , icase_term = tmcase_term
                                     }
     _ -> throwError $ OtherError Nothing "Should be unreachable"
-  
+
 ---------------------------------------------------------------------------------
 -- Resolve Cases
 ---------------------------------------------------------------------------------
@@ -475,7 +475,7 @@ resolveTerm rep (CST.Dtor loc xtor tm subst) = do
       case rep of
         PrdRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
-          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
           pure $ RST.Dtor loc PrdRep ns xtor tm' (subst1', PrdRep, subst2')
         CnsRep -> do
           throwError (OtherError (Just loc) "Tried to resolve Dtor to a consumer, but implicit argument stands for consumer")
