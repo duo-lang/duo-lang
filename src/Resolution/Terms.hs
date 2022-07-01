@@ -296,8 +296,11 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
-resolveCommand (CST.Xtor loc _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
+resolveCommand (CST.Xtor loc xtor _arity) = do
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult _dc _ns _ar) -> throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
+    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Method calls not implemented yet"
 resolveCommand (CST.Semi loc _ _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Semi")
 resolveCommand (CST.Dtor loc _ _ _) =
@@ -413,19 +416,22 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
           ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
       pctms <- resolveTerms loc ar subst'
       pure $ RST.Xtor loc PrdRep ns xtor pctms
-    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Resolver for method calls not implemented yet."
+    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Xtor expected, but found Method"
 resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
-  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
-  when (length ar /= length subst) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
-  when (dc /= Codata) $
-           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
-  analyzedSubst <- analyzeSubstitution loc xtor ar subst
-  subst' <- case analyzedSubst of
-      ExplicitSubst es -> return (map snd es)
-      ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
-  pctms <- resolveTerms loc ar subst'
-  pure $ RST.Xtor loc CnsRep ns xtor pctms
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult dc ns ar) -> do
+      when (length ar /= length subst) $
+               throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+      when (dc /= Codata) $
+               throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
+      analyzedSubst <- analyzeSubstitution loc xtor ar subst
+      subst' <- case analyzedSubst of
+          ExplicitSubst es -> return (map snd es)
+          ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
+      pctms <- resolveTerms loc ar subst'
+      pure $ RST.Xtor loc CnsRep ns xtor pctms
+    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Xtor expected, but found Method"
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
 ---------------------------------------------------------------------------------
