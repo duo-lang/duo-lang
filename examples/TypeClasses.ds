@@ -19,5 +19,5 @@ instance Eq Bool {
 def rec prd elem : forall a. Eq a, a <: a => a -> List(a) -> Bool :=
   \e l => case l of {
         Nil => False,
-        Cons(x, xs) => or Equals(e,x) (elem e xs)
+        Cons(x, xs) => or (mu k. Equals(e, x, k)) (elem e xs)
     };
