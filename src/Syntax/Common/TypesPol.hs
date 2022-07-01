@@ -207,7 +207,12 @@ instance Zonk (Typ pol) where
   zonk bisubst ty@(UniTyVar _ NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
-  zonk _ ty@SkolemTyVar{} = ty
+  zonk bisubst ty@(SkolemTyVar _ NegRep _ tv) = case M.lookup tv (recvarSubst bisubst) of
+     Nothing -> ty -- Recursive variable!
+     Just (_,tyNeg) -> tyNeg
+  zonk bisubst ty@(SkolemTyVar _ PosRep _ tv) = case M.lookup tv (recvarSubst bisubst) of
+     Nothing -> ty -- Recursive variable!
+     Just (tyPos,_) -> tyPos
   zonk bisubst (TyData loc rep xtors) =
      TyData loc rep (zonk bisubst <$> xtors)
   zonk bisubst (TyCodata loc rep xtors) =
@@ -250,8 +255,8 @@ instance Zonk (PrdCnsType pol) where
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
---unfoldRecType recty@(TyRec _ PosRep var ty) = zonk (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
---unfoldRecType recty@(TyRec _ NegRep var ty) = zonk (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
+unfoldRecType recty@(TyRec _ PosRep var ty) = zonk (MkBisubstitution M.empty (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
+unfoldRecType recty@(TyRec _ NegRep var ty) = zonk (MkBisubstitution M.empty (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
 
 ------------------------------------------------------------------------------
