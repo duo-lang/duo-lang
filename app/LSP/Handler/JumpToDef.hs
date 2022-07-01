@@ -213,7 +213,10 @@ instance ToJumpMap RST.Declaration where
   toJumpMap RST.ImportDecl {} = M.empty
   toJumpMap RST.SetDecl {} = M.empty
   toJumpMap (RST.TyOpDecl decl) = toJumpMap decl
+  toJumpMap RST.ClassDecl {} = M.empty
+  toJumpMap RST.InstanceDecl {} = M.empty
   toJumpMap RST.TySynDecl {} = M.empty
+  
 
 instance ToLocation RnTypeName where
   toLocation MkRnTypeName { rnTnLoc, rnTnModule } =

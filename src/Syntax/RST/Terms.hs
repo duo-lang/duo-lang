@@ -9,6 +9,7 @@ module Syntax.RST.Terms
   , TermCase(..)
   , TermCaseI(..)
   , CmdCase(..)
+  , InstanceCase(..)
   , Command(..)
    -- Functions
   , termOpening
@@ -110,6 +111,17 @@ data CmdCase = MkCmdCase
   }
 
 deriving instance Show CmdCase
+
+
+data InstanceCase = MkInstanceCase
+  { instancecase_loc :: Loc
+  , instancecase_pat :: Pattern
+  , instancecase_cmd :: Command
+  }
+
+deriving instance Show InstanceCase
+
+
 
 ---------------------------------------------------------------------------------
 -- Terms

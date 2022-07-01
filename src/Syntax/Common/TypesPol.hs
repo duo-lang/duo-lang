@@ -69,6 +69,7 @@ deriving instance Eq (XtorSig pol)
 deriving instance Ord (XtorSig pol)
 deriving instance Show (XtorSig pol)
 
+
 data Typ (pol :: Polarity) where
   SkolemTyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
   UniTyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol

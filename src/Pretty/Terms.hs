@@ -57,6 +57,7 @@ instance PrettyAnn CST.TermOrStar  where
   prettyAnn (CST.ToSTerm t) = prettyAnn t
   prettyAnn CST.ToSStar  = "*"
 
+
 ---------------------------------------------------------------------------------
 -- Substitutions
 ---------------------------------------------------------------------------------

@@ -245,6 +245,8 @@ focusDecl _  decl@ImportDecl {}      = decl
 focusDecl _  decl@SetDecl {}         = decl
 focusDecl _  decl@TyOpDecl {}        = decl
 focusDecl _  decl@TySynDecl {}       = decl
+focusDecl _  decl@ClassDecl {}       = decl
+focusDecl _  decl@InstanceDecl{}     = decl
 
 focusProgram :: EvaluationOrder -> Program -> Program
 focusProgram eo = fmap (focusDecl eo)

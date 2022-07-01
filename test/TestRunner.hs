@@ -66,7 +66,7 @@ main = do
     examples <- getAvailableExamples
     counterExamples <- getAvailableCounterExamples
     -- Collect the parsed declarations
-    -- parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     -- Collect the typechecked declarations
     checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
@@ -86,6 +86,6 @@ main = do
       describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
       describe "ExampleSpec" (Spec.TypeInferenceExamples.spec checkedExamples parsedCounterExamples checkedCounterExamples)
       describe "Subsumption works" (Spec.Subsumption.spec symboltables)
-      describe "Prettyprinted work again" (Spec.Prettyprinter.spec checkedExamples)
+      describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamples)
       describe "Focusing works" (Spec.Focusing.spec checkedExamples)
 

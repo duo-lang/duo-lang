@@ -18,7 +18,6 @@ import Utils
 -- Coalescing
 ---------------------------------------------------------------------------------
 
-
 type CoalesceState  = (Int, Map (UniTVar, Polarity) UniTVar)
 type CoalesceReader = (SolverResult, Set (UniTVar, Polarity))
 

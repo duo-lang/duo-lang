@@ -18,6 +18,7 @@ import Utils (Loc(..))
 ---------------------------------------------------------------------------------
 
 
+
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
@@ -30,6 +31,7 @@ resolveTyp rep (UniTyVar loc v) =
     pure $ RST.UniTyVar loc rep Nothing v
 resolveTyp rep (SkolemTyVar loc v) = 
     pure $ RST.SkolemTyVar loc rep Nothing v
+
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
@@ -62,7 +64,8 @@ resolveTyp rep (TyNominal loc name args) = do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 resolveTyp rep (TyRec loc v typ) =
-    RST.TyRec loc rep v <$> resolveTyp rep typ
+        RST.TyRec loc rep v <$> resolveTyp rep typ
+
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
     throwError (LowerError (Just loc) TopInPosPolarity)

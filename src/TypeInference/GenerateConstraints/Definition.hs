@@ -56,9 +56,6 @@ import Utils
 -- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
 
---tVarToSkolemTVar :: TVar -> SkolemTVar
---tVarToSkolemTVar (MkTVar name) = MkSkolemTVar name
-
 data GenerateState = GenerateState
   { varCount :: Int
   , constraintSet :: ConstraintSet

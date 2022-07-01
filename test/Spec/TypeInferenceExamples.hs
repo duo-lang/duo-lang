@@ -8,6 +8,11 @@ import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Errors
 
+type Reason = String
+
+pendingFiles :: [(FilePath, Reason)]
+pendingFiles = [("examples/TypeClasses.ds", "Backend not implemented for type classes")]
+
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: [(FilePath, Either Error TST.Program)] -- ^ examples
      -> [(FilePath, Either Error CST.Program)]
@@ -16,8 +21,9 @@ spec :: [(FilePath, Either Error TST.Program)] -- ^ examples
 spec examples counterExamplesParsed counterExamplesChecked = do
   describe "All the programs in the toplevel \"examples/\" folder typecheck." $ do
     forM_ examples $ \(example, prog) -> do
-      it ("The file " ++ example ++ " typechecks.") $ do
-        prog `shouldSatisfy` isRight
+      case example `lookup` pendingFiles of
+         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
+         Nothing     -> it ("The file " ++ example ++ " typechecks.") $ prog `shouldSatisfy` isRight
   describe "All the programs in the \"test/counterexamples/\" folder can be parsed." $ do
     forM_ counterExamplesParsed $ \(example, prog) -> do
       describe ("The counterexample " ++ example ++ " can be parsed") $ do

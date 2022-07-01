@@ -5,16 +5,18 @@ module Parser.Common
   , xtorNameP
   , typeNameP
   , moduleNameP
+  , classNameP
     -- Type Operators
   , tyOpNameP
   , tyBinOpP
   , precedenceP
   , associativityP
+  , tParamP
     -- Kinds
   , evalOrderP
   , monoKindP
   , polyKindP
-  ) where
+  ,methodNameP) where
 
 import Text.Megaparsec
 
@@ -51,6 +53,16 @@ moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
   (name, pos) <- upperCaseId
   return (MkModuleName name, pos)
+
+classNameP :: Parser (ClassName, SourcePos)
+classNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkClassName name, pos)
+
+methodNameP :: Parser (MethodName, SourcePos)
+methodNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkMethodName name, pos)
 
 ---------------------------------------------------------------------------------
 -- Operators

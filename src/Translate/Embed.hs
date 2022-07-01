@@ -120,6 +120,10 @@ embedCoreDecl (Core.TyOpDecl decl) =
     RST.TyOpDecl decl
 embedCoreDecl (Core.TySynDecl decl) =
     RST.TySynDecl decl
+embedCoreDecl (Core.ClassDecl decl) =
+    RST.ClassDecl decl
+embedCoreDecl (Core.InstanceDecl decl) =
+    RST.InstanceDecl decl
 
 embedTSTCmdCase :: TST.CmdCase -> Core.CmdCase
 embedTSTCmdCase TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -220,5 +224,9 @@ embedTSTDecl (TST.TyOpDecl decl) =
     Core.TyOpDecl decl
 embedTSTDecl (TST.TySynDecl decl) =
     Core.TySynDecl decl
+embedTSTDecl (TST.ClassDecl decl) =
+    Core.ClassDecl decl
+embedTSTDecl (TST.InstanceDecl decl) =
+    Core.InstanceDecl decl
 
    
