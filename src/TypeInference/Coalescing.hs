@@ -19,7 +19,7 @@ import Utils
 ---------------------------------------------------------------------------------
 
 type CoalesceState  = (Int, Map (SkolemTVar, Polarity) SkolemTVar)
-type CoalesceReader = (SolverResult, Set (SkolemTVar, Polarity))
+type CoalesceReader = (SolverResult, Set (UniTVar, Polarity))
 
 type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 
@@ -34,14 +34,14 @@ freshRecVar = do
 
 inProcess :: (SkolemTVar, Polarity) -> CoalesceM Bool
 inProcess ptv = do
-    inp <- asks snd
-    return $ ptv `S.member` inp
+    inp <- gets snd 
+    return $ ptv `M.member` inp
 
-getVariableState :: SkolemTVar -> CoalesceM VariableState
+getVariableState :: UniTVar -> CoalesceM VariableState
 getVariableState tv = do
     mp <- asks (tvarSolution . fst)
     case M.lookup tv mp of
-      Nothing -> error ("Not in variable states: " ++ show (unSkolemTVar tv))
+      Nothing -> error ("Not in variable states: " ++ show (unUniTVar tv))
       Just vs -> return vs
 
 getRecVar :: (SkolemTVar, Polarity) -> CoalesceM SkolemTVar
@@ -64,34 +64,15 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (UniTyVar _ PosRep _ tv) = do
-    --isInProcess <- inProcess (tv, Pos)
-    --if isInProcess
-    --    then do
-    --        recVar <- getRecVar (tv, Pos)
-    --        return (UniTyVar defaultLoc PosRep Nothing recVar)
-    --    else do
     VariableState { vst_lowerbounds } <- getVariableState tv
     let f (i,m) = ( i, S.insert (tv, Pos) m)
     lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
-     --       recVarMap <- gets snd
-     --       case M.lookup (tv, Pos) recVarMap of
-           --     Nothing     -> 
     return $ mkUnion defaultLoc Nothing (UniTyVar defaultLoc PosRep Nothing tv:lbs')
- --Just (MkUniTVar recVar) -> return $ TyRec defaultLoc PosRep (MkSkolemTVar recVar) (mkUnion defaultLoc Nothing (UniTyVar defaultLoc PosRep Nothing tv:lbs'))
 coalesceType (UniTyVar _ NegRep _ tv) = do
-    isInProcess <- inProcess (tv, Neg)
-    if isInProcess
-        then do
-            recVar <- getRecVar (tv, Neg)
-            return (UniTyVar defaultLoc NegRep Nothing recVar)
-        else do
-            VariableState { vst_upperbounds } <- getVariableState tv
-            let f (i,m) = ( i, S.insert (tv, Neg) m)
-            ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
-            recVarMap <- gets snd
-            case M.lookup (tv, Neg) recVarMap of
-                Nothing     -> return $                                 mkInter defaultLoc Nothing (UniTyVar defaultLoc NegRep Nothing tv:ubs')
-                Just (MkUniTVar recVar) -> return $ TyRec defaultLoc NegRep (MkSkolemTVar recVar) (mkInter defaultLoc Nothing (UniTyVar defaultLoc NegRep Nothing tv:ubs'))
+    VariableState { vst_upperbounds } <- getVariableState tv
+    let f (i,m) = ( i, S.insert (tv, Neg) m)
+    ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
+    return $  mkInter defaultLoc Nothing (UniTyVar defaultLoc NegRep Nothing tv:ubs')
 coalesceType (SkolemTyVar _ NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
@@ -99,13 +80,13 @@ coalesceType (SkolemTyVar _ NegRep _ tv) = do
             recVar <- getRecVar (tv, Neg)
             return (SkolemTyVar defaultLoc NegRep Nothing recVar)
         else do
-            VariableState { vst_upperbounds } <- getVariableState tv
-            let f (i,m) = ( i, S.insert (tv, Neg) m)
-            ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
+            --VariableState { vst_upperbounds } <- getVariableState tv
+            --let f (i,m) = ( i, S.insert (tv, Neg) m)
+            --ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
             recVarMap <- gets snd
             case M.lookup (tv, Neg) recVarMap of
                 Nothing -> error ("Skolem Variable " ++ show tv ++ " not found in Recursive Variables" )
-                Just (MkSkolemTVar recVar) -> return $ TyRec defaultLoc NegRep (MkSkolemTVar recVar) (mkInter defaultLoc Nothing (SkolemTyVar defaultLoc NegRep Nothing tv:ubs'))
+                Just (MkSkolemTVar recVar) -> return $ TyRec defaultLoc NegRep (MkSkolemTVar recVar) (mkInter defaultLoc Nothing [SkolemTyVar defaultLoc NegRep Nothing tv]) -- :ubs'))
 coalesceType (SkolemTyVar _ PosRep _ tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
@@ -113,13 +94,13 @@ coalesceType (SkolemTyVar _ PosRep _ tv) = do
             recVar <- getRecVar (tv, Pos)
             return (SkolemTyVar defaultLoc PosRep Nothing recVar)
         else do
-            VariableState { vst_lowerbounds } <- getVariableState tv
-            let f (i,m) = ( i, S.insert (tv, Pos) m)
-            lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
+            --VariableState { vst_lowerbounds } <- getVariableState tv
+            --let f (i,m) = ( i, S.insert (tv, Pos) m)
+            --lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
             recVarMap <- gets snd
             case M.lookup (tv, Pos) recVarMap of
                 Nothing  -> error  ("Skolem Variable " ++ show tv ++ " not found in Recursive Variables" )
-                Just (MkSkolemTVar recVar) -> return $ TyRec defaultLoc PosRep (MkSkolemTVar recVar) (mkUnion defaultLoc Nothing (SkolemTyVar defaultLoc PosRep Nothing tv:lbs'))
+                Just (MkSkolemTVar recVar) -> return $ TyRec defaultLoc PosRep (MkSkolemTVar recVar) (mkUnion defaultLoc Nothing [SkolemTyVar defaultLoc PosRep Nothing tv]) -- :lbs'))
 
 coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
@@ -151,14 +132,14 @@ coalesceType (TyInter loc knd ty1 ty2) = do
     pure (TyInter loc knd ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     modify (second (M.insert (tv, Pos) tv))
-    let f = second (S.insert (tv, Pos))
-    ty' <- local f $ coalesceType ty
-    return $ TyRec loc PosRep tv ty'
+    --let f = second (S.insert (tv, Pos))
+    --ty' <- local f $ coalesceType ty
+    return $ TyRec loc PosRep tv  ty -- '
 coalesceType (TyRec loc NegRep tv ty) = do
     modify (second (M.insert (tv, Neg) tv))
-    let f = second (S.insert (tv, Neg))
-    ty' <- local f $ coalesceType ty
-    return $ TyRec loc NegRep tv ty'
+    --let f = second (S.insert (tv, Neg))
+    --ty' <- local f $ coalesceType ty
+    return $ TyRec loc NegRep tv ty -- '
 coalesceType t@TyPrim {} = return t
 coalesceType (TyFlipPol _ _) = error "Tried to coalesce TyFlipPol"
 
