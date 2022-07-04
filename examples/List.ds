@@ -90,3 +90,16 @@ def rec prd scanl : forall a b. (b -> a -> b) -> b -> List(a) -> List(b) :=
         Nil => Nil,
         Cons(y,ys) => scanl f (f acc y) ys
     });
+
+def rec prd downFrom : Nat -> List(Nat) :=
+    \n => case n of {
+        Z     => Nil,
+        S(n0) => Cons(n, downFrom n0)
+    };
+
+def prd upTo : Nat -> List(Nat) :=
+    \n => reverse (downFrom n);
+
+def prd fromTo : Nat -> Nat -> List(Nat) :=
+    \n m => map (\d => add n d) (upTo (sub m n));
+

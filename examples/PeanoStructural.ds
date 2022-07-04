@@ -18,3 +18,13 @@ def rec prd mul :=
 def rec prd nateq :=
   \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};
+
+def rec prd sub :=
+    \n m => case m of {
+        Z => n,
+        S(m0) => case n of {
+            Z => Z,
+            S(n0) => sub n0 m0
+        }
+    };
+

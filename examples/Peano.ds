@@ -18,6 +18,15 @@ def rec prd  mul : Nat -> Nat -> Nat :=
   \n m => case n of { Z => Z
                     , S(n) => add m (mul n m)};
 
+def rec prd sub : Nat -> Nat -> Nat :=
+    \n m => case m of {
+        Z => n,
+        S(m0) => case n of {
+            Z => Z,
+            S(n0) => sub n0 m0 
+        }
+    };
+
 def rec prd nateq : Nat -> Nat -> Bool :=
   \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};
