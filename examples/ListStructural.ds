@@ -1,0 +1,101 @@
+import PeanoStructural;
+import Bool;
+import Function;
+
+constructor Nil;
+constructor Cons(CBV,CBV);
+
+-- | Computes the length of a list.
+def rec prd length :=
+    \xs => case xs of {
+        Nil => Z,
+        Cons(x, xs) => S(length xs)
+    };
+
+-- | Append two lists together.
+def rec prd append :=
+    \xs ys => case xs of {
+        Nil => ys,
+        Cons(z, zs) => Cons(z, append zs ys)
+    };
+
+-- | Reverse order of a list.
+def rec prd reverse :=
+    \xs => case xs of {
+        Nil => Nil,
+        Cons(y, ys) => append (reverse ys) Cons(y, Nil)
+    };
+
+-- | Maps a function over all elements of a list.
+def rec prd map :=
+    \f xs => case xs of {
+        Nil => Nil,
+        Cons(y, ys) => Cons(f y, map f ys)
+    };
+
+-- | Filters all predicates satisfying a given predicate.
+def rec prd filter :=
+    \f xs => case xs of {
+        Nil => Nil,
+        Cons(y, ys) => case (f y) of {
+            True => Cons(y, filter f ys),
+            False => filter f ys
+        }
+    };
+
+-- | Right fold over a list.
+def rec prd foldr :=
+    \f init xs => case xs of {
+        Nil => init,
+        Cons(y, ys) => f y (foldr f init ys)
+    };
+
+-- | Left fold over a list.
+def rec prd foldl :=
+    \f acc xs => case xs of {
+        Nil => acc,
+        Cons(y, ys) => foldl f (f acc y) ys
+    };
+
+-- Special folds
+
+-- | Concat all elements of a list of lists.
+def rec prd concat :=
+    foldr append Nil;
+
+-- | Map a function over all the elements of a container and concatenate the resulting lists.
+def rec prd concatMap :=
+    \f xs => concat (map f xs);
+
+-- | Verify predicate for all elements of a list.
+def rec prd all :=
+    \p xs => (foldl and True) (map p xs);
+
+-- | Verify predicate for at least one element of a list.
+def rec prd any :=
+    \p xs => (foldl or False) (map p xs);
+
+-- | Sum up list of natural numbers.
+def rec prd sum :=
+    foldl add Z;
+
+
+-- | Left scan over a list.
+def rec prd scanl :=
+    \f acc xs => Cons(acc, case xs of {
+        Nil => Nil,
+        Cons(y,ys) => scanl f (f acc y) ys
+    });
+
+def rec prd downFrom :=
+    \n => case n of {
+        Z     => Nil,
+        S(n0) => Cons(n, downFrom n0)
+    };
+
+def prd upTo :=
+    \n => reverse (downFrom n);
+
+-- def prd fromTo :=
+    -- \n m => map (\d => add n d) (upTo (sub m n));
+
