@@ -259,9 +259,9 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We lookup the class and type definition of the method.
   decl <- lookupClassDecl instancedecl_name
   -- We check that all implementations belong to the same type class.
-  checkInstance (fst <$> decl) ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt). Core.instancecase_pat <$> instancedecl_cases) 
+  checkInstance (fst <$> decl) ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
-  -- (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+  freshTVars <- sequence $ freshTVars . (\(Core.XtorPat _ _ tvars) -> tvars) . Core.instancecase_pat <$> instancedecl_cases
 
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } -> do
                    cmdInferred <- genConstraintsCommand instancecase_cmd
