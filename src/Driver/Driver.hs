@@ -144,6 +144,18 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
                                 , cmddecl_cmd = cmdInferred
                                 }
 
+inferInstanceDeclaration :: ModuleName
+                        -> Core.InstanceDeclaration
+                        -> DriverM TST.InstanceDeclaration
+inferInstanceDeclaration _mn Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ } = do
+  void $ throwError $ OtherError (Just instancedecl_loc) "Type inference for instances not implemented yet."
+  pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                                 , instancedecl_doc = instancedecl_doc
+                                 , instancedecl_name = instancedecl_name
+                                 , instancedecl_typ = instancedecl_typ
+                                 , instancedecl_cases = []
+                                 }
+
 inferDecl :: ModuleName
           -> Core.Declaration
           -> DriverM TST.Declaration
@@ -152,7 +164,7 @@ inferDecl :: ModuleName
 --
 inferDecl mn (Core.PrdCnsDecl pcrep decl) = do
   decl' <- inferPrdCnsDeclaration mn decl
-  pure $ (TST.PrdCnsDecl pcrep decl')
+  pure (TST.PrdCnsDecl pcrep decl')
 --
 -- CmdDecl
 --
@@ -200,8 +212,9 @@ inferDecl _mn (Core.ClassDecl decl) =
 --
 -- InstanceDecl
 --
-inferDecl _mn (Core.InstanceDecl decl) =
-  pure (TST.InstanceDecl decl)
+inferDecl mn (Core.InstanceDecl decl) = do
+  decl' <- inferInstanceDeclaration mn decl
+  pure (TST.InstanceDecl decl')
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls

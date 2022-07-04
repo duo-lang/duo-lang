@@ -84,7 +84,7 @@ data Declaration where
   TyOpDecl       :: RST.TyOpDeclaration                  -> Declaration
   TySynDecl      :: RST.TySynDeclaration                 -> Declaration
   ClassDecl      :: RST.ClassDeclaration                 -> Declaration
-  InstanceDecl   :: RST.InstanceDeclaration              -> Declaration
+  InstanceDecl   :: InstanceDeclaration                  -> Declaration
   
 
 instance Show Declaration where
