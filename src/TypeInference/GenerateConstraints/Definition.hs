@@ -24,6 +24,7 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
+  , checkInstance
   , translateXtorSigUpper
   , translateTypeUpper
   , translateXtorSigLower
@@ -88,11 +89,6 @@ newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, Generate
 
 runGenM :: Map ModuleName Environment -> GenM a -> Either Error (a, ConstraintSet)
 runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
-  Left err -> Left err
-  Right (x, state) -> Right (x, constraintSet state)
-
-runGenConstraintsM :: Map ModuleName Environment -> ConstraintSet -> GenM a -> Either Error (a, ConstraintSet)
-runGenConstraintsM env constraints m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
 
@@ -266,3 +262,14 @@ checkExhaustiveness matched decl = do
   forM_ declared $ \xn -> unless (xn `elem` matched)
     (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
                      ppPrint (data_name decl) <> " is not matched against." ])
+
+-- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
+-- in the instance declaration and every implemented method is actually declared.
+checkInstance :: [MethodName]
+              -> [MethodName]
+              -> GenM ()
+checkInstance classMethods instanceMethods = do
+  forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
+    (throwGenError ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
+  forM_ instanceMethods $ \m -> unless (m `elem` classMethods)
+    (throwGenError ["Instance Declaration Error. Method: " <> ppPrint m <> " is implemented but not declared." ])

@@ -40,7 +40,7 @@ import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
       genConstraintsTermRecursive,
-      genConstraintsInstanceCase )
+      genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
@@ -148,10 +148,10 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration mn Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (mapM genConstraintsInstanceCase instancedecl_cases)
+  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (genConstraintsInstance decl)
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -160,12 +160,7 @@ inferInstanceDeclaration mn Core.MkInstanceDeclaration { instancedecl_loc, insta
   -- Insert into environment
   let f env = env { instanceEnv = M.insert instancedecl_name instancedecl_typ (instanceEnv env)}
   modifyEnvironment mn f
-  pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                 , instancedecl_doc = instancedecl_doc
-                                 , instancedecl_name = instancedecl_name
-                                 , instancedecl_typ = instancedecl_typ
-                                 , instancedecl_cases = instanceInferred
-                                 }
+  pure instanceInferred
 
 inferDecl :: ModuleName
           -> Core.Declaration

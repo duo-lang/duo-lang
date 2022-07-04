@@ -6,6 +6,7 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
+  , lookupClassDecl
   , withTerm
     ) where
 
@@ -117,6 +118,14 @@ lookupXtorSig xtn NegRep = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
     Just xts -> return xts
     Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+
+-- | Find the 
+lookupClassDecl :: EnvReader a m
+               => ClassName -> m [(MethodName, [(PrdCns, Typ Pos, Typ Neg)])]
+lookupClassDecl cn = do
+  let err = OtherError Nothing ("Undeclared class " <> ppPrint cn <> " is not contained in environment.")
+  let f env = M.lookup cn (classEnv env)
+  snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.
