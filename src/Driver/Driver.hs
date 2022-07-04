@@ -39,7 +39,8 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
-      genConstraintsTermRecursive )
+      genConstraintsTermRecursive,
+      genConstraintsInstanceCase )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
@@ -136,7 +137,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { cmdEnv  = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
+  let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
   pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
                                 , cmddecl_doc = cmddecl_doc
@@ -147,13 +148,23 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration _mn Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ } = do
-  void $ throwError $ OtherError (Just instancedecl_loc) "Type inference for instances not implemented yet."
+inferInstanceDeclaration mn Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  env <- gets drvEnv
+  -- Generate the constraints
+  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (mapM genConstraintsInstanceCase instancedecl_cases)
+  -- Solve the constraints
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
+  guardVerbose $ do
+      ppPrintIO constraints
+      ppPrintIO solverResult
+  -- Insert into environment
+  let f env = env { instanceEnv = M.insert instancedecl_name instancedecl_typ (instanceEnv env)}
+  modifyEnvironment mn f
   pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
                                  , instancedecl_typ = instancedecl_typ
-                                 , instancedecl_cases = []
+                                 , instancedecl_cases = instanceInferred
                                  }
 
 inferDecl :: ModuleName

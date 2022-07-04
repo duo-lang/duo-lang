@@ -35,7 +35,7 @@ data ConstraintInfo
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
-  -- TypeClass :: a -> ClassName -> Typ pol -> Constraint a
+  TypeClass :: a -> ClassName -> Typ Pos -> Constraint a
     deriving (Eq, Ord, Functor)
 
 -- | Information about the provenance of a unification variable.

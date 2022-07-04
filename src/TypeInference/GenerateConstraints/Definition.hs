@@ -91,6 +91,11 @@ runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReade
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
 
+runGenConstraintsM :: Map ModuleName Environment -> ConstraintSet -> GenM a -> Either Error (a, ConstraintSet)
+runGenConstraintsM env constraints m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
+  Left err -> Left err
+  Right (x, state) -> Right (x, constraintSet state)
+
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
