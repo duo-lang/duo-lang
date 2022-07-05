@@ -1,4 +1,4 @@
-module TypeAutomata.Subsume ( subsume ) where
+module TypeAutomata.Subsume ( subsume, typeAutUnion, sucWith ) where
 
 import Data.Graph.Inductive.Graph
 

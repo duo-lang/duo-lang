@@ -98,6 +98,7 @@ library
   import: shared-lang-options
   import: shared-ghc-opts
   exposed-modules:
+      Failure
       Driver.Definition
       Driver.DepGraph
       Driver.Driver
