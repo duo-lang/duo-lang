@@ -40,10 +40,10 @@ initializeFromAutomaton TypeAut{..} =
 -- Type automata -> Types
 --------------------------------------------------------------------------
 
-data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set UniTVar)
+data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set SkolemTVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
-                                     , tvars :: [UniTVar]
+                                     , tvars :: [SkolemTVar]
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
 
@@ -73,7 +73,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (UniTyVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (SkolemTyVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -114,7 +114,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache then
-    return $ UniTyVar defaultLoc rep Nothing (MkUniTVar ("r" <> T.pack (show i)))
+    return $ SkolemTyVar defaultLoc rep Nothing (MkSkolemTVar ("r" <> T.pack (show i)))
   else
     nodeToTypeNoCache rep i
 
