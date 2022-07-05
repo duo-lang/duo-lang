@@ -7,6 +7,8 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
+    -- Generate fresh constraints for instance constraints
+  , classUnifiers
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -143,6 +145,15 @@ freshTVarsForTypeParams rep dd = do
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
      MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
+
+classUnifiers :: (Typ Pos, Typ Neg) -> [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
+classUnifiers _typ [] = return ([],[])
+classUnifiers (tp, tn) ((Prd,  _fv):rest) = do
+  (lctxtP, lctxtN) <- classUnifiers (tp, tn) rest
+  return (PrdCnsType PrdRep tp:lctxtP, PrdCnsType PrdRep tn:lctxtN)
+classUnifiers (tp, tn) ((Cns, _fv):rest) = do
+  (lctxtP, lctxtN) <- classUnifiers (tp, tn) rest
+  return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment

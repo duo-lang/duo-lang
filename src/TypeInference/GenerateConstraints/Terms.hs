@@ -263,9 +263,11 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
 
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    (uvarsPos, uvarsNeg) <- freshTVars args
+                   (classPos, classNeg) <- classUnifiers instancedecl_typ args
                    -- Check the command in the context extended with the positive unification variables
-                   cmdInferred <- withContext uvarsPos (genConstraintsCommand instancecase_cmd)
-                   genConstraintsCtxts uvarsPos uvarsNeg (PatternMatchConstraint loc)
+                   cmdInferred <- withContext classPos (genConstraintsCommand instancecase_cmd)
+                   genConstraintsCtxts uvarsPos uvarsNeg (InstanceConstraint loc)
+                   genConstraintsCtxts classPos classNeg (InstanceConstraint loc)
                    pure TST.MkInstanceCase { instancecase_loc = instancecase_loc
                                            , instancecase_pat = Core.XtorPat loc xt args
                                            , instancecase_cmd = cmdInferred
