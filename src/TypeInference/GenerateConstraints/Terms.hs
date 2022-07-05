@@ -260,13 +260,14 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   decl <- lookupClassDecl instancedecl_name
   -- We check that all implementations belong to the same type class.
   checkInstance (fst <$> decl) ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
-  -- Generate fresh unification variables for type parameters
-  freshTVars <- sequence $ freshTVars . (\(Core.XtorPat _ _ tvars) -> tvars) . Core.instancecase_pat <$> instancedecl_cases
 
-  inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } -> do
-                   cmdInferred <- genConstraintsCommand instancecase_cmd
+  inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
+                   (uvarsPos, uvarsNeg) <- freshTVars args
+                   -- Check the command in the context extended with the positive unification variables
+                   cmdInferred <- withContext uvarsPos (genConstraintsCommand instancecase_cmd)
+                   genConstraintsCtxts uvarsPos uvarsNeg (PatternMatchConstraint loc)
                    pure TST.MkInstanceCase { instancecase_loc = instancecase_loc
-                                           , instancecase_pat = instancecase_pat
+                                           , instancecase_pat = Core.XtorPat loc xt args
                                            , instancecase_cmd = cmdInferred
                                            })
   pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc

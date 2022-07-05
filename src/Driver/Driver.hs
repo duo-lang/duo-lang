@@ -28,6 +28,7 @@ import Resolution.Definition
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
+import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
@@ -45,6 +46,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
+import Data.Bifunctor
 
 checkAnnot :: PolarityRep pol
            -> TypeScheme pol -- ^ Inferred type
@@ -162,6 +164,15 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   modifyEnvironment mn f
   pure instanceInferred
 
+inferClassDeclaration :: ModuleName 
+                      -> RST.ClassDeclaration
+                      -> DriverM RST.ClassDeclaration
+inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name, classdecl_xtors } = do
+  let f env = env { classEnv = M.insert classdecl_name (first (MkMethodName . unXtorName) <$> classdecl_xtors) (classEnv env)}
+  modifyEnvironment mn f
+  pure decl
+
+
 inferDecl :: ModuleName
           -> Core.Declaration
           -> DriverM TST.Declaration
@@ -213,8 +224,9 @@ inferDecl _mn (Core.TySynDecl decl) = do
 --
 -- ClassDecl
 --
-inferDecl _mn (Core.ClassDecl decl) =
-  pure (TST.ClassDecl decl)
+inferDecl mn (Core.ClassDecl decl) = do
+  decl' <- inferClassDeclaration mn decl
+  pure (TST.ClassDecl decl')
 --
 -- InstanceDecl
 --
@@ -271,7 +283,7 @@ inferProgramIO  :: DriverState -- ^ Initial State
                 -> [CST.Declaration]
                 -> IO (Either Error (Map ModuleName Environment, TST.Program))
 inferProgramIO state mn decls = do
-  let action :: DriverM (TST.Program)
+  let action :: DriverM TST.Program
       action = do
         st <- createSymbolTable mn decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
@@ -282,5 +294,5 @@ inferProgramIO state mn decls = do
   res <- execDriverM state action
   case res of
     Left err -> return (Left err)
-    Right (res,x) -> return (Right ((drvEnv x), res))
+    Right (res,x) -> return (Right (drvEnv x, res))
 
