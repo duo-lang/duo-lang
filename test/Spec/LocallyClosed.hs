@@ -14,7 +14,9 @@ import Errors ( Error )
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [("examples/TypeClasses.ds", "Backend not implemented for type classes")]
+pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type classes")
+               , ("examples/TypeClassInstance.ds", "Backend not implemented for type classes")
+               ]
 
 getProducers :: TST.Program -> [(FreeVarName, Term Prd)]
 getProducers prog = go prog []
