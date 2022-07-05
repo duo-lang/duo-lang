@@ -178,8 +178,8 @@ skolemTVarToUniTVar (MkSkolemTVar name) = MkUniTVar name
 
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (skolemTVarToUniTVar tv, ty))
-  pure $ zonk (MkBisubstitution (M.fromList freshVars) M.empty) ts_monotype
+  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
+  pure $ zonk (MkBisubstitution M.empty (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint
