@@ -395,11 +395,11 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
   CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
 
 
-embedPat :: RST.Pattern -> CST.TermPat
+embedPat :: RST.Pattern -> CST.Pattern
 embedPat (RST.XtorPat loc xt args) =
   CST.XtorPat loc xt (CST.FoSFV . fromJust . snd <$> args)
 
-embedPatI :: RST.PatternI -> CST.TermPat
+embedPatI :: RST.PatternI -> CST.Pattern
 embedPatI (RST.XtorPatI loc xt (as1,_,as2)) =
   CST.XtorPat loc xt ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
 

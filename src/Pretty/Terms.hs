@@ -18,7 +18,7 @@ import Translate.Reparse
 
 -- Patterns
 
-instance PrettyAnn CST.TermPat where
+instance PrettyAnn CST.Pattern where
   prettyAnn (CST.XtorPat _ xt args) =
     prettyAnn xt <>
     parens (intercalateComma (map prettyAnn args))

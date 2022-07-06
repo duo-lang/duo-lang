@@ -17,8 +17,9 @@ deriving instance Eq TermOrStar
 type Substitution = [Term]
 type SubstitutionI = [TermOrStar]
 
+
 --------------------------------------------------------------------------------------------
--- Binding sites
+-- Patterns
 --------------------------------------------------------------------------------------------
 
 data FVOrStar where
@@ -40,22 +41,22 @@ fromFVOrStar FoSStar = error "fromFVOrStar called on FoSStar"
 
 type BindingSite = [FVOrStar]
 
+data Pattern where
+  XtorPat :: Loc -> XtorName -> BindingSite -> Pattern
+
+deriving instance Show Pattern
+deriving instance Eq Pattern
+
+instance HasLoc Pattern where
+  getLoc (XtorPat loc _ _) = loc
+
 --------------------------------------------------------------------------------------------
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
-data TermPat where
-  XtorPat :: Loc -> XtorName -> BindingSite -> TermPat
-
-deriving instance Show TermPat
-deriving instance Eq TermPat
-
-instance HasLoc TermPat where
-  getLoc (XtorPat loc _ _) = loc
-
 data TermCase  = MkTermCase
   { tmcase_loc  :: Loc
-  , tmcase_pat  :: TermPat
+  , tmcase_pat  :: Pattern
   , tmcase_term :: Term
   }
 

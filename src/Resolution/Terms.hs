@@ -45,7 +45,7 @@ data AnalyzedPattern
   | ImplicitPrdPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
   | ImplicitCnsPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
 
-analyzePattern :: DataCodata -> CST.TermPat -> ResolverM AnalyzedPattern
+analyzePattern :: DataCodata -> CST.Pattern -> ResolverM AnalyzedPattern
 analyzePattern dc (CST.XtorPat loc xt args) = do
   -- Lookup up the arity information in the symbol table.
   (_,res) <- lookupXtor loc xt
@@ -74,7 +74,7 @@ analyzePattern dc (CST.XtorPat loc xt args) = do
             Prd -> pure $ ImplicitCnsPattern loc xt (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
         n -> throwError $ LowerError loc (InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")) :| []
 
-analyzeInstancePattern :: CST.TermPat -> ResolverM AnalyzedPattern
+analyzeInstancePattern :: CST.Pattern -> ResolverM AnalyzedPattern
 analyzeInstancePattern (CST.XtorPat loc xt args) = do
   -- Lookup up the arity information in the symbol table.
   (_,res) <- lookupXtor loc xt

@@ -291,7 +291,7 @@ cocaseOfRestP startPos =  do
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
   return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
 
-patternP :: Parser (CST.TermPat, SourcePos)
+patternP :: Parser (CST.Pattern, SourcePos)
 patternP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
