@@ -1,6 +1,7 @@
 module Resolution.SymbolTable where
 
 import Control.Monad.Except
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 
@@ -76,40 +77,40 @@ instance Show SymbolTable where
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
-checkFreshTypeName :: MonadError Error m
+checkFreshTypeName :: MonadError (NonEmpty Error) m
                    => Loc
                    -> TypeName
                    -> SymbolTable
                    -> m ()
 checkFreshTypeName loc tn st =
   if tn `elem` M.keys (typeNameMap st)
-  then throwError (OtherError (Just loc) ("TypeName is already used: " <> ppPrint tn))
+  then throwOtherError ["TypeName is already used: " <> ppPrint tn]
   else pure ()
 
-checkFreshXtorName :: MonadError Error m
+checkFreshXtorName :: MonadError (NonEmpty Error) m
                    => Loc
                    -> XtorName
                    -> SymbolTable
                    -> m ()
 checkFreshXtorName loc xt st =
   if xt `elem` M.keys (xtorNameMap st)
-  then throwError (OtherError (Just loc) ("XtorName is already used: " <> ppPrint xt))
+  then throwOtherError ["XtorName is already used: " <> ppPrint xt]
   else pure ()
 
-checkFreshFreeVarName :: MonadError Error m
+checkFreshFreeVarName :: MonadError (NonEmpty Error) m
                    => Loc
                    -> FreeVarName
                    -> SymbolTable
                    -> m ()
 checkFreshFreeVarName loc fv st =
   if fv `elem` M.keys (freeVarMap st)
-  then throwError (OtherError (Just loc) ("FreeVarName is already used: " <> ppPrint fv))
+  then throwOtherError ["FreeVarName is already used: " <> ppPrint fv]
   else pure ()
 
 
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.
-createSymbolTable :: MonadError Error m
+createSymbolTable :: MonadError (NonEmpty Error) m
                   => ModuleName
                   -> Program
                   -> m SymbolTable
@@ -120,7 +121,7 @@ createSymbolTable mn prog = createSymbolTableAcc prog emptySymbolTable
       acc' <- createSymbolTable' mn x acc
       createSymbolTableAcc xs acc'
 
-createSymbolTable' :: MonadError Error m
+createSymbolTable' :: MonadError (NonEmpty Error) m
                    => ModuleName
                    -> Declaration
                    -> SymbolTable

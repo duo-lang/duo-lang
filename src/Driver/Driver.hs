@@ -10,6 +10,8 @@ module Driver.Driver
 
 import Control.Monad.State
 import Control.Monad.Except
+import Data.List.NonEmpty ( NonEmpty )
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -55,7 +57,7 @@ checkAnnot _ tyInferred Nothing _ = return (Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
   let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
-      (Left err) -> throwError (attachLoc loc err)
+      (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (Annotated tyAnnotated)
       (Right False) -> do
         let err = OtherError (Just loc) $ T.unlines [ "Annotated type is not subsumed by inferred type"
@@ -63,7 +65,7 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
                                                     , " Inferred type:  " <> ppPrint tyInferred
                                                     ]
         guardVerbose $ ppPrintIO err
-        throwError err
+        throwError (err NE.:| [])
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
@@ -251,7 +253,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> ModuleName
                 -> [CST.Declaration]
-                -> IO ((Either Error (Map ModuleName Environment, TST.Program)),[Warning])
+                -> IO ((Either (NonEmpty Error) (Map ModuleName Environment, TST.Program)),[Warning])
 inferProgramIO state mn decls = do
   let action :: DriverM (TST.Program)
       action = do

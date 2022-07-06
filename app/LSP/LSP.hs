@@ -178,7 +178,6 @@ instance IsDiagnostic Warning where
                         }
 
 instance IsDiagnostic Error where
-  toDiagnostic (ParserErrorBundle errs) = parserErrorToDiag <$> (NE.toList errs)
   toDiagnostic err = [diag]
     where
       diag = Diagnostic { _range = locToRange (maybe defaultLoc id (getLoc err))
@@ -189,17 +188,6 @@ instance IsDiagnostic Error where
                         , _tags = Nothing
                         , _relatedInformation = Nothing
                         }
-
-parserErrorToDiag :: ParserError -> Diagnostic
-parserErrorToDiag (MkParserError loc msg) =
-  Diagnostic { _range = locToRange loc
-             , _severity = Just DsError
-             , _code = Nothing
-             , _source = Nothing
-             , _message = msg
-             , _tags = Nothing
-             , _relatedInformation = Nothing
-             }
 
 sendDiagnostics :: IsDiagnostic a => NormalizedUri -> [a] -> LSPMonad ()
 sendDiagnostics uri w = do
@@ -221,14 +209,14 @@ publishErrors uri = do
       let fp = fromMaybe "fail" (uriToFilePath uri)
       let decls = runExcept (runFileParser fp programP file)
       case decls of
-        Left err -> do
-          sendDiagnostics (toNormalizedUri uri) [err]
+        Left errs -> do
+          sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
         Right decls -> do
           (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
           sendDiagnostics (toNormalizedUri uri) warnings 
           case res of
-            Left err -> do
-              sendDiagnostics (toNormalizedUri uri) [err]
+            Left errs -> do
+              sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
             Right (_,prog) -> do
               updateHoverCache uri prog
 

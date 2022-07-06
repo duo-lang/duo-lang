@@ -5,6 +5,7 @@ module Eval.Eval
 
 import Control.Monad.Except
 import Data.Text qualified as T
+import Data.List.NonEmpty ( NonEmpty )
 
 import Errors
 import Pretty.Pretty
@@ -99,8 +100,8 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-eval :: Command -> EvalEnv -> IO (Either Error Command)
+eval :: Command -> EvalEnv -> IO (Either (NonEmpty Error) Command)
 eval cmd = runEval (evalM cmd)
 
-evalSteps :: Command -> EvalEnv -> IO (Either Error [Command])
+evalSteps :: Command -> EvalEnv -> IO (Either (NonEmpty Error) [Command])
 evalSteps cmd = runEval (evalStepsM cmd)

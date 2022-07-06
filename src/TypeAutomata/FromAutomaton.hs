@@ -20,6 +20,7 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
+import Data.List.NonEmpty (NonEmpty)
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
@@ -45,15 +46,15 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set UniTVar)
                                      , cache :: Set Node
                                      , tvars :: [UniTVar]
                                      }
-type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
+type AutToTypeM a = (ReaderT AutToTypeState (Except (NonEmpty Error))) a
 
-runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either Error a
+runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either (NonEmpty Error) a
 runAutToTypeM m state = runExcept (runReaderT m state)
 
 tUniVarToTVar :: UniTVar->TVar
 tUniVarToTVar (MkUniTVar name) = MkTVar name
 
-autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
+autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState

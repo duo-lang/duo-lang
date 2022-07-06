@@ -12,6 +12,8 @@ module Lookup
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 
@@ -30,7 +32,7 @@ import Utils
 -- (2) MonadReader (Map ModuleName Environment ph, a)
 ---------------------------------------------------------------------------------
 
-type EnvReader a m = (MonadError Error m, MonadReader (Map ModuleName Environment, a) m)
+type EnvReader a m = (MonadError (NonEmpty Error) m, MonadReader (Map ModuleName Environment, a) m)
 
 ---------------------------------------------------------------------------------
 -- Lookup Terms
@@ -43,7 +45,7 @@ findFirstM :: forall a m res. EnvReader a m
 findFirstM f err = asks fst >>= \env -> go (M.toList env)
   where
     go :: [(ModuleName, Environment)] -> m (ModuleName, res)
-    go [] = throwError err
+    go [] = throwError (err NE.:| [])
     go ((mn,env):envs) =
       case f env of
         Just res -> pure (mn,res)

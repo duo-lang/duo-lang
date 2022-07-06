@@ -3,7 +3,6 @@ module Pretty.Errors (printLocatedError) where
 import Control.Monad (forM_)
 import Control.Monad.IO.Class
 import Data.Text.IO qualified as T
-import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 import Text.Megaparsec.Pos
 
@@ -17,9 +16,6 @@ import Utils
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
 ---------------------------------------------------------------------------------
-
-instance PrettyAnn ParserError where
-  prettyAnn (MkParserError loc txt) = prettyAnn loc <+> prettyAnn txt
 
 instance PrettyAnn LoweringError where
   prettyAnn MissingVarsInTypeScheme               = "Missing declaration of type variable"
@@ -43,14 +39,15 @@ instance PrettyAnn LoweringError where
   prettyAnn (InvalidStar t)                        = "Invalid Star: " <+> pretty t
 
 instance PrettyAnn Error where
-  prettyAnn (ParserErrorBundle errs)        = vsep (NE.toList (prettyAnn <$> errs))
-  prettyAnn (EvalError loc err)             = prettyMaybeLoc loc <>"Evaluation error:" <+> pretty err
+  prettyAnn (ParserError loc msg)           = prettyMaybeLoc loc <> "Parser error:" <+> pretty msg
+  prettyAnn (EvalError loc err)             = prettyMaybeLoc loc <> "Evaluation error:" <+> pretty err
   prettyAnn (GenConstraintsError loc err)   = prettyMaybeLoc loc <> "Constraint generation error:" <+> pretty err
   prettyAnn (SolveConstraintsError loc err) = prettyMaybeLoc loc <> "Constraint solving error:" <+> pretty err
   prettyAnn (TypeAutomatonError loc err)    = prettyMaybeLoc loc <> "Type simplification error:" <+> pretty err
   prettyAnn (LowerError loc err)            = prettyMaybeLoc loc <> prettyAnn err
   prettyAnn (OtherError loc err)            = prettyMaybeLoc loc <> "Other Error:" <+> pretty err
   prettyAnn (NoImplicitArg loc err)         = prettyMaybeLoc loc <> "No implicit arg: " <+> pretty err
+
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------

@@ -6,6 +6,8 @@ import Data.Bifunctor (second)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List (find)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 
 import Pretty.Pretty
@@ -25,13 +27,13 @@ type ResolveReader = Map ModuleName SymbolTable
 
 type WarningWriter = Writer [Warning]
 
-newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT Error WarningWriter)) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader ResolveReader, MonadWriter [Warning])
+newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT (NonEmpty Error) WarningWriter)) a }
+  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
 
 instance MonadFail ResolverM where
-  fail str = throwError (OtherError Nothing (T.pack str))
+  fail str = throwOtherError [T.pack str]
 
-runResolverM :: ResolveReader -> ResolverM a -> (Either Error a,[Warning])
+runResolverM :: ResolveReader -> ResolverM a -> (Either (NonEmpty Error) a,[Warning])
 runResolverM reader action = runWriter $ runExceptT (runReaderT  (unResolverM action) reader)
 
 ------------------------------------------------------------------------------
@@ -54,9 +56,9 @@ lookupXtor loc xtor = do
   let results :: [(ModuleName, Maybe XtorNameResolve)]
       results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
   case filterJusts results of
-    []    -> throwError $ OtherError (Just loc) ("Constructor/Destructor not in symbol table: " <> ppPrint xtor)
+    []    -> throwOtherError ["Constructor/Destructor not in symbol table: " <> ppPrint xtor]
     [res] -> pure res
-    _     -> throwError $ OtherError (Just loc) ("Constructor/Destructor found in multiple modules: " <> ppPrint xtor)
+    _     -> throwOtherError ["Constructor/Destructor found in multiple modules: " <> ppPrint xtor]
 
 
 -- | Find the Arity of a given typename
@@ -71,9 +73,9 @@ lookupTypeConstructor loc tn = do
     let results :: [(ModuleName, Maybe TypeNameResolve)]
         results = second (M.lookup tn . typeNameMap) <$> symbolTables
     case filterJusts results of
-      []         -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " not found in symbol table."))
+      []         -> throwOtherError ["Type name " <> unTypeName tn <> " not found in symbol table."]
       [(_,res)]  -> pure res
-      xs         -> throwError (OtherError (Just loc) ("Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))))
+      xs         -> throwOtherError ["Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))]
 
 -- | Type operator for the union type
 unionTyOp :: TyOp
@@ -103,7 +105,7 @@ lookupTyOp loc op = do
   let results :: [(ModuleName, Maybe TyOp)]
       results = second (find (\tyop -> symbol tyop == op) . tyOps) <$> symbolTables
   case filterJusts results of
-    []    -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)))
+    []    -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)) NE.:| [])
     [res] -> pure res
-    _     -> throwError (OtherError (Just loc) ("Type operator " <> ppPrint op <> " found in multiple imports."))
+    _     -> throwOtherError ["Type operator " <> ppPrint op <> " found in multiple imports."]
       

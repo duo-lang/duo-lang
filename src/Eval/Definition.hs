@@ -5,6 +5,7 @@ import Control.Monad.Reader
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List (find)
+import Data.List.NonEmpty (NonEmpty)
 import Text.Read (readMaybe)
 
 import Errors
@@ -21,10 +22,10 @@ import Syntax.Common.TypesPol (Typ (TyNominal))
 
 type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader EvalEnv, MonadIO)
+newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) IO) a }
+  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
 
-runEval :: EvalM a -> EvalEnv -> IO (Either Error a)
+runEval :: EvalM a -> EvalEnv -> IO (Either (NonEmpty Error) a)
 runEval e env = runExceptT (runReaderT (unEvalM e) env)
 
 ---------------------------------------------------------------------------------

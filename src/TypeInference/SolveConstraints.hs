@@ -6,6 +6,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List (find)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -40,9 +41,9 @@ createInitState (ConstraintSet _ uvs) =
               }
 
 
-type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except Error))) a
+type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NonEmpty Error)))) a
 
-runSolverM :: SolverM a -> Map ModuleName Environment -> SolverState -> Either Error (a, SolverState)
+runSolverM :: SolverM a -> Map ModuleName Environment -> SolverState -> Either (NonEmpty Error) (a, SolverState)
 runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 ------------------------------------------------------------------------------
@@ -248,9 +249,9 @@ tVarToTUniVar (MkTVar name) = MkUniTVar name
 
 convertMap :: Map TVar VariableState -> Map UniTVar VariableState
 convertMap m = M.fromList (map (\x -> ( tVarToTUniVar (fst x), snd x)) (M.toList m))
---convertMap m = m.ToList()
+
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either Error SolverResult
+solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
   pure (MkSolverResult (convertMap (sst_bounds solverState)))

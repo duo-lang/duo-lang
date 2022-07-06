@@ -63,8 +63,8 @@ runDriver act = do
   (res, warnings) <- liftIO $ execDriverM ds act
   mapM_ prettyRepl warnings
   case res of
-    Left err -> do
-      prettyRepl err
+    Left errs -> do
+      mapM_ prettyRepl errs
       abort
     Right (res, ds') -> do
       modify (\rs  -> rs { replDriverState = ds' })

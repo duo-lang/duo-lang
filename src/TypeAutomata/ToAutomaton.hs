@@ -8,6 +8,7 @@ import Control.Monad.State
     ( StateT(..), gets, modify )
 import Data.Graph.Inductive.Graph (Node)
 import Data.Graph.Inductive.Graph qualified as G
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -44,7 +45,7 @@ import Control.Monad
 -- mapped to a pair `(Just n, Just m)`
 newtype LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 
-type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
+type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
 runTypeAut :: TypeAutCore EdgeLabelEpsilon
            -- ^ The initial TypeAutomaton to start the computation.
@@ -52,7 +53,7 @@ runTypeAut :: TypeAutCore EdgeLabelEpsilon
            -- ^ The initial lookup environment.
            -> TTA a
            -- ^ The computation to run.
-           -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+           -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
 
 
@@ -83,7 +84,7 @@ initialize tvars =
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
 runTypeAutTvars :: [TVar]
                 -> TTA a
-                -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+                -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
   let (aut, env) = initialize tvars
   runTypeAut aut env m
@@ -227,7 +228,7 @@ insertType (TyFlipPol _ _) =
 
 
 -- turns a type into a type automaton with prescribed start polarity.
-typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
+typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutEps pol)
 typeToAut TypeScheme { ts_vars, ts_monotype } = do
   (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype

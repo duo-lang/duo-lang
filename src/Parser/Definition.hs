@@ -9,6 +9,7 @@ import Control.Applicative (Alternative)
 import Control.Monad.Except
 import Data.Text qualified as T
 import Data.Void (Void)
+import Data.List.NonEmpty ( NonEmpty )
 import Data.Text (Text)
 import Text.Megaparsec
 import Text.Megaparsec.Debug qualified
@@ -44,22 +45,22 @@ type MyParseError = ParseErrorBundle Text Void
 getPosFromOffset :: Int ->  PosState Text -> SourcePos
 getPosFromOffset offset ps = pstateSourcePos (snd (reachOffset offset ps))
 
-parseErrorToDiag :: PosState Text -> ParseError Text Void -> ParserError
-parseErrorToDiag posState err = MkParserError (Loc pos pos) msg
+parseErrorToDiag :: PosState Text -> ParseError Text Void -> Error
+parseErrorToDiag posState err = ParserError (Just (Loc pos pos)) msg
   where
     pos = getPosFromOffset (errorOffset err) posState
     msg = T.pack $ parseErrorTextPretty err
 
 
-translateError :: MyParseError -> Error
+translateError :: MyParseError -> NonEmpty Error
 translateError ParseErrorBundle { bundlePosState, bundleErrors } =
-  ParserErrorBundle (parseErrorToDiag bundlePosState <$> bundleErrors)
+  parseErrorToDiag bundlePosState <$> bundleErrors
 
 -------------------------------------------------------------------------------------------
 -- Running a parser
 -------------------------------------------------------------------------------------------
 
-runFileParser :: forall m a. MonadError Error m
+runFileParser :: forall m a. MonadError (NonEmpty Error) m
               => FilePath -- ^ The Filepath used in Error Messages and Source Locations
               -> Parser a
               -> Text -- ^ The text to be parsed
@@ -68,7 +69,7 @@ runFileParser fp p input = case runParser (unParser p) fp input of
   Left err -> throwError (translateError err)
   Right x -> pure x
 
-runInteractiveParser :: forall m a.  MonadError Error m
+runInteractiveParser :: forall m a.  MonadError (NonEmpty Error) m
                      => Parser a
                      -> Text -- The text to be parsed
                      -> m a

@@ -11,6 +11,7 @@ module Driver.Repl
   , subsumeRepl
   ) where
 
+import Control.Monad (forM_)
 import Control.Monad.State (gets)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.Text (Text)
@@ -39,6 +40,7 @@ import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
+
 
 
 ---------------------------------------------------------------------------------
@@ -99,14 +101,14 @@ runCmd txt steps = do
     case steps of
         NoSteps -> do
             resE <- liftIO $ eval compiledCmd compiledEnv
-            liftIO $ putStrLn $ case resE of
-                                   Left err -> ppPrintString err
-                                   Right res -> ppPrintString res
+            liftIO $ case resE of
+                       Left errs -> forM_ errs $ \err -> putStrLn $ ppPrintString err
+                       Right res -> putStrLn $ ppPrintString res
         Steps -> do
             resE <-liftIO $ evalSteps compiledCmd compiledEnv
-            liftIO $ putStrLn $ case resE of
-                                   Left err -> ppPrintString err
-                                   Right res -> ppPrintString res
+            liftIO $ case resE of
+                       Left errs -> forM_ errs $ \err -> putStrLn $ ppPrintString err
+                       Right res -> putStrLn $ ppPrintString res
 
 ---------------------------------------------------------------------------------
 -- ":subsume" command

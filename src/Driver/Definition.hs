@@ -4,6 +4,8 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
@@ -69,13 +71,13 @@ defaultDriverState = MkDriverState
 -- Driver Monad
 ---------------------------------------------------------------------------------
 
-newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT Error (WriterT [Warning] IO))) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO, MonadWriter [Warning])
+newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmpty Error) (WriterT [Warning] IO))) a }
+  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadState DriverState, MonadIO, MonadWriter [Warning])
 
 instance MonadFail DriverM where
-  fail str = throwError (OtherError Nothing (T.pack str))
+  fail str = throwError (OtherError Nothing (T.pack str) NE.:| [])
 
-execDriverM :: DriverState ->  DriverM a -> IO (Either Error ((a),DriverState),[Warning])
+execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) ((a),DriverState),[Warning])
 execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
 
 ---------------------------------------------------------------------------------
@@ -140,26 +142,28 @@ findModule (MkModuleName mod) loc = do
     exists <- liftIO $ doesFileExist fp
     if exists then return [fp] else return []
   case concat fps of
-    [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
+    [] -> throwOtherError ["Could not locate library: " <> mod]
     (fp:_) -> return fp
 
-liftErr :: Error -> DriverM a
-liftErr err = do
-    guardVerbose $ printLocatedError err
-    throwError err
+liftErr :: NonEmpty Error -> DriverM a
+liftErr errs = do
+    guardVerbose $ do
+      forM_ errs $ \err -> printLocatedError err
+    throwError errs
 
-liftErrLoc :: Loc -> Error -> DriverM a
+liftErrLoc :: Loc -> NonEmpty Error -> DriverM a
 liftErrLoc loc err = do
-    let locerr = attachLoc loc err
-    guardVerbose $ printLocatedError locerr
+    let locerr = attachLoc loc <$> err
+    guardVerbose $ do
+      forM_ locerr $ \err -> printLocatedError err
     throwError locerr
 
-liftEitherErr :: (Either Error a,[Warning]) -> DriverM a
+liftEitherErr :: (Either (NonEmpty Error) a,[Warning]) -> DriverM a
 liftEitherErr (x,warnings) = tell warnings >> case x of
     Left err ->  liftErr err
     Right res -> return res
 
-liftEitherErrLoc :: Loc -> Either Error a -> DriverM a
+liftEitherErrLoc :: Loc -> Either (NonEmpty Error) a -> DriverM a
 liftEitherErrLoc loc x = case x of
     Left err -> liftErrLoc loc err
     Right res -> return res
