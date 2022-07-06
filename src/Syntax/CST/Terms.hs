@@ -4,7 +4,7 @@ import Syntax.Common
 import Utils
 
 --------------------------------------------------------------------------------------------
--- Substitutions and Binding Sites
+-- Substitutions 
 --------------------------------------------------------------------------------------------
 
 data TermOrStar where
@@ -16,6 +16,10 @@ deriving instance Eq TermOrStar
 
 type Substitution = [Term]
 type SubstitutionI = [TermOrStar]
+
+--------------------------------------------------------------------------------------------
+-- Binding sites
+--------------------------------------------------------------------------------------------
 
 data FVOrStar where
     FoSFV :: FreeVarName -> FVOrStar

@@ -23,35 +23,35 @@ codata Parser :  CBN {
 
 
 def prd lit : Nat -> Parser := \n => cocase {
-    Parse(xs,s,f) => xs >> case {
-        Nil => MkUnit >> f,
+    Parse(xs,ks,kf) => xs >> case {
+        Nil => MkUnit >> kf,
         Cons(y, ys) => nateq y n >> case {
-            True => PR(ys,f) >> s,
-            False => MkUnit >> f
+            True => PR(ys,kf) >> ks,
+            False => MkUnit >> kf
         } 
     } 
 } ; 
 
 
 def prd success : Parser := cocase {
-    Parse(xs,s,f) => PR(xs,f) >> s
+    Parse(xs,ks,kf) => PR(xs,kf) >> ks
 };
 
 
 def prd failure : Parser := cocase {
-    Parse(xs,s,f) => MkUnit >> f
+    Parse(xs,ks,kf) => MkUnit >> kf
 };
 
 def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs,s,f) => p1 >> Parse(xs, case { PR(l,f2) => p2 >> Parse(l,s,f2) } ,f) 
+    Parse(xs,ks,kf) => p1 >> Parse(xs, case { PR(l,kf2) => p2 >> Parse(l,ks,kf2) } ,kf) 
 };
 
 def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs,s,f) => p1 >> Parse(xs,s, mu q. p2 >> Parse(xs,s,f) )
+    Parse(xs,ks,kf) => p1 >> Parse(xs,ks, mu q. p2 >> Parse(xs,ks,kf) )
 };
 
 def rec prd many1 : Parser -> Parser := \p => cocase {
-    Parse(xs,s,f) => p >> Parse(xs,case { PR(l,f2) => alt success (many1 p) >> Parse(l,s,f2)}, f)
+    Parse(xs,ks,kf) => p >> Parse(xs,case { PR(l,kf2) => alt success (many1 p) >> Parse(l,ks,kf2)}, kf)
 };
 
 def prd many : Parser -> Parser := \p => alt success (many1 p);
@@ -110,11 +110,11 @@ data Parser2 :  CBV {
 }; 
 
 def cns lit2 : Parser2 :=  case {
-    Parse2(xs,s,f) => xs >> case {
-        Nil => MkUnit >> f,
+    Parse2(xs,ks,kf) => xs >> case {
+        Nil => MkUnit >> kf,
         Cons(y, ys) => nateq y 0 >> case {
-            True => PR(ys,f) >> s,
-            False => MkUnit >> f
+            True => PR(ys,kf) >> ks,
+            False => MkUnit >> kf
         } 
     } 
 } ; 

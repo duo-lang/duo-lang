@@ -5,7 +5,7 @@ data CoFun : (-f : CBV, +e : CBV) -> CBV {
 type operator -< rightassoc at 0 := CoFun;
 
 def cns id : forall a. a -< a  :=
-  case { CoAp(f,e) => e >>f };
+  case { CoAp(k,e) => e >> k };
 
 def cns id2  := \x =< x; 
 
