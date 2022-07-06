@@ -3,7 +3,7 @@ module TypeAutomata.Subsume ( subsume ) where
 import Data.Graph.Inductive.Graph
 
 import Data.Set qualified as S
-
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 
@@ -80,7 +80,7 @@ typeAutEqualM (gr1, n) (gr2, m) = do
     Just m' -> do
       guard (m == m')
 
-subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either Error Bool
+subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
 subsume polrep ty1 ty2 = do
   aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
   aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2

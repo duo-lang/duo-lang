@@ -5,6 +5,7 @@ import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
 import Data.GraphViz
     ( isGraphvizInstalled, runGraphviz, GraphvizOutput(XDot, Jpeg) )
+import Data.List.NonEmpty (NonEmpty)
 import Pretty.TypeAutomata (typeAutToDot)
 
 import Errors ( Error )    
@@ -44,7 +45,7 @@ printGraph True showId fileName aut = liftIO $ do
 -- Printing TypeAutomata
 ------------------------------------------------------------------------------
 
-simplify :: (MonadIO m, MonadError Error m)
+simplify :: (MonadIO m, MonadError (NonEmpty Error) m)
          => TypeScheme pol
          -> Bool -- ^ Whether to print Graphs
          -> String -- ^ Name of the declaration

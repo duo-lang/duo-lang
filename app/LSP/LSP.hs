@@ -34,7 +34,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Driver.Driver
-import Utils
+
 import Syntax.Common
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
@@ -68,7 +68,7 @@ serverOptions = Options
 
 definition :: IO (ServerDefinition LSPConfig)
 definition = do
-  initialCache <- newIORef M.empty 
+  initialCache <- newIORef M.empty
   return ServerDefinition
     { defaultConfig = MkLSPConfig initialCache
     , onConfigurationChange = \config _ -> pure config
@@ -138,7 +138,7 @@ cancelRequestHandler :: Handlers LSPMonad
 cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
   liftIO $ debugM "lspserver.cancelRequestHandler" "Received cancel request"
   return ()
-  
+
 -- File Open + Change + Close Handlers
 
 didOpenHandler :: Handlers LSPMonad
@@ -158,37 +158,45 @@ didCloseHandler = notificationHandler STextDocumentDidClose $ \notif -> do
   let (NotificationMessage _ _ (DidCloseTextDocumentParams uri)) = notif
   liftIO $ debugM "lspserver.didCloseHandler" ("Closed file: " <> show uri)
 
--- Publish diagnostics for File
+---------------------------------------------------------------------------------------------
+-- Publishing Diagnostics
+---------------------------------------------------------------------------------------------
 
-parserErrorToDiag :: ParserError -> Diagnostic
-parserErrorToDiag (MkParserError loc msg) =
-  Diagnostic { _range = locToRange loc
-             , _severity = Just DsError
-             , _code = Nothing
-             , _source = Nothing
-             , _message = msg
-             , _tags = Nothing
-             , _relatedInformation = Nothing
-             }
+class IsDiagnostic a where
+  toDiagnostic :: a -> [Diagnostic]
 
-errorToDiags :: Error -> [Diagnostic]
-errorToDiags (ParserErrorBundle errs) = parserErrorToDiag <$> (NE.toList errs)
-errorToDiags err = [diag]
-  where
-    diag = Diagnostic { _range = locToRange (maybe defaultLoc id (getLoc err))
-                      , _severity = Just DsError
-                      , _code = Nothing
-                      , _source = Nothing
-                      , _message = ppPrint err
-                      , _tags = Nothing
-                      , _relatedInformation = Nothing
-                      }
+instance IsDiagnostic Warning where
+  toDiagnostic (Warning loc txt) = [diag]
+    where
+      diag = Diagnostic { _range = locToRange loc
+                        , _severity = Just DsWarning
+                        , _code = Nothing
+                        , _source = Nothing
+                        , _message = ppPrint txt
+                        , _tags = Nothing
+                        , _relatedInformation = Nothing
+                        }
 
-sendLocatedError :: NormalizedUri -> Error -> LSPMonad ()
-sendLocatedError uri le = do
-  let diags = errorToDiags le
-  publishDiagnostics 42 uri Nothing (M.fromList ([(Just "TypeInference", SL.toSortedList diags)]))
+instance IsDiagnostic Error where
+  toDiagnostic err = [diag]
+    where
+      diag = Diagnostic { _range = locToRange (getLoc err)
+                        , _severity = Just DsError
+                        , _code = Nothing
+                        , _source = Nothing
+                        , _message = ppPrint err
+                        , _tags = Nothing
+                        , _relatedInformation = Nothing
+                        }
 
+sendDiagnostics :: IsDiagnostic a => NormalizedUri -> [a] -> LSPMonad ()
+sendDiagnostics uri w = do
+  let diags = concat (toDiagnostic <$> w)
+  publishDiagnostics 42 uri Nothing (M.fromList [(Just "DualSub", SL.toSortedList diags)])
+
+---------------------------------------------------------------------------------------------
+-- Main loop
+---------------------------------------------------------------------------------------------
 
 publishErrors :: Uri -> LSPMonad ()
 publishErrors uri = do
@@ -201,13 +209,14 @@ publishErrors uri = do
       let fp = fromMaybe "fail" (uriToFilePath uri)
       let decls = runExcept (runFileParser fp programP file)
       case decls of
-        Left err -> do
-          sendLocatedError (toNormalizedUri uri) err
+        Left errs -> do
+          sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
         Right decls -> do
-          res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+          sendDiagnostics (toNormalizedUri uri) warnings 
           case res of
-            Left err -> do
-              sendLocatedError (toNormalizedUri uri) err
+            Left errs -> do
+              sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
             Right (_,prog) -> do
               updateHoverCache uri prog
 
