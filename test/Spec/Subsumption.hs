@@ -24,7 +24,7 @@ subsumptionCheckPos env bspec s1 s2 = do
       (Right r1, Right r2) -> do
         let lowerResult1 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r1)
         let lowerResult2 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r2)
-        case (lowerResult1, lowerResult2) of
+        case (fst lowerResult1, fst lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
           (Right r1, Right r2) -> do
@@ -44,6 +44,7 @@ spec symboltables = do
     subsumptionCheckPos symboltables True "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }" "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }"
     subsumptionCheckPos symboltables True "Nat" "Nat"
     subsumptionCheckPos symboltables True "{ Ap(Nat,return Bool) }" "{ Ap(Nat,return Bool) }"
+    subsumptionCheckPos symboltables True "rec a.  <Z, S(< S(a) >)>" "rec a. <Z, S(a)>"
     -- Subsumptions which shouldn't hold
     subsumptionCheckPos symboltables False "{}" "<>"
     subsumptionCheckPos symboltables False "{ Ap(< True >,return < True >) }" "forall a. { Ap(a,return a) }"

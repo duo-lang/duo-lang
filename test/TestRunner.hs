@@ -4,6 +4,7 @@ import Control.Monad.Except (runExcept, forM)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
+import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
@@ -22,7 +23,20 @@ import Spec.Focusing qualified
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
+import Options.Applicative
 
+data Options where
+  OptEmpty  :: Options
+  OptFilter :: [FilePath] -> Options
+
+getOpts :: ParserInfo Options
+getOpts = info (optsP <**> helper) mempty
+
+optsP :: Parser Options
+optsP = (OptFilter <$> filterP) <|> pure OptEmpty
+
+filterP :: Parser [FilePath]
+filterP = some (argument str (metavar "FILES..." <> help "Specify files which should be tested (instead of all in the `examples/` directory"))
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
@@ -49,7 +63,7 @@ getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls
+      fmap snd <$> (fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls)
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
@@ -62,11 +76,15 @@ getSymbolTable fp = do
 
 main :: IO ()
 main = do
-    -- Collect the filepaths of all the available examples
-    examples <- getAvailableExamples
+    o <- execParser getOpts
+    examples <- case o of
+      -- Collect the filepaths of all the available examples
+      OptEmpty -> getAvailableExamples
+      -- only use files specified in command line
+      OptFilter fs -> pure fs
     counterExamples <- getAvailableCounterExamples
     -- Collect the parsed declarations
-    -- parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     -- Collect the typechecked declarations
     checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
@@ -82,10 +100,10 @@ main = do
                 Right bool_st' -> bool_st'
     let symboltables = [(MkModuleName "Peano", peano_st'), (MkModuleName "Bool", bool_st')]
     -- Run the testsuite
-    hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+    withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
       describe "ExampleSpec" (Spec.TypeInferenceExamples.spec checkedExamples parsedCounterExamples checkedCounterExamples)
       describe "Subsumption works" (Spec.Subsumption.spec symboltables)
-      describe "Prettyprinted work again" (Spec.Prettyprinter.spec checkedExamples)
+      describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamples)
       describe "Focusing works" (Spec.Focusing.spec checkedExamples)
 

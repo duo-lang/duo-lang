@@ -150,6 +150,44 @@ data TySynDeclaration = MkTySynDeclaration
 
 deriving instance Show TySynDeclaration
 
+------------------------------------------------------------------------------
+-- Instance Declaration
+------------------------------------------------------------------------------
+
+data InstanceDeclaration = MkInstanceDeclaration
+  { instancedecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , instancedecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , instancedecl_name :: ClassName
+    -- ^ The name of the type class the instance is for.
+  , instancedecl_typ :: Typ
+    -- ^ The type the instance is being defined for.
+  , instancedecl_cases :: [TermCase]
+    -- ^ The method definitions for the class.
+  }
+
+deriving instance Show InstanceDeclaration
+
+------------------------------------------------------------------------------
+-- Class Declaration
+------------------------------------------------------------------------------
+
+data ClassDeclaration = MkClassDeclaration
+  { classdecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , classdecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , classdecl_name :: ClassName
+    -- ^ The name of the type class that is being introduced.
+  , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
+    -- ^ The kind of the type class variables.
+  , classdecl_xtors :: [(XtorName, [(PrdCns, Typ)])]
+    -- ^ The type class methods and their types.
+  }
+
+deriving instance Show ClassDeclaration
+
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
@@ -163,7 +201,10 @@ data Declaration where
   SetDecl        :: SetDeclaration            -> Declaration
   TyOpDecl       :: TyOpDeclaration           -> Declaration
   TySynDecl      :: TySynDeclaration          -> Declaration
+  ClassDecl      :: ClassDeclaration          -> Declaration
+  InstanceDecl   :: InstanceDeclaration       -> Declaration
   ParseErrorDecl ::                              Declaration
+
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"

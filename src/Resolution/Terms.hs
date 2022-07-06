@@ -1,4 +1,4 @@
-module Resolution.Terms (resolveTerm, resolveCommand) where
+module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases) where
 
 import Control.Monad (when, forM, unless)
 import Control.Monad.Except (throwError)
@@ -47,35 +47,56 @@ data AnalyzedPattern
 analyzePattern :: DataCodata -> CST.TermPat -> ResolverM AnalyzedPattern
 analyzePattern dc (CST.XtorPat loc xt args) = do
   -- Lookup up the arity information in the symbol table.
-  (_,XtorNameResult dc' _ arity) <- lookupXtor loc xt
-  -- Check whether the Xtor is a Constructor/Destructor as expected.
-  case (dc,dc') of
-    (Codata,Data  ) -> throwError $ OtherError (Just loc) "Expected a destructor but found a constructor"
-    (Data  ,Codata) -> throwError $ OtherError (Just loc) "Expected a constructor but found a destructor"
-    (Data  ,Data  ) -> pure ()
-    (Codata,Codata) -> pure ()
-  -- Analyze the pattern
+  (_,res) <- lookupXtor loc xt
+  case res of
+    (MethodNameResult _cn _arity) -> throwError $ OtherError (Just loc) $ "Expected xtor but found method " <> unXtorName xt
+    (XtorNameResult dc' _ns arity) -> do
+      -- Check whether the Xtor is a Constructor/Destructor as expected.
+      case (dc,dc') of
+        (Codata,Data  ) -> throwError $ OtherError (Just loc) "Expected a destructor but found a constructor"
+        (Data  ,Codata) -> throwError $ OtherError (Just loc) "Expected a constructor but found a destructor"
+        (Data  ,Data  ) -> pure ()
+        (Codata,Codata) -> pure ()
+      -- Analyze the pattern
+      -- Check whether the number of arguments in the given binding site
+      -- corresponds to the number of arguments specified for the constructor/destructor.
+      when (length arity /= length args) $
+              throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
+      let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
+      mapM_ (checkVarName loc) zipped
+      case length (filter CST.isStar args) of
+        0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
+        1 -> do
+          let (args1,(pc,_):args2) = break (\(_,x) -> CST.isStar x) zipped
+          case pc of
+            Cns -> pure $ ImplicitPrdPattern loc xt (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
+            Prd -> pure $ ImplicitCnsPattern loc xt (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
+        n -> throwError $ LowerError (Just loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
+
+analyzeInstancePattern :: CST.TermPat -> ResolverM AnalyzedPattern
+analyzeInstancePattern (CST.XtorPat loc xt args) = do
+  -- Lookup up the arity information in the symbol table.
+  (_,res) <- lookupXtor loc xt
+  case res of
+    (MethodNameResult _cn arity) -> do
+      when (length arity /= length args) $
+           throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
+      pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
+    (XtorNameResult _dc _ns _arity) -> throwError $ OtherError (Just loc) $ "Expected method but found Xtor " <> unXtorName xt
+        -- Analyze the pattern
   -- Check whether the number of arguments in the given binding site
   -- corresponds to the number of arguments specified for the constructor/destructor.
-  when (length arity /= length args) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch xt (length arity) (length args)
-  let zipped :: [(PrdCns, CST.FVOrStar)] = zip arity args
-  mapM_ (checkVarName loc) zipped
-  case length (filter CST.isStar args) of
-    0 -> pure $ ExplicitPattern loc xt $ zip arity (CST.fromFVOrStar <$> args)
-    1 -> do
-      let (args1,(pc,_):args2) = break (\(_,x) -> CST.isStar x) zipped
-      case pc of
-        Cns -> pure $ ImplicitPrdPattern loc xt (second CST.fromFVOrStar <$> args1, PrdRep, second CST.fromFVOrStar <$> args2)
-        Prd -> pure $ ImplicitCnsPattern loc xt (second CST.fromFVOrStar <$> args1, CnsRep, second CST.fromFVOrStar <$> args2)
-    n -> throwError $ LowerError (Just loc) $ InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")
 
+-- | Emit a warning if a producer variable starts with the letter `k`, or a consumer variable doesn't start with the letter `k`.
 checkVarName :: Loc -> (PrdCns, CST.FVOrStar) -> ResolverM ()
 checkVarName _ (_,FoSStar) = return ()
 checkVarName loc (Prd,FoSFV (MkFreeVarName name)) = 
-  when ("k" `T.isPrefixOf` name) $ tell [Warning (Just loc) (T.pack "Producer variable " `T.append` name `T.append` " should not start with letter k")  ]
+  when ("k" `T.isPrefixOf` name) $
+    tell [Warning (Just loc) (T.pack "Producer variable " `T.append` name `T.append` " should not start with letter k")  ]
 checkVarName loc (Cns,FoSFV (MkFreeVarName name)) = 
-  unless ("k" `T.isPrefixOf` name) $ tell [Warning (Just loc) (T.pack "Consumer variable " `T.append` name `T.append` " should start with letter k")  ]
+  unless ("k" `T.isPrefixOf` name) $
+    tell [Warning (Just loc) (T.pack "Consumer variable " `T.append` name `T.append` " should start with letter k")  ]
+
 ---------------------------------------------------------------------------------
 -- Analyze Cases
 ---------------------------------------------------------------------------------
@@ -160,6 +181,17 @@ analyzeCases dc cases = do
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwError $ OtherError Nothing "Cases mix the use of both explicit and implicit patterns."
 
+analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
+analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
+  analyzedPattern <- analyzeInstancePattern tmcase_pat
+  case analyzedPattern of
+    ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
+                                    { icase_loc = tmcase_loc
+                                    , icase_name = xt
+                                    , icase_args = pat
+                                    , icase_term = tmcase_term
+                                    }
+    _ -> throwError $ OtherError Nothing "Should be unreachable"
 
 ---------------------------------------------------------------------------------
 -- Resolve Cases
@@ -188,6 +220,21 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
                       , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
                       , tmcase_term = RST.termClosing icase_args tm'
                       }
+
+resolveInstanceCase :: IntermediateCase -> ResolverM RST.InstanceCase
+resolveInstanceCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+  cmd' <- resolveCommand icase_term
+  pure RST.MkInstanceCase { instancecase_loc = icase_loc
+                          , instancecase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
+                          , instancecase_cmd = RST.commandClosing icase_args cmd'
+                          }
+
+
+resolveInstanceCases :: [CST.TermCase] -> ResolverM [RST.InstanceCase]
+resolveInstanceCases cases = do
+  intermediateCases <- sequence $ analyzeInstanceCase <$> cases
+  sequence $ resolveInstanceCase . fromExplicitCase <$> intermediateCases
+
 
 ---------------------------------------------------------------------------------
 -- Resolving PrimCommands
@@ -261,8 +308,11 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
-resolveCommand (CST.Xtor loc _ _) =
-  throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
+resolveCommand (CST.Xtor loc xtor _arity) = do
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult _dc _ns _ar) -> throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Xtor")
+    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Method calls not implemented yet"
 resolveCommand (CST.Semi loc _ _ _) =
   throwError $ LowerError (Just loc) (CmdExpected "Command expected, but found Semi")
 resolveCommand (CST.Dtor loc _ _ _) =
@@ -365,29 +415,35 @@ resolveTerm CnsRep (CST.MuAbs loc fv cmd) = do
 -- Xtor
 ---------------------------------------------------------------------------------
 resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
-  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
-  when (length ar /= length subst) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
-  when (dc /= Data) $
-           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
-  analyzedSubst <- analyzeSubstitution loc xtor ar subst
-  subst' <- case analyzedSubst of
-      ExplicitSubst es -> return (map snd es)
-      ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
-  pctms <- resolveTerms loc ar subst'
-  pure $ RST.Xtor loc PrdRep ns xtor pctms
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult dc ns ar) -> do
+      when (length ar /= length subst) $
+               throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+      when (dc /= Data) $
+               throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor.")
+      analyzedSubst <- analyzeSubstitution loc xtor ar subst
+      subst' <- case analyzedSubst of
+          ExplicitSubst es -> return (map snd es)
+          ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
+      pctms <- resolveTerms loc ar subst'
+      pure $ RST.Xtor loc PrdRep ns xtor pctms
+    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Xtor expected, but found Method"
 resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
-  (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
-  when (length ar /= length subst) $
-           throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
-  when (dc /= Codata) $
-           throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
-  analyzedSubst <- analyzeSubstitution loc xtor ar subst
-  subst' <- case analyzedSubst of
-      ExplicitSubst es -> return (map snd es)
-      ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
-  pctms <- resolveTerms loc ar subst'
-  pure $ RST.Xtor loc CnsRep ns xtor pctms
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult dc ns ar) -> do
+      when (length ar /= length subst) $
+               throwError $ LowerError (Just loc) $ XtorArityMismatch xtor (length ar) (length subst)
+      when (dc /= Codata) $
+               throwError $ OtherError (Just loc) ("The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor.")
+      analyzedSubst <- analyzeSubstitution loc xtor ar subst
+      subst' <- case analyzedSubst of
+          ExplicitSubst es -> return (map snd es)
+          ImplicitSubst {} ->  throwError (OtherError (Just loc) "The substitution in a constructor call cannot contain implicit arguments")
+      pctms <- resolveTerms loc ar subst'
+      pure $ RST.Xtor loc CnsRep ns xtor pctms
+    (MethodNameResult _cn _ar) -> throwError $ OtherError (Just loc) "Xtor expected, but found Method"
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
 ---------------------------------------------------------------------------------
@@ -437,7 +493,7 @@ resolveTerm rep (CST.Dtor loc xtor tm subst) = do
       case rep of
         PrdRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
-          subst2' <- forM subst2 $ \(pc,tm) -> resolvePrdCnsTerm pc tm
+          subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
           pure $ RST.Dtor loc PrdRep ns xtor tm' (subst1', PrdRep, subst2')
         CnsRep -> do
           throwError (OtherError (Just loc) "Tried to resolve Dtor to a consumer, but implicit argument stands for consumer")

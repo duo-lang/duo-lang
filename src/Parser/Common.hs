@@ -5,16 +5,18 @@ module Parser.Common
   , xtorNameP
   , typeNameP
   , moduleNameP
+  , classNameP
     -- Type Operators
   , tyOpNameP
   , tyBinOpP
   , precedenceP
   , associativityP
+  , tParamP
     -- Kinds
   , evalOrderP
   , monoKindP
   , polyKindP
-  ) where
+  ,methodNameP) where
 
 import Text.Megaparsec
 
@@ -32,10 +34,10 @@ freeVarNameP = try $ do
   (name, pos) <- lowerCaseId
   return (MkFreeVarName name, pos)
 
-tvarP :: Parser (TVar, SourcePos)
+tvarP :: Parser (SkolemTVar, SourcePos)
 tvarP = try $ do
   (name, pos) <- lowerCaseId
-  return (MkTVar name, pos)
+  return (MkSkolemTVar name, pos)
 
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
@@ -51,6 +53,16 @@ moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
   (name, pos) <- upperCaseId
   return (MkModuleName name, pos)
+
+classNameP :: Parser (ClassName, SourcePos)
+classNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkClassName name, pos)
+
+methodNameP :: Parser (MethodName, SourcePos)
+methodNameP = try $ do
+  (name, pos) <- upperCaseId
+  return (MkMethodName name, pos)
 
 ---------------------------------------------------------------------------------
 -- Operators
@@ -107,7 +119,7 @@ polyKindP = f <|> g
       _ <- symbolP SymSimpleRightArrow
       MkPolyKind kindArgs <$> evalOrderP
 
-tParamP :: Parser (Variance, TVar, MonoKind)
+tParamP :: Parser (Variance, SkolemTVar, MonoKind)
 tParamP = do
   v <- varianceP
   (tvar,_) <- tvarP

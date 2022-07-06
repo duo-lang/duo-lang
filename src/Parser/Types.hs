@@ -9,8 +9,8 @@ module Parser.Types
   , typAtomP
   , xtorDeclP
   , xtorSignatureP
-  ,returnP
-  ,combineXtors
+  , returnP
+  , combineXtors
   ) where
 
 import Text.Megaparsec hiding (State)
@@ -22,6 +22,7 @@ import Parser.Lexer
 import Syntax.Common
 import Syntax.Common.TypesUnpol
 import Utils ( Loc(..) )
+import Control.Monad (void)
 
 
 
@@ -101,7 +102,7 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
-  return (TyVar (Loc startPos endPos) tvar, endPos)
+  return (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
@@ -217,5 +218,20 @@ typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
   tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
-  (monotype,endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) tvars' monotype)
+  let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
+  tConstraints <- option [] (constraintP `sepBy` symbolP SymComma <* symbolP SymDoubleRightArrow)
+  (monotype, endPos) <- typP
+  pure (TypeScheme (Loc startPos endPos) tvars' tConstraints monotype)
+
+typeClassConstraintP :: Parser (Constraint, SourcePos)
+typeClassConstraintP = try $ do
+  cname <- fst <$> upperCaseId
+  (tvar, pos) <- tvarP
+  return (TypeClass (MkClassName cname) tvar, pos)
+
+subTypeConstraintP :: Parser (Constraint, SourcePos)
+subTypeConstraintP = try $ do
+  t1 <- fst <$> typP
+  void $ symbolP SymSubtype
+  (t2, pos) <- typP
+  return (SubType t1 t2, pos)

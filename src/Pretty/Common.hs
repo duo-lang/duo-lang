@@ -36,14 +36,20 @@ instance PrettyAnn DocComment where
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
+instance PrettyAnn MethodName where
+  prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
+
 instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm
 
 instance PrettyAnn ModuleName where
   prettyAnn (MkModuleName nm) = prettyAnn nm
 
-instance PrettyAnn TVar where
-  prettyAnn (MkTVar tv) = prettyAnn tv
+instance PrettyAnn UniTVar where
+  prettyAnn (MkUniTVar tv) = prettyAnn tv
+
+instance PrettyAnn SkolemTVar where
+  prettyAnn (MkSkolemTVar tv) = prettyAnn tv
 
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
@@ -121,5 +127,5 @@ instance PrettyAnn PolyKind where
     annSymbol "->" <+>
     prettyAnn returnKind
 
-prettyTParam :: (Variance, TVar, MonoKind) -> Doc Annotation
-prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> ":" <+> prettyAnn k
+prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
+prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k
