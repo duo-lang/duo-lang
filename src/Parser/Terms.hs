@@ -46,24 +46,6 @@ substitutionIP = do
 
 
 --------------------------------------------------------------------------------------------
--- Binding sites and implicit binding sites
---------------------------------------------------------------------------------------------
-
-bindingP :: Parser (CST.FVOrStar , SourcePos)
-bindingP =  (do _ <- symbolP SymImplicit ;  pos <- getSourcePos; return (CST.FoSStar ,pos))  <|> (first CST.FoSFV <$> freeVarNameP)
-
-
-bindingSiteP :: Parser (CST.BindingSite, SourcePos)
-bindingSiteP = do
-  s <- optional $ fst <$> parens ((fst <$> bindingP) `sepBy` symbolP SymComma)
-  endPos <- getSourcePos
-  return (Data.Maybe.fromMaybe [] s, endPos)
-
---bindingSiteIP :: Parser (CST.BindingSiteI, SourcePos)
---bindingSiteIP = argListsIP Cns (fst <$> freeVarNameP)
-
-
---------------------------------------------------------------------------------------------
 -- Free Variables and Xtors
 --------------------------------------------------------------------------------------------
 
@@ -203,7 +185,7 @@ primitiveCmdP = do
 --      | e >> e                           Command / Cut
 --      | C(e,...,e) ; e                   Semicolon sugar
 --
--- cse ::= X(v,...,v)[{v}] => e
+-- cse ::= pat => e
 -- v   ::= x | *
 
 -- This ambiguous grammar can be disambiguated into the following set of grammars,
@@ -227,6 +209,56 @@ primitiveCmdP = do
 --     | m
 -- 
 
+
+-------------------------------------------------------------------------------------------
+-- Pattern Parser
+-------------------------------------------------------------------------------------------
+
+-- | Parse an implicit argument pattern of the form: `*`
+patStarP :: Parser (CST.Pattern, SourcePos)
+patStarP = do
+  startPos <- getSourcePos
+  endPos <- symbolP SymImplicit
+  pure (CST.PatStar (Loc startPos endPos), endPos)
+
+-- | Parse a wildcard pattern of the form: `_`
+patWildcardP :: Parser (CST.Pattern, SourcePos)
+patWildcardP = do
+  startPos <- getSourcePos
+  endPos <- symbolP SymWildcard
+  pure (CST.PatWildcard (Loc startPos endPos), endPos)
+
+-- | Parse a variable pattern of the form: `x`
+patVariableP :: Parser (CST.Pattern, SourcePos)
+patVariableP = do
+  startPos <- getSourcePos
+  (fv, endPos) <- freeVarNameP
+  pure (CST.PatVar (Loc startPos endPos) fv, endPos)
+
+-- | Parses a list of patterns in parentheses, or nothing at all: `(pat_1,...,pat_n)`
+patternListP :: Parser ([CST.Pattern], SourcePos)
+patternListP = do
+  s <- optional $ fst <$> parens ((fst <$> patternP) `sepBy` symbolP SymComma)
+  endPos <- getSourcePos
+  return (Data.Maybe.fromMaybe [] s, endPos)
+
+-- | Parse a xtor pattern of the form: `Xtor(pat_1,...,pat_n)` or `Xtor`
+patXtorP :: Parser (CST.Pattern, SourcePos)
+patXtorP = do
+  startPos <- getSourcePos
+  (xt, _pos) <- xtorNameP
+  (args,endPos) <- patternListP
+  pure (CST.PatXtor (Loc startPos endPos) xt args, endPos)
+
+
+
+-- | Parses an arbitrary pattern
+patternP :: Parser (CST.Pattern, SourcePos)
+patternP =
+  patStarP <|>
+  patWildcardP <|>
+  patXtorP <|>
+  patVariableP
 
 
 -------------------------------------------------------------------------------------------
@@ -290,13 +322,6 @@ cocaseOfRestP startPos =  do
   _ <- keywordP KwOf
   (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` symbolP SymComma)
   return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
-
-patternP :: Parser (CST.Pattern, SourcePos)
-patternP = do
-  startPos <- getSourcePos
-  (xt, _pos) <- xtorNameP
-  (args,endPos) <- bindingSiteP
-  pure (CST.XtorPat (Loc startPos endPos) xt args, endPos)
 
 termCaseP :: Parser (CST.TermCase, SourcePos)
 termCaseP =  do

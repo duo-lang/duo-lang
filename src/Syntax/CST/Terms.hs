@@ -22,33 +22,20 @@ type SubstitutionI = [TermOrStar]
 -- Patterns
 --------------------------------------------------------------------------------------------
 
-data FVOrStar where
-    FoSFV :: FreeVarName -> FVOrStar
-    FoSStar :: FVOrStar
-
-deriving instance Show FVOrStar
-deriving instance Eq FVOrStar
-
-isStar :: FVOrStar -> Bool
-isStar FoSStar   = True
-isStar (FoSFV _) = False
-
--- | Partial function!
-fromFVOrStar :: FVOrStar -> FreeVarName
-fromFVOrStar (FoSFV fv) = fv
-fromFVOrStar FoSStar = error "fromFVOrStar called on FoSStar"
-
-
-type BindingSite = [FVOrStar]
-
 data Pattern where
-  XtorPat :: Loc -> XtorName -> BindingSite -> Pattern
+  PatXtor     :: Loc -> XtorName -> [Pattern] -> Pattern
+  PatVar      :: Loc -> FreeVarName -> Pattern
+  PatStar     :: Loc -> Pattern
+  PatWildcard :: Loc -> Pattern
 
 deriving instance Show Pattern
 deriving instance Eq Pattern
 
 instance HasLoc Pattern where
-  getLoc (XtorPat loc _ _) = loc
+  getLoc (PatXtor loc _ _) = loc
+  getLoc (PatVar loc _) = loc
+  getLoc (PatStar loc) = loc
+  getLoc (PatWildcard loc) = loc
 
 --------------------------------------------------------------------------------------------
 -- Cases/Cocases
