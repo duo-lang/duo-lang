@@ -7,7 +7,6 @@ import Prettyprinter
 import Text.Megaparsec.Pos
 
 import Errors
-import Pretty.Common
 import Pretty.Constraints ()
 import Pretty.Pretty
 import Syntax.Common

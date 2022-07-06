@@ -1,7 +1,6 @@
 module Resolution.Program (resolveProgram, resolveDecl) where
 
 import Control.Monad.Reader
-import Control.Monad.Except (throwError)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Map (Map)
 import Data.Map qualified as M

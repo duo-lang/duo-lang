@@ -18,10 +18,6 @@ instance PrettyAnn Loc where
   prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
     pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
 
-prettyMaybeLoc :: Maybe Loc -> Doc Annotation
-prettyMaybeLoc Nothing = mempty
-prettyMaybeLoc (Just loc) = prettyAnn loc <> ": "
-
 ---------------------------------------------------------------------------------
 -- Comments
 ---------------------------------------------------------------------------------
