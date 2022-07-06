@@ -1,5 +1,7 @@
 module Pretty.Common where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 import Text.Megaparsec.Pos
 
@@ -7,6 +9,9 @@ import Pretty.Pretty
 import Syntax.Common
 import Utils
 
+
+instance PrettyAnn a => PrettyAnn (NonEmpty a) where
+  prettyAnn ne = vsep (prettyAnn <$> NE.toList ne)
 ---------------------------------------------------------------------------------
 -- Locations
 ---------------------------------------------------------------------------------
