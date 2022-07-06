@@ -41,7 +41,7 @@ failEx = do
   -- 2 is start
   -- 1 is middle right
   -- 3 is bottom right
-  printGraph True "unionGraph" unDet
+  printGraph True True "unionGraph" unDet
   return unDet
 
 -- parts of the subsumption pipeline that still work
