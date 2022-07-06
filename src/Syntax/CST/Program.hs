@@ -31,6 +31,9 @@ data PrdCnsDeclaration = MkPrdCnsDeclaration
 
 deriving instance Show PrdCnsDeclaration
 
+instance HasLoc PrdCnsDeclaration where
+  getLoc decl = pcdecl_loc decl
+
 ---------------------------------------------------------------------------------
 -- Command Declaration
 ---------------------------------------------------------------------------------
@@ -48,6 +51,9 @@ data CommandDeclaration = MkCommandDeclaration
   }
 
 deriving instance Show CommandDeclaration
+
+instance HasLoc CommandDeclaration where
+  getLoc decl = cmddecl_loc decl
 
 ---------------------------------------------------------------------------------
 -- Structural Xtor Declaration
@@ -78,6 +84,9 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
 
 deriving instance Show StructuralXtorDeclaration
 
+instance HasLoc StructuralXtorDeclaration where
+  getLoc decl = strxtordecl_loc decl
+
 ---------------------------------------------------------------------------------
 -- Import Declaration
 ---------------------------------------------------------------------------------
@@ -94,6 +103,9 @@ data ImportDeclaration = MkImportDeclaration
 
 deriving instance Show ImportDeclaration
 
+instance HasLoc ImportDeclaration where
+  getLoc decl = imprtdecl_loc decl
+
 ---------------------------------------------------------------------------------
 -- Set Declaration
 ---------------------------------------------------------------------------------
@@ -109,6 +121,9 @@ data SetDeclaration = MkSetDeclaration
   }
 
 deriving instance Show SetDeclaration
+
+instance HasLoc SetDeclaration where
+  getLoc decl = setdecl_loc decl
 
 ---------------------------------------------------------------------------------
 -- Type Operator Declaration
@@ -132,6 +147,9 @@ data TyOpDeclaration = MkTyOpDeclaration
 
 deriving instance Show TyOpDeclaration
 
+instance HasLoc TyOpDeclaration where
+  getLoc decl = tyopdecl_loc decl
+
 ---------------------------------------------------------------------------------
 -- Type Synonym Declaration
 ---------------------------------------------------------------------------------
@@ -149,6 +167,9 @@ data TySynDeclaration = MkTySynDeclaration
   }
 
 deriving instance Show TySynDeclaration
+
+instance HasLoc TySynDeclaration where
+  getLoc decl = tysyndecl_loc decl
 
 ------------------------------------------------------------------------------
 -- Instance Declaration
@@ -169,6 +190,9 @@ data InstanceDeclaration = MkInstanceDeclaration
 
 deriving instance Show InstanceDeclaration
 
+instance HasLoc InstanceDeclaration where
+  getLoc decl = instancedecl_loc decl
+
 ------------------------------------------------------------------------------
 -- Class Declaration
 ------------------------------------------------------------------------------
@@ -188,6 +212,9 @@ data ClassDeclaration = MkClassDeclaration
 
 deriving instance Show ClassDeclaration
 
+instance HasLoc ClassDeclaration where
+  getLoc decl = classdecl_loc decl
+
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
@@ -204,7 +231,6 @@ data Declaration where
   ClassDecl      :: ClassDeclaration          -> Declaration
   InstanceDecl   :: InstanceDeclaration       -> Declaration
   ParseErrorDecl ::                              Declaration
-
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"

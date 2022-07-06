@@ -34,6 +34,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Driver.Driver
+import Utils
 
 import Syntax.Common
 import LSP.Definition
