@@ -20,6 +20,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
+import Utils ( defaultLoc )
 --import Syntax.Common.TypesUnpol (Typ(TyUniVar))
 
 ------------------------------------------------------------------------------
@@ -66,10 +67,10 @@ getBounds :: TVar -> SolverM VariableState
 getBounds uv = do
   bounds <- gets sst_bounds
   case M.lookup uv bounds of
-    Nothing -> throwSolverError [ "Tried to retrieve bounds for variable:"
-                                , ppPrint (tVarToTUniVar uv)
-                                , "which is not a valid unification variable."
-                                ]
+    Nothing -> throwSolverError defaultLoc [ "Tried to retrieve bounds for variable:"
+                                           , ppPrint (tVarToTUniVar uv)
+                                           , "which is not a valid unification variable."
+                                           ]
     Just vs -> return vs
 
 addUpperBound :: TVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
@@ -113,10 +114,10 @@ solve (cs:css) = do
 
 lookupXtor :: XtorName -> [XtorSig pol] -> SolverM (XtorSig pol)
 lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
-  Nothing -> throwSolverError ["The xtor"
-                              , ppPrint xtName
-                              , "is not contained in the list of xtors"
-                              , ppPrint xtors ]
+  Nothing -> throwSolverError defaultLoc ["The xtor"
+                                         , ppPrint xtName
+                                         , "is not contained in the list of xtors"
+                                         , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
 checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
@@ -133,13 +134,13 @@ checkContexts (PrdCnsType CnsRep ty1:rest1) (PrdCnsType CnsRep ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty2 ty1:xs)
 checkContexts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) =
-  throwSolverError ["checkContexts: Tried to constrain PrdType by CnsType."]
+  throwSolverError defaultLoc ["checkContexts: Tried to constrain PrdType by CnsType."]
 checkContexts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) =
-  throwSolverError ["checkContexts: Tried to constrain CnsType by PrdType."]
+  throwSolverError defaultLoc ["checkContexts: Tried to constrain CnsType by PrdType."]
 checkContexts []    (_:_) =
-  throwSolverError ["checkContexts: Linear contexts have unequal length."]
+  throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
 checkContexts (_:_) []    =
-  throwSolverError ["checkContexts: Linear contexts have unequal length."]
+  throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
 
 
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
@@ -236,10 +237,10 @@ subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2
 subConstraints (SubType _ (TyPrim _ _ pt1) (TyPrim _ _ pt2)) | pt1 == pt2 = pure []
 -- All other constraints cannot be solved.
 subConstraints (SubType _ t1 t2) = do
-  throwSolverError ["Cannot constraint type"
-                   , "    " <> ppPrint t1
-                   , "by type"
-                   , "    " <> ppPrint t2 ]
+  throwSolverError defaultLoc ["Cannot constraint type"
+                              , "    " <> ppPrint t1
+                              , "by type"
+                              , "    " <> ppPrint t2 ]
 
 ------------------------------------------------------------------------------
 -- Exported Function

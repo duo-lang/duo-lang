@@ -33,7 +33,7 @@ evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce (Apply _ _ Nothing _ _) =
-  throwEvalError ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
+  throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ _ (Just kind) prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 
@@ -67,15 +67,15 @@ evalApplyOnce _ prd (MuAbs _ _ CnsRep _ _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
 evalApplyOnce _ (BoundVar _ PrdRep _ i) _ =
-  throwEvalError ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
+  throwEvalError defaultLoc ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
 evalApplyOnce _ _ (BoundVar _ CnsRep _ i) =
-  throwEvalError [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
+  throwEvalError defaultLoc [ "Found bound variable during evaluation. Index: " <> T.pack (show i)]
 -- Everything else should be excluded by typechecking
 evalApplyOnce _ prd cns =
-  throwEvalError [ "Cannot evaluate."
-                 , "Producer: " <> ppPrint prd
-                 , "Consumer:"  <> ppPrint cns
-                 ]
+  throwEvalError defaultLoc [ "Cannot evaluate."
+                            , "Producer: " <> ppPrint prd
+                            , "Consumer:"  <> ppPrint cns
+                            ]
 
 -- | Return just the final evaluation result
 evalM :: Command -> EvalM Command

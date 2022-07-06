@@ -29,7 +29,7 @@ import TypeAutomata.Definition
       XtorLabel(..),
       emptyNodeLabel,
       singleNodeLabel )
-import Utils ( enumerate )
+import Utils ( enumerate, defaultLoc )
 import Control.Monad
 
 --------------------------------------------------------------------------
@@ -113,30 +113,30 @@ lookupTVar :: PolarityRep pol -> TVar -> TTA Node
 lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
-    Nothing -> throwAutomatonError [ "Could not insert type into automaton."
-                                   , "The type variable:"
-                                   , "    " <> unTVar tv
-                                   , "is not available in the automaton."
-                                   ]
-    Just (Nothing,_) -> throwAutomatonError [ "Could not insert type into automaton."
-                                            , "The type variable:"
-                                            , "    " <> unTVar tv
-                                            , "exists only at negative polarity."
-                                            ]
+    Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> unTVar tv
+                                              , "is not available in the automaton."
+                                              ]
+    Just (Nothing,_) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                                       , "The type variable:"
+                                                       , "    " <> unTVar tv
+                                                       , "exists only at negative polarity."
+                                                       ]
     Just (Just pos,_) -> return pos
 lookupTVar NegRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
-    Nothing -> throwAutomatonError [ "Could not insert type into automaton."
-                                   , "The type variable:"
-                                   , "    " <> unTVar tv
-                                   , "is not available in the automaton."
-                                   ]
-    Just (_,Nothing) -> throwAutomatonError [ "Could not insert type into automaton."
-                                            , "The type variable:"
-                                            , "    " <> unTVar tv
-                                            , "exists only at positive polarity."
-                                            ]
+    Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> unTVar tv
+                                              , "is not available in the automaton."
+                                              ]
+    Just (_,Nothing) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                                       , "The type variable:"
+                                                       , "    " <> unTVar tv
+                                                       , "exists only at positive polarity."
+                                                       ]
     Just (_,Just neg) -> return neg
 
 
@@ -220,7 +220,7 @@ insertType (TyPrim _ rep pt) = do
   insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton pt })
   return newNode
 insertType (TyFlipPol _ _) =
-  throwAutomatonError ["Tried to insert TyFlipPol into type automaton"]
+  throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]
 
 --------------------------------------------------------------------------
 --

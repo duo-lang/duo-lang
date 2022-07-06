@@ -56,13 +56,13 @@ lookupTerm :: EnvReader a m
            => PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
   env <- asks fst
-  let err = OtherError Nothing ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
+  let err = OtherError defaultLoc ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
   let f env = case M.lookup fv (prdEnv env) of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> Just (res1,res2)
   snd <$> findFirstM f err
 lookupTerm CnsRep fv = do
-  let err = OtherError Nothing ("Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment.")
+  let err = OtherError defaultLoc ("Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment.")
   let f env = case M.lookup fv (cnsEnv env) of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> return (res1,res2)
@@ -75,7 +75,7 @@ lookupTerm CnsRep fv = do
 -- | Lookup a command in the environment.
 lookupCommand :: EnvReader a m => FreeVarName -> m TST.Command
 lookupCommand fv = do
-  let err = OtherError Nothing ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
+  let err = OtherError defaultLoc ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
   let f env = case M.lookup fv (cmdEnv env) of
                      Nothing -> Nothing
                      Just (res, _) -> return res
@@ -94,7 +94,7 @@ lookupDataDecl xt = do
   let typeContainsXtor :: DataDecl -> Bool
       typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                   | otherwise = False
-  let err = OtherError Nothing ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
+  let err = OtherError defaultLoc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
   let f env = find typeContainsXtor (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
@@ -102,7 +102,7 @@ lookupDataDecl xt = do
 lookupTypeName :: EnvReader a m
                => RnTypeName -> m DataDecl
 lookupTypeName tn = do
-  let err = OtherError Nothing ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
+  let err = OtherError defaultLoc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
   let f env = find (\NominalDecl{..} -> data_name == tn) (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
@@ -113,12 +113,12 @@ lookupXtorSig xtn PosRep = do
   decl <- lookupDataDecl xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (data_xtors decl)) of
     Just xts -> return xts
-    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+    Nothing -> throwOtherError defaultLoc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
 lookupXtorSig xtn NegRep = do
   decl <- lookupDataDecl xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
     Just xts -> return xts
-    Nothing -> throwOtherError ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+    Nothing -> throwOtherError defaultLoc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

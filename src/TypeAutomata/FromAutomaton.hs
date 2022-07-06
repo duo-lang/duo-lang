@@ -172,7 +172,7 @@ nodeToTypeNoCache rep i = do
     let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
     let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
           Just x -> pure x
-          Nothing -> throwOtherError ["Impossible: Cannot loose type arguments in automata"]
+          Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
     nominals <- do
         forM (S.toList tns) $ \(tn, variances) -> do
           argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]

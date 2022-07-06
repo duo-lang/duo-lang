@@ -60,10 +60,10 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
       (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (Annotated tyAnnotated)
       (Right False) -> do
-        let err = OtherError (Just loc) $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                                    , " Annotated type: " <> ppPrint tyAnnotated
-                                                    , " Inferred type:  " <> ppPrint tyInferred
-                                                    ]
+        let err = OtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                             , " Annotated type: " <> ppPrint tyAnnotated
+                                             , " Inferred type:  " <> ppPrint tyInferred
+                                             ]
         guardVerbose $ ppPrintIO err
         throwError (err NE.:| [])
 
@@ -183,8 +183,8 @@ inferDecl _mn (Core.ImportDecl decl) = do
 --
 -- SetDecl
 --
-inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) =
-  throwOtherError ["Unknown option: " <> setdecl_option]
+inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option, setdecl_loc }) =
+  throwOtherError setdecl_loc ["Unknown option: " <> setdecl_option]
 --
 -- TyOpDecl
 --

@@ -38,27 +38,27 @@ data LoweringError where
   deriving (Show, Eq)
 
 data Error where
-  ParserError           :: Maybe Loc -> Text          -> Error
-  GenConstraintsError   :: Maybe Loc -> Text          -> Error
-  EvalError             :: Maybe Loc -> Text          -> Error
-  SolveConstraintsError :: Maybe Loc -> Text          -> Error
-  TypeAutomatonError    :: Maybe Loc -> Text          -> Error
-  LowerError            :: Maybe Loc -> LoweringError -> Error
-  OtherError            :: Maybe Loc -> Text          -> Error
-  NoImplicitArg         :: Maybe Loc -> Text          -> Error
+  ParserError           :: Loc -> Text          -> Error
+  GenConstraintsError   :: Loc -> Text          -> Error
+  EvalError             :: Loc -> Text          -> Error
+  SolveConstraintsError :: Loc -> Text          -> Error
+  TypeAutomatonError    :: Loc -> Text          -> Error
+  LowerError            :: Loc -> LoweringError -> Error
+  OtherError            :: Loc -> Text          -> Error
+  NoImplicitArg         :: Loc -> Text          -> Error
   deriving (Show, Eq)
 
 attachLoc :: Loc -> Error -> Error
-attachLoc loc (ParserError _ msg) = ParserError (Just loc) msg
-attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError (Just loc) txt
-attachLoc loc (EvalError _ txt) = EvalError (Just loc) txt
-attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError (Just loc) txt
-attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError (Just loc) txt
-attachLoc loc (LowerError _ err) = LowerError (Just loc) err
-attachLoc loc (OtherError _ txt) = OtherError (Just loc) txt
-attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg (Just loc) txt
+attachLoc loc (ParserError _ msg) = ParserError loc msg
+attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
+attachLoc loc (EvalError _ txt) = EvalError loc txt
+attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
+attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
+attachLoc loc (LowerError _ err) = LowerError loc err
+attachLoc loc (OtherError _ txt) = OtherError loc txt
+attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 
-getLoc :: Error -> Maybe Loc
+getLoc :: Error -> Loc
 getLoc (ParserError loc _) = loc
 getLoc (GenConstraintsError loc _) = loc
 getLoc (EvalError loc _) = loc
@@ -73,24 +73,29 @@ getLoc (NoImplicitArg loc _) = loc
 ---------------------------------------------------------------------------------------------
 
 throwGenError :: MonadError (NonEmpty Error) m
-              => [Text] -> m a
-throwGenError = throwError . (NE.:| []) . GenConstraintsError Nothing . T.unlines
+              => Loc -> [Text] -> m a
+throwGenError loc =
+  throwError . (NE.:| []) . GenConstraintsError loc . T.unlines
 
 throwEvalError :: MonadError (NonEmpty Error) m
-               => [Text] -> m a
-throwEvalError = throwError . (NE.:| []) . EvalError Nothing . T.unlines
+               => Loc -> [Text] -> m a
+throwEvalError loc =
+  throwError . (NE.:| []) . EvalError loc . T.unlines
 
 throwSolverError :: MonadError (NonEmpty Error) m
-                 => [Text] -> m a
-throwSolverError = throwError . (NE.:| []) . SolveConstraintsError Nothing . T.unlines
+                 => Loc -> [Text] -> m a
+throwSolverError loc =
+  throwError . (NE.:| []) . SolveConstraintsError loc . T.unlines
 
 throwAutomatonError :: MonadError (NonEmpty Error) m
-                    => [Text] -> m a
-throwAutomatonError = throwError . (NE.:| []) . TypeAutomatonError Nothing . T.unlines
+                    => Loc -> [Text] -> m a
+throwAutomatonError loc =
+  throwError . (NE.:| []) . TypeAutomatonError loc . T.unlines
 
 throwOtherError :: MonadError (NonEmpty Error) m
-                => [Text] -> m a
-throwOtherError = throwError . (NE.:| []) . OtherError Nothing . T.unlines
+                => Loc -> [Text] -> m a
+throwOtherError loc =
+  throwError . (NE.:| []) . OtherError loc . T.unlines
 
 
 ---------------------------------------------------------------------------------------------

@@ -75,7 +75,7 @@ newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmp
   deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadState DriverState, MonadIO, MonadWriter [Warning])
 
 instance MonadFail DriverM where
-  fail str = throwError (OtherError Nothing (T.pack str) NE.:| [])
+  fail str = throwError (OtherError defaultLoc(T.pack str) NE.:| [])
 
 execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) ((a),DriverState),[Warning])
 execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
@@ -106,9 +106,9 @@ queryTypecheckedProgram :: ModuleName -> DriverM TST.Program
 queryTypecheckedProgram mn = do
   cache <- gets drvASTs
   case M.lookup mn cache of
-    Nothing -> throwOtherError [ "AST for module " <> ppPrint mn <> " not in cache."
-                               , "Available ASTs: " <> ppPrint (M.keys cache)
-                               ]
+    Nothing -> throwOtherError defaultLoc [ "AST for module " <> ppPrint mn <> " not in cache."
+                                          , "Available ASTs: " <> ppPrint (M.keys cache)
+                                          ]
     Just ast -> pure ast
 
 
@@ -142,7 +142,7 @@ findModule (MkModuleName mod) loc = do
     exists <- liftIO $ doesFileExist fp
     if exists then return [fp] else return []
   case concat fps of
-    [] -> throwOtherError ["Could not locate library: " <> mod]
+    [] -> throwOtherError loc ["Could not locate library: " <> mod]
     (fp:_) -> return fp
 
 liftErr :: NonEmpty Error -> DriverM a

@@ -109,7 +109,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
         -- Upper bound translation of codata is empty
         return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
 translateTypeUpper' tv@TyVar{} = return tv
-translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
+translateTypeUpper' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
 -- Lower bound translation functions
@@ -150,7 +150,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
         return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
 translateTypeLower' tv@TyVar{} = return tv
-translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
+translateTypeLower' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
 -- Cleanup functions
@@ -192,7 +192,7 @@ cleanUpType ty = case ty of
   -- Type variables remain unchanged
   tv@TyVar{} -> return tv
   -- Other types imply incorrect translation
-  t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
+  t -> throwOtherError defaultLoc ["Type translation: Cannot clean up type " <> ppPrint t]
 
 ---------------------------------------------------------------------------------------------
 -- Exported functions

@@ -34,7 +34,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Driver.Driver
-import Utils
+
 import Syntax.Common
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
@@ -180,7 +180,7 @@ instance IsDiagnostic Warning where
 instance IsDiagnostic Error where
   toDiagnostic err = [diag]
     where
-      diag = Diagnostic { _range = locToRange (maybe defaultLoc id (getLoc err))
+      diag = Diagnostic { _range = locToRange (getLoc err)
                         , _severity = Just DsError
                         , _code = Nothing
                         , _source = Nothing

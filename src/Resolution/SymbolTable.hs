@@ -84,7 +84,7 @@ checkFreshTypeName :: MonadError (NonEmpty Error) m
                    -> m ()
 checkFreshTypeName loc tn st =
   if tn `elem` M.keys (typeNameMap st)
-  then throwOtherError ["TypeName is already used: " <> ppPrint tn]
+  then throwOtherError loc ["TypeName is already used: " <> ppPrint tn]
   else pure ()
 
 checkFreshXtorName :: MonadError (NonEmpty Error) m
@@ -94,7 +94,7 @@ checkFreshXtorName :: MonadError (NonEmpty Error) m
                    -> m ()
 checkFreshXtorName loc xt st =
   if xt `elem` M.keys (xtorNameMap st)
-  then throwOtherError ["XtorName is already used: " <> ppPrint xt]
+  then throwOtherError loc ["XtorName is already used: " <> ppPrint xt]
   else pure ()
 
 checkFreshFreeVarName :: MonadError (NonEmpty Error) m
@@ -104,7 +104,7 @@ checkFreshFreeVarName :: MonadError (NonEmpty Error) m
                    -> m ()
 checkFreshFreeVarName loc fv st =
   if fv `elem` M.keys (freeVarMap st)
-  then throwOtherError ["FreeVarName is already used: " <> ppPrint fv]
+  then throwOtherError loc ["FreeVarName is already used: " <> ppPrint fv]
   else pure ()
 
 

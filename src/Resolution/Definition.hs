@@ -31,7 +31,7 @@ newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (Excep
   deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
 
 instance MonadFail ResolverM where
-  fail str = throwOtherError [T.pack str]
+  fail str = throwOtherError defaultLoc [T.pack str]
 
 runResolverM :: ResolveReader -> ResolverM a -> (Either (NonEmpty Error) a,[Warning])
 runResolverM reader action = runWriter $ runExceptT (runReaderT  (unResolverM action) reader)
@@ -56,9 +56,9 @@ lookupXtor loc xtor = do
   let results :: [(ModuleName, Maybe XtorNameResolve)]
       results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
   case filterJusts results of
-    []    -> throwOtherError ["Constructor/Destructor not in symbol table: " <> ppPrint xtor]
+    []    -> throwOtherError loc ["Constructor/Destructor not in symbol table: " <> ppPrint xtor]
     [res] -> pure res
-    _     -> throwOtherError ["Constructor/Destructor found in multiple modules: " <> ppPrint xtor]
+    _     -> throwOtherError loc ["Constructor/Destructor found in multiple modules: " <> ppPrint xtor]
 
 
 -- | Find the Arity of a given typename
@@ -73,9 +73,9 @@ lookupTypeConstructor loc tn = do
     let results :: [(ModuleName, Maybe TypeNameResolve)]
         results = second (M.lookup tn . typeNameMap) <$> symbolTables
     case filterJusts results of
-      []         -> throwOtherError ["Type name " <> unTypeName tn <> " not found in symbol table."]
+      []         -> throwOtherError loc ["Type name " <> unTypeName tn <> " not found in symbol table."]
       [(_,res)]  -> pure res
-      xs         -> throwOtherError ["Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))]
+      xs         -> throwOtherError loc ["Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))]
 
 -- | Type operator for the union type
 unionTyOp :: TyOp
@@ -105,7 +105,7 @@ lookupTyOp loc op = do
   let results :: [(ModuleName, Maybe TyOp)]
       results = second (find (\tyop -> symbol tyop == op) . tyOps) <$> symbolTables
   case filterJusts results of
-    []    -> throwError (LowerError (Just loc) (UnknownOperator (ppPrint op)) NE.:| [])
+    []    -> throwError (LowerError loc (UnknownOperator (ppPrint op)) NE.:| [])
     [res] -> pure res
-    _     -> throwOtherError ["Type operator " <> ppPrint op <> " found in multiple imports."]
+    _     -> throwOtherError loc ["Type operator " <> ppPrint op <> " found in multiple imports."]
       

@@ -39,27 +39,26 @@ instance PrettyAnn LoweringError where
   prettyAnn (InvalidStar t)                        = "Invalid Star: " <+> pretty t
 
 instance PrettyAnn Error where
-  prettyAnn (ParserError loc msg)           = prettyMaybeLoc loc <> "Parser error:" <+> pretty msg
-  prettyAnn (EvalError loc err)             = prettyMaybeLoc loc <> "Evaluation error:" <+> pretty err
-  prettyAnn (GenConstraintsError loc err)   = prettyMaybeLoc loc <> "Constraint generation error:" <+> pretty err
-  prettyAnn (SolveConstraintsError loc err) = prettyMaybeLoc loc <> "Constraint solving error:" <+> pretty err
-  prettyAnn (TypeAutomatonError loc err)    = prettyMaybeLoc loc <> "Type simplification error:" <+> pretty err
-  prettyAnn (LowerError loc err)            = prettyMaybeLoc loc <> prettyAnn err
-  prettyAnn (OtherError loc err)            = prettyMaybeLoc loc <> "Other Error:" <+> pretty err
-  prettyAnn (NoImplicitArg loc err)         = prettyMaybeLoc loc <> "No implicit arg: " <+> pretty err
+  prettyAnn (ParserError loc msg)           = prettyAnn loc <> "Parser error:" <+> pretty msg
+  prettyAnn (EvalError loc err)             = prettyAnn loc <> "Evaluation error:" <+> pretty err
+  prettyAnn (GenConstraintsError loc err)   = prettyAnn loc <> "Constraint generation error:" <+> pretty err
+  prettyAnn (SolveConstraintsError loc err) = prettyAnn loc <> "Constraint solving error:" <+> pretty err
+  prettyAnn (TypeAutomatonError loc err)    = prettyAnn loc <> "Type simplification error:" <+> pretty err
+  prettyAnn (LowerError loc err)            = prettyAnn loc <> prettyAnn err
+  prettyAnn (OtherError loc err)            = prettyAnn loc <> "Other Error:" <+> pretty err
+  prettyAnn (NoImplicitArg loc err)         = prettyAnn loc <> "No implicit arg: " <+> pretty err
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------
 
 printLocatedError :: MonadIO m => Error -> m ()
-printLocatedError err@(getLoc -> Nothing) = liftIO $ T.putStrLn (ppPrint err)
-printLocatedError err@(getLoc -> Just loc) = liftIO $ do
+printLocatedError err = liftIO $ do
+  let loc = getLoc err
   T.putStrLn ("Error at: " <> ppPrint loc)
   printRegion loc
   T.putStrLn ""
   T.putStrLn (ppPrint err)
-printLocatedError _ = error "unreachable: Satisfy the pattern match checker :/"
 
 printRegion :: Loc -> IO ()
 printRegion (Loc (SourcePos "<interactive>" _ _) SourcePos {}) = return ()

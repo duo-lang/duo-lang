@@ -18,7 +18,7 @@ import Syntax.Common.TypesUnpol (XtorSig (sig_args), PrdCnsTyp (PrdType, CnsType
 import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common
-import Utils (Loc)
+import Utils (Loc, defaultLoc)
 
 
 ---------------------------------------------------------------------------------
@@ -34,14 +34,14 @@ resolveXtors sigs = do
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
 checkVarianceTyp _ _ tv(TyUniVar loc _) =
-  throwOtherError ["The Unification Variable " <> T.pack (show  tv) <> " should not appear in the program at this point"]
+  throwOtherError loc ["The Unification Variable " <> T.pack (show  tv) <> " should not appear in the program at this point"]
 checkVarianceTyp loc var polyKind (TySkolemVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
-    Nothing   -> throwOtherError ["Type variable not bound by declaration: " <> T.pack (show tVar)]
+    Nothing   -> throwOtherError loc ["Type variable not bound by declaration: " <> T.pack (show tVar)]
     Just var' -> if var == var'
                  then return ()
-                 else throwOtherError ["Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var')]
+                 else throwOtherError loc ["Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var')]
 checkVarianceTyp loc var polyKind (TyXData _loc' dataCodata  xtorSigs) = do
   let var' = var <> case dataCodata of
                       Data   -> Covariant
@@ -61,8 +61,8 @@ checkVarianceTyp loc var polyKind (TyNominal _loc' tyName tys) = do
     go (v:vs) (t:ts)  = do
       checkVarianceTyp loc (v <> var) polyKind t
       go vs ts
-    go [] (_:_)       = throwOtherError ["Type Constructor " <> T.pack (show tyName) <> " is applied to too many arguments"]
-    go (_:_) []       = throwOtherError ["Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"]
+    go [] (_:_)       = throwOtherError loc ["Type Constructor " <> T.pack (show tyName) <> " is applied to too many arguments"]
+    go (_:_) []       = throwOtherError loc ["Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"]
 checkVarianceTyp loc var polyKind (TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
 checkVarianceTyp _loc _var _polyKind (TyTop _loc') = return ()
@@ -297,7 +297,7 @@ resolveDecl (CST.InstanceDecl decl) = do
   decl' <- resolveInstanceDeclaration decl
   pure (RST.InstanceDecl decl')
 resolveDecl CST.ParseErrorDecl =
-  throwOtherError ["Unreachable: ParseErrorDecl cannot be parsed"]
+  throwOtherError defaultLoc ["Unreachable: ParseErrorDecl cannot be parsed"]
 
 resolveProgram :: CST.Program -> ResolverM RST.Program
 resolveProgram = mapM resolveDecl
