@@ -1,6 +1,6 @@
 module Resolution.Definition where
 
-import Control.Monad.Except (MonadError, Except, throwError, runExcept, ExceptT, runExceptT)
+import Control.Monad.Except (MonadError, throwError, ExceptT, runExceptT)
 import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.Map (Map)
@@ -16,7 +16,6 @@ import Syntax.Common
 import Utils
 import Errors
 import Control.Monad.Writer
-import Control.Monad.Identity
 
 ------------------------------------------------------------------------------
 -- Resolver Monad
