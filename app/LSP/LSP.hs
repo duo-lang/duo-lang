@@ -201,9 +201,9 @@ parserErrorToDiag (MkParserError loc msg) =
              , _relatedInformation = Nothing
              }
 
-sendDiagnostic :: IsDiagnostic a => NormalizedUri -> a -> LSPMonad ()
-sendDiagnostic uri w = do
-  let diags = toDiagnostic w
+sendDiagnostics :: IsDiagnostic a => NormalizedUri -> [a] -> LSPMonad ()
+sendDiagnostics uri w = do
+  let diags = concat (toDiagnostic <$> w)
   publishDiagnostics 42 uri Nothing (M.fromList [(Just "DualSub", SL.toSortedList diags)])
 
 ---------------------------------------------------------------------------------------------
@@ -222,13 +222,13 @@ publishErrors uri = do
       let decls = runExcept (runFileParser fp programP file)
       case decls of
         Left err -> do
-          sendDiagnostic (toNormalizedUri uri) err
+          sendDiagnostics (toNormalizedUri uri) [err]
         Right decls -> do
           (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
-          mapM_ (sendDiagnostic (toNormalizedUri uri)) warnings 
+          sendDiagnostics (toNormalizedUri uri) warnings 
           case res of
             Left err -> do
-              sendDiagnostic (toNormalizedUri uri) err
+              sendDiagnostics (toNormalizedUri uri) [err]
             Right (_,prog) -> do
               updateHoverCache uri prog
 
