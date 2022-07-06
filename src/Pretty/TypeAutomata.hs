@@ -56,19 +56,19 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (RefineEdge tn) = prettyAnn tn
   prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (prettyAnn tn <> " , " <> prettyAnn v <> " , " <> pretty i)
 
-typeAutToDot :: TypeAut' (EdgeLabel a) f pol -> DotGraph Node
-typeAutToDot TypeAut {ta_core = TypeAutCore{..}} =
+typeAutToDot :: Bool -> TypeAut' (EdgeLabel a) f pol -> DotGraph Node
+typeAutToDot showId TypeAut {ta_core = TypeAutCore{..}} =
     let
       grWithFlow = insEdges [(i,j,EpsilonEdge (error "Never forced")) | (i,j) <- ta_flowEdges] ta_gr
     in
-      graphToDot typeAutParams grWithFlow
+      graphToDot (typeAutParams showId) grWithFlow
 
-typeAutParams :: GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabel
-typeAutParams = defaultParams
-  { fmtNode = \(_,nl) ->
+typeAutParams :: Bool -> GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabel
+typeAutParams showId = defaultParams
+  { fmtNode = \(n,nl) ->
     [ style filled
     , fillColor $ case nl_pol nl of {Pos -> White; Neg -> Gray}
-    , textLabel (pack (ppPrintString (nl :: NodeLabel)))]
+    , textLabel (pack ((if showId then show n <> ": " else "") <> ppPrintString (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@EdgeSymbol {} -> regularEdgeStyle el
                               (EpsilonEdge _) -> flowEdgeStyle
