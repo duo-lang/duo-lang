@@ -95,7 +95,9 @@ throwOtherError :: MonadError Error m
 throwOtherError = throwError . OtherError Nothing . T.unlines
 
 
+---------------------------------------------------------------------------------------------
 -- Warnings
+---------------------------------------------------------------------------------------------
 
 data Warning where
-  Warning     :: Maybe Loc -> Text -> Warning
+  Warning :: Loc -> Text -> Warning

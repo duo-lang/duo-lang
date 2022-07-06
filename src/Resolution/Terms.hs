@@ -92,10 +92,10 @@ checkVarName :: Loc -> (PrdCns, CST.FVOrStar) -> ResolverM ()
 checkVarName _ (_,FoSStar) = return ()
 checkVarName loc (Prd,FoSFV (MkFreeVarName name)) = 
   when ("k" `T.isPrefixOf` name) $
-    tell [Warning (Just loc) (T.pack "Producer variable " `T.append` name `T.append` " should not start with letter k")  ]
+    tell [Warning loc (T.pack "Producer variable " `T.append` name `T.append` " should not start with letter k")  ]
 checkVarName loc (Cns,FoSFV (MkFreeVarName name)) = 
   unless ("k" `T.isPrefixOf` name) $
-    tell [Warning (Just loc) (T.pack "Consumer variable " `T.append` name `T.append` " should start with letter k")  ]
+    tell [Warning loc (T.pack "Consumer variable " `T.append` name `T.append` " should start with letter k")  ]
 
 ---------------------------------------------------------------------------------
 -- Analyze Cases
