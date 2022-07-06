@@ -44,6 +44,7 @@ spec symboltables = do
     subsumptionCheckPos symboltables True "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }" "{ Ap( Nat , return { Ap( Nat , return Bool ) } ) }"
     subsumptionCheckPos symboltables True "Nat" "Nat"
     subsumptionCheckPos symboltables True "{ Ap(Nat,return Bool) }" "{ Ap(Nat,return Bool) }"
+    subsumptionCheckPos symboltables True "rec a.  <Z, S(< S(a) >)>" "rec a. <Z, S(a)>"
     -- Subsumptions which shouldn't hold
     subsumptionCheckPos symboltables False "{}" "<>"
     subsumptionCheckPos symboltables False "{ Ap(< True >,return < True >) }" "forall a. { Ap(a,return a) }"
