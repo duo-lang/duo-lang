@@ -148,12 +148,14 @@ freshTVarsForTypeParams rep dd = do
 
 classUnifiers :: (Typ Pos, Typ Neg) -> [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 classUnifiers _typ [] = return ([],[])
-classUnifiers (tp, tn) ((Prd,  _fv):rest) = do
+classUnifiers (tp, tn) ((Prd, Just _fv):rest) = do
   (lctxtP, lctxtN) <- classUnifiers (tp, tn) rest
   return (PrdCnsType PrdRep tp:lctxtP, PrdCnsType PrdRep tn:lctxtN)
-classUnifiers (tp, tn) ((Cns, _fv):rest) = do
+classUnifiers (tp, tn) ((Cns, Just _fv):rest) = do
   (lctxtP, lctxtN) <- classUnifiers (tp, tn) rest
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
+classUnifiers (tp, tn) ((_pc, Nothing):rest) =
+  classUnifiers (tp, tn) rest
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
