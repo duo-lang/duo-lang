@@ -34,7 +34,6 @@ import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
-import Syntax.CST.Terms (FVOrStar(FoSStar))
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.Common.TypesUnpol (TypeScheme(ts_constraints))
 
@@ -397,11 +396,11 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
 
 embedPat :: RST.Pattern -> CST.Pattern
 embedPat (RST.XtorPat loc xt args) =
-  CST.XtorPat loc xt (CST.FoSFV . fromJust . snd <$> args)
+  CST.PatXtor loc xt (CST.PatVar loc . fromJust . snd <$> args)
 
 embedPatI :: RST.PatternI -> CST.Pattern
 embedPatI (RST.XtorPatI loc xt (as1,_,as2)) =
-  CST.XtorPat loc xt ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
+  CST.PatXtor loc xt ((CST.PatVar loc . fromJust . snd <$> as1) ++ [CST.PatStar loc] ++ (CST.PatVar loc . fromJust . snd  <$> as2))
 
 embedCmdCase :: RST.CmdCase -> CST.TermCase
 embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
