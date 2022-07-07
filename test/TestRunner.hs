@@ -82,7 +82,9 @@ main = do
       OptEmpty -> getAvailableExamples
       -- only use files specified in command line
       OptFilter fs -> pure fs
-    counterExamples <- getAvailableCounterExamples
+    counterExamples <- case o of
+      OptEmpty -> getAvailableCounterExamples
+      OptFilter _ -> pure []
     -- Collect the parsed declarations
     parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
