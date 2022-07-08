@@ -8,8 +8,6 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVars
   , freshTVarsForTypeParams
   , freshTVarsForInstance
-    -- Generate fresh constraints for instance constraints
-  , classUnifiers
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -157,33 +155,6 @@ freshTVarsForTypeParams' rep kindArgs tn = do
    paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap kindArgs freshVars =
      MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
-
-classUnifiers :: (Typ Pos, Typ Neg) -> [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
-classUnifiers _typ [] = return ([],[])
-classUnifiers (tp, tn) ((Prd, Just _fv):rest) = do
-  (lctxtP, lctxtN) <- classUnifiers (tp, tn) rest
-  return (PrdCnsType PrdRep tp:lctxtP, PrdCnsType PrdRep tn:lctxtN)
-classUnifiers (tp, tn) ((Cns, Just _fv):rest) = do
-  (lctxtP, lctxtN) <- classUnifiers (tp, tn) rest
-  return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
-classUnifiers (tp, tn) ((_pc, Nothing):rest) =
-  classUnifiers (tp, tn) rest
-
--- unifyInstance :: (Typ Pos, Typ Neg) -> (PrdCns, Maybe FreeVarName) -> GenM (LinearContext Pos, LinearContext Neg)
--- unifyInstance = undefined
-
-
--- instanceConstraints :: XtorName             -- ^ The method to lookup.
---                     -> (Typ Pos, Typ Neg)   -- ^ The type of the instance.
---                     -> RST.ClassDeclaration -- ^ The relevant classdeclaration to reference.
---                     -> GenM (LinearContext Pos, LinearContext Neg)
--- instanceConstraints mn (typ, tyn) RST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors } = 
---   case lookup mn classdecl_xtors of
---     Nothing -> throwError (OtherError Nothing $! "Method " <> ppPrint mn <> " not defined in class " <> ppPrint classdecl_name)
---     Just tys -> let whatever = pure . unzip $! (\(prdcns,pos,neg) -> case prdcns of
---                                    Prd -> (PrdCnsType PrdRep <$> pos, PrdCnsType PrdRep <$> neg)
---                                    Cns -> (PrdCnsType CnsRep <$> pos, PrdCnsType CnsRep <$> neg)) <$> tys in undefined
-
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
