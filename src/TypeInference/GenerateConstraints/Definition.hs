@@ -7,6 +7,7 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
+  , freshTVarsForInstance
     -- Generate fresh constraints for instance constraints
   , classUnifiers
     -- Throwing errors
@@ -26,7 +27,7 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
-  , checkInstance
+  , checkInstanceCoverage
   , translateXtorSigUpper
   , translateTypeUpper
   , translateXtorSigLower
@@ -48,6 +49,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Common.TypesPol
 import Syntax.Common
+import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
@@ -121,29 +123,39 @@ freshTVars ((Cns,fv):rest) = do
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution)
-freshTVarsForTypeParams rep dd = do
-  let MkPolyKind { kindArgs } = data_kind dd
-  let tn = data_name dd
+freshTVarsForTypeParams rep decl = 
+  let MkPolyKind { kindArgs } = data_kind decl
+      tn = data_name decl
+  in freshTVarsForTypeParams' rep kindArgs (Left tn)
+
+freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForInstance rep decl = 
+  let kindArgs = classdecl_kinds decl
+      cn = classdecl_name decl
+  in freshTVarsForTypeParams' rep kindArgs (Right cn)
+
+
+freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForTypeParams' rep kindArgs tn = do
   (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (skolemTVarToTVar tv,variance)) <$> kindArgs)
-  let map = paramsMap dd vars
+  let map = paramsMap kindArgs vars
   case rep of
     PosRep -> pure (varTypes, map)
     NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  RnTypeName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars ::  Either RnTypeName ClassName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn (tVarToUniTVar tv))
+    (tyPos, tyNeg) <- freshTVar ((case tn of Left tn -> TypeParameter tn; Right cn -> TypeClassInstance cn) (tVarToUniTVar tv))
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-   paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
-   paramsMap dd freshVars =
-     let MkPolyKind { kindArgs } = data_kind dd in
+   paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
+   paramsMap kindArgs freshVars =
      MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
 
 classUnifiers :: (Typ Pos, Typ Neg) -> [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
@@ -156,6 +168,22 @@ classUnifiers (tp, tn) ((Cns, Just _fv):rest) = do
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 classUnifiers (tp, tn) ((_pc, Nothing):rest) =
   classUnifiers (tp, tn) rest
+
+-- unifyInstance :: (Typ Pos, Typ Neg) -> (PrdCns, Maybe FreeVarName) -> GenM (LinearContext Pos, LinearContext Neg)
+-- unifyInstance = undefined
+
+
+-- instanceConstraints :: XtorName             -- ^ The method to lookup.
+--                     -> (Typ Pos, Typ Neg)   -- ^ The type of the instance.
+--                     -> RST.ClassDeclaration -- ^ The relevant classdeclaration to reference.
+--                     -> GenM (LinearContext Pos, LinearContext Neg)
+-- instanceConstraints mn (typ, tyn) RST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors } = 
+--   case lookup mn classdecl_xtors of
+--     Nothing -> throwError (OtherError Nothing $! "Method " <> ppPrint mn <> " not defined in class " <> ppPrint classdecl_name)
+--     Just tys -> let whatever = pure . unzip $! (\(prdcns,pos,neg) -> case prdcns of
+--                                    Prd -> (PrdCnsType PrdRep <$> pos, PrdCnsType PrdRep <$> neg)
+--                                    Cns -> (PrdCnsType CnsRep <$> pos, PrdCnsType CnsRep <$> neg)) <$> tys in undefined
+
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -278,10 +306,11 @@ checkExhaustiveness matched decl = do
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.
-checkInstance :: [MethodName]
-              -> [MethodName]
-              -> GenM ()
-checkInstance classMethods instanceMethods = do
+checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to check against.
+                      -> [MethodName]         -- ^ The methods implemented in the instance.
+                      -> GenM ()
+checkInstanceCoverage RST.MkClassDeclaration { classdecl_xtors } instanceMethods = do
+  let classMethods = MkMethodName . unXtorName . fst <$> classdecl_xtors
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
     (throwGenError ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)

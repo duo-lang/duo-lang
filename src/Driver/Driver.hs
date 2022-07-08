@@ -46,7 +46,6 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
-import Data.Bifunctor
 
 checkAnnot :: PolarityRep pol
            -> TypeScheme pol -- ^ Inferred type
@@ -167,8 +166,8 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
 inferClassDeclaration :: ModuleName 
                       -> RST.ClassDeclaration
                       -> DriverM RST.ClassDeclaration
-inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name, classdecl_xtors } = do
-  let f env = env { classEnv = M.insert classdecl_name (first (MkMethodName . unXtorName) <$> classdecl_xtors) (classEnv env)}
+inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
+  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)}
   modifyEnvironment mn f
   pure decl
 

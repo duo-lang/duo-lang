@@ -256,18 +256,24 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
 
 genConstraintsInstance :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
 genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
-  -- We lookup the class and type definition of the method.
+  -- We lookup the class declaration  of the instance.
   decl <- lookupClassDecl instancedecl_name
   -- We check that all implementations belong to the same type class.
-  checkInstance (fst <$> decl) ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
-
+  checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
+  -- Generate fresh unification variables for type parameters
+  (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl -- get polarity some way?
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
-                   (uvarsPos, uvarsNeg) <- freshTVars args
-                   (classPos, classNeg) <- classUnifiers instancedecl_typ args
-                   -- Check the command in the context extended with the positive unification variables
-                   cmdInferred <- withContext classPos (genConstraintsCommand instancecase_cmd)
-                   genConstraintsCtxts uvarsPos uvarsNeg (InstanceConstraint loc)
-                   genConstraintsCtxts classPos classNeg (InstanceConstraint loc)
+
+                   -- We lookup the types belonging to the xtor in the type declaration.
+                   posTypes <- lookupMethodType xt decl PosRep
+                   negTypes <- lookupMethodType xt decl NegRep
+                   -- Substitute fresh unification variables for type parameters
+                   let posTypes' = zonk tyParamsMap posTypes
+                   let negTypes' = zonk tyParamsMap negTypes
+                   -- We generate constraints for the command in the context extended
+                   -- with the types from the signature.
+                   cmdInferred <- withContext posTypes' (genConstraintsCommand instancecase_cmd)
+                   genConstraintsCtxts posTypes' negTypes' (InstanceConstraint loc)
                    pure TST.MkInstanceCase { instancecase_loc = instancecase_loc
                                            , instancecase_pat = Core.XtorPat loc xt args
                                            , instancecase_cmd = cmdInferred

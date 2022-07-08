@@ -5,6 +5,7 @@ import Data.Map qualified as M
 
 import Syntax.Common
 import Syntax.TST.Terms ( Command, Term )
+import Syntax.RST.Program ( ClassDeclaration )
 import Syntax.Common.TypesPol ( DataDecl, TypeScheme, Typ )
 import Utils ( Loc )
 
@@ -16,7 +17,7 @@ data Environment = MkEnvironment
   { prdEnv :: Map FreeVarName (Term Prd, Loc, TypeScheme Pos)
   , cnsEnv :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command, Loc)
-  , classEnv :: Map ClassName [(MethodName, [(PrdCns, Typ Pos, Typ Neg)])]
+  , classEnv :: Map ClassName ClassDeclaration
   , instanceEnv :: Map ClassName (Typ Pos, Typ Neg)
   , declEnv :: [(Loc,DataDecl)]
   }
