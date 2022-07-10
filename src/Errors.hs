@@ -48,6 +48,16 @@ data Error where
   NoImplicitArg         :: Loc -> Text          -> Error
   deriving (Show, Eq)
 
+instance HasLoc Error where
+  getLoc (ParserError loc _) = loc
+  getLoc (GenConstraintsError loc _) = loc
+  getLoc (EvalError loc _) = loc
+  getLoc (SolveConstraintsError loc _) = loc
+  getLoc (TypeAutomatonError loc _) = loc
+  getLoc (LowerError loc _) = loc
+  getLoc (OtherError loc _) = loc
+  getLoc (NoImplicitArg loc _) = loc
+
 attachLoc :: Loc -> Error -> Error
 attachLoc loc (ParserError _ msg) = ParserError loc msg
 attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
@@ -58,15 +68,8 @@ attachLoc loc (LowerError _ err) = LowerError loc err
 attachLoc loc (OtherError _ txt) = OtherError loc txt
 attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 
-getLoc :: Error -> Loc
-getLoc (ParserError loc _) = loc
-getLoc (GenConstraintsError loc _) = loc
-getLoc (EvalError loc _) = loc
-getLoc (SolveConstraintsError loc _) = loc
-getLoc (TypeAutomatonError loc _) = loc
-getLoc (LowerError loc _) = loc
-getLoc (OtherError loc _) = loc
-getLoc (NoImplicitArg loc _) = loc
+
+
 
 ---------------------------------------------------------------------------------------------
 -- Throwing errors in a monadic context

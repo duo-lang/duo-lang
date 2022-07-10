@@ -22,6 +22,10 @@ instance Show Loc where
 defaultLoc :: Loc
 defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkPos 1))
 
+-- | A typeclass for things which can be mapped to a source code location.
+class HasLoc a where
+  getLoc :: a -> Loc
+
 ----------------------------------------------------------------------------------
 -- Helper Functions
 ----------------------------------------------------------------------------------

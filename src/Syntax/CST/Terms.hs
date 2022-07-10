@@ -50,6 +50,9 @@ data TermPat where
 deriving instance Show TermPat
 deriving instance Eq TermPat
 
+instance HasLoc TermPat where
+  getLoc (XtorPat loc _ _) = loc
+
 data TermCase  = MkTermCase
   { tmcase_loc  :: Loc
   , tmcase_pat  :: TermPat
@@ -59,6 +62,8 @@ data TermCase  = MkTermCase
 deriving instance Show TermCase
 deriving instance Eq TermCase
 
+instance HasLoc TermCase where
+  getLoc tc = tmcase_loc tc
 
 --------------------------------------------------------------------------------------------
 -- Terms
@@ -77,12 +82,12 @@ data PrimCommand where
 deriving instance Show PrimCommand
 deriving instance Eq PrimCommand
 
-getLocPC :: PrimCommand -> Loc 
-getLocPC (Print loc _ _) = loc 
-getLocPC (Read loc _) = loc 
-getLocPC (ExitSuccess loc) = loc 
-getLocPC (ExitFailure loc) = loc 
-getLocPC (PrimOp loc _ _ _) = loc
+instance HasLoc PrimCommand where
+  getLoc (Print loc _ _) = loc 
+  getLoc (Read loc _) = loc 
+  getLoc (ExitSuccess loc) = loc 
+  getLoc (ExitFailure loc) = loc 
+  getLoc (PrimOp loc _ _ _) = loc
 
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 
@@ -106,22 +111,22 @@ data Term where
 deriving instance Show Term
 deriving instance Eq Term
 
-getLoc :: Term -> Loc
-getLoc (Var loc _) = loc
-getLoc (Xtor loc _ _) = loc
-getLoc (Semi loc _ _ _) = loc
-getLoc (MuAbs loc _ _) = loc
-getLoc (Dtor loc _ _ _) = loc
-getLoc (Case loc _) = loc
-getLoc (CaseOf loc _ _) = loc
-getLoc (Cocase loc _) = loc
-getLoc (CocaseOf loc _ _) = loc
-getLoc (PrimLitI64 loc _) = loc
-getLoc (PrimLitF64 loc _) = loc
-getLoc (NatLit loc _ _) = loc
-getLoc (TermParens loc _) = loc
-getLoc (FunApp loc _ _) = loc
-getLoc (Lambda loc _ _) = loc
-getLoc (CoLambda loc _ _) = loc
-getLoc (Apply loc _ _) = loc 
-getLoc (PrimCmdTerm pc) = getLocPC pc 
+instance HasLoc Term where
+  getLoc (Var loc _) = loc
+  getLoc (Xtor loc _ _) = loc
+  getLoc (Semi loc _ _ _) = loc
+  getLoc (MuAbs loc _ _) = loc
+  getLoc (Dtor loc _ _ _) = loc
+  getLoc (Case loc _) = loc
+  getLoc (CaseOf loc _ _) = loc
+  getLoc (Cocase loc _) = loc
+  getLoc (CocaseOf loc _ _) = loc
+  getLoc (PrimLitI64 loc _) = loc
+  getLoc (PrimLitF64 loc _) = loc
+  getLoc (NatLit loc _ _) = loc
+  getLoc (TermParens loc _) = loc
+  getLoc (FunApp loc _ _) = loc
+  getLoc (Lambda loc _ _) = loc
+  getLoc (CoLambda loc _ _) = loc
+  getLoc (Apply loc _ _) = loc 
+  getLoc (PrimCmdTerm pc) = getLoc pc 
