@@ -5,6 +5,7 @@ import Control.Monad.Reader
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List (find)
+import Data.List.NonEmpty (NonEmpty)
 import Text.Read (readMaybe)
 
 import Errors
@@ -21,10 +22,10 @@ import Syntax.Common.TypesPol (Typ (TyNominal))
 
 type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadReader EvalEnv, MonadIO)
+newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) IO) a }
+  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
 
-runEval :: EvalM a -> EvalEnv -> IO (Either Error a)
+runEval :: EvalM a -> EvalEnv -> IO (Either (NonEmpty Error) a)
 runEval e env = runExceptT (runReaderT (unEvalM e) env)
 
 ---------------------------------------------------------------------------------
@@ -34,19 +35,19 @@ runEval e env = runExceptT (runReaderT (unEvalM e) env)
 lookupMatchCase :: XtorName -> [CmdCase] -> EvalM CmdCase
 lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat _ xt' _ } -> xt == xt') cases of
   Just pmcase -> return pmcase
-  Nothing -> throwEvalError ["Error during evaluation. The xtor: "
-                            , unXtorName xt
-                            , "doesn't occur in match."
-                            ]
+  Nothing -> throwEvalError defaultLoc ["Error during evaluation. The xtor: "
+                                       , unXtorName xt
+                                       , "doesn't occur in match."
+                                       ]
 
 checkArgs :: Command -> [(PrdCns,a)] -> Substitution -> EvalM ()
 checkArgs _md [] [] = return ()
 checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
 checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
-checkArgs cmd _ _ = throwEvalError [ "Error during evaluation of:"
-                                   ,  ppPrint cmd
-                                   , "Argument lengths don't coincide."
-                                   ]
+checkArgs cmd _ _ = throwEvalError defaultLoc [ "Error during evaluation of:"
+                                              ,  ppPrint cmd
+                                              , "Argument lengths don't coincide."
+                                              ]
 
 natType :: Typ 'Pos
 natType = TyNominal defaultLoc PosRep (Just (CBox CBV)) peanoNm []
@@ -69,17 +70,17 @@ lookupCommand :: FreeVarName -> EvalM Command
 lookupCommand fv = do
   (_,_,env) <- ask
   case M.lookup fv env of
-    Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
+    Nothing -> throwEvalError defaultLoc ["Consumer " <> ppPrint fv <> " not in environment."]
     Just cmd -> pure cmd
 
 lookupTerm :: PrdCnsRep pc -> FreeVarName -> EvalM (Term pc)
 lookupTerm PrdRep fv = do
   (env,_,_) <- ask
   case M.lookup fv env of
-    Nothing -> throwEvalError ["Producer " <> ppPrint fv <> " not in environment."]
+    Nothing -> throwEvalError defaultLoc ["Producer " <> ppPrint fv <> " not in environment."]
     Just prd -> pure prd
 lookupTerm CnsRep fv = do
   (_,env,_) <- ask
   case M.lookup fv env of
-    Nothing -> throwEvalError ["Consumer " <> ppPrint fv <> " not in environment."]
+    Nothing -> throwEvalError defaultLoc ["Consumer " <> ppPrint fv <> " not in environment."]
     Just prd -> pure prd

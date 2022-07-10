@@ -33,6 +33,7 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -83,10 +84,10 @@ initialReader env = (env, GenerateReader { context = [] })
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError Error)
+newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except (NonEmpty Error))) a }
+  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
-runGenM :: Map ModuleName Environment -> GenM a -> Either Error (a, ConstraintSet)
+runGenM :: Map ModuleName Environment -> GenM a -> Either (NonEmpty Error) (a, ConstraintSet)
 runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
@@ -159,14 +160,14 @@ lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
 lookupContext rep (i,j) = do
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
-    Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+    Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
     Just lctxt -> case indexMaybe lctxt j of
-      Nothing -> throwGenError ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+      Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
       Just ty -> case (rep, ty) of
         (PrdRep, PrdCnsType PrdRep ty) -> return ty
         (CnsRep, PrdCnsType CnsRep ty) -> return ty
-        (PrdRep, PrdCnsType CnsRep _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
-        (CnsRep, PrdCnsType PrdRep _) -> throwGenError ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
+        (PrdRep, PrdCnsType CnsRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
+        (CnsRep, PrdCnsType PrdRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
 
 
 ---------------------------------------------------------------------------------------------
@@ -249,7 +250,7 @@ checkCorrectness :: [XtorName]
 checkCorrectness matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
+    (throwGenError defaultLoc ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
@@ -259,5 +260,5 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
 checkExhaustiveness matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
-                     ppPrint (data_name decl) <> " is not matched against." ])
+    (throwGenError defaultLoc ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
+                               ppPrint (data_name decl) <> " is not matched against." ])

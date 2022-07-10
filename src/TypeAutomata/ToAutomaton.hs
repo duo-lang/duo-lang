@@ -8,6 +8,7 @@ import Control.Monad.State
     ( StateT(..), gets, modify )
 import Data.Graph.Inductive.Graph (Node)
 import Data.Graph.Inductive.Graph qualified as G
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -28,7 +29,7 @@ import TypeAutomata.Definition
       XtorLabel(..),
       emptyNodeLabel,
       singleNodeLabel )
-import Utils ( enumerate )
+import Utils ( enumerate, defaultLoc )
 import Control.Monad
 
 --------------------------------------------------------------------------
@@ -44,7 +45,7 @@ import Control.Monad
 -- mapped to a pair `(Just n, Just m)`
 newtype LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
 
-type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except Error)) a
+type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
 runTypeAut :: TypeAutCore EdgeLabelEpsilon
            -- ^ The initial TypeAutomaton to start the computation.
@@ -52,7 +53,7 @@ runTypeAut :: TypeAutCore EdgeLabelEpsilon
            -- ^ The initial lookup environment.
            -> TTA a
            -- ^ The computation to run.
-           -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+           -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
 
 
@@ -83,7 +84,7 @@ initialize tvars =
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
 runTypeAutTvars :: [TVar]
                 -> TTA a
-                -> Either Error (a, TypeAutCore EdgeLabelEpsilon)
+                -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
   let (aut, env) = initialize tvars
   runTypeAut aut env m
@@ -112,30 +113,30 @@ lookupTVar :: PolarityRep pol -> TVar -> TTA Node
 lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
-    Nothing -> throwAutomatonError [ "Could not insert type into automaton."
-                                   , "The type variable:"
-                                   , "    " <> unTVar tv
-                                   , "is not available in the automaton."
-                                   ]
-    Just (Nothing,_) -> throwAutomatonError [ "Could not insert type into automaton."
-                                            , "The type variable:"
-                                            , "    " <> unTVar tv
-                                            , "exists only at negative polarity."
-                                            ]
+    Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> unTVar tv
+                                              , "is not available in the automaton."
+                                              ]
+    Just (Nothing,_) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                                       , "The type variable:"
+                                                       , "    " <> unTVar tv
+                                                       , "exists only at negative polarity."
+                                                       ]
     Just (Just pos,_) -> return pos
 lookupTVar NegRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
-    Nothing -> throwAutomatonError [ "Could not insert type into automaton."
-                                   , "The type variable:"
-                                   , "    " <> unTVar tv
-                                   , "is not available in the automaton."
-                                   ]
-    Just (_,Nothing) -> throwAutomatonError [ "Could not insert type into automaton."
-                                            , "The type variable:"
-                                            , "    " <> unTVar tv
-                                            , "exists only at positive polarity."
-                                            ]
+    Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> unTVar tv
+                                              , "is not available in the automaton."
+                                              ]
+    Just (_,Nothing) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                                       , "The type variable:"
+                                                       , "    " <> unTVar tv
+                                                       , "exists only at positive polarity."
+                                                       ]
     Just (_,Just neg) -> return neg
 
 
@@ -219,7 +220,7 @@ insertType (TyPrim _ rep pt) = do
   insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton pt })
   return newNode
 insertType (TyFlipPol _ _) =
-  throwAutomatonError ["Tried to insert TyFlipPol into type automaton"]
+  throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]
 
 --------------------------------------------------------------------------
 --
@@ -227,7 +228,7 @@ insertType (TyFlipPol _ _) =
 
 
 -- turns a type into a type automaton with prescribed start polarity.
-typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
+typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutEps pol)
 typeToAut TypeScheme { ts_vars, ts_monotype } = do
   (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype

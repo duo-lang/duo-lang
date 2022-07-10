@@ -35,10 +35,12 @@ genConstraintsSubst :: Core.Substitution
 genConstraintsSubst subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
-genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = throwGenError ["genConstraintsCtxts: Linear contexts have unequal length"
-                                                                                , "Constraint Info: " <> ppPrint info
-                                                                                , "Pos context: " <> ppPrint ctx1
-                                                                                , "Neg context: " <> ppPrint ctx2]
+genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 =
+  throwGenError defaultLoc ["genConstraintsCtxts: Linear contexts have unequal length"
+                           , "Constraint Info: " <> ppPrint info
+                           , "Pos context: " <> ppPrint ctx1
+                           , "Neg context: " <> ppPrint ctx2
+                           ]
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((PrdCnsType PrdRep ty1) : rest1) (PrdCnsType PrdRep ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
@@ -47,13 +49,13 @@ genConstraintsCtxts ((PrdCnsType CnsRep ty1) : rest1) (PrdCnsType CnsRep ty2 : r
   addConstraint $ SubType info ty2 ty1
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) info =
-  throwGenError ["genConstraintsCtxts: Tried to constrain PrdType by CnsType", "Constraint Info: " <> ppPrint info]
+  throwGenError defaultLoc ["genConstraintsCtxts: Tried to constrain PrdType by CnsType", "Constraint Info: " <> ppPrint info]
 genConstraintsCtxts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) info =
-  throwGenError ["genConstraintsCtxts: Tried to constrain CnsType by PrdType", "ConstraintInfo: " <> ppPrint info]
+  throwGenError defaultLoc ["genConstraintsCtxts: Tried to constrain CnsType by PrdType", "ConstraintInfo: " <> ppPrint info]
 genConstraintsCtxts [] (_:_) info =
-  throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
+  throwGenError defaultLoc ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
 genConstraintsCtxts (_:_) [] info =
-  throwGenError ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
+  throwGenError defaultLoc ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
 
 
 ---------------------------------------------------------------------------------------------
@@ -150,7 +152,7 @@ genConstraintsTerm (Core.XCase loc annot rep Structural cases) = do
 genConstraintsTerm (Core.XCase _ _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
-  throwGenError ["Unreachable: A nominal match needs to have at least one case."]
+  throwGenError defaultLoc ["Unreachable: A nominal match needs to have at least one case."]
 genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
@@ -181,7 +183,7 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
 genConstraintsTerm (Core.XCase _ _ _ Refinement []) =
   -- We know that empty matches cannot be parsed as Refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
-  throwGenError ["Unreachable: A refinement match needs to have at least one case."]
+  throwGenError defaultLoc ["Unreachable: A refinement match needs to have at least one case."]
 genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
@@ -246,7 +248,7 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   case M.lookup (pt, op) primOps of
-    Nothing -> throwGenError [T.pack $ "Unreachable: Signature for primitive op " ++ primOpKeyword op ++ primTypeKeyword pt ++ " not defined"]
+    Nothing -> throwGenError loc [T.pack $ "Unreachable: Signature for primitive op " ++ primOpKeyword op ++ primTypeKeyword pt ++ " not defined"]
     Just sig -> do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
       return (TST.PrimOp loc pt op substInferred)
