@@ -16,6 +16,41 @@ import Syntax.RST.Terms qualified as RST
 import Utils ( Loc, defaultLoc )
 
 ---------------------------------------------------------------------------------
+-- Resolved Pattern
+-- 
+-- These are supposed to end up in src/Syntax/RST/Terms.hs eventually, but they
+-- are used as an intermediate step here.
+---------------------------------------------------------------------------------
+
+data Pattern where
+  PatXtor     :: Loc -> PrdCns -> XtorName -> [Pattern] -> Pattern
+  PatVar      :: Loc -> PrdCns -> FreeVarName -> Pattern
+  PatStar     :: Loc -> PrdCns -> Pattern
+  PatWildcard :: Loc -> PrdCns -> Pattern
+
+---------------------------------------------------------------------------------
+-- Resolve Pattern
+---------------------------------------------------------------------------------
+
+-- | Annotate every part of the pattern with information on whether it stands for
+-- a producer or consumer.
+resolvePattern :: PrdCns -> CST.Pattern -> ResolverM Pattern
+resolvePattern pc (CST.PatXtor loc xt pats) = do
+  undefined
+resolvePattern Prd (CST.PatVar loc var@(MkFreeVarName name)) = do
+  when ("k" `T.isPrefixOf` name) $
+    tell [Warning loc ("Producer variable " <> name <> " should not start with letter k")]
+  pure $ PatVar loc Prd var
+resolvePattern Cns (CST.PatVar loc var@(MkFreeVarName name))  = do
+  unless ("k" `T.isPrefixOf` name) $
+    tell [Warning loc ("Consumer variable " <> name <> " should start with letter k")]
+  pure $ PatVar loc Cns var
+resolvePattern pc (CST.PatStar loc) = do
+  pure $ PatStar loc pc
+resolvePattern pc (CST.PatWildcard loc) = do
+  pure $ PatWildcard loc pc
+
+---------------------------------------------------------------------------------
 -- Analyze Patterns
 ---------------------------------------------------------------------------------
 
