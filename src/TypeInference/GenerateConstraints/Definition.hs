@@ -126,11 +126,13 @@ freshTVarsForTypeParams rep decl =
       tn = data_name decl
   in freshTVarsForTypeParams' rep kindArgs (Left tn)
 
-freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> GenM ([VariantType pol], Bisubstitution)
-freshTVarsForInstance rep decl = 
+freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> (Typ Pos, Typ Neg) -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForInstance rep decl typ = 
   let kindArgs = classdecl_kinds decl
       cn = classdecl_name decl
-  in freshTVarsForTypeParams' rep kindArgs (Right cn)
+  in do
+    (args, tyParams) <- freshTVarsForTypeParams' rep kindArgs (Right cn)
+    return (args, substituteInstanceType (head kindArgs) typ tyParams)
 
 
 freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution)
@@ -155,6 +157,9 @@ freshTVarsForTypeParams' rep kindArgs tn = do
    paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap kindArgs freshVars =
      MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
+
+substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution -> Bisubstitution
+substituteInstanceType (_,tv,_) instanceType (MkBisubstitution subst) = MkBisubstitution $! M.adjust (const instanceType) (MkTVar $ unSkolemTVar tv) subst
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment

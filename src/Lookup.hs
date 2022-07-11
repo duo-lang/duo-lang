@@ -136,12 +136,13 @@ lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } P
   let err = OtherError Nothing ("Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name)
   case lookup xt classdecl_xtors of
     Nothing -> throwError err
-    Just typ -> pure $ (\(prdcns,pos,_) -> PrdCnsType (case prdcns of Prd -> PrdRep; Cns -> flipPrdCns CnsRep) pos) <$> typ
+    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep pos; Cns -> PrdCnsType CnsRep neg)) <$> typ
 lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } NegRep = do
   let err = OtherError Nothing ("Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name)
   case lookup xt classdecl_xtors of
     Nothing -> throwError err
-    Just typ -> pure $ (\(prdcns,_,neg) -> PrdCnsType (case prdcns of Cns -> PrdRep; Prd -> flipPrdCns CnsRep) neg) <$> typ -- ?
+    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep neg; Cns -> PrdCnsType CnsRep pos)) <$> typ
+
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
