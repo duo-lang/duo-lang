@@ -1,9 +1,12 @@
-module Resolution.Pattern where
+module Resolution.Pattern
+  ( AnalyzedPattern(..)
+  , analyzePattern
+  , analyzeInstancePattern
+  ) where
 
-import Control.Monad ( unless, when )
+import Control.Monad ( unless, when, zipWithM )
 import Control.Monad.Except ( MonadError(throwError) )
 import Control.Monad.Writer ( MonadWriter(tell) )
-import Data.Bifunctor ( Bifunctor(second) )
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Text qualified as T
 
@@ -12,8 +15,7 @@ import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
 import Syntax.Common
 import Syntax.CST.Terms qualified as CST
-import Syntax.RST.Terms qualified as RST
-import Utils ( Loc, defaultLoc )
+import Utils ( Loc, HasLoc(getLoc))
 
 ---------------------------------------------------------------------------------
 -- Resolved Pattern
@@ -23,10 +25,18 @@ import Utils ( Loc, defaultLoc )
 ---------------------------------------------------------------------------------
 
 data Pattern where
-  PatXtor     :: Loc -> PrdCns -> XtorName -> [Pattern] -> Pattern
-  PatVar      :: Loc -> PrdCns -> FreeVarName -> Pattern
-  PatStar     :: Loc -> PrdCns -> Pattern
-  PatWildcard :: Loc -> PrdCns -> Pattern
+  PatClassMethod :: Loc -> XtorName -> [(Loc, PrdCns, FreeVarName)] -> Pattern
+  PatXtor        :: Loc -> PrdCns -> NominalStructural -> XtorName -> [Pattern] -> Pattern
+  PatVar         :: Loc -> PrdCns -> FreeVarName -> Pattern
+  PatStar        :: Loc -> PrdCns -> Pattern
+  PatWildcard    :: Loc -> PrdCns -> Pattern
+
+instance HasLoc Pattern where
+  getLoc (PatClassMethod loc _ _) = loc
+  getLoc (PatXtor loc _ _ _ _) = loc
+  getLoc (PatVar loc _ _) = loc
+  getLoc (PatStar loc _) = loc
+  getLoc (PatWildcard loc _) = loc
 
 ---------------------------------------------------------------------------------
 -- Resolve Pattern
@@ -36,7 +46,26 @@ data Pattern where
 -- a producer or consumer.
 resolvePattern :: PrdCns -> CST.Pattern -> ResolverM Pattern
 resolvePattern pc (CST.PatXtor loc xt pats) = do
-  undefined
+  -- Lookup up the arity information in the symbol table.
+  (_,res) <- lookupXtor loc xt
+  case res of
+    (MethodNameResult _cn arity) -> do
+      when (length arity /= length pats) $
+        throwError (LowerError loc (XtorArityMismatch xt (length arity) (length pats)) :| [])
+      pats' <- zipWithM resolvePattern arity pats
+      args <- mapM fromVar pats'
+      pure $ PatClassMethod loc xt args
+    (XtorNameResult dc ns arity) -> do
+      when (length arity /= length pats) $
+        throwError (LowerError loc (XtorArityMismatch xt (length arity) (length pats)) :| [])
+      -- Check whether the Xtor is a Constructor/Destructor as expected.
+      case (pc,dc) of
+        (Cns, Data  ) -> throwOtherError loc ["Expected a destructor but found a constructor"]
+        (Prd, Codata) -> throwOtherError loc ["Expected a constructor but found a destructor"]
+        (Prd, Data  ) -> pure ()
+        (Cns, Codata) -> pure ()
+      pats' <- zipWithM resolvePattern arity pats
+      pure (PatXtor loc pc ns xt pats')
 resolvePattern Prd (CST.PatVar loc var@(MkFreeVarName name)) = do
   when ("k" `T.isPrefixOf` name) $
     tell [Warning loc ("Producer variable " <> name <> " should not start with letter k")]
@@ -55,71 +84,41 @@ resolvePattern pc (CST.PatWildcard loc) = do
 ---------------------------------------------------------------------------------
 
 data AnalyzedPattern
-  = ExplicitPattern Loc XtorName [(PrdCns, FreeVarName)]
-  | ImplicitPrdPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Prd,[(PrdCns,FreeVarName)])
-  | ImplicitCnsPattern Loc XtorName ([(PrdCns, FreeVarName)], PrdCnsRep Cns,[(PrdCns,FreeVarName)])
+  = ExplicitPattern Loc XtorName [(Loc, PrdCns, FreeVarName)]
+  | ImplicitPrdPattern Loc XtorName ([(Loc, PrdCns, FreeVarName)], PrdCnsRep Prd,[(Loc, PrdCns,FreeVarName)])
+  | ImplicitCnsPattern Loc XtorName ([(Loc, PrdCns, FreeVarName)], PrdCnsRep Cns,[(Loc, PrdCns,FreeVarName)])
 
-isStar :: CST.Pattern -> Bool
-isStar (CST.PatStar _) = True
+isStar :: Pattern -> Bool
+isStar (PatStar _ _) = True
 isStar _ = False
 
-fromVar :: CST.Pattern -> FreeVarName
-fromVar (CST.PatVar _ var) = var
-fromVar _ = error "Called function fromVar on incorrect pattern"
+fromVar :: Pattern -> ResolverM (Loc, PrdCns, FreeVarName)
+fromVar (PatVar loc pc var) = pure (loc, pc, var)
+fromVar pat = throwOtherError (getLoc pat) ["Called function \"fromVar\" on pattern which is not a variable."]
 
 analyzePattern :: DataCodata -> CST.Pattern -> ResolverM AnalyzedPattern
-analyzePattern dc (CST.PatXtor loc xt args) = do
-  -- Lookup up the arity information in the symbol table.
-  (_,res) <- lookupXtor loc xt
-  case res of
-    (MethodNameResult _cn _arity) -> throwOtherError loc ["Expected xtor but found method " <> unXtorName xt]
-    (XtorNameResult dc' _ns arity) -> do
-      -- Check whether the Xtor is a Constructor/Destructor as expected.
-      case (dc,dc') of
-        (Codata,Data  ) -> throwOtherError loc ["Expected a destructor but found a constructor"]
-        (Data  ,Codata) -> throwOtherError loc ["Expected a constructor but found a destructor"]
-        (Data  ,Data  ) -> pure ()
-        (Codata,Codata) -> pure ()
-      -- Analyze the pattern
-      -- Check whether the number of arguments in the given binding site
-      -- corresponds to the number of arguments specified for the constructor/destructor.
-      when (length arity /= length args) $
-              throwError (LowerError loc (XtorArityMismatch xt (length arity) (length args)) :| [])
-      let zipped :: [(PrdCns, CST.Pattern)] = zip arity args
-      mapM_ (checkVarName loc) zipped
-      case length (filter isStar args) of
-        0 -> pure $ ExplicitPattern loc xt $ zip arity (fromVar <$> args)
+analyzePattern dc pat = do
+  pat' <- resolvePattern (case dc of Data -> Prd; Codata -> Cns) pat
+  case pat' of
+    PatXtor loc _pc _ns xt pats -> do
+      case length (filter isStar pats) of
+        0 -> do
+          vars <- sequence (fromVar <$> pats)
+          pure $ ExplicitPattern loc xt vars
         1 -> do
-          let (args1,(pc,_):args2) = break (\(_,x) -> isStar x) zipped
+          let (args1,PatStar _ pc:args2) = break isStar pats
+          args1' <- sequence (fromVar <$> args1)
+          args2' <- sequence (fromVar <$> args2)
           case pc of
-            Cns -> pure $ ImplicitPrdPattern loc xt (second fromVar <$> args1, PrdRep, second fromVar <$> args2)
-            Prd -> pure $ ImplicitCnsPattern loc xt (second fromVar <$> args1, CnsRep, second fromVar <$> args2)
+            Cns -> pure $ ImplicitPrdPattern loc xt (args1', PrdRep, args2')
+            Prd -> pure $ ImplicitCnsPattern loc xt (args1', CnsRep, args2')
         n -> throwError $ LowerError loc (InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")) :| []
-analyzePattern _ _ =
-  throwOtherError defaultLoc ["Reached inaccesible pattern in function analyzePattern"]
+    _ -> throwOtherError (getLoc pat) ["Invalid pattern in function \"analyzePattern\""]
+
 
 analyzeInstancePattern :: CST.Pattern -> ResolverM AnalyzedPattern
-analyzeInstancePattern (CST.PatXtor loc xt args) = do
-  -- Lookup up the arity information in the symbol table.
-  (_,res) <- lookupXtor loc xt
-  case res of
-    (MethodNameResult _cn arity) -> do
-      when (length arity /= length args) $
-           throwError $ LowerError loc (XtorArityMismatch xt (length arity) (length args)) :| []
-      pure $ ExplicitPattern loc xt $ zip arity (fromVar <$> args)
-    (XtorNameResult _dc _ns _arity) -> throwOtherError loc ["Expected method but found Xtor " <> unXtorName xt]
-        -- Analyze the pattern
-  -- Check whether the number of arguments in the given binding site
-  -- corresponds to the number of arguments specified for the constructor/destructor.
-analyzeInstancePattern _ =
-  throwOtherError defaultLoc ["Error in function analyzeInstancePattern"]
-
--- | Emit a warning if a producer variable starts with the letter `k`, or a consumer variable doesn't start with the letter `k`.
-checkVarName :: Loc -> (PrdCns, CST.Pattern) -> ResolverM ()
-checkVarName loc (Prd, CST.PatVar _ (MkFreeVarName name)) = 
-  when ("k" `T.isPrefixOf` name) $
-    tell [Warning loc ("Producer variable " <> name <> " should not start with letter k")]
-checkVarName loc (Cns, CST.PatVar _ (MkFreeVarName name)) = 
-  unless ("k" `T.isPrefixOf` name) $
-    tell [Warning loc ("Consumer variable " <> name <> " should start with letter k")]
-checkVarName _ _ = pure ()
+analyzeInstancePattern pat = do
+  pat' <- resolvePattern Prd pat
+  case pat' of
+    PatClassMethod loc xt args -> pure $ ExplicitPattern loc xt args
+    _ -> throwOtherError (getLoc pat) ["Expected method but found pattern."]
