@@ -80,6 +80,9 @@ data SomeIntermediateCases where
   ExplicitCases    ::                 [IntermediateCase]     -> SomeIntermediateCases
   ImplicitCases    :: PrdCnsRep pc -> [IntermediateCaseI pc] -> SomeIntermediateCases
 
+adjustPat :: (Loc, PrdCns, FreeVarName) -> (PrdCns, FreeVarName)
+adjustPat (_loc, pc, var) = (pc,var)
+
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
 analyzeCase :: DataCodata
@@ -92,19 +95,19 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
     ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
                                     , icase_name = xt
-                                    , icase_args = pat
+                                    , icase_args = adjustPat <$> pat
                                     , icase_term = tmcase_term
                                     }
     ImplicitPrdPattern _ xt pat -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
                                     , icasei_name = xt
-                                    , icasei_args = pat
+                                    , icasei_args = case pat of (pat1,pc,pat2) -> (adjustPat <$> pat1, pc, adjustPat <$> pat2)
                                     , icasei_term = tmcase_term
                                     }
     ImplicitCnsPattern _ xt pat -> pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
                                     , icasei_name = xt
-                                    , icasei_args = pat
+                                    , icasei_args = case pat of (pat1,pc,pat2) -> (adjustPat <$> pat1, pc, adjustPat <$> pat2)
                                     , icasei_term = tmcase_term
                                     }
 
@@ -125,7 +128,7 @@ analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
     ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
                                     , icase_name = xt
-                                    , icase_args = pat
+                                    , icase_args = adjustPat <$> pat
                                     , icase_term = tmcase_term
                                     }
     _ -> throwOtherError defaultLoc ["Should be unreachable"]
