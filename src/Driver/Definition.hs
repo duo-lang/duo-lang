@@ -4,6 +4,8 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
@@ -17,6 +19,7 @@ import Resolution.SymbolTable
 import Syntax.Common.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Utils
+import Control.Monad.Writer
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -68,14 +71,14 @@ defaultDriverState = MkDriverState
 -- Driver Monad
 ---------------------------------------------------------------------------------
 
-newtype DriverM a = DriverM { unDriverM :: StateT DriverState  (ExceptT Error IO) a }
-  deriving (Functor, Applicative, Monad, MonadError Error, MonadState DriverState, MonadIO)
+newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmpty Error) (WriterT [Warning] IO))) a }
+  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadState DriverState, MonadIO, MonadWriter [Warning])
 
 instance MonadFail DriverM where
-  fail str = throwError (OtherError Nothing (T.pack str))
-  
-execDriverM :: DriverState ->  DriverM a -> IO (Either Error (a,DriverState))
-execDriverM state act = runExceptT $ runStateT (unDriverM act) state
+  fail str = throwError (OtherError defaultLoc(T.pack str) NE.:| [])
+
+execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) ((a),DriverState),[Warning])
+execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
 
 ---------------------------------------------------------------------------------
 -- Utility functions
@@ -103,9 +106,9 @@ queryTypecheckedProgram :: ModuleName -> DriverM TST.Program
 queryTypecheckedProgram mn = do
   cache <- gets drvASTs
   case M.lookup mn cache of
-    Nothing -> throwOtherError [ "AST for module " <> ppPrint mn <> " not in cache."
-                               , "Available ASTs: " <> ppPrint (M.keys cache)
-                               ]
+    Nothing -> throwOtherError defaultLoc [ "AST for module " <> ppPrint mn <> " not in cache."
+                                          , "Available ASTs: " <> ppPrint (M.keys cache)
+                                          ]
     Just ast -> pure ast
 
 
@@ -139,26 +142,28 @@ findModule (MkModuleName mod) loc = do
     exists <- liftIO $ doesFileExist fp
     if exists then return [fp] else return []
   case concat fps of
-    [] -> throwError $ OtherError (Just loc) ("Could not locate library: " <> mod)
+    [] -> throwOtherError loc ["Could not locate library: " <> mod]
     (fp:_) -> return fp
 
-liftErr :: Error -> DriverM a
-liftErr err = do
-    guardVerbose $ printLocatedError err
-    throwError err
+liftErr :: NonEmpty Error -> DriverM a
+liftErr errs = do
+    guardVerbose $ do
+      forM_ errs $ \err -> printLocatedError err
+    throwError errs
 
-liftErrLoc :: Loc -> Error -> DriverM a
+liftErrLoc :: Loc -> NonEmpty Error -> DriverM a
 liftErrLoc loc err = do
-    let locerr = attachLoc loc err
-    guardVerbose $ printLocatedError locerr
+    let locerr = attachLoc loc <$> err
+    guardVerbose $ do
+      forM_ locerr $ \err -> printLocatedError err
     throwError locerr
 
-liftEitherErr :: Either Error a -> DriverM a
-liftEitherErr x = case x of
-    Left err -> liftErr err
+liftEitherErr :: (Either (NonEmpty Error) a,[Warning]) -> DriverM a
+liftEitherErr (x,warnings) = tell warnings >> case x of
+    Left err ->  liftErr err
     Right res -> return res
 
-liftEitherErrLoc :: Loc -> Either Error a -> DriverM a
+liftEitherErrLoc :: Loc -> Either (NonEmpty Error) a -> DriverM a
 liftEitherErrLoc loc x = case x of
     Left err -> liftErrLoc loc err
     Right res -> return res

@@ -24,7 +24,7 @@ def prd thrice  :=
   \f x => f (f (f x));
 
 def prd id2 : forall a. a -> a := 
-  cocase { Ap(x,y) => x >> y };
+  cocase { Ap(x,k) => x >> k };
 
 def prd fix := cocase { Ap(f,k) =>
              cocase { Ap(x,k) => f >>

@@ -1,5 +1,6 @@
 module Spec.TypeInferenceExamples ( spec ) where
 
+import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
 import Control.Monad (forM_)
 
@@ -15,9 +16,9 @@ pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type c
                ]
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
-spec :: [(FilePath, Either Error TST.Program)] -- ^ examples
-     -> [(FilePath, Either Error CST.Program)]
-     -> [(FilePath, Either Error TST.Program)]
+spec :: [(FilePath, Either (NonEmpty Error) TST.Program)] -- ^ examples
+     -> [(FilePath, Either (NonEmpty Error) CST.Program)]
+     -> [(FilePath, Either (NonEmpty Error) TST.Program)]
      -> Spec
 spec examples counterExamplesParsed counterExamplesChecked = do
   describe "All the programs in the toplevel \"examples/\" folder typecheck." $ do

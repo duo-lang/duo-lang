@@ -10,6 +10,8 @@ module Driver.Driver
 
 import Control.Monad.State
 import Control.Monad.Except
+import Data.List.NonEmpty ( NonEmpty )
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -47,6 +49,7 @@ import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
 
+
 checkAnnot :: PolarityRep pol
            -> TypeScheme pol -- ^ Inferred type
            -> Maybe (TypeScheme pol) -- ^ Annotated type
@@ -56,15 +59,15 @@ checkAnnot _ tyInferred Nothing _ = return (Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
   let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
-      (Left err) -> throwError (attachLoc loc err)
+      (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (Annotated tyAnnotated)
       (Right False) -> do
-        let err = OtherError (Just loc) $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                                    , " Annotated type: " <> ppPrint tyAnnotated
-                                                    , " Inferred type:  " <> ppPrint tyInferred
-                                                    ]
+        let err = OtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                             , " Annotated type: " <> ppPrint tyAnnotated
+                                             , " Inferred type:  " <> ppPrint tyInferred
+                                             ]
         guardVerbose $ ppPrintIO err
-        throwError err
+        throwError (err NE.:| [])
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
@@ -163,7 +166,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   modifyEnvironment mn f
   pure instanceInferred
 
-inferClassDeclaration :: ModuleName 
+inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
                       -> DriverM RST.ClassDeclaration
 inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
@@ -208,8 +211,8 @@ inferDecl _mn (Core.ImportDecl decl) = do
 --
 -- SetDecl
 --
-inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option }) = 
-  throwOtherError ["Unknown option: " <> setdecl_option]
+inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option, setdecl_loc }) =
+  throwOtherError setdecl_loc ["Unknown option: " <> setdecl_option]
 --
 -- TyOpDecl
 --
@@ -280,7 +283,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> ModuleName
                 -> [CST.Declaration]
-                -> IO (Either Error (Map ModuleName Environment, TST.Program))
+                -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
 inferProgramIO state mn decls = do
   let action :: DriverM TST.Program
       action = do
@@ -292,6 +295,6 @@ inferProgramIO state mn decls = do
         inferProgram mn (desugarProgram resolvedDecls)
   res <- execDriverM state action
   case res of
-    Left err -> return (Left err)
-    Right (res,x) -> return (Right (drvEnv x, res))
+    (Left err, warnings) -> return (Left err, warnings)
+    (Right (res,x), warnings) -> return (Right (drvEnv x, res), warnings)
 

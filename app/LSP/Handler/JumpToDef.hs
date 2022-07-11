@@ -48,7 +48,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
       Right decls -> do
-        res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
         case res of
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))

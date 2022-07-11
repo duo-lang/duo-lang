@@ -41,6 +41,7 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (DtorAp loc) = parens ("Result type of Dtor application at" <+> prettyAnn loc)
   prettyAnn (TypeSchemeInstance fv loc) = parens ("Instantiation of type scheme" <+> prettyAnn fv <+> "at" <+> prettyAnn loc)
   prettyAnn (TypeParameter tn tv) = parens ("Instantiation of type parameter" <+> prettyAnn tv <+> "for" <+> prettyAnn tn)
+  prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type class" <+> prettyAnn cn <+> "for" <+> prettyAnn tv)
 
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =

@@ -24,7 +24,7 @@ subsumptionCheckPos env bspec s1 s2 = do
       (Right r1, Right r2) -> do
         let lowerResult1 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r1)
         let lowerResult2 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r2)
-        case (lowerResult1, lowerResult2) of
+        case (fst lowerResult1, fst lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
           (Right r1, Right r2) -> do
