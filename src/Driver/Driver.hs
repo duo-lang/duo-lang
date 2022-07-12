@@ -30,6 +30,7 @@ import Resolution.Definition
 
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
+import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
@@ -41,7 +42,8 @@ import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
-      genConstraintsTermRecursive )
+      genConstraintsTermRecursive,
+      genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc )
 import Syntax.Common.TypesPol
@@ -139,13 +141,39 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { cmdEnv  = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
+  let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
   pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
                                 , cmddecl_doc = cmddecl_doc
                                 , cmddecl_name = cmddecl_name
                                 , cmddecl_cmd = cmdInferred
                                 }
+
+inferInstanceDeclaration :: ModuleName
+                        -> Core.InstanceDeclaration
+                        -> DriverM TST.InstanceDeclaration
+inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
+  env <- gets drvEnv
+  -- Generate the constraints
+  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (genConstraintsInstance decl)
+  -- Solve the constraints
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
+  guardVerbose $ do
+      ppPrintIO constraints
+      ppPrintIO solverResult
+  -- Insert into environment
+  let f env = env { instanceEnv = M.insert instancedecl_name instancedecl_typ (instanceEnv env)}
+  modifyEnvironment mn f
+  pure instanceInferred
+
+inferClassDeclaration :: ModuleName
+                      -> RST.ClassDeclaration
+                      -> DriverM RST.ClassDeclaration
+inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
+  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)}
+  modifyEnvironment mn f
+  pure decl
+
 
 inferDecl :: ModuleName
           -> Core.Declaration
@@ -155,7 +183,7 @@ inferDecl :: ModuleName
 --
 inferDecl mn (Core.PrdCnsDecl pcrep decl) = do
   decl' <- inferPrdCnsDeclaration mn decl
-  pure $ (TST.PrdCnsDecl pcrep decl')
+  pure (TST.PrdCnsDecl pcrep decl')
 --
 -- CmdDecl
 --
@@ -198,13 +226,15 @@ inferDecl _mn (Core.TySynDecl decl) = do
 --
 -- ClassDecl
 --
-inferDecl _mn (Core.ClassDecl decl) =
-  pure (TST.ClassDecl decl)
+inferDecl mn (Core.ClassDecl decl) = do
+  decl' <- inferClassDeclaration mn decl
+  pure (TST.ClassDecl decl')
 --
 -- InstanceDecl
 --
-inferDecl _mn (Core.InstanceDecl decl) =
-  pure (TST.InstanceDecl decl)
+inferDecl mn (Core.InstanceDecl decl) = do
+  decl' <- inferInstanceDeclaration mn decl
+  pure (TST.InstanceDecl decl')
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
 inferProgram mn decls = sequence $ inferDecl mn <$> decls
@@ -253,9 +283,9 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> ModuleName
                 -> [CST.Declaration]
-                -> IO ((Either (NonEmpty Error) (Map ModuleName Environment, TST.Program)),[Warning])
+                -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
 inferProgramIO state mn decls = do
-  let action :: DriverM (TST.Program)
+  let action :: DriverM TST.Program
       action = do
         st <- createSymbolTable mn decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
@@ -266,5 +296,5 @@ inferProgramIO state mn decls = do
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)
-    (Right (res,x), warnings) -> return (Right ((drvEnv x), res), warnings)
+    (Right (res,x), warnings) -> return (Right (drvEnv x, res), warnings)
 

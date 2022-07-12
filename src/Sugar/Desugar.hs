@@ -71,6 +71,10 @@ desugarCmdCase :: RST.CmdCase -> Core.CmdCase
 desugarCmdCase (RST.MkCmdCase loc pat cmd) =
   Core.MkCmdCase loc (desugarPat pat) (desugarCmd cmd)
 
+desugarInstanceCase :: RST.InstanceCase -> Core.InstanceCase
+desugarInstanceCase (RST.MkInstanceCase loc pat cmd) =
+  Core.MkInstanceCase loc (desugarPat pat) (desugarCmd cmd)
+
 desugarTermCaseI :: RST.TermCaseI pc -> Core.TermCaseI pc
 desugarTermCaseI (RST.MkTermCaseI loc pti t) = Core.MkTermCaseI loc (desugarPatI pti) (desugarTerm t)
 
@@ -130,9 +134,18 @@ desugarCommandDeclaration :: RST.CommandDeclaration -> Core.CommandDeclaration
 desugarCommandDeclaration RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
   Core.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
                             , cmddecl_doc = cmddecl_doc
-                            , cmddecl_name =cmddecl_name
+                            , cmddecl_name = cmddecl_name
                             , cmddecl_cmd = desugarCmd cmddecl_cmd
                             }
+
+desugarInstanceDeclaration :: RST.InstanceDeclaration -> Core.InstanceDeclaration
+desugarInstanceDeclaration RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+    Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                               , instancedecl_doc = instancedecl_doc
+                               , instancedecl_name = instancedecl_name
+                               , instancedecl_typ = instancedecl_typ
+                               , instancedecl_cases = desugarInstanceCase <$> instancedecl_cases
+                               }
 
 desugarDecl :: RST.Declaration -> Core.Declaration
 desugarDecl (RST.PrdCnsDecl pcrep decl) =
@@ -154,7 +167,7 @@ desugarDecl (RST.TySynDecl decl) =
 desugarDecl (RST.ClassDecl decl) =
   Core.ClassDecl decl
 desugarDecl (RST.InstanceDecl decl) =
-  Core.InstanceDecl decl
+  Core.InstanceDecl (desugarInstanceDeclaration decl)
 
 desugarProgram :: RST.Program -> Core.Program
 desugarProgram ps = desugarDecl <$> ps

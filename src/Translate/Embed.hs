@@ -20,6 +20,13 @@ embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
                   , cmdcase_cmd = embedCoreCommand cmdcase_cmd
                   }
 
+embedInstanceCase :: Core.InstanceCase -> RST.InstanceCase
+embedInstanceCase Core.MkInstanceCase {instancecase_loc, instancecase_pat, instancecase_cmd } =
+    RST.MkInstanceCase { instancecase_loc = instancecase_loc
+                       , instancecase_pat = instancecase_pat
+                       , instancecase_cmd = embedCoreCommand instancecase_cmd
+                       }
+
 embedPCTerm :: Core.PrdCnsTerm -> RST.PrdCnsTerm
 embedPCTerm (Core.PrdTerm tm) = RST.PrdTerm (embedCoreTerm tm)
 embedPCTerm (Core.CnsTerm tm) = RST.CnsTerm (embedCoreTerm tm)
@@ -103,6 +110,15 @@ embedCommandDeclaration Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cm
                              , cmddecl_cmd = embedCoreCommand cmddecl_cmd
                              }
 
+embedInstanceDeclaration :: Core.InstanceDeclaration -> RST.InstanceDeclaration
+embedInstanceDeclaration Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+    RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                              , instancedecl_doc = instancedecl_doc
+                              , instancedecl_name = instancedecl_name
+                              , instancedecl_typ = instancedecl_typ
+                              , instancedecl_cases = embedInstanceCase <$> instancedecl_cases
+                              }
+
 embedCoreDecl :: Core.Declaration -> RST.Declaration
 embedCoreDecl (Core.PrdCnsDecl pcrep decl) =
     RST.PrdCnsDecl pcrep (embedPrdCnsDeclaration decl)
@@ -123,7 +139,7 @@ embedCoreDecl (Core.TySynDecl decl) =
 embedCoreDecl (Core.ClassDecl decl) =
     RST.ClassDecl decl
 embedCoreDecl (Core.InstanceDecl decl) =
-    RST.InstanceDecl decl
+    RST.InstanceDecl (embedInstanceDeclaration decl)
 
 embedTSTCmdCase :: TST.CmdCase -> Core.CmdCase
 embedTSTCmdCase TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -131,6 +147,13 @@ embedTSTCmdCase TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
                    , cmdcase_pat = cmdcase_pat
                    , cmdcase_cmd = embedTSTCommand cmdcase_cmd
                    }
+
+embedTSTInstanceCase :: TST.InstanceCase -> Core.InstanceCase
+embedTSTInstanceCase TST.MkInstanceCase {instancecase_loc, instancecase_pat, instancecase_cmd } =
+    Core.MkInstanceCase { instancecase_loc = instancecase_loc
+                        , instancecase_pat = instancecase_pat
+                        , instancecase_cmd = embedTSTCommand instancecase_cmd
+                        }
 
 embedTSTPCTerm :: TST.PrdCnsTerm -> Core.PrdCnsTerm
 embedTSTPCTerm (TST.PrdTerm tm) = Core.PrdTerm (embedTSTTerm tm)
@@ -209,6 +232,16 @@ embedTSTCommandDecl TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl
                               , cmddecl_cmd = embedTSTCommand cmddecl_cmd
                               }
 
+embedTSTInstanceDeclaration :: TST.InstanceDeclaration -> Core.InstanceDeclaration
+embedTSTInstanceDeclaration TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+    Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                               , instancedecl_doc = instancedecl_doc
+                               , instancedecl_name = instancedecl_name
+                               , instancedecl_typ = instancedecl_typ
+                               , instancedecl_cases = embedTSTInstanceCase <$> instancedecl_cases
+                               }
+
+
 embedTSTDecl :: TST.Declaration -> Core.Declaration
 embedTSTDecl (TST.PrdCnsDecl pcrep decl) =
     Core.PrdCnsDecl pcrep (embedTSTPrdCnsDecl decl)
@@ -229,6 +262,6 @@ embedTSTDecl (TST.TySynDecl decl) =
 embedTSTDecl (TST.ClassDecl decl) =
     Core.ClassDecl decl
 embedTSTDecl (TST.InstanceDecl decl) =
-    Core.InstanceDecl decl
+    Core.InstanceDecl (embedTSTInstanceDeclaration decl)
 
    
