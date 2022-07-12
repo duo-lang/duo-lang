@@ -317,7 +317,7 @@ resolveCommand (CST.Xtor loc xtor arity) = do
          CST.ToSTerm t -> resolvePrdCnsTerm prdcns t
          CST.ToSStar -> throwError $ LowerError loc (InvalidStar "Implicit arguments not supported for methods") :| [])
            <$> ar <*> arity
-      pure $! RST.Method loc subst (MkMethodName $ unXtorName xtor) cn
+      pure $! RST.Method loc (MkMethodName $ unXtorName xtor) cn subst
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------

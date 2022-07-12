@@ -200,7 +200,7 @@ data Command where
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
-  Method :: Loc -> Substitution -> MethodName -> ClassName -> Command
+  Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
@@ -272,8 +272,8 @@ commandOpeningRec k args (Read loc cns) =
   Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
-commandOpeningRec k args (Method loc subst mn cn) =
-  Method loc (pctermOpeningRec k args <$> subst) mn cn
+commandOpeningRec k args (Method loc mn cn subst) =
+  Method loc mn cn (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (Apply loc t1 t2) =
   Apply loc (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc pt op subst) =
@@ -351,8 +351,8 @@ commandClosingRec _ _ (ExitFailure ext) =
   ExitFailure ext
 commandClosingRec _ _ (Jump ext fv) =
   Jump ext fv
-commandClosingRec k args (Method ext subst mn cn) =
-  Method ext (pctermClosingRec k args <$> subst) mn cn
+commandClosingRec k args (Method ext mn cn subst) =
+  Method ext mn cn (pctermClosingRec k args <$> subst)
 commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =

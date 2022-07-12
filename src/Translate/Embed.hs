@@ -166,6 +166,8 @@ embedTSTCommand (TST.Read loc tm) =
     Core.Read loc (embedTSTTerm tm)
 embedTSTCommand (TST.Jump loc fv) =
     Core.Jump loc fv
+embedTSTCommand (TST.Method loc mn cn subst) =
+    Core.Method loc mn cn (embedTSTSubst subst)
 embedTSTCommand (TST.ExitSuccess loc) =
     Core.ExitSuccess loc
 embedTSTCommand (TST.ExitFailure loc) =

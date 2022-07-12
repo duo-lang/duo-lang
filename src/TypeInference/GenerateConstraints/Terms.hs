@@ -231,6 +231,10 @@ genConstraintsCommand (Core.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
   _ <- lookupCommand fv
   return (TST.Jump loc fv)
+genConstraintsCommand (Core.Method loc mn cn subst) = do
+  substInferred <- genConstraintsSubst subst
+  -- TODO: add type class constraints here
+  return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd

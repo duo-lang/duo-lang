@@ -40,7 +40,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let (RequestMessage _ _ _ (DefinitionParams (TextDocumentIdentifier uri) pos _ _)) = req
     liftIO $ debugM "lspserver.JumpToDefHandler" ("Received definition request: " <> show uri <> " at: " <> show pos)
     mfile <- getVirtualFile (toNormalizedUri uri)
-    let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
+    let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
     let file = virtualFileText vfile
     let fp = fromMaybe "fail" (uriToFilePath uri)
     let decls = runFileParser fp programP file
@@ -54,13 +54,13 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
             responder (generateJumpToDef pos (embedCoreProg (embedTSTProg prog)))
-    
+
 
 generateJumpToDef :: Position -> RST.Program -> Either ResponseError (Location |? b)
 generateJumpToDef pos prog = do
     let jumpMap = toJumpMap prog
     case lookupInRangeMap pos jumpMap of
-        Nothing -> (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing }))
+        Nothing -> Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing })
         Just loc -> Right (InL loc)
 
 ---------------------------------------------------------------------------------
@@ -107,6 +107,7 @@ instance ToJumpMap RST.Command where
     M.union (toJumpMap prd) (toJumpMap cmd)
   toJumpMap (RST.Read _ cns) = toJumpMap cns
   toJumpMap RST.Jump {} = M.empty
+  toJumpMap (RST.Method _ _ _ subst) = toJumpMap subst
   toJumpMap RST.ExitSuccess {} = M.empty
   toJumpMap RST.ExitFailure {} = M.empty
   toJumpMap (RST.PrimOp _ _ _ subst) = toJumpMap subst
@@ -132,7 +133,7 @@ instance ToJumpMap (RST.Term pc) where
   toJumpMap (RST.CocaseOf _ _ _ tm cases) = M.unions (toJumpMap tm : (toJumpMap <$> cases))
   toJumpMap (RST.CaseI _ _ _ cases) = M.unions (toJumpMap <$> cases)
   toJumpMap (RST.CocaseI _ _ _ cases) = M.unions (toJumpMap <$> cases)
-  toJumpMap (RST.Lambda _ _ _ tm) = toJumpMap tm 
+  toJumpMap (RST.Lambda _ _ _ tm) = toJumpMap tm
   toJumpMap RST.PrimLitI64 {} = M.empty
   toJumpMap RST.PrimLitF64 {} = M.empty
 
@@ -214,7 +215,7 @@ instance ToJumpMap RST.Declaration where
   toJumpMap RST.ClassDecl {} = M.empty
   toJumpMap RST.InstanceDecl {} = M.empty
   toJumpMap RST.TySynDecl {} = M.empty
-  
+
 
 instance ToLocation RnTypeName where
   toLocation MkRnTypeName { rnTnLoc, rnTnModule } =

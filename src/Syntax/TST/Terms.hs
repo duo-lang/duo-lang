@@ -153,6 +153,7 @@ data Command where
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
+  Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
@@ -168,6 +169,8 @@ instance Zonk Command where
     Read ext (zonk bisubst cns)
   zonk _ (Jump ext fv) =
     Jump ext fv
+  zonk bisubst (Method ext mn cn subst) =
+    Method ext mn cn (zonk bisubst <$> subst)
   zonk _ (ExitSuccess ext) =
     ExitSuccess ext
   zonk _ (ExitFailure ext) =
@@ -213,6 +216,8 @@ commandOpeningRec k args (Read loc cns) =
   Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
+commandOpeningRec k args (Method loc mn cn subst) =
+  Method loc mn cn (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (Apply loc annot kind t1 t2) =
   Apply loc annot kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc pt op subst) =
@@ -258,6 +263,8 @@ commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
+commandClosingRec k args (Method ext mn cn subst) =
+  Method ext mn cn (pctermClosingRec k args <$> subst)
 commandClosingRec k args (Apply ext annot kind t1 t2) =
   Apply ext annot kind (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext pt op subst) =
@@ -318,6 +325,7 @@ commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
+commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
 
@@ -374,6 +382,8 @@ shiftCmdRec dir n (Read ext cns) =
   Read ext (shiftTermRec dir n cns)
 shiftCmdRec _ _ (Jump ext fv) =
   Jump ext fv
+shiftCmdRec dir n (Method ext mn cn subst) =
+  Method ext mn cn (shiftPCTermRec dir n <$> subst)
 shiftCmdRec dir n (PrimOp ext pt op subst) =
   PrimOp ext pt op (shiftPCTermRec dir n <$> subst)
 
