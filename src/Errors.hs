@@ -27,6 +27,11 @@ data LoweringError where
                 -> Int
                 -> Int
                 -> LoweringError
+  MethodArityMismatch :: MethodName
+                -> ClassName
+                -> Int
+                -> Int
+                -> LoweringError
   UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> LoweringError
   PrimOpArityMismatch :: (PrimitiveType, PrimitiveOp)
                 -> Int

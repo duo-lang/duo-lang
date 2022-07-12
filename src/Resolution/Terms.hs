@@ -91,10 +91,10 @@ analyzeInstancePattern (CST.XtorPat loc xt args) = do
 -- | Emit a warning if a producer variable starts with the letter `k`, or a consumer variable doesn't start with the letter `k`.
 checkVarName :: Loc -> (PrdCns, CST.FVOrStar) -> ResolverM ()
 checkVarName _ (_,FoSStar) = return ()
-checkVarName loc (Prd,FoSFV (MkFreeVarName name)) = 
+checkVarName loc (Prd,FoSFV (MkFreeVarName name)) =
   when ("k" `T.isPrefixOf` name) $
     tell [Warning loc (T.pack "Producer variable " `T.append` name `T.append` " should not start with letter k")  ]
-checkVarName loc (Cns,FoSFV (MkFreeVarName name)) = 
+checkVarName loc (Cns,FoSFV (MkFreeVarName name)) =
   unless ("k" `T.isPrefixOf` name) $
     tell [Warning loc (T.pack "Consumer variable " `T.append` name `T.append` " should start with letter k")  ]
 
@@ -311,13 +311,14 @@ resolveCommand (CST.Xtor loc xtor arity) = do
   case res of
     (XtorNameResult _dc _ns _ar) -> throwError $ LowerError loc (CmdExpected "Method (Command) expected, but found Xtor") :| []
     (MethodNameResult cn ar) -> do
+      let mn = MkMethodName $ unXtorName xtor
       when (length arity /= length ar) $
-        throwError $ LowerError loc (XtorArityMismatch xtor (length arity) (length ar)) :| []
+        throwError $ LowerError loc (MethodArityMismatch mn cn (length arity) (length ar)) :| []
       subst <- sequence $ (\prdcns ts -> case ts of
          CST.ToSTerm t -> resolvePrdCnsTerm prdcns t
          CST.ToSStar -> throwError $ LowerError loc (InvalidStar "Implicit arguments not supported for methods") :| [])
            <$> ar <*> arity
-      pure $! RST.Method loc (MkMethodName $ unXtorName xtor) cn subst
+      pure $! RST.Method loc mn cn subst
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------

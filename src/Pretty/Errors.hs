@@ -28,6 +28,11 @@ instance PrettyAnn LoweringError where
                                                    , "  Specified Arity:" <+> pretty ar1
                                                    , "  Used Arity:" <+> pretty ar2
                                                    ]
+  prettyAnn (MethodArityMismatch mn cn ar1 ar2)   = vsep [ "Arity mismatch:"
+                                                   , "  Type class method:" <+> prettyAnn mn <+> "from class:" <+> prettyAnn cn
+                                                   , "  Specified Arity:" <+> pretty ar1
+                                                   , "  Used Arity:" <+> pretty ar2
+                                                   ]
   prettyAnn (UndefinedPrimOp (pt, op))             = "Undefined primitive operator  " <> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
   prettyAnn (PrimOpArityMismatch (pt, op) ar1 ar2) = vsep [ "Arity mismatch:"
                                                    , "  Primitive operation:" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
