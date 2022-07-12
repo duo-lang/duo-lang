@@ -201,9 +201,6 @@ instance PrettyAnn CST.InstanceDeclaration where
 -- Declaration
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn ClassName where
-  prettyAnn (MkClassName nm) = prettyAnn nm
-
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)
 

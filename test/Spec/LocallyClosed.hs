@@ -2,6 +2,7 @@ module Spec.LocallyClosed where
 
 import Control.Monad (forM_)
 import Data.Text qualified as T
+import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
 
 import Pretty.Pretty ( ppPrintString )
@@ -14,7 +15,9 @@ import Errors ( Error )
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [("examples/TypeClasses.ds", "Backend not implemented for type classes")]
+pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type classes")
+               , ("examples/TypeClassInstance.ds", "Backend not implemented for type classes")
+               ]
 
 getProducers :: TST.Program -> [(FreeVarName, Term Prd)]
 getProducers prog = go prog []
@@ -25,7 +28,7 @@ getProducers prog = go prog []
     go (_:rest) acc = go rest acc
 
 
-spec :: [(FilePath, Either Error TST.Program)] -> Spec
+spec :: [(FilePath, Either (NonEmpty Error) TST.Program)] -> Spec
 spec examples = do
   describe "All examples are locally closed." $ do
     forM_ examples $ \(example, eitherEnv) -> do
