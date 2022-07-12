@@ -198,13 +198,13 @@ insertType (TyInter _ _ ty1 ty2) = do
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
-insertType (TyRec _ rep _ ty) = do
+insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol)
-  --let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
-  --    extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
-  n <- insertType ty
+  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
+      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
+  n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType (TyData _ polrep xtors)   = insertXtors Data   (polarityRepToPol polrep) Nothing xtors

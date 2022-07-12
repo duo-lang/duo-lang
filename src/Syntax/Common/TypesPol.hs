@@ -164,7 +164,7 @@ instance FreeTVars (Typ pol) where
   freeTVars TyBot {}                      = S.empty
   freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
   freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ _ t)               = freeTVars t
+  freeTVars (TyRec _ _ tv t)              = S.delete tv $ freeTVars t
   freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
