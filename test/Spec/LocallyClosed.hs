@@ -7,7 +7,7 @@ import Test.Hspec
 
 import Pretty.Pretty ( ppPrintString )
 import Pretty.Errors ()
-import Syntax.TST.Terms ( Term, termLocallyClosed )
+import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClosed, instanceCaseLocallyClosed, Pattern (XtorPat) )
 import Syntax.TST.Program qualified as TST
 import Syntax.Common
 import Errors ( Error )
@@ -16,7 +16,6 @@ type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
 pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type classes")
-               , ("examples/TypeClassInstance.ds", "Backend not implemented for type classes")
                ]
 
 getProducers :: TST.Program -> [(FreeVarName, Term Prd)]
@@ -27,6 +26,13 @@ getProducers prog = go prog []
     go ((TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration _ _ PrdRep _ fv _ tm)):rest) acc = go rest ((fv,tm):acc)
     go (_:rest) acc = go rest acc
 
+getInstanceCases :: TST.Program -> [InstanceCase]
+getInstanceCases prog = go prog []
+  where
+    go :: TST.Program -> [InstanceCase] -> [InstanceCase]
+    go [] acc = acc
+    go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ cases)):rest) acc = go rest (cases++acc)
+    go (_:rest) acc = go rest acc
 
 spec :: [(FilePath, Either (NonEmpty Error) TST.Program)] -> Spec
 spec examples = do
@@ -41,4 +47,7 @@ spec examples = do
               forM_ (getProducers env) $ \(name,term) -> do
                 it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes") $
                   termLocallyClosed term `shouldBe` Right ()
+              forM_ (getInstanceCases env) $ \instance_case -> do
+                it (T.unpack (unXtorName $ (\(XtorPat _ xt _) -> xt) $ instancecase_pat instance_case) ++ " does not contain dangling deBruijn indizes") $
+                  instanceCaseLocallyClosed instance_case `shouldBe` Right ()
 
