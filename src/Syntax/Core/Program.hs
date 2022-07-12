@@ -1,8 +1,8 @@
 module Syntax.Core.Program where
 
 import Syntax.Common
-import Syntax.Core.Terms( Command, Term )
-import Syntax.Common.TypesPol ( DataDecl, TypeScheme )
+import Syntax.Core.Terms( Command, Term, InstanceCase )
+import Syntax.Common.TypesPol ( DataDecl, TypeScheme, Typ )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Utils ( Loc )
@@ -51,6 +51,25 @@ data CommandDeclaration = MkCommandDeclaration
 
 deriving instance (Show CommandDeclaration)
 
+------------------------------------------------------------------------------
+-- Instance Declaration
+------------------------------------------------------------------------------
+
+data InstanceDeclaration = MkInstanceDeclaration
+  { instancedecl_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , instancedecl_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , instancedecl_name :: ClassName
+    -- ^ The name of the type class the instance is for.
+  , instancedecl_typ :: (Typ Pos, Typ Neg)
+    -- ^ The type the instance is being defined for.
+  , instancedecl_cases :: [InstanceCase]
+    -- ^ The method definitions for the class.
+  }
+
+deriving instance Show InstanceDeclaration
+
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
@@ -65,7 +84,7 @@ data Declaration where
   TyOpDecl       :: RST.TyOpDeclaration                  -> Declaration
   TySynDecl      :: RST.TySynDeclaration                 -> Declaration
   ClassDecl      :: RST.ClassDeclaration                 -> Declaration
-  InstanceDecl   :: RST.InstanceDeclaration              -> Declaration
+  InstanceDecl   :: InstanceDeclaration                  -> Declaration
   
 
 instance Show Declaration where

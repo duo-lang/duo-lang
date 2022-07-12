@@ -18,6 +18,7 @@ data Annotation
   | AnnXtorName
   | AnnMethodName
   | AnnLiteral
+  | AnnClassName
   deriving (Show, Eq)
 
 annKeyword :: Doc Annotation -> Doc Annotation
@@ -34,6 +35,9 @@ annXtorName = annotate AnnXtorName
 
 annMethodName :: Doc Annotation -> Doc Annotation
 annMethodName = annotate AnnMethodName
+
+annClassName :: Doc Annotation -> Doc Annotation
+annClassName = annotate AnnClassName
 
 annLiteral :: Doc Annotation -> Doc Annotation
 annLiteral = annotate AnnLiteral
@@ -97,6 +101,7 @@ annotationToOpts AnnSymbol     = [SetColor Foreground Dull Red]
 annotationToOpts AnnTypeName   = [SetColor Foreground Dull Green]
 annotationToOpts AnnXtorName   = [SetColor Foreground Dull Magenta]
 annotationToOpts AnnMethodName = [SetColor Foreground Dull Magenta]
+annotationToOpts AnnClassName  = [SetColor Foreground Dull Yellow]
 annotationToOpts AnnLiteral    = [SetColor Foreground Dull Cyan]
 
 ppPrintIO :: PrettyAnn a => a -> IO ()

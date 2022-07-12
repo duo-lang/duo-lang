@@ -7,6 +7,7 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
+  , freshTVarsForInstance
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -24,6 +25,7 @@ module TypeInference.GenerateConstraints.Definition
   , prdCnsToPol
   , checkCorrectness
   , checkExhaustiveness
+  , checkInstanceCoverage
   , translateXtorSigUpper
   , translateTypeUpper
   , translateXtorSigLower
@@ -46,6 +48,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Syntax.Common.TypesPol
 import Syntax.Common
+import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
@@ -119,30 +122,45 @@ freshTVars ((Cns,fv):rest) = do
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution)
-freshTVarsForTypeParams rep dd = do
-  let MkPolyKind { kindArgs } = data_kind dd
-  let tn = data_name dd
+freshTVarsForTypeParams rep decl = 
+  let MkPolyKind { kindArgs } = data_kind decl
+      tn = data_name decl
+  in freshTVarsForTypeParams' rep kindArgs (Left tn)
+
+freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> (Typ Pos, Typ Neg) -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForInstance rep decl typ = 
+  let kindArgs = classdecl_kinds decl
+      cn = classdecl_name decl
+  in do
+    (args, tyParams) <- freshTVarsForTypeParams' rep kindArgs (Right cn)
+    return (args, substituteInstanceType (head kindArgs) typ tyParams)
+
+
+freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForTypeParams' rep kindArgs tn = do
   (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (skolemTVarToTVar tv,variance)) <$> kindArgs)
-  let map = paramsMap dd vars
+  let map = paramsMap kindArgs vars
   case rep of
     PosRep -> pure (varTypes, map)
     NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  RnTypeName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars ::  Either RnTypeName ClassName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn (tVarToUniTVar tv))
+    (tyPos, tyNeg) <- freshTVar ((case tn of Left tn -> TypeParameter tn; Right cn -> TypeClassInstance cn) (tVarToUniTVar tv))
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-   paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
-   paramsMap dd freshVars =
-     let MkPolyKind { kindArgs } = data_kind dd in
+   paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
+   paramsMap kindArgs freshVars =
      MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
+
+substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution -> Bisubstitution
+substituteInstanceType (_,tv,_) instanceType (MkBisubstitution subst) = MkBisubstitution $! M.adjust (const instanceType) (MkTVar $ unSkolemTVar tv) subst
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -262,3 +280,15 @@ checkExhaustiveness matched decl = do
   forM_ declared $ \xn -> unless (xn `elem` matched)
     (throwGenError defaultLoc ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
                                ppPrint (data_name decl) <> " is not matched against." ])
+
+-- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
+-- in the instance declaration and every implemented method is actually declared.
+checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to check against.
+                      -> [MethodName]         -- ^ The methods implemented in the instance.
+                      -> GenM ()
+checkInstanceCoverage RST.MkClassDeclaration { classdecl_xtors } instanceMethods = do
+  let classMethods = MkMethodName . unXtorName . fst <$> classdecl_xtors
+  forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
+    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
+  forM_ instanceMethods $ \m -> unless (m `elem` classMethods)
+    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is implemented but not declared." ])

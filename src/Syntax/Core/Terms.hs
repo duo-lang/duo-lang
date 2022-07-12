@@ -5,6 +5,7 @@ module Syntax.Core.Terms
   , Substitution
   , Pattern(..)
   , CmdCase(..)
+  , InstanceCase(..)
   , Command(..)
   -- Functions
   , commandClosing
@@ -65,6 +66,23 @@ data CmdCase = MkCmdCase
 
 --deriving instance Eq CmdCase
 deriving instance Show CmdCase
+
+
+-- | Represents the implementation of a type class method.
+--
+--        Gamma           => c
+--        ^^^^^-----         ^------
+--              |               |
+--      instancecase_args   instancecase_cmd
+--
+data InstanceCase = MkInstanceCase
+  { instancecase_loc :: Loc
+  , instancecase_pat :: Pattern
+  , instancecase_cmd :: Command
+  }
+
+--deriving instance Eq CmdCase
+deriving instance Show InstanceCase
 
 ---------------------------------------------------------------------------------
 -- Terms

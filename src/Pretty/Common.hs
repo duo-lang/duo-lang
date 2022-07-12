@@ -40,6 +40,9 @@ instance PrettyAnn XtorName where
 instance PrettyAnn MethodName where
   prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
 
+instance PrettyAnn ClassName where
+  prettyAnn (MkClassName xt) = annClassName $ prettyAnn xt
+
 instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm
 

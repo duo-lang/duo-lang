@@ -6,6 +6,8 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
+  , lookupClassDecl
+  , lookupMethodType
   , withTerm
     ) where
 
@@ -23,6 +25,7 @@ import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.Common
 import Syntax.TST.Terms qualified as TST
+import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol
 import Utils
 
@@ -119,6 +122,26 @@ lookupXtorSig xtn NegRep = do
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
     Just xts -> return xts
     Nothing -> throwOtherError defaultLoc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+
+-- | Find the class declaration for a classname.
+lookupClassDecl :: EnvReader a m
+               => ClassName -> m RST.ClassDeclaration
+lookupClassDecl cn = do
+  let err = OtherError defaultLoc ("Undeclared class " <> ppPrint cn <> " is not contained in environment.")
+  let f env = M.lookup cn (classEnv env)
+  snd <$> findFirstM f err
+
+-- | Find the class declaration for a classname.
+lookupMethodType :: EnvReader a m
+               => XtorName -> RST.ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
+lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } PosRep =
+  case lookup xt classdecl_xtors of
+    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name]
+    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep pos; Cns -> PrdCnsType CnsRep neg)) <$> typ
+lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } NegRep =
+  case lookup xt classdecl_xtors of
+    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name]
+    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep neg; Cns -> PrdCnsType CnsRep pos)) <$> typ
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

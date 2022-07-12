@@ -2,6 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( genConstraintsTerm
   , genConstraintsTermRecursive
   , genConstraintsCommand
+  , genConstraintsInstance
   ) where
 
 import Control.Monad.Reader
@@ -12,7 +13,9 @@ import Pretty.Types ()
 import Pretty.Constraints ()
 import Pretty.Pretty ( ppPrint )
 import Syntax.TST.Terms qualified as TST
+import Syntax.TST.Program qualified as TST
 import Syntax.Core.Terms qualified as Core
+import Syntax.Core.Program qualified as Core
 import Syntax.Common hiding (primOps)
 import Syntax.Common.TypesPol
 import TypeInference.GenerateConstraints.Definition
@@ -252,6 +255,38 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
     Just sig -> do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
       return (TST.PrimOp loc pt op substInferred)
+
+genConstraintsInstance :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
+genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  -- We lookup the class declaration  of the instance.
+  decl <- lookupClassDecl instancedecl_name
+  -- We check that all implementations belong to the same type class.
+  checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
+  -- Generate fresh unification variables for type parameters
+  (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
+  inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
+
+                   -- We lookup the types belonging to the xtor in the type declaration.
+                   posTypes <- lookupMethodType xt decl PosRep
+                   negTypes <- lookupMethodType xt decl NegRep
+                   -- Substitute fresh unification variables for type parameters
+                   let posTypes' = zonk tyParamsMap posTypes
+                   let negTypes' = zonk tyParamsMap negTypes
+                   -- We generate constraints for the command in the context extended
+                   -- with the types from the signature.
+                   cmdInferred <- withContext posTypes' (genConstraintsCommand instancecase_cmd)
+                   genConstraintsCtxts posTypes' negTypes' (InstanceConstraint instancecase_loc)
+                   pure TST.MkInstanceCase { instancecase_loc = instancecase_loc
+                                           , instancecase_pat = Core.XtorPat loc xt args
+                                           , instancecase_cmd = cmdInferred
+                                           })
+  pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
+                                 , instancedecl_doc = instancedecl_doc
+                                 , instancedecl_name = instancedecl_name
+                                 , instancedecl_typ = instancedecl_typ
+                                 , instancedecl_cases = inferredCases
+                                 }
+
 
 ---------------------------------------------------------------------------------------------
 -- Checking recursive terms
