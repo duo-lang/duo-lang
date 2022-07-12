@@ -52,7 +52,7 @@ lookupXtor :: Loc
            -> ResolverM (ModuleName, XtorNameResolve)
            -- ^ The module where the xtor comes from, its sort and arity.
 lookupXtor loc xtor = do
-  symbolTables <- M.toList <$> ask
+  symbolTables <- asks M.toList
   let results :: [(ModuleName, Maybe XtorNameResolve)]
       results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
   case filterJusts results of
@@ -69,7 +69,7 @@ lookupTypeConstructor :: Loc
                       -> ResolverM TypeNameResolve
                       -- ^ The resolved typename, and the relevant info.
 lookupTypeConstructor loc tn = do
-    symbolTables <- M.toList <$> ask
+    symbolTables <- asks M.toList
     let results :: [(ModuleName, Maybe TypeNameResolve)]
         results = second (M.lookup tn . typeNameMap) <$> symbolTables
     case filterJusts results of
