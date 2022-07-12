@@ -220,6 +220,12 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
+checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [(XtorName, [(PrdCns, Typ)])] -> ResolverM ()
+checkVarianceClassDeclaration loc kinds xtors =
+  sequence_ $ checkVarianceXtor loc Covariant (MkPolyKind kinds CBV)
+            . (\(xn,tys) -> CST.MkXtorSig xn $ (\(prdcns, typ) -> (case prdcns of Prd -> PrdType; Cns -> CnsType) typ) <$> tys)
+             <$> xtors
+
 resolveClassDeclaration :: CST.ClassDeclaration 
                         -> ResolverM RST.ClassDeclaration
 resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
@@ -232,6 +238,7 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
       go' (xtor, typs) = do
             types <- forM typs go
             pure (xtor, types)
+  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_xtors
   xtorRes <- forM classdecl_xtors go'
   pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
                               , classdecl_doc = classdecl_doc
