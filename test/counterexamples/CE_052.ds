@@ -1,0 +1,5 @@
+-- wrong variance in method types
+class Eq(+a : CBV, +b : CBN) {
+  Equals(a, a, return b),
+  Differ(a, a, return b)
+};
