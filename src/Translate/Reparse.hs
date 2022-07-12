@@ -299,9 +299,9 @@ createNamesTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } 
 
 createNamesInstanceCase :: RST.InstanceCase -> CreateNameM RST.InstanceCase
 createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
-  cmd <- createNamesCommand instancecase_cmd
-  pat <- createNamesPat instancecase_pat
-  pure $ RST.MkInstanceCase instancecase_loc pat cmd
+  -- pat' <- createNamesPat instancecase_pat -- temporary fix: do not create new names
+  cmd' <- createNamesCommand instancecase_cmd
+  pure $ RST.MkInstanceCase instancecase_loc instancecase_pat cmd'
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
