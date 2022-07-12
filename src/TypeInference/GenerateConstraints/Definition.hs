@@ -142,7 +142,7 @@ freshTVarsForTypeParams rep dd = do
    paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
-     MkBisubstitution (M.fromList (zip ((\(_,MkSkolemTVar tv,_) ->  MkUniTVar tv) <$> kindArgs) freshVars)) M.empty
+     MkBisubstitution M.empty (M.fromList (zip ((\( _, tv, _) ->  tv) <$> kindArgs) freshVars))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -173,9 +173,7 @@ lookupContext rep (i,j) = do
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.
 ---------------------------------------------------------------------------------------------
-skolemTVarToUniTVar :: SkolemTVar -> UniTVar
-skolemTVarToUniTVar (MkSkolemTVar name) = MkUniTVar name
-
+--
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
