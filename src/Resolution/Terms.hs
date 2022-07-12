@@ -306,14 +306,21 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
     ImplicitCases rep implicitCases -> do
       termCasesI <- sequence $ resolveTermCaseI rep <$> implicitCases
       pure $ RST.CocaseOfI loc rep ns tm' termCasesI
+resolveCommand (CST.Xtor loc xtor arity) = do
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult _dc _ns _ar) -> throwError $ LowerError loc (CmdExpected "Method (Command) expected, but found Xtor") :| []
+    (MethodNameResult cn ar) -> do
+      when (length arity /= length ar) $
+        throwError $ LowerError loc (XtorArityMismatch xtor (length arity) (length ar)) :| []
+      subst <- sequence $ (\prdcns ts -> case ts of
+         CST.ToSTerm t -> resolvePrdCnsTerm prdcns t
+         CST.ToSStar -> throwError $ LowerError loc (InvalidStar "Implicit arguments not supported for methods") :| [])
+           <$> ar <*> arity
+      pure $! RST.Method loc subst (MkMethodName $ unXtorName xtor) cn
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
-resolveCommand (CST.Xtor loc xtor _arity) = do
-  (_, res) <- lookupXtor loc xtor
-  case res of
-    (XtorNameResult _dc _ns _ar) -> throwError $ LowerError loc (CmdExpected "Command expected, but found Xtor") :| []
-    (MethodNameResult _cn _ar) -> throwOtherError loc ["Method calls not implemented yet"]
 resolveCommand (CST.Semi loc _ _ _) =
   throwError $ LowerError loc (CmdExpected "Command expected, but found Semi") :| []
 resolveCommand (CST.Dtor loc _ _ _) =
