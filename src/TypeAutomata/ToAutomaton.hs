@@ -170,7 +170,12 @@ insertVariantType (ContravariantType ty) = do
 
 insertType :: Typ pol -> TTA Node
 insertType (SkolemTyVar _ rep _ tv) = lookupTVar rep tv
-insertType (UniTyVar _ _ _ _) = error "should never happen"
+insertType (UniTyVar _ _ _ tv) = throwAutomatonError [ "Could not insert type into automaton."
+                                            , "The unification variable:"
+                                            , "    " <> unUniTVar tv
+                                            , "should not appear at this point in the program."
+                                            ]
+
 insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
@@ -230,7 +235,7 @@ insertType (TyFlipPol _ _) =
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either Error (TypeAutEps pol)
 typeToAut TypeScheme { ts_vars, ts_monotype } = do
-  (start, aut) <- runTypeAutTvars [] (insertType ts_monotype)
+  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut
