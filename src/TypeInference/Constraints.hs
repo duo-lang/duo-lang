@@ -45,7 +45,7 @@ data UVarProvenance
   | PatternMatch Loc                   -- ^ UVar generated for return type of pattern match.
   | DtorAp Loc                         -- ^ UVar generated for result of Dtor application.
   | TypeSchemeInstance FreeVarName Loc -- ^ UVar generated for the instantiation of a type scheme.
-  | TypeParameter RnTypeName UniTVar      -- ^ UVar generated for a type parameter of a nominal type
+  | TypeParameter RnTypeName SkolemTVar      -- ^ UVar generated for a type parameter of a nominal type
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.

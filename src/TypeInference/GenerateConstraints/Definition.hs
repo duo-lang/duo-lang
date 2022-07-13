@@ -122,13 +122,13 @@ freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([Var
 freshTVarsForTypeParams rep dd = do
   let MkPolyKind { kindArgs } = data_kind dd
   let tn = data_name dd
-  (varTypes, vars) <- freshTVars tn ((\(variance,MkSkolemTVar tv,_) -> (MkUniTVar tv,variance)) <$> kindArgs)
+  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
   let map = paramsMap dd vars
   case rep of
     PosRep -> pure (varTypes, map)
     NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  RnTypeName -> [(UniTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars ::  RnTypeName -> [(SkolemTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
@@ -142,7 +142,7 @@ freshTVarsForTypeParams rep dd = do
    paramsMap :: DataDecl -> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap dd freshVars =
      let MkPolyKind { kindArgs } = data_kind dd in
-     MkBisubstitution M.empty (M.fromList (zip ((\( _, tv, _) ->  tv) <$> kindArgs) freshVars))
+     MkBisubstitution M.empty (M.fromList (zip ((\( _, tv, _) ->  tv) <$> kindArgs) freshVars)) 
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
