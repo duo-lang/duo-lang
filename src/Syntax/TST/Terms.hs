@@ -27,6 +27,7 @@ import Errors
 import Syntax.Common
 import Syntax.Common.TypesPol
 import Syntax.Common.Pattern
+import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -339,15 +340,12 @@ commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
-instanceCaseLocallyClosedRec :: [[(PrdCns,())]] -> InstanceCase -> Either Error ()
-instanceCaseLocallyClosedRec env (MkInstanceCase _ (XtorPat _ _ args) cmd)= do
-  commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
-
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
 instanceCaseLocallyClosed :: InstanceCase -> Either Error ()
-instanceCaseLocallyClosed = instanceCaseLocallyClosedRec []
+instanceCaseLocallyClosed (MkInstanceCase _ (XtorPat _ _ args) cmd) =
+  commandLocallyClosedRec [second (const ()) <$> args] cmd
 
 ---------------------------------------------------------------------------------
 -- Shifting
