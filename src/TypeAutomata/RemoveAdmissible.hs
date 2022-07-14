@@ -155,7 +155,7 @@ removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore {..}} =
   aut { ta_core = tac { ta_flowEdges = ta_flowEdges_filtered }}
     where
       ta_flowEdges_filtered :: [FlowEdge]
-      ta_flowEdges_filtered = filter (`S.member` admissable) ta_flowEdges_filtered
+      ta_flowEdges_filtered = filter (`S.member` admissable) ta_flowEdges
 
       admissable :: S.Set FlowEdge
       admissable = memo $ snd $ execAdmissable $ mapM (admissableM tac) ta_flowEdges
