@@ -20,7 +20,6 @@ type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
 pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type classes")
-               , ("examples/TypeClassInstance.ds", "Backend not implemented for type classes")
                ]
 
 testHelper :: (FilePath, Either (NonEmpty Error) TST.Program) -> EvaluationOrder -> SpecWith ()
