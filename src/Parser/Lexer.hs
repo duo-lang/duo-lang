@@ -354,6 +354,7 @@ data Symbol where
   SymIntersection     :: Symbol
   SymSubtype          :: Symbol
   SymImplicit         :: Symbol
+  SymWildcard         :: Symbol
   SymPlus             :: Symbol
   SymMinus            :: Symbol
   SymHash             :: Symbol
@@ -386,6 +387,7 @@ instance Show Symbol where
   show SymIntersection     = "/\\"
   show SymSubtype          = "<:"
   show SymImplicit         = "*"
+  show SymWildcard         = "_"
   show SymPlus             = "+"
   show SymMinus            = "-"
   show SymHash             = "#"
