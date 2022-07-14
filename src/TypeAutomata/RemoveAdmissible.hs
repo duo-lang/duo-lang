@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TypeAutomata.RemoveAdmissible
   ( removeAdmissableFlowEdges
   ) where
@@ -13,8 +14,10 @@ import Syntax.Common.Polarity ( Polarity(Pos, Neg) )
 import Syntax.Common.PrdCns ( PrdCns(Cns, Prd) )
 import Syntax.Common.XData ( DataCodata(Codata, Data) )
 import TypeAutomata.Definition
-import Control.Monad.State.Strict (StateT (runStateT), lift, MonadState, modify, gets)
+import Control.Monad.State.Strict (MonadState (get, put), modify, gets, State, runState, evalState)
 import GHC.Base (Alternative)
+import qualified GHC.Base as A (empty)
+import Data.Bifunctor (first)
 
 ----------------------------------------------------------------------------------------
 -- Removal of admissible flow edges.
@@ -64,14 +67,52 @@ import GHC.Base (Alternative)
 ----------------------------------------------------------------------------------------
 
 data AdmissableS = AdmissableS { memo :: S.Set FlowEdge, blacklist :: S.Set FlowEdge }
-newtype AdmissableM a = AdmissableM { runAdmissable :: StateT AdmissableS Maybe a }
-  deriving (Functor, Applicative, Monad, MonadState AdmissableS, MonadFail, Alternative)
+newtype AdmissableM a = AdmissableM { runAdmissable :: State AdmissableS (Maybe a) }
+  deriving (Functor)
+
+instance Applicative AdmissableM where
+  pure = AdmissableM . pure . pure
+  ff <*> fa = AdmissableM $ do
+    s <- get
+    let (mf, s') = runState (runAdmissable ff) s
+    let (ma, s'') = runState (runAdmissable fa) s'
+    put s''
+    return $ mf <*> ma
+
+instance Monad AdmissableM where
+  return = pure
+  ma >>= f = AdmissableM $ do
+    s <- get
+    let (ma', s') = runState (runAdmissable ma) s
+    case ma' of
+      Nothing -> put s' >> return Nothing
+      (Just a) -> do
+        let (mb, s'') = runState (runAdmissable (f a)) s'
+        put s''
+        return mb
+
+instance MonadState AdmissableS AdmissableM where
+  get = AdmissableM $ Just <$> get
+  put s = AdmissableM $ do
+      put s
+      return $ Just ()
+
+instance Alternative AdmissableM where
+  (AdmissableM l) <|> (AdmissableM r) = AdmissableM $ do
+    (ml, s') <- runState l <$> get
+    case ml of
+      Nothing -> return (evalState r s')
+      (Just a) -> return $ Just a
+  empty = AdmissableM $ pure Nothing
+
+instance MonadFail AdmissableM where
+  fail _s = liftAM Nothing
 
 execAdmissable :: AdmissableM a -> (a, AdmissableS)
-execAdmissable = fromMaybe (error "should not happen") . flip runStateT AdmissableS { memo = S.empty, blacklist = S.empty } . runAdmissable
+execAdmissable = first (fromMaybe (error "should not happen")) . flip runState AdmissableS { memo = S.empty, blacklist = S.empty } . runAdmissable
 
 liftAM :: Maybe a -> AdmissableM a
-liftAM = AdmissableM . lift
+liftAM = AdmissableM . pure
 
 sucWith :: TypeGr -> Node -> EdgeLabelNormal -> AdmissableM Node
 sucWith gr i el = liftAM $ lookup el (map swap (lsuc gr i))
