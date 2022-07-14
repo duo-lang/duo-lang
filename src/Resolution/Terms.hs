@@ -180,7 +180,7 @@ analyzeCases dc cases = do
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
      | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases PrdRep $ fromImplicitCase PrdRep <$> cases'
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
-     | otherwise -> throwOtherError defaultLoc ["Cases mix the use of both explicit and implicit patterns."]
+     | otherwise -> throwOtherError (getLoc (head cases)) ["Cases mix the use of both explicit and implicit patterns."]
 
 analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
 analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
