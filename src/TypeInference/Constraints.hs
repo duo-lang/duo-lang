@@ -24,6 +24,7 @@ data ConstraintInfo
   | ReadConstraint Loc         -- ^ Constraint was generated from a `Read[cns]` command
   | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
   | PrimOpArgsConstraint Loc   -- ^ Constraint for checking that args of primitive operation have correct type
+  | TypeClassConstraint Loc    -- ^ Constraint for checking that type class instance for type exists.
   -- Derived constraints generated during constraing solving
   | UpperBoundConstraint
   | LowerBoundConstraint
@@ -36,7 +37,8 @@ data ConstraintInfo
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
-  TypeClass :: a -> ClassName -> Typ Pos -> Constraint a
+  TypeClassPos :: a -> ClassName -> Typ Pos -> Constraint a
+  TypeClassNeg :: a -> ClassName -> Typ Neg -> Constraint a
     deriving (Eq, Ord, Functor)
 
 -- | Information about the provenance of a unification variable.

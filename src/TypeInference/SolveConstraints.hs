@@ -241,7 +241,9 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t1
                               , "by type"
                               , "    " <> ppPrint t2 ]
-subConstraints (TypeClass _ _cn _typ) = do
+subConstraints (TypeClassPos _ _cn _typ) = do
+  throwSolverError defaultLoc ["Solver for type class constraints not implemented yet."]
+subConstraints (TypeClassNeg _ _cn _typ) = do
   throwSolverError defaultLoc ["Solver for type class constraints not implemented yet."]
 
 ------------------------------------------------------------------------------

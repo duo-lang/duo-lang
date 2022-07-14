@@ -235,8 +235,14 @@ genConstraintsCommand (Core.Jump loc fv) = do
   _ <- lookupCommand fv
   return (TST.Jump loc fv)
 genConstraintsCommand (Core.Method loc mn cn subst) = do
-  substInferred <- genConstraintsSubst subst
-  -- TODO: add type class constraints here
+  let xt = MkXtorName $ unMethodName mn
+  decl <- lookupClassDecl cn
+  posTypes <- lookupMethodType xt decl PosRep
+  -- negTypes <- lookupMethodType xt decl NegRep
+  substInferred <- withContext posTypes $ genConstraintsSubst subst
+  forM_ substInferred $ \case
+     TST.PrdTerm te -> addConstraint (TypeClassPos (TypeClassConstraint loc) cn (TST.getTypeTerm te))
+     TST.CnsTerm te -> addConstraint (TypeClassNeg (TypeClassConstraint loc) cn (TST.getTypeTerm te))
   return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
