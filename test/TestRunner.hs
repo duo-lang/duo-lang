@@ -45,7 +45,7 @@ getAvailableCounterExamples = do
   return (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
 
 excluded :: [FilePath]
-excluded = ["fix.ds"]
+excluded = ["fix.duo"]
 
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
@@ -91,13 +91,13 @@ main = do
     checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
     checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
-    peano_st <- getSymbolTable "examples/Peano.ds"
+    peano_st <- getSymbolTable "examples/Peano.duo"
     let peano_st' = case peano_st of
-                Left _ -> error "Could not load Peano.ds"
+                Left _ -> error "Could not load Peano.duo"
                 Right peano_st' -> peano_st'
-    bool_st <- getSymbolTable "examples/Bool.ds"
+    bool_st <- getSymbolTable "examples/Bool.duo"
     let bool_st' = case bool_st of
-                Left _ -> error "Could not load Bool.ds"
+                Left _ -> error "Could not load Bool.duo"
                 Right bool_st' -> bool_st'
     let symboltables = [(MkModuleName "Peano", peano_st'), (MkModuleName "Bool", bool_st')]
     -- Run the testsuite
