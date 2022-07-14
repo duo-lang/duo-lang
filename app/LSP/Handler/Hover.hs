@@ -254,7 +254,7 @@ prettyPolRep PosRep = "**+**"
 prettyPolRep NegRep = "**-**"
 
 instance ToHoverMap (Typ pol) where
-  toHoverMap (SkolemTyVar loc rep _knd var) = 
+  toHoverMap (TySkolemVar loc rep _knd var) = 
     let 
       msg = T.unlines [ "### Skolem Variable "
                         , "- Name: `" <> ppPrint var <> "`"
@@ -262,7 +262,7 @@ instance ToHoverMap (Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (UniTyVar loc rep _knd var) =
+  toHoverMap (TyUniVar loc rep _knd var) =
     let
       msg = T.unlines [ "#### Unification variable "
                       , "- Name: `" <> ppPrint var <> "`"

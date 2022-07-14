@@ -169,8 +169,8 @@ insertVariantType (ContravariantType ty) = do
   pure (node, Contravariant)
 
 insertType :: Typ pol -> TTA Node
-insertType (SkolemTyVar _ rep _ tv) = lookupTVar rep tv
-insertType (UniTyVar _ _ _ tv) = throwAutomatonError [ "Could not insert type into automaton."
+insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
+insertType (TyUniVar _ _ _ tv) = throwAutomatonError [ "Could not insert type into automaton."
                                             , "The unification variable:"
                                             , "    " <> unUniTVar tv
                                             , "should not appear at this point in the program."

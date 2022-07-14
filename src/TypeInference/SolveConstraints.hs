@@ -19,7 +19,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
---import Syntax.Common.TypesUnpol (Typ(UniTyVar))
+--import Syntax.Common.TypesUnpol (Typ(TyUniVar))
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -93,10 +93,10 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
-      (SubType _ (UniTyVar _ PosRep _ uv) ub) -> do
+      (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType _ lb (UniTyVar _ NegRep _ uv)) -> do
+      (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
       _ -> do

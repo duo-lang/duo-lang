@@ -95,7 +95,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ SkolemTyVar defaultLoc NegRep Nothing tv
+    return $ TySkolemVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -107,7 +107,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       Codata -> do
         -- Upper bound translation of codata is empty
         return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
-translateTypeUpper' tv@SkolemTyVar{} = return tv
+translateTypeUpper' tv@TySkolemVar{} = return tv
 translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
@@ -136,7 +136,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ SkolemTyVar defaultLoc pr Nothing tv
+    return $ TySkolemVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -148,7 +148,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
         return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
-translateTypeLower' tv@SkolemTyVar{} = return tv
+translateTypeLower' tv@TySkolemVar{} = return tv
 translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ cleanUpType ty = case ty of
     xtss' <- mapM cleanUpXtorSig xtss
     return $ TyCodataRefined loc pr tn xtss'
   -- Type variables remain unchanged
-  tv@SkolemTyVar{} -> return tv
+  tv@TySkolemVar{} -> return tv
   -- Other types imply incorrect translation
   t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
 

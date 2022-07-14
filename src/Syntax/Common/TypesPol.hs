@@ -71,8 +71,8 @@ deriving instance Show (XtorSig pol)
 
 
 data Typ (pol :: Polarity) where
-  SkolemTyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
-  UniTyVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
+  TySkolemVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
+  TyUniVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
@@ -110,8 +110,8 @@ mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (SkolemTyVar _ rep _ _)     = rep
-getPolarity (UniTyVar _ rep _ _)        = rep
+getPolarity (TySkolemVar _ rep _ _)     = rep
+getPolarity (TyUniVar _ rep _ _)        = rep
 getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
@@ -158,8 +158,8 @@ class FreeTVars (a :: Type) where
   freeTVars :: a -> Set SkolemTVar
 
 instance FreeTVars (Typ pol) where
-  freeTVars (SkolemTyVar _ _ _ tv)        = S.singleton tv
-  freeTVars UniTyVar{}                    = S.empty
+  freeTVars (TySkolemVar _ _ _ tv)        = S.singleton tv
+  freeTVars TyUniVar{}                    = S.empty
   freeTVars TyTop {}                      = S.empty
   freeTVars TyBot {}                      = S.empty
   freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
@@ -201,16 +201,16 @@ class Zonk (a :: Type) where
   zonk :: Bisubstitution -> a -> a
 
 instance Zonk (Typ pol) where
-  zonk bisubst ty@(UniTyVar _ PosRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
+  zonk bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
-  zonk bisubst ty@(UniTyVar _ NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
+  zonk bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
-  zonk bisubst ty@(SkolemTyVar _ NegRep _ tv) = case M.lookup tv (recvarSubst bisubst) of
+  zonk bisubst ty@(TySkolemVar _ NegRep _ tv) = case M.lookup tv (recvarSubst bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
-  zonk bisubst ty@(SkolemTyVar _ PosRep _ tv) = case M.lookup tv (recvarSubst bisubst) of
+  zonk bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv (recvarSubst bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
   zonk bisubst (TyData loc rep xtors) =
