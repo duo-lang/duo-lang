@@ -4,7 +4,7 @@ import Syntax.Common
 import Utils
 
 --------------------------------------------------------------------------------------------
--- Substitutions and Binding Sites
+-- Substitutions 
 --------------------------------------------------------------------------------------------
 
 data TermOrStar where
@@ -17,44 +17,41 @@ deriving instance Eq TermOrStar
 type Substitution = [Term]
 type SubstitutionI = [TermOrStar]
 
-data FVOrStar where
-    FoSFV :: FreeVarName -> FVOrStar
-    FoSStar :: FVOrStar
 
-deriving instance Show FVOrStar
-deriving instance Eq FVOrStar
+--------------------------------------------------------------------------------------------
+-- Patterns
+--------------------------------------------------------------------------------------------
 
-isStar :: FVOrStar -> Bool
-isStar FoSStar   = True
-isStar (FoSFV _) = False
+data Pattern where
+  PatXtor     :: Loc -> XtorName -> [Pattern] -> Pattern
+  PatVar      :: Loc -> FreeVarName -> Pattern
+  PatStar     :: Loc -> Pattern
+  PatWildcard :: Loc -> Pattern
 
--- | Partial function!
-fromFVOrStar :: FVOrStar -> FreeVarName
-fromFVOrStar (FoSFV fv) = fv
-fromFVOrStar FoSStar = error "fromFVOrStar called on FoSStar"
+deriving instance Show Pattern
+deriving instance Eq Pattern
 
-
-type BindingSite = [FVOrStar]
+instance HasLoc Pattern where
+  getLoc (PatXtor loc _ _) = loc
+  getLoc (PatVar loc _) = loc
+  getLoc (PatStar loc) = loc
+  getLoc (PatWildcard loc) = loc
 
 --------------------------------------------------------------------------------------------
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
-data TermPat where
-  XtorPat :: Loc -> XtorName -> BindingSite -> TermPat
-
-deriving instance Show TermPat
-deriving instance Eq TermPat
-
 data TermCase  = MkTermCase
   { tmcase_loc  :: Loc
-  , tmcase_pat  :: TermPat
+  , tmcase_pat  :: Pattern
   , tmcase_term :: Term
   }
 
 deriving instance Show TermCase
 deriving instance Eq TermCase
 
+instance HasLoc TermCase where
+  getLoc tc = tmcase_loc tc
 
 --------------------------------------------------------------------------------------------
 -- Terms
@@ -73,12 +70,12 @@ data PrimCommand where
 deriving instance Show PrimCommand
 deriving instance Eq PrimCommand
 
-getLocPC :: PrimCommand -> Loc 
-getLocPC (Print loc _ _) = loc 
-getLocPC (Read loc _) = loc 
-getLocPC (ExitSuccess loc) = loc 
-getLocPC (ExitFailure loc) = loc 
-getLocPC (PrimOp loc _ _ _) = loc
+instance HasLoc PrimCommand where
+  getLoc (Print loc _ _) = loc 
+  getLoc (Read loc _) = loc 
+  getLoc (ExitSuccess loc) = loc 
+  getLoc (ExitFailure loc) = loc 
+  getLoc (PrimOp loc _ _ _) = loc
 
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 
@@ -102,22 +99,22 @@ data Term where
 deriving instance Show Term
 deriving instance Eq Term
 
-getLoc :: Term -> Loc
-getLoc (Var loc _) = loc
-getLoc (Xtor loc _ _) = loc
-getLoc (Semi loc _ _ _) = loc
-getLoc (MuAbs loc _ _) = loc
-getLoc (Dtor loc _ _ _) = loc
-getLoc (Case loc _) = loc
-getLoc (CaseOf loc _ _) = loc
-getLoc (Cocase loc _) = loc
-getLoc (CocaseOf loc _ _) = loc
-getLoc (PrimLitI64 loc _) = loc
-getLoc (PrimLitF64 loc _) = loc
-getLoc (NatLit loc _ _) = loc
-getLoc (TermParens loc _) = loc
-getLoc (FunApp loc _ _) = loc
-getLoc (Lambda loc _ _) = loc
-getLoc (CoLambda loc _ _) = loc
-getLoc (Apply loc _ _) = loc 
-getLoc (PrimCmdTerm pc) = getLocPC pc 
+instance HasLoc Term where
+  getLoc (Var loc _) = loc
+  getLoc (Xtor loc _ _) = loc
+  getLoc (Semi loc _ _ _) = loc
+  getLoc (MuAbs loc _ _) = loc
+  getLoc (Dtor loc _ _ _) = loc
+  getLoc (Case loc _) = loc
+  getLoc (CaseOf loc _ _) = loc
+  getLoc (Cocase loc _) = loc
+  getLoc (CocaseOf loc _ _) = loc
+  getLoc (PrimLitI64 loc _) = loc
+  getLoc (PrimLitF64 loc _) = loc
+  getLoc (NatLit loc _ _) = loc
+  getLoc (TermParens loc _) = loc
+  getLoc (FunApp loc _ _) = loc
+  getLoc (Lambda loc _ _) = loc
+  getLoc (CoLambda loc _ _) = loc
+  getLoc (Apply loc _ _) = loc 
+  getLoc (PrimCmdTerm pc) = getLoc pc 

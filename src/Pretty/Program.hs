@@ -156,14 +156,7 @@ instance PrettyAnn CST.TySynDeclaration where
 
 -- | Prettyprint list of type variables for class declaration.
 prettyTVars :: [(Variance, SkolemTVar, MonoKind)] -> Doc Annotation
-prettyTVars tvs =
-  parens
-    $   mempty
-    <+> cat
-          (punctuate
-            comma (prettyTParam <$> tvs)
-          )
-    <+> mempty
+prettyTVars tvs = parens $ cat (punctuate comma (prettyTParam <$> tvs))
 
 -- | Prettyprint list of xtors for class declaration.
 prettyXTors :: [(XtorName, [(PrdCns, Unpol.Typ)])] -> Doc Annotation
@@ -200,9 +193,6 @@ instance PrettyAnn CST.InstanceDeclaration where
 ---------------------------------------------------------------------------------
 -- Declaration
 ---------------------------------------------------------------------------------
-
-instance PrettyAnn ClassName where
-  prettyAnn (MkClassName nm) = prettyAnn nm
 
 instance PrettyAnn Core.Declaration where
   prettyAnn decl = prettyAnn (embedCoreDecl decl)

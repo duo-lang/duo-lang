@@ -67,13 +67,16 @@ mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap (TermCase pc) where
-  toHoverMap (MkTermCase {tmcase_term}) = toHoverMap tmcase_term
+  toHoverMap MkTermCase {tmcase_term} = toHoverMap tmcase_term
 
 instance ToHoverMap (TermCaseI pc) where
-  toHoverMap (MkTermCaseI {tmcasei_term}) = toHoverMap tmcasei_term
+  toHoverMap MkTermCaseI {tmcasei_term} = toHoverMap tmcasei_term
 
 instance ToHoverMap CmdCase where
-  toHoverMap (MkCmdCase {cmdcase_cmd}) = toHoverMap cmdcase_cmd
+  toHoverMap MkCmdCase {cmdcase_cmd} = toHoverMap cmdcase_cmd
+
+instance ToHoverMap InstanceCase where
+  toHoverMap MkInstanceCase {instancecase_cmd} = toHoverMap instancecase_cmd
 
 
 boundVarToHoverMap :: Loc -> Typ pol -> HoverMap
@@ -254,10 +257,18 @@ prettyPolRep PosRep = "**+**"
 prettyPolRep NegRep = "**-**"
 
 instance ToHoverMap (Typ pol) where
-  toHoverMap (TyVar loc rep _knd var) =
+  toHoverMap (TySkolemVar loc rep _knd var) = 
+    let 
+      msg = T.unlines [ "### Skolem Variable "
+                        , "- Name: `" <> ppPrint var <> "`"
+                        , "-Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      mkHoverMap loc msg
+  toHoverMap (TyUniVar loc rep _knd var) =
     let
-      msg = T.unlines [ "#### Type variable "
-                      , "- Name: `" <> ppPrint (tVarToUniTVar var) <> "`"
+      msg = T.unlines [ "#### Unification variable "
+                      , "- Name: `" <> ppPrint var <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in 
@@ -375,6 +386,10 @@ instance ToHoverMap TST.CommandDeclaration where
   toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
     toHoverMap cmddecl_cmd
 
+instance ToHoverMap TST.InstanceDeclaration where
+  toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
+    M.unions $! toHoverMap <$> instancedecl_cases
+
 instance ToHoverMap TST.Declaration where
   toHoverMap (TST.PrdCnsDecl _ decl) = toHoverMap decl
   toHoverMap (TST.CmdDecl decl)  = toHoverMap decl
@@ -385,7 +400,7 @@ instance ToHoverMap TST.Declaration where
   toHoverMap (TST.TyOpDecl _) = M.empty
   toHoverMap (TST.TySynDecl _) = M.empty
   toHoverMap (TST.ClassDecl _decl) = M.empty
-  toHoverMap (TST.InstanceDecl _decl) = M.empty
+  toHoverMap (TST.InstanceDecl decl) = toHoverMap decl
 
 instance ToHoverMap TST.Program where
   toHoverMap prog = M.unions (toHoverMap <$> prog)

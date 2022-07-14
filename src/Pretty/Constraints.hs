@@ -20,6 +20,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (DtorArgsConstraint loc) = parens ("Dtor args constraint at" <+> prettyAnn loc)
   prettyAnn (CaseConstraint loc) = parens ("Case constraint at" <+> prettyAnn loc)
   prettyAnn (PatternMatchConstraint loc) = parens ("Pattern match constraint at" <+> prettyAnn loc)
+  prettyAnn (InstanceConstraint loc) = parens ("Instance constraint at" <+> prettyAnn loc) 
   prettyAnn (DtorApConstraint loc) = parens ("DtorAp constraint at" <+> prettyAnn loc)
   prettyAnn (CommandConstraint loc) = parens ("Constraint from logical command at" <+> prettyAnn loc)
   prettyAnn (ReadConstraint loc)    = parens ("Constraint from Read command at" <+> prettyAnn loc)
@@ -40,10 +41,13 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (DtorAp loc) = parens ("Result type of Dtor application at" <+> prettyAnn loc)
   prettyAnn (TypeSchemeInstance fv loc) = parens ("Instantiation of type scheme" <+> prettyAnn fv <+> "at" <+> prettyAnn loc)
   prettyAnn (TypeParameter tn tv) = parens ("Instantiation of type parameter" <+> prettyAnn tv <+> "for" <+> prettyAnn tn)
+  prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type class" <+> prettyAnn cn <+> "for" <+> prettyAnn tv)
 
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
+  prettyAnn (TypeClass ann (MkClassName cn) typ) =
+    prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
 printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
@@ -107,19 +111,29 @@ instance PrettyAnn SolverResult where
 -- Bisubstitutions
 ---------------------------------------------------------------------------------
 
-prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn (tVarToUniTVar v)
+prettyBisubst :: (UniTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> prettyAnn v
+
+                                             , vsep [ "+ |->" <+> prettyAnn typ
+                                                    , "- |->" <+> prettyAnn tyn
+                                                    ]
+                                             ]
+
+prettyRecBisubst :: (SkolemTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
                                              ]
 
 instance PrettyAnn Bisubstitution where
-  prettyAnn (MkBisubstitution uvsubst) = vsep
+  prettyAnn (MkBisubstitution uvsubst recsubst) = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
     , ""
     , vsep $ intersperse "" (prettyBisubst <$> M.toList uvsubst)
     , "---------------------------------------------------------"
+    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList recsubst)
     ]

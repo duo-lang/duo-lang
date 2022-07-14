@@ -121,11 +121,11 @@ type operator ⅋ leftassoc at 3 := Par;
 
 -- | Injection into the right element of Par.
 def prd unit : forall a. a -> Bot ⅋ a :=
-  \x => cocase { MkPar(err,*) => x };
+  \x => cocase { MkPar(kerr,*) => x };
 
 -- | Injection into the left element of Par.
 def prd throw : forall a. a -> a ⅋ Bot :=
-  \x => cocase { MkPar(*,res) => x };
+  \x => cocase { MkPar(*,kres) => x };
 
 --------------------------------------------------------------------------------------------
 -- Negation as a data type
@@ -140,10 +140,10 @@ data Notp : (-a : CBV) -> CBV {
 }; 
 
 def prd handle1 : forall a b. a ⅋ b -> Notp(a) -> b := 
-  \f e => mu x. e >> case { MkNotp(e2) => f >> MkPar(e2,x)}; 
+  \f e => mu x. e >> case { MkNotp(k2) => f >> MkPar(k2,x)}; 
 
 def prd handle2 : forall a b. a ⅋ b -> Notp(b) -> a := 
-  \f e => mu x. e >> case { MkNotp(e2) => f >> MkPar(x,e2)}; 
+  \f e => mu x. e >> case { MkNotp(k2) => f >> MkPar(x,k2)}; 
 
 -- negative negation
 
@@ -154,8 +154,8 @@ codata Notn: (-a : CBN) -> CBN {
 -- De Morgan Dualities
 
 def prd demorgan1 : forall p q. Notp(p ⊕ q) -> Notn(p) & Notn(q) := \x =>
-   cocase {   Proj1(a) =>  x >> case { MkNotp(x2) => cocase { MkNotn(y) => Left(y)  >> x2 } >> a },
-              Proj2(b) =>  x >> case { MkNotp(x2) => cocase { MkNotn(y) => Right(y) >> x2 } >> b }  };
+   cocase {   Proj1(k) =>  x >> case { MkNotp(k2) => cocase { MkNotn(y) => Left(y)  >> k2 } >> k },
+              Proj2(k) =>  x >> case { MkNotp(k2) => cocase { MkNotn(y) => Right(y) >> k2 } >> k }  };
 
 def prd demorgan2 : forall p q. Notn(p) & Notn(q) -> Notp(p ⊕ q) := \x =>
    MkNotp(case { 
@@ -165,15 +165,15 @@ def prd demorgan2 : forall p q. Notn(p) & Notn(q) -> Notp(p ⊕ q) := \x =>
 
 def prd demorgan3 : forall p q. Notp(p) ⊕ Notp(q) -> Notn(p & q) := \x =>
   case x of {
-    Left(y)  => cocase { MkNotn(z) => y >> case { MkNotp(q) => z >> Proj1(q)} },
-    Right(y) => cocase { MkNotn(z) => y >> case { MkNotp(q) => z >> Proj2(q)} }
+    Left(y)  => cocase { MkNotn(z) => y >> case { MkNotp(k) => z >> Proj1(k)} },
+    Right(y) => cocase { MkNotn(z) => y >> case { MkNotp(k) => z >> Proj2(k)} }
   };
 
 -- this is the duality that does not hold intuitionistically 
 -- this can be seen by the twofold occurence of k
 def prd demorgan4 : forall p q. Notn(p & q) -> Notp(p) ⊕ Notp(q) := cocase { Ap(x,k) => 
-  x >> MkNotn(cocase { Proj1(a) => Left( MkNotp(a)) >> k,
-                       Proj2(a) => Right(MkNotp(a)) >> k})
+  x >> MkNotn(cocase { Proj1(k2) => Left( MkNotp(k2)) >> k,
+                       Proj2(k2) => Right(MkNotp(k2)) >> k})
 };
 
 def cns codemorgan1 : forall p q. Notn(p & q) -<  Notp(p) ⊕ Notp(q)  := \cox =< case {
@@ -183,7 +183,7 @@ def cns codemorgan1 : forall p q. Notn(p & q) -<  Notp(p) ⊕ Notp(q)  := \cox =
 -- todo: codemorgan 2-4
 
 def prd demorgan5 : forall p q. Notn(p ⅋ q) -> Notp(p) ⊗ Notp(q) := cocase { Ap(x,k) =>
- x >> MkNotn(cocase { MkPar(pc,qc) => MkTensor(MkNotp(pc),MkNotp(qc)) >> k }) };
+ x >> MkNotn(cocase { MkPar(kpc,kqc) => MkTensor(MkNotp(kpc),MkNotp(kqc)) >> k }) };
 
 def cns codemorgan5 : forall p q.  Notp( p ⊗ q  ) -<  Notn( p ) ⅋  Notn( q )  := case {
    CoAp(k1,x1) =>  (MkNotp( case {MkTensor(x2,x3) => x1 >> MkPar(MkNotn(x2),MkNotn(x3))})) >> k1}; 

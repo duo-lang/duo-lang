@@ -54,7 +54,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
       case res of
         Left _err -> do
           responder (Right (List []))

@@ -8,7 +8,8 @@ module TypeTranslation
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe
+import Data.List.NonEmpty ( NonEmpty )
+import Data.Maybe ( fromJust )
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set
@@ -31,43 +32,43 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data TranslateState = TranslateState
-  { recVarsUsed :: Set TVar
+  { recVarsUsed :: Set SkolemTVar
   , varCount :: Int }
 
 initialState :: TranslateState
 initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName TVar }
+newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName SkolemTVar }
 
 initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
 
-newtype TranslateM a = TraM { getTraM :: ReaderT (Map ModuleName Environment, TranslateReader) (StateT TranslateState (Except Error)) a }
-  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Map ModuleName Environment, TranslateReader), MonadError Error)
+newtype TranslateM a = TraM { getTraM :: ReaderT (Map ModuleName Environment, TranslateReader) (StateT TranslateState (Except (NonEmpty Error))) a }
+  deriving (Functor, Applicative, Monad, MonadState TranslateState, MonadReader (Map ModuleName Environment, TranslateReader), MonadError (NonEmpty Error))
 
-runTranslateM :: Map ModuleName Environment -> TranslateM a -> Either Error (a, TranslateState)
+runTranslateM :: Map ModuleName Environment -> TranslateM a -> Either (NonEmpty Error) (a, TranslateState)
 runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReader env)) initialState)
 
 ---------------------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-withVarMap :: (M.Map RnTypeName TVar -> M.Map RnTypeName TVar) -> TranslateM a -> TranslateM a
+withVarMap :: (M.Map RnTypeName SkolemTVar -> M.Map RnTypeName SkolemTVar) -> TranslateM a -> TranslateM a
 withVarMap f m = do
   local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m
 
-modifyVarsUsed :: (Set TVar -> Set TVar) -> TranslateM ()
+modifyVarsUsed :: (Set SkolemTVar -> Set SkolemTVar) -> TranslateM ()
 modifyVarsUsed f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed = f recVarsUsed, varCount })
 
-freshTVar :: TranslateM TVar
+freshTVar :: TranslateM SkolemTVar
 freshTVar = do
   i <- gets varCount
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed, varCount = varCount + 1 })
-  return $ MkTVar ("g" <> T.pack (show i))
+  return $ MkSkolemTVar ("g" <> T.pack (show i))
 
 ---------------------------------------------------------------------------------------------
 -- Upper bound translation functions
@@ -95,7 +96,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar defaultLoc NegRep Nothing tv
+    return $ TySkolemVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -107,8 +108,8 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       Codata -> do
         -- Upper bound translation of codata is empty
         return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
-translateTypeUpper' tv@TyVar{} = return tv
-translateTypeUpper' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
+translateTypeUpper' tv@TySkolemVar{} = return tv
+translateTypeUpper' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
 -- Lower bound translation functions
@@ -136,7 +137,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyVar defaultLoc pr Nothing tv
+    return $ TySkolemVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -148,8 +149,8 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
         return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
-translateTypeLower' tv@TyVar{} = return tv
-translateTypeLower' ty = throwOtherError ["Cannot translate type " <> ppPrint ty]
+translateTypeLower' tv@TySkolemVar{} = return tv
+translateTypeLower' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
 ---------------------------------------------------------------------------------------------
 -- Cleanup functions
@@ -189,30 +190,30 @@ cleanUpType ty = case ty of
     xtss' <- mapM cleanUpXtorSig xtss
     return $ TyCodataRefined loc pr tn xtss'
   -- Type variables remain unchanged
-  tv@TyVar{} -> return tv
+  tv@TySkolemVar{} -> return tv
   -- Other types imply incorrect translation
-  t -> throwOtherError ["Type translation: Cannot clean up type " <> ppPrint t]
+  t -> throwOtherError defaultLoc ["Type translation: Cannot clean up type " <> ppPrint t]
 
 ---------------------------------------------------------------------------------------------
 -- Exported functions
 ---------------------------------------------------------------------------------------------
 
-translateTypeUpper :: Map ModuleName Environment -> Typ Neg -> Either Error (Typ Neg)
+translateTypeUpper :: Map ModuleName Environment -> Typ Neg -> Either (NonEmpty Error) (Typ Neg)
 translateTypeUpper env ty = case runTranslateM env $ cleanUpType =<< translateTypeUpper' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSigUpper :: Map ModuleName Environment -> XtorSig Neg -> Either Error (XtorSig Neg)
+translateXtorSigUpper :: Map ModuleName Environment -> XtorSig Neg -> Either (NonEmpty Error) (XtorSig Neg)
 translateXtorSigUpper env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSigUpper' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'
 
-translateTypeLower :: Map ModuleName Environment -> Typ Pos -> Either Error (Typ Pos)
+translateTypeLower :: Map ModuleName Environment -> Typ Pos -> Either (NonEmpty Error) (Typ Pos)
 translateTypeLower env ty = case runTranslateM env $ cleanUpType =<< translateTypeLower' ty of
   Left err -> throwError err
   Right (ty',_) -> return ty'
 
-translateXtorSigLower :: Map ModuleName Environment -> XtorSig Pos -> Either Error (XtorSig Pos)
+translateXtorSigLower :: Map ModuleName Environment -> XtorSig Pos -> Either (NonEmpty Error) (XtorSig Pos)
 translateXtorSigLower env xts = case runTranslateM env $ cleanUpXtorSig =<< translateXtorSigLower' xts of
   Left err -> throwError err
   Right (xts',_) -> return xts'

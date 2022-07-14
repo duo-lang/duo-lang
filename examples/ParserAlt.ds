@@ -17,17 +17,17 @@ codata Parser :  CBN {
 
 
 def prd lit : Nat -> Parser := \n => cocase {
-    Parse(xs,m) => xs >> case {
-        Nil =>  throw MkUnit >> m,
+    Parse(xs,km) => xs >> case {
+        Nil =>  throw MkUnit >> km,
         Cons(y, ys) => nateq y n >> case {
-            True => unit CoAp(mu z.throw z >> m,ys) >> m,
-            False => throw MkUnit >> m
+            True => unit CoAp(mu z.throw z >> km,ys) >> km,
+            False => throw MkUnit >> km
         }            
     } 
 } ; 
 
 def prd success : Parser := cocase {
-    Parse(xs,m) => unit CoAp(mu z.throw z >> m,xs)  >> m
+    Parse(xs,km) => unit CoAp(mu z.throw z >> km,xs)  >> km
 };
 
 def prd failure : Parser := cocase {
@@ -35,19 +35,19 @@ def prd failure : Parser := cocase {
 };
 
 def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs,m) => 
+    Parse(xs,km) => 
       p1 >> 
-        Parse(xs,  MkPar(case { MkUnit => throw MkUnit >> m} ,
-                           case { CoAp(f,l) => p2 >> Parse(l,MkPar(f,mu z. unit z >> m)) }) ) };
+        Parse(xs,  MkPar(case { MkUnit => throw MkUnit >> km} ,
+                           case { CoAp(kf,l) => p2 >> Parse(l,MkPar(kf,mu z. unit z >> km)) }) ) };
 
 def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs,m) => p1 >> Parse(xs,MkPar(case { MkUnit => p2 >> Parse(xs,m) },mu z. unit z >> m) )
+    Parse(xs,km) => p1 >> Parse(xs,MkPar(case { MkUnit => p2 >> Parse(xs,km) },mu z. unit z >> km) )
 };
 
 
 def rec prd many1 : Parser -> Parser := \p => cocase {
-    Parse(xs,m) => p >> Parse(xs, MkPar(case { MkUnit => throw MkUnit >> m} , 
-                                            case { CoAp(f2,l) => alt success (many1 p) >> Parse(l,MkPar(f2, mu z. unit z >> m)) }))
+    Parse(xs,km) => p >> Parse(xs, MkPar(case { MkUnit => throw MkUnit >> km} , 
+                                            case { CoAp(kf2,l) => alt success (many1 p) >> Parse(l,MkPar(kf2, mu z. unit z >> km)) }))
 };
 
 def prd many : Parser -> Parser := \p => alt success (many1 p);

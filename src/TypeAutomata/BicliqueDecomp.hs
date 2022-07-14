@@ -15,7 +15,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Syntax.Common ( UniTVar(MkUniTVar) )
+import Syntax.Common ( SkolemTVar(MkSkolemTVar) )
 
 -------------------------------------------------------------------------------------
 -- Compute Biclique Decomposition
@@ -69,20 +69,20 @@ computeBicliqueDecomposition flgr = go flgr []
 -- Compute FlowMap
 -------------------------------------------------------------------------------------
 
-decompositionToFlowMap :: [Node] -> [Biclique] -> Map Node (Set UniTVar)
+decompositionToFlowMap :: [Node] -> [Biclique] -> Map Node (Set SkolemTVar)
 decompositionToFlowMap nodes bicliques = go bicliqueTvars (M.fromList [(n, S.empty ) | n <- nodes])
   where
-      go :: [(Biclique, UniTVar)] -> Map Node (Set UniTVar) -> Map Node (Set UniTVar)
+      go :: [(Biclique, SkolemTVar)] -> Map Node (Set SkolemTVar) -> Map Node (Set SkolemTVar)
       go [] acc = acc
       go (x:xs) acc = go xs (insertBicliqueIntoMap x acc)
 
-      bicliqueTvars :: [(Biclique, UniTVar)]
-      bicliqueTvars = zip bicliques [MkUniTVar ("t" <> T.pack (show n)) | n <- [0 :: Int ..] ]
+      bicliqueTvars :: [(Biclique, SkolemTVar)]
+      bicliqueTvars = zip bicliques [MkSkolemTVar ("t" <> T.pack (show n)) | n <- [0 :: Int ..] ]
 
-      insertBicliqueIntoMap :: (Biclique, UniTVar) -> Map Node (Set UniTVar) -> Map Node (Set UniTVar)
+      insertBicliqueIntoMap :: (Biclique, SkolemTVar) -> Map Node (Set SkolemTVar) -> Map Node (Set SkolemTVar)
       insertBicliqueIntoMap (MkBiclique biclique, tv) m = foldr (M.adjust (S.insert tv)) m biclique
 
 
 
-computeFlowMap :: FlowGraph -> Map Node (Set UniTVar)
+computeFlowMap :: FlowGraph -> Map Node (Set SkolemTVar)
 computeFlowMap flgr = decompositionToFlowMap (nodes flgr) (computeBicliqueDecomposition flgr)

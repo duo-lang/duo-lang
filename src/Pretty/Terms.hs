@@ -8,20 +8,31 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common
+import Syntax.Common.Names ( FreeVarName )
+import Syntax.Common.Primitives ( primOpKeyword, primTypeKeyword )
+import Syntax.Common.Types
+    ( NominalStructural(Refinement, Structural, Nominal) )
 import Translate.Embed
 import Translate.Reparse
 
 ---------------------------------------------------------------------------------
--- Pattern match cases and cocases
+-- Patterns
 ---------------------------------------------------------------------------------
 
--- Patterns
-
-instance PrettyAnn CST.TermPat where
-  prettyAnn (CST.XtorPat _ xt args) =
+instance PrettyAnn CST.Pattern where
+  prettyAnn (CST.PatXtor _ xt args) =
     prettyAnn xt <>
     parens (intercalateComma (map prettyAnn args))
+  prettyAnn (CST.PatVar _ var) =
+    prettyAnn var
+  prettyAnn (CST.PatStar _) =
+    annSymbol "*"
+  prettyAnn (CST.PatWildcard _) =
+    annSymbol "_"
+
+---------------------------------------------------------------------------------
+-- Pattern match cases and cocases
+---------------------------------------------------------------------------------
 
 -- CmdCase
 
@@ -45,18 +56,12 @@ instance PrettyAnn CST.TermCase where
       annSymbol "=>" <+>
       prettyAnn tmcase_term
 
-
 instance PrettyAnn (RST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (reparseTermCaseI termcasei)
-
-instance PrettyAnn CST.FVOrStar where
-  prettyAnn (CST.FoSFV v) = prettyAnn v
-  prettyAnn CST.FoSStar = "*"
 
 instance PrettyAnn CST.TermOrStar  where
   prettyAnn (CST.ToSTerm t) = prettyAnn t
   prettyAnn CST.ToSStar  = "*"
-
 
 ---------------------------------------------------------------------------------
 -- Substitutions

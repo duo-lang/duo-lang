@@ -5,6 +5,7 @@ module Syntax.TST.Terms
   , Substitution
   , Pattern(..)
   , CmdCase(..)
+  , InstanceCase(..)
   , Command(..)
   -- Functions
   , commandClosing
@@ -14,6 +15,7 @@ module Syntax.TST.Terms
   , getTypArgs
   , commandOpening
   , termLocallyClosed
+  , instanceCaseLocallyClosed
   ) where
 
 import Data.List (elemIndex)
@@ -25,6 +27,7 @@ import Errors
 import Syntax.Common
 import Syntax.Common.TypesPol
 import Syntax.Common.Pattern
+import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -72,6 +75,23 @@ instance Zonk CmdCase where
     MkCmdCase loc pat (zonk bisubst cmd)
 
 deriving instance Show CmdCase
+
+
+-- | Represents the implementation of a type class method.
+--
+--        Gamma           => c
+--        ^^^^^-----         ^------
+--              |               |
+--      instancecase_args   instancecase_cmd
+--
+data InstanceCase = MkInstanceCase
+  { instancecase_loc :: Loc
+  , instancecase_pat :: Pattern
+  , instancecase_cmd :: Command
+  }
+
+--deriving instance Eq CmdCase
+deriving instance Show InstanceCase
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -271,7 +291,7 @@ commandClosing = commandClosingRec 0
 ---------------------------------------------------------------------------------
 
 checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError Nothing $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
+checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
                              | otherwise = checkIfBoundInner (env !! i) rep (i,j)
 
 checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either Error ()
@@ -279,14 +299,14 @@ checkIfBoundInner vars PrdRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Prd,_) -> return ()
-      (Cns,_) -> Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
-    else Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Cns,_) -> Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
+    else Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 checkIfBoundInner vars CnsRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Cns,_) -> return ()
-      (Prd,_) -> Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
-    else Left $ OtherError Nothing $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Prd,_) -> Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
+    else Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 
 pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm -> Either Error ()
 pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm
@@ -320,9 +340,12 @@ commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
-
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
+
+instanceCaseLocallyClosed :: InstanceCase -> Either Error ()
+instanceCaseLocallyClosed (MkInstanceCase _ (XtorPat _ _ args) cmd) =
+  commandLocallyClosedRec [second (const ()) <$> args] cmd
 
 ---------------------------------------------------------------------------------
 -- Shifting
