@@ -57,9 +57,11 @@ coalesce :: SolverResult -> Bisubstitution
 coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs) M.empty
     where
         res = M.keys tvarSolution
-        f tvar = (tvar, ( runCoalesceM result $ coalesceType $ UniTyVar defaultLoc PosRep Nothing tvar
-                        , runCoalesceM result $ coalesceType $ UniTyVar defaultLoc NegRep Nothing tvar))
-        xs = f <$> res
+        f tvar = do x <- coalesceType $ UniTyVar defaultLoc PosRep Nothing tvar
+                    y <- coalesceType $ UniTyVar defaultLoc NegRep Nothing tvar
+                    return (x, y)
+
+        xs = zip res $ runCoalesceM result $ mapM f res
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (SkolemTyVar loc rep something tv) =  return (SkolemTyVar loc rep something tv)
