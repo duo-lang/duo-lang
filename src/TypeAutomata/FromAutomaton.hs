@@ -20,6 +20,7 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
+import Data.List.NonEmpty (NonEmpty)
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
@@ -45,13 +46,13 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set SkolemTVar)
                                      , cache :: Set Node
                                      , tvars :: [SkolemTVar]
                                      }
-type AutToTypeM a = (ReaderT AutToTypeState (Except Error)) a
+type AutToTypeM a = (ReaderT AutToTypeState (Except (NonEmpty Error))) a
 
-runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either Error a
+runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either (NonEmpty Error) a
 runAutToTypeM m state = runExcept (runReaderT m state)
 
 
-autToType :: TypeAutDet pol -> Either Error (TypeScheme pol)
+autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
@@ -170,7 +171,7 @@ nodeToTypeNoCache rep i = do
     let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
     let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
           Just x -> pure x
-          Nothing -> throwOtherError ["Impossible: Cannot loose type arguments in automata"]
+          Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
     nominals <- do
         forM (S.toList tns) $ \(tn, variances) -> do
           argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]

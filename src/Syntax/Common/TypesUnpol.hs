@@ -2,7 +2,7 @@ module Syntax.Common.TypesUnpol where
 
 import Syntax.Common
 import Data.List.NonEmpty (NonEmpty)
-import Utils ( Loc )
+import Utils ( Loc, HasLoc(..))
 
 ---------------------------------------------------------------------------------
 -- Parse Types
@@ -27,6 +27,21 @@ data Typ where
   TyBinOp :: Loc -> Typ -> BinOp -> Typ -> Typ
   TyParens :: Loc -> Typ -> Typ
   deriving Show
+
+instance HasLoc Typ where
+  getLoc (TyUniVar loc _) = loc
+  getLoc (TySkolemVar loc _) = loc
+  getLoc (TyXData loc _ _) = loc
+  getLoc (TyXRefined loc _ _ _) = loc
+  getLoc (TyNominal loc _ _) = loc
+  getLoc (TyRec loc _ _) = loc
+  getLoc (TyTop loc) = loc
+  getLoc (TyBot loc) = loc
+  getLoc (TyPrim loc _) = loc
+  -- Implementation of getLoc for TyBinOpChain a bit hacky!
+  getLoc (TyBinOpChain ty _) = getLoc ty
+  getLoc (TyBinOp loc _ _ _) = loc
+  getLoc (TyParens loc _) = loc
 
 data XtorSig = MkXtorSig
   { sig_name :: XtorName
@@ -55,6 +70,9 @@ data TypeScheme = TypeScheme
   }
   deriving Show
 
+instance HasLoc TypeScheme where
+  getLoc ts = ts_loc ts
+
 ------------------------------------------------------------------------------
 -- Data Type declarations
 ------------------------------------------------------------------------------
@@ -78,6 +96,9 @@ data DataDecl = NominalDecl
   }
 
 deriving instance (Show DataDecl)
+
+instance HasLoc DataDecl where
+  getLoc decl = data_loc decl
 
 ---------------------------------------------------------------------------------
 -- Constraints

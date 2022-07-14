@@ -11,7 +11,7 @@ import Syntax.Common
 import Syntax.Common.TypesPol ( freeTVars )
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common.TypesUnpol
-import Utils (Loc(..))
+import Utils (Loc(..), defaultLoc)
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
@@ -24,7 +24,7 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
     if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
-        else throwError (LowerError (Just ts_loc) MissingVarsInTypeScheme)
+        else throwError (LowerError ts_loc MissingVarsInTypeScheme :| [])
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
@@ -57,9 +57,9 @@ resolveTyp rep (TyNominal loc name args) = do
             [] -> do
                 typ' <- resolveTyp rep typ
                 pure $ RST.TySyn loc rep name' typ'
-            _ -> throwError (OtherError (Just loc) "Type synonyms cannot be applied to arguments (yet).")
+            _ -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
         NominalResult _ _ Refined _ -> do
-            throwError (OtherError (Just loc) "Refined type cannot be used as a nominal type constructor.")
+            throwOtherError loc ["Refined type cannot be used as a nominal type constructor."]
         NominalResult name' _ NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
@@ -68,13 +68,13 @@ resolveTyp rep (TyRec loc v typ) =
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
-    throwError (LowerError (Just loc) TopInPosPolarity)
+    throwError (LowerError loc TopInPosPolarity :| [])
 resolveTyp NegRep (TyTop loc) =
     pure $ RST.TyTop loc Nothing
 resolveTyp PosRep (TyBot loc) =
     pure $ RST.TyBot loc Nothing
 resolveTyp NegRep (TyBot loc) =
-    throwError (LowerError (Just loc) BotInNegPolarity)
+    throwError (LowerError loc BotInNegPolarity :| [])
 resolveTyp rep (TyBinOpChain fst rest) =
     resolveBinOpChain rep fst rest
 resolveTyp rep (TyBinOp loc fst op snd) =
@@ -89,7 +89,7 @@ resolveTyp rep (TyPrim loc pt) =
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
 resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
     if length args /= length kindArgs  then
-        throwError (OtherError (Just loc) ("Type constructor " <> unTypeName tn <> " must be fully applied"))
+        throwOtherError loc ["Type constructor " <> unTypeName tn <> " must be fully applied"]
     else do
         let
             f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
@@ -126,13 +126,13 @@ desugaring loc PosRep UnionDesugaring tl tr = do
     tr <- resolveTyp PosRep tr
     pure $ RST.TyUnion loc Nothing tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
-    throwError (LowerError (Just loc) UnionInNegPolarity)
+    throwError (LowerError loc UnionInNegPolarity :| [])
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
     pure $ RST.TyInter loc Nothing tl tr
 desugaring loc PosRep InterDesugaring _ _ =
-    throwError (LowerError (Just loc) IntersectionInPosPolarity)
+    throwError (LowerError loc IntersectionInPosPolarity :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
     resolveTyp rep (TyNominal loc tyname [tl, tr])
 
@@ -166,7 +166,7 @@ associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
     then do
         associateOps (TyBinOp loc1 lhs s1 rhs1) (next :| rest)
     else
-        throwError (OtherError Nothing "Unhandled case reached. This is a bug the operator precedence parser")
+        throwOtherError defaultLoc ["Unhandled case reached. This is a bug the operator precedence parser"]
 
 resolveBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> ResolverM (RST.Typ pol)
 resolveBinOp loc rep lhs s rhs = do
