@@ -180,7 +180,17 @@ focusXtor' eo pc     ty ns xt (CnsTerm                                 cns:pcter
 
 focusCmdCase :: EvaluationOrder -> CmdCase -> CmdCase
 focusCmdCase eo MkCmdCase { cmdcase_pat = XtorPat loc xt args, cmdcase_cmd } =
-    MkCmdCase defaultLoc (XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)) (focusCmd eo cmdcase_cmd)
+    MkCmdCase { cmdcase_loc = defaultLoc
+              , cmdcase_pat = XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)
+              , cmdcase_cmd = focusCmd eo cmdcase_cmd}
+
+
+focusInstanceCase :: EvaluationOrder -> InstanceCase -> InstanceCase
+focusInstanceCase eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, instancecase_cmd } =
+    MkInstanceCase { instancecase_loc = defaultLoc
+                   , instancecase_pat = XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)
+                   , instancecase_cmd = focusCmd eo instancecase_cmd
+                   }
 
 
 focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
@@ -238,6 +248,15 @@ focusCommandDeclaration eo MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmdd
                          , cmddecl_cmd = focusCmd eo cmddecl_cmd
                          }
 
+focusInstanceDeclaration :: EvaluationOrder -> InstanceDeclaration -> InstanceDeclaration
+focusInstanceDeclaration eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+    MkInstanceDeclaration { instancedecl_loc
+                          , instancedecl_doc
+                          , instancedecl_name
+                          , instancedecl_typ
+                          , instancedecl_cases = focusInstanceCase eo <$> instancedecl_cases
+                          }
+
 focusDecl :: EvaluationOrder -> Declaration -> Declaration
 focusDecl eo (PrdCnsDecl pcrep decl) = PrdCnsDecl pcrep (focusPrdCnsDeclaration eo decl)
 focusDecl eo (CmdDecl decl)          = CmdDecl (focusCommandDeclaration eo decl)
@@ -248,7 +267,7 @@ focusDecl _  decl@SetDecl {}         = decl
 focusDecl _  decl@TyOpDecl {}        = decl
 focusDecl _  decl@TySynDecl {}       = decl
 focusDecl _  decl@ClassDecl {}       = decl
-focusDecl _  decl@InstanceDecl{}     = decl
+focusDecl eo (InstanceDecl decl)     = InstanceDecl (focusInstanceDeclaration eo decl)
 
 focusProgram :: EvaluationOrder -> Program -> Program
 focusProgram eo = fmap (focusDecl eo)

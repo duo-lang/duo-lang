@@ -220,7 +220,20 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
-resolveClassDeclaration :: CST.ClassDeclaration 
+checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [(XtorName, [(PrdCns, Typ)])] -> ResolverM ()
+checkVarianceClassDeclaration loc kinds = mapM_ checkVarianceXtorPair
+    where
+      checkVarianceXtorPair :: (XtorName, [(PrdCns, Typ)]) -> ResolverM ()
+      checkVarianceXtorPair = checkVarianceXtor loc Covariant (MkPolyKind kinds CBV) . mkXtorSig
+
+      mkXtorSig :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
+      mkXtorSig (xn,tys) = CST.MkXtorSig xn $ uncurry toPrdCnsType <$> tys
+
+      toPrdCnsType :: PrdCns -> Typ -> PrdCnsTyp
+      toPrdCnsType Prd = PrdType
+      toPrdCnsType Cns = CnsType
+
+resolveClassDeclaration :: CST.ClassDeclaration
                         -> ResolverM RST.ClassDeclaration
 resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
   let go :: (PrdCns, Typ) -> ResolverM (PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)
@@ -232,6 +245,7 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
       go' (xtor, typs) = do
             types <- forM typs go
             pure (xtor, types)
+  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_xtors
   xtorRes <- forM classdecl_xtors go'
   pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
                               , classdecl_doc = classdecl_doc
@@ -244,7 +258,7 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
 -- Instance Declaration
 ---------------------------------------------------------------------------------
 
-resolveInstanceDeclaration :: CST.InstanceDeclaration 
+resolveInstanceDeclaration :: CST.InstanceDeclaration
                         -> ResolverM RST.InstanceDeclaration
 resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
   typ <- resolveTyp PosRep instancedecl_typ

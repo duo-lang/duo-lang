@@ -15,6 +15,7 @@ module Syntax.TST.Terms
   , getTypArgs
   , commandOpening
   , termLocallyClosed
+  , instanceCaseLocallyClosed
   ) where
 
 import Data.List (elemIndex)
@@ -26,6 +27,7 @@ import Errors
 import Syntax.Common
 import Syntax.Common.TypesPol
 import Syntax.Common.Pattern
+import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -346,9 +348,12 @@ commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >>
 commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
-
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
+
+instanceCaseLocallyClosed :: InstanceCase -> Either Error ()
+instanceCaseLocallyClosed (MkInstanceCase _ (XtorPat _ _ args) cmd) =
+  commandLocallyClosedRec [second (const ()) <$> args] cmd
 
 ---------------------------------------------------------------------------------
 -- Shifting
