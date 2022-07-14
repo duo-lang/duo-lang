@@ -41,9 +41,9 @@ import Control.Monad
 -- Recursive type variables have a polarity. They are therefore mapped to
 -- either `(Just n, Nothing)` or `(Nothing, Just n)`
 --
--- Unification variables exist both positively and negatively. They are therefore
+-- Skolem variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(Just n, Just m)`
-newtype LookupEnv = LookupEnv { tvarEnv :: Map TVar (Maybe Node, Maybe Node) }
+newtype LookupEnv = LookupEnv { tvarEnv :: Map SkolemTVar (Maybe Node, Maybe Node) }
 
 type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
@@ -58,17 +58,17 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [TVar] -> [(TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes :: [SkolemTVar] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
 createNodes tvars = createNode <$> createPairs tvars
   where
-    createNode :: (TVar, Node, Node) -> (TVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode :: (SkolemTVar, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
     createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
 
-    createPairs :: [TVar] -> [(TVar,Node,Node)]
+    createPairs :: [SkolemTVar] -> [(SkolemTVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [TVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [SkolemTVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -82,7 +82,7 @@ initialize tvars =
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
-runTypeAutTvars :: [TVar]
+runTypeAutTvars :: [SkolemTVar]
                 -> TTA a
                 -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
@@ -109,18 +109,18 @@ newNodeM = do
   graph <- gets ta_gr
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: PolarityRep pol -> TVar -> TTA Node
+lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA Node
 lookupTVar PosRep tv = do
   tvarEnv <- asks tvarEnv
   case M.lookup tv tvarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> unTVar tv
+                                              , "    " <> unSkolemTVar tv
                                               , "is not available in the automaton."
                                               ]
     Just (Nothing,_) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                                        , "The type variable:"
-                                                       , "    " <> unTVar tv
+                                                       , "    " <> unSkolemTVar tv
                                                        , "exists only at negative polarity."
                                                        ]
     Just (Just pos,_) -> return pos
@@ -129,12 +129,12 @@ lookupTVar NegRep tv = do
   case M.lookup tv tvarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> unTVar tv
+                                              , "    " <> unSkolemTVar tv
                                               , "is not available in the automaton."
                                               ]
     Just (_,Nothing) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                                        , "The type variable:"
-                                                       , "    " <> unTVar tv
+                                                       , "    " <> unSkolemTVar tv
                                                        , "exists only at positive polarity."
                                                        ]
     Just (_,Just neg) -> return neg
@@ -170,7 +170,13 @@ insertVariantType (ContravariantType ty) = do
   pure (node, Contravariant)
 
 insertType :: Typ pol -> TTA Node
-insertType (TyVar _ rep _ tv) = lookupTVar rep tv
+insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
+insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert type into automaton."
+                                                            , "The unification variable:"
+                                                            , "    " <> unUniTVar tv
+                                                            , "should not appear at this point in the program."
+                                                            ]
+
 insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)

@@ -17,18 +17,21 @@ import Utils (Loc(..), defaultLoc)
 -- Lowering & Polarization (CST -> RST)
 ---------------------------------------------------------------------------------
 
+
+
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if freeTVars monotype `S.isSubsetOf` S.fromList (map RST.skolemTVarToTVar ts_vars)
-        then pure (RST.TypeScheme ts_loc (map RST.skolemTVarToTVar ts_vars) monotype)
+    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
+    then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (LowerError ts_loc MissingVarsInTypeScheme :| [])
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
-    pure $ RST.TyVar loc rep Nothing (RST.uniTVarToTVar v)
+    pure $ RST.TyUniVar loc rep Nothing v
 resolveTyp rep (TySkolemVar loc v) = 
-    pure $ RST.TyVar loc rep Nothing (RST.skolemTVarToTVar v)
+    pure $ RST.TySkolemVar loc rep Nothing v
+
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
@@ -61,7 +64,8 @@ resolveTyp rep (TyNominal loc name args) = do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 resolveTyp rep (TyRec loc v typ) =
-    RST.TyRec loc rep (RST.skolemTVarToTVar v) <$> resolveTyp rep typ
+        RST.TyRec loc rep v <$> resolveTyp rep typ
+
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
     throwError (LowerError loc TopInPosPolarity :| [])

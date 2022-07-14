@@ -59,6 +59,7 @@ import Utils
 -- We use varCount for generating fresh type variables.
 -- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
+
 data GenerateState = GenerateState
   { varCount :: Int
   , constraintSet :: ConstraintSet
@@ -102,13 +103,13 @@ runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReade
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
   var <- gets varCount
-  let tvar = MkTVar ("u" <> T.pack (show var))
+  let tvar = MkUniTVar ("u" <> T.pack (show var))
   -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVarToUniTVar tvar, uvp)] } })
-  return (TyVar defaultLoc PosRep Nothing tvar, TyVar defaultLoc NegRep Nothing tvar)
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
+  return (TyUniVar defaultLoc PosRep Nothing tvar, TyUniVar defaultLoc NegRep Nothing tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
@@ -138,17 +139,17 @@ freshTVarsForInstance rep decl typ =
 
 freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution)
 freshTVarsForTypeParams' rep kindArgs tn = do
-  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (skolemTVarToTVar tv,variance)) <$> kindArgs)
+  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
   let map = paramsMap kindArgs vars
   case rep of
     PosRep -> pure (varTypes, map)
     NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  Either RnTypeName ClassName -> [(TVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars ::  Either RnTypeName ClassName -> [(SkolemTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar ((case tn of Left tn -> TypeParameter tn; Right cn -> TypeClassInstance cn) (tVarToUniTVar tv))
+    (tyPos, tyNeg) <- freshTVar ((case tn of Left tn -> TypeParameter tn; Right cn -> TypeClassInstance cn) tv)
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
@@ -157,10 +158,10 @@ freshTVarsForTypeParams' rep kindArgs tn = do
 
    paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap kindArgs freshVars =
-     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> skolemTVarToTVar tv) <$> kindArgs) freshVars))
+     MkBisubstitution M.empty (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
 
 substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution -> Bisubstitution
-substituteInstanceType (_,tv,_) instanceType (MkBisubstitution subst) = MkBisubstitution $! M.adjust (const instanceType) (MkTVar $ unSkolemTVar tv) subst
+substituteInstanceType (_,tv,_) instanceType (MkBisubstitution empty subst) = MkBisubstitution empty $! M.adjust (const instanceType) tv subst
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -191,11 +192,11 @@ lookupContext rep (i,j) = do
 ---------------------------------------------------------------------------------------------
 -- Instantiating type schemes with fresh unification variables.
 ---------------------------------------------------------------------------------------------
-
+--
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
-  pure $ zonk (MkBisubstitution (M.fromList freshVars)) ts_monotype
+  pure $ zonk (MkBisubstitution M.empty (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint
