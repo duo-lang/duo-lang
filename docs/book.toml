@@ -1,7 +1,7 @@
 [book]
-title = "DualSub - Documentation"
+title = "Duo - Documentation"
 authors = ["David Binder"]
-description = "Documentation of the DualSub language"
+description = "Documentation of the Duo language"
 language = "en"
 multilingual = false
 src = "src"
@@ -10,5 +10,5 @@ src = "src"
 default-theme = "light"
 preferred-dark-theme = "light"
 mathjax-support = true
-git-repository-url = "https://github.com/ps-tuebingen/dualsub"
-edit-url-template = "https://github.com/ps-tuebingen/dualsub/edit/main/docs/{path}"
+git-repository-url = "https://github.com/ps-tuebingen/duolang"
+edit-url-template = "https://github.com/ps-tuebingen/duolang/edit/main/docs/{path}"
