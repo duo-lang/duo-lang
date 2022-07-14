@@ -1,4 +1,4 @@
-# dualsub-client
+# duolang-client
 
 ## Build the Visual Studio Code extension
 
@@ -23,5 +23,5 @@ Alternatively, you can use the prebuilt .vsix file provided by the Github Action
 To install the vscode extension, use the following command
 
 ```console
-code --install-extension dualsub-client-0.0.1.vsix
+code --install-extension duolang-client-0.0.1.vsix
 ```

@@ -1,5 +1,5 @@
 {
-    "scopeName": "source.dualsub",
+    "scopeName": "source.duolang",
     "patterns": [
         { "include": "#keywords" },
         { "include": "#symbols" },
