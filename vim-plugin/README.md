@@ -13,8 +13,8 @@ Further, `jq` is required to write the `coc` config.
 
 ## Recognize Filetype
 
-To recognize `.ds` files as `duo`, copy the the content of `ftdetect/` into `$VIMDIR/ftdetect/`
-All other steps require the filetype to be set to `duo` to work properly.
+To recognize `.duo` files as `duo-lang`, copy the the content of `ftdetect/` into `$VIMDIR/ftdetect/`
+All other steps require the filetype to be set to `duo-lang` to work properly.
 
 ## Syntax highlighting
 
@@ -30,10 +30,10 @@ If you are using `coc`, then the config looks like this:
 ```
 {
   "languageserver": {
-    "duo": {
+    "duo-lang": {
         "command": "duo",
         "args": ["lsp"],
-        "filetypes": ["duo"]
+        "filetypes": ["duo-lang"]
     }
   }
 }
@@ -47,4 +47,4 @@ Simply copy the content of `UltiSnip/` into `$VIMDIR/UltiSnip/`.
 
 ## Notes
 
-Instead of copying, you might want to consider symlinks instead, e.g. `ln -s $(pwd)/ftdetect/duo.vim $VIMDIR/ftdetect/duo.vim`.
+Instead of copying, you might want to consider symlinks instead, e.g. `ln -s $(pwd)/ftdetect/duo-lang.vim $VIMDIR/ftdetect/duo-lang.vim`.

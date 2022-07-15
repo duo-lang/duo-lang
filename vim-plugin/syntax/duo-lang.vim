@@ -3,26 +3,26 @@ if exists("b:current_syntax")
   finish
 endif
 
-"syn keyword dsKeyword match comatch prd cns cmd def with Done Print forall data codata rec mu
-syn keyword dsKeyword case cocase def of ExitSuccess ExitFailure Print forall data codata rec mu import return set Top Bot CBV CBN refinement constructor destructor type operator at leftassoc rightassoc cmd prd cns class instance
+"syn keyword duoKeyword match comatch prd cns cmd def with Done Print forall data codata rec mu
+syn keyword duoKeyword case cocase def of ExitSuccess ExitFailure Print forall data codata rec mu import return set Top Bot CBV CBN refinement constructor destructor type operator at leftassoc rightassoc cmd prd cns class instance
 
-"syn match dsSymbs ':=\|=>\|>>\|\\/\|/\\\|<:\|<<:\|:>>'
-syn match dsSymbs ':=\|=>\|>>\|\\/\|/\\\|<:'
-syn match dsLit '\v<[0-9]+>'
-"syn match dsComment '#.*$'
-syn match dsComment '--.*$'
+"syn match duoSymbs ':=\|=>\|>>\|\\/\|/\\\|<:\|<<:\|:>>'
+syn match duoSymbs ':=\|=>\|>>\|\\/\|/\\\|<:'
+syn match duoLit '\v<[0-9]+>'
+"syn match duoComment '#.*$'
+syn match duoComment '--.*$'
 
 
-syn region dsPrdArgList start="(" end=")" contains=dsPrdArg
-syn region dsCnsArgList start="\[" end="]" contains=dsCnsArg
+syn region duoPrdArgList start="(" end=")" contains=duoPrdArg
+syn region duoCnsArgList start="\[" end="]" contains=duoCnsArg
 
-syn match dsPrdArg '\v<\k*>' contained
-syn match dsCnsArg '\v<\k*>' contained
+syn match duoPrdArg '\v<\k*>' contained
+syn match duoCnsArg '\v<\k*>' contained
 
 let b:current_syntax = "duo-lang"
 
-hi def link dsKeyword Keyword
-hi def link dsLit Number
-hi def link dsSymbs Macro
-"hi def link dsSymbs Operator
-hi def link dsComment Comment
+hi def link duoKeyword Keyword
+hi def link duoLit Number
+hi def link duoSymbs Macro
+"hi def link duoSymbs Operator
+hi def link duoComment Comment

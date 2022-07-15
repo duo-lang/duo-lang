@@ -1,1 +1,1 @@
-au BufRead,BufNewFile *.ds set filetype=duo-lang
+au BufRead,BufNewFile *.duo set filetype=duo-lang
