@@ -34,6 +34,8 @@ newtype RecTVar = MkRecTVar {unRecTVar :: Text} deriving (Eq, Show, Ord)
 
 recTVarToSkolemTVar :: RecTVar -> SkolemTVar
 recTVarToSkolemTVar (MkRecTVar name) = MkSkolemTVar name
+skolemTVarToRecTVar :: SkolemTVar -> RecTVar
+skolemTVarToRecTVar (MkSkolemTVar name) = MkRecTVar name
 
 
 -- | Name of a type class. Starts with an uppercase letter.

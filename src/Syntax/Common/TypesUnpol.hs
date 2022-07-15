@@ -15,7 +15,7 @@ data Typ where
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> [Typ] -> Typ
-  TyRec :: Loc -> SkolemTVar -> Typ -> Typ
+  TyRec :: Loc -> RecTVar -> Typ -> Typ
   TyTop :: Loc -> Typ
   TyBot :: Loc -> Typ
   TyPrim :: Loc -> PrimitiveType -> Typ

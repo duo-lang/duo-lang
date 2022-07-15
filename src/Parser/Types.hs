@@ -111,7 +111,7 @@ recTypeP = do
   (rv,_) <- tvarP
   _ <- symbolP SymDot
   (ty, endPos) <- typP
-  pure (TyRec (Loc startPos endPos) rv ty, endPos)
+  pure (TyRec (Loc startPos endPos) (skolemTVarToRecTVar rv) ty, endPos)
 
 ---------------------------------------------------------------------------------
 -- Refinement types
