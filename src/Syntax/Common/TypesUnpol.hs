@@ -11,6 +11,7 @@ import Utils ( Loc, HasLoc(..))
 data Typ where
   TyUniVar :: Loc -> UniTVar -> Typ
   TySkolemVar :: Loc -> SkolemTVar -> Typ
+  TyRecVar :: Loc -> RecTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> [Typ] -> Typ
