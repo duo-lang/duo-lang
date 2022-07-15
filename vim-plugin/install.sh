@@ -26,7 +26,7 @@ link_file UltiSnips duo-lang.snippets
 if type jq > /dev/null; then
     cocfile=$VIMDIR/coc-settings.json
     tmpf=$(mktemp --tmpdir=$(dirname $cocfile) -t)
-    jq '.languageserver.duo-lang = { command: "duo", args: [ "lsp" ], filetypes: [ "duo" ] }' $cocfile > $tmpf
+    jq '.languageserver."duo-lang" = { command: "duo", args: [ "lsp" ], filetypes: [ "duo" ] }' $cocfile > $tmpf
     mv $tmpf $cocfile
 else
     echo "jq not found. Please configure Coc by hand" >&2
