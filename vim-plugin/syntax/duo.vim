@@ -19,7 +19,7 @@ syn region dsCnsArgList start="\[" end="]" contains=dsCnsArg
 syn match dsPrdArg '\v<\k*>' contained
 syn match dsCnsArg '\v<\k*>' contained
 
-let b:current_syntax = "dualsub"
+let b:current_syntax = "duo"
 
 hi def link dsKeyword Keyword
 hi def link dsLit Number

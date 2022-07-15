@@ -4,7 +4,7 @@ VIMDIR=$HOME/.vim/
 
 cdir=$PWD
 cd ..
-stack install dualsub
+stack install duo
 cd $cdir
 
 link_file() {
@@ -19,14 +19,14 @@ link_file() {
     fi
 }
 
-link_file ftdetect dualsub.vim
-link_file syntax dualsub.vim
-link_file UltiSnips dualsub.snippets
+link_file ftdetect duo.vim
+link_file syntax duo.vim
+link_file UltiSnips duo.snippets
 
 if type jq > /dev/null; then
     cocfile=$VIMDIR/coc-settings.json
     tmpf=$(mktemp --tmpdir=$(dirname $cocfile) -t)
-    jq '.languageserver.dualsub = { command: "dualsub", args: [ "lsp" ], filetypes: [ "dualsub" ] }' $cocfile > $tmpf
+    jq '.languageserver.duo = { command: "duo", args: [ "lsp" ], filetypes: [ "duo" ] }' $cocfile > $tmpf
     mv $tmpf $cocfile
 else
     echo "jq not found. Please configure Coc by hand" >&2
