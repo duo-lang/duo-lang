@@ -13,7 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let config = vscode.workspace.getConfiguration("duo-lang-client");
 
 	let defaultCmd = "duo";
-	let duo-langCmd = config.get<string>("executable") || defaultCmd;
+	let duoLangCmd = config.get<string>("executable") || defaultCmd;
 
     // Assemble arguments
     let args: string[] = [];
@@ -27,12 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let serverOptions: vscodelang.ServerOptions = {
         run: {
-            command: duo-langCmd,
+            command: duoLangCmd,
             args: args,
             options: {}
         },
         debug: {
-            command: duo-langCmd,
+            command: duoLangCmd,
             args: args,
             options: {}
         }
