@@ -25,7 +25,7 @@ To use syntax highlighting, copy the content of `syntax/` into `$VIMDIR/syntax/`
 You need a plugin which supports the language server protocol.
 I recommend [coc.nvim](https://github.com/neoclide/coc.nvim).
 
-You should first install the language server with `stack install duo` and then configure your language server plugin to use `duo`.
+You should first install the language server with `stack install duo-lang` and then configure your language server plugin to use `duo`.
 If you are using `coc`, then the config looks like this:
 ```
 {
