@@ -7,6 +7,7 @@ import Bool;
 constructor Z;
 constructor S(CBV);
 
+-- def rec prd add : (rec a. <Z, S(a)>) -> (rec b. <Z, S(b)>) -> rec c. <Z, S(c)> :=
 def rec prd add :=
   \n m => case n of { Z => m
                     , S(n) => S(add n m)};

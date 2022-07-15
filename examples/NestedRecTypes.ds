@@ -1,0 +1,31 @@
+import Bool;
+import Function;
+import Peano;
+import List;
+
+codata Stream : (+a: CBV) -> CBN {
+    Head(return a),
+    Tail(return Stream(a))
+};
+
+data Prod : (+a: CBV, +b: CBV) -> CBV {
+    Pair(a,b)
+};
+
+def rec prd sumsS : Nat -> Stream (Prod(Nat,List(Nat))) :=
+    \n => cocase { 
+            Head(k) => Pair(n,upTo n) >> k,
+            Tail(k) => sumsS(S(n)) >> k
+        };
+
+def prd isSum : Prod(Nat,List(Nat)) -> Bool :=
+    \p => case p of {
+        Pair(n,ns) => nateq (mul 2 (sum ns)) (mul n S(n))
+    };
+
+-- def rec prd isSumsS : Nat -> Stream(Prod(Nat,List(Nat))) -> Bool :=
+    -- \n s => case n of {
+        -- Z => True,
+        -- S(n0) => s.Head(mu p. s.Tail(mu s0. and (isSum p) (isSumsS n0 s0)))
+    -- };
+

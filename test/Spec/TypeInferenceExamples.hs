@@ -11,7 +11,8 @@ import Errors
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [("examples/TypeClasses.ds", "Backend not implemented for type classes")]
+pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type classes")
+               ]
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: [(FilePath, Either Error TST.Program)] -- ^ examples

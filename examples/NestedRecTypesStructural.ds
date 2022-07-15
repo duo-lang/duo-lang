@@ -1,0 +1,29 @@
+import Bool;
+import Function;
+import PeanoStructural;
+import ListStructural;
+
+destructor Head(return CBV);
+destructor Tail(return CBN);
+
+constructor Pair(CBV,CBV);
+
+def rec prd sumsS :=
+    \n => cocase { 
+            Head(k) => Pair(n,upTo n) >> k,
+            Tail(k) => sumsS(S(n)) >> k
+        };
+
+def prd isSum :=
+    \p => case p of {
+        Pair(n,ns) => nateq (mul S(S(Z)) (sum ns)) (mul n S(n))
+    };
+
+-- def rec prd isSumsS :=
+    -- \n s => case n of {
+        -- Z => True,
+        -- --  S(n0) => s.Head(mu p. s.Tail(mu s0. and (isSum p) (isSumsS n0 s0)))
+        -- --  S(n0) => and (isSum s.Head(*)) (isSumsS n0 s.Tail(*))
+        -- S(n0) => and (isSum s.Head(*)) True
+    -- };
+
