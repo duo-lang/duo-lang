@@ -123,9 +123,6 @@ modifyMemo f = modify $ \s -> s { memo = f $ memo s }
 insertFE :: FlowEdge -> AdmissableM ()
 insertFE = modifyMemo . S.insert
 
---  removeFE :: FlowEdge -> AdmissableM ()
---  removeFE = modifyMemo . S.delete
-
 blacklistFE :: FlowEdge -> AdmissableM ()
 blacklistFE fe =
   modify $ \s -> s { memo = fe `S.delete` memo s, blacklist = fe `S.insert` blacklist s }
@@ -178,18 +175,13 @@ subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
 
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
 admissableM aut@TypeAutCore{} e =
+  isNotBlacklisted e <|>
   isMemoised e <|>
-    do  isNotBlacklisted e
-        insertFE e
+    do  insertFE e
         subtypeData aut e <|>
           subtypeCodata aut e <|>
           subtypeNominal aut e <|>
           blacklistFE e
-
--- this version of admissability check also accepts if the edge under consideration is in the set of known flow edges
--- needs to be seperated for technical reasons...
---  admissable :: TypeAutCore EdgeLabelNormal -> FlowEdge -> Bool
---  admissable aut@TypeAutCore {..} e = isJust . execAdmissable $ admissableM aut e
 
 removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
 removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore {..}} =
