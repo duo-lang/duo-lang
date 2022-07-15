@@ -22,4 +22,4 @@ evalPrimOp F64 Add [PrdTerm (PrimLitF64 _ x), PrdTerm (PrimLitF64 _ y), CnsTerm 
 evalPrimOp F64 Sub [PrdTerm (PrimLitF64 _ x), PrdTerm (PrimLitF64 _ y), CnsTerm k] = applyPrdToCns (PrimLitF64 defaultLoc (x - y)) k
 evalPrimOp F64 Mul [PrdTerm (PrimLitF64 _ x), PrdTerm (PrimLitF64 _ y), CnsTerm k] = applyPrdToCns (PrimLitF64 defaultLoc (x * y)) k
 evalPrimOp F64 Div [PrdTerm (PrimLitF64 _ x), PrdTerm (PrimLitF64 _ y), CnsTerm k] = applyPrdToCns (PrimLitF64 defaultLoc (x / y)) k
-evalPrimOp _   _   _    = throwEvalError ["Undefined primary operation evaluated"]
+evalPrimOp _   _   _    = throwEvalError defaultLoc ["Undefined primary operation evaluated"]

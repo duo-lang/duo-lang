@@ -2,6 +2,7 @@ module Spec.Prettyprinter (spec) where
 
 import Control.Monad (forM_)
 import Data.Either (isRight)
+import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec
 
 import Parser.Parser
@@ -26,8 +27,8 @@ pendingFiles = [ ("examples/TypeClasses.ds", "Backend not implemented for type c
 -- 2. Prettyprinted
 -- 3a. Parsed again from the prettyprinted result.
 -- 3b. Parsed and typechecked again from the prettyprinted result.
-spec :: [(FilePath, Either Error CST.Program)] -- ^ examples to be parsed after pretty-printing
-  -> [(FilePath, Either Error TST.Program)] -- ^ examples to be type-checked after pretty-printing
+spec :: [(FilePath, Either (NonEmpty Error) CST.Program)] -- ^ examples to be parsed after pretty-printing
+  -> [(FilePath, Either (NonEmpty Error) TST.Program)] -- ^ examples to be type-checked after pretty-printing
   -> Spec
 spec parseExamples typeCheckExamples = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
@@ -50,6 +51,6 @@ spec parseExamples typeCheckExamples = do
                   Right decls -> do
                     res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "") decls
                     it "Can be parsed and typechecked again." $
-                        res `shouldSatisfy` isRight
+                        fst res `shouldSatisfy` isRight
 
 

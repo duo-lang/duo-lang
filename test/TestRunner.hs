@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Monad.Except (runExcept, forM)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
@@ -51,22 +52,22 @@ getAvailableExamples = do
   examples <- listDirectory "examples/"
   return (("examples/" ++) <$> filter (\s -> head s /= '.' && notElem s excluded) examples)
 
-getParsedDeclarations :: FilePath -> IO (Either Error CST.Program)
+getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Program)
 getParsedDeclarations fp = do
   s <- T.readFile fp
   case runExcept (runFileParser fp programP s) of
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getTypecheckedDecls :: FilePath -> IO (Either Error TST.Program)
+getTypecheckedDecls :: FilePath -> IO (Either (NonEmpty Error) TST.Program)
 getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls
+      fmap snd <$> (fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls)
     Left err -> return (Left err)
 
-getSymbolTable :: FilePath -> IO (Either Error SymbolTable)
+getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of

@@ -33,7 +33,7 @@ import Driver.Definition ( DriverM, findModule )
 import Resolution.SymbolTable
     ( SymbolTable(imports), createSymbolTable )
 import Syntax.Common ( ModuleName(..) )
-import Errors ( Error(OtherError) )
+import Errors ( throwOtherError )
 import Utils ( defaultLoc )
 
 -- | A dependency Graph which represents the structure of imports.
@@ -113,7 +113,7 @@ hasLoop gr = map (\(_,_,e) -> e) (filter (\(x,y,_) -> x == y) (labEdges gr))
 -- | Throws an error if the dependency graph contains a cycle of imports.
 checkRecursiveImports :: DepGraph -> DriverM ()
 checkRecursiveImports depgraph = case hasLoop (tc (graph depgraph)) of
-    (x:_) -> throwError (OtherError Nothing (explainRecursiveLoop depgraph x))
+    (x:_) -> throwOtherError defaultLoc [explainRecursiveLoop depgraph x]
     [] -> pure ()
 
 explainRecursiveLoop :: DepGraph -> [Node] -> Text

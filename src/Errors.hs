@@ -1,9 +1,10 @@
 module Errors where
 
 import Control.Monad.Except
+import Data.List.NonEmpty ( NonEmpty )
+import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.List.NonEmpty (NonEmpty)
 
 import Syntax.Common
 import Utils
@@ -36,60 +37,73 @@ data LoweringError where
                 -> LoweringError
   deriving (Show, Eq)
 
-data ParserError = MkParserError Loc Text
+data Error where
+  ParserError           :: Loc -> Text          -> Error
+  GenConstraintsError   :: Loc -> Text          -> Error
+  EvalError             :: Loc -> Text          -> Error
+  SolveConstraintsError :: Loc -> Text          -> Error
+  TypeAutomatonError    :: Loc -> Text          -> Error
+  LowerError            :: Loc -> LoweringError -> Error
+  OtherError            :: Loc -> Text          -> Error
+  NoImplicitArg         :: Loc -> Text          -> Error
   deriving (Show, Eq)
 
-data Error where
-  ParserErrorBundle     :: NonEmpty ParserError       -> Error
-  GenConstraintsError   :: Maybe Loc -> Text          -> Error
-  EvalError             :: Maybe Loc -> Text          -> Error
-  SolveConstraintsError :: Maybe Loc -> Text          -> Error
-  TypeAutomatonError    :: Maybe Loc -> Text          -> Error
-  LowerError            :: Maybe Loc -> LoweringError -> Error
-  OtherError            :: Maybe Loc -> Text          -> Error
-  NoImplicitArg         :: Maybe Loc -> Text          -> Error
-  deriving (Show, Eq)
+instance HasLoc Error where
+  getLoc (ParserError loc _) = loc
+  getLoc (GenConstraintsError loc _) = loc
+  getLoc (EvalError loc _) = loc
+  getLoc (SolveConstraintsError loc _) = loc
+  getLoc (TypeAutomatonError loc _) = loc
+  getLoc (LowerError loc _) = loc
+  getLoc (OtherError loc _) = loc
+  getLoc (NoImplicitArg loc _) = loc
 
 attachLoc :: Loc -> Error -> Error
-attachLoc _   err@(ParserErrorBundle _) = err
-attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError (Just loc) txt
-attachLoc loc (EvalError _ txt) = EvalError (Just loc) txt
-attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError (Just loc) txt
-attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError (Just loc) txt
-attachLoc loc (LowerError _ err) = LowerError (Just loc) err
-attachLoc loc (OtherError _ txt) = OtherError (Just loc) txt
-attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg (Just loc) txt
+attachLoc loc (ParserError _ msg) = ParserError loc msg
+attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
+attachLoc loc (EvalError _ txt) = EvalError loc txt
+attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
+attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
+attachLoc loc (LowerError _ err) = LowerError loc err
+attachLoc loc (OtherError _ txt) = OtherError loc txt
+attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 
-getLoc :: Error -> Maybe Loc
-getLoc (ParserErrorBundle _)  = Nothing
-getLoc (GenConstraintsError loc _) = loc
-getLoc (EvalError loc _) = loc
-getLoc (SolveConstraintsError loc _) = loc
-getLoc (TypeAutomatonError loc _) = loc
-getLoc (LowerError loc _) = loc
-getLoc (OtherError loc _) = loc
-getLoc (NoImplicitArg loc _) = loc
+
+
 
 ---------------------------------------------------------------------------------------------
 -- Throwing errors in a monadic context
 ---------------------------------------------------------------------------------------------
 
-throwGenError :: MonadError Error m
-              => [Text] -> m a
-throwGenError = throwError . GenConstraintsError Nothing . T.unlines
+throwGenError :: MonadError (NonEmpty Error) m
+              => Loc -> [Text] -> m a
+throwGenError loc =
+  throwError . (NE.:| []) . GenConstraintsError loc . T.unlines
 
-throwEvalError :: MonadError Error m
-               => [Text] -> m a
-throwEvalError = throwError . EvalError Nothing . T.unlines
+throwEvalError :: MonadError (NonEmpty Error) m
+               => Loc -> [Text] -> m a
+throwEvalError loc =
+  throwError . (NE.:| []) . EvalError loc . T.unlines
 
-throwSolverError :: MonadError Error m
-                 => [Text] -> m a
-throwSolverError = throwError . SolveConstraintsError Nothing . T.unlines
+throwSolverError :: MonadError (NonEmpty Error) m
+                 => Loc -> [Text] -> m a
+throwSolverError loc =
+  throwError . (NE.:| []) . SolveConstraintsError loc . T.unlines
 
-throwAutomatonError :: MonadError Error m
-                    => [Text] -> m a
-throwAutomatonError = throwError . TypeAutomatonError Nothing . T.unlines
+throwAutomatonError :: MonadError (NonEmpty Error) m
+                    => Loc -> [Text] -> m a
+throwAutomatonError loc =
+  throwError . (NE.:| []) . TypeAutomatonError loc . T.unlines
 
-throwOtherError :: MonadError Error m
-                => [Text] -> m a
-throwOtherError = throwError . OtherError Nothing . T.unlines
+throwOtherError :: MonadError (NonEmpty Error) m
+                => Loc -> [Text] -> m a
+throwOtherError loc =
+  throwError . (NE.:| []) . OtherError loc . T.unlines
+
+
+---------------------------------------------------------------------------------------------
+-- Warnings
+---------------------------------------------------------------------------------------------
+
+data Warning where
+  Warning :: Loc -> Text -> Warning

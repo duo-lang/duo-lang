@@ -1,5 +1,7 @@
 module Pretty.Common where
 
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 import Text.Megaparsec.Pos
 
@@ -7,6 +9,9 @@ import Pretty.Pretty
 import Syntax.Common
 import Utils
 
+
+instance PrettyAnn a => PrettyAnn (NonEmpty a) where
+  prettyAnn ne = vsep (prettyAnn <$> NE.toList ne)
 ---------------------------------------------------------------------------------
 -- Locations
 ---------------------------------------------------------------------------------
@@ -17,10 +22,6 @@ instance PrettyAnn Pos where
 instance PrettyAnn Loc where
   prettyAnn (Loc (SourcePos fp line1 column1) (SourcePos _ line2 column2)) =
     pretty fp <> ":" <> prettyAnn line1 <> ":" <> prettyAnn column1 <> "-" <> prettyAnn line2 <> ":" <> prettyAnn column2
-
-prettyMaybeLoc :: Maybe Loc -> Doc Annotation
-prettyMaybeLoc Nothing = mempty
-prettyMaybeLoc (Just loc) = prettyAnn loc <> ": "
 
 ---------------------------------------------------------------------------------
 -- Comments
@@ -38,6 +39,9 @@ instance PrettyAnn XtorName where
 
 instance PrettyAnn MethodName where
   prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
+
+instance PrettyAnn ClassName where
+  prettyAnn (MkClassName xt) = annClassName $ prettyAnn xt
 
 instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm

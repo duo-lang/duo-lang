@@ -48,7 +48,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
       Right decls -> do
-        res <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
         case res of
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
@@ -91,6 +91,10 @@ instance ToJumpMap (RST.SubstitutionI pc) where
 instance ToJumpMap RST.CmdCase where
   toJumpMap RST.MkCmdCase { cmdcase_cmd } =
     toJumpMap cmdcase_cmd
+
+instance ToJumpMap RST.InstanceCase where
+  toJumpMap RST.MkInstanceCase { instancecase_cmd } =
+    toJumpMap instancecase_cmd
 
 instance ToJumpMap (RST.TermCase pc) where
   toJumpMap RST.MkTermCase { tmcase_term } =
@@ -149,7 +153,9 @@ instance ToJumpMap (RST.PrdCnsType pol) where
   toJumpMap (RST.PrdCnsType _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.Typ pol) where
-  toJumpMap RST.TyVar {} =
+  toJumpMap RST.TyUniVar {} =
+    M.empty
+  toJumpMap RST.TySkolemVar {} = 
     M.empty
   toJumpMap (RST.TyDataRefined loc _ tn xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
@@ -202,6 +208,10 @@ instance ToJumpMap RST.CommandDeclaration where
 instance ToJumpMap RST.TyOpDeclaration where
   toJumpMap RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_res } =
     M.fromList [(locToRange tyopdecl_loc, toLocation tyopdecl_res)]
+
+instance ToJumpMap RST.InstanceDeclaration where
+  toJumpMap RST.MkInstanceDeclaration { instancedecl_cases } =
+    M.unions $ toJumpMap <$> instancedecl_cases
 
 instance ToJumpMap RST.Declaration where
   toJumpMap (RST.PrdCnsDecl _ decl) = toJumpMap decl
