@@ -32,6 +32,7 @@ data Typ where
 instance HasLoc Typ where
   getLoc (TyUniVar loc _) = loc
   getLoc (TySkolemVar loc _) = loc
+  getLoc (TyRecVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
   getLoc (TyXRefined loc _ _ _) = loc
   getLoc (TyNominal loc _ _) = loc

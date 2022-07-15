@@ -13,11 +13,11 @@ import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common.TypesUnpol
 import Utils (Loc(..), defaultLoc)
 
+import Syntax.Common.Names
+
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
 ---------------------------------------------------------------------------------
-
-
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
@@ -31,6 +31,8 @@ resolveTyp rep (TyUniVar loc v) =
     pure $ RST.TyUniVar loc rep Nothing v
 resolveTyp rep (TySkolemVar loc v) = 
     pure $ RST.TySkolemVar loc rep Nothing v
+resolveTyp rep (TyRecVar loc v) = 
+    pure $ RST.TySkolemVar loc rep Nothing (recTVarToSkolemTVar v)
 
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
