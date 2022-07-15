@@ -158,10 +158,10 @@ freshTVarsForTypeParams' rep kindArgs tn = do
 
    paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
    paramsMap kindArgs freshVars =
-     MkBisubstitution M.empty (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+     MkBisubstitution M.empty (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars)) M.empty
 
 substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution -> Bisubstitution
-substituteInstanceType (_,tv,_) instanceType (MkBisubstitution empty subst) = MkBisubstitution empty $! M.adjust (const instanceType) tv subst
+substituteInstanceType (_,tv,_) instanceType (MkBisubstitution uni subst rec) = flip (MkBisubstitution uni) rec $! M.adjust (const instanceType) tv subst
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -196,7 +196,7 @@ lookupContext rep (i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
-  pure $ zonk (MkBisubstitution M.empty (M.fromList freshVars)) ts_monotype
+  pure $ zonk (MkBisubstitution M.empty (M.fromList freshVars) M.empty) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint

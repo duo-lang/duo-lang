@@ -119,8 +119,15 @@ prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> pretty
                                                     ]
                                              ]
 
-prettyRecBisubst :: (SkolemTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyRecBisubst :: (RecTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
 prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+
+                                             , vsep [ "+ |->" <+> prettyAnn typ
+                                                    , "- |->" <+> prettyAnn tyn
+                                                    ]
+                                             ]
+prettySkolBisubst :: (SkolemTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
 
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
@@ -128,12 +135,17 @@ prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAn
                                              ]
 
 instance PrettyAnn Bisubstitution where
-  prettyAnn (MkBisubstitution uvsubst recsubst) = vsep
+  prettyAnn (MkBisubstitution uvsubst skolsubst recsubst) = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
     , ""
+    , "Unification Variables: "
     , vsep $ intersperse "" (prettyBisubst <$> M.toList uvsubst)
     , "---------------------------------------------------------"
+    , "Skolem Variables: "
+    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList skolsubst)
+    , "---------------------------------------------------------"
+    , "Recursive Variables: "
     , vsep $ intersperse "" (prettyRecBisubst <$> M.toList recsubst)
     ]
