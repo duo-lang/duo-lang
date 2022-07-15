@@ -22,10 +22,10 @@ Version 2.7.3, Git revision 7927a3...
 Clone the duo repository to your system:
 
 ```
-git clone git@github.com:ps-tuebingen/duolang.git
+git clone git@github.com:ps-tuebingen/duo-lang.git
 ```
 
-Then, change into the duolang directory and use stack to build the binary
+Then, change into the duo-lang directory and use stack to build the binary
 
 ```console
 > stack build

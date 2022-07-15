@@ -10,7 +10,7 @@ import Compile (runCompile)
 import Deps (runDeps)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
-import Paths_duolang (version)
+import Paths_duo_lang (version)
 import Syntax.Common
 import Utils (trimStr)
 

@@ -29,4 +29,4 @@ Duo is a language focused on two central ideas; **Duality** and **Subtyping**.
 
 ## About Us
 
-Duo is developed on [GitHub](https://github.com/ps-tuebingen/duolang) at the chair for programming languages at the University of Tübingen.
+Duo is developed on [GitHub](https://github.com/ps-tuebingen/duo-lang) at the chair for programming languages at the University of Tübingen.

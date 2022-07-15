@@ -23,7 +23,7 @@ import Language.LSP.Server
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
 import Language.LSP.Types
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
-import Paths_duolang (version)
+import Paths_duo_lang (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import Driver.Definition

@@ -5,15 +5,15 @@ import * as vscodelang from 'vscode-languageclient';
 
 let client: vscodelang.LanguageClient;
 
-// This method is called when the "duolang-client" extension is activated.
+// This method is called when the "duo-lang-client" extension is activated.
 export function activate(context: vscode.ExtensionContext) {
 	
-	console.log('Congratulations, your extension "duolang-client" is now active!');
+	console.log('Congratulations, your extension "duo-lang-client" is now active!');
     
-	let config = vscode.workspace.getConfiguration("duolang-client");
+	let config = vscode.workspace.getConfiguration("duo-lang-client");
 
 	let defaultCmd = "duo";
-	let duolangCmd = config.get<string>("executable") || defaultCmd;
+	let duo-langCmd = config.get<string>("executable") || defaultCmd;
 
     // Assemble arguments
     let args: string[] = [];
@@ -27,12 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let serverOptions: vscodelang.ServerOptions = {
         run: {
-            command: duolangCmd,
+            command: duo-langCmd,
             args: args,
             options: {}
         },
         debug: {
-            command: duolangCmd,
+            command: duo-langCmd,
             args: args,
             options: {}
         }
@@ -41,13 +41,13 @@ export function activate(context: vscode.ExtensionContext) {
     let clientOptions: vscodelang.LanguageClientOptions = {
         documentSelector: [{
             scheme: 'file',
-            language: 'duolang'
+            language: 'duo-lang'
         }],
-        diagnosticCollectionName: "duolang"
+        diagnosticCollectionName: "duo-lang"
     };
 
     client = new vscodelang.LanguageClient(
-        'duolangLanguageServer',
+        'duo-langLanguageServer',
         'Duo Language Server',
         serverOptions,
         clientOptions

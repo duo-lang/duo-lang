@@ -6,7 +6,7 @@
 
 # Installation
 
-- [Installing Duo](./installation/duolang.md)
+- [Installing Duo](./installation/duo-lang.md)
 - [Editor Integration](./installation/editor-support.md)
 
 # The Duo Language

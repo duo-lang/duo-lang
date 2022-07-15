@@ -10,5 +10,5 @@ src = "src"
 default-theme = "light"
 preferred-dark-theme = "light"
 mathjax-support = true
-git-repository-url = "https://github.com/ps-tuebingen/duolang"
-edit-url-template = "https://github.com/ps-tuebingen/duolang/edit/main/docs/{path}"
+git-repository-url = "https://github.com/ps-tuebingen/duo-lang"
+edit-url-template = "https://github.com/ps-tuebingen/duo-lang/edit/main/docs/{path}"
