@@ -135,6 +135,9 @@ focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty 
 focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
 focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d
 
+focusPrdCnsTerm :: EvaluationOrder -> PrdCnsTerm -> PrdCnsTerm
+focusPrdCnsTerm eo (PrdTerm tm) = PrdTerm $ focusTerm eo tm
+focusPrdCnsTerm eo (CnsTerm tm) = CnsTerm $ focusTerm eo tm
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
@@ -217,7 +220,7 @@ focusCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (Just (C
 focusCmd _  (ExitSuccess loc) = ExitSuccess loc
 focusCmd _  (ExitFailure loc) = ExitFailure loc
 focusCmd _  (Jump loc fv) = Jump loc fv
-focusCmd eo (Method loc mn cn subst) = undefined eo $ Method loc mn cn subst -- TODO
+focusCmd eo (Method loc mn cn subst) = Method loc mn cn (focusPrdCnsTerm eo <$> subst)
 focusCmd eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focusCmd eo cmd)
 focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd)
                                                              (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focusCmd eo cmd)))
