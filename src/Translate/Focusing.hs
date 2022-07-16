@@ -56,6 +56,13 @@ isFocusedTerm eo (MuAbs loc _annot pc ty v cmd) =
 isFocusedTerm _  lit@PrimLitI64{} = Just lit
 isFocusedTerm _  lit@PrimLitF64{} = Just lit
 
+isFocusedPCTerm :: EvaluationOrder -> PrdCnsTerm -> Maybe PrdCnsTerm
+isFocusedPCTerm eo (PrdTerm tm) = PrdTerm <$> isFocusedTerm eo tm
+isFocusedPCTerm eo (CnsTerm tm) = CnsTerm <$> isFocusedTerm eo tm
+
+isFocusedSubst :: EvaluationOrder -> Substitution -> Maybe Substitution
+isFocusedSubst eo subst = sequence (isFocusedPCTerm eo <$> subst)
+
 isFocusedCmdCase :: EvaluationOrder -> CmdCase -> Maybe CmdCase
 isFocusedCmdCase eo (MkCmdCase loc pat cmd) = MkCmdCase loc pat <$> isFocusedCmd eo cmd
 
@@ -65,7 +72,7 @@ isFocusedCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (Jus
 isFocusedCmd _  (ExitSuccess loc)          = Just (ExitSuccess loc)
 isFocusedCmd _  (ExitFailure loc)          = Just (ExitFailure loc)
 isFocusedCmd _  (Jump loc fv)              = Just (Jump loc fv)
-isFocusedCmd eo (Method loc mn cn subst)   = Method loc mn cn <$> isValueSubst eo subst
+isFocusedCmd eo (Method loc mn cn subst)   = Method loc mn cn <$> isFocusedSubst eo subst
 isFocusedCmd eo (Print loc prd cmd)        = Print loc <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read loc cns)             = Read loc <$> isValueTerm eo CnsRep cns
 isFocusedCmd eo (PrimOp loc pt op subst)   = PrimOp loc pt op <$> isValueSubst eo subst
