@@ -603,12 +603,12 @@ reparseTyOpDecl RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym
                         }
 
 reparseClassDecl :: RST.ClassDeclaration -> CST.ClassDeclaration
-reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors }
-  = CST.MkClassDeclaration { classdecl_loc   = classdecl_loc
-                           , classdecl_doc   = classdecl_doc
-                           , classdecl_name  = classdecl_name
-                           , classdecl_kinds = classdecl_kinds
-                           , classdecl_xtors = embedMethodSig <$> fst classdecl_xtors
+reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
+  = CST.MkClassDeclaration { classdecl_loc     = classdecl_loc
+                           , classdecl_doc     = classdecl_doc
+                           , classdecl_name    = classdecl_name
+                           , classdecl_kinds   = classdecl_kinds
+                           , classdecl_methods = embedMethodSig <$> fst classdecl_methods
                            }
 
 reparseInstanceDecl :: RST.InstanceDeclaration -> CST.InstanceDeclaration

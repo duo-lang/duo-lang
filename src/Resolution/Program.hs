@@ -232,14 +232,14 @@ resolveMethods sigs = do
 
 resolveClassDeclaration :: CST.ClassDeclaration
                         -> ResolverM RST.ClassDeclaration
-resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
-  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_xtors
-  xtorRes <- resolveMethods classdecl_xtors
-  pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
-                              , classdecl_doc = classdecl_doc
-                              , classdecl_name = classdecl_name
-                              , classdecl_kinds = classdecl_kinds
-                              , classdecl_xtors = xtorRes
+resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods } = do
+  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_methods
+  methodRes <- resolveMethods classdecl_methods
+  pure RST.MkClassDeclaration { classdecl_loc     = classdecl_loc
+                              , classdecl_doc     = classdecl_doc
+                              , classdecl_name    = classdecl_name
+                              , classdecl_kinds   = classdecl_kinds
+                              , classdecl_methods = methodRes
                               }
 
 ---------------------------------------------------------------------------------

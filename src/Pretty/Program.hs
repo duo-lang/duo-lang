@@ -159,11 +159,11 @@ prettyTVars :: [(Variance, SkolemTVar, MonoKind)] -> Doc Annotation
 prettyTVars tvs = parens $ cat (punctuate comma (prettyTParam <$> tvs))
 
 instance PrettyAnn CST.ClassDeclaration where
-  prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors} =
+  prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_methods} =
     annKeyword "class" <+>
     prettyAnn classdecl_name <+>
     prettyTVars classdecl_kinds <+>
-    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> classdecl_xtors))))) <>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> classdecl_methods))))) <>
     semi
 
 ---------------------------------------------------------------------------------
