@@ -17,45 +17,33 @@ deriving instance Eq TermOrStar
 type Substitution = [Term]
 type SubstitutionI = [TermOrStar]
 
+
 --------------------------------------------------------------------------------------------
--- Binding sites
+-- Patterns
 --------------------------------------------------------------------------------------------
 
-data FVOrStar where
-    FoSFV :: FreeVarName -> FVOrStar
-    FoSStar :: FVOrStar
+data Pattern where
+  PatXtor     :: Loc -> XtorName -> [Pattern] -> Pattern
+  PatVar      :: Loc -> FreeVarName -> Pattern
+  PatStar     :: Loc -> Pattern
+  PatWildcard :: Loc -> Pattern
 
-deriving instance Show FVOrStar
-deriving instance Eq FVOrStar
+deriving instance Show Pattern
+deriving instance Eq Pattern
 
-isStar :: FVOrStar -> Bool
-isStar FoSStar   = True
-isStar (FoSFV _) = False
-
--- | Partial function!
-fromFVOrStar :: FVOrStar -> FreeVarName
-fromFVOrStar (FoSFV fv) = fv
-fromFVOrStar FoSStar = error "fromFVOrStar called on FoSStar"
-
-
-type BindingSite = [FVOrStar]
+instance HasLoc Pattern where
+  getLoc (PatXtor loc _ _) = loc
+  getLoc (PatVar loc _) = loc
+  getLoc (PatStar loc) = loc
+  getLoc (PatWildcard loc) = loc
 
 --------------------------------------------------------------------------------------------
 -- Cases/Cocases
 --------------------------------------------------------------------------------------------
 
-data TermPat where
-  XtorPat :: Loc -> XtorName -> BindingSite -> TermPat
-
-deriving instance Show TermPat
-deriving instance Eq TermPat
-
-instance HasLoc TermPat where
-  getLoc (XtorPat loc _ _) = loc
-
 data TermCase  = MkTermCase
   { tmcase_loc  :: Loc
-  , tmcase_pat  :: TermPat
+  , tmcase_pat  :: Pattern
   , tmcase_term :: Term
   }
 

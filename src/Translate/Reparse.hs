@@ -34,7 +34,6 @@ import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
-import Syntax.CST.Terms (FVOrStar(FoSStar))
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.Common.TypesUnpol (TypeScheme(ts_constraints))
 
@@ -402,13 +401,13 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
   CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
 
 
-embedPat :: RST.Pattern -> CST.TermPat
+embedPat :: RST.Pattern -> CST.Pattern
 embedPat (RST.XtorPat loc xt args) =
-  CST.XtorPat loc xt (CST.FoSFV . fromJust . snd <$> args)
+  CST.PatXtor loc xt (CST.PatVar loc . fromJust . snd <$> args)
 
-embedPatI :: RST.PatternI -> CST.TermPat
+embedPatI :: RST.PatternI -> CST.Pattern
 embedPatI (RST.XtorPatI loc xt (as1,_,as2)) =
-  CST.XtorPat loc xt ((CST.FoSFV . fromJust . snd <$> as1) ++ [FoSStar] ++ (CST.FoSFV . fromJust . snd  <$> as2))
+  CST.PatXtor loc xt ((CST.PatVar loc . fromJust . snd <$> as1) ++ [CST.PatStar loc] ++ (CST.PatVar loc . fromJust . snd  <$> as2))
 
 embedCmdCase :: RST.CmdCase -> CST.TermCase
 embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -468,8 +467,10 @@ resugarType _ = Nothing
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyVar loc _ _ tv@(RST.MkTVar _name)) =
-  CST.TySkolemVar loc (RST.tVarToSkolemTVar tv)
+embedType (RST.TyUniVar loc _ _ tv) =
+  CST.TyUniVar loc tv
+embedType (RST.TySkolemVar loc _ _ tv) = 
+  CST.TySkolemVar loc tv
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
@@ -490,8 +491,8 @@ embedType (RST.TyUnion loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ tv@(RST.MkTVar _name) ty) =
-  CST.TyRec loc (RST.tVarToSkolemTVar tv) (embedType ty)
+embedType (RST.TyRec loc _ tv ty) =
+  CST.TyRec loc tv (embedType ty)
 embedType (RST.TyPrim loc _ pt) =
   CST.TyPrim loc pt
 embedType (RST.TyFlipPol _ ty) = embedType ty
@@ -499,7 +500,7 @@ embedType (RST.TyFlipPol _ ty) = embedType ty
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
 embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
   CST.TypeScheme { ts_loc = ts_loc
-                 , ts_vars = map RST.tVarToSkolemTVar ts_vars
+                 , ts_vars = ts_vars
                  , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
                  , ts_monotype = embedType ts_monotype
                  }

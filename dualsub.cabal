@@ -124,6 +124,7 @@ library
       Pretty.Errors
       Pretty.TypeAutomata
       Resolution.Definition
+      Resolution.Pattern
       Resolution.Program
       Resolution.SymbolTable
       Resolution.Terms

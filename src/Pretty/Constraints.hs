@@ -114,19 +114,29 @@ instance PrettyAnn SolverResult where
 -- Bisubstitutions
 ---------------------------------------------------------------------------------
 
-prettyBisubst :: (TVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Type variable:" <+> prettyAnn (tVarToUniTVar v)
+prettyBisubst :: (UniTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> prettyAnn v
+
+                                             , vsep [ "+ |->" <+> prettyAnn typ
+                                                    , "- |->" <+> prettyAnn tyn
+                                                    ]
+                                             ]
+
+prettyRecBisubst :: (SkolemTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
                                              ]
 
 instance PrettyAnn Bisubstitution where
-  prettyAnn (MkBisubstitution uvsubst) = vsep
+  prettyAnn (MkBisubstitution uvsubst recsubst) = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution                          "
     , "---------------------------------------------------------"
     , ""
     , vsep $ intersperse "" (prettyBisubst <$> M.toList uvsubst)
     , "---------------------------------------------------------"
+    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList recsubst)
     ]
