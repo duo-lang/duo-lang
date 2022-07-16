@@ -26,6 +26,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (ReadConstraint loc)    = parens ("Constraint from Read command at" <+> prettyAnn loc)
   prettyAnn RecursionConstraint = parens "Recursive"
   prettyAnn (PrimOpArgsConstraint loc)     = parens ("Primitive operation args constraint at" <+> prettyAnn loc)
+  prettyAnn (TypeClassConstraint loc) = parens ("Type class constraint at" <+> prettyAnn loc)
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"
   prettyAnn LowerBoundConstraint           = parens "LowerBound"
@@ -41,7 +42,7 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (DtorAp loc) = parens ("Result type of Dtor application at" <+> prettyAnn loc)
   prettyAnn (TypeSchemeInstance fv loc) = parens ("Instantiation of type scheme" <+> prettyAnn fv <+> "at" <+> prettyAnn loc)
   prettyAnn (TypeParameter tn tv) = parens ("Instantiation of type parameter" <+> prettyAnn tv <+> "for" <+> prettyAnn tn)
-  prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type class" <+> prettyAnn cn <+> "for" <+> prettyAnn tv)
+  prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type variable"  <+> prettyAnn tv <+> "of type class" <+> prettyAnn cn)
 
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =

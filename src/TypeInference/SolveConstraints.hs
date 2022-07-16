@@ -5,14 +5,14 @@ module TypeInference.SolveConstraints
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List (find)
+import Data.Foldable ( Foldable(fold), find )
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 
-import Driver.Environment (Environment)
+import Driver.Environment (Environment (instanceEnv))
 import Errors
 import Syntax.Common.TypesPol
 import Syntax.Common
@@ -20,6 +20,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
+import TypeInference.Derive
 import Utils ( defaultLoc )
 --import Syntax.Common.TypesUnpol (Typ(TyUniVar))
 
@@ -241,10 +242,32 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t1
                               , "by type"
                               , "    " <> ppPrint t2 ]
-subConstraints (TypeClassPos _ _cn _typ) = do
-  throwSolverError defaultLoc ["Solver for type class constraints not implemented yet."]
-subConstraints (TypeClassNeg _ _cn _typ) = do
-  throwSolverError defaultLoc ["Solver for type class constraints not implemented yet."]
+subConstraints c@(TypeClassPos _ cn typ) = do
+  (env, _) <- ask
+  let instanceMember :: ClassName -> Typ Pos -> M.Map ClassName [(Typ Pos, b)] -> Bool
+      instanceMember name typ map = case M.lookup name map of
+        Nothing -> False
+        Just types -> typ `occursIn` fmap fst types
+  let defined :: Bool = foldr (\map acc -> instanceMember cn typ map || acc) False (instanceEnv <$> env)
+  -- Print environment for debugging.
+  let env' = concat $ M.toList . instanceEnv <$> M.elems env
+  let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold ((\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") <$> typs)) <$> env'
+  unless defined $
+    throwSolverError defaultLoc $ ["Could not deduce instance " <> ppPrint cn <> " for positive type " <> ppPrint typ, "In Environment:"] ++ prettyEnv
+  pure [c]
+subConstraints c@(TypeClassNeg _ cn tyn) = do
+  (env, _) <- ask
+  let instanceMember :: ClassName -> Typ Neg -> M.Map ClassName [(a, Typ Neg)] -> Bool
+      instanceMember name typ map = case M.lookup name map of
+        Nothing -> False
+        Just types -> typ `occursIn` fmap snd types
+  let defined :: Bool = foldr (\map acc -> instanceMember cn tyn map || acc) False (instanceEnv <$> env)
+  -- Print environment for debugging.
+  let env' = concat $ M.toList . instanceEnv <$> M.elems env
+  let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold ((\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") <$> typs)) <$> env'
+  unless defined $
+    throwSolverError defaultLoc $ ["Could not deduce instance " <> ppPrint cn <> " for negative type " <> ppPrint tyn, "In Environment:"] ++ prettyEnv
+  pure [c]
 
 ------------------------------------------------------------------------------
 -- Exported Function

@@ -18,7 +18,7 @@ data Environment = MkEnvironment
   , cnsEnv :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command, Loc)
   , classEnv :: Map ClassName ClassDeclaration
-  , instanceEnv :: Map ClassName (Typ Pos, Typ Neg)
+  , instanceEnv :: Map ClassName [(Typ Pos, Typ Neg)]
   , declEnv :: [(Loc,DataDecl)]
   }
 
