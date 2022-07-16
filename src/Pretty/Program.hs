@@ -162,8 +162,8 @@ instance PrettyAnn CST.ClassDeclaration where
   prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors} =
     annKeyword "class" <+>
     prettyAnn classdecl_name <+>
-    prettyTVars classdecl_kinds <+> 
-    braces (mempty <+> cat (punctuate " , " (prettyAnn <$> classdecl_xtors)) <+> mempty) <>
+    prettyTVars classdecl_kinds <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> classdecl_xtors))))) <>
     semi
 
 ---------------------------------------------------------------------------------
