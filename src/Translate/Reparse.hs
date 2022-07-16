@@ -442,6 +442,12 @@ embedXtorSig RST.MkXtorSig { sig_name, sig_args } =
                 , sig_args = embedLinearContext sig_args
                 }
 
+embedMethodSig :: RST.MethodSig pol -> CST.XtorSig
+embedMethodSig RST.MkMethodSig { msig_name, msig_args } =
+  CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
+                , sig_args = embedLinearContext msig_args
+                }
+
 embedVariantTypes :: [RST.VariantType pol] -> [CST.Typ]
 embedVariantTypes = fmap embedVariantType
 
@@ -602,7 +608,7 @@ reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdec
                            , classdecl_doc   = classdecl_doc
                            , classdecl_name  = classdecl_name
                            , classdecl_kinds = classdecl_kinds
-                           , classdecl_xtors = second (map (\(p,t,_) -> (p, embedType t))) <$> classdecl_xtors
+                           , classdecl_xtors = embedMethodSig <$> fst classdecl_xtors
                            }
 
 reparseInstanceDecl :: RST.InstanceDeclaration -> CST.InstanceDeclaration

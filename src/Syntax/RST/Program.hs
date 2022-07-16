@@ -3,7 +3,7 @@ module Syntax.RST.Program where
 
 import Syntax.Common
 import Syntax.RST.Terms( Command, Term, InstanceCase )
-import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
+import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ, MethodSig )
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
 
@@ -149,7 +149,7 @@ data ClassDeclaration = MkClassDeclaration
     -- ^ The name of the type class that is being introduced.
   , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
     -- ^ The kind of the type class variables.
-  , classdecl_xtors :: [(XtorName, [(PrdCns, Typ Pos, Typ Neg)])]
+  , classdecl_xtors :: ([MethodSig Pos], [MethodSig Neg])
     -- ^ The type class methods and their types.
   }
 

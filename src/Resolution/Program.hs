@@ -10,7 +10,7 @@ import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
-import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp)
+import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.Common.TypesUnpol (XtorSig (sig_args), PrdCnsTyp (PrdType, CnsType), Typ (..))
@@ -220,33 +220,21 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
-checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [(XtorName, [(PrdCns, Typ)])] -> ResolverM ()
-checkVarianceClassDeclaration loc kinds = mapM_ checkVarianceXtorPair
-    where
-      checkVarianceXtorPair :: (XtorName, [(PrdCns, Typ)]) -> ResolverM ()
-      checkVarianceXtorPair = checkVarianceXtor loc Covariant (MkPolyKind kinds CBV) . mkXtorSig
+checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [XtorSig] -> ResolverM ()
+checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc Covariant (MkPolyKind kinds CBV))
 
-      mkXtorSig :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
-      mkXtorSig (xn,tys) = CST.MkXtorSig xn $ uncurry toPrdCnsType <$> tys
-
-      toPrdCnsType :: PrdCns -> Typ -> PrdCnsTyp
-      toPrdCnsType Prd = PrdType
-      toPrdCnsType Cns = CnsType
+resolveMethods :: [CST.XtorSig]
+           -> ResolverM ([RST.MethodSig Pos], [RST.MethodSig Neg])
+resolveMethods sigs = do
+    posSigs <- resolveMethodSigs PosRep sigs
+    negSigs <- resolveMethodSigs NegRep sigs
+    pure (posSigs, negSigs)
 
 resolveClassDeclaration :: CST.ClassDeclaration
                         -> ResolverM RST.ClassDeclaration
 resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
-  let go :: (PrdCns, Typ) -> ResolverM (PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)
-      go (prdcns, typ) = do
-            typos <- resolveTyp PosRep typ
-            tyneg <- resolveTyp NegRep typ
-            pure (prdcns, typos, tyneg)
-      go' :: (XtorName, [(PrdCns, Typ)]) -> ResolverM (XtorName, [(PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)])
-      go' (xtor, typs) = do
-            types <- forM typs go
-            pure (xtor, types)
   checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_xtors
-  xtorRes <- forM classdecl_xtors go'
+  xtorRes <- resolveMethods classdecl_xtors
   pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
                               , classdecl_doc = classdecl_doc
                               , classdecl_name = classdecl_name
