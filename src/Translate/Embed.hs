@@ -74,6 +74,7 @@ embedCoreCommand (Core.CaseOfI loc rep ns t cases) =
     RST.CaseOfI loc rep ns  (embedCoreTerm t) (embedTermCaseI <$> cases) 
 embedCoreCommand (Core.CocaseOfCmd loc ns t cases) = RST.CocaseOfCmd loc ns (embedCoreTerm t) (embedCmdCase <$> cases)
 embedCoreCommand (Core.CaseOfCmd loc ns t cases) = RST.CaseOfCmd loc ns (embedCoreTerm t) (embedCmdCase <$> cases) 
+embedCoreCommand (Core.Method loc mn cn subst) = RST.Method loc mn cn (embedSubst subst)
 embedCoreCommand (Core.Print loc tm cmd) =
     RST.Print loc (embedCoreTerm tm) (embedCoreCommand cmd)
 embedCoreCommand (Core.Read loc tm) =
