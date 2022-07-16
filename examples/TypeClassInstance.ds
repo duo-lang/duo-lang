@@ -21,3 +21,13 @@ instance Eq Nat {
   Equals(x, y, k) => nateq x y >> k,
   Differ(x, y, k) => not (nateq x y) >> k
 };
+
+class PrintExit(+a : CBV) {
+  Show(a)
+};
+
+instance PrintExit Bool {
+  Show(x) => Print(x); ExitSuccess
+};
+
+def cmd main := Show(True);
