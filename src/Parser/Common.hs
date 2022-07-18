@@ -2,6 +2,7 @@ module Parser.Common
   ( -- Names
     freeVarNameP
   , tvarP
+  , recVarP 
   , xtorNameP
   , typeNameP
   , moduleNameP
@@ -38,6 +39,11 @@ tvarP :: Parser (SkolemTVar, SourcePos)
 tvarP = try $ do
   (name, pos) <- lowerCaseId
   return (MkSkolemTVar name, pos)
+
+recVarP :: Parser (RecTVar, SourcePos)
+recVarP = try $ do 
+  (name, pos) <- lowerCaseId
+  return (MkRecTVar name, pos)
 
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
