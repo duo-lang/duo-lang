@@ -147,7 +147,7 @@ lookupTRecVar PosRep tv = do
   tRecVarEnv <- asks tRecVarEnv
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
-                                              , "The Recursive Variables:"
+                                              , "The Recursive Variable:"
                                               , "   " <> unRecTVar tv
                                               , "is not available in the automaton."
                                               ]
@@ -161,7 +161,7 @@ lookupTRecVar NegRep tv = do
   tRecVarEnv <- asks tRecVarEnv
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
-                                              , "The Recursive Variables:"
+                                              , "The Recursive Variable:"
                                               , "   " <> unRecTVar tv
                                               , "is not available in the automaton."
                                               ]

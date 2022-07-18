@@ -128,8 +128,9 @@ modifyEnvironment mn f = do
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
-    verbosity <- gets (infOptsVerbosity . drvOpts)
-    when (verbosity == Verbose) (liftIO action)
+ liftIO action
+    --verbosity <- gets (infOptsVerbosity . drvOpts)
+    --when (verbosity == Verbose) (liftIO action)
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
