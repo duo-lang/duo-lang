@@ -191,6 +191,7 @@ cleanUpType ty = case ty of
     return $ TyCodataRefined loc pr tn xtss'
   -- Type variables remain unchanged
   tv@TySkolemVar{} -> return tv
+  tv@TyRecVar{} -> return tv
   -- Other types imply incorrect translation
   t -> throwOtherError defaultLoc ["Type translation: Cannot clean up type " <> ppPrint t]
 
