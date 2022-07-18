@@ -26,5 +26,5 @@ jobs:
           prerelease: false
           title: "VSCode Extension"
           files: |
-            vscode-plugin/dualsub-client-0.0.1.vsix
+            vscode-plugin/duolang-client-0.0.1.vsix
 

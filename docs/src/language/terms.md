@@ -1,6 +1,6 @@
 # Terms
 
-DualSub is based on a term language for the sequent calculus.
+Duo is based on a term language for the sequent calculus.
 In distinction to lambda calculus, the term language of natural deduction, we have a first-class treatment of both
 **producers** and **consumers** of each type.
 In addition, there is a third syntactic category, commands.
@@ -36,7 +36,7 @@ def rec add[*] := \x y => case x of {
 }
 ```
 
-There are five categories of terms in DualSub:
+There are five categories of terms in Duo:
 
 - Core constructs, which are independent of any concrete type.
 - Producer introduction rules
@@ -46,7 +46,7 @@ There are five categories of terms in DualSub:
 
 ## Core constructs
 
-DualSub supports control operators in the form of the \\(\mu\\) and \\(\tilde\mu\\) constructs of the \\(\lambda\mu\tilde\mu\\) calculus.
+Duo supports control operators in the form of the \\(\mu\\) and \\(\tilde\mu\\) constructs of the \\(\lambda\mu\tilde\mu\\) calculus.
 Both constructs use identical syntax.
 
 ```

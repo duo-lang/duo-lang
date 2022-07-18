@@ -6,10 +6,10 @@
 
 # Installation
 
-- [Installing DualSub](./installation/dualsub.md)
+- [Installing Duo](./installation/duo-lang.md)
 - [Editor Integration](./installation/editor-support.md)
 
-# The DualSub Language
+# The Duo Language
 
 - [Types](./language/types.md)
 - [Terms](./language/terms.md)

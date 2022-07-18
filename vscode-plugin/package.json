@@ -1,12 +1,12 @@
 {
-	"name": "dualsub-client",
-	"displayName": "dualsub-client",
-	"description": "LSP Client for the DualSub Language",
+	"name": "duo-lang-client",
+	"displayName": "duo-lang-client",
+	"description": "LSP Client for the Duo Language",
 	"version": "0.0.1",
-	"publisher": "dualsub",
+	"publisher": "duo-lang",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ps-tuebingen/algebraic-subtyping-implementation"
+		"url": "https://github.com/ps-tuebingen/duo-lang"
 	},
 	"engines": {
 		"vscode": "^1.60.0"
@@ -15,47 +15,47 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onLanguage:dualsub"
+		"onLanguage:duo-lang"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"languages": [
 			{
-				"id": "dualsub",
+				"id": "duo-lang",
 				"extensions": [
-					".ds"
+					".duo"
 				],
 				"aliases": [
-					"DualSub",
-					"dualsub"
+					"Duo",
+					"duo-lang"
 				],
 				"configuration": "./language-configuration.json"
 			}
 		],
 		"grammars": [
 			{
-				"language": "dualsub",
-				"scopeName": "source.dualsub",
-				"path": "./syntaxes/dualsub.tmGrammar.json"
+				"language": "duo-lang",
+				"scopeName": "source.duo-lang",
+				"path": "./syntaxes/duo-lang.tmGrammar.json"
 			}
 		],
 		"snippets": [
 			{
-				"language": "dualsub",
+				"language": "duo-lang",
 				"path": "./snippets/snippets.json"
 			}
 		],
 
 		"configuration": {
 			"type": "object",
-			"title": "DualSub",
+			"title": "Duo",
 			"properties": {
-				"dualsub-client.executable": {
+				"duo-lang-client.executable": {
 					"type": "string",
-					"default": "dualsub",
-					"description": "Path to the DualSub LSP executable"
+					"default": "duo",
+					"description": "Path to the Duo LSP executable"
 				},
-				"dualsub-client.logfile": {
+				"duo-lang-client.logfile": {
 					"type": "string",
 					"default": "",
 					"description": "Specify the file that the LSP server will use for printing logs. If a logfile is not specified, output is directed to stderr."

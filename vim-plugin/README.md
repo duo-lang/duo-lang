@@ -13,8 +13,8 @@ Further, `jq` is required to write the `coc` config.
 
 ## Recognize Filetype
 
-To recognize `.ds` files as `dualsub`, copy the the content of `ftdetect/` into `$VIMDIR/ftdetect/`
-All other steps require the filetype to be set to `dualsub` to work properly.
+To recognize `.duo` files as `duo-lang`, copy the the content of `ftdetect/` into `$VIMDIR/ftdetect/`
+All other steps require the filetype to be set to `duo-lang` to work properly.
 
 ## Syntax highlighting
 
@@ -25,15 +25,15 @@ To use syntax highlighting, copy the content of `syntax/` into `$VIMDIR/syntax/`
 You need a plugin which supports the language server protocol.
 I recommend [coc.nvim](https://github.com/neoclide/coc.nvim).
 
-You should first install the language server with `stack install dualsub` and then configure your language server plugin to use `dualsub`.
+You should first install the language server with `stack install duo-lang` and then configure your language server plugin to use `duo`.
 If you are using `coc`, then the config looks like this:
 ```
 {
   "languageserver": {
-    "dualsub": {
-        "command": "dualsub",
+    "duo-lang": {
+        "command": "duo",
         "args": ["lsp"],
-        "filetypes": ["dualsub"]
+        "filetypes": ["duo-lang"]
     }
   }
 }
@@ -47,4 +47,4 @@ Simply copy the content of `UltiSnip/` into `$VIMDIR/UltiSnip/`.
 
 ## Notes
 
-Instead of copying, you might want to consider symlinks instead, e.g. `ln -s $(pwd)/ftdetect/dualsub.vim $VIMDIR/ftdetect/dualsub.vim`.
+Instead of copying, you might want to consider symlinks instead, e.g. `ln -s $(pwd)/ftdetect/duo-lang.vim $VIMDIR/ftdetect/duo-lang.vim`.

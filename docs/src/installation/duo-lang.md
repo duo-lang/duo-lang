@@ -1,6 +1,6 @@
 # Installation
 
-DualSub is implemented in Haskell and can be compiled from the sources using the `stack` build tool.
+Duo is implemented in Haskell and can be compiled from the sources using the `stack` build tool.
 
 ## Obtaining the stack build tool
 
@@ -17,15 +17,15 @@ Verify that your installation was succesfull and that the binary is on your path
 > stack --version
 Version 2.7.3, Git revision 7927a3...
 ```
-## Building DualSub from the sources
+## Building Duo from the sources
 
-Clone the dualsub repository to your system:
+Clone the duo repository to your system:
 
 ```
-git clone git@github.com:ps-tuebingen/dualsub.git
+git clone git@github.com:ps-tuebingen/duo-lang.git
 ```
 
-Then, change into the dualsub directory and use stack to build the binary
+Then, change into the duo-lang directory and use stack to build the binary
 
 ```console
 > stack build
@@ -34,7 +34,7 @@ Then, change into the dualsub directory and use stack to build the binary
 During the first compilation this can take a while, since a lot of the dependencies have to be compiled as well.
 Subsequent compilations will be much faster.
 
-In order to use the editor plugin and the LSP server, the `dualsub` binary has to be on the path.
+In order to use the editor plugin and the LSP server, the `duo` binary has to be on the path.
 We use `stack install` for this.
 
 ```console
@@ -43,11 +43,11 @@ We use `stack install` for this.
 
 It is possible that you have to add the directory that the program was installed to to your `$PATH` environment variable.
 
-Verify that the dualsub binary has been correctly installed by querying it for its version:
+Verify that the duo binary has been correctly installed by querying it for its version:
 
 ```console
-> dualsub --version
-DualSub Version: 0.1.0.0
+> duo --version
+Duo Version: 0.1.0.0
 Git Commit: 81ec55800707cfdcd43a685d2e6fecd44a0429b8
 Git Branch: main
 ```

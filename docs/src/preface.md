@@ -1,15 +1,15 @@
-# DualSub
+# Duo
 
 ## About
 
-DualSub is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
+Duo is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
 The general programming style is similar to programming languages in the ML tradition (SML, Miranda, Haskell, OCaml).
 This means that the language provides a rich language for defining new types, and these types can be inferred using a powerful type inference mechanism.
 Programs use familiar pattern matching constructs to work with algebraic datatypes, but also offer less familiar constructs like codata types and copattern matching.
 The language de-emphasizes mutation, but we explore efficiency-oriented "on-the-metal" implementation issues.
 
 ## Guiding Ideas
-DualSub is a language focused on two central ideas; **Dual**ity and **Sub**typing.
+Duo is a language focused on two central ideas; **Duality** and **Subtyping**.
 
 - **Duality:** Duality is a well-known principle in logic, type theory and programming language theory.
   For example:
@@ -19,7 +19,7 @@ DualSub is a language focused on two central ideas; **Dual**ity and **Sub**typin
   - Producers/proofs are dual to consumers/refutations.
   - Sending is dual to receiving.
 
-  DualSub takes such dualities and explores how they can be used as a guiding principle in programming language design.
+  Duo takes such dualities and explores how they can be used as a guiding principle in programming language design.
   The first-class treatment of consumers, in particular, allows for new ways to express programs which could otherwise only be expressed using continuation-passing style.
 
 - **Subtyping:** Subtyping in programming languages is mostly associated with object-oriented programming and inheritance.
@@ -29,4 +29,4 @@ DualSub is a language focused on two central ideas; **Dual**ity and **Sub**typin
 
 ## About Us
 
-DualSub is developed on [GitHub](https://github.com/ps-tuebingen/dualsub) at the chair for programming languages at the University of Tübingen.
+Duo is developed on [GitHub](https://github.com/ps-tuebingen/duo-lang) at the chair for programming languages at the University of Tübingen.

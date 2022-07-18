@@ -5,15 +5,15 @@ import * as vscodelang from 'vscode-languageclient';
 
 let client: vscodelang.LanguageClient;
 
-// This method is called when the "dualsub-client" extension is activated.
+// This method is called when the "duo-lang-client" extension is activated.
 export function activate(context: vscode.ExtensionContext) {
 	
-	console.log('Congratulations, your extension "dualsub-client" is now active!');
+	console.log('Congratulations, your extension "duo-lang-client" is now active!');
     
-	let config = vscode.workspace.getConfiguration("dualsub-client");
+	let config = vscode.workspace.getConfiguration("duo-lang-client");
 
-	let defaultCmd = "dualsub";
-	let dualsubCmd = config.get<string>("executable") || defaultCmd;
+	let defaultCmd = "duo";
+	let duoLangCmd = config.get<string>("executable") || defaultCmd;
 
     // Assemble arguments
     let args: string[] = [];
@@ -27,12 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let serverOptions: vscodelang.ServerOptions = {
         run: {
-            command: dualsubCmd,
+            command: duoLangCmd,
             args: args,
             options: {}
         },
         debug: {
-            command: dualsubCmd,
+            command: duoLangCmd,
             args: args,
             options: {}
         }
@@ -41,14 +41,14 @@ export function activate(context: vscode.ExtensionContext) {
     let clientOptions: vscodelang.LanguageClientOptions = {
         documentSelector: [{
             scheme: 'file',
-            language: 'dualsub'
+            language: 'duo-lang'
         }],
-        diagnosticCollectionName: "dualsub"
+        diagnosticCollectionName: "duo-lang"
     };
 
     client = new vscodelang.LanguageClient(
-        'dualsubLanguageServer',
-        'DualSub Language Server',
+        'duo-langLanguageServer',
+        'Duo Language Server',
         serverOptions,
         clientOptions
     );

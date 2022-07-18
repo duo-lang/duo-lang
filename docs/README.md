@@ -1,6 +1,6 @@
 # Documentation
 
-This folder contains the documentation for DualSub.
+This folder contains the documentation for Duo.
 The docs are written in Markdown, and we use [mdbook](https://github.com/rust-lang/mdBook) to compile them to a html page.
 The manual for mdbook can be found [here](https://rust-lang.github.io/mdBook/).
 
