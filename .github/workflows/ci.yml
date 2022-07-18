@@ -3,16 +3,11 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'vscode-plugin/**'
-      - '.github/workflows/vscode-plugin.yml'
   pull_request:
     types:
       - opened
       - synchronize
-    paths-ignore:
-      - 'vscode-plugin/**'
-      - '.github/workflows/vscode-plugin.yml'
+
 jobs:
   stack:
     name: stack / ghc ${{ matrix.ghc }}
@@ -33,16 +28,6 @@ jobs:
     - uses: freckle/stack-cache-action@main
       with:
         prefix: ${{ runner.os }}-${{ matrix.ghc }}
-
-    #- uses: actions/cache@v1
-      #name: Cache ~/.stack
-      #with:
-        #path: |
-          #~/.stack
-          #.stack-work
-        #key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('stack.yaml.lock', 'dualsub.cabal') }}
-        #restore-keys: |
-          #$${{ runner.os }}-stack
 
     - name: Build
       run: |
