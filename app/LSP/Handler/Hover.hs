@@ -273,6 +273,15 @@ instance ToHoverMap (Typ pol) where
                       ]
     in 
       mkHoverMap loc msg
+  toHoverMap (TyRecVar loc rep _knd var) =
+    let
+      msg = T.unlines [ "#### Recursive variable "
+                      , "- Name: `" <> ppPrint var <> "`"
+                      , "- Polarity: " <> prettyPolRep rep
+                      ]
+    in 
+      mkHoverMap loc msg
+
   toHoverMap (TyData loc rep xtors) =
     let
       msg = T.unlines [ "#### Structural data type"
