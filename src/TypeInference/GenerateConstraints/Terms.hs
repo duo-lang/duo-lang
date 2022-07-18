@@ -23,6 +23,7 @@ import TypeInference.Constraints
 import Utils
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
+import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -241,18 +242,24 @@ genConstraintsCommand (Core.Method loc mn cn subst) = do
   -- for class type var:
   let xt = MkXtorName $ unMethodName mn
   decl <- lookupClassDecl cn
+  let [(classVar, classTVar, _)] = classdecl_kinds decl
+    -- fresh type var for class type variable
+  (tyVarp, tyVarn) <- freshTVar (TypeClassInstance cn classTVar)
+  addConstraint $ case classVar of
+    Covariant -> TypeClassPos (TypeClassConstraint loc) cn tyVarp
+    Contravariant -> TypeClassNeg (TypeClassConstraint loc) cn tyVarn
+
   posTypes <- lookupMethodType xt decl PosRep
   negTypes <- lookupMethodType xt decl NegRep
-  --   - substitute types for class var according to msig
-  -- let map :: Bisubstitution = undefined
   --   - genConstraints between substituted types
   genConstraintsCtxts substTypes negTypes (TypeClassConstraint loc)
   --   - genConstraints for type class of inferred type
   let f :: PrdCnsType Pos -> PrdCnsType Pos -> GenM ()
-      f (PrdCnsType PrdRep tyInferred) (PrdCnsType PrdRep (TySkolemVar _ _ _ tyvar)) =
-         addConstraint (TypeClassPos (TypeClassConstraint loc) cn tyInferred);
-      f (PrdCnsType CnsRep tyInferred) (PrdCnsType CnsRep (TySkolemVar _ _ _ tyvar)) =
-         addConstraint (TypeClassNeg (TypeClassConstraint loc) cn tyInferred);
+      -- assume that the type class var is the only type var
+      f (PrdCnsType PrdRep typ) (PrdCnsType PrdRep TySkolemVar {}) =
+         addConstraint (SubType (TypeClassConstraint loc) typ tyVarn)
+      f (PrdCnsType CnsRep tyn) (PrdCnsType CnsRep TySkolemVar {}) =
+         addConstraint (SubType (TypeClassConstraint loc) tyVarp tyn)
       f _ _ = pure ()
   sequence_ $ f <$> substTypes <*> posTypes
   return (TST.Method loc mn cn substInferred)
@@ -283,7 +290,7 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We lookup the class declaration  of the instance.
   decl <- lookupClassDecl instancedecl_name
   -- We check that all implementations belong to the same type class.
-  checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
+  checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases)
   -- Generate fresh unification variables for type parameters
   (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do

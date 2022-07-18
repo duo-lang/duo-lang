@@ -23,11 +23,13 @@ instance Derivable (Typ (pol :: Polarity)) (Typ (pol :: Polarity)) where
     derivable TyDataRefined{}         TyDataRefined{}         = False
     derivable TyCodataRefined{}       TyCodataRefined{}       = False
     derivable (TyNominal _ _ _ rn1 _) (TyNominal _ _ _ rn2 _) = rn1 == rn2
-    derivable TyBot{}                 TyBot{}                 = True
-    derivable TyTop{}                 TyTop{}                 = True
+    derivable TyBot{}                 _                       = True
+    derivable _                       TyTop{}                 = True
     derivable TyUnion{}               TyUnion{}               = False
     derivable TyInter{}               TyInter{}               = False
     derivable TyRec{}                 TyRec{}                 = False
     derivable (TyPrim _ _ t1)         (TyPrim _ _ t2)         = t1 == t2
     derivable TyFlipPol{}             TyFlipPol{}             = False
+    derivable TySkolemVar{}           _                       = True
+    derivable TyUniVar{}              _                       = True
     derivable _                       _                       = False
