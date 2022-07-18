@@ -64,7 +64,8 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
         xs = zip res $ runCoalesceM result $ mapM f res
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TySkolemVar loc rep something tv) =  return (TySkolemVar loc rep something tv)
+coalesceType (TySkolemVar loc rep mono tv) =  return (TySkolemVar loc rep mono tv)
+coalesceType (TyRecVar loc rep mono tv) = return (TyRecVar loc rep mono tv)
 coalesceType (TyUniVar _ PosRep _ tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
@@ -80,7 +81,7 @@ coalesceType (TyUniVar _ PosRep _ tv) = do
                 Nothing     -> do
                     newName <- freshRecVar
                     return $                                            mkUnion defaultLoc Nothing (TySkolemVar defaultLoc PosRep Nothing newName : lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc Nothing (TySkolemVar defaultLoc PosRep Nothing recVar  : lbs'))
+                Just recVar -> return $ TyRec defaultLoc PosRep (skolemTVarToRecTVar recVar) (mkUnion defaultLoc Nothing (TySkolemVar defaultLoc PosRep Nothing recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
@@ -96,7 +97,7 @@ coalesceType (TyUniVar _ NegRep _ tv) = do
                 Nothing     -> do
                     newName <- freshRecVar
                     return $                                            mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing newName : ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing recVar  : ubs'))
+                Just recVar -> return $ TyRec defaultLoc NegRep (skolemTVarToRecTVar recVar) (mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing recVar  : ubs'))
 coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData loc rep xtors')

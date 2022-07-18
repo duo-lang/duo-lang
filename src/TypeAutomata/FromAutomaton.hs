@@ -189,5 +189,5 @@ nodeToTypeNoCache rep i = do
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
-    then return $ TyRec defaultLoc rep (MkSkolemTVar ("r" <> T.pack (show i))) resType
+    then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
     else return resType

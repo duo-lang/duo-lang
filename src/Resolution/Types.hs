@@ -66,7 +66,7 @@ resolveTyp rep (TyNominal loc name args) = do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 resolveTyp rep (TyRec loc v typ) =
-        RST.TyRec loc rep (recTVarToSkolemTVar v) <$> resolveTyp rep typ
+        RST.TyRec loc rep v <$> resolveTyp rep typ
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =

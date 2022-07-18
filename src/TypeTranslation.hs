@@ -32,7 +32,7 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data TranslateState = TranslateState
-  { recVarsUsed :: Set SkolemTVar
+  { recVarsUsed :: Set RecTVar
   , varCount :: Int }
 
 initialState :: TranslateState
@@ -58,7 +58,7 @@ withVarMap f m = do
   local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m
 
-modifyVarsUsed :: (Set SkolemTVar -> Set SkolemTVar) -> TranslateM ()
+modifyVarsUsed :: (Set RecTVar -> Set RecTVar) -> TranslateM ()
 modifyVarsUsed f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed = f recVarsUsed, varCount })
@@ -95,7 +95,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
-    modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
+    modifyVarsUsed $ S.insert (skolemTVarToRecTVar tv) -- add rec. type variable to used var cache
     return $ TySkolemVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
@@ -104,10 +104,10 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
+        return $ TyRec defaultLoc NegRep (skolemTVarToRecTVar tv) $ TyDataRefined defaultLoc NegRep tn xtss
       Codata -> do
         -- Upper bound translation of codata is empty
-        return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
+        return $ TyRec defaultLoc NegRep (skolemTVarToRecTVar tv) $ TyCodataRefined defaultLoc NegRep tn []
 translateTypeUpper' tv@TySkolemVar{} = return tv
 translateTypeUpper' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
@@ -136,7 +136,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
-    modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
+    modifyVarsUsed $ S.insert (skolemTVarToRecTVar tv) -- add rec. type variable to used var cache
     return $ TySkolemVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
@@ -144,11 +144,11 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
     case data_polarity of
       Data -> do
         -- Lower bound translation of data is empty
-        return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
+        return $ TyRec defaultLoc pr (skolemTVarToRecTVar tv) $ TyDataRefined defaultLoc pr tn []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
+        return $ TyRec defaultLoc pr (skolemTVarToRecTVar tv) $ TyCodataRefined defaultLoc pr tn xtss
 translateTypeLower' tv@TySkolemVar{} = return tv
 translateTypeLower' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 

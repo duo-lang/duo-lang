@@ -176,7 +176,10 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
                                                             , "    " <> unUniTVar tv
                                                             , "should not appear at this point in the program."
                                                             ]
-
+insertType (TyRecVar loc _ _ tv) = throwAutomatonError loc [ "Could not insert type into automaton."
+                                                            , "The recursive variable:"
+                                                            , "    " <> unRecTVar tv
+                                                            , "did not appear in any recursive binding."]
 insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
@@ -203,8 +206,8 @@ insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol)
-  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
-      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
+  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert (recTVarToSkolemTVar rv) (Just newNode, Nothing) tvars
+      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert (recTVarToSkolemTVar rv) (Nothing, Just newNode) tvars
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode

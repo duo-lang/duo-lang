@@ -90,7 +90,7 @@ data Typ (pol :: Polarity) where
   TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
   TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
-  TyRec :: Loc -> PolarityRep pol -> SkolemTVar -> Typ pol -> Typ pol
+  TyRec :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
   TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
@@ -167,7 +167,7 @@ instance FreeTVars (Typ pol) where
   freeTVars TyBot {}                      = S.empty
   freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
   freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ tv t)              = S.delete tv $ freeTVars t
+  freeTVars (TyRec _ _ _ t)              = freeTVars t
   freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
@@ -208,13 +208,13 @@ instance Zonk (Typ pol) where
      Nothing -> ty 
      Just (tyPos,_) -> tyPos
   zonk bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (uvarSubst bisubst) of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty
      Just (_,tyNeg) -> tyNeg
   zonk bisubst ty@(TySkolemVar _ NegRep _ tv) = case M.lookup tv (skolvarSubst bisubst) of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty 
      Just (_,tyNeg) -> tyNeg
   zonk bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv (skolvarSubst bisubst) of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty 
      Just (tyPos,_) -> tyPos
   zonk bisubst ty@(TyRecVar _ PosRep _ tv) = case M.lookup tv (recvarSubst bisubst) of 
      Nothing -> ty
@@ -264,8 +264,8 @@ instance Zonk (PrdCnsType pol) where
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
-unfoldRecType recty@(TyRec _ PosRep var ty) = zonk (MkBisubstitution M.empty (M.fromList [(var,(recty, error "unfoldRecType"))]) M.empty) ty
-unfoldRecType recty@(TyRec _ NegRep var ty) = zonk (MkBisubstitution M.empty (M.fromList [(var,(error "unfoldRecType", recty))]) M.empty) ty
+unfoldRecType recty@(TyRec _ PosRep var ty) = zonk (MkBisubstitution M.empty M.empty (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
+unfoldRecType recty@(TyRec _ NegRep var ty) = zonk (MkBisubstitution M.empty M.empty (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
 
 ------------------------------------------------------------------------------
