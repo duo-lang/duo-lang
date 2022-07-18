@@ -3,10 +3,10 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Preface - DualSub - Documentation</title>
+        <title>Preface - Duo - Documentation</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="Documentation of the DualSub language">
+        <meta name="description" content="Documentation of the Duo language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="installation/dualsub.html"><strong aria-hidden="true">1.</strong> Installing DualSub</a></li><li class="chapter-item expanded "><a href="installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The DualSub Language</li><li class="chapter-item expanded "><a href="language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="further-reading.html">Further Reading</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="installation/duo-lang.html"><strong aria-hidden="true">1.</strong> Installing Duo</a></li><li class="chapter-item expanded "><a href="installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The Duo Language</li><li class="chapter-item expanded "><a href="language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="further-reading.html">Further Reading</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -106,16 +106,16 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DualSub - Documentation</h1>
+                    <h1 class="menu-title">Duo - Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/ps-tuebingen/duo-lang" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub/edit/main/docs/src/preface.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/ps-tuebingen/duo-lang/edit/main/docs/src/preface.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
                     </div>
@@ -142,15 +142,15 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="dualsub"><a class="header" href="#dualsub">DualSub</a></h1>
+                        <h1 id="duo"><a class="header" href="#duo">Duo</a></h1>
 <h2 id="about"><a class="header" href="#about">About</a></h2>
-<p>DualSub is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
+<p>Duo is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
 The general programming style is similar to programming languages in the ML tradition (SML, Miranda, Haskell, OCaml).
 This means that the language provides a rich language for defining new types, and these types can be inferred using a powerful type inference mechanism.
 Programs use familiar pattern matching constructs to work with algebraic datatypes, but also offer less familiar constructs like codata types and copattern matching.
 The language de-emphasizes mutation, but we explore efficiency-oriented &quot;on-the-metal&quot; implementation issues.</p>
 <h2 id="guiding-ideas"><a class="header" href="#guiding-ideas">Guiding Ideas</a></h2>
-<p>DualSub is a language focused on two central ideas; <strong>Dual</strong>ity and <strong>Sub</strong>typing.</p>
+<p>Duo is a language focused on two central ideas; <strong>Duality</strong> and <strong>Subtyping</strong>.</p>
 <ul>
 <li>
 <p><strong>Duality:</strong> Duality is a well-known principle in logic, type theory and programming language theory.
@@ -162,7 +162,7 @@ For example:</p>
 <li>Producers/proofs are dual to consumers/refutations.</li>
 <li>Sending is dual to receiving.</li>
 </ul>
-<p>DualSub takes such dualities and explores how they can be used as a guiding principle in programming language design.
+<p>Duo takes such dualities and explores how they can be used as a guiding principle in programming language design.
 The first-class treatment of consumers, in particular, allows for new ways to express programs which could otherwise only be expressed using continuation-passing style.</p>
 </li>
 <li>
@@ -173,13 +173,13 @@ This approach allows to infer principal types with minimal need for user-provide
 </li>
 </ul>
 <h2 id="about-us"><a class="header" href="#about-us">About Us</a></h2>
-<p>DualSub is developed on <a href="https://github.com/ps-tuebingen/dualsub">GitHub</a> at the chair for programming languages at the University of Tübingen.</p>
+<p>Duo is developed on <a href="https://github.com/ps-tuebingen/duo-lang">GitHub</a> at the chair for programming languages at the University of Tübingen.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="next" href="installation/dualsub.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="installation/duo-lang.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         <div style="clear: both"></div>
@@ -188,7 +188,7 @@ This approach allows to infer principal types with minimal need for user-provide
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="next" href="installation/dualsub.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="installation/duo-lang.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

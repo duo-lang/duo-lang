@@ -3,11 +3,11 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>DualSub - Documentation</title>
+        <title>Duo - Documentation</title>
         <meta name="robots" content="noindex" />
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="Documentation of the DualSub language">
+        <meta name="description" content="Documentation of the Duo language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
@@ -78,7 +78,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="installation/dualsub.html"><strong aria-hidden="true">1.</strong> Installing DualSub</a></li><li class="chapter-item expanded "><a href="installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The DualSub Language</li><li class="chapter-item expanded "><a href="language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="further-reading.html">Further Reading</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="installation/duo-lang.html"><strong aria-hidden="true">1.</strong> Installing Duo</a></li><li class="chapter-item expanded "><a href="installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The Duo Language</li><li class="chapter-item expanded "><a href="language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="further-reading.html">Further Reading</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -107,13 +107,13 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DualSub - Documentation</h1>
+                    <h1 class="menu-title">Duo - Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/ps-tuebingen/duo-lang" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
                     </div>
@@ -140,15 +140,15 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="dualsub"><a class="header" href="#dualsub">DualSub</a></h1>
+                        <h1 id="duo"><a class="header" href="#duo">Duo</a></h1>
 <h2 id="about"><a class="header" href="#about">About</a></h2>
-<p>DualSub is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
+<p>Duo is a statically-typed, functional research programming language exploring ideas of duality and subtyping.
 The general programming style is similar to programming languages in the ML tradition (SML, Miranda, Haskell, OCaml).
 This means that the language provides a rich language for defining new types, and these types can be inferred using a powerful type inference mechanism.
 Programs use familiar pattern matching constructs to work with algebraic datatypes, but also offer less familiar constructs like codata types and copattern matching.
 The language de-emphasizes mutation, but we explore efficiency-oriented &quot;on-the-metal&quot; implementation issues.</p>
 <h2 id="guiding-ideas"><a class="header" href="#guiding-ideas">Guiding Ideas</a></h2>
-<p>DualSub is a language focused on two central ideas; <strong>Dual</strong>ity and <strong>Sub</strong>typing.</p>
+<p>Duo is a language focused on two central ideas; <strong>Duality</strong> and <strong>Subtyping</strong>.</p>
 <ul>
 <li>
 <p><strong>Duality:</strong> Duality is a well-known principle in logic, type theory and programming language theory.
@@ -160,7 +160,7 @@ For example:</p>
 <li>Producers/proofs are dual to consumers/refutations.</li>
 <li>Sending is dual to receiving.</li>
 </ul>
-<p>DualSub takes such dualities and explores how they can be used as a guiding principle in programming language design.
+<p>Duo takes such dualities and explores how they can be used as a guiding principle in programming language design.
 The first-class treatment of consumers, in particular, allows for new ways to express programs which could otherwise only be expressed using continuation-passing style.</p>
 </li>
 <li>
@@ -171,9 +171,9 @@ This approach allows to infer principal types with minimal need for user-provide
 </li>
 </ul>
 <h2 id="about-us"><a class="header" href="#about-us">About Us</a></h2>
-<p>DualSub is developed on <a href="https://github.com/ps-tuebingen/dualsub">GitHub</a> at the chair for programming languages at the University of Tübingen.</p>
+<p>Duo is developed on <a href="https://github.com/ps-tuebingen/duo-lang">GitHub</a> at the chair for programming languages at the University of Tübingen.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
-<p>DualSub is implemented in Haskell and can be compiled from the sources using the <code>stack</code> build tool.</p>
+<p>Duo is implemented in Haskell and can be compiled from the sources using the <code>stack</code> build tool.</p>
 <h2 id="obtaining-the-stack-build-tool"><a class="header" href="#obtaining-the-stack-build-tool">Obtaining the stack build tool</a></h2>
 <p>There are two recommended ways to install <code>stack</code> on your system; only installing <code>stack</code> or using <code>ghcup</code> to manage your stack installation.</p>
 <ul>
@@ -185,23 +185,23 @@ To install stack using <code>ghcup</code>, follow the instructions on the ghcup 
 <pre><code class="language-console">&gt; stack --version
 Version 2.7.3, Git revision 7927a3...
 </code></pre>
-<h2 id="building-dualsub-from-the-sources"><a class="header" href="#building-dualsub-from-the-sources">Building DualSub from the sources</a></h2>
-<p>Clone the dualsub repository to your system:</p>
-<pre><code>git clone git@github.com:ps-tuebingen/dualsub.git
+<h2 id="building-duo-from-the-sources"><a class="header" href="#building-duo-from-the-sources">Building Duo from the sources</a></h2>
+<p>Clone the duo repository to your system:</p>
+<pre><code>git clone git@github.com:ps-tuebingen/duo-lang.git
 </code></pre>
-<p>Then, change into the dualsub directory and use stack to build the binary</p>
+<p>Then, change into the duo-lang directory and use stack to build the binary</p>
 <pre><code class="language-console">&gt; stack build
 </code></pre>
 <p>During the first compilation this can take a while, since a lot of the dependencies have to be compiled as well.
 Subsequent compilations will be much faster.</p>
-<p>In order to use the editor plugin and the LSP server, the <code>dualsub</code> binary has to be on the path.
+<p>In order to use the editor plugin and the LSP server, the <code>duo</code> binary has to be on the path.
 We use <code>stack install</code> for this.</p>
 <pre><code class="language-console">&gt; stack install
 </code></pre>
 <p>It is possible that you have to add the directory that the program was installed to to your <code>$PATH</code> environment variable.</p>
-<p>Verify that the dualsub binary has been correctly installed by querying it for its version:</p>
-<pre><code class="language-console">&gt; dualsub --version
-DualSub Version: 0.1.0.0
+<p>Verify that the duo binary has been correctly installed by querying it for its version:</p>
+<pre><code class="language-console">&gt; duo --version
+Duo Version: 0.1.0.0
 Git Commit: 81ec55800707cfdcd43a685d2e6fecd44a0429b8
 Git Branch: main
 </code></pre>
@@ -210,18 +210,18 @@ Git Branch: main
 The editor integration uses the language server protocol, so it should be possible to support other editors in the future.</p>
 <h2 id="installing-the-vscode-extension"><a class="header" href="#installing-the-vscode-extension">Installing the VSCode extension</a></h2>
 <p>We provide a prebuilt <code>.vsix</code> extension which can be installed as an extension to VSCode.
-The prebuilt extension is available as a release on our <a href="https://github.com/ps-tuebingen/dualsub">GitHub page</a>.
+The prebuilt extension is available as a release on our <a href="https://github.com/ps-tuebingen/duo-lang">GitHub page</a>.
 Once you have downloaded the extension, use the following command to install the extension as a plugin in VSCode.</p>
-<pre><code class="language-console">code --install-extension dualsub-client-0.0.1.vsix
+<pre><code class="language-console">code --install-extension duo-lang-client-0.0.1.vsix
 </code></pre>
 <p>The extension itself provides syntax highlighting and indentation support.
-The advanced features are implemented using a language server, and require the <code>dualsub</code> binary to be available on the path.</p>
+The advanced features are implemented using a language server, and require the <code>duo</code> binary to be available on the path.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="types"><a class="header" href="#types">Types</a></h1>
 <h2 id="kinds-and-evaluation-order"><a class="header" href="#kinds-and-evaluation-order">Kinds and Evaluation Order</a></h2>
 <p>Most languages choose one evaluation strategy.
 Strict languages like OCaml, SML or F# choose a call-by-value (CBV) evaluation strategy, whereas non-strict languages choose either
 call-by-name (CBN) or call-by-need.
-DualSub is not comitted to either strategy.
+Duo is not comitted to either strategy.
 Instead, the user can choose between two different evaluation strategies for each type individually.
 The two evaluation strategies are:</p>
 <table><thead><tr><th>Evaluation Order</th><th>Explanation</th></tr></thead><tbody>
@@ -238,7 +238,7 @@ These inhabitated kinds are called &quot;MonoKind&quot;. Currently there are fou
 <tr><td>F64Rep</td><td>The kind of the unboxed #F64 type</td></tr>
 </tbody></table>
 <p>Higher kinds are the kinds given to type constructors.
-Since the only available type constructors in DualSub construct CBV or CBN types, they follow the following restricted grammar.
+Since the only available type constructors in Duo construct CBV or CBN types, they follow the following restricted grammar.
 Each argument in a PolyKind has a variance, either <code>+</code> for covariant arguments or <code>-</code> for contravariant arguments, a type variable <code>a</code>, and a
 MonoKind of type type variable, <code>mk</code>.</p>
 <table><thead><tr><th>PolyKind</th><th>Explanation</th></tr></thead><tbody>
@@ -257,7 +257,7 @@ The builtin types are given in the following table.</p>
 Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.
 The standard library provides wrappers in the <code>I64.ds</code> and <code>F64.ds</code> modules which provide the boxed variants of the builtin unboxed types.</p>
 <h2 id="nominal-types"><a class="header" href="#nominal-types">Nominal Types</a></h2>
-<p>DualSub has two different variants of nominal types; nominal data types and nominal codata types.</p>
+<p>Duo has two different variants of nominal types; nominal data types and nominal codata types.</p>
 <h4 id="nominal-data-types"><a class="header" href="#nominal-data-types">Nominal Data Types</a></h4>
 <p>Nominal data types are declared using the <code>data</code> keyword.
 For example, the following two declarations declare Booleans and Peano natural numbers, respectively.</p>
@@ -304,10 +304,10 @@ The declaration of the function type looks like this.</p>
 <h2 id="structural-types"><a class="header" href="#structural-types">Structural Types</a></h2>
 <p>Nominal data and codata types define a new type together with all of its constructors (resp. destructors).
 But sometimes it is more useful to have a more structural type, where we can introduce new constructors and destructors at arbitrary places in the program.
-These types are often called extensible variants and records, and DualSub supports them in the form of structural data and codata types.</p>
+These types are often called extensible variants and records, and Duo supports them in the form of structural data and codata types.</p>
 <p>Structural data types are similar to polymorphic variants in, for example, OCaml.
 Structural codata types are similar to extensible records in, for example, Purescript.
-In distinction to those systems, constructors and destructors of structural data and codata types have to be declared in DualSub before they can be used.
+In distinction to those systems, constructors and destructors of structural data and codata types have to be declared in Duo before they can be used.
 This approach has the following benefits:</p>
 <ul>
 <li>It becomes possible to identify typos when using structural data and codata.</li>
@@ -332,7 +332,7 @@ The structural encoding of booleans, for example, looks like this:</p>
 <pre><code>mu a. { Head[Nat], Tail[a] }
 </code></pre>
 <h2 id="structural-refinement-types"><a class="header" href="#structural-refinement-types">Structural Refinement Types</a></h2>
-<p>Structural refinement types are a novel idea in DualSub which combine features from both nominal and structural types.
+<p>Structural refinement types are a novel idea in Duo which combine features from both nominal and structural types.
 They are declared similarly to nominal types, but use the additional keyword <code>refinement</code> in front of the declaration</p>
 <pre><code>refinement data Bool : CBV { True, False };
 refinement codata NatStream : CBN {
@@ -351,7 +351,7 @@ The four possible refinements of the boolean type, for example, are written like
 <pre><code>{ NatStream | Head[Nat] }
 </code></pre>
 <h2 id="lattice-types"><a class="header" href="#lattice-types">Lattice Types</a></h2>
-<p>DualSub uses subtyping, and some of the operations of the subtyping lattice are available in the surface syntax.
+<p>Duo uses subtyping, and some of the operations of the subtyping lattice are available in the surface syntax.
 In particular, unions and intersections, as well as the top and bottom elements of the subtyping lattice can be used in types.</p>
 <table><thead><tr><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td>Top</td><td>The top element of the subtyping lattice</td></tr>
@@ -360,7 +360,7 @@ In particular, unions and intersections, as well as the top and bottom elements 
 <tr><td>S /\ T</td><td>The intersection of S and T</td></tr>
 </tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="terms"><a class="header" href="#terms">Terms</a></h1>
-<p>DualSub is based on a term language for the sequent calculus.
+<p>Duo is based on a term language for the sequent calculus.
 In distinction to lambda calculus, the term language of natural deduction, we have a first-class treatment of both
 <strong>producers</strong> and <strong>consumers</strong> of each type.
 In addition, there is a third syntactic category, commands.
@@ -384,7 +384,7 @@ def someConsumer(*) : ... := ...;
     S(x) =&gt; S(add x y)
 }
 </code></pre>
-<p>There are five categories of terms in DualSub:</p>
+<p>There are five categories of terms in Duo:</p>
 <ul>
 <li>Core constructs, which are independent of any concrete type.</li>
 <li>Producer introduction rules</li>
@@ -393,7 +393,7 @@ def someConsumer(*) : ... := ...;
 <li>Consumer elimination rules</li>
 </ul>
 <h2 id="core-constructs"><a class="header" href="#core-constructs">Core constructs</a></h2>
-<p>DualSub supports control operators in the form of the \(\mu\) and \(\tilde\mu\) constructs of the \(\lambda\mu\tilde\mu\) calculus.
+<p>Duo supports control operators in the form of the \(\mu\) and \(\tilde\mu\) constructs of the \(\lambda\mu\tilde\mu\) calculus.
 Both constructs use identical syntax.</p>
 <pre><code>def ex1[*] := mu x. ExitSuccess;
 def ex2(*) := mu x. ExitSuccess;
@@ -479,9 +479,9 @@ def main := Read[ mu x. Read[mu y. Print(addA x y);ExitSuccess]];
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lsp-features"><a class="header" href="#lsp-features">LSP Features</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h1>
-<p>DualSub is based on the work of many other researchers.
+<p>Duo is based on the work of many other researchers.
 The general programming style and the syntax are inspired by languages from the ML family (SML, Miranda, Haskell, OCaml, Agda, Idris, Coq).
-Below, we include some further reading on specific aspects of the DualSub language.</p>
+Below, we include some further reading on specific aspects of the Duo language.</p>
 <h2 id="algebraic-subtyping"><a class="header" href="#algebraic-subtyping">Algebraic Subtyping</a></h2>
 <p>Type inference uses the algebraic subtyping approach.
 More specifically, we use constraint-based type inference with subtyping constraints.
@@ -500,12 +500,12 @@ We provide some standard references on codata types below.</p>
 <li>&quot;Codata in Action&quot; by Paul Downen, Zachary Sullivan, Zena Ariola and Simon Peyton Jones provides a good motivation for, and introduction to, codata types.</li>
 <li>&quot;Copatterns: programming infinite structures by observations&quot; by Andreas Abel, Brigitte Pientka, David Thibodeau and Anton Setzer introduced copattern matching as a convenient and principled syntactic construct to work with codata types, similar to how pattern matching works for data types.</li>
 <li>&quot;Automatic Refunctionalization to a Language with Copattern Matching: With Applications to the Expression Problem&quot; by Tillmann Rendel, Julia Trieflinger and Klaus Ostermann show how data and codata types correspond to the two different axes of extensibility in the expression problem, and how defunctionalization and refunctionalization can be used to automatically transform data intro codata types, and vice versa.
-Two follow-up papers, &quot;Decomposition Diversity with Symmetric Data and Codata&quot;, and &quot;Dualizing Generalized Algebraic Data Types by Matrix Transposition&quot; extend this approach to nested and polymorphic programs, respectively. We plan to provide these transformations as editor actions for the DualSub language.</li>
+Two follow-up papers, &quot;Decomposition Diversity with Symmetric Data and Codata&quot;, and &quot;Dualizing Generalized Algebraic Data Types by Matrix Transposition&quot; extend this approach to nested and polymorphic programs, respectively. We plan to provide these transformations as editor actions for the Duo language.</li>
 </ul>
 <h2 id="producerconsumer-duality"><a class="header" href="#producerconsumer-duality">Producer/Consumer Duality</a></h2>
 <p>The duality between producers and consumers of a type corresponds, via the Curry-Howard isomorphism, to the duality between proofs and refutations in logic.
 A proof system which exploits this duality of proofs and refutations is the Sequent Calculus, developed by Gentzen at the same time as his more popular relative, natural deduction.
-At its core, DualSub is based on a term assignment system for the sequent calculus, the \(\lambda \mu \tilde\mu\) calculus by Pierre-Louis Curien and Hugo Herbelin.
+At its core, Duo is based on a term assignment system for the sequent calculus, the \(\lambda \mu \tilde\mu\) calculus by Pierre-Louis Curien and Hugo Herbelin.
 In this term assignment system, consumers correspond to a first-class notion of continuations.
 We only cite some of the more important references of the extensive literature on term-assignment systems for the sequent calculus.</p>
 <ul>

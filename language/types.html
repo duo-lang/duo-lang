@@ -3,10 +3,10 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Types - DualSub - Documentation</title>
+        <title>Types - Duo - Documentation</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="Documentation of the DualSub language">
+        <meta name="description" content="Documentation of the Duo language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="../installation/dualsub.html"><strong aria-hidden="true">1.</strong> Installing DualSub</a></li><li class="chapter-item expanded "><a href="../installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The DualSub Language</li><li class="chapter-item expanded "><a href="../language/types.html" class="active"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="../language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="../language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="../features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../further-reading.html">Further Reading</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="../installation/duo-lang.html"><strong aria-hidden="true">1.</strong> Installing Duo</a></li><li class="chapter-item expanded "><a href="../installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The Duo Language</li><li class="chapter-item expanded "><a href="../language/types.html" class="active"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="../language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="../language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="../features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../further-reading.html">Further Reading</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -106,16 +106,16 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DualSub - Documentation</h1>
+                    <h1 class="menu-title">Duo - Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/ps-tuebingen/duo-lang" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub/edit/main/docs/src/language/types.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/ps-tuebingen/duo-lang/edit/main/docs/src/language/types.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
                     </div>
@@ -147,7 +147,7 @@
 <p>Most languages choose one evaluation strategy.
 Strict languages like OCaml, SML or F# choose a call-by-value (CBV) evaluation strategy, whereas non-strict languages choose either
 call-by-name (CBN) or call-by-need.
-DualSub is not comitted to either strategy.
+Duo is not comitted to either strategy.
 Instead, the user can choose between two different evaluation strategies for each type individually.
 The two evaluation strategies are:</p>
 <table><thead><tr><th>Evaluation Order</th><th>Explanation</th></tr></thead><tbody>
@@ -164,7 +164,7 @@ These inhabitated kinds are called &quot;MonoKind&quot;. Currently there are fou
 <tr><td>F64Rep</td><td>The kind of the unboxed #F64 type</td></tr>
 </tbody></table>
 <p>Higher kinds are the kinds given to type constructors.
-Since the only available type constructors in DualSub construct CBV or CBN types, they follow the following restricted grammar.
+Since the only available type constructors in Duo construct CBV or CBN types, they follow the following restricted grammar.
 Each argument in a PolyKind has a variance, either <code>+</code> for covariant arguments or <code>-</code> for contravariant arguments, a type variable <code>a</code>, and a
 MonoKind of type type variable, <code>mk</code>.</p>
 <table><thead><tr><th>PolyKind</th><th>Explanation</th></tr></thead><tbody>
@@ -183,7 +183,7 @@ The builtin types are given in the following table.</p>
 Since they are unboxed, it is in general not possible to apply a polymorphic function to an argument of a builtin type.
 The standard library provides wrappers in the <code>I64.ds</code> and <code>F64.ds</code> modules which provide the boxed variants of the builtin unboxed types.</p>
 <h2 id="nominal-types"><a class="header" href="#nominal-types">Nominal Types</a></h2>
-<p>DualSub has two different variants of nominal types; nominal data types and nominal codata types.</p>
+<p>Duo has two different variants of nominal types; nominal data types and nominal codata types.</p>
 <h4 id="nominal-data-types"><a class="header" href="#nominal-data-types">Nominal Data Types</a></h4>
 <p>Nominal data types are declared using the <code>data</code> keyword.
 For example, the following two declarations declare Booleans and Peano natural numbers, respectively.</p>
@@ -230,10 +230,10 @@ The declaration of the function type looks like this.</p>
 <h2 id="structural-types"><a class="header" href="#structural-types">Structural Types</a></h2>
 <p>Nominal data and codata types define a new type together with all of its constructors (resp. destructors).
 But sometimes it is more useful to have a more structural type, where we can introduce new constructors and destructors at arbitrary places in the program.
-These types are often called extensible variants and records, and DualSub supports them in the form of structural data and codata types.</p>
+These types are often called extensible variants and records, and Duo supports them in the form of structural data and codata types.</p>
 <p>Structural data types are similar to polymorphic variants in, for example, OCaml.
 Structural codata types are similar to extensible records in, for example, Purescript.
-In distinction to those systems, constructors and destructors of structural data and codata types have to be declared in DualSub before they can be used.
+In distinction to those systems, constructors and destructors of structural data and codata types have to be declared in Duo before they can be used.
 This approach has the following benefits:</p>
 <ul>
 <li>It becomes possible to identify typos when using structural data and codata.</li>
@@ -258,7 +258,7 @@ The structural encoding of booleans, for example, looks like this:</p>
 <pre><code>mu a. { Head[Nat], Tail[a] }
 </code></pre>
 <h2 id="structural-refinement-types"><a class="header" href="#structural-refinement-types">Structural Refinement Types</a></h2>
-<p>Structural refinement types are a novel idea in DualSub which combine features from both nominal and structural types.
+<p>Structural refinement types are a novel idea in Duo which combine features from both nominal and structural types.
 They are declared similarly to nominal types, but use the additional keyword <code>refinement</code> in front of the declaration</p>
 <pre><code>refinement data Bool : CBV { True, False };
 refinement codata NatStream : CBN {
@@ -277,7 +277,7 @@ The four possible refinements of the boolean type, for example, are written like
 <pre><code>{ NatStream | Head[Nat] }
 </code></pre>
 <h2 id="lattice-types"><a class="header" href="#lattice-types">Lattice Types</a></h2>
-<p>DualSub uses subtyping, and some of the operations of the subtyping lattice are available in the surface syntax.
+<p>Duo uses subtyping, and some of the operations of the subtyping lattice are available in the surface syntax.
 In particular, unions and intersections, as well as the top and bottom elements of the subtyping lattice can be used in types.</p>
 <table><thead><tr><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td>Top</td><td>The top element of the subtyping lattice</td></tr>

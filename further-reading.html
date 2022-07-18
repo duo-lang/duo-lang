@@ -3,10 +3,10 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Further Reading - DualSub - Documentation</title>
+        <title>Further Reading - Duo - Documentation</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="Documentation of the DualSub language">
+        <meta name="description" content="Documentation of the Duo language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="installation/dualsub.html"><strong aria-hidden="true">1.</strong> Installing DualSub</a></li><li class="chapter-item expanded "><a href="installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The DualSub Language</li><li class="chapter-item expanded "><a href="language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="further-reading.html" class="active">Further Reading</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="installation/duo-lang.html"><strong aria-hidden="true">1.</strong> Installing Duo</a></li><li class="chapter-item expanded "><a href="installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The Duo Language</li><li class="chapter-item expanded "><a href="language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="further-reading.html" class="active">Further Reading</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -106,16 +106,16 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DualSub - Documentation</h1>
+                    <h1 class="menu-title">Duo - Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/ps-tuebingen/duo-lang" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub/edit/main/docs/src/further-reading.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/ps-tuebingen/duo-lang/edit/main/docs/src/further-reading.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
                     </div>
@@ -143,9 +143,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h1>
-<p>DualSub is based on the work of many other researchers.
+<p>Duo is based on the work of many other researchers.
 The general programming style and the syntax are inspired by languages from the ML family (SML, Miranda, Haskell, OCaml, Agda, Idris, Coq).
-Below, we include some further reading on specific aspects of the DualSub language.</p>
+Below, we include some further reading on specific aspects of the Duo language.</p>
 <h2 id="algebraic-subtyping"><a class="header" href="#algebraic-subtyping">Algebraic Subtyping</a></h2>
 <p>Type inference uses the algebraic subtyping approach.
 More specifically, we use constraint-based type inference with subtyping constraints.
@@ -164,12 +164,12 @@ We provide some standard references on codata types below.</p>
 <li>&quot;Codata in Action&quot; by Paul Downen, Zachary Sullivan, Zena Ariola and Simon Peyton Jones provides a good motivation for, and introduction to, codata types.</li>
 <li>&quot;Copatterns: programming infinite structures by observations&quot; by Andreas Abel, Brigitte Pientka, David Thibodeau and Anton Setzer introduced copattern matching as a convenient and principled syntactic construct to work with codata types, similar to how pattern matching works for data types.</li>
 <li>&quot;Automatic Refunctionalization to a Language with Copattern Matching: With Applications to the Expression Problem&quot; by Tillmann Rendel, Julia Trieflinger and Klaus Ostermann show how data and codata types correspond to the two different axes of extensibility in the expression problem, and how defunctionalization and refunctionalization can be used to automatically transform data intro codata types, and vice versa.
-Two follow-up papers, &quot;Decomposition Diversity with Symmetric Data and Codata&quot;, and &quot;Dualizing Generalized Algebraic Data Types by Matrix Transposition&quot; extend this approach to nested and polymorphic programs, respectively. We plan to provide these transformations as editor actions for the DualSub language.</li>
+Two follow-up papers, &quot;Decomposition Diversity with Symmetric Data and Codata&quot;, and &quot;Dualizing Generalized Algebraic Data Types by Matrix Transposition&quot; extend this approach to nested and polymorphic programs, respectively. We plan to provide these transformations as editor actions for the Duo language.</li>
 </ul>
 <h2 id="producerconsumer-duality"><a class="header" href="#producerconsumer-duality">Producer/Consumer Duality</a></h2>
 <p>The duality between producers and consumers of a type corresponds, via the Curry-Howard isomorphism, to the duality between proofs and refutations in logic.
 A proof system which exploits this duality of proofs and refutations is the Sequent Calculus, developed by Gentzen at the same time as his more popular relative, natural deduction.
-At its core, DualSub is based on a term assignment system for the sequent calculus, the \(\lambda \mu \tilde\mu\) calculus by Pierre-Louis Curien and Hugo Herbelin.
+At its core, Duo is based on a term assignment system for the sequent calculus, the \(\lambda \mu \tilde\mu\) calculus by Pierre-Louis Curien and Hugo Herbelin.
 In this term assignment system, consumers correspond to a first-class notion of continuations.
 We only cite some of the more important references of the extensive literature on term-assignment systems for the sequent calculus.</p>
 <ul>

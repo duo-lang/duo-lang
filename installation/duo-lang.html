@@ -3,10 +3,10 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Installing DualSub - DualSub - Documentation</title>
+        <title>Installing Duo - Duo - Documentation</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-        <meta name="description" content="Documentation of the DualSub language">
+        <meta name="description" content="Documentation of the Duo language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
@@ -77,7 +77,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="../installation/dualsub.html" class="active"><strong aria-hidden="true">1.</strong> Installing DualSub</a></li><li class="chapter-item expanded "><a href="../installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The DualSub Language</li><li class="chapter-item expanded "><a href="../language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="../language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="../language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="../features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../further-reading.html">Further Reading</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../preface.html">Preface</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><li class="part-title">Installation</li><li class="chapter-item expanded "><a href="../installation/duo-lang.html" class="active"><strong aria-hidden="true">1.</strong> Installing Duo</a></li><li class="chapter-item expanded "><a href="../installation/editor-support.html"><strong aria-hidden="true">2.</strong> Editor Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">The Duo Language</li><li class="chapter-item expanded "><a href="../language/types.html"><strong aria-hidden="true">3.</strong> Types</a></li><li class="chapter-item expanded "><a href="../language/terms.html"><strong aria-hidden="true">4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="../language/commands.html"><strong aria-hidden="true">5.</strong> Commands</a></li><li class="chapter-item expanded affix "><li class="part-title">Formal Specification</li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Specification</div></li><li class="chapter-item expanded affix "><li class="part-title">Language Server Features</li><li class="chapter-item expanded "><a href="../features/features.html"><strong aria-hidden="true">7.</strong> LSP Features</a></li><li class="spacer"></li><li class="chapter-item expanded affix "><a href="../further-reading.html">Further Reading</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -106,16 +106,16 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">DualSub - Documentation</h1>
+                    <h1 class="menu-title">Duo - Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub" title="Git repository" aria-label="Git repository">
+                        <a href="https://github.com/ps-tuebingen/duo-lang" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/ps-tuebingen/dualsub/edit/main/docs/src/installation/dualsub.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/ps-tuebingen/duo-lang/edit/main/docs/src/installation/duo-lang.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
                     </div>
@@ -143,7 +143,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
-<p>DualSub is implemented in Haskell and can be compiled from the sources using the <code>stack</code> build tool.</p>
+<p>Duo is implemented in Haskell and can be compiled from the sources using the <code>stack</code> build tool.</p>
 <h2 id="obtaining-the-stack-build-tool"><a class="header" href="#obtaining-the-stack-build-tool">Obtaining the stack build tool</a></h2>
 <p>There are two recommended ways to install <code>stack</code> on your system; only installing <code>stack</code> or using <code>ghcup</code> to manage your stack installation.</p>
 <ul>
@@ -155,23 +155,23 @@ To install stack using <code>ghcup</code>, follow the instructions on the ghcup 
 <pre><code class="language-console">&gt; stack --version
 Version 2.7.3, Git revision 7927a3...
 </code></pre>
-<h2 id="building-dualsub-from-the-sources"><a class="header" href="#building-dualsub-from-the-sources">Building DualSub from the sources</a></h2>
-<p>Clone the dualsub repository to your system:</p>
-<pre><code>git clone git@github.com:ps-tuebingen/dualsub.git
+<h2 id="building-duo-from-the-sources"><a class="header" href="#building-duo-from-the-sources">Building Duo from the sources</a></h2>
+<p>Clone the duo repository to your system:</p>
+<pre><code>git clone git@github.com:ps-tuebingen/duo-lang.git
 </code></pre>
-<p>Then, change into the dualsub directory and use stack to build the binary</p>
+<p>Then, change into the duo-lang directory and use stack to build the binary</p>
 <pre><code class="language-console">&gt; stack build
 </code></pre>
 <p>During the first compilation this can take a while, since a lot of the dependencies have to be compiled as well.
 Subsequent compilations will be much faster.</p>
-<p>In order to use the editor plugin and the LSP server, the <code>dualsub</code> binary has to be on the path.
+<p>In order to use the editor plugin and the LSP server, the <code>duo</code> binary has to be on the path.
 We use <code>stack install</code> for this.</p>
 <pre><code class="language-console">&gt; stack install
 </code></pre>
 <p>It is possible that you have to add the directory that the program was installed to to your <code>$PATH</code> environment variable.</p>
-<p>Verify that the dualsub binary has been correctly installed by querying it for its version:</p>
-<pre><code class="language-console">&gt; dualsub --version
-DualSub Version: 0.1.0.0
+<p>Verify that the duo binary has been correctly installed by querying it for its version:</p>
+<pre><code class="language-console">&gt; duo --version
+Duo Version: 0.1.0.0
 Git Commit: 81ec55800707cfdcd43a685d2e6fecd44a0429b8
 Git Branch: main
 </code></pre>
