@@ -235,14 +235,26 @@ genConstraintsCommand (Core.Jump loc fv) = do
   _ <- lookupCommand fv
   return (TST.Jump loc fv)
 genConstraintsCommand (Core.Method loc mn cn subst) = do
+  -- infer arg types
+  substInferred <- genConstraintsSubst subst
+  let substTypes = TST.getTypArgs substInferred
+  -- for class type var:
   let xt = MkXtorName $ unMethodName mn
   decl <- lookupClassDecl cn
   posTypes <- lookupMethodType xt decl PosRep
-  -- negTypes <- lookupMethodType xt decl NegRep
-  substInferred <- withContext posTypes $ genConstraintsSubst subst
-  forM_ substInferred $ \case
-     TST.PrdTerm te -> addConstraint (TypeClassPos (TypeClassConstraint loc) cn (TST.getTypeTerm te))
-     TST.CnsTerm te -> addConstraint (TypeClassNeg (TypeClassConstraint loc) cn (TST.getTypeTerm te))
+  negTypes <- lookupMethodType xt decl NegRep
+  --   - substitute types for class var according to msig
+  -- let map :: Bisubstitution = undefined
+  --   - genConstraints between substituted types
+  genConstraintsCtxts substTypes negTypes (TypeClassConstraint loc)
+  --   - genConstraints for type class of inferred type
+  let f :: PrdCnsType Pos -> PrdCnsType Pos -> GenM ()
+      f (PrdCnsType PrdRep tyInferred) (PrdCnsType PrdRep (TySkolemVar _ _ _ tyvar)) =
+         addConstraint (TypeClassPos (TypeClassConstraint loc) cn tyInferred);
+      f (PrdCnsType CnsRep tyInferred) (PrdCnsType CnsRep (TySkolemVar _ _ _ tyvar)) =
+         addConstraint (TypeClassNeg (TypeClassConstraint loc) cn tyInferred);
+      f _ _ = pure ()
+  sequence_ $ f <$> substTypes <*> posTypes
   return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
