@@ -38,7 +38,7 @@ data TranslateState = TranslateState
 initialState :: TranslateState
 initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName SkolemTVar }
+newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName RecTVar }
 
 initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
@@ -53,7 +53,7 @@ runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReade
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-withVarMap :: (M.Map RnTypeName SkolemTVar -> M.Map RnTypeName SkolemTVar) -> TranslateM a -> TranslateM a
+withVarMap :: (M.Map RnTypeName RecTVar -> M.Map RnTypeName RecTVar) -> TranslateM a -> TranslateM a
 withVarMap f m = do
   local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m
@@ -63,12 +63,12 @@ modifyVarsUsed f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed = f recVarsUsed, varCount })
 
-freshTVar :: TranslateM SkolemTVar
+freshTVar :: TranslateM RecTVar
 freshTVar = do
   i <- gets varCount
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed, varCount = varCount + 1 })
-  return $ MkSkolemTVar ("g" <> T.pack (show i))
+  return $ MkRecTVar ("g" <> T.pack (show i))
 
 ---------------------------------------------------------------------------------------------
 -- Upper bound translation functions
@@ -95,8 +95,8 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
-    modifyVarsUsed $ S.insert (skolemTVarToRecTVar tv) -- add rec. type variable to used var cache
-    return $ TySkolemVar defaultLoc NegRep Nothing tv
+    modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
+    return $ TyRecVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -104,10 +104,10 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       Data -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc NegRep (skolemTVarToRecTVar tv) $ TyDataRefined defaultLoc NegRep tn xtss
+        return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
       Codata -> do
         -- Upper bound translation of codata is empty
-        return $ TyRec defaultLoc NegRep (skolemTVarToRecTVar tv) $ TyCodataRefined defaultLoc NegRep tn []
+        return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
 translateTypeUpper' tv@TySkolemVar{} = return tv
 translateTypeUpper' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
@@ -136,19 +136,19 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   -- If current type name contained in cache, return corresponding rec. type variable
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
-    modifyVarsUsed $ S.insert (skolemTVarToRecTVar tv) -- add rec. type variable to used var cache
-    return $ TySkolemVar defaultLoc pr Nothing tv
+    modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
+    return $ TyRecVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
     case data_polarity of
       Data -> do
         -- Lower bound translation of data is empty
-        return $ TyRec defaultLoc pr (skolemTVarToRecTVar tv) $ TyDataRefined defaultLoc pr tn []
+        return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
       Codata -> do
         -- Recursively translate xtor sig with mapping of current type name to new rec type var
         xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc pr (skolemTVarToRecTVar tv) $ TyCodataRefined defaultLoc pr tn xtss
+        return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
 translateTypeLower' tv@TySkolemVar{} = return tv
 translateTypeLower' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
