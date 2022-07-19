@@ -255,7 +255,7 @@ subConstraints (TypeClassPos _ cn typ) = do
   let instanceMember :: ClassName -> Typ Pos -> M.Map ClassName [(Typ Pos, b)] -> Bool
       instanceMember name typ map = case M.lookup name map of
         Nothing -> False
-        Just types -> typ `occursIn` fmap fst types
+        Just types -> typ `derivableFrom` fmap fst types
   let defined :: Bool = foldr (\map acc -> instanceMember cn typ map || acc) False (instanceEnv <$> env)
   -- Print environment for debugging.
   let env' = concat $ M.toList . instanceEnv <$> M.elems env
@@ -268,7 +268,7 @@ subConstraints (TypeClassNeg _ cn tyn) = do
   let instanceMember :: ClassName -> Typ Neg -> M.Map ClassName [(a, Typ Neg)] -> Bool
       instanceMember name typ map = case M.lookup name map of
         Nothing -> False
-        Just types -> typ `occursIn` fmap snd types
+        Just types -> typ `derivableFrom` fmap snd types
   let defined :: Bool = foldr (\map acc -> instanceMember cn tyn map || acc) False (instanceEnv <$> env)
   -- Print environment for debugging.
   let env' = concat $ M.toList . instanceEnv <$> M.elems env

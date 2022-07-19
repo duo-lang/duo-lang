@@ -13,8 +13,8 @@ class Derivable a b where
     -- | Check whether an instance for a can be derived from an instance of b.
     derivable :: a -> b -> Bool
     -- | Check whether instance is derivable from one in a list of instances.
-    occursIn :: a -> [b] -> Bool
-    occursIn x ys = any (derivable x) ys
+    derivableFrom :: (Foldable t) => a -> t b -> Bool
+    derivableFrom x t = any (derivable x) t
     {-# MINIMAL derivable #-}
 
 instance Derivable (Typ (pol :: Polarity)) (Typ (pol :: Polarity)) where
