@@ -3,7 +3,7 @@ module Syntax.RST.Program where
 
 import Syntax.Common
 import Syntax.RST.Terms( Command, Term, InstanceCase )
-import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ )
+import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ, MethodSig )
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
 
@@ -149,7 +149,7 @@ data ClassDeclaration = MkClassDeclaration
     -- ^ The name of the type class that is being introduced.
   , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
     -- ^ The kind of the type class variables.
-  , classdecl_xtors :: [(XtorName, [(PrdCns, Typ Pos, Typ Neg)])]
+  , classdecl_methods :: ([MethodSig Pos], [MethodSig Neg])
     -- ^ The type class methods and their types.
   }
 
@@ -175,15 +175,15 @@ data Declaration where
 instance Show Declaration where
   show (PrdCnsDecl PrdRep decl) = show decl
   show (PrdCnsDecl CnsRep decl) = show decl
-  show (CmdDecl      decl     ) = show decl
-  show (DataDecl     decl     ) = show decl
-  show (XtorDecl     decl     ) = show decl
-  show (ImportDecl   decl     ) = show decl
-  show (SetDecl      decl     ) = show decl
-  show (TyOpDecl     decl     ) = show decl
-  show (TySynDecl    decl     ) = show decl
-  show (ClassDecl    decl     ) = show decl
-  show (InstanceDecl decl     ) = show decl
+  show (CmdDecl           decl) = show decl
+  show (DataDecl          decl) = show decl
+  show (XtorDecl          decl) = show decl
+  show (ImportDecl        decl) = show decl
+  show (SetDecl           decl) = show decl
+  show (TyOpDecl          decl) = show decl
+  show (TySynDecl         decl) = show decl
+  show (ClassDecl         decl) = show decl
+  show (InstanceDecl      decl) = show decl
 
   
 type Program = [Declaration]

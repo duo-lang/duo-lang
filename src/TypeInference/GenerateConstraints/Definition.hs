@@ -287,8 +287,8 @@ checkExhaustiveness matched decl = do
 checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to check against.
                       -> [MethodName]         -- ^ The methods implemented in the instance.
                       -> GenM ()
-checkInstanceCoverage RST.MkClassDeclaration { classdecl_xtors } instanceMethods = do
-  let classMethods = MkMethodName . unXtorName . fst <$> classdecl_xtors
+checkInstanceCoverage RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
+  let classMethods = msig_name <$> fst classdecl_methods
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
     (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)

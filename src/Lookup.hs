@@ -133,15 +133,15 @@ lookupClassDecl cn = do
 
 -- | Find the class declaration for a classname.
 lookupMethodType :: EnvReader a m
-               => XtorName -> RST.ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
-lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } PosRep =
-  case lookup xt classdecl_xtors of
-    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name]
-    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep pos; Cns -> PrdCnsType CnsRep neg)) <$> typ
-lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } NegRep =
-  case lookup xt classdecl_xtors of
-    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name]
-    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep neg; Cns -> PrdCnsType CnsRep pos)) <$> typ
+               => MethodName -> RST.ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
+lookupMethodType mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } PosRep =
+  case find ( \MkMethodSig{..} -> msig_name == mn) (fst classdecl_methods) of
+    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
+    Just msig -> pure $ msig_args msig
+lookupMethodType mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } NegRep =
+  case find ( \MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
+    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
+    Just msig -> pure $ msig_args msig
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

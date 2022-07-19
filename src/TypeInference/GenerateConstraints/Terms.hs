@@ -265,10 +265,10 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- Generate fresh unification variables for type parameters
   (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
-
+                   let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
-                   posTypes <- lookupMethodType xt decl PosRep
-                   negTypes <- lookupMethodType xt decl NegRep
+                   posTypes <- lookupMethodType mn decl PosRep
+                   negTypes <- lookupMethodType mn decl NegRep
                    -- Substitute fresh unification variables for type parameters
                    let posTypes' = zonk tyParamsMap posTypes
                    let negTypes' = zonk tyParamsMap negTypes
