@@ -235,7 +235,7 @@ classDeclarationP doc = do
   recoverDeclaration $ do
     className     <- fst <$> classNameP
     typeVars      <- fst <$> parens (tParamP `sepBy` symbolP SymComma)
-    (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
+    (xtors, _pos) <- braces (xtorSignatureP `sepBy` symbolP SymComma)
     endPos        <- symbolP SymSemi
     let decl = MkClassDeclaration (Loc startPos endPos) doc className typeVars xtors
     pure (ClassDecl decl)

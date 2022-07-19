@@ -90,14 +90,14 @@ data Declaration where
 instance Show Declaration where
   show (PrdCnsDecl PrdRep decl) = show decl
   show (PrdCnsDecl CnsRep decl) = show decl
-  show (CmdDecl decl) = show decl
-  show (DataDecl decl) = show decl
-  show (XtorDecl decl) = show decl
-  show (ImportDecl decl) = show decl
-  show (SetDecl decl) = show decl
-  show (TyOpDecl decl) = show decl
-  show (TySynDecl decl) = show decl
-  show (ClassDecl decl) = show decl
-  show (InstanceDecl decl) = show decl
+  show (CmdDecl           decl) = show decl
+  show (DataDecl          decl) = show decl
+  show (XtorDecl          decl) = show decl
+  show (ImportDecl        decl) = show decl
+  show (SetDecl           decl) = show decl
+  show (TyOpDecl          decl) = show decl
+  show (TySynDecl         decl) = show decl
+  show (ClassDecl         decl) = show decl
+  show (InstanceDecl      decl) = show decl
   
 type Program = [Declaration]

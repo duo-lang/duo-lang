@@ -99,7 +99,13 @@ main = do
     let bool_st' = case bool_st of
                 Left _ -> error "Could not load Bool.duo"
                 Right bool_st' -> bool_st'
-    let symboltables = [(MkModuleName "Peano", peano_st'), (MkModuleName "Bool", bool_st')]
+    fun_st <- getSymbolTable "examples/Function.duo"
+    let fun_st' = case fun_st of
+                Left _ -> error "Could not load Function.duo"
+                Right fun_st' -> fun_st'
+    let symboltables = [ (MkModuleName "Peano", peano_st')
+                       , (MkModuleName "Bool", bool_st')
+                       , (MkModuleName "Fun", fun_st')]
     -- Run the testsuite
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
