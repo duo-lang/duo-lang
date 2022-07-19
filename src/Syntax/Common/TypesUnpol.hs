@@ -11,11 +11,10 @@ import Utils ( Loc, HasLoc(..))
 data Typ where
   TyUniVar :: Loc -> UniTVar -> Typ
   TySkolemVar :: Loc -> SkolemTVar -> Typ
-  TyRecVar :: Loc -> RecTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> [Typ] -> Typ
-  TyRec :: Loc -> RecTVar -> Typ -> Typ
+  TyRec :: Loc -> SkolemTVar -> Typ -> Typ
   TyTop :: Loc -> Typ
   TyBot :: Loc -> Typ
   TyPrim :: Loc -> PrimitiveType -> Typ
@@ -32,7 +31,6 @@ data Typ where
 instance HasLoc Typ where
   getLoc (TyUniVar loc _) = loc
   getLoc (TySkolemVar loc _) = loc
-  getLoc (TyRecVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
   getLoc (TyXRefined loc _ _ _) = loc
   getLoc (TyNominal loc _ _) = loc

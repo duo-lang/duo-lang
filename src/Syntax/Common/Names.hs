@@ -32,6 +32,9 @@ newtype UniTVar = MkUniTVar { unUniTVar :: Text } deriving (Eq, Show, Ord)
 newtype SkolemTVar = MkSkolemTVar { unSkolemTVar :: Text} deriving (Eq,Show,Ord)
 newtype RecTVar = MkRecTVar {unRecTVar :: Text} deriving (Eq, Show, Ord)
 
+skolemToRecRVar :: SkolemTVar -> RecTVar
+skolemToRecRVar (MkSkolemTVar n) = MkRecTVar n
+
 -- | Name of a type class. Starts with an uppercase letter.
 newtype ClassName = MkClassName { unClassName :: Text } deriving (Eq, Show, Ord)
 

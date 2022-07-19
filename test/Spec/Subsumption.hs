@@ -22,8 +22,8 @@ subsumptionCheckPos env bspec s1 s2 = do
       (Left _err, _) -> expectationFailure "Could not parse left example"
       (_, Left _err) -> expectationFailure "Could not parse right example"
       (Right r1, Right r2) -> do
-        let lowerResult1 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r1)
-        let lowerResult2 = runResolverM (M.fromList env) (resolveTypeScheme PosRep r2)
+        let lowerResult1 = runResolverM (ResolveReader (M.fromList env) mempty) (resolveTypeScheme PosRep r1)
+        let lowerResult2 = runResolverM (ResolveReader (M.fromList env) mempty) (resolveTypeScheme PosRep r2)
         case (fst lowerResult1, fst lowerResult2) of
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"

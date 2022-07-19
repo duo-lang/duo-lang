@@ -100,7 +100,6 @@ instance PrettyAnn CST.Typ where
   -- Type Variables
   prettyAnn (CST.TyUniVar _ tv) = prettyAnn tv
   prettyAnn (CST.TySkolemVar _ tv) = prettyAnn tv
-  prettyAnn (CST.TyRecVar _ tv) = prettyAnn tv
   -- Recursive types
   prettyAnn (CST.TyRec _ rv t) =
     parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))

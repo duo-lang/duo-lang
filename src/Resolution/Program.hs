@@ -34,7 +34,6 @@ resolveXtors sigs = do
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
 checkVarianceTyp _ _ tv(TyUniVar loc _) =
   throwOtherError loc ["The Unification Variable " <> T.pack (show  tv) <> " should not appear in the program at this point"]
-checkVarianceTyp loc var polyKind (TyRecVar _loc' tVar) = checkVarianceTyp loc var polyKind (TyRecVar _loc' tVar)
 checkVarianceTyp loc var polyKind (TySkolemVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
@@ -108,9 +107,13 @@ resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, d
   let g :: TypeNameResolve -> TypeNameResolve
       g (SynonymResult tn ty) = SynonymResult tn ty
       g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
-  let f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
+
+      f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
       f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
-  xtors <- local f (resolveXtors data_xtors)
+
+      h :: ResolveReader -> ResolveReader
+      h r = r { rr_modules = f $ rr_modules r }
+  xtors <- local h (resolveXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl
                 { data_loc = data_loc

@@ -108,7 +108,7 @@ recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
   startPos <- getSourcePos
   _ <- keywordP KwRec
-  (rv,_) <- recVarP
+  (rv,_) <- tvarP
   _ <- symbolP SymDot
   (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)

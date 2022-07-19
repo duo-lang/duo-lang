@@ -12,6 +12,7 @@ import Syntax.Common.TypesPol ( freeTVars )
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common.TypesUnpol
 import Utils (Loc(..), defaultLoc)
+import Control.Monad.Reader (asks, MonadReader (local))
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
@@ -27,10 +28,12 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
     pure $ RST.TyUniVar loc rep Nothing v
-resolveTyp rep (TySkolemVar loc v) = 
-    pure $ RST.TySkolemVar loc rep Nothing v
-resolveTyp rep (TyRecVar loc v) = 
-    pure $ RST.TyRecVar loc rep Nothing v
+resolveTyp rep (TySkolemVar loc v) = do
+    recVars <- asks rr_recVars
+    let vr = skolemToRecRVar v
+    if vr `S.member` recVars
+      then pure $ RST.TyRecVar loc rep Nothing vr
+      else pure $ RST.TySkolemVar loc rep Nothing v
 
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
@@ -63,8 +66,9 @@ resolveTyp rep (TyNominal loc name args) = do
         NominalResult name' _ NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
-resolveTyp rep (TyRec loc v typ) =
-        RST.TyRec loc rep v <$> resolveTyp rep typ
+resolveTyp rep (TyRec loc v typ) = do
+        let vr = skolemToRecRVar v
+        local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
