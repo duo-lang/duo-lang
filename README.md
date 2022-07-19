@@ -1,11 +1,12 @@
-# DualSub
-![CI](https://github.com/ps-tuebingen/dualsub/workflows/CI/badge.svg?branch=main)
-[![vscode-plugin](https://github.com/ps-tuebingen/dualsub/actions/workflows/vscode-plugin.yml/badge.svg)](https://github.com/ps-tuebingen/dualsub/actions/workflows/vscode-plugin.yml)
-[![vscode-plugin-ci](https://github.com/ps-tuebingen/dualsub/actions/workflows/vscode-plugin-ci.yml/badge.svg)](https://github.com/ps-tuebingen/dualsub/actions/workflows/vscode-plugin-ci.yml)
-[![Publish Docs on GH Page](https://github.com/ps-tuebingen/dualsub/actions/workflows/docs.yml/badge.svg)](https://github.com/ps-tuebingen/dualsub/actions/workflows/docs.yml)
+# Duo Lang
+[![CI](https://github.com/duo-lang/duo-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/duo-lang/duo-lang/actions/workflows/ci.yml)
 
-DualSub is research language focused on the combination of subtyping, type inference and type-theoretic dualities.
+Duo is research language focused on the combination of subtyping, type inference and type-theoretic dualities.
+
+## Stability
+
+Duo is a research project which is currently under active development. A lot of stuff isn't fully implemented yet, so beware of this before you try it out yourself!
 
 ## Documentation
 
-Documentation of the DualSub language can be found in the `docs/` subdirectory.
+The documentation of the Duo language is hosted here: [Duo Documentation](https://duo-lang.github.io/documentation/preface.html)

@@ -138,7 +138,7 @@ findModule (MkModuleName mod) loc = do
   infopts <- gets drvOpts
   let libpaths = infOptsLibPath infopts
   fps <- forM libpaths $ \libpath -> do
-    let fp = libpath </> T.unpack mod <.> "ds"
+    let fp = libpath </> T.unpack mod <.> "duo"
     exists <- liftIO $ doesFileExist fp
     if exists then return [fp] else return []
   case concat fps of

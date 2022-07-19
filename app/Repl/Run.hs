@@ -87,7 +87,7 @@ helpOption = Option
 
 ini :: Repl ()
 ini = do
-  prettyRepl $ unlines [ "DualSub: Algebraic subtyping for data and codata."
+  prettyRepl $ unlines [ "Duo: Algebraic subtyping for data and codata."
                        , "Press Ctrl+D to exit."
                        , "Enter :help for a list of available commands."
                        ]

@@ -1,9 +1,9 @@
 cabal-version:  2.2
-name:           dualsub
+name:           duo-lang
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/ps-tuebingen/dualsub#readme>
-homepage:       https://github.com/ps-tuebingen/dualsub#readme
-bug-reports:    https://github.com/ps-tuebingen/dualsub/issues
+description:    Please see the README on GitHub at <https://github.com/duo-lang/duo-lang#readme>
+homepage:       https://github.com/duo-lang/duo-lang#readme
+bug-reports:    https://github.com/duo-lang/duo-lang/issues
 author:         Justus Springer, David Binder, Ingo Skupin
 maintainer:     example@example.com
 copyright:      2020 Justus Springer, David Binder, Ingo Skupin
@@ -16,7 +16,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/ps-tuebingen/dualsub
+  location: https://github.com/duo-lang/duo-lang
 
 common shared-build-depends
   build-depends:
@@ -177,11 +177,11 @@ library
       Translate.Embed
       Utils
   other-modules:
-      Paths_dualsub
+      Paths_duo_lang
   hs-source-dirs:
       src
 
-executable dualsub
+executable duo
   import: shared-build-depends
   import: app-build-depends
   import: test-build-depends
@@ -208,16 +208,16 @@ executable dualsub
       Repl.Options.Subsume
       Repl.Options.Quit
       Repl.Run
-      Paths_dualsub
+      Paths_duo_lang
   hs-source-dirs:
       app
   build-depends:
-      dualsub,
+      duo-lang,
       optparse-applicative,
       lsp,
       githash
 
-test-suite dualsub-test
+test-suite duo-lang-test
   import: shared-build-depends
   import: app-build-depends
   import: test-build-depends
@@ -232,9 +232,9 @@ test-suite dualsub-test
     , Spec.Subsumption
     , Spec.LocallyClosed
     , Spec.Prettyprinter
-    , Paths_dualsub
+    , Paths_duo_lang
   hs-source-dirs:
       test
   build-depends:
-      dualsub
+      duo-lang
 
