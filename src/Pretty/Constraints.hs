@@ -139,7 +139,7 @@ instance PrettyAnn (Bisubstitution UniVT) where
 instance PrettyAnn (Bisubstitution SkolemVT) where
   prettyAnn uvsubst = vsep
     [ "---------------------------------------------------------"
-    , "                 Bisubstitution (UniTVar)                "
+    , "                 Bisubstitution (SkolemTVar)             "
     , "---------------------------------------------------------"
     , ""
     , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (bisubst_map uvsubst))
