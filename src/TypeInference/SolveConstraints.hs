@@ -250,29 +250,31 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t1
                               , "by type"
                               , "    " <> ppPrint t2 ]
+-- subConstraints for type classes are deprecated
+-- type class constraints should only be resolved after subtype constraints
 subConstraints (TypeClassPos _ cn typ) = do
   (env, _) <- ask
-  let instanceMember :: ClassName -> Typ Pos -> M.Map ClassName [(Typ Pos, b)] -> Bool
+  let instanceMember :: ClassName -> Typ Pos -> M.Map ClassName (Set (Typ Pos, b)) -> Bool
       instanceMember name typ map = case M.lookup name map of
         Nothing -> False
-        Just types -> typ `derivableFrom` fmap fst types
+        Just types -> typ `derivableFrom` S.map fst types
   let defined :: Bool = foldr (\map acc -> instanceMember cn typ map || acc) False (instanceEnv <$> env)
   -- Print environment for debugging.
   let env' = concat $ M.toList . instanceEnv <$> M.elems env
-  let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold ((\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") <$> typs)) <$> env'
+  let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold (S.map (\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") typs)) <$> env'
   unless defined $
     throwSolverError defaultLoc $ ["Could not deduce instance " <> ppPrint cn <> " for positive type " <> ppPrint typ, "In Environment:"] ++ prettyEnv
   pure []
 subConstraints (TypeClassNeg _ cn tyn) = do
   (env, _) <- ask
-  let instanceMember :: ClassName -> Typ Neg -> M.Map ClassName [(a, Typ Neg)] -> Bool
+  let instanceMember :: ClassName -> Typ Neg -> M.Map ClassName (Set (a, Typ Neg)) -> Bool
       instanceMember name typ map = case M.lookup name map of
         Nothing -> False
-        Just types -> typ `derivableFrom` fmap snd types
+        Just types -> typ `derivableFrom` S.map snd types
   let defined :: Bool = foldr (\map acc -> instanceMember cn tyn map || acc) False (instanceEnv <$> env)
   -- Print environment for debugging.
   let env' = concat $ M.toList . instanceEnv <$> M.elems env
-  let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold ((\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") <$> typs)) <$> env'
+  let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold (S.map (\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") typs)) <$> env'
   unless defined $
     throwSolverError defaultLoc $ ["Could not deduce instance " <> ppPrint cn <> " for negative type " <> ppPrint tyn, "In Environment:"] ++ prettyEnv
   pure []

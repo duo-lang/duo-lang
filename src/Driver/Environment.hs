@@ -2,6 +2,7 @@ module Driver.Environment where
 
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Set (Set)
 
 import Syntax.Common
 import Syntax.TST.Terms ( Command, Term )
@@ -18,7 +19,7 @@ data Environment = MkEnvironment
   , cnsEnv :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command, Loc)
   , classEnv :: Map ClassName ClassDeclaration
-  , instanceEnv :: Map ClassName [(Typ Pos, Typ Neg)]
+  , instanceEnv :: Map ClassName (Set (Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
   }
 
