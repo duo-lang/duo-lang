@@ -47,10 +47,10 @@ instance PrettyAnn UVarProvenance where
 instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
-  prettyAnn (TypeClassPos ann (MkClassName cn) typ) =
-    parens (prettyAnn cn <+> prettyAnn typ) <+> prettyAnn ann
-  prettyAnn (TypeClassNeg ann (MkClassName cn) typ) =
-    parens (prettyAnn cn <+> prettyAnn typ) <+> prettyAnn ann
+  prettyAnn (TypeClassPos ann cn typ) =
+    prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
+  prettyAnn (TypeClassNeg ann cn typ) =
+    prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
 printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
@@ -87,13 +87,30 @@ printUpperBounds upperbounds =
                 , vsep (prettyAnn <$> upperbounds)
                 ]
 
-instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  } = mempty
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  } = printLowerBounds lbs
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs } = printUpperBounds ubs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs } =
-    printLowerBounds lbs <> line <> printUpperBounds ubs
+printTypeClassConstraints :: [ClassName] -> Doc Annotation
+printTypeClassConstraints [] = mempty
+printTypeClassConstraints cns =
+  nest 3 $ vsep [ "Type class constraints:"
+                , vsep (prettyAnn <$> cns)
+                ]
 
+instance PrettyAnn VariableState where
+  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  } =
+    mempty
+  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns } =
+    printTypeClassConstraints cns
+  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  } =
+    printLowerBounds lbs
+  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns } =
+    printLowerBounds lbs <> line <> printTypeClassConstraints cns
+  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  } =
+    printUpperBounds ubs
+  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns } =
+    printUpperBounds ubs <> line <> printTypeClassConstraints cns
+  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  } =
+    printLowerBounds lbs <> line <> printUpperBounds ubs
+  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns } =
+    printLowerBounds lbs <> line <> printUpperBounds ubs <> line <> printTypeClassConstraints cns
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution } = vsep
     [ "---------------------------------------------------------"

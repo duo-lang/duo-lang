@@ -73,17 +73,21 @@ getBounds uv = do
 
 addUpperBound :: UniTVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs kind) -> VariableState (ty:ubs) lbs kind)uv
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: UniTVar -> Syntax.Common.TypesPol.Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs kind) -> VariableState ubs (ty:lbs) kind) uv
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
+
+addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
+addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
+
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -102,6 +106,10 @@ solve (cs:css) = do
       (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
+      (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
+        addTypeClassConstraint uv cn
+      (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
+        addTypeClassConstraint uv cn
       _ -> do
         subCss <- subConstraints cs
         solve (subCss ++ css))
@@ -242,7 +250,7 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t1
                               , "by type"
                               , "    " <> ppPrint t2 ]
-subConstraints c@(TypeClassPos _ cn typ) = do
+subConstraints (TypeClassPos _ cn typ) = do
   (env, _) <- ask
   let instanceMember :: ClassName -> Typ Pos -> M.Map ClassName [(Typ Pos, b)] -> Bool
       instanceMember name typ map = case M.lookup name map of
@@ -254,8 +262,8 @@ subConstraints c@(TypeClassPos _ cn typ) = do
   let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold ((\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") <$> typs)) <$> env'
   unless defined $
     throwSolverError defaultLoc $ ["Could not deduce instance " <> ppPrint cn <> " for positive type " <> ppPrint typ, "In Environment:"] ++ prettyEnv
-  pure [c]
-subConstraints c@(TypeClassNeg _ cn tyn) = do
+  pure []
+subConstraints (TypeClassNeg _ cn tyn) = do
   (env, _) <- ask
   let instanceMember :: ClassName -> Typ Neg -> M.Map ClassName [(a, Typ Neg)] -> Bool
       instanceMember name typ map = case M.lookup name map of
@@ -267,7 +275,7 @@ subConstraints c@(TypeClassNeg _ cn tyn) = do
   let prettyEnv = (\(cn,typs) -> ppPrint cn <> ": " <> fold ((\(t1,t2) -> "+" <> ppPrint t1 <> ", -" <> ppPrint t2 <> ", ") <$> typs)) <$> env'
   unless defined $
     throwSolverError defaultLoc $ ["Could not deduce instance " <> ppPrint cn <> " for negative type " <> ppPrint tyn, "In Environment:"] ++ prettyEnv
-  pure [c]
+  pure []
 
 ------------------------------------------------------------------------------
 -- Exported Function
