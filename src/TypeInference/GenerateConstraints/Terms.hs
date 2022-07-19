@@ -109,7 +109,7 @@ genConstraintsTerm (Core.Xtor loc annot rep Nominal xt subst) = do
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = zonk tyParamsMap (sig_args xtorSig)
+  let sig_args' = zonk SkolemRep tyParamsMap (sig_args xtorSig)
   -- Then we generate constraints between the inferred types of the substitution
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
@@ -171,8 +171,8 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
                    posTypes <- sig_args <$> lookupXtorSig xt PosRep
                    negTypes <- sig_args <$> lookupXtorSig xt NegRep
                    -- Substitute fresh unification variables for type parameters
-                   let posTypes' = zonk tyParamsMap posTypes
-                   let negTypes' = zonk tyParamsMap negTypes
+                   let posTypes' = zonk SkolemRep tyParamsMap posTypes
+                   let negTypes' = zonk SkolemRep tyParamsMap negTypes
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
@@ -270,8 +270,8 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
                    posTypes <- lookupMethodType xt decl PosRep
                    negTypes <- lookupMethodType xt decl NegRep
                    -- Substitute fresh unification variables for type parameters
-                   let posTypes' = zonk tyParamsMap posTypes
-                   let negTypes' = zonk tyParamsMap negTypes
+                   let posTypes' = zonk SkolemRep tyParamsMap posTypes
+                   let negTypes' = zonk SkolemRep tyParamsMap negTypes
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand instancecase_cmd)
