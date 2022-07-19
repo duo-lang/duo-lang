@@ -24,7 +24,7 @@ replParserInfo :: ParserInfo Options
 replParserInfo = info (helper <*> replParser) mods
   where
     mods = fold [ fullDesc
-                , header "dualsub repl - Start an interactive REPL"
+                , header "duo repl - Start an interactive REPL"
                 , progDesc "Start an interactive REPL."
                 ]
     
@@ -47,7 +47,7 @@ lspParserInfo :: ParserInfo Options
 lspParserInfo = info (helper <*> lspParser) mods
   where
     mods = fold [ fullDesc
-                , header "dualsub lsp - Start a LSP session"
+                , header "duo lsp - Start a LSP session"
                 , progDesc "Start a LSP session. This command should only be invoked by editors or for debugging purposes."
                 ]
 
@@ -66,8 +66,8 @@ compileParserInfo :: ParserInfo Options
 compileParserInfo = info (helper <*> compileParser) mods
   where
     mods = fold [ fullDesc
-                , header "dualsub compile - Compile DualSub source files"
-                , progDesc "Compile DualSub source files."
+                , header "duo compile - Compile Duo source files"
+                , progDesc "Compile Duo source files."
                 ]
 
 ---------------------------------------------------------------------------------
@@ -85,8 +85,8 @@ depsParserInfo :: ParserInfo Options
 depsParserInfo = info (helper <*> depsParser) mods
   where
     mods = fold [ fullDesc
-                , header "dualsub deps - Compute dependency graphs"
-                , progDesc "Compute the dependency graph for a DualSub module."
+                , header "duo deps - Compute dependency graphs"
+                , progDesc "Compute the dependency graph for a Duo module."
                 ]
 
 ---------------------------------------------------------------------------------
@@ -114,8 +114,8 @@ optParserInfo :: ParserInfo Options
 optParserInfo = info (helper <*> optParser) mods
   where
     mods = fold [ fullDesc
-                , progDesc "DualSub is a research programming language focused on the study of dualities and subtyping."
-                , header "dualsub - Typecheck, run and compile DualSub programs"
+                , progDesc "Duo is a research programming language focused on the study of dualities and subtyping."
+                , header "duo - Typecheck, run and compile Duo programs"
                 ]
 
 ---------------------------------------------------------------------------------

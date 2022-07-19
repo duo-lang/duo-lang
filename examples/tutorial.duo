@@ -1,17 +1,17 @@
 -- ------------------------------------
--- DualSub Tutorial
+-- Duo Tutorial
 -- ------------------------------------
 
--- Welcome to this tutorial and short tour of the features of DualSub.
+-- Welcome to this tutorial and short tour of the features of Duo.
 --
--- In order to try out the examples, install dualsub and start a REPL session with `dualsub repl`,
+-- In order to try out the examples, install duo and start a REPL session with `duo repl`,
 -- and enter `:load tutorial.ds` to start following along.
 
 -- ------------------------------------------------------------------------
 -- 1.1 Data Types and Pattern matching.
 -- ------------------------------------------------------------------------
 
--- DualSub supports standard algebraic data types, which can be declared with the following
+-- Duo supports standard algebraic data types, which can be declared with the following
 -- syntax:
 
 data Bool { True, False };
@@ -57,7 +57,7 @@ def prd convolutedTwo := case 3 of { Z => Z, S(x) => x };
 -- 1.2 Codata Types and Copattern matching.
 -- --------------------------------------------------------------------------------
 
--- You now probably want to define some functions, but DualSub does not have a builtin function type.
+-- You now probably want to define some functions, but Duo does not have a builtin function type.
 -- Instead, you can define one yourself, using codata types, which are dual to data types.
 -- So let's define a (monomorphic) function type, the type of functions from Nat to Bool.
 
@@ -85,13 +85,13 @@ def prd isFiveZ := isZ.Ap(5,*) ;
 
 -- Here is how this syntax corresponds to the more usual syntax for lambda abstractions in, e.g. Haskell.
 --
---    Haskell:                DualSub:
+--    Haskell:                Duo:
 --
 --    \x -> t          <->    cocase { Ap(x) => t }
 --    f t              <->    f.Ap(t)
 --
 
--- Since functions are so ubiquitious, DualSub contains some syntactic sugar for them:
+-- Since functions are so ubiquitious, Duo contains some syntactic sugar for them:
 
 def prd isZSugared := \x => case x of { Z => True, S(x) => False };
 
@@ -108,9 +108,9 @@ def prd isZSugared := \x => case x of { Z => True, S(x) => False };
 --        { Z => False
 --        , S(x) => isEven.Ap(x) }};
 
--- The focus of DualSub is on the exploration of dualities in programming language design, so we want to
+-- The focus of Duo is on the exploration of dualities in programming language design, so we want to
 -- provide a minimal set of different kinds of types in the language.
--- DualSub provides four different kinds of types: nominal and structural data types, and nominal and
+-- Duo provides four different kinds of types: nominal and structural data types, and nominal and
 -- structural codata types.
 --
 --    |-------------|------------------------------|---------------------|
