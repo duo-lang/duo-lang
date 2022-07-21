@@ -7,14 +7,16 @@ import Bool;
 constructor Z;
 constructor S(CBV);
 
-def rec prd add :=
+type SNat := rec a. < Z , S(a) >;
+
+def rec prd add : SNat -> SNat -> SNat :=
   \n m => case n of { Z => m
                     , S(n) => S(add n m)};
 
-def rec prd mul :=
+def rec prd mul : SNat -> SNat -> SNat :=
   \n m => case n of { Z => Z
                     , S(n) => add m (mul n m)};
 
-def rec prd nateq :=
+def rec prd nateq : SNat -> SNat -> Bool :=
   \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};

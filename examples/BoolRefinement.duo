@@ -7,34 +7,36 @@ refinement data Bool : CBV {
     False
 };
 
+type RBool := < Bool | True, False >;
+
 -- | Boolean negation.
-def prd not : < Bool | False, True > -> < Bool | False, True >:=
+def prd not : RBool -> RBool :=
   \b => case b of { True => False,
                     False => True
                   };
 
 -- | Boolean if-then-else
-def prd ifthenelse : forall a. < Bool | False, True > -> a -> a -> a :=
+def prd ifthenelse : forall a. RBool -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
 -- | Boolean conjunction
-def prd and :=
+def prd and : RBool -> RBool -> RBool :=
   \b1 b2 => ifthenelse b1 b2 False;
 
 -- | Boolean disjunction
-def prd or :=
+def prd or : RBool -> RBool -> RBool :=
   \b1 b2 => ifthenelse b1 True b2;
 
 -- | Boolean nand
-def prd nand :=
+def prd nand : RBool -> RBool -> RBool :=
   \b1 b2 => not (and b1 b2);
 
 -- | Boolean nor
-def prd nor :=
+def prd nor : RBool -> RBool -> RBool :=
   \b1 b2 => not (or b1 b2);
 
 -- | Boolean implication
-def prd impl :=
+def prd impl : RBool -> RBool -> RBool :=
   \b1 b2 => case b1 of {
       True => b2,
       False => True

@@ -9,14 +9,16 @@ refinement data Nat {
     S(Nat)
 };
 
-def rec prd add :=
+type RNat := rec a. < Nat | Z, S(a) >;
+
+def rec prd add : RNat -> RNat -> RNat :=
   \n m => case n of { Z => m
                     , S(n) => S(add n m)};
 
-def rec prd mul :=
+def rec prd mul : RNat -> RNat -> RNat :=
   \n m => case n of { Z => Z
                     , S(n) => add m (mul n m)};
 
-def rec prd nateq :=
+def rec prd nateq : RNat -> RNat -> Bool :=
   \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};

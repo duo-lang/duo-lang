@@ -7,9 +7,10 @@ type operator -< rightassoc at 0 := CoFun;
 def cns id : forall a. a -< a  :=
   case { CoAp(k,e) => e >> k };
 
-def cns id2  := \x =< x; 
+def cns id2 : forall a. a -< a := \x =< x; 
 
-def cns compose := \f g x =< g (f x);
+def cns compose : forall a b c.(b -< c) -< (c -< a) -< b -< a :=
+  \f g x =< g (f x);
 
   
 

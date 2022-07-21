@@ -37,14 +37,14 @@ def cns subsumptionEx2 : Nat := mu n. ExitSuccess;
 
 
 
-def prd fixS := cocase { ApS(f,k) =>
+def prd fixS : forall t0 t1 t2. { ApS( { ApS( { ApS( t2 , return t1 ) } , return (t0 /\ { ApS( t2 , return t1 ) }) ) } , return t0 ) } := cocase { ApS(f,k) =>
              cocase { ApS(x,k) => f >>
                ApS( cocase { ApS(v,k) => x >> ApS(x,ApS(v,k)) },k) } >>
                  ApS( cocase { ApS(x,k) => f >>
                    ApS( cocase { ApS(v,k) => x >> ApS(x,ApS(v,k)) },k) },k) };
 
-def prd addNominal := cocase { Ap2(n,m,k) => fixS >> ApS( cocase { ApS(alpha,k) => cocase { ApS(m,k) => m >> case { Z => n >> k, S(p) => alpha >> ApS(p,mu w. S(w) >> k) }} >> k },ApS(m,k)) };
-def prd mltNominal := cocase { Ap2(n,m,k) => fixS >> ApS(cocase { ApS(alpha,k) => cocase { ApS(m,k) => m >> case { Z => Z >> k, S(p) => alpha >> ApS(p,mu w. addNominal >> Ap2(n,w,k)) } } >> k },ApS(m,k))};
+def prd addNominal : { Ap2(Nat, Nat, return Nat) } := cocase { Ap2(n,m,k) => fixS >> ApS( cocase { ApS(alpha,k) => cocase { ApS(m,k) => m >> case { Z => n >> k, S(p) => alpha >> ApS(p,mu w. S(w) >> k) }} >> k },ApS(m,k)) };
+def prd mltNominal : { Ap2(Nat, Nat, return Nat) }:= cocase { Ap2(n,m,k) => fixS >> ApS(cocase { ApS(alpha,k) => cocase { ApS(m,k) => m >> case { Z => Z >> k, S(p) => alpha >> ApS(p,mu w. addNominal >> Ap2(n,w,k)) } } >> k },ApS(m,k))};
 
 def prd ex1 : forall a. { ApS(a,return a) } := cocase { ApS(x,k) => x >> k };
 

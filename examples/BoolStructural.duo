@@ -18,23 +18,23 @@ def prd ifthenelse : forall a. SBool -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
 -- | Boolean conjunction
-def prd and :=
+def prd and : SBool -> SBool -> SBool :=
   \b1 b2 => ifthenelse b1 b2 False;
 
 -- | Boolean disjunction
-def prd or :=
+def prd or : SBool -> SBool -> SBool :=
   \b1 b2 => ifthenelse b1 True b2;
 
 -- | Boolean nand
-def prd nand: (< False , True > -> (< False , True > -> < False , True >)) := cocase {
+def prd nand: SBool -> SBool -> SBool := cocase {
    Ap(x2,*) => cocase {Ap(x1,*) => (not.Ap( ((and.Ap( x2 ,*)).Ap( x1 ,*)) ,*))}};
 
 -- | Boolean nor
-def prd nor : (< False , True > -> (< False , True > -> < False , True >)) := cocase {
+def prd nor : SBool -> SBool -> SBool := cocase {
    Ap(x2,*) => cocase {Ap(x1,*) => (not.Ap( ((or.Ap( x2 ,*)).Ap( x1 ,*)) ,*))}};
 
 -- | Boolean implication
-def prd impl :=
+def prd impl : SBool -> SBool -> SBool :=
   \b1 b2 => case b1 of {
       True => b2,
       False => True

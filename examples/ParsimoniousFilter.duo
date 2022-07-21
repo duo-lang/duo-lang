@@ -21,5 +21,5 @@ def rec prd filterHelper := \p l => case l of {
     }
 };
 
-def prd filter  := \p l => mu k. filterHelper p l >> MkPar(k, mu y. l >> k);
-def prd filter2 := \p l => mu k. (filterHelper p l).MkPar(k,*) >> mu y. l >> k;
+def prd filter  : forall a. (a -> Bool) -> List(a) -> List(a) := \p l => mu k. filterHelper p l >> MkPar(k, mu y. l >> k);
+def prd filter2 : forall a. (a -> Bool) -> List(a) -> List(a) := \p l => mu k. (filterHelper p l).MkPar(k,*) >> mu y. l >> k;
