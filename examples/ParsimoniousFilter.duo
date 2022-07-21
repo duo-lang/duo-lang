@@ -3,7 +3,7 @@ import LinearLogic;
 import List;
 import Bool;
 
-def rec prd filterHelper := \p l => case l of {
+def rec prd filterHelper : forall a. (a -> Bool) -> List(a) -> List(a) ⅋ Unit := \p l => case l of {
     Nil => cocase {
         MkPar(k1,*) => MkUnit
     },
