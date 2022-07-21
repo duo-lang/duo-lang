@@ -134,7 +134,7 @@ commandParser = subparser $ fold [ command "repl" replParserInfo
                                  , command "compile" compileParserInfo
                                  , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
-                                 , command "typecheck" typecheckParserInfo
+                                 , command "check" typecheckParserInfo
                                  ]
 
 optParser :: Parser Options
