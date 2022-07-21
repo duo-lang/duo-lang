@@ -15,7 +15,7 @@ data Options where
     OptDeps :: FilePath -> Options
     OptVersion :: Options
 
-data TCFlags = TCFlags { tcf_debug :: Bool }
+data TCFlags = TCFlags { tcf_debug :: Bool, tcf_printGraphs :: Bool }
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a REPL
@@ -60,14 +60,17 @@ lspParserInfo = info (helper <*> lspParser) mods
 ---------------------------------------------------------------------------------
 
 typecheckParser :: Parser Options
-typecheckParser = OptTypecheck <$> argument str mods <*> (TCFlags <$> switch fmods)
+typecheckParser = OptTypecheck <$> argument str mods <*> (TCFlags <$> switch modsDebug <*> switch modsGraph)
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
                 ]
-    fmods = fold [ long "Xdebug"
-                 , help "Print debug info"
-                 ]
+    modsDebug = fold  [ long "XDebug"
+                      , help "Print debug info"
+                      ]
+    modsGraph = fold  [ long "XPrintGraph"
+                      , help "Print simplification automata graphs"
+                      ]
 
 typecheckParserInfo :: ParserInfo Options
 typecheckParserInfo = info (helper <*> typecheckParser) mods

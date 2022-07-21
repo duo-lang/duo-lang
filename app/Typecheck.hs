@@ -3,15 +3,15 @@ module Typecheck where
 
 import Options (TCFlags(..))
 import Syntax.Common
-import Driver.Driver (runCompilationModule, DriverState (drvOpts), InferenceOptions (infOptsVerbosity), defaultInferenceOptions)
-import Driver.Definition (defaultDriverState, execDriverM, DriverState(..))
+import Driver.Driver (runCompilationModule, defaultInferenceOptions)
+import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), InferenceOptions(..))
 import Utils (Verbosity(..))
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Pretty.Pretty (ppPrintIO)
 import qualified Data.Text as T
 
 runTypecheck :: ModuleName -> TCFlags -> IO ()
-runTypecheck mn TCFlags { tcf_debug } = do
+runTypecheck mn TCFlags { tcf_debug, tcf_printGraphs } = do
   print tcf_debug
   (res,warnings) <- liftIO $ execDriverM driverState $ runCompilationModule mn
   mapM_ ppPrintIO warnings
@@ -22,5 +22,5 @@ runTypecheck mn TCFlags { tcf_debug } = do
   return ()
   where
     driverState = defaultDriverState { drvOpts = infOpts }
-    infOpts = defaultInferenceOptions { infOptsVerbosity = verbosity }
+    infOpts = defaultInferenceOptions { infOptsVerbosity = verbosity, infOptsPrintGraphs = tcf_printGraphs }
     verbosity = if tcf_debug then Verbose else Silent
