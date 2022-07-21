@@ -100,7 +100,8 @@ data Typ (pol :: Polarity) where
   -- | Equirecursive Types
   TyRec :: Loc -> PolarityRep pol -> SkolemTVar -> Typ pol -> Typ pol
   -- | Builtin Types
-  TyPrim :: Loc -> PolarityRep pol -> PrimitiveType -> Typ pol
+  TyI64 :: Loc -> PolarityRep pol -> Typ pol
+  TyF64 :: Loc -> PolarityRep pol -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
   TyFlipPol :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
 
@@ -132,7 +133,8 @@ getPolarity TyBot {}                    = PosRep
 getPolarity TyUnion {}                  = PosRep
 getPolarity TyInter {}                  = NegRep
 getPolarity (TyRec _ rep _ _)           = rep
-getPolarity (TyPrim _ rep _)            = rep
+getPolarity (TyI64 _ rep)               = rep
+getPolarity (TyF64 _ rep)               = rep
 getPolarity (TyFlipPol rep _)           = rep
 
 
@@ -180,7 +182,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
   freeTVars (TyDataRefined _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodataRefined _ _ _ xtors) = S.unions (freeTVars <$> xtors)
-  freeTVars (TyPrim _ _ _)                = S.empty
+  freeTVars (TyI64 _ _)                   = S.empty
+  freeTVars (TyF64 _ _)                   = S.empty
   freeTVars (TyFlipPol _ ty)              = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
@@ -260,7 +263,8 @@ instance Zonk (Typ pol) where
     TyInter loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk vt bisubst (TyRec loc rep tv ty) =
      TyRec loc rep tv (zonk vt bisubst ty)
-  zonk _vt _ t@TyPrim {} = t
+  zonk _vt _ t@TyI64 {} = t
+  zonk _vt _ t@TyF64 {} = t
   zonk vt bisubst (TyFlipPol rep ty) = TyFlipPol rep (zonk vt bisubst ty)
 
 instance Zonk (VariantType pol) where

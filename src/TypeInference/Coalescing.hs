@@ -135,7 +135,8 @@ coalesceType (TyRec loc NegRep tv ty) = do
     -- let f = second (S.insert (tv, Neg))
     -- ty' <- local f $ coalesceType ty
     return $ TyRec loc NegRep tv ty
-coalesceType t@TyPrim {} = return t
+coalesceType t@TyI64 {} = return t
+coalesceType t@TyF64 {} = return t
 coalesceType (TyFlipPol _ _) = error "Tried to coalesce TyFlipPol"
 
 
