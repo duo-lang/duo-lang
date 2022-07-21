@@ -150,8 +150,8 @@ getTypeTerm (Xtor _ _ _ ty _ _ _) = ty
 getTypeTerm (XCase _ _ _ ty _ _)  = ty
 getTypeTerm (MuAbs _ _ _ ty _ _)  = ty
 -- Primitive constructs
-getTypeTerm (PrimLitI64 _ _) = TyPrim defaultLoc PosRep I64
-getTypeTerm (PrimLitF64 _ _) = TyPrim defaultLoc PosRep F64
+getTypeTerm (PrimLitI64 _ _) = TyI64 defaultLoc PosRep
+getTypeTerm (PrimLitF64 _ _) = TyF64 defaultLoc PosRep
 
 getTypArgs :: Substitution -> LinearContext Pos
 getTypArgs subst = getTypArgs'' <$> subst
