@@ -1,5 +1,5 @@
 -- Match cases incorrect
 data Bool : CBV { True, False };
-def prd nominalNot := \x => case x of { True => False
-                                     , False => True
-                                     , Third => True };
+def cns nominalNot : Bool := case { True => ExitSuccess
+                                  , False => ExitSuccess
+                                  , Third => ExitSuccess };
