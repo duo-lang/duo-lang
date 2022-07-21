@@ -1,6 +1,6 @@
 module Options
   ( Options(..)
-  , TCFlags(..)
+  , DebugFlags(..)
   , parseOptions
   ) where
 
@@ -10,12 +10,12 @@ import Options.Applicative
 data Options where
     OptRepl :: Options
     OptLSP :: Maybe FilePath -> Options
-    OptCompile :: FilePath -> Options
-    OptTypecheck :: FilePath -> TCFlags -> Options
+    OptCompile :: FilePath -> DebugFlags -> Options
+    OptTypecheck :: FilePath -> DebugFlags -> Options
     OptDeps :: FilePath -> Options
     OptVersion :: Options
 
-data TCFlags = TCFlags { tcf_debug :: Bool, tcf_printGraphs :: Bool }
+data DebugFlags = DebugFlags { tcf_debug :: Bool, tcf_printGraphs :: Bool }
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a REPL
@@ -60,7 +60,7 @@ lspParserInfo = info (helper <*> lspParser) mods
 ---------------------------------------------------------------------------------
 
 typecheckParser :: Parser Options
-typecheckParser = OptTypecheck <$> argument str mods <*> (TCFlags <$> switch modsDebug <*> switch modsGraph)
+typecheckParser = OptTypecheck <$> argument str mods <*> (DebugFlags <$> switch modsDebug <*> switch modsGraph)
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
@@ -85,18 +85,24 @@ typecheckParserInfo = info (helper <*> typecheckParser) mods
 ---------------------------------------------------------------------------------
 
 compileParser :: Parser Options
-compileParser = OptCompile <$> argument str mods
+compileParser = OptCompile <$> argument str mods <*> (DebugFlags <$> switch modsDebug <*> switch modsGraph)
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
                 ]
+    modsDebug = fold  [ long "XDebug"
+                      , help "Print debug info"
+                      ]
+    modsGraph = fold  [ long "XPrintGraph"
+                      , help "Print simplification automata graphs"
+                      ]
 
 compileParserInfo :: ParserInfo Options
 compileParserInfo = info (helper <*> compileParser) mods
   where
     mods = fold [ fullDesc
-                , header "duo compile - Compile Duo source files"
-                , progDesc "Compile Duo source files."
+                , header "duo run - Run Duo source files"
+                , progDesc "Run Duo source files."
                 ]
 
 ---------------------------------------------------------------------------------
@@ -131,7 +137,7 @@ versionParser = OptVersion <$ flag' () (long "version" <> short 'v' <> help "Sho
 
 commandParser :: Parser Options
 commandParser = subparser $ fold [ command "repl" replParserInfo
-                                 , command "compile" compileParserInfo
+                                 , command "run" compileParserInfo
                                  , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
                                  , command "check" typecheckParserInfo

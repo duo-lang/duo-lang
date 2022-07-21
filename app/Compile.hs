@@ -13,6 +13,7 @@ import Syntax.TST.Terms qualified as TST
 import Sugar.Desugar (desugarEnvironment)
 import Translate.Focusing (focusEnvironment)
 import Utils ( defaultLoc )
+import Options (DebugFlags(..))
 
 driverAction :: ModuleName -> DriverM TST.Program
 driverAction mn = do
@@ -20,9 +21,9 @@ driverAction mn = do
   queryTypecheckedProgram mn
 
 
-runCompile :: ModuleName -> IO ()
-runCompile mn = do
-  (res, warnings) <- liftIO $ execDriverM defaultDriverState (driverAction mn)
+runCompile :: DebugFlags -> ModuleName -> IO ()
+runCompile DebugFlags { tcf_debug, tcf_printGraphs } mn = do
+  (res, warnings) <- execDriverM driverState (driverAction mn)
   mapM_ ppPrintIO warnings
   case res of
     Left errs -> mapM_ ppPrintIO errs
@@ -33,4 +34,8 @@ runCompile mn = do
       case evalCmd of
           Left errs -> mapM_ ppPrintIO errs
           Right res -> ppPrintIO res
+    where
+      driverState = defaultDriverState { drvOpts = infOpts }
+      infOpts = (if tcf_printGraphs then setPrintGraphOpts else id) infOpts'
+      infOpts' = (if tcf_debug then setDebugOpts else id) defaultInferenceOptions
 

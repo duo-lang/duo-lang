@@ -45,6 +45,12 @@ defaultInferenceOptions = InferenceOptions
   , infOptsLibPath = [".", "examples"]
   }
 
+setDebugOpts :: InferenceOptions -> InferenceOptions
+setDebugOpts infOpts = infOpts { infOptsVerbosity = Verbose }
+
+setPrintGraphOpts :: InferenceOptions -> InferenceOptions
+setPrintGraphOpts infOpts = infOpts { infOptsPrintGraphs = True }
+
 ---------------------------------------------------------------------------------
 -- Driver State
 ---------------------------------------------------------------------------------

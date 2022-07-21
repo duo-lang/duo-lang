@@ -26,10 +26,10 @@ filepathToModuleName = MkModuleName . T.pack . trimStr
 dispatch :: Options -> IO ()
 dispatch OptRepl         = runRepl
 dispatch (OptLSP log)    = runLSP log
-dispatch (OptCompile fp) = runCompile $ filepathToModuleName fp
+dispatch (OptCompile fp opts) = runCompile opts $ filepathToModuleName fp
 dispatch (OptDeps fp)    = runDeps $ filepathToModuleName fp
 dispatch OptVersion      = printVersion
-dispatch (OptTypecheck fp opts) = runTypecheck (filepathToModuleName fp) opts
+dispatch (OptTypecheck fp opts) = runTypecheck opts $ filepathToModuleName fp
 
 printVersion :: IO ()
 printVersion = do
