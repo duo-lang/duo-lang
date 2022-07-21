@@ -20,6 +20,7 @@ import Syntax.Common.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
+import Data.Either (rights, lefts)
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -41,7 +42,7 @@ defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
   , infOptsSimplify = True
-  , infOptsLibPath = []
+  , infOptsLibPath = [".", "examples"]
   }
 
 ---------------------------------------------------------------------------------
@@ -60,7 +61,7 @@ data DriverState = MkDriverState
 
 defaultDriverState :: DriverState
 defaultDriverState = MkDriverState
-  { drvOpts = defaultInferenceOptions { infOptsLibPath = ["examples"] }
+  { drvOpts = defaultInferenceOptions
   , drvEnv = M.empty
   , drvFiles = M.empty
   , drvSymbols = M.empty
@@ -77,7 +78,7 @@ newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmp
 instance MonadFail DriverM where
   fail str = throwError (OtherError defaultLoc(T.pack str) NE.:| [])
 
-execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) ((a),DriverState),[Warning])
+execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) (a,DriverState),[Warning])
 execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
 
 ---------------------------------------------------------------------------------
@@ -135,14 +136,20 @@ guardVerbose action = do
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
 findModule (MkModuleName mod) loc = do
-  infopts <- gets drvOpts
-  let libpaths = infOptsLibPath infopts
+  libpaths <- gets $ infOptsLibPath . drvOpts
   fps <- forM libpaths $ \libpath -> do
     let fp = libpath </> T.unpack mod <.> "duo"
+    let fp' = libpath </> T.unpack mod
     exists <- liftIO $ doesFileExist fp
-    if exists then return [fp] else return []
-  case concat fps of
-    [] -> throwOtherError loc ["Could not locate library: " <> mod]
+    exists' <- liftIO $ doesFileExist fp'
+    let fpRes = if exists then Right fp else Left fp
+    let fpRes' = if exists' then Right fp' else Left fp'
+    return [fpRes, fpRes']
+  let fps' = concat fps
+  let hits = rights fps'
+  let misses = lefts fps'
+  case hits of
+    [] -> throwOtherError loc $ ["Could not locate library: " <> mod <> "\n" <> "Paths searched:"] <> fmap T.pack misses
     (fp:_) -> return fp
 
 liftErr :: NonEmpty Error -> DriverM a

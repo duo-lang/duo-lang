@@ -21,13 +21,7 @@ main = do
     dispatch opts
 
 filepathToModuleName :: FilePath -> ModuleName
-filepathToModuleName = MkModuleName . T.pack . checkExtension . trimStr
-  where
-    checkExtension :: FilePath -> FilePath
-    checkExtension fp =
-      if length fp >= 4 && take 4 (reverse fp) == "oud."
-      then reverse (drop 4 (reverse fp))
-      else fp
+filepathToModuleName = MkModuleName . T.pack . trimStr
 
 dispatch :: Options -> IO ()
 dispatch OptRepl         = runRepl
