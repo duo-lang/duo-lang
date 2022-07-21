@@ -53,8 +53,8 @@ getOrElseUpdateRecVar ptv = do
           return recVar
       Just tv -> return tv
 
-coalesce :: SolverResult -> Bisubstitution
-coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs) M.empty
+coalesce :: SolverResult -> Bisubstitution UniVT
+coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution $ M.fromList xs
     where
         res = M.keys tvarSolution
         f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep Nothing tvar

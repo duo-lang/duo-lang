@@ -122,13 +122,13 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (PrdCnsType CnsRep tn:lctxtP, PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([VariantType pol], Bisubstitution SkolemVT)
 freshTVarsForTypeParams rep decl = 
   let MkPolyKind { kindArgs } = data_kind decl
       tn = data_name decl
   in freshTVarsForTypeParams' rep kindArgs (Left tn)
 
-freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> (Typ Pos, Typ Neg) -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> (Typ Pos, Typ Neg) -> GenM ([VariantType pol], Bisubstitution SkolemVT)
 freshTVarsForInstance rep decl typ = 
   let kindArgs = classdecl_kinds decl
       cn = classdecl_name decl
@@ -137,7 +137,7 @@ freshTVarsForInstance rep decl typ =
     return (args, substituteInstanceType (head kindArgs) typ tyParams)
 
 
-freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution)
+freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution SkolemVT)
 freshTVarsForTypeParams' rep kindArgs tn = do
   (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
   let map = paramsMap kindArgs vars
@@ -156,12 +156,12 @@ freshTVarsForTypeParams' rep kindArgs tn = do
       (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-   paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution
+   paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution SkolemVT
    paramsMap kindArgs freshVars =
-     MkBisubstitution M.empty (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
 
-substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution -> Bisubstitution
-substituteInstanceType (_,tv,_) instanceType (MkBisubstitution empty subst) = MkBisubstitution empty $! M.adjust (const instanceType) tv subst
+substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution SkolemVT -> Bisubstitution SkolemVT
+substituteInstanceType (_,tv,_) instanceType (MkBisubstitution subst) = MkBisubstitution $! M.adjust (const instanceType) tv subst
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -196,7 +196,7 @@ lookupContext rep (i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TypeScheme pol -> GenM (Typ pol)
 instantiateTypeScheme fv loc TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
-  pure $ zonk (MkBisubstitution M.empty (M.fromList freshVars)) ts_monotype
+  pure $ zonk SkolemRep (MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint
