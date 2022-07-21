@@ -236,31 +236,24 @@ genConstraintsCommand (Core.Jump loc fv) = do
   _ <- lookupCommand fv
   return (TST.Jump loc fv)
 genConstraintsCommand (Core.Method loc mn cn subst) = do
-  -- infer arg types
-  substInferred <- genConstraintsSubst subst
-  let substTypes = TST.getTypArgs substInferred
   -- for class type var:
   decl <- lookupClassDecl cn
-  let [(classVar, classTVar, _)] = classdecl_kinds decl
     -- fresh type var for class type variable
-  (tyVarp, tyVarn) <- freshTVar (TypeClassInstance cn classTVar)
-  addConstraint $ case classVar of
-    Covariant -> TypeClassPos (TypeClassConstraint loc) cn tyVarp
-    Contravariant -> TypeClassNeg (TypeClassConstraint loc) cn tyVarn
+  tyParamsMap <- createMethodSubst loc decl
 
   posTypes <- lookupMethodType mn decl PosRep
   negTypes <- lookupMethodType mn decl NegRep
-  --   - genConstraints between substituted types
-  genConstraintsCtxts substTypes negTypes (TypeClassConstraint loc)
-  --   - genConstraints for type class of inferred type
-  let f :: PrdCnsType Pos -> PrdCnsType Pos -> GenM ()
-      -- assume that the type class var is the only type var
-      f (PrdCnsType PrdRep typ) (PrdCnsType PrdRep TySkolemVar {}) =
-         addConstraint (SubType (TypeClassConstraint loc) typ tyVarn)
-      f (PrdCnsType CnsRep tyn) (PrdCnsType CnsRep TySkolemVar {}) =
-         addConstraint (SubType (TypeClassConstraint loc) tyVarp tyn)
-      f _ _ = pure ()
-  sequence_ $ f <$> substTypes <*> posTypes
+  
+  let negTypes' = zonk tyParamsMap negTypes
+  let posTypes' = zonk tyParamsMap posTypes
+
+  -- infer arg types
+  substInferred <- withContext posTypes' $ genConstraintsSubst subst
+  let substTypes = TST.getTypArgs substInferred
+
+  genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
+  -- genConstraintsCtxts posTypes' negTypes' (TypeClassConstraint loc)
+
   return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
@@ -291,7 +284,7 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We check that all implementations belong to the same type class.
   checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases)
   -- Generate fresh unification variables for type parameters
-  (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
+  let tyParamsMap = paramsMap (classdecl_kinds decl) [instancedecl_typ]
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
