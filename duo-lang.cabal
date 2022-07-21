@@ -191,6 +191,7 @@ executable duo
   main-is: Main.hs
   other-modules:
       Compile
+      Typecheck
       Deps
       LSP.Definition
       LSP.Handler.CodeAction

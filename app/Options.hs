@@ -1,5 +1,6 @@
 module Options
   ( Options(..)
+  , TCFlags(..)
   , parseOptions
   ) where
 
@@ -10,8 +11,11 @@ data Options where
     OptRepl :: Options
     OptLSP :: Maybe FilePath -> Options
     OptCompile :: FilePath -> Options
+    OptTypecheck :: FilePath -> TCFlags -> Options
     OptDeps :: FilePath -> Options
     OptVersion :: Options
+
+data TCFlags = TCFlags { tcf_debug :: Bool }
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a REPL
@@ -27,14 +31,14 @@ replParserInfo = info (helper <*> replParser) mods
                 , header "duo repl - Start an interactive REPL"
                 , progDesc "Start an interactive REPL."
                 ]
-    
+
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a LSP session
 ---------------------------------------------------------------------------------
 
 lspParser :: Parser Options
-lspParser = OptLSP <$> (optional $ strOption mods)
+lspParser = OptLSP <$> optional (strOption mods)
   where
     mods = fold [ long "logfile"
                 , short 'l'
@@ -49,6 +53,28 @@ lspParserInfo = info (helper <*> lspParser) mods
     mods = fold [ fullDesc
                 , header "duo lsp - Start a LSP session"
                 , progDesc "Start a LSP session. This command should only be invoked by editors or for debugging purposes."
+                ]
+
+---------------------------------------------------------------------------------
+-- Commandline options for compiling source files
+---------------------------------------------------------------------------------
+
+typecheckParser :: Parser Options
+typecheckParser = OptTypecheck <$> argument str mods <*> (TCFlags <$> switch fmods)
+  where
+    mods = fold [ metavar "TARGET"
+                , help "Filepath of the source file."
+                ]
+    fmods = fold [ long "Xdebug"
+                 , help "Print debug info"
+                 ]
+
+typecheckParserInfo :: ParserInfo Options
+typecheckParserInfo = info (helper <*> typecheckParser) mods
+  where
+    mods = fold [ fullDesc
+                , header "duo typecheck - Typecheck Duo source files"
+                , progDesc "Typecheck Duo source files."
                 ]
 
 ---------------------------------------------------------------------------------
@@ -94,7 +120,7 @@ depsParserInfo = info (helper <*> depsParser) mods
 ---------------------------------------------------------------------------------
 
 versionParser :: Parser Options
-versionParser = const OptVersion <$> flag' () (long "version" <> short 'v' <> help "Show version")
+versionParser = OptVersion <$ flag' () (long "version" <> short 'v' <> help "Show version")
 
 ---------------------------------------------------------------------------------
 -- Combined commandline parser
@@ -105,6 +131,7 @@ commandParser = subparser $ fold [ command "repl" replParserInfo
                                  , command "compile" compileParserInfo
                                  , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
+                                 , command "typeckeck" typecheckParserInfo
                                  ]
 
 optParser :: Parser Options

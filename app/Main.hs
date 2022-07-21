@@ -7,6 +7,7 @@ import GitHash (tGitInfoCwd, giHash, giBranch)
 
 import Options (Options(..), parseOptions)
 import Compile (runCompile)
+import Typecheck (runTypecheck)
 import Deps (runDeps)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
@@ -19,12 +20,22 @@ main = do
     opts <- parseOptions
     dispatch opts
 
+filepathToModuleName :: FilePath -> ModuleName
+filepathToModuleName = MkModuleName . T.pack . checkExtension . trimStr
+  where
+    checkExtension :: FilePath -> FilePath
+    checkExtension fp =
+      if length fp >= 4 && take 4 (reverse fp) == "oud."
+      then reverse (drop 4 (reverse fp))
+      else fp
+
 dispatch :: Options -> IO ()
 dispatch OptRepl         = runRepl
 dispatch (OptLSP log)    = runLSP log
-dispatch (OptCompile fp) = runCompile (MkModuleName (T.pack (trimStr fp)))
-dispatch (OptDeps fp)    = runDeps (MkModuleName (T.pack (trimStr fp)))
+dispatch (OptCompile fp) = runCompile $ filepathToModuleName fp
+dispatch (OptDeps fp)    = runDeps $ filepathToModuleName fp
 dispatch OptVersion      = printVersion
+dispatch (OptTypecheck fp opts) = runTypecheck (filepathToModuleName fp) opts
 
 printVersion :: IO ()
 printVersion = do
