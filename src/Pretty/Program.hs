@@ -52,7 +52,8 @@ instance PrettyAnn CST.PrdCnsDeclaration where
     annKeyword "rec" <+>
     prettyPrdCns pcdecl_pc <+>
     prettyAnn pcdecl_name <+>
-    prettyAnnot pcdecl_annot <+>
+    annSymbol ":" <+>
+    prettyAnn pcdecl_annot <+>
     annSymbol ":=" <+>
     prettyAnn pcdecl_term <>
     semi
@@ -60,14 +61,11 @@ instance PrettyAnn CST.PrdCnsDeclaration where
     annKeyword "def" <+>
     prettyPrdCns pcdecl_pc <+>
     prettyAnn pcdecl_name <+>
-    prettyAnnot pcdecl_annot <+>
+    annSymbol ":" <+>
+    prettyAnn pcdecl_annot <+>
     annSymbol ":=" <+>
     prettyAnn pcdecl_term <>
     semi
-
-prettyAnnot :: Maybe Unpol.TypeScheme -> Doc Annotation
-prettyAnnot Nothing    = mempty
-prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
 ---------------------------------------------------------------------------------
 -- Command Declarations

@@ -98,7 +98,7 @@ embedPrdCnsDeclaration Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl
                             , pcdecl_pc = pcdecl_pc
                             , pcdecl_isRec = pcdecl_isRec
                             , pcdecl_name = pcdecl_name
-                            , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                            , pcdecl_annot = embedTypeScheme pcdecl_annot
                             , pcdecl_term = embedCoreTerm pcdecl_term
                             }
 
@@ -203,22 +203,13 @@ embedTypeScheme :: TST.TypeScheme pol -> Core.TypeScheme pol
 embedTypeScheme (TypeScheme loc tvars mt) = Core.TypeScheme loc tvars mt
 
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc
                              , pcdecl_isRec = pcdecl_isRec
                              , pcdecl_name = pcdecl_name
-                             , pcdecl_annot = Just $ embedTypeScheme tys
-                             , pcdecl_term = embedTSTTerm pcdecl_term
-                             }
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Inferred _, pcdecl_term } =
-    Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                             , pcdecl_doc = pcdecl_doc
-                             , pcdecl_pc = pcdecl_pc
-                             , pcdecl_isRec = pcdecl_isRec
-                             , pcdecl_name = pcdecl_name
-                             , pcdecl_annot = Nothing
+                             , pcdecl_annot = pcdecl_annot
                              , pcdecl_term = embedTSTTerm pcdecl_term
                              }
 

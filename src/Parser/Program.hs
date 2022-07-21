@@ -33,9 +33,6 @@ recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilK
 isRecP :: Parser IsRec
 isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
 
-annotP :: Parser (Maybe TypeScheme)
-annotP = optional (try (notFollowedBy (symbolP SymColoneq) *> symbolP SymColon) >> typeSchemeP)
-
 prdCnsDeclarationP :: Maybe DocComment -> SourcePos -> PrdCns -> Parser Declaration
 prdCnsDeclarationP doc startPos pc = do
     (isRec, v) <- try $ do
@@ -43,7 +40,8 @@ prdCnsDeclarationP doc startPos pc = do
       _ <- (case pc of Prd -> keywordP KwPrd ; Cns -> keywordP KwCns)
       (v, _pos) <- freeVarNameP
       pure (isRec, v)
-    annot <- annotP
+    _ <- symbolP SymColon
+    tyAnnotated <- typeSchemeP
     _ <- symbolP SymColoneq
     (tm,_) <- termP
     endPos <- symbolP SymSemi
@@ -52,7 +50,7 @@ prdCnsDeclarationP doc startPos pc = do
                                    , pcdecl_pc = pc
                                    , pcdecl_isRec = isRec
                                    , pcdecl_name = v
-                                   , pcdecl_annot = annot
+                                   , pcdecl_annot = tyAnnotated
                                    , pcdecl_term = tm
                                    }
     pure (PrdCnsDecl decl)

@@ -562,7 +562,7 @@ reparsePrdCnsDeclaration RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdec
                           , pcdecl_pc = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
                           , pcdecl_isRec = pcdecl_isRec
                           , pcdecl_name = pcdecl_name
-                          , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                          , pcdecl_annot = embedTypeScheme pcdecl_annot
                           , pcdecl_term = reparseTerm pcdecl_term
                           }
 

@@ -375,12 +375,8 @@ instance ToHoverMap (TypeScheme pol) where
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap (TST.PrdCnsDeclaration pc) where
-  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_annot = Inferred tys, pcdecl_term } =
-    -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
-    -- defaultLoc.
-    M.union (toHoverMap pcdecl_term) (M.fromList [(locToRange pcdecl_loc, mkHover (ppPrint tys) (locToRange pcdecl_loc))])
-  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated tys, pcdecl_term } =
-    M.union (toHoverMap pcdecl_term) (toHoverMap tys)
+  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_annot, pcdecl_term } =
+    M.union (toHoverMap pcdecl_term) (toHoverMap pcdecl_annot)
 
 instance ToHoverMap TST.CommandDeclaration where
   toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =

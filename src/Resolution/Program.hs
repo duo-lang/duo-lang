@@ -132,17 +132,11 @@ resolveAnnot :: PrdCnsRep pc
 resolveAnnot PrdRep ts = resolveTypeScheme PosRep ts
 resolveAnnot CnsRep ts = resolveTypeScheme NegRep ts
 
-resolveMaybeAnnot :: PrdCnsRep pc
-                  -> Maybe CST.TypeScheme
-                  -> ResolverM (Maybe (RST.TypeScheme (PrdCnsToPol pc)))
-resolveMaybeAnnot _ Nothing = pure Nothing
-resolveMaybeAnnot pc (Just annot) = Just <$> resolveAnnot pc annot
-
 resolvePrdCnsDeclaration :: PrdCnsRep pc
                          -> CST.PrdCnsDeclaration
                          -> ResolverM (RST.PrdCnsDeclaration pc)
 resolvePrdCnsDeclaration pcrep CST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } = do
-  pcdecl_annot' <- resolveMaybeAnnot pcrep pcdecl_annot
+  pcdecl_annot' <- resolveAnnot pcrep pcdecl_annot
   pcdecl_term' <- resolveTerm pcrep pcdecl_term
   pure $ RST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                  , pcdecl_doc = pcdecl_doc

@@ -196,10 +196,8 @@ instance ToJumpMap RST.Program where
   toJumpMap prog = M.unions (toJumpMap <$> prog)
 
 instance ToJumpMap (RST.PrdCnsDeclaration pc) where
-  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =
-    toJumpMap pcdecl_term
-  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Just tys} =
-    M.union (toJumpMap tys) (toJumpMap pcdecl_term)
+  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot} =
+    M.union (toJumpMap pcdecl_annot) (toJumpMap pcdecl_term)
 
 instance ToJumpMap RST.CommandDeclaration where
   toJumpMap RST.MkCommandDeclaration { cmddecl_cmd } =

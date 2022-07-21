@@ -5,7 +5,7 @@ import Syntax.Common
 import Syntax.TST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesPol ( DataDecl, TopAnnot, Typ )
+import Syntax.Common.TypesPol ( DataDecl, Typ, TypeScheme )
 import Utils ( Loc )
 
 
@@ -25,7 +25,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ Whether the declaration can refer to itself recursively.
   , pcdecl_name :: FreeVarName
     -- ^ The name of the producer / consumer.
-  , pcdecl_annot :: TopAnnot (PrdCnsToPol pc)
+  , pcdecl_annot :: TypeScheme (PrdCnsToPol pc)
     -- ^ The type signature.
   , pcdecl_term :: Term pc
     -- ^ The term itself.

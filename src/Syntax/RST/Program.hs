@@ -23,7 +23,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ Whether the declaration can refer to itself recursively.
   , pcdecl_name :: FreeVarName
     -- ^ The name of the producer / consumer.
-  , pcdecl_annot :: Maybe (TypeScheme (PrdCnsToPol pc))
+  , pcdecl_annot :: TypeScheme (PrdCnsToPol pc)
     -- ^ The type signature.
   , pcdecl_term :: Term pc
     -- ^ The term itself.

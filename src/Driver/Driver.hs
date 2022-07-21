@@ -52,15 +52,14 @@ import Sugar.Desugar (desugarProgram)
 
 checkAnnot :: PolarityRep pol
            -> TypeScheme pol -- ^ Inferred type
-           -> Maybe (TypeScheme pol) -- ^ Annotated type
+           -> TypeScheme pol -- ^ Annotated type
            -> Loc -- ^ Location for the error message
-           -> DriverM (TopAnnot pol)
-checkAnnot _ tyInferred Nothing _ = return (Inferred tyInferred)
-checkAnnot rep tyInferred (Just tyAnnotated) loc = do
+           -> DriverM (TypeScheme pol)
+checkAnnot rep tyInferred tyAnnotated loc = do
   let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (Annotated tyAnnotated)
+      (Right True) -> return tyAnnotated
       (Right False) -> do
         let err = OtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                              , " Annotated type: " <> ppPrint tyAnnotated
@@ -105,7 +104,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, ty) (prdEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -116,7 +115,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                                    , pcdecl_term = tmInferred
                                    }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, ty) (cnsEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
