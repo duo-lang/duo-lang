@@ -7,7 +7,8 @@ import Syntax.Common.TypesPol
 import Utils
 
 simplePrimBinOp :: PrimitiveType -> LinearContext Neg
-simplePrimBinOp pt = [PrdCnsType PrdRep (TyPrim defaultLoc NegRep pt), PrdCnsType PrdRep (TyPrim defaultLoc NegRep pt), PrdCnsType CnsRep (TyPrim defaultLoc PosRep pt)]
+simplePrimBinOp I64 = [PrdCnsType PrdRep (TyI64 defaultLoc NegRep), PrdCnsType PrdRep (TyI64 defaultLoc NegRep), PrdCnsType CnsRep (TyI64 defaultLoc PosRep)]
+simplePrimBinOp F64 = [PrdCnsType PrdRep (TyF64 defaultLoc NegRep), PrdCnsType PrdRep (TyF64 defaultLoc NegRep), PrdCnsType CnsRep (TyF64 defaultLoc PosRep)]
 
 -- | Primitive operations and their signatures
 primOps :: Map (PrimitiveType, PrimitiveOp) (LinearContext Neg)

@@ -180,7 +180,10 @@ nodeToTypeNoCache rep i = do
           args <- sequence (f <$> argNodes)
           pure $ TyNominal defaultLoc rep Nothing tn args
     -- Creating primitive types
-    let prims = TyPrim defaultLoc rep <$> S.toList tps
+    let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
+        toPrimType rep I64 = TyI64 defaultLoc rep
+        toPrimType rep F64 = TyF64 defaultLoc rep
+    let prims = toPrimType rep <$> S.toList tps
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
     return $ case rep of
