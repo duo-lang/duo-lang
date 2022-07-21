@@ -1,4 +1,9 @@
-module Resolution.Types (resolveTyp, resolveTypeScheme, resolveXTorSigs) where
+module Resolution.Types
+    ( resolveTyp
+    , resolveTypeScheme
+    , resolveXTorSigs
+    , resolveMethodSigs
+    ) where
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
@@ -107,6 +112,12 @@ resolveXTorSigs rep sigs = sequence $ resolveXTorSig rep <$> sigs
 
 resolveXTorSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.XtorSig pol)
 resolveXTorSig rep (MkXtorSig name ctx) = RST.MkXtorSig name <$> resolveLinearContext rep ctx
+
+resolveMethodSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.MethodSig pol]
+resolveMethodSigs rep sigs = sequence $ resolveMethodSig rep <$> sigs
+
+resolveMethodSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.MethodSig pol)
+resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName $ unXtorName name) <$> resolveLinearContext rep ctx
 
 resolveLinearContext :: PolarityRep pol -> LinearContext -> ResolverM (RST.LinearContext pol)
 resolveLinearContext rep ctx = sequence $ resolvePrdCnsTyp rep <$> ctx

@@ -55,7 +55,7 @@ interactiveModule = MkModuleName "<Interactive>"
 ---------------------------------------------------------------------------------
 
 load :: Text -> DriverM ()
-load txt = if T.isSuffixOf ".ds" txt
+load txt = if T.isSuffixOf ".duo" txt
            then loadFromFile (T.unpack txt)
            else loadFromModule (MkModuleName txt)
 

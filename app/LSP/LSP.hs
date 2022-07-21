@@ -23,7 +23,7 @@ import Language.LSP.Server
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
 import Language.LSP.Types
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
-import Paths_dualsub (version)
+import Paths_duo_lang (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import Driver.Definition
@@ -62,7 +62,7 @@ serverOptions = Options
   , codeActionKinds = Just [CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
   , executeCommandCommands = Nothing
-  , serverInfo = Just ServerInfo { _name = "dualsub-lsp"
+  , serverInfo = Just ServerInfo { _name = "duo-lsp"
                                  , _version = Just (T.pack $ showVersion version)
                                  }
   }
@@ -193,7 +193,7 @@ instance IsDiagnostic Error where
 sendDiagnostics :: IsDiagnostic a => NormalizedUri -> [a] -> LSPMonad ()
 sendDiagnostics uri w = do
   let diags = concat (toDiagnostic <$> w)
-  publishDiagnostics 42 uri Nothing (M.fromList [(Just "DualSub", SL.toSortedList diags)])
+  publishDiagnostics 42 uri Nothing (M.fromList [(Just "Duo", SL.toSortedList diags)])
 
 ---------------------------------------------------------------------------------------------
 -- Main loop

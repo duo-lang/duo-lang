@@ -69,6 +69,15 @@ deriving instance Eq (XtorSig pol)
 deriving instance Ord (XtorSig pol)
 deriving instance Show (XtorSig pol)
 
+data MethodSig (pol :: Polarity) = MkMethodSig
+  { msig_name :: MethodName
+  , msig_args :: [PrdCnsType pol]
+  }
+
+deriving instance Eq (MethodSig pol)
+deriving instance Ord (MethodSig pol)
+deriving instance Show (MethodSig pol)
+
 
 data Typ (pol :: Polarity) where
   TySkolemVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol

@@ -10,7 +10,7 @@ import Compile (runCompile)
 import Deps (runDeps)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
-import Paths_dualsub (version)
+import Paths_duo_lang (version)
 import Syntax.Common
 import Utils (trimStr)
 
@@ -29,6 +29,6 @@ dispatch OptVersion      = printVersion
 printVersion :: IO ()
 printVersion = do
     let gi = $$tGitInfoCwd
-    putStrLn $ "DualSub Version: " <> showVersion version
+    putStrLn $ "Duo Version: " <> showVersion version
     putStrLn $ "Git Commit: " <> giHash gi
     putStrLn $ "Git Branch: " <> giBranch gi
