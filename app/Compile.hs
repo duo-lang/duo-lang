@@ -22,7 +22,7 @@ driverAction mn = do
 
 
 runCompile :: DebugFlags -> ModuleName -> IO ()
-runCompile DebugFlags { tcf_debug, tcf_printGraphs } mn = do
+runCompile DebugFlags { df_debug, df_printGraphs } mn = do
   (res, warnings) <- execDriverM driverState (driverAction mn)
   mapM_ ppPrintIO warnings
   case res of
@@ -36,6 +36,6 @@ runCompile DebugFlags { tcf_debug, tcf_printGraphs } mn = do
           Right res -> ppPrintIO res
     where
       driverState = defaultDriverState { drvOpts = infOpts }
-      infOpts = (if tcf_printGraphs then setPrintGraphOpts else id) infOpts'
-      infOpts' = (if tcf_debug then setDebugOpts else id) defaultInferenceOptions
+      infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'
+      infOpts' = (if df_debug then setDebugOpts else id) defaultInferenceOptions
 

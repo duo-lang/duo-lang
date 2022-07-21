@@ -11,8 +11,7 @@ import Pretty.Pretty (ppPrintIO)
 import qualified Data.Text as T
 
 runTypecheck :: DebugFlags -> ModuleName -> IO ()
-runTypecheck DebugFlags { tcf_debug, tcf_printGraphs } mn = do
-  print tcf_debug
+runTypecheck DebugFlags { df_debug, df_printGraphs } mn = do
   (res,warnings) <- execDriverM driverState $ runCompilationModule mn
   mapM_ ppPrintIO warnings
   case res of
@@ -22,5 +21,5 @@ runTypecheck DebugFlags { tcf_debug, tcf_printGraphs } mn = do
   return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
-      infOpts = (if tcf_printGraphs then setPrintGraphOpts else id) infOpts'
-      infOpts' = (if tcf_debug then setDebugOpts else id) defaultInferenceOptions
+      infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'
+      infOpts' = (if df_debug then setDebugOpts else id) defaultInferenceOptions

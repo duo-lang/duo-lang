@@ -15,7 +15,7 @@ data Options where
     OptDeps :: FilePath -> Options
     OptVersion :: Options
 
-data DebugFlags = DebugFlags { tcf_debug :: Bool, tcf_printGraphs :: Bool }
+data DebugFlags = DebugFlags { df_debug :: Bool, df_printGraphs :: Bool }
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a REPL
