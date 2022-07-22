@@ -4,9 +4,7 @@ module Typecheck where
 import Options (DebugFlags(..))
 import Syntax.Common
 import Driver.Driver (runCompilationModule, defaultInferenceOptions)
-import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), InferenceOptions(..), setPrintGraphOpts, setDebugOpts)
-import Utils (Verbosity(..))
-import Control.Monad.IO.Class (MonadIO(liftIO))
+import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setPrintGraphOpts, setDebugOpts)
 import Pretty.Pretty (ppPrintIO)
 import qualified Data.Text as T
 
