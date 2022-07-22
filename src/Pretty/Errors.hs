@@ -3,6 +3,8 @@ module Pretty.Errors (printLocatedError) where
 import Control.Monad (forM_)
 import Control.Monad.IO.Class
 import Data.Text.IO qualified as T
+import Data.Text (Text)
+import Error.Diagnose
 import Prettyprinter
 import Text.Megaparsec.Pos
 
@@ -46,6 +48,33 @@ instance PrettyAnn Error where
   prettyAnn (LowerError loc err)            = prettyAnn loc <> prettyAnn err
   prettyAnn (OtherError loc err)            = prettyAnn loc <> "Other Error:" <+> pretty err
   prettyAnn (NoImplicitArg loc err)         = prettyAnn loc <> "No implicit arg: " <+> pretty err
+
+---------------------------------------------------------------------------------
+-- Turning an error into a report
+---------------------------------------------------------------------------------
+
+loweringErrorToReport :: LoweringError -> Report Text
+loweringErrorToReport MissingVarsInTypeScheme     = err Nothing "" [] []
+loweringErrorToReport TopInPosPolarity            = err Nothing "" [] []
+loweringErrorToReport BotInNegPolarity            = err Nothing "" [] []
+loweringErrorToReport IntersectionInPosPolarity   = err Nothing "" [] []
+loweringErrorToReport UnionInNegPolarity          = err Nothing "" [] []
+loweringErrorToReport (UnknownOperator _op)       = err Nothing "" [] []
+loweringErrorToReport XtorArityMismatch {}        = err Nothing "" [] []
+loweringErrorToReport (UndefinedPrimOp  _)        = err Nothing "" [] []
+loweringErrorToReport PrimOpArityMismatch {}      = err Nothing "" [] []
+loweringErrorToReport (CmdExpected _)             = err Nothing "" [] []
+loweringErrorToReport (InvalidStar _)             = err Nothing "" [] []
+
+errorToReport :: Error -> Report Text
+errorToReport (ParserError _loc msg)           = err Nothing msg [] []
+errorToReport (EvalError _loc msg)             = err Nothing msg [] []
+errorToReport (GenConstraintsError _loc msg)   = err Nothing msg [] []
+errorToReport (SolveConstraintsError _loc msg) = err Nothing msg [] []
+errorToReport (TypeAutomatonError _loc msg)    = err Nothing msg [] []
+errorToReport (LowerError _loc err)            = loweringErrorToReport err
+errorToReport (OtherError _loc msg)            = err Nothing msg [] []
+errorToReport (NoImplicitArg _loc msg)         = err Nothing msg [] []
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
