@@ -3,19 +3,24 @@ module Pretty.Errors
   , printLocatedWarning
   ) where
 
-import Control.Monad (forM_)
-import Control.Monad.IO.Class
-import Data.Text.IO qualified as T
+import Control.Monad.IO.Class ( MonadIO(..) )
 import Data.Text (Text)
 import Error.Diagnose
+    ( stdout,
+      addReport,
+      printDiagnostic,
+      err,
+      warn,
+      defaultStyle,
+      def,
+      Report )
 import Prettyprinter
-import Text.Megaparsec.Pos
+
 
 import Errors
 import Pretty.Constraints ()
-import Pretty.Pretty
-import Syntax.Common
-import Utils
+import Pretty.Pretty ( PrettyAnn(..) )
+import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
