@@ -24,6 +24,7 @@ common shared-build-depends
     , base >=4.7 && <5
     , containers
     , data-default
+    , diagnose
     , directory
     , filepath
     , fgl >=5.7 && <6
