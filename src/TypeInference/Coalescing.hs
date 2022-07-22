@@ -31,6 +31,12 @@ freshRecVar = do
     modify (\s -> s { s_var_counter = i+1 } )
     return (MkRecTVar (T.pack $ "rr" ++ show i)) -- Use "rr" so that they don't clash.
 
+freshSkolemVar :: CoalesceM SkolemTVar
+freshSkolemVar = do
+    i <- gets s_var_counter
+    modify (\s -> s { s_var_counter = i+1 } )
+    return (MkSkolemTVar (T.pack $ "s" ++ show i)) -- Use "s" so that they don't clash.
+
 inProcess :: (UniTVar, Polarity) -> CoalesceM Bool
 inProcess ptv = do
     inp <- asks r_inProcess
@@ -80,8 +86,8 @@ coalesceType (TyUniVar _ PosRep _ tv) = do
             recVarMap <- gets s_recursive
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> do
-                    newName <- freshRecVar
-                    return $                                            mkUnion defaultLoc Nothing (TyRecVar defaultLoc PosRep Nothing newName : lbs')
+                    newName <- freshSkolemVar
+                    return $                                            mkUnion defaultLoc Nothing (TySkolemVar defaultLoc PosRep Nothing newName : lbs')
                 Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc Nothing (TyRecVar defaultLoc PosRep Nothing recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep _ tv) = do
     isInProcess <- inProcess (tv, Neg)
@@ -96,8 +102,8 @@ coalesceType (TyUniVar _ NegRep _ tv) = do
             recVarMap <- gets s_recursive
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
-                    newName <- freshRecVar
-                    return $                                            mkInter defaultLoc Nothing (TyRecVar defaultLoc NegRep Nothing newName : ubs')
+                    newName <- freshSkolemVar
+                    return $                                            mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing newName : ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyRecVar defaultLoc NegRep Nothing recVar  : ubs'))
 coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
