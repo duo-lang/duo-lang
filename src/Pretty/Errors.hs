@@ -1,4 +1,7 @@
-module Pretty.Errors (printLocatedError) where
+module Pretty.Errors
+  ( printLocatedError
+  , printLocatedWarning
+  ) where
 
 import Control.Monad (forM_)
 import Control.Monad.IO.Class
@@ -86,5 +89,19 @@ printLocatedError err = liftIO $ do
   let diag = addReport def report
   printDiagnostic stdout True True 4 defaultStyle diag
 
+---------------------------------------------------------------------------------
+-- Turning warnings into reports
+---------------------------------------------------------------------------------
+
+warningToReport :: Warning -> Report Text
+warningToReport (Warning _loc msg) = warn Nothing msg [] []
+
+printLocatedWarning :: MonadIO m => Warning -> m ()
+printLocatedWarning warn = liftIO $ do
+  let report = warningToReport warn
+  let diag = addReport def report
+  printDiagnostic stdout True True 4 defaultStyle diag
+
 instance PrettyAnn Warning where
   prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt
+
