@@ -2,6 +2,7 @@ module Main where
 
 import Control.Monad.Except (runExcept, forM)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List (sort)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
@@ -42,7 +43,7 @@ filterP = some (argument str (metavar "FILES..." <> help "Specify files which sh
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
   examples <- listDirectory "test/counterexamples/"
-  return (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
+  pure  $ sort (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
 
 excluded :: [FilePath]
 excluded = ["fix.duo"]
