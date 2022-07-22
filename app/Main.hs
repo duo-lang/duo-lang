@@ -6,7 +6,7 @@ import Data.Version (showVersion)
 import GitHash (tGitInfoCwd, giHash, giBranch)
 
 import Options (Options(..), parseOptions)
-import Compile (runCompile)
+import Run (runRun)
 import Typecheck (runTypecheck)
 import Deps (runDeps)
 import Repl.Run (runRepl)
@@ -24,11 +24,11 @@ filepathToModuleName :: FilePath -> ModuleName
 filepathToModuleName = MkModuleName . T.pack . trimStr
 
 dispatch :: Options -> IO ()
-dispatch OptRepl         = runRepl
-dispatch (OptLSP log)    = runLSP log
-dispatch (OptCompile fp opts) = runCompile opts $ filepathToModuleName fp
-dispatch (OptDeps fp)    = runDeps $ filepathToModuleName fp
-dispatch OptVersion      = printVersion
+dispatch OptRepl                = runRepl
+dispatch (OptLSP log)           = runLSP log
+dispatch (OptRun fp opts)       = runRun opts $ filepathToModuleName fp
+dispatch (OptDeps fp)           = runDeps $ filepathToModuleName fp
+dispatch OptVersion             = printVersion
 dispatch (OptTypecheck fp opts) = runTypecheck opts $ filepathToModuleName fp
 
 printVersion :: IO ()

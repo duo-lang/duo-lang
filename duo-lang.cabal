@@ -190,7 +190,7 @@ executable duo
   import: shared-rts-opts
   main-is: Main.hs
   other-modules:
-      Compile
+      Run
       Typecheck
       Deps
       LSP.Definition

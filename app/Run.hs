@@ -1,4 +1,4 @@
-module Compile (runCompile) where
+module Run (runRun) where
 
 import Control.Monad.IO.Class (liftIO)
 
@@ -21,8 +21,8 @@ driverAction mn = do
   queryTypecheckedProgram mn
 
 
-runCompile :: DebugFlags -> ModuleName -> IO ()
-runCompile DebugFlags { df_debug, df_printGraphs } mn = do
+runRun :: DebugFlags -> ModuleName -> IO ()
+runRun DebugFlags { df_debug, df_printGraphs } mn = do
   (res, warnings) <- execDriverM driverState (driverAction mn)
   mapM_ ppPrintIO warnings
   case res of

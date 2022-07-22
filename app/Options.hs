@@ -10,7 +10,7 @@ import Options.Applicative
 data Options where
     OptRepl :: Options
     OptLSP :: Maybe FilePath -> Options
-    OptCompile :: FilePath -> DebugFlags -> Options
+    OptRun :: FilePath -> DebugFlags -> Options
     OptTypecheck :: FilePath -> DebugFlags -> Options
     OptDeps :: FilePath -> Options
     OptVersion :: Options
@@ -70,7 +70,7 @@ lspParserInfo = info (helper <*> lspParser) mods
                 ]
 
 ---------------------------------------------------------------------------------
--- Commandline options for compiling source files
+-- Commandline options for typechecking source files
 ---------------------------------------------------------------------------------
 
 typecheckParser :: Parser Options
@@ -89,18 +89,18 @@ typecheckParserInfo = info (helper <*> typecheckParser) mods
                 ]
 
 ---------------------------------------------------------------------------------
--- Commandline options for compiling source files
+-- Commandline options for running source files
 ---------------------------------------------------------------------------------
 
-compileParser :: Parser Options
-compileParser = OptCompile <$> argument str mods <*> debugFlagParser
+runParser :: Parser Options
+runParser = OptRun <$> argument str mods <*> debugFlagParser
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
                 ]
 
-compileParserInfo :: ParserInfo Options
-compileParserInfo = info (helper <*> compileParser) mods
+runParserInfo :: ParserInfo Options
+runParserInfo = info (helper <*> runParser) mods
   where
     mods = fold [ fullDesc
                 , header "duo run - Run Duo source files"
@@ -139,7 +139,7 @@ versionParser = OptVersion <$ flag' () (long "version" <> short 'v' <> help "Sho
 
 commandParser :: Parser Options
 commandParser = subparser $ fold [ command "repl" replParserInfo
-                                 , command "run" compileParserInfo
+                                 , command "run" runParserInfo
                                  , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
                                  , command "check" typecheckParserInfo
