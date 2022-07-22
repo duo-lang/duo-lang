@@ -212,16 +212,19 @@ generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
 data VarType
   = UniVT
   | SkolemVT
+  | RecVT
 
 type family BisubstMap (vt :: VarType) :: Type where
   BisubstMap UniVT    = Map UniTVar (Typ Pos, Typ Neg)
   BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
+  BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
 
 newtype Bisubstitution vt = MkBisubstitution { bisubst_map :: BisubstMap vt }
 
 data VarTypeRep (vt :: VarType) where
   UniRep    :: VarTypeRep UniVT
   SkolemRep :: VarTypeRep SkolemVT
+  RecRep    :: VarTypeRep RecVT
 
 -- | Class of types for which a Bisubstitution can be applied.
 class Zonk (a :: Type) where
@@ -231,19 +234,27 @@ instance Zonk (Typ pol) where
   zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
-  zonk SkolemRep _bisubst ty@(TyUniVar _ PosRep _ _) = ty
   zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
-  zonk SkolemRep _bisubst ty@(TyUniVar _ NegRep _ _) = ty
-  zonk UniRep _bisubst ty@(TySkolemVar _ PosRep _ _) = ty
+  zonk SkolemRep _ ty@TyUniVar{} = ty
+  zonk RecRep _ ty@TyUniVar{} = ty
+  zonk UniRep _ ty@TySkolemVar{} = ty
   zonk SkolemRep bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
-  zonk UniRep _bisubst ty@(TySkolemVar _ NegRep _ _v) = ty
   zonk SkolemRep bisubst ty@(TySkolemVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
+  zonk RecRep _ ty@TySkolemVar{} = ty
+  zonk UniRep _ ty@TyRecVar{} = ty
+  zonk SkolemRep _ ty@TyRecVar{} = ty
+  zonk RecRep bisubst ty@(TyRecVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
+    Nothing -> ty
+    Just (tyPos,_) -> tyPos
+  zonk RecRep bisubst ty@(TyRecVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
+    Nothing -> ty
+    Just (_,tyNeg) -> tyNeg
   zonk vt bisubst (TyData loc rep xtors) =
      TyData loc rep (zonk vt bisubst <$> xtors)
   zonk vt bisubst (TyCodata loc rep xtors) =
@@ -287,8 +298,8 @@ instance Zonk (PrdCnsType pol) where
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
-unfoldRecType recty@(TyRec _ PosRep var ty) = zonk SkolemRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
-unfoldRecType recty@(TyRec _ NegRep var ty) = zonk SkolemRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
+unfoldRecType recty@(TyRec _ PosRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
+unfoldRecType recty@(TyRec _ NegRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
 
 ------------------------------------------------------------------------------

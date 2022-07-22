@@ -145,10 +145,22 @@ instance PrettyAnn (Bisubstitution UniVT) where
     ]
 
 instance PrettyAnn (Bisubstitution SkolemVT) where
-  prettyAnn uvsubst = vsep
+  prettyAnn skolvsubst = vsep 
     [ "---------------------------------------------------------"
     , "                 Bisubstitution (SkolemTVar)             "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (bisubst_map uvsubst))
+    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList (bisubst_map skolvsubst))
     ]
+
+instance PrettyAnn (Bisubstitution RecVT) where
+  prettyAnn recvsubst = vsep
+    [ "---------------------------------------------------------"
+    , "                 Bisubstitution (RecTVar)                "
+    , "---------------------------------------------------------"
+    , ""
+    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (bisubst_map recvsubst))
+    ]
+
+
+
