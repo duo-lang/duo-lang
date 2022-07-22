@@ -82,30 +82,9 @@ errorToReport (NoImplicitArg _loc msg)         = err Nothing msg [] []
 
 printLocatedError :: MonadIO m => Error -> m ()
 printLocatedError err = liftIO $ do
-  let loc = getLoc err
-  T.putStrLn ("Error at: " <> ppPrint loc)
-  printRegion loc
-  T.putStrLn ""
-  T.putStrLn (ppPrint err)
-
-printRegion :: Loc -> IO ()
-printRegion (Loc (SourcePos "<interactive>" _ _) SourcePos {}) = return ()
-printRegion (Loc (SourcePos fp line1 _) (SourcePos _ line2 _)) = do
-  T.putStrLn ""
-  file <- readFile fp
-  let region = getRegion file (unPos line1) (unPos line2)
-  let annotatedRegion = generatePrefixes region
-  forM_ annotatedRegion $ \line -> putStrLn line
-
-
-getRegion :: String -> Int -> Int -> [(Int, String)]
-getRegion str start end = take (end - (start - 1)) . drop (start - 1) $ zip [1..] (lines str)
-
-generatePrefixes :: [(Int, String)] -> [String]
-generatePrefixes lines = foo <$> lines
-  where
-    foo (line, content) = show line ++ " | " ++ content
-
+  let report = errorToReport err
+  let diag = addReport def report
+  printDiagnostic stdout True True 4 defaultStyle diag
 
 instance PrettyAnn Warning where
   prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt
