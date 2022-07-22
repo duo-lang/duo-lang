@@ -53,8 +53,9 @@ getOrElseUpdateRecVar ptv = do
           return recVar
       Just tv -> return tv
 
-coalesce :: SolverResult -> Bisubstitution
-coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs) M.empty M.empty
+
+coalesce :: SolverResult -> Bisubstitution UniVT
+coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution $ M.fromList xs
     where
         res = M.keys tvarSolution
         f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep Nothing tvar
@@ -136,7 +137,8 @@ coalesceType (TyRec loc NegRep tv ty) = do
     -- let f = second (S.insert (tv, Neg))
     -- ty' <- local f $ coalesceType ty
     return $ TyRec loc NegRep tv ty
-coalesceType t@TyPrim {} = return t
+coalesceType t@TyI64 {} = return t
+coalesceType t@TyF64 {} = return t
 coalesceType (TyFlipPol _ _) = error "Tried to coalesce TyFlipPol"
 
 

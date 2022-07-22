@@ -90,10 +90,10 @@ resolveTyp rep (TyBinOp loc fst op snd) =
     resolveBinOp loc rep fst op snd
 resolveTyp rep (TyParens _loc typ) =
     resolveTyp rep typ
-resolveTyp rep (TyPrim loc pt) =
-    pure $ RST.TyPrim loc rep pt
-
-
+resolveTyp rep (TyI64 loc) =
+    pure $ RST.TyI64 loc rep
+resolveTyp rep (TyF64 loc) =
+    pure $ RST.TyF64 loc rep
 
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
 resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do

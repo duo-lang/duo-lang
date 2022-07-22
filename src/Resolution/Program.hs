@@ -66,7 +66,8 @@ checkVarianceTyp loc var polyKind (TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
 checkVarianceTyp _loc _var _polyKind (TyTop _loc') = return ()
 checkVarianceTyp _loc _var _polyKind (TyBot _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyPrim _loc' _primitiveType) = return ()
+checkVarianceTyp _loc _var _polyKind (TyI64 _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (TyF64 _loc') = return ()
 checkVarianceTyp loc var polyKind (TyBinOpChain ty tys) = do
   -- see comments for TyBinOp
   checkVarianceTyp loc var polyKind ty

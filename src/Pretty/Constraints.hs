@@ -134,18 +134,21 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyA
                                                     ]
                                              ]
 
-instance PrettyAnn Bisubstitution where
-  prettyAnn (MkBisubstitution uvsubst skolsubst recsubst) = vsep
+
+instance PrettyAnn (Bisubstitution UniVT) where
+  prettyAnn uvsubst = vsep
     [ "---------------------------------------------------------"
-    , "                 Bisubstitution                          "
+    , "                 Bisubstitution (UniTVar)                "
     , "---------------------------------------------------------"
     , ""
-    , "Unification Variables: "
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList uvsubst)
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList (bisubst_map uvsubst))
+    ]
+
+instance PrettyAnn (Bisubstitution SkolemVT) where
+  prettyAnn uvsubst = vsep
+    [ "---------------------------------------------------------"
+    , "                 Bisubstitution (SkolemTVar)             "
     , "---------------------------------------------------------"
-    , "Skolem Variables: "
-    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList skolsubst)
-    , "---------------------------------------------------------"
-    , "Recursive Variables: "
-    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList recsubst)
+    , ""
+    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (bisubst_map uvsubst))
     ]

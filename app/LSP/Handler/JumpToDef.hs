@@ -179,7 +179,8 @@ instance ToJumpMap (RST.Typ pol) where
     M.union (toJumpMap ty1) (toJumpMap ty2)
   toJumpMap (RST.TyRec _ _ _ ty) =
     toJumpMap ty
-  toJumpMap RST.TyPrim {} = M.empty
+  toJumpMap RST.TyI64 {} = M.empty
+  toJumpMap RST.TyF64 {} = M.empty
   toJumpMap (RST.TyFlipPol _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.XtorSig pol) where
