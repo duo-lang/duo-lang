@@ -275,6 +275,9 @@ instance Zonk (Typ pol) where
     TyUnion loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk vt bisubst (TyInter loc knd ty ty') =
     TyInter loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
+  zonk RecRep bisubst (TyRec loc rep tv ty) =
+    let bisubst' = MkBisubstitution $ M.delete tv (bisubst_map bisubst)
+    in TyRec loc rep tv $ zonk RecRep bisubst' ty
   zonk vt bisubst (TyRec loc rep tv ty) =
      TyRec loc rep tv (zonk vt bisubst ty)
   zonk _vt _ t@TyI64 {} = t
