@@ -15,7 +15,21 @@ data Options where
     OptDeps :: FilePath -> Options
     OptVersion :: Options
 
+---------------------------------------------------------------------------------
+-- Debug flags
+---------------------------------------------------------------------------------
+
 data DebugFlags = DebugFlags { df_debug :: Bool, df_printGraphs :: Bool }
+
+debugFlagParser :: Parser DebugFlags
+debugFlagParser = DebugFlags <$> switch modsDebug <*> switch modsGraph
+  where
+    modsDebug = fold  [ long "XDebug"
+                      , help "Print debug info."
+                      ]
+    modsGraph = fold  [ long "XPrintGraph"
+                      , help "Print simplification automata graphs."
+                      ]
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a REPL
@@ -60,23 +74,17 @@ lspParserInfo = info (helper <*> lspParser) mods
 ---------------------------------------------------------------------------------
 
 typecheckParser :: Parser Options
-typecheckParser = OptTypecheck <$> argument str mods <*> (DebugFlags <$> switch modsDebug <*> switch modsGraph)
+typecheckParser = OptTypecheck <$> argument str mods <*> debugFlagParser
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
                 ]
-    modsDebug = fold  [ long "XDebug"
-                      , help "Print debug info"
-                      ]
-    modsGraph = fold  [ long "XPrintGraph"
-                      , help "Print simplification automata graphs"
-                      ]
 
 typecheckParserInfo :: ParserInfo Options
 typecheckParserInfo = info (helper <*> typecheckParser) mods
   where
     mods = fold [ fullDesc
-                , header "duo typecheck - Typecheck Duo source files"
+                , header "duo check - Typecheck Duo source files"
                 , progDesc "Typecheck Duo source files."
                 ]
 
@@ -85,17 +93,11 @@ typecheckParserInfo = info (helper <*> typecheckParser) mods
 ---------------------------------------------------------------------------------
 
 compileParser :: Parser Options
-compileParser = OptCompile <$> argument str mods <*> (DebugFlags <$> switch modsDebug <*> switch modsGraph)
+compileParser = OptCompile <$> argument str mods <*> debugFlagParser
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
                 ]
-    modsDebug = fold  [ long "XDebug"
-                      , help "Print debug info"
-                      ]
-    modsGraph = fold  [ long "XPrintGraph"
-                      , help "Print simplification automata graphs"
-                      ]
 
 compileParserInfo :: ParserInfo Options
 compileParserInfo = info (helper <*> compileParser) mods
