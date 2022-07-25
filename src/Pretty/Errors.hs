@@ -1,6 +1,5 @@
 module Pretty.Errors
-  ( printLocatedError
-  , printLocatedWarning
+  ( printLocatedReport
   ) where
 
 import Control.Monad.IO.Class ( MonadIO(..) )
@@ -61,36 +60,39 @@ instance PrettyAnn Error where
 -- Turning an error into a report
 ---------------------------------------------------------------------------------
 
-loweringErrorToReport :: LoweringError -> Report Text
-loweringErrorToReport MissingVarsInTypeScheme     = err Nothing "" [] []
-loweringErrorToReport TopInPosPolarity            = err Nothing "" [] []
-loweringErrorToReport BotInNegPolarity            = err Nothing "" [] []
-loweringErrorToReport IntersectionInPosPolarity   = err Nothing "" [] []
-loweringErrorToReport UnionInNegPolarity          = err Nothing "" [] []
-loweringErrorToReport (UnknownOperator _op)       = err Nothing "" [] []
-loweringErrorToReport XtorArityMismatch {}        = err Nothing "" [] []
-loweringErrorToReport (UndefinedPrimOp  _)        = err Nothing "" [] []
-loweringErrorToReport PrimOpArityMismatch {}      = err Nothing "" [] []
-loweringErrorToReport (CmdExpected _)             = err Nothing "" [] []
-loweringErrorToReport (InvalidStar _)             = err Nothing "" [] []
+class ToReport a where
+  toReport :: a -> Report Text
 
-errorToReport :: Error -> Report Text
-errorToReport (ParserError _loc msg)           = err Nothing msg [] []
-errorToReport (EvalError _loc msg)             = err Nothing msg [] []
-errorToReport (GenConstraintsError _loc msg)   = err Nothing msg [] []
-errorToReport (SolveConstraintsError _loc msg) = err Nothing msg [] []
-errorToReport (TypeAutomatonError _loc msg)    = err Nothing msg [] []
-errorToReport (LowerError _loc err)            = loweringErrorToReport err
-errorToReport (OtherError _loc msg)            = err Nothing msg [] []
-errorToReport (NoImplicitArg _loc msg)         = err Nothing msg [] []
+instance ToReport LoweringError where
+  toReport MissingVarsInTypeScheme     = err Nothing "" [] []
+  toReport TopInPosPolarity            = err Nothing "" [] []
+  toReport BotInNegPolarity            = err Nothing "" [] []
+  toReport IntersectionInPosPolarity   = err Nothing "" [] []
+  toReport UnionInNegPolarity          = err Nothing "" [] []
+  toReport (UnknownOperator _op)       = err Nothing "" [] []
+  toReport XtorArityMismatch {}        = err Nothing "" [] []
+  toReport (UndefinedPrimOp  _)        = err Nothing "" [] []
+  toReport PrimOpArityMismatch {}      = err Nothing "" [] []
+  toReport (CmdExpected _)             = err Nothing "" [] []
+  toReport (InvalidStar _)             = err Nothing "" [] []
+
+instance ToReport Error where
+  toReport (ParserError _loc msg)           = err Nothing msg [] []
+  toReport (EvalError _loc msg)             = err Nothing msg [] []
+  toReport (GenConstraintsError _loc msg)   = err Nothing msg [] []
+  toReport (SolveConstraintsError _loc msg) = err Nothing msg [] []
+  toReport (TypeAutomatonError _loc msg)    = err Nothing msg [] []
+  toReport (LowerError _loc err)            = toReport err
+  toReport (OtherError _loc msg)            = err Nothing msg [] []
+  toReport (NoImplicitArg _loc msg)         = err Nothing msg [] []
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------
 
-printLocatedError :: MonadIO m => Error -> m ()
-printLocatedError err = liftIO $ do
-  let report = errorToReport err
+printLocatedReport :: (ToReport r, MonadIO m) => r -> m ()
+printLocatedReport r = liftIO $ do
+  let report = toReport r
   let diag = addReport def report
   printDiagnostic stdout True True 4 defaultStyle diag
 
@@ -98,14 +100,8 @@ printLocatedError err = liftIO $ do
 -- Turning warnings into reports
 ---------------------------------------------------------------------------------
 
-warningToReport :: Warning -> Report Text
-warningToReport (Warning _loc msg) = warn Nothing msg [] []
-
-printLocatedWarning :: MonadIO m => Warning -> m ()
-printLocatedWarning warn = liftIO $ do
-  let report = warningToReport warn
-  let diag = addReport def report
-  printDiagnostic stdout True True 4 defaultStyle diag
+instance ToReport Warning where
+  toReport (Warning _loc msg) = warn Nothing msg [] []
 
 instance PrettyAnn Warning where
   prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt

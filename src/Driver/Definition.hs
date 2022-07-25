@@ -14,7 +14,7 @@ import System.Directory ( doesFileExist )
 import Driver.Environment ( Environment, emptyEnvironment )
 import Errors
 import Pretty.Pretty
-import Pretty.Errors ( printLocatedError )
+import Pretty.Errors ( printLocatedReport )
 import Resolution.SymbolTable
 import Syntax.Common.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
@@ -161,14 +161,14 @@ findModule (MkModuleName mod) loc = do
 liftErr :: NonEmpty Error -> DriverM a
 liftErr errs = do
     guardVerbose $ do
-      forM_ errs $ \err -> printLocatedError err
+      forM_ errs $ \err -> printLocatedReport err
     throwError errs
 
 liftErrLoc :: Loc -> NonEmpty Error -> DriverM a
 liftErrLoc loc err = do
     let locerr = attachLoc loc <$> err
     guardVerbose $ do
-      forM_ locerr $ \err -> printLocatedError err
+      forM_ locerr $ \err -> printLocatedReport err
     throwError locerr
 
 liftEitherErr :: (Either (NonEmpty Error) a,[Warning]) -> DriverM a

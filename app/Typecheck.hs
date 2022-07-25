@@ -5,15 +5,15 @@ import Options (DebugFlags(..))
 import Syntax.Common
 import Driver.Driver (runCompilationModule, defaultInferenceOptions)
 import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setPrintGraphOpts, setDebugOpts)
-import Pretty.Errors (printLocatedError, printLocatedWarning)
+import Pretty.Errors (printLocatedReport)
 import qualified Data.Text as T
 
 runTypecheck :: DebugFlags -> ModuleName -> IO ()
 runTypecheck DebugFlags { df_debug, df_printGraphs } mn = do
   (res,warnings) <- execDriverM driverState $ runCompilationModule mn
-  mapM_ printLocatedWarning warnings
+  mapM_ printLocatedReport warnings
   case res of
-    Left errs -> mapM_ printLocatedError errs
+    Left errs -> mapM_ printLocatedReport errs
     Right (_, MkDriverState {}) -> do
       putStrLn $ "Module " <> T.unpack (unModuleName mn) <> " typechecks"
   return ()
