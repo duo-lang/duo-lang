@@ -103,6 +103,24 @@ instance AttachLoc ConstraintSolverError where
     SomeConstraintSolverError loc msg
 
 ----------------------------------------------------------------------------------
+-- Errors emitted during the type simplification phase
+----------------------------------------------------------------------------------
+
+data TypeAutomatonError where
+  SomeTypeAutomatonError :: Loc -> Text -> TypeAutomatonError
+
+deriving instance Show TypeAutomatonError
+deriving instance Eq TypeAutomatonError
+
+instance HasLoc TypeAutomatonError where
+  getLoc (SomeTypeAutomatonError loc _) =
+    loc
+
+instance AttachLoc TypeAutomatonError where
+  attachLoc loc (SomeTypeAutomatonError _ msg) =
+    SomeTypeAutomatonError loc msg
+
+----------------------------------------------------------------------------------
 -- Errors
 ----------------------------------------------------------------------------------
 
@@ -110,35 +128,32 @@ data Error where
   ErrConstraintGeneration :: ConstraintGenerationError -> Error
   ErrResolution           :: ResolutionError           -> Error
   ErrConstraintSolver     :: ConstraintSolverError     -> Error
+  ErrTypeAutomaton        :: TypeAutomatonError        -> Error
   --
   ParserError           :: Loc -> Text          -> Error
   EvalError             :: Loc -> Text          -> Error
-  TypeAutomatonError    :: Loc -> Text          -> Error
   OtherError            :: Loc -> Text          -> Error
-  NoImplicitArg         :: Loc -> Text          -> Error
   deriving (Show, Eq)
 
 instance HasLoc Error where
   getLoc (ErrConstraintGeneration err) = getLoc err
   getLoc (ErrResolution err) = getLoc err
   getLoc (ErrConstraintSolver err) = getLoc err
+  getLoc (ErrTypeAutomaton err) = getLoc err
   --
   getLoc (ParserError loc _) = loc
   getLoc (EvalError loc _) = loc
-  getLoc (TypeAutomatonError loc _) = loc
   getLoc (OtherError loc _) = loc
-  getLoc (NoImplicitArg loc _) = loc
 
 instance AttachLoc Error where
   attachLoc loc (ErrConstraintGeneration err) = ErrConstraintGeneration (attachLoc loc err)
   attachLoc loc (ErrResolution err) = ErrResolution (attachLoc loc err)
   attachLoc loc (ErrConstraintSolver err) = ErrConstraintSolver (attachLoc loc err)
+  attachLoc loc (ErrTypeAutomaton err) = ErrTypeAutomaton (attachLoc loc err)
   --
   attachLoc loc (ParserError _ msg) = ParserError loc msg
   attachLoc loc (EvalError _ txt) = EvalError loc txt
-  attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
   attachLoc loc (OtherError _ txt) = OtherError loc txt
-  attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 
 
 
@@ -165,7 +180,7 @@ throwSolverError loc =
 throwAutomatonError :: MonadError (NonEmpty Error) m
                     => Loc -> [Text] -> m a
 throwAutomatonError loc =
-  throwError . (NE.:| []) . TypeAutomatonError loc . T.unlines
+  throwError . (NE.:| []) . (ErrTypeAutomaton . SomeTypeAutomatonError loc) . T.unlines
 
 throwOtherError :: MonadError (NonEmpty Error) m
                 => Loc -> [Text] -> m a
