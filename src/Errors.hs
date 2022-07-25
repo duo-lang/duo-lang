@@ -38,7 +38,6 @@ data ResolutionError where
   InvalidStar  :: Loc -> Text -> ResolutionError
 
 deriving instance Show ResolutionError
-deriving instance Eq ResolutionError
 
 instance HasLoc ResolutionError where
   getLoc (MissingVarsInTypeScheme loc) = loc
@@ -74,7 +73,6 @@ data ConstraintGenerationError where
   SomeConstraintGenerationError :: Loc -> Text -> ConstraintGenerationError
 
 deriving instance Show ConstraintGenerationError
-deriving instance Eq ConstraintGenerationError
 
 instance HasLoc ConstraintGenerationError where
   getLoc (SomeConstraintGenerationError loc _) =
@@ -92,7 +90,6 @@ data ConstraintSolverError where
   SomeConstraintSolverError :: Loc -> Text -> ConstraintSolverError
 
 deriving instance Show ConstraintSolverError
-deriving instance Eq ConstraintSolverError
 
 instance HasLoc ConstraintSolverError where
   getLoc (SomeConstraintSolverError loc _) =
@@ -110,7 +107,6 @@ data TypeAutomatonError where
   SomeTypeAutomatonError :: Loc -> Text -> TypeAutomatonError
 
 deriving instance Show TypeAutomatonError
-deriving instance Eq TypeAutomatonError
 
 instance HasLoc TypeAutomatonError where
   getLoc (SomeTypeAutomatonError loc _) =
@@ -133,7 +129,7 @@ data Error where
   ParserError           :: Loc -> Text          -> Error
   EvalError             :: Loc -> Text          -> Error
   OtherError            :: Loc -> Text          -> Error
-  deriving (Show, Eq)
+  deriving (Show)
 
 instance HasLoc Error where
   getLoc (ErrConstraintGeneration err) = getLoc err
@@ -154,9 +150,6 @@ instance AttachLoc Error where
   attachLoc loc (ParserError _ msg) = ParserError loc msg
   attachLoc loc (EvalError _ txt) = EvalError loc txt
   attachLoc loc (OtherError _ txt) = OtherError loc txt
-
-
-
 
 ---------------------------------------------------------------------------------------------
 -- Throwing errors in a monadic context
@@ -194,3 +187,13 @@ throwOtherError loc =
 
 data Warning where
   Warning :: Loc -> Text -> Warning
+
+deriving instance Show Warning
+
+instance HasLoc Warning where
+  getLoc (Warning loc _) =
+    loc
+
+instance AttachLoc Warning where
+  attachLoc loc (Warning _ msg) =
+    Warning loc msg
