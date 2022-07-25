@@ -134,6 +134,23 @@ instance AttachLoc EvalError where
     SomeEvalError loc msg
 
 ----------------------------------------------------------------------------------
+-- Errors emitted during parsing
+----------------------------------------------------------------------------------
+
+data ParserError where
+  SomeParserError :: Loc -> Text -> ParserError
+
+deriving instance Show ParserError
+
+instance HasLoc ParserError where
+  getLoc (SomeParserError loc _) =
+    loc
+
+instance AttachLoc ParserError where
+  attachLoc loc (SomeParserError _ msg) =
+    SomeParserError loc msg
+
+----------------------------------------------------------------------------------
 -- Various other errors
 ----------------------------------------------------------------------------------
 
@@ -161,31 +178,26 @@ data Error where
   ErrTypeAutomaton        :: TypeAutomatonError        -> Error
   ErrEval                 :: EvalError                 -> Error
   ErrOther                :: OtherError                -> Error
-  --
-  ParserError           :: Loc -> Text          -> Error
+  ErrParser               :: ParserError               -> Error
   deriving (Show)
 
 instance HasLoc Error where
   getLoc (ErrConstraintGeneration err) = getLoc err
-  getLoc (ErrResolution err) = getLoc err
-  getLoc (ErrConstraintSolver err) = getLoc err
-  getLoc (ErrTypeAutomaton err) = getLoc err
-  getLoc (ErrEval err) = getLoc err
-  getLoc (ErrOther err) = getLoc err
-  --
-  getLoc (ParserError loc _) = loc
-
+  getLoc (ErrResolution err)           = getLoc err
+  getLoc (ErrConstraintSolver err)     = getLoc err
+  getLoc (ErrTypeAutomaton err)        = getLoc err
+  getLoc (ErrEval err)                 = getLoc err
+  getLoc (ErrOther err)                = getLoc err
+  getLoc (ErrParser err)               = getLoc err
 
 instance AttachLoc Error where
   attachLoc loc (ErrConstraintGeneration err) = ErrConstraintGeneration (attachLoc loc err)
-  attachLoc loc (ErrResolution err) = ErrResolution (attachLoc loc err)
-  attachLoc loc (ErrConstraintSolver err) = ErrConstraintSolver (attachLoc loc err)
-  attachLoc loc (ErrTypeAutomaton err) = ErrTypeAutomaton (attachLoc loc err)
-  attachLoc loc (ErrEval err) = ErrEval (attachLoc loc err)
-  attachLoc loc (ErrOther err) = ErrOther (attachLoc loc err)
-  --
-  attachLoc loc (ParserError _ msg) = ParserError loc msg
-
+  attachLoc loc (ErrResolution err)           = ErrResolution (attachLoc loc err)
+  attachLoc loc (ErrConstraintSolver err)     = ErrConstraintSolver (attachLoc loc err)
+  attachLoc loc (ErrTypeAutomaton err)        = ErrTypeAutomaton (attachLoc loc err)
+  attachLoc loc (ErrEval err)                 = ErrEval (attachLoc loc err)
+  attachLoc loc (ErrOther err)                = ErrOther (attachLoc loc err)
+  attachLoc loc (ErrParser err)               = ErrParser (attachLoc loc err)
 
 ---------------------------------------------------------------------------------------------
 -- Throwing errors in a monadic context

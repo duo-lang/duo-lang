@@ -70,6 +70,10 @@ instance PrettyAnn OtherError where
   prettyAnn (SomeOtherError loc msg) =
     prettyAnn loc <> "Other error:" <+> pretty msg
 
+instance PrettyAnn ParserError where
+  prettyAnn (SomeParserError loc msg) =
+    prettyAnn loc <> "Parser error:" <+> pretty msg
+
 instance PrettyAnn Error where
   prettyAnn (ErrConstraintGeneration err)   = prettyAnn err
   prettyAnn (ErrResolution err)             = prettyAnn err
@@ -77,9 +81,7 @@ instance PrettyAnn Error where
   prettyAnn (ErrTypeAutomaton err)          = prettyAnn err
   prettyAnn (ErrEval err)                   = prettyAnn err
   prettyAnn (ErrOther err)                  = prettyAnn err
-  --
-  prettyAnn (ParserError loc msg)           = prettyAnn loc <> "Parser error:" <+> pretty msg
-  
+  prettyAnn (ErrParser err)                 = prettyAnn err
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
