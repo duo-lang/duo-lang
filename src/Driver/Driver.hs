@@ -62,10 +62,10 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
       (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (Annotated tyAnnotated)
       (Right False) -> do
-        let err = OtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                             , " Annotated type: " <> ppPrint tyAnnotated
-                                             , " Inferred type:  " <> ppPrint tyInferred
-                                             ]
+        let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                            , " Annotated type: " <> ppPrint tyAnnotated
+                                                            , " Inferred type:  " <> ppPrint tyInferred
+                                                            ]
         guardVerbose $ ppPrintIO err
         throwError (err NE.:| [])
 

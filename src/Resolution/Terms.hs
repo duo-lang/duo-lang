@@ -332,7 +332,7 @@ analyzeSubstitution loc xtor arity subst = do
       case span (not . isStarT . snd) zipped of
         (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
         _ -> throwOtherError loc ["Compiler bug in analyzeSubstitution"]
-    n -> throwError $ OtherError loc ("At most one star expected. Got " <> T.pack (show n) <> " stars.") :| []
+    n -> throwOtherError loc ["At most one star expected. Got " <> T.pack (show n) <> " stars."]
 
 resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
 resolvePrdCnsTerm Prd tm = RST.PrdTerm <$> resolveTerm PrdRep tm
