@@ -58,15 +58,15 @@ instance HasLoc Error where
   getLoc (OtherError loc _) = loc
   getLoc (NoImplicitArg loc _) = loc
 
-attachLoc :: Loc -> Error -> Error
-attachLoc loc (ParserError _ msg) = ParserError loc msg
-attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
-attachLoc loc (EvalError _ txt) = EvalError loc txt
-attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
-attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
-attachLoc loc (LowerError _ err) = LowerError loc err
-attachLoc loc (OtherError _ txt) = OtherError loc txt
-attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
+instance AttachLoc Error where
+  attachLoc loc (ParserError _ msg) = ParserError loc msg
+  attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
+  attachLoc loc (EvalError _ txt) = EvalError loc txt
+  attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
+  attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
+  attachLoc loc (LowerError _ err) = LowerError loc err
+  attachLoc loc (OtherError _ txt) = OtherError loc txt
+  attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 
 
 
