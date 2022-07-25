@@ -45,7 +45,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive,
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc, defaultLoc )
+import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
 

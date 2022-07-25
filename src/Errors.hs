@@ -10,7 +10,7 @@ import Syntax.Common
 import Utils
 
 ----------------------------------------------------------------------------------
--- Errors
+-- Errors emitted during the resolution phase
 ----------------------------------------------------------------------------------
 
 data LoweringError where
@@ -32,14 +32,37 @@ data LoweringError where
                 -> Int
                 -> Int
                 -> LoweringError
-  CmdExpected :: Text -> LoweringError                
+  CmdExpected :: Text -> LoweringError
   InvalidStar  :: Text
                 -> LoweringError
   deriving (Show, Eq)
 
+
+----------------------------------------------------------------------------------
+-- Errors emitted during the constraint generation phase
+----------------------------------------------------------------------------------
+
+data ConstraintGenerationError where
+  SomeConstraintGenerationError :: Loc -> Text -> ConstraintGenerationError
+
+deriving instance Show ConstraintGenerationError
+deriving instance Eq ConstraintGenerationError
+
+instance HasLoc ConstraintGenerationError where
+  getLoc (SomeConstraintGenerationError loc _) =
+    loc
+
+instance AttachLoc ConstraintGenerationError where
+  attachLoc loc (SomeConstraintGenerationError _ msg) =
+    SomeConstraintGenerationError loc msg
+
+----------------------------------------------------------------------------------
+-- Errors
+----------------------------------------------------------------------------------
+
 data Error where
   ParserError           :: Loc -> Text          -> Error
-  GenConstraintsError   :: Loc -> Text          -> Error
+  ErrConstraintGeneration :: ConstraintGenerationError -> Error
   EvalError             :: Loc -> Text          -> Error
   SolveConstraintsError :: Loc -> Text          -> Error
   TypeAutomatonError    :: Loc -> Text          -> Error
@@ -50,7 +73,7 @@ data Error where
 
 instance HasLoc Error where
   getLoc (ParserError loc _) = loc
-  getLoc (GenConstraintsError loc _) = loc
+  getLoc (ErrConstraintGeneration err) = getLoc err
   getLoc (EvalError loc _) = loc
   getLoc (SolveConstraintsError loc _) = loc
   getLoc (TypeAutomatonError loc _) = loc
@@ -60,7 +83,7 @@ instance HasLoc Error where
 
 instance AttachLoc Error where
   attachLoc loc (ParserError _ msg) = ParserError loc msg
-  attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
+  attachLoc loc (ErrConstraintGeneration err) = ErrConstraintGeneration (attachLoc loc err)
   attachLoc loc (EvalError _ txt) = EvalError loc txt
   attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
   attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
@@ -78,7 +101,7 @@ instance AttachLoc Error where
 throwGenError :: MonadError (NonEmpty Error) m
               => Loc -> [Text] -> m a
 throwGenError loc =
-  throwError . (NE.:| []) . GenConstraintsError loc . T.unlines
+  throwError . (NE.:| []) . (ErrConstraintGeneration . SomeConstraintGenerationError loc) . T.unlines
 
 throwEvalError :: MonadError (NonEmpty Error) m
                => Loc -> [Text] -> m a

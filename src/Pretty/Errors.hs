@@ -37,10 +37,14 @@ instance PrettyAnn LoweringError where
   prettyAnn (CmdExpected t)                        = "Command expected: " <+> pretty t
   prettyAnn (InvalidStar t)                        = "Invalid Star: " <+> pretty t
 
+instance PrettyAnn ConstraintGenerationError where
+  prettyAnn (SomeConstraintGenerationError loc msg) =
+    prettyAnn loc <> "Constraint generation error:" <+> pretty msg
+
 instance PrettyAnn Error where
   prettyAnn (ParserError loc msg)           = prettyAnn loc <> "Parser error:" <+> pretty msg
   prettyAnn (EvalError loc err)             = prettyAnn loc <> "Evaluation error:" <+> pretty err
-  prettyAnn (GenConstraintsError loc err)   = prettyAnn loc <> "Constraint generation error:" <+> pretty err
+  prettyAnn (ErrConstraintGeneration err)   = prettyAnn err
   prettyAnn (SolveConstraintsError loc err) = prettyAnn loc <> "Constraint solving error:" <+> pretty err
   prettyAnn (TypeAutomatonError loc err)    = prettyAnn loc <> "Type simplification error:" <+> pretty err
   prettyAnn (LowerError loc err)            = prettyAnn loc <> prettyAnn err
