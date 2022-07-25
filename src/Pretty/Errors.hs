@@ -62,14 +62,18 @@ instance PrettyAnn TypeAutomatonError where
   prettyAnn (SomeTypeAutomatonError loc msg) =
     prettyAnn loc <> "Type automaton error:" <+> pretty msg
 
+instance PrettyAnn EvalError where
+  prettyAnn (SomeEvalError loc msg) =
+    prettyAnn loc <> "Evaluation error:" <+> pretty msg
+
 instance PrettyAnn Error where
   prettyAnn (ErrConstraintGeneration err)   = prettyAnn err
   prettyAnn (ErrResolution err)             = prettyAnn err
   prettyAnn (ErrConstraintSolver err)       = prettyAnn err
   prettyAnn (ErrTypeAutomaton err)          = prettyAnn err
+  prettyAnn (ErrEval err)                   = prettyAnn err
   --
   prettyAnn (ParserError loc msg)           = prettyAnn loc <> "Parser error:" <+> pretty msg
-  prettyAnn (EvalError loc err)             = prettyAnn loc <> "Evaluation error:" <+> pretty err
   prettyAnn (OtherError loc err)            = prettyAnn loc <> "Other Error:" <+> pretty err
 
 ---------------------------------------------------------------------------------

@@ -117,6 +117,23 @@ instance AttachLoc TypeAutomatonError where
     SomeTypeAutomatonError loc msg
 
 ----------------------------------------------------------------------------------
+-- Errors emitted during evaluation
+----------------------------------------------------------------------------------
+
+data EvalError where
+  SomeEvalError :: Loc -> Text -> EvalError
+
+deriving instance Show EvalError
+
+instance HasLoc EvalError where
+  getLoc (SomeEvalError loc _) =
+    loc
+
+instance AttachLoc EvalError where
+  attachLoc loc (SomeEvalError _ msg) =
+    SomeEvalError loc msg
+
+----------------------------------------------------------------------------------
 -- Errors
 ----------------------------------------------------------------------------------
 
@@ -125,9 +142,9 @@ data Error where
   ErrResolution           :: ResolutionError           -> Error
   ErrConstraintSolver     :: ConstraintSolverError     -> Error
   ErrTypeAutomaton        :: TypeAutomatonError        -> Error
+  ErrEval                 :: EvalError                 -> Error
   --
   ParserError           :: Loc -> Text          -> Error
-  EvalError             :: Loc -> Text          -> Error
   OtherError            :: Loc -> Text          -> Error
   deriving (Show)
 
@@ -136,9 +153,9 @@ instance HasLoc Error where
   getLoc (ErrResolution err) = getLoc err
   getLoc (ErrConstraintSolver err) = getLoc err
   getLoc (ErrTypeAutomaton err) = getLoc err
+  getLoc (ErrEval err) = getLoc err
   --
   getLoc (ParserError loc _) = loc
-  getLoc (EvalError loc _) = loc
   getLoc (OtherError loc _) = loc
 
 instance AttachLoc Error where
@@ -146,9 +163,9 @@ instance AttachLoc Error where
   attachLoc loc (ErrResolution err) = ErrResolution (attachLoc loc err)
   attachLoc loc (ErrConstraintSolver err) = ErrConstraintSolver (attachLoc loc err)
   attachLoc loc (ErrTypeAutomaton err) = ErrTypeAutomaton (attachLoc loc err)
+  attachLoc loc (ErrEval err) = ErrEval (attachLoc loc err)
   --
   attachLoc loc (ParserError _ msg) = ParserError loc msg
-  attachLoc loc (EvalError _ txt) = EvalError loc txt
   attachLoc loc (OtherError _ txt) = OtherError loc txt
 
 ---------------------------------------------------------------------------------------------
@@ -163,7 +180,7 @@ throwGenError loc =
 throwEvalError :: MonadError (NonEmpty Error) m
                => Loc -> [Text] -> m a
 throwEvalError loc =
-  throwError . (NE.:| []) . EvalError loc . T.unlines
+  throwError . (NE.:| []) . (ErrEval . SomeEvalError loc) . T.unlines
 
 throwSolverError :: MonadError (NonEmpty Error) m
                  => Loc -> [Text] -> m a
