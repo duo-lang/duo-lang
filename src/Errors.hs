@@ -13,28 +13,28 @@ import Utils
 -- Errors emitted during the resolution phase
 ----------------------------------------------------------------------------------
 
-data LoweringError where
+data ResolutionError where
   -- Type scheme violations
-  MissingVarsInTypeScheme :: LoweringError
+  MissingVarsInTypeScheme :: ResolutionError
   -- Polarity violations
-  TopInPosPolarity :: LoweringError
-  BotInNegPolarity :: LoweringError
-  IntersectionInPosPolarity :: LoweringError
-  UnionInNegPolarity :: LoweringError
+  TopInPosPolarity :: ResolutionError
+  BotInNegPolarity :: ResolutionError
+  IntersectionInPosPolarity :: ResolutionError
+  UnionInNegPolarity :: ResolutionError
   -- Operator errors
-  UnknownOperator :: Text -> LoweringError
+  UnknownOperator :: Text -> ResolutionError
   XtorArityMismatch :: XtorName
                 -> Int
                 -> Int
-                -> LoweringError
-  UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> LoweringError
+                -> ResolutionError
+  UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> ResolutionError
   PrimOpArityMismatch :: (PrimitiveType, PrimitiveOp)
                 -> Int
                 -> Int
-                -> LoweringError
-  CmdExpected :: Text -> LoweringError
+                -> ResolutionError
+  CmdExpected :: Text -> ResolutionError
   InvalidStar  :: Text
-                -> LoweringError
+                -> ResolutionError
   deriving (Show, Eq)
 
 
@@ -66,7 +66,7 @@ data Error where
   EvalError             :: Loc -> Text          -> Error
   SolveConstraintsError :: Loc -> Text          -> Error
   TypeAutomatonError    :: Loc -> Text          -> Error
-  LowerError            :: Loc -> LoweringError -> Error
+  LowerError            :: Loc -> ResolutionError -> Error
   OtherError            :: Loc -> Text          -> Error
   NoImplicitArg         :: Loc -> Text          -> Error
   deriving (Show, Eq)

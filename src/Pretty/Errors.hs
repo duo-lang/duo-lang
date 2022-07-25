@@ -16,7 +16,7 @@ import Utils
 -- Prettyprinting of Errors
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn LoweringError where
+instance PrettyAnn ResolutionError where
   prettyAnn MissingVarsInTypeScheme               = "Missing declaration of type variable"
   prettyAnn TopInPosPolarity                      = "Cannot use `Top` in positive polarity"
   prettyAnn BotInNegPolarity                      = "Cannot use `Bot` in negative polarity"
