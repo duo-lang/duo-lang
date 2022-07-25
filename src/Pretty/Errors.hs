@@ -54,13 +54,21 @@ instance PrettyAnn ConstraintGenerationError where
   prettyAnn (SomeConstraintGenerationError loc msg) =
     prettyAnn loc <> "Constraint generation error:" <+> pretty msg
 
+instance PrettyAnn ConstraintSolverError where
+  prettyAnn (SomeConstraintSolverError loc msg) =
+    prettyAnn loc <> "Constraint solver error:" <+> pretty msg
+
 instance PrettyAnn Error where
+  prettyAnn (ErrConstraintGeneration err)   = prettyAnn err
+  prettyAnn (ErrResolution err)             = prettyAnn err
+  prettyAnn (ErrConstraintSolver err)       = prettyAnn err
+  --
   prettyAnn (ParserError loc msg)           = prettyAnn loc <> "Parser error:" <+> pretty msg
   prettyAnn (EvalError loc err)             = prettyAnn loc <> "Evaluation error:" <+> pretty err
-  prettyAnn (ErrConstraintGeneration err)   = prettyAnn err
-  prettyAnn (SolveConstraintsError loc err) = prettyAnn loc <> "Constraint solving error:" <+> pretty err
+  
+  
   prettyAnn (TypeAutomatonError loc err)    = prettyAnn loc <> "Type simplification error:" <+> pretty err
-  prettyAnn (ErrResolution err)             = prettyAnn err
+  
   prettyAnn (OtherError loc err)            = prettyAnn loc <> "Other Error:" <+> pretty err
   prettyAnn (NoImplicitArg loc err)         = prettyAnn loc <> "No implicit arg: " <+> pretty err
 

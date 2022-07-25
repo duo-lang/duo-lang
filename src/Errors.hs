@@ -54,8 +54,17 @@ instance HasLoc ResolutionError where
   getLoc (InvalidStar loc _) = loc
 
 instance AttachLoc ResolutionError where
-  attachLoc = undefined
-
+  attachLoc loc (MissingVarsInTypeScheme _) = MissingVarsInTypeScheme loc
+  attachLoc loc (TopInPosPolarity _) = TopInPosPolarity loc
+  attachLoc loc (BotInNegPolarity _) = BotInNegPolarity loc
+  attachLoc loc (IntersectionInPosPolarity _) = IntersectionInPosPolarity loc
+  attachLoc loc (UnionInNegPolarity _) = UnionInNegPolarity loc
+  attachLoc loc (UnknownOperator _ op) = UnknownOperator loc op
+  attachLoc loc (XtorArityMismatch _ xt i1 i2) = XtorArityMismatch loc xt i1 i2
+  attachLoc loc (UndefinedPrimOp _ op) = UndefinedPrimOp loc op
+  attachLoc loc (PrimOpArityMismatch _ po i1 i2) = PrimOpArityMismatch loc po i1 i2
+  attachLoc loc (CmdExpected _ t) = CmdExpected loc t
+  attachLoc loc (InvalidStar _ t) = InvalidStar loc t
 
 ----------------------------------------------------------------------------------
 -- Errors emitted during the constraint generation phase
@@ -76,16 +85,34 @@ instance AttachLoc ConstraintGenerationError where
     SomeConstraintGenerationError loc msg
 
 ----------------------------------------------------------------------------------
+-- Errors emitted during the constraint solving phase
+----------------------------------------------------------------------------------
+
+data ConstraintSolverError where
+  SomeConstraintSolverError :: Loc -> Text -> ConstraintSolverError
+
+deriving instance Show ConstraintSolverError
+deriving instance Eq ConstraintSolverError
+
+instance HasLoc ConstraintSolverError where
+  getLoc (SomeConstraintSolverError loc _) =
+    loc
+
+instance AttachLoc ConstraintSolverError where
+  attachLoc loc (SomeConstraintSolverError _ msg) =
+    SomeConstraintSolverError loc msg
+
+----------------------------------------------------------------------------------
 -- Errors
 ----------------------------------------------------------------------------------
 
 data Error where
   ErrConstraintGeneration :: ConstraintGenerationError -> Error
   ErrResolution           :: ResolutionError           -> Error
+  ErrConstraintSolver     :: ConstraintSolverError     -> Error
   --
   ParserError           :: Loc -> Text          -> Error
   EvalError             :: Loc -> Text          -> Error
-  SolveConstraintsError :: Loc -> Text          -> Error
   TypeAutomatonError    :: Loc -> Text          -> Error
   OtherError            :: Loc -> Text          -> Error
   NoImplicitArg         :: Loc -> Text          -> Error
@@ -94,10 +121,10 @@ data Error where
 instance HasLoc Error where
   getLoc (ErrConstraintGeneration err) = getLoc err
   getLoc (ErrResolution err) = getLoc err
+  getLoc (ErrConstraintSolver err) = getLoc err
   --
   getLoc (ParserError loc _) = loc
   getLoc (EvalError loc _) = loc
-  getLoc (SolveConstraintsError loc _) = loc
   getLoc (TypeAutomatonError loc _) = loc
   getLoc (OtherError loc _) = loc
   getLoc (NoImplicitArg loc _) = loc
@@ -105,10 +132,10 @@ instance HasLoc Error where
 instance AttachLoc Error where
   attachLoc loc (ErrConstraintGeneration err) = ErrConstraintGeneration (attachLoc loc err)
   attachLoc loc (ErrResolution err) = ErrResolution (attachLoc loc err)
+  attachLoc loc (ErrConstraintSolver err) = ErrConstraintSolver (attachLoc loc err)
   --
   attachLoc loc (ParserError _ msg) = ParserError loc msg
   attachLoc loc (EvalError _ txt) = EvalError loc txt
-  attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
   attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
   attachLoc loc (OtherError _ txt) = OtherError loc txt
   attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
@@ -133,7 +160,7 @@ throwEvalError loc =
 throwSolverError :: MonadError (NonEmpty Error) m
                  => Loc -> [Text] -> m a
 throwSolverError loc =
-  throwError . (NE.:| []) . SolveConstraintsError loc . T.unlines
+  throwError . (NE.:| []) . (ErrConstraintSolver . SomeConstraintSolverError loc) . T.unlines
 
 throwAutomatonError :: MonadError (NonEmpty Error) m
                     => Loc -> [Text] -> m a
