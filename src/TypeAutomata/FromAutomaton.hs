@@ -116,7 +116,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache then
-    return $ TySkolemVar defaultLoc rep Nothing (MkSkolemTVar ("r" <> T.pack (show i)))
+    return $ TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i)))
   else
     nodeToTypeNoCache rep i
 
