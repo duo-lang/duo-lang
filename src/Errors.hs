@@ -15,27 +15,46 @@ import Utils
 
 data ResolutionError where
   -- Type scheme violations
-  MissingVarsInTypeScheme :: ResolutionError
+  MissingVarsInTypeScheme :: Loc -> ResolutionError
   -- Polarity violations
-  TopInPosPolarity :: ResolutionError
-  BotInNegPolarity :: ResolutionError
-  IntersectionInPosPolarity :: ResolutionError
-  UnionInNegPolarity :: ResolutionError
+  TopInPosPolarity :: Loc -> ResolutionError
+  BotInNegPolarity :: Loc -> ResolutionError
+  IntersectionInPosPolarity :: Loc -> ResolutionError
+  UnionInNegPolarity :: Loc -> ResolutionError
   -- Operator errors
-  UnknownOperator :: Text -> ResolutionError
-  XtorArityMismatch :: XtorName
-                -> Int
-                -> Int
-                -> ResolutionError
-  UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> ResolutionError
-  PrimOpArityMismatch :: (PrimitiveType, PrimitiveOp)
-                -> Int
-                -> Int
-                -> ResolutionError
-  CmdExpected :: Text -> ResolutionError
-  InvalidStar  :: Text
-                -> ResolutionError
-  deriving (Show, Eq)
+  UnknownOperator :: Loc -> Text -> ResolutionError
+  XtorArityMismatch :: Loc
+                    -> XtorName
+                    -> Int
+                    -> Int
+                    -> ResolutionError
+  UndefinedPrimOp :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolutionError
+  PrimOpArityMismatch :: Loc
+                      -> (PrimitiveType, PrimitiveOp)
+                      -> Int
+                      -> Int
+                      -> ResolutionError
+  CmdExpected :: Loc -> Text -> ResolutionError
+  InvalidStar  :: Loc -> Text -> ResolutionError
+
+deriving instance Show ResolutionError
+deriving instance Eq ResolutionError
+
+instance HasLoc ResolutionError where
+  getLoc (MissingVarsInTypeScheme loc) = loc
+  getLoc (TopInPosPolarity loc) = loc
+  getLoc (BotInNegPolarity loc) = loc
+  getLoc (IntersectionInPosPolarity loc) = loc
+  getLoc (UnionInNegPolarity loc) = loc
+  getLoc (UnknownOperator loc _) = loc
+  getLoc (XtorArityMismatch loc _ _ _) = loc
+  getLoc (UndefinedPrimOp loc _) = loc
+  getLoc (PrimOpArityMismatch loc _ _ _) = loc
+  getLoc (CmdExpected loc _) = loc
+  getLoc (InvalidStar loc _) = loc
+
+instance AttachLoc ResolutionError where
+  attachLoc = undefined
 
 
 ----------------------------------------------------------------------------------
@@ -61,33 +80,36 @@ instance AttachLoc ConstraintGenerationError where
 ----------------------------------------------------------------------------------
 
 data Error where
-  ParserError           :: Loc -> Text          -> Error
   ErrConstraintGeneration :: ConstraintGenerationError -> Error
+  ErrResolution           :: ResolutionError           -> Error
+  --
+  ParserError           :: Loc -> Text          -> Error
   EvalError             :: Loc -> Text          -> Error
   SolveConstraintsError :: Loc -> Text          -> Error
   TypeAutomatonError    :: Loc -> Text          -> Error
-  LowerError            :: Loc -> ResolutionError -> Error
   OtherError            :: Loc -> Text          -> Error
   NoImplicitArg         :: Loc -> Text          -> Error
   deriving (Show, Eq)
 
 instance HasLoc Error where
-  getLoc (ParserError loc _) = loc
   getLoc (ErrConstraintGeneration err) = getLoc err
+  getLoc (ErrResolution err) = getLoc err
+  --
+  getLoc (ParserError loc _) = loc
   getLoc (EvalError loc _) = loc
   getLoc (SolveConstraintsError loc _) = loc
   getLoc (TypeAutomatonError loc _) = loc
-  getLoc (LowerError loc _) = loc
   getLoc (OtherError loc _) = loc
   getLoc (NoImplicitArg loc _) = loc
 
 instance AttachLoc Error where
-  attachLoc loc (ParserError _ msg) = ParserError loc msg
   attachLoc loc (ErrConstraintGeneration err) = ErrConstraintGeneration (attachLoc loc err)
+  attachLoc loc (ErrResolution err) = ErrResolution (attachLoc loc err)
+  --
+  attachLoc loc (ParserError _ msg) = ParserError loc msg
   attachLoc loc (EvalError _ txt) = EvalError loc txt
   attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
   attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
-  attachLoc loc (LowerError _ err) = LowerError loc err
   attachLoc loc (OtherError _ txt) = OtherError loc txt
   attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 

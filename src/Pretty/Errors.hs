@@ -17,25 +17,38 @@ import Utils
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn ResolutionError where
-  prettyAnn MissingVarsInTypeScheme               = "Missing declaration of type variable"
-  prettyAnn TopInPosPolarity                      = "Cannot use `Top` in positive polarity"
-  prettyAnn BotInNegPolarity                      = "Cannot use `Bot` in negative polarity"
-  prettyAnn IntersectionInPosPolarity             = "Cannot use `/\\` in positive polarity"
-  prettyAnn UnionInNegPolarity                    = "Cannot use `\\/` in negative polarity"
-  prettyAnn (UnknownOperator op)                  = "Undefined type operator `" <> pretty op <> "`"
-  prettyAnn (XtorArityMismatch xt ar1 ar2)        = vsep [ "Arity mismatch:"
-                                                   , "  Constructor/Destructor:" <+> prettyAnn xt
-                                                   , "  Specified Arity:" <+> pretty ar1
-                                                   , "  Used Arity:" <+> pretty ar2
-                                                   ]
-  prettyAnn (UndefinedPrimOp (pt, op))             = "Undefined primitive operator  " <> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
-  prettyAnn (PrimOpArityMismatch (pt, op) ar1 ar2) = vsep [ "Arity mismatch:"
-                                                   , "  Primitive operation:" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
-                                                   , "  Specified Arity:" <+> pretty ar1
-                                                   , "  Used Arity:" <+> pretty ar2
-                                                   ]
-  prettyAnn (CmdExpected t)                        = "Command expected: " <+> pretty t
-  prettyAnn (InvalidStar t)                        = "Invalid Star: " <+> pretty t
+  prettyAnn (MissingVarsInTypeScheme loc) =
+    prettyAnn loc <+> "Missing declaration of type variable"
+  prettyAnn (TopInPosPolarity loc) =
+    prettyAnn loc <+> "Cannot use `Top` in positive polarity"
+  prettyAnn (BotInNegPolarity loc) = 
+    prettyAnn loc <+> "Cannot use `Bot` in negative polarity"
+  prettyAnn (IntersectionInPosPolarity loc) =
+    prettyAnn loc <+> "Cannot use `/\\` in positive polarity"
+  prettyAnn (UnionInNegPolarity loc) = 
+    prettyAnn loc <+> "Cannot use `\\/` in negative polarity"
+  prettyAnn (UnknownOperator loc op) =
+    prettyAnn loc <+> "Undefined type operator `" <> pretty op <> "`"
+  prettyAnn (XtorArityMismatch loc xt ar1 ar2) =
+    vsep [ prettyAnn loc
+         , "Arity mismatch:"
+         , "  Constructor/Destructor:" <+> prettyAnn xt
+         , "  Specified Arity:" <+> pretty ar1
+         , "  Used Arity:" <+> pretty ar2
+         ]
+  prettyAnn (UndefinedPrimOp loc (pt, op)) = 
+    prettyAnn loc <+> "Undefined primitive operator" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
+  prettyAnn (PrimOpArityMismatch loc (pt, op) ar1 ar2) =
+    vsep [ prettyAnn loc
+         , "Arity mismatch:"
+         , "  Primitive operation:" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
+         , "  Specified Arity:" <+> pretty ar1
+         , "  Used Arity:" <+> pretty ar2
+         ]
+  prettyAnn (CmdExpected loc t) =
+    prettyAnn loc <+> "Command expected: " <+> pretty t
+  prettyAnn (InvalidStar loc t) =
+    prettyAnn loc <+> "Invalid Star: " <+> pretty t
 
 instance PrettyAnn ConstraintGenerationError where
   prettyAnn (SomeConstraintGenerationError loc msg) =
@@ -47,7 +60,7 @@ instance PrettyAnn Error where
   prettyAnn (ErrConstraintGeneration err)   = prettyAnn err
   prettyAnn (SolveConstraintsError loc err) = prettyAnn loc <> "Constraint solving error:" <+> pretty err
   prettyAnn (TypeAutomatonError loc err)    = prettyAnn loc <> "Type simplification error:" <+> pretty err
-  prettyAnn (LowerError loc err)            = prettyAnn loc <> prettyAnn err
+  prettyAnn (ErrResolution err)             = prettyAnn err
   prettyAnn (OtherError loc err)            = prettyAnn loc <> "Other Error:" <+> pretty err
   prettyAnn (NoImplicitArg loc err)         = prettyAnn loc <> "No implicit arg: " <+> pretty err
 
