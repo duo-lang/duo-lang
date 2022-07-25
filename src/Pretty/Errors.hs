@@ -18,7 +18,7 @@ import Prettyprinter
 
 import Errors
 import Pretty.Constraints ()
-import Pretty.Pretty ( PrettyAnn(..) )
+import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
 
 ---------------------------------------------------------------------------------
@@ -64,17 +64,17 @@ class ToReport a where
   toReport :: a -> Report Text
 
 instance ToReport LoweringError where
-  toReport MissingVarsInTypeScheme     = err Nothing "" [] []
-  toReport TopInPosPolarity            = err Nothing "" [] []
-  toReport BotInNegPolarity            = err Nothing "" [] []
-  toReport IntersectionInPosPolarity   = err Nothing "" [] []
-  toReport UnionInNegPolarity          = err Nothing "" [] []
-  toReport (UnknownOperator _op)       = err Nothing "" [] []
-  toReport XtorArityMismatch {}        = err Nothing "" [] []
-  toReport (UndefinedPrimOp  _)        = err Nothing "" [] []
-  toReport PrimOpArityMismatch {}      = err Nothing "" [] []
-  toReport (CmdExpected _)             = err Nothing "" [] []
-  toReport (InvalidStar _)             = err Nothing "" [] []
+  toReport e@MissingVarsInTypeScheme     = err Nothing (ppPrint e) [] []
+  toReport e@TopInPosPolarity            = err Nothing (ppPrint e) [] []
+  toReport e@BotInNegPolarity            = err Nothing (ppPrint e) [] []
+  toReport e@IntersectionInPosPolarity   = err Nothing (ppPrint e) [] []
+  toReport e@UnionInNegPolarity          = err Nothing (ppPrint e) [] []
+  toReport e@(UnknownOperator _op)       = err Nothing (ppPrint e) [] []
+  toReport e@XtorArityMismatch {}        = err Nothing (ppPrint e) [] []
+  toReport e@(UndefinedPrimOp  _)        = err Nothing (ppPrint e) [] []
+  toReport e@PrimOpArityMismatch {}      = err Nothing (ppPrint e) [] []
+  toReport e@(CmdExpected _)             = err Nothing (ppPrint e) [] []
+  toReport e@(InvalidStar _)             = err Nothing (ppPrint e) [] []
 
 instance ToReport Error where
   toReport (ParserError _loc msg)           = err Nothing msg [] []
