@@ -109,4 +109,4 @@ lookupTyOp loc op = do
     []    -> throwError (LowerError loc (UnknownOperator (ppPrint op)) NE.:| [])
     [res] -> pure res
     _     -> throwOtherError loc ["Type operator " <> ppPrint op <> " found in multiple imports."]
-      
+
