@@ -186,10 +186,24 @@ printLocatedReport r = liftIO $ do
 ---------------------------------------------------------------------------------
 
 instance ToReport Warning where
-  toReport (Warning loc msg) =
-    warn (Just "W-000") msg [(toDiagnosePosition loc, This "consumer variable")] [Hint "Rename the variable so that it starts with the letter \"k\"."]
+  toReport w@(MisnamedProducerVar loc var) =
+    let
+        msg = ppPrint w
+        hint = Hint "Rename the variable so that it doesn't start with the letter \"k\"."
+        poshint = (toDiagnosePosition loc, This "producer variable")
+    in
+      warn (Just "W-000") msg [poshint] [hint]
+  toReport w@(MisnamedConsumerVar loc var) =
+    let
+        msg = ppPrint w
+        hint = Hint "Rename the variable so that it starts with the letter \"k\"."
+        poshint = (toDiagnosePosition loc, This "consumer variable")
+    in
+      warn (Just "W-000") msg [poshint] [hint]
 
 instance PrettyAnn Warning where
-  prettyAnn (Warning loc txt) =
-    "Warning:" <+> prettyAnn loc <+> prettyAnn txt
+  prettyAnn (MisnamedProducerVar _ var) =
+    "Producer variable" <+> pretty var <+> "should not start with letter \"k\"."
+  prettyAnn (MisnamedConsumerVar _ var) =
+    "Consumer variable" <+> pretty var <+> "should start with letter \"k\"."
 

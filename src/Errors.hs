@@ -234,14 +234,17 @@ throwOtherError loc =
 ---------------------------------------------------------------------------------------------
 
 data Warning where
-  Warning :: Loc -> Text -> Warning
+  -- | Warning for producer that starts with the letter "k".
+  MisnamedProducerVar :: Loc -> Text -> Warning
+  -- | Warning for consumer that doesn't start with the letter "k".
+  MisnamedConsumerVar :: Loc -> Text -> Warning
 
 deriving instance Show Warning
 
 instance HasLoc Warning where
-  getLoc (Warning loc _) =
-    loc
+  getLoc (MisnamedProducerVar loc _) = loc
+  getLoc (MisnamedConsumerVar loc _) = loc
 
 instance AttachLoc Warning where
-  attachLoc loc (Warning _ msg) =
-    Warning loc msg
+  attachLoc loc (MisnamedProducerVar _ msg) = MisnamedProducerVar loc msg
+  attachLoc loc (MisnamedConsumerVar _ msg) = MisnamedConsumerVar loc msg
