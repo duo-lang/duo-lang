@@ -125,7 +125,7 @@ nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns tps refDat refCodat)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns refDat refCodat)) = lab gr i
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   let refDatTypes = M.toList refDat -- Unique data ref types
   let refCodatTypes = M.toList refCodat -- Unique codata ref types
@@ -183,9 +183,9 @@ nodeToTypeNoCache rep i = do
     let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
         toPrimType rep I64 = TyI64 defaultLoc rep
         toPrimType rep F64 = TyF64 defaultLoc rep
-    let prims = toPrimType rep <$> S.toList tps
+    --let prims = toPrimType rep <$> S.toList tps
 
-    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
+    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
     return $ case rep of
       PosRep -> mkUnion defaultLoc Nothing typs
       NegRep -> mkInter defaultLoc Nothing typs

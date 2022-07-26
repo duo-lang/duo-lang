@@ -85,12 +85,12 @@ combineNodeLabels nls
       then error "Tried to combine node labels of different polarity!"
       else MkNodeLabel {
         nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _ _ _ <- nls],
-        nl_primitive = S.unions [ pt | MkNodeLabel _ _ _ _ pt _ _ <- nls ],
-        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ _ refs _ <- nls],
-        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ _ refs <- nls]
+        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _  _ _ _ <- nls],
+        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
+        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _  _ <- nls],
+        -- nl_primitive = S.unions [ pt | MkNodeLabel _ _ _ _ pt _ _ <- nls ],
+        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _  _ refs _ <- nls],
+        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _  _ _ _ refs <- nls]
         }
   where
     pol = nl_pol (head nls)

@@ -253,16 +253,18 @@ insertType (TyNominal _ rep _ tn args) = do
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode
-insertType (TyI64 _ rep) = do
-  let pol = polarityRepToPol rep
-  newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton I64 })
-  return newNode
-insertType (TyF64 _ rep) = do
-  let pol = polarityRepToPol rep
-  newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton F64 })
-  return newNode
+insertType (TyI64 _ _) = throwAutomatonError defaultLoc ["Primitive Node Labels not implemented yet"]
+insertType (TyF64 _ _) = throwAutomatonError defaultLoc ["Primitive Node Labels not implemented yet"]
+-- insertType (TyI64 _ rep) = do
+--  let pol = polarityRepToPol rep
+--  newNode <- newNodeM
+--  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton I64 })
+--  return newNode
+-- insertType (TyF64 _ rep) = do
+---  let pol = polarityRepToPol rep
+--  newNode <- newNodeM
+--  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton F64 })
+--  return newNode
 insertType (TyFlipPol _ _) =
   throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]
 

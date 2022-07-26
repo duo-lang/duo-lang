@@ -24,11 +24,11 @@ instance PrettyAnn XtorLabel where
     prettyAnn labelName <> prettyArity labelArity
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns tps refDat refCodat) =
+  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) =
     intercalateX ";" (catMaybes [printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
                                 , printNominal tns
-                                , printPrimitives tps
+                                -- , printPrimitives tps
                                 , printRefDat refDat
                                 , printRefCodat refCodat])
     where
@@ -37,9 +37,9 @@ instance PrettyAnn NodeLabel where
       printNominal tnSet = case S.toList tnSet of
         [] -> Nothing
         tns -> Just (intercalateX ";" ((\(tn, _) -> prettyAnn tn) <$> tns))
-      printPrimitives tpSet = case S.toList tpSet of
-        [] -> Nothing
-        tps -> Just (intercalateX ";" (prettyAnn <$> tps))
+      --printPrimitives tpSet = case S.toList tpSet of
+      --  [] -> Nothing
+      --  tps -> Just (intercalateX ";" (prettyAnn <$> tps))
       printRefDat refDat = case M.toList refDat of
         [] -> Nothing
         refTns -> Just $ intercalateX "; " $ (\(key, content) -> angles $ mempty <+>
