@@ -10,7 +10,6 @@ import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
-import Data.Kind (Type)
 
 import Syntax.Common
 
