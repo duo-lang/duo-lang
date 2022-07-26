@@ -110,51 +110,51 @@ toDiagnosePosition (Loc (SourcePos fp p1 p2) (SourcePos _ p3 p4)) =
 
 instance ToReport ResolutionError where
   toReport e@(MissingVarsInTypeScheme loc) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(TopInPosPolarity loc) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(BotInNegPolarity loc) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(IntersectionInPosPolarity loc) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(UnionInNegPolarity loc) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(UnknownOperator loc _op) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(XtorArityMismatch loc _ _ _) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(UndefinedPrimOp loc _) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(PrimOpArityMismatch loc _ _ _) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(CmdExpected loc _) = 
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(InvalidStar loc _) =
-    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintGenerationError where
   toReport (SomeConstraintGenerationError loc msg) =
-    err Nothing msg [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintSolverError where
   toReport (SomeConstraintSolverError loc msg) =
-    err Nothing msg [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport TypeAutomatonError where
   toReport (SomeTypeAutomatonError loc msg) =
-    err Nothing msg [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport EvalError where
   toReport (SomeEvalError loc msg) =
-    err Nothing msg [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport OtherError where
   toReport (SomeOtherError loc msg) =
-    err Nothing msg [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ParserError where
   toReport (SomeParserError loc msg) =
-    err Nothing msg [(toDiagnosePosition loc, This "")] []
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport Error where
   toReport (ErrConstraintGeneration err) = toReport err
@@ -186,8 +186,10 @@ printLocatedReport r = liftIO $ do
 ---------------------------------------------------------------------------------
 
 instance ToReport Warning where
-  toReport (Warning loc msg) = warn (Just "W-000") msg [(toDiagnosePosition loc, This "consumer variable")] [Hint "Rename the variable so that it starts with the letter \"k\"."]
+  toReport (Warning loc msg) =
+    warn (Just "W-000") msg [(toDiagnosePosition loc, This "consumer variable")] [Hint "Rename the variable so that it starts with the letter \"k\"."]
 
 instance PrettyAnn Warning where
-  prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt
+  prettyAnn (Warning loc txt) =
+    "Warning:" <+> prettyAnn loc <+> prettyAnn txt
 
