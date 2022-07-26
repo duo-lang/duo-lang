@@ -166,6 +166,9 @@ data NodeLabel =
 emptyNodeLabel :: Polarity -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
 
+emptyPrimNodeLabel :: Polarity -> NodeLabel
+emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
+
 singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
 singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty
 singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty
