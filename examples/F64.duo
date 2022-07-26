@@ -23,6 +23,11 @@ data F64 {
     MkF64(#F64)
 };
 
+def prd f1 : #F64 := 1.0#F64;
+def prd f2 : F64 := MkF64(f1);
+
+def cns f3 : #F64 := mu f. ExitSuccess;
+
 -- | Addition of two 64-Bit floating point numbers.
 def prd addf : F64 -> F64 -> F64 := \x => \y =>
     case x of {
