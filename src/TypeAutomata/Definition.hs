@@ -10,6 +10,7 @@ import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
+import Data.Kind (Type)
 
 import Syntax.Common
 
@@ -146,20 +147,21 @@ data XtorLabel = MkXtorLabel
   }
   deriving (Eq, Show, Ord)
 
-data NodeLabel = MkNodeLabel
-  { nl_pol :: Polarity
-  , nl_data :: Maybe (Set XtorLabel)
-  , nl_codata :: Maybe (Set XtorLabel)
-  -- Nominal type names with the arities of type parameters
-  , nl_nominal :: Set (RnTypeName, [Variance])
-  , nl_ref_data :: Map RnTypeName (Set XtorLabel)
-  , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
-  } deriving (Eq,Show,Ord)
-
-data PrimitiveNodeLabel = MkPrimitiveNodeLabel
- { pl_pol :: Polarity
- , pl_prim :: Set PrimitiveType
- } deriving (Eq,Show,Ord)
+data NodeLabel = 
+  MkNodeLabel
+    { nl_pol :: Polarity
+    , nl_data :: Maybe (Set XtorLabel)
+    , nl_codata :: Maybe (Set XtorLabel)
+    -- Nominal type names with the arities of type parameters
+    , nl_nominal :: Set (RnTypeName, [Variance])
+    , nl_ref_data :: Map RnTypeName (Set XtorLabel)
+    , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
+    }
+  |
+  MkPrimitiveNodeLabel
+    { pl_pol :: Polarity
+    , pl_prim :: Set PrimitiveType
+    } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
