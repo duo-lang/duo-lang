@@ -120,7 +120,7 @@ prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> pretty
                                              ]
 
 prettyRecBisubst :: (RecTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Recursive variable:" <+> prettyAnn v
 
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
