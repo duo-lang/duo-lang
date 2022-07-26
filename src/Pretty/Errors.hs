@@ -12,7 +12,7 @@ import Error.Diagnose
       warn,
       defaultStyle,
       def,
-      Report )
+      Report, Marker (This), Position (..) )
 import Prettyprinter
 
 
@@ -20,6 +20,8 @@ import Errors
 import Pretty.Constraints ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
+import Utils (Loc (Loc))
+import Text.Megaparsec (SourcePos(..), unPos)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -99,36 +101,60 @@ instance PrettyAnn Error where
 class ToReport a where
   toReport :: a -> Report Text
 
+toDiagnosePosition :: Loc -> Position
+toDiagnosePosition (Loc (SourcePos fp p1 p2) (SourcePos _ p3 p4)) =
+  Position { begin = (unPos p1,unPos p2)
+           , end = (unPos p3, unPos p4)
+           , file = fp
+           }
+
 instance ToReport ResolutionError where
-  toReport e@(MissingVarsInTypeScheme _)    = err Nothing (ppPrint e) [] []
-  toReport e@(TopInPosPolarity _)           = err Nothing (ppPrint e) [] []
-  toReport e@(BotInNegPolarity _)           = err Nothing (ppPrint e) [] []
-  toReport e@(IntersectionInPosPolarity _)  = err Nothing (ppPrint e) [] []
-  toReport e@(UnionInNegPolarity _)         = err Nothing (ppPrint e) [] []
-  toReport e@(UnknownOperator _ _op)        = err Nothing (ppPrint e) [] []
-  toReport e@XtorArityMismatch {}           = err Nothing (ppPrint e) [] []
-  toReport e@(UndefinedPrimOp _ _)          = err Nothing (ppPrint e) [] []
-  toReport e@PrimOpArityMismatch {}         = err Nothing (ppPrint e) [] []
-  toReport e@(CmdExpected _ _)              = err Nothing (ppPrint e) [] []
-  toReport e@(InvalidStar _ _)              = err Nothing (ppPrint e) [] []
+  toReport e@(MissingVarsInTypeScheme loc) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(TopInPosPolarity loc) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(BotInNegPolarity loc) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(IntersectionInPosPolarity loc) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(UnionInNegPolarity loc) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(UnknownOperator loc _op) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(XtorArityMismatch loc _ _ _) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(UndefinedPrimOp loc _) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(PrimOpArityMismatch loc _ _ _) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(CmdExpected loc _) = 
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
+  toReport e@(InvalidStar loc _) =
+    err Nothing (ppPrint e) [(toDiagnosePosition loc, This "")] []
 
 instance ToReport ConstraintGenerationError where
-  toReport (SomeConstraintGenerationError _loc msg) = err Nothing msg [] []
+  toReport (SomeConstraintGenerationError loc msg) =
+    err Nothing msg [(toDiagnosePosition loc, This "")] []
 
 instance ToReport ConstraintSolverError where
-  toReport (SomeConstraintSolverError _loc msg) = err Nothing msg [] []
+  toReport (SomeConstraintSolverError loc msg) =
+    err Nothing msg [(toDiagnosePosition loc, This "")] []
 
 instance ToReport TypeAutomatonError where
-  toReport (SomeTypeAutomatonError _loc msg) = err Nothing msg [] []
+  toReport (SomeTypeAutomatonError loc msg) =
+    err Nothing msg [(toDiagnosePosition loc, This "")] []
 
 instance ToReport EvalError where
-  toReport (SomeEvalError _loc msg) = err Nothing msg [] []
+  toReport (SomeEvalError loc msg) =
+    err Nothing msg [(toDiagnosePosition loc, This "")] []
 
 instance ToReport OtherError where
-  toReport (SomeOtherError _loc msg) = err Nothing msg [] []
+  toReport (SomeOtherError loc msg) =
+    err Nothing msg [(toDiagnosePosition loc, This "")] []
 
 instance ToReport ParserError where
-  toReport (SomeParserError _loc msg) = err Nothing msg [] []
+  toReport (SomeParserError loc msg) =
+    err Nothing msg [(toDiagnosePosition loc, This "")] []
 
 instance ToReport Error where
   toReport (ErrConstraintGeneration err) = toReport err
