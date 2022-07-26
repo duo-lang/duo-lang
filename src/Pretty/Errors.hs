@@ -1,16 +1,27 @@
-module Pretty.Errors (printLocatedError) where
+module Pretty.Errors
+  ( printLocatedReport
+  ) where
 
-import Control.Monad (forM_)
-import Control.Monad.IO.Class
-import Data.Text.IO qualified as T
+import Control.Monad.IO.Class ( MonadIO(..) )
+import Data.Text (Text)
+import Error.Diagnose
+    ( stdout,
+      addReport,
+      printDiagnostic,
+      err,
+      warn,
+      defaultStyle,
+      def,
+      Report, Marker (This), Position (..), addFile, Note (Hint) )
 import Prettyprinter
-import Text.Megaparsec.Pos
+
 
 import Errors
 import Pretty.Constraints ()
-import Pretty.Pretty
-import Syntax.Common
-import Utils
+import Pretty.Pretty ( PrettyAnn(..), ppPrint )
+import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
+import Utils (Loc (Loc), HasLoc (getLoc))
+import Text.Megaparsec (SourcePos(..), unPos)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -84,35 +95,115 @@ instance PrettyAnn Error where
   prettyAnn (ErrParser err)                 = prettyAnn err
 
 ---------------------------------------------------------------------------------
+-- Turning an error into a report
+---------------------------------------------------------------------------------
+
+class ToReport a where
+  toReport :: a -> Report Text
+
+toDiagnosePosition :: Loc -> Position
+toDiagnosePosition (Loc (SourcePos fp p1 p2) (SourcePos _ p3 p4)) =
+  Position { begin = (unPos p1,unPos p2)
+           , end = (unPos p3, unPos p4)
+           , file = fp
+           }
+
+instance ToReport ResolutionError where
+  toReport e@(MissingVarsInTypeScheme loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(TopInPosPolarity loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(BotInNegPolarity loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(IntersectionInPosPolarity loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(UnionInNegPolarity loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(UnknownOperator loc _op) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(XtorArityMismatch loc _ _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(UndefinedPrimOp loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PrimOpArityMismatch loc _ _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(CmdExpected loc _) = 
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(InvalidStar loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport ConstraintGenerationError where
+  toReport (SomeConstraintGenerationError loc msg) =
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport ConstraintSolverError where
+  toReport (SomeConstraintSolverError loc msg) =
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport TypeAutomatonError where
+  toReport (SomeTypeAutomatonError loc msg) =
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport EvalError where
+  toReport (SomeEvalError loc msg) =
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport OtherError where
+  toReport (SomeOtherError loc msg) =
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport ParserError where
+  toReport (SomeParserError loc msg) =
+    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+
+instance ToReport Error where
+  toReport (ErrConstraintGeneration err) = toReport err
+  toReport (ErrResolution err)           = toReport err
+  toReport (ErrConstraintSolver err)     = toReport err
+  toReport (ErrTypeAutomaton err)        = toReport err
+  toReport (ErrEval err)                 = toReport err
+  toReport (ErrOther err)                = toReport err
+  toReport (ErrParser err)               = toReport err
+
+---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------
 
-printLocatedError :: MonadIO m => Error -> m ()
-printLocatedError err = liftIO $ do
-  let loc = getLoc err
-  T.putStrLn ("Error at: " <> ppPrint loc)
-  printRegion loc
-  T.putStrLn ""
-  T.putStrLn (ppPrint err)
+printLocatedReport :: (ToReport r, HasLoc r, MonadIO m) => r -> m ()
+printLocatedReport r = liftIO $ do
+  let report = toReport r
+  let diag = addReport def report
+  let (Loc (SourcePos fp _ _) _) = getLoc r
+  case fp of
+    "<interactive>" -> printDiagnostic stdout True True 4 defaultStyle diag
+    fp -> do
+      fileContent <- readFile fp
+      let diag' = addFile diag fp fileContent
+      printDiagnostic stdout True True 4 defaultStyle diag'
 
-printRegion :: Loc -> IO ()
-printRegion (Loc (SourcePos "<interactive>" _ _) SourcePos {}) = return ()
-printRegion (Loc (SourcePos fp line1 _) (SourcePos _ line2 _)) = do
-  T.putStrLn ""
-  file <- readFile fp
-  let region = getRegion file (unPos line1) (unPos line2)
-  let annotatedRegion = generatePrefixes region
-  forM_ annotatedRegion $ \line -> putStrLn line
+---------------------------------------------------------------------------------
+-- Turning warnings into reports
+---------------------------------------------------------------------------------
 
-
-getRegion :: String -> Int -> Int -> [(Int, String)]
-getRegion str start end = take (end - (start - 1)) . drop (start - 1) $ zip [1..] (lines str)
-
-generatePrefixes :: [(Int, String)] -> [String]
-generatePrefixes lines = foo <$> lines
-  where
-    foo (line, content) = show line ++ " | " ++ content
-
+instance ToReport Warning where
+  toReport w@(MisnamedProducerVar loc var) =
+    let
+        msg = ppPrint w
+        hint = Hint "Rename the variable so that it doesn't start with the letter \"k\"."
+        poshint = (toDiagnosePosition loc, This "producer variable")
+    in
+      warn (Just "W-000") msg [poshint] [hint]
+  toReport w@(MisnamedConsumerVar loc var) =
+    let
+        msg = ppPrint w
+        hint = Hint "Rename the variable so that it starts with the letter \"k\"."
+        poshint = (toDiagnosePosition loc, This "consumer variable")
+    in
+      warn (Just "W-000") msg [poshint] [hint]
 
 instance PrettyAnn Warning where
-  prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt
+  prettyAnn (MisnamedProducerVar _ var) =
+    "Producer variable" <+> pretty var <+> "should not start with letter \"k\"."
+  prettyAnn (MisnamedConsumerVar _ var) =
+    "Consumer variable" <+> pretty var <+> "should start with letter \"k\"."
+
