@@ -14,6 +14,7 @@ import Sugar.Desugar (desugarEnvironment)
 import Translate.Focusing (focusEnvironment)
 import Utils ( defaultLoc )
 import Options (DebugFlags(..))
+import Pretty.Errors (printLocatedReport)
 
 driverAction :: ModuleName -> DriverM TST.Program
 driverAction mn = do
@@ -24,15 +25,15 @@ driverAction mn = do
 runRun :: DebugFlags -> ModuleName -> IO ()
 runRun DebugFlags { df_debug, df_printGraphs } mn = do
   (res, warnings) <- execDriverM driverState (driverAction mn)
-  mapM_ ppPrintIO warnings
+  mapM_ printLocatedReport warnings
   case res of
-    Left errs -> mapM_ ppPrintIO errs
+    Left errs -> mapM_ printLocatedReport errs
     Right (_, MkDriverState { drvEnv }) -> do
       -- Run program
       let compiledEnv :: EvalEnv = focusEnvironment CBV (desugarEnvironment drvEnv)
       evalCmd <- liftIO $ eval (TST.Jump defaultLoc (MkFreeVarName "main")) compiledEnv
       case evalCmd of
-          Left errs -> mapM_ ppPrintIO errs
+          Left errs -> mapM_ printLocatedReport errs
           Right res -> ppPrintIO res
     where
       driverState = defaultDriverState { drvOpts = infOpts }
