@@ -59,13 +59,13 @@ lookupTerm :: EnvReader a m
            => PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TypeScheme (PrdCnsToPol pc))
 lookupTerm PrdRep fv = do
   env <- asks fst
-  let err = OtherError defaultLoc ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
+  let err = ErrOther $ SomeOtherError defaultLoc ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
   let f env = case M.lookup fv (prdEnv env) of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> Just (res1,res2)
   snd <$> findFirstM f err
 lookupTerm CnsRep fv = do
-  let err = OtherError defaultLoc ("Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment.")
+  let err = ErrOther $ SomeOtherError defaultLoc ("Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment.")
   let f env = case M.lookup fv (cnsEnv env) of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> return (res1,res2)
@@ -78,7 +78,7 @@ lookupTerm CnsRep fv = do
 -- | Lookup a command in the environment.
 lookupCommand :: EnvReader a m => FreeVarName -> m TST.Command
 lookupCommand fv = do
-  let err = OtherError defaultLoc ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
+  let err = ErrOther $ SomeOtherError defaultLoc ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
   let f env = case M.lookup fv (cmdEnv env) of
                      Nothing -> Nothing
                      Just (res, _) -> return res
@@ -97,7 +97,7 @@ lookupDataDecl xt = do
   let typeContainsXtor :: DataDecl -> Bool
       typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                   | otherwise = False
-  let err = OtherError defaultLoc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
+  let err = ErrOther $ SomeOtherError defaultLoc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
   let f env = find typeContainsXtor (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
@@ -105,7 +105,7 @@ lookupDataDecl xt = do
 lookupTypeName :: EnvReader a m
                => RnTypeName -> m DataDecl
 lookupTypeName tn = do
-  let err = OtherError defaultLoc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
+  let err = ErrOther $ SomeOtherError defaultLoc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
   let f env = find (\NominalDecl{..} -> data_name == tn) (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
@@ -127,21 +127,21 @@ lookupXtorSig xtn NegRep = do
 lookupClassDecl :: EnvReader a m
                => ClassName -> m RST.ClassDeclaration
 lookupClassDecl cn = do
-  let err = OtherError defaultLoc ("Undeclared class " <> ppPrint cn <> " is not contained in environment.")
+  let err = ErrOther $ SomeOtherError defaultLoc ("Undeclared class " <> ppPrint cn <> " is not contained in environment.")
   let f env = M.lookup cn (classEnv env)
   snd <$> findFirstM f err
 
 -- | Find the class declaration for a classname.
 lookupMethodType :: EnvReader a m
-               => XtorName -> RST.ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
-lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } PosRep =
-  case lookup xt classdecl_xtors of
-    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name]
-    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep pos; Cns -> PrdCnsType CnsRep neg)) <$> typ
-lookupMethodType xt RST.MkClassDeclaration { classdecl_name, classdecl_xtors } NegRep =
-  case lookup xt classdecl_xtors of
-    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint xt <> " is not declared in class " <> ppPrint classdecl_name]
-    Just typ -> pure $ (\(prdcns,pos,neg) -> (case prdcns of Prd -> PrdCnsType PrdRep neg; Cns -> PrdCnsType CnsRep pos)) <$> typ
+               => MethodName -> RST.ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
+lookupMethodType mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } PosRep =
+  case find ( \MkMethodSig{..} -> msig_name == mn) (fst classdecl_methods) of
+    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
+    Just msig -> pure $ msig_args msig
+lookupMethodType mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } NegRep =
+  case find ( \MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
+    Nothing -> throwOtherError defaultLoc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
+    Just msig -> pure $ msig_args msig
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

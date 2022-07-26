@@ -1,4 +1,9 @@
-module Resolution.Types (resolveTyp, resolveTypeScheme, resolveXTorSigs) where
+module Resolution.Types
+    ( resolveTyp
+    , resolveTypeScheme
+    , resolveXTorSigs
+    , resolveMethodSigs
+    ) where
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
@@ -12,25 +17,28 @@ import Syntax.Common.TypesPol ( freeTVars )
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common.TypesUnpol
 import Utils (Loc(..), defaultLoc)
+import Control.Monad.Reader (asks, MonadReader (local))
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
 ---------------------------------------------------------------------------------
-
-
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
     if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
-        else throwError (LowerError ts_loc MissingVarsInTypeScheme :| [])
+        else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
     pure $ RST.TyUniVar loc rep Nothing v
-resolveTyp rep (TySkolemVar loc v) = 
-    pure $ RST.TySkolemVar loc rep Nothing v
+resolveTyp rep (TySkolemVar loc v) = do
+    recVars <- asks rr_recVars
+    let vr = skolemToRecRVar v
+    if vr `S.member` recVars
+      then pure $ RST.TyRecVar loc rep Nothing vr
+      else pure $ RST.TySkolemVar loc rep Nothing v
 
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
@@ -63,28 +71,29 @@ resolveTyp rep (TyNominal loc name args) = do
         NominalResult name' _ NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
-resolveTyp rep (TyRec loc v typ) =
-        RST.TyRec loc rep v <$> resolveTyp rep typ
+resolveTyp rep (TyRec loc v typ) = do
+        let vr = skolemToRecRVar v
+        local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
-    throwError (LowerError loc TopInPosPolarity :| [])
+    throwError (ErrResolution (TopInPosPolarity loc) :| [])
 resolveTyp NegRep (TyTop loc) =
     pure $ RST.TyTop loc Nothing
 resolveTyp PosRep (TyBot loc) =
     pure $ RST.TyBot loc Nothing
 resolveTyp NegRep (TyBot loc) =
-    throwError (LowerError loc BotInNegPolarity :| [])
+    throwError (ErrResolution (BotInNegPolarity loc) :| [])
 resolveTyp rep (TyBinOpChain fst rest) =
     resolveBinOpChain rep fst rest
 resolveTyp rep (TyBinOp loc fst op snd) =
     resolveBinOp loc rep fst op snd
 resolveTyp rep (TyParens _loc typ) =
     resolveTyp rep typ
-resolveTyp rep (TyPrim loc pt) =
-    pure $ RST.TyPrim loc rep pt
-
-
+resolveTyp rep (TyI64 loc) =
+    pure $ RST.TyI64 loc rep
+resolveTyp rep (TyF64 loc) =
+    pure $ RST.TyF64 loc rep
 
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
 resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
@@ -103,6 +112,12 @@ resolveXTorSigs rep sigs = sequence $ resolveXTorSig rep <$> sigs
 
 resolveXTorSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.XtorSig pol)
 resolveXTorSig rep (MkXtorSig name ctx) = RST.MkXtorSig name <$> resolveLinearContext rep ctx
+
+resolveMethodSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.MethodSig pol]
+resolveMethodSigs rep sigs = sequence $ resolveMethodSig rep <$> sigs
+
+resolveMethodSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.MethodSig pol)
+resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName $ unXtorName name) <$> resolveLinearContext rep ctx
 
 resolveLinearContext :: PolarityRep pol -> LinearContext -> ResolverM (RST.LinearContext pol)
 resolveLinearContext rep ctx = sequence $ resolvePrdCnsTyp rep <$> ctx
@@ -126,13 +141,13 @@ desugaring loc PosRep UnionDesugaring tl tr = do
     tr <- resolveTyp PosRep tr
     pure $ RST.TyUnion loc Nothing tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
-    throwError (LowerError loc UnionInNegPolarity :| [])
+    throwError (ErrResolution (UnionInNegPolarity loc) :| [])
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
     pure $ RST.TyInter loc Nothing tl tr
 desugaring loc PosRep InterDesugaring _ _ =
-    throwError (LowerError loc IntersectionInPosPolarity :| [])
+    throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
     resolveTyp rep (TyNominal loc tyname [tl, tr])
 

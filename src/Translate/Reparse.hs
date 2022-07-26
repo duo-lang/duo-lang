@@ -442,6 +442,12 @@ embedXtorSig RST.MkXtorSig { sig_name, sig_args } =
                 , sig_args = embedLinearContext sig_args
                 }
 
+embedMethodSig :: RST.MethodSig pol -> CST.XtorSig
+embedMethodSig RST.MkMethodSig { msig_name, msig_args } =
+  CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
+                , sig_args = embedLinearContext msig_args
+                }
+
 embedVariantTypes :: [RST.VariantType pol] -> [CST.Typ]
 embedVariantTypes = fmap embedVariantType
 
@@ -458,12 +464,17 @@ resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } 
   Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
 resugarType _ = Nothing
 
+embedRecTVar :: RecTVar -> SkolemTVar
+embedRecTVar (MkRecTVar n) = MkSkolemTVar n
+
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
 embedType (RST.TyUniVar loc _ _ tv) =
   CST.TyUniVar loc tv
 embedType (RST.TySkolemVar loc _ _ tv) = 
   CST.TySkolemVar loc tv
+embedType (RST.TyRecVar loc _ _ tv) = 
+  CST.TySkolemVar loc $ embedRecTVar tv
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
@@ -485,9 +496,11 @@ embedType (RST.TyUnion loc _knd ty ty') =
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
 embedType (RST.TyRec loc _ tv ty) =
-  CST.TyRec loc tv (embedType ty)
-embedType (RST.TyPrim loc _ pt) =
-  CST.TyPrim loc pt
+  CST.TyRec loc (embedRecTVar tv) (embedType ty)
+embedType (RST.TyI64 loc _) =
+  CST.TyI64 loc
+embedType (RST.TyF64 loc _) =
+  CST.TyF64 loc
 embedType (RST.TyFlipPol _ ty) = embedType ty
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
@@ -597,12 +610,12 @@ reparseTyOpDecl RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym
                         }
 
 reparseClassDecl :: RST.ClassDeclaration -> CST.ClassDeclaration
-reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors }
-  = CST.MkClassDeclaration { classdecl_loc   = classdecl_loc
-                           , classdecl_doc   = classdecl_doc
-                           , classdecl_name  = classdecl_name
-                           , classdecl_kinds = classdecl_kinds
-                           , classdecl_xtors = second (map (\(p,t,_) -> (p, embedType t))) <$> classdecl_xtors
+reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
+  = CST.MkClassDeclaration { classdecl_loc     = classdecl_loc
+                           , classdecl_doc     = classdecl_doc
+                           , classdecl_name    = classdecl_name
+                           , classdecl_kinds   = classdecl_kinds
+                           , classdecl_methods = embedMethodSig <$> fst classdecl_methods
                            }
 
 reparseInstanceDecl :: RST.InstanceDeclaration -> CST.InstanceDeclaration

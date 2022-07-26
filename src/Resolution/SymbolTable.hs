@@ -170,10 +170,10 @@ createSymbolTable' _ (CmdDecl MkCommandDeclaration { cmddecl_loc, cmddecl_name }
   checkFreshFreeVarName cmddecl_loc cmddecl_name st
   pure $ st { freeVarMap = M.insert cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ (SetDecl _) st = pure st
-createSymbolTable' _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_name, classdecl_xtors})  st = do
-  let xtor_names = fst <$> classdecl_xtors
+createSymbolTable' _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_name, classdecl_methods})  st = do
+  let xtor_names = sig_name <$> classdecl_methods
   mapM_ (flip (checkFreshXtorName classdecl_loc) st) xtor_names
   pure $ st { classMethods = M.insert classdecl_name xtor_names (classMethods st)
-            , xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . fmap fst . snd <$> classdecl_xtors)) (xtorNameMap st) }
+            , xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . linearContextToArity . sig_args <$> classdecl_methods)) (xtorNameMap st) }
 createSymbolTable' _ InstanceDecl {} st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st

@@ -1,5 +1,6 @@
 module Options
   ( Options(..)
+  , DebugFlags(..)
   , parseOptions
   ) where
 
@@ -9,9 +10,26 @@ import Options.Applicative
 data Options where
     OptRepl :: Options
     OptLSP :: Maybe FilePath -> Options
-    OptCompile :: FilePath -> Options
+    OptRun :: FilePath -> DebugFlags -> Options
+    OptTypecheck :: FilePath -> DebugFlags -> Options
     OptDeps :: FilePath -> Options
     OptVersion :: Options
+
+---------------------------------------------------------------------------------
+-- Debug flags
+---------------------------------------------------------------------------------
+
+data DebugFlags = DebugFlags { df_debug :: Bool, df_printGraphs :: Bool }
+
+debugFlagParser :: Parser DebugFlags
+debugFlagParser = DebugFlags <$> switch modsDebug <*> switch modsGraph
+  where
+    modsDebug = fold  [ long "XDebug"
+                      , help "Print debug info."
+                      ]
+    modsGraph = fold  [ long "XPrintGraph"
+                      , help "Print simplification automata graphs."
+                      ]
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a REPL
@@ -27,14 +45,14 @@ replParserInfo = info (helper <*> replParser) mods
                 , header "duo repl - Start an interactive REPL"
                 , progDesc "Start an interactive REPL."
                 ]
-    
+
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a LSP session
 ---------------------------------------------------------------------------------
 
 lspParser :: Parser Options
-lspParser = OptLSP <$> (optional $ strOption mods)
+lspParser = OptLSP <$> optional (strOption mods)
   where
     mods = fold [ long "logfile"
                 , short 'l'
@@ -52,22 +70,41 @@ lspParserInfo = info (helper <*> lspParser) mods
                 ]
 
 ---------------------------------------------------------------------------------
--- Commandline options for compiling source files
+-- Commandline options for typechecking source files
 ---------------------------------------------------------------------------------
 
-compileParser :: Parser Options
-compileParser = OptCompile <$> argument str mods
+typecheckParser :: Parser Options
+typecheckParser = OptTypecheck <$> argument str mods <*> debugFlagParser
   where
     mods = fold [ metavar "TARGET"
                 , help "Filepath of the source file."
                 ]
 
-compileParserInfo :: ParserInfo Options
-compileParserInfo = info (helper <*> compileParser) mods
+typecheckParserInfo :: ParserInfo Options
+typecheckParserInfo = info (helper <*> typecheckParser) mods
   where
     mods = fold [ fullDesc
-                , header "duo compile - Compile Duo source files"
-                , progDesc "Compile Duo source files."
+                , header "duo check - Typecheck Duo source files"
+                , progDesc "Typecheck Duo source files."
+                ]
+
+---------------------------------------------------------------------------------
+-- Commandline options for running source files
+---------------------------------------------------------------------------------
+
+runParser :: Parser Options
+runParser = OptRun <$> argument str mods <*> debugFlagParser
+  where
+    mods = fold [ metavar "TARGET"
+                , help "Filepath of the source file."
+                ]
+
+runParserInfo :: ParserInfo Options
+runParserInfo = info (helper <*> runParser) mods
+  where
+    mods = fold [ fullDesc
+                , header "duo run - Run Duo source files"
+                , progDesc "Run Duo source files."
                 ]
 
 ---------------------------------------------------------------------------------
@@ -94,7 +131,7 @@ depsParserInfo = info (helper <*> depsParser) mods
 ---------------------------------------------------------------------------------
 
 versionParser :: Parser Options
-versionParser = const OptVersion <$> flag' () (long "version" <> short 'v' <> help "Show version")
+versionParser = OptVersion <$ flag' () (long "version" <> short 'v' <> help "Show version")
 
 ---------------------------------------------------------------------------------
 -- Combined commandline parser
@@ -102,9 +139,10 @@ versionParser = const OptVersion <$> flag' () (long "version" <> short 'v' <> he
 
 commandParser :: Parser Options
 commandParser = subparser $ fold [ command "repl" replParserInfo
-                                 , command "compile" compileParserInfo
+                                 , command "run" runParserInfo
                                  , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
+                                 , command "check" typecheckParserInfo
                                  ]
 
 optParser :: Parser Options

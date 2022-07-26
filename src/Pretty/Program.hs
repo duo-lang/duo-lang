@@ -87,7 +87,7 @@ instance PrettyAnn CST.CommandDeclaration where
 ---------------------------------------------------------------------------------
 
 -- | Prettyprint the list of MonoKinds
-prettyCCList :: PrettyAnn a => [(PrdCns, a)] -> Doc Annotation
+prettyCCList :: [(PrdCns, MonoKind)] -> Doc Annotation
 prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns -> annKeyword "return" <+> prettyAnn k) <$> xs)
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
@@ -158,24 +158,12 @@ instance PrettyAnn CST.TySynDeclaration where
 prettyTVars :: [(Variance, SkolemTVar, MonoKind)] -> Doc Annotation
 prettyTVars tvs = parens $ cat (punctuate comma (prettyTParam <$> tvs))
 
--- | Prettyprint list of xtors for class declaration.
-prettyXTors :: [(XtorName, [(PrdCns, Unpol.Typ)])] -> Doc Annotation
-prettyXTors xtors = braces $ group
-  (nest
-    3
-    (line' <> vsep
-      (punctuate comma
-                 ((\(nm, ts) -> prettyAnn nm <> prettyCCList ts) <$> xtors)
-      )
-    )
-  )
-
 instance PrettyAnn CST.ClassDeclaration where
-  prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_xtors} =
+  prettyAnn CST.MkClassDeclaration { classdecl_name, classdecl_kinds, classdecl_methods} =
     annKeyword "class" <+>
     prettyAnn classdecl_name <+>
-    prettyTVars classdecl_kinds <+> 
-    prettyXTors classdecl_xtors <>
+    prettyTVars classdecl_kinds <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> classdecl_methods))))) <>
     semi
 
 ---------------------------------------------------------------------------------

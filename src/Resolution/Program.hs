@@ -10,7 +10,7 @@ import Errors
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
-import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp)
+import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.Common.TypesUnpol (XtorSig (sig_args), PrdCnsTyp (PrdType, CnsType), Typ (..))
@@ -66,7 +66,8 @@ checkVarianceTyp loc var polyKind (TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
 checkVarianceTyp _loc _var _polyKind (TyTop _loc') = return ()
 checkVarianceTyp _loc _var _polyKind (TyBot _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyPrim _loc' _primitiveType) = return ()
+checkVarianceTyp _loc _var _polyKind (TyI64 _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (TyF64 _loc') = return ()
 checkVarianceTyp loc var polyKind (TyBinOpChain ty tys) = do
   -- see comments for TyBinOp
   checkVarianceTyp loc var polyKind ty
@@ -107,9 +108,13 @@ resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, d
   let g :: TypeNameResolve -> TypeNameResolve
       g (SynonymResult tn ty) = SynonymResult tn ty
       g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
-  let f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
+
+      f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
       f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
-  xtors <- local f (resolveXtors data_xtors)
+
+      h :: ResolveReader -> ResolveReader
+      h r = r { rr_modules = f $ rr_modules r }
+  xtors <- local h (resolveXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl
                 { data_loc = data_loc
@@ -220,38 +225,26 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
-checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [(XtorName, [(PrdCns, Typ)])] -> ResolverM ()
-checkVarianceClassDeclaration loc kinds = mapM_ checkVarianceXtorPair
-    where
-      checkVarianceXtorPair :: (XtorName, [(PrdCns, Typ)]) -> ResolverM ()
-      checkVarianceXtorPair = checkVarianceXtor loc Covariant (MkPolyKind kinds CBV) . mkXtorSig
+checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [XtorSig] -> ResolverM ()
+checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc Covariant (MkPolyKind kinds CBV))
 
-      mkXtorSig :: (XtorName, [(PrdCns, Typ)]) -> XtorSig
-      mkXtorSig (xn,tys) = CST.MkXtorSig xn $ uncurry toPrdCnsType <$> tys
-
-      toPrdCnsType :: PrdCns -> Typ -> PrdCnsTyp
-      toPrdCnsType Prd = PrdType
-      toPrdCnsType Cns = CnsType
+resolveMethods :: [CST.XtorSig]
+           -> ResolverM ([RST.MethodSig Pos], [RST.MethodSig Neg])
+resolveMethods sigs = do
+    posSigs <- resolveMethodSigs PosRep sigs
+    negSigs <- resolveMethodSigs NegRep sigs
+    pure (posSigs, negSigs)
 
 resolveClassDeclaration :: CST.ClassDeclaration
                         -> ResolverM RST.ClassDeclaration
-resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_xtors } = do
-  let go :: (PrdCns, Typ) -> ResolverM (PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)
-      go (prdcns, typ) = do
-            typos <- resolveTyp PosRep typ
-            tyneg <- resolveTyp NegRep typ
-            pure (prdcns, typos, tyneg)
-      go' :: (XtorName, [(PrdCns, Typ)]) -> ResolverM (XtorName, [(PrdCns, RST.Typ 'Pos, RST.Typ 'Neg)])
-      go' (xtor, typs) = do
-            types <- forM typs go
-            pure (xtor, types)
-  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_xtors
-  xtorRes <- forM classdecl_xtors go'
-  pure RST.MkClassDeclaration { classdecl_loc = classdecl_loc
-                              , classdecl_doc = classdecl_doc
-                              , classdecl_name = classdecl_name
-                              , classdecl_kinds = classdecl_kinds
-                              , classdecl_xtors = xtorRes
+resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods } = do
+  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_methods
+  methodRes <- resolveMethods classdecl_methods
+  pure RST.MkClassDeclaration { classdecl_loc     = classdecl_loc
+                              , classdecl_doc     = classdecl_doc
+                              , classdecl_name    = classdecl_name
+                              , classdecl_kinds   = classdecl_kinds
+                              , classdecl_methods = methodRes
                               }
 
 ---------------------------------------------------------------------------------

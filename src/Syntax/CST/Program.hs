@@ -206,7 +206,7 @@ data ClassDeclaration = MkClassDeclaration
     -- ^ The name of the type class that is being introduced.
   , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
     -- ^ The kind of the type class variables.
-  , classdecl_xtors :: [(XtorName, [(PrdCns, Typ)])]
+  , classdecl_methods :: [XtorSig]
     -- ^ The type class methods and their types.
   }
 
