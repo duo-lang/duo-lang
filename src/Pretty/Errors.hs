@@ -99,28 +99,45 @@ instance PrettyAnn Error where
 class ToReport a where
   toReport :: a -> Report Text
 
-instance ToReport LoweringError where
-  toReport e@MissingVarsInTypeScheme     = err Nothing (ppPrint e) [] []
-  toReport e@TopInPosPolarity            = err Nothing (ppPrint e) [] []
-  toReport e@BotInNegPolarity            = err Nothing (ppPrint e) [] []
-  toReport e@IntersectionInPosPolarity   = err Nothing (ppPrint e) [] []
-  toReport e@UnionInNegPolarity          = err Nothing (ppPrint e) [] []
-  toReport e@(UnknownOperator _op)       = err Nothing (ppPrint e) [] []
-  toReport e@XtorArityMismatch {}        = err Nothing (ppPrint e) [] []
-  toReport e@(UndefinedPrimOp  _)        = err Nothing (ppPrint e) [] []
-  toReport e@PrimOpArityMismatch {}      = err Nothing (ppPrint e) [] []
-  toReport e@(CmdExpected _)             = err Nothing (ppPrint e) [] []
-  toReport e@(InvalidStar _)             = err Nothing (ppPrint e) [] []
+instance ToReport ResolutionError where
+  toReport e@(MissingVarsInTypeScheme _)    = err Nothing (ppPrint e) [] []
+  toReport e@(TopInPosPolarity _)           = err Nothing (ppPrint e) [] []
+  toReport e@(BotInNegPolarity _)           = err Nothing (ppPrint e) [] []
+  toReport e@(IntersectionInPosPolarity _)  = err Nothing (ppPrint e) [] []
+  toReport e@(UnionInNegPolarity _)         = err Nothing (ppPrint e) [] []
+  toReport e@(UnknownOperator _ _op)        = err Nothing (ppPrint e) [] []
+  toReport e@XtorArityMismatch {}           = err Nothing (ppPrint e) [] []
+  toReport e@(UndefinedPrimOp _ _)          = err Nothing (ppPrint e) [] []
+  toReport e@PrimOpArityMismatch {}         = err Nothing (ppPrint e) [] []
+  toReport e@(CmdExpected _ _)              = err Nothing (ppPrint e) [] []
+  toReport e@(InvalidStar _ _)              = err Nothing (ppPrint e) [] []
+
+instance ToReport ConstraintGenerationError where
+  toReport (SomeConstraintGenerationError _loc msg) = err Nothing msg [] []
+
+instance ToReport ConstraintSolverError where
+  toReport (SomeConstraintSolverError _loc msg) = err Nothing msg [] []
+
+instance ToReport TypeAutomatonError where
+  toReport (SomeTypeAutomatonError _loc msg) = err Nothing msg [] []
+
+instance ToReport EvalError where
+  toReport (SomeEvalError _loc msg) = err Nothing msg [] []
+
+instance ToReport OtherError where
+  toReport (SomeOtherError _loc msg) = err Nothing msg [] []
+
+instance ToReport ParserError where
+  toReport (SomeParserError _loc msg) = err Nothing msg [] []
 
 instance ToReport Error where
-  toReport (ParserError _loc msg)           = err Nothing msg [] []
-  toReport (EvalError _loc msg)             = err Nothing msg [] []
-  toReport (GenConstraintsError _loc msg)   = err Nothing msg [] []
-  toReport (SolveConstraintsError _loc msg) = err Nothing msg [] []
-  toReport (TypeAutomatonError _loc msg)    = err Nothing msg [] []
-  toReport (LowerError _loc err)            = toReport err
-  toReport (OtherError _loc msg)            = err Nothing msg [] []
-  toReport (NoImplicitArg _loc msg)         = err Nothing msg [] []
+  toReport (ErrConstraintGeneration err) = toReport err
+  toReport (ErrResolution err)           = toReport err
+  toReport (ErrConstraintSolver err)     = toReport err
+  toReport (ErrTypeAutomaton err)        = toReport err
+  toReport (ErrEval err)                 = toReport err
+  toReport (ErrOther err)                = toReport err
+  toReport (ErrParser err)               = toReport err
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting a region from a source file
