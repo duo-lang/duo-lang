@@ -119,13 +119,21 @@ prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> pretty
                                                     ]
                                              ]
 
-prettyRecBisubst :: (SkolemTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
-prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+prettyRecBisubst :: (RecTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Recursive variable:" <+> prettyAnn v
 
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
                                              ]
+prettySkolBisubst :: (SkolemTVar, (Typ 'Pos, Typ 'Neg)) -> Doc Annotation
+prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+
+                                             , vsep [ "+ |->" <+> prettyAnn typ
+                                                    , "- |->" <+> prettyAnn tyn
+                                                    ]
+                                             ]
+
 
 instance PrettyAnn (Bisubstitution UniVT) where
   prettyAnn uvsubst = vsep
@@ -137,10 +145,22 @@ instance PrettyAnn (Bisubstitution UniVT) where
     ]
 
 instance PrettyAnn (Bisubstitution SkolemVT) where
-  prettyAnn uvsubst = vsep
+  prettyAnn skolvsubst = vsep 
     [ "---------------------------------------------------------"
     , "                 Bisubstitution (SkolemTVar)             "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (bisubst_map uvsubst))
+    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList (bisubst_map skolvsubst))
     ]
+
+instance PrettyAnn (Bisubstitution RecVT) where
+  prettyAnn recvsubst = vsep
+    [ "---------------------------------------------------------"
+    , "                 Bisubstitution (RecTVar)                "
+    , "---------------------------------------------------------"
+    , ""
+    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (bisubst_map recvsubst))
+    ]
+
+
+

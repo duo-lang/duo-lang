@@ -266,7 +266,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
       -- 4. Desugar the program
       let desugaredProg = desugarProgram resolvedDecls
       -- 5. Infer the declarations
@@ -291,7 +291,7 @@ inferProgramIO state mn decls = do
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
-        resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
+        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
         inferProgram mn (desugarProgram resolvedDecls)
   res <- execDriverM state action
   case res of

@@ -108,9 +108,13 @@ resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, d
   let g :: TypeNameResolve -> TypeNameResolve
       g (SynonymResult tn ty) = SynonymResult tn ty
       g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
-  let f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
+
+      f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
       f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
-  xtors <- local f (resolveXtors data_xtors)
+
+      h :: ResolveReader -> ResolveReader
+      h r = r { rr_modules = f $ rr_modules r }
+  xtors <- local h (resolveXtors data_xtors)
   -- Create the new data declaration
   let dcl = RST.NominalDecl
                 { data_loc = data_loc

@@ -157,6 +157,8 @@ instance ToJumpMap (RST.Typ pol) where
     M.empty
   toJumpMap RST.TySkolemVar {} = 
     M.empty
+  toJumpMap RST.TyRecVar {} = 
+    M.empty
   toJumpMap (RST.TyDataRefined loc _ tn xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
   toJumpMap (RST.TyData _ _ xtors) =

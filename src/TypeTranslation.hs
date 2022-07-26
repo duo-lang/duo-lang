@@ -32,13 +32,13 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data TranslateState = TranslateState
-  { recVarsUsed :: Set SkolemTVar
+  { recVarsUsed :: Set RecTVar
   , varCount :: Int }
 
 initialState :: TranslateState
 initialState = TranslateState { recVarsUsed = S.empty, varCount = 0 }
 
-newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName SkolemTVar }
+newtype TranslateReader = TranslateReader { recVarMap :: M.Map RnTypeName RecTVar }
 
 initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, TranslateReader)
 initialReader env = (env, TranslateReader { recVarMap = M.empty })
@@ -53,22 +53,22 @@ runTranslateM env m = runExcept (runStateT (runReaderT (getTraM m) (initialReade
 -- Helper functions
 ---------------------------------------------------------------------------------------------
 
-withVarMap :: (M.Map RnTypeName SkolemTVar -> M.Map RnTypeName SkolemTVar) -> TranslateM a -> TranslateM a
+withVarMap :: (M.Map RnTypeName RecTVar -> M.Map RnTypeName RecTVar) -> TranslateM a -> TranslateM a
 withVarMap f m = do
   local (\(env,TranslateReader{..}) ->
     (env,TranslateReader{ recVarMap = f recVarMap })) m
 
-modifyVarsUsed :: (Set SkolemTVar -> Set SkolemTVar) -> TranslateM ()
+modifyVarsUsed :: (Set RecTVar -> Set RecTVar) -> TranslateM ()
 modifyVarsUsed f = do
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed = f recVarsUsed, varCount })
 
-freshTVar :: TranslateM SkolemTVar
+freshTVar :: TranslateM RecTVar
 freshTVar = do
   i <- gets varCount
   modify (\TranslateState{..} ->
     TranslateState{ recVarsUsed, varCount = varCount + 1 })
-  return $ MkSkolemTVar ("g" <> T.pack (show i))
+  return $ MkRecTVar ("g" <> T.pack (show i))
 
 ---------------------------------------------------------------------------------------------
 -- Upper bound translation functions
@@ -96,7 +96,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TySkolemVar defaultLoc NegRep Nothing tv
+    return $ TyRecVar defaultLoc NegRep Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -137,7 +137,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TySkolemVar defaultLoc pr Nothing tv
+    return $ TyRecVar defaultLoc pr Nothing tv
   else do
     NominalDecl{..} <- lookupTypeName tn
     tv <- freshTVar
@@ -191,6 +191,7 @@ cleanUpType ty = case ty of
     return $ TyCodataRefined loc pr tn xtss'
   -- Type variables remain unchanged
   tv@TySkolemVar{} -> return tv
+  tv@TyRecVar{} -> return tv
   -- Other types imply incorrect translation
   t -> throwOtherError defaultLoc ["Type translation: Cannot clean up type " <> ppPrint t]
 

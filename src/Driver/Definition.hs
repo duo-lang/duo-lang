@@ -134,6 +134,7 @@ modifyEnvironment mn f = do
 -- | Only execute an action if verbosity is set to Verbose.
 guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
+ --liftIO action
     verbosity <- gets (infOptsVerbosity . drvOpts)
     when (verbosity == Verbose) (liftIO action)
 
