@@ -12,7 +12,7 @@ import Error.Diagnose
       warn,
       defaultStyle,
       def,
-      Report, Marker (This), Position (..) )
+      Report, Marker (This), Position (..), addFile, Note (Hint) )
 import Prettyprinter
 
 
@@ -20,7 +20,7 @@ import Errors
 import Pretty.Constraints ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
-import Utils (Loc (Loc))
+import Utils (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
 
 ---------------------------------------------------------------------------------
@@ -169,18 +169,24 @@ instance ToReport Error where
 -- Prettyprinting a region from a source file
 ---------------------------------------------------------------------------------
 
-printLocatedReport :: (ToReport r, MonadIO m) => r -> m ()
+printLocatedReport :: (ToReport r, HasLoc r, MonadIO m) => r -> m ()
 printLocatedReport r = liftIO $ do
   let report = toReport r
   let diag = addReport def report
-  printDiagnostic stdout True True 4 defaultStyle diag
+  let (Loc (SourcePos fp _ _) _) = getLoc r
+  case fp of
+    "<interactive>" -> printDiagnostic stdout True True 4 defaultStyle diag
+    fp -> do
+      fileContent <- readFile fp
+      let diag' = addFile diag fp fileContent
+      printDiagnostic stdout True True 4 defaultStyle diag'
 
 ---------------------------------------------------------------------------------
 -- Turning warnings into reports
 ---------------------------------------------------------------------------------
 
 instance ToReport Warning where
-  toReport (Warning _loc msg) = warn Nothing msg [] []
+  toReport (Warning loc msg) = warn (Just "W-000") msg [(toDiagnosePosition loc, This "consumer variable")] [Hint "Rename the variable so that it starts with the letter \"k\"."]
 
 instance PrettyAnn Warning where
   prettyAnn (Warning loc txt) = "Warning:" <+> prettyAnn loc <+> prettyAnn txt
