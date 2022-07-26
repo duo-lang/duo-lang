@@ -11,6 +11,7 @@ import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClos
 import Syntax.TST.Program qualified as TST
 import Syntax.Common
 import Errors ( Error )
+import Data.Either (isRight)
 
 type Reason = String
 
@@ -46,8 +47,8 @@ spec examples = do
             Right env -> do
               forM_ (getProducers env) $ \(name,term) -> do
                 it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes") $
-                  termLocallyClosed term `shouldBe` Right ()
+                  termLocallyClosed term `shouldSatisfy` isRight
               forM_ (getInstanceCases env) $ \instance_case -> do
                 it (T.unpack (unXtorName $ (\(XtorPat _ xt _) -> xt) $ instancecase_pat instance_case) ++ " does not contain dangling deBruijn indizes") $
-                  instanceCaseLocallyClosed instance_case `shouldBe` Right ()
+                  instanceCaseLocallyClosed instance_case `shouldSatisfy` isRight
 

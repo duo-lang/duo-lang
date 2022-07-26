@@ -46,7 +46,7 @@ getPosFromOffset :: Int ->  PosState Text -> SourcePos
 getPosFromOffset offset ps = pstateSourcePos (snd (reachOffset offset ps))
 
 parseErrorToDiag :: PosState Text -> ParseError Text Void -> Error
-parseErrorToDiag posState err = ParserError (Loc pos pos) msg
+parseErrorToDiag posState err = ErrParser $ SomeParserError (Loc pos pos) msg
   where
     pos = getPosFromOffset (errorOffset err) posState
     msg = T.pack $ parseErrorTextPretty err

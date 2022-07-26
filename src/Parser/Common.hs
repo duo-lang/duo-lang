@@ -39,6 +39,7 @@ tvarP = try $ do
   (name, pos) <- lowerCaseId
   return (MkSkolemTVar name, pos)
 
+
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
   (name, pos) <- upperCaseId

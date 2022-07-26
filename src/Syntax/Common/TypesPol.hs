@@ -82,6 +82,7 @@ deriving instance Show (MethodSig pol)
 data Typ (pol :: Polarity) where
   TySkolemVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
   TyUniVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
+  TyRecVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
@@ -98,7 +99,7 @@ data Typ (pol :: Polarity) where
   TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
   TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
-  TyRec :: Loc -> PolarityRep pol -> SkolemTVar -> Typ pol -> Typ pol
+  TyRec :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
   TyI64 :: Loc -> PolarityRep pol -> Typ pol
   TyF64 :: Loc -> PolarityRep pol -> Typ pol
@@ -122,6 +123,7 @@ mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 getPolarity :: Typ pol -> PolarityRep pol
 getPolarity (TySkolemVar _ rep _ _)     = rep
 getPolarity (TyUniVar _ rep _ _)        = rep
+getPolarity (TyRecVar _ rep _ _)        = rep
 getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
@@ -170,12 +172,13 @@ class FreeTVars (a :: Type) where
 
 instance FreeTVars (Typ pol) where
   freeTVars (TySkolemVar _ _ _ tv)        = S.singleton tv
+  freeTVars TyRecVar{}                    = S.empty
   freeTVars TyUniVar{}                    = S.empty
   freeTVars TyTop {}                      = S.empty
   freeTVars TyBot {}                      = S.empty
   freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
   freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ tv t)              = S.delete tv $ freeTVars t
+  freeTVars (TyRec _ _ _ t)              = freeTVars t
   freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
@@ -209,16 +212,19 @@ generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
 data VarType
   = UniVT
   | SkolemVT
+  | RecVT
 
 type family BisubstMap (vt :: VarType) :: Type where
   BisubstMap UniVT    = Map UniTVar (Typ Pos, Typ Neg)
   BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
+  BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
 
 newtype Bisubstitution vt = MkBisubstitution { bisubst_map :: BisubstMap vt }
 
 data VarTypeRep (vt :: VarType) where
   UniRep    :: VarTypeRep UniVT
   SkolemRep :: VarTypeRep SkolemVT
+  RecRep    :: VarTypeRep RecVT
 
 -- | Class of types for which a Bisubstitution can be applied.
 class Zonk (a :: Type) where
@@ -228,19 +234,27 @@ instance Zonk (Typ pol) where
   zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
-  zonk SkolemRep _bisubst ty@(TyUniVar _ PosRep _ _) = ty
   zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
-  zonk SkolemRep _bisubst ty@(TyUniVar _ NegRep _ _) = ty
-  zonk UniRep _bisubst ty@(TySkolemVar _ PosRep _ _) = ty
+  zonk SkolemRep _ ty@TyUniVar{} = ty
+  zonk RecRep _ ty@TyUniVar{} = ty
+  zonk UniRep _ ty@TySkolemVar{} = ty
   zonk SkolemRep bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
-  zonk UniRep _bisubst ty@(TySkolemVar _ NegRep _ _v) = ty
   zonk SkolemRep bisubst ty@(TySkolemVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
+  zonk RecRep _ ty@TySkolemVar{} = ty
+  zonk UniRep _ ty@TyRecVar{} = ty
+  zonk SkolemRep _ ty@TyRecVar{} = ty
+  zonk RecRep bisubst ty@(TyRecVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
+    Nothing -> ty
+    Just (tyPos,_) -> tyPos
+  zonk RecRep bisubst ty@(TyRecVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
+    Nothing -> ty
+    Just (_,tyNeg) -> tyNeg
   zonk vt bisubst (TyData loc rep xtors) =
      TyData loc rep (zonk vt bisubst <$> xtors)
   zonk vt bisubst (TyCodata loc rep xtors) =
@@ -261,6 +275,9 @@ instance Zonk (Typ pol) where
     TyUnion loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk vt bisubst (TyInter loc knd ty ty') =
     TyInter loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
+  zonk RecRep bisubst (TyRec loc rep tv ty) =
+    let bisubst' = MkBisubstitution $ M.delete tv (bisubst_map bisubst)
+    in TyRec loc rep tv $ zonk RecRep bisubst' ty
   zonk vt bisubst (TyRec loc rep tv ty) =
      TyRec loc rep tv (zonk vt bisubst ty)
   zonk _vt _ t@TyI64 {} = t
@@ -284,8 +301,8 @@ instance Zonk (PrdCnsType pol) where
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
-unfoldRecType recty@(TyRec _ PosRep var ty) = zonk SkolemRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
-unfoldRecType recty@(TyRec _ NegRep var ty) = zonk SkolemRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
+unfoldRecType recty@(TyRec _ PosRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
+unfoldRecType recty@(TyRec _ NegRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
 
 ------------------------------------------------------------------------------

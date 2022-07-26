@@ -55,6 +55,9 @@ instance PrettyAnn UniTVar where
 instance PrettyAnn SkolemTVar where
   prettyAnn (MkSkolemTVar tv) = prettyAnn tv
 
+instance PrettyAnn RecTVar where 
+  prettyAnn (MkRecTVar tv) = prettyAnn tv
+
 instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
 
