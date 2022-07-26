@@ -105,7 +105,7 @@ lookupTyOp loc op = do
   let results :: [(ModuleName, Maybe TyOp)]
       results = second (find (\tyop -> symbol tyop == op) . tyOps) <$> symbolTables
   case filterJusts results of
-    []    -> throwError (LowerError loc (UnknownOperator (ppPrint op)) NE.:| [])
+    []    -> throwError (ErrResolution (UnknownOperator loc (ppPrint op)) NE.:| [])
     [res] -> pure res
     _     -> throwOtherError loc ["Type operator " <> ppPrint op <> " found in multiple imports."]
       
