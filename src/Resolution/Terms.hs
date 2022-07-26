@@ -183,7 +183,7 @@ resolveInstanceCases cases = do
 getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolverM Arity
 getPrimOpArity loc primOp = do
   case M.lookup primOp primOps of
-    Nothing -> throwError $ LowerError loc (UndefinedPrimOp primOp) :| []
+    Nothing -> throwError $ ErrResolution (UndefinedPrimOp loc primOp) :| []
     Just aritySpecified -> return aritySpecified
 
 resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
@@ -201,7 +201,7 @@ resolvePrimCommand (CST.ExitFailure loc) =
 resolvePrimCommand (CST.PrimOp loc pt op args) = do
   reqArity <- getPrimOpArity loc (pt, op)
   when (length reqArity /= length args) $
-         throwError $ LowerError loc (PrimOpArityMismatch (pt,op) (length reqArity) (length args)) :| []
+         throwError $ ErrResolution (PrimOpArityMismatch loc (pt,op) (length reqArity) (length args)) :| []
   args' <- resolveTerms loc reqArity args
   pure $ RST.PrimOp loc pt op args'
 
@@ -251,30 +251,30 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
 resolveCommand (CST.Xtor loc xtor _arity) = do
   (_, res) <- lookupXtor loc xtor
   case res of
-    (XtorNameResult _dc _ns _ar) -> throwError $ LowerError loc (CmdExpected "Command expected, but found Xtor") :| []
+    (XtorNameResult _dc _ns _ar) -> throwError $ ErrResolution (CmdExpected loc "Command expected, but found Xtor") :| []
     (MethodNameResult _cn _ar) -> throwOtherError loc ["Method calls not implemented yet"]
 resolveCommand (CST.Semi loc _ _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found Semi") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found Semi") :| []
 resolveCommand (CST.Dtor loc _ _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found Dtor") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found Dtor") :| []
 resolveCommand (CST.Case loc _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found Case") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found Case") :| []
 resolveCommand (CST.Cocase loc _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found Cocase") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found Cocase") :| []
 resolveCommand (CST.MuAbs loc _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found Mu abstraction") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found Mu abstraction") :| []
 resolveCommand (CST.PrimLitI64 loc _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found #I64 literal") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found #I64 literal") :| []
 resolveCommand (CST.PrimLitF64 loc _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found #F64 literal") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found #F64 literal") :| []
 resolveCommand (CST.NatLit loc _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found Nat literal") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found Nat literal") :| []
 resolveCommand (CST.FunApp loc _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found function application") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found function application") :| []
 resolveCommand (CST.Lambda loc _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found lambda abstraction") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found lambda abstraction") :| []
 resolveCommand (CST.CoLambda loc _ _) =
-  throwError $ LowerError loc (CmdExpected "Command expected, but found cofunction abstraction") :| []
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found cofunction abstraction") :| []
 
 
 
@@ -323,7 +323,7 @@ analyzeSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> ResolverM
 analyzeSubstitution loc xtor arity subst = do
   -- Check whether the arity corresponds to the length of the substitution
   when (length arity /= length subst) $
-    throwError $ LowerError loc (XtorArityMismatch xtor (length arity) (length subst)) :| []
+    throwError $ ErrResolution (XtorArityMismatch loc xtor (length arity) (length subst)) :| []
   -- Dispatch on the number of stars in the substitution
   case length (filter isStarT subst) of
     0 -> pure $ ExplicitSubst (zip arity (toTm <$> subst))
@@ -332,7 +332,7 @@ analyzeSubstitution loc xtor arity subst = do
       case span (not . isStarT . snd) zipped of
         (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
         _ -> throwOtherError loc ["Compiler bug in analyzeSubstitution"]
-    n -> throwError $ OtherError loc ("At most one star expected. Got " <> T.pack (show n) <> " stars.") :| []
+    n -> throwOtherError loc ["At most one star expected. Got " <> T.pack (show n) <> " stars."]
 
 resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
 resolvePrdCnsTerm Prd tm = RST.PrdTerm <$> resolveTerm PrdRep tm
@@ -360,7 +360,7 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
   case res of
     (XtorNameResult dc ns ar) -> do
       when (length ar /= length subst) $
-               throwError $ LowerError loc (XtorArityMismatch xtor (length ar) (length subst)) :| []
+               throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
       when (dc /= Data) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor."]
       analyzedSubst <- analyzeSubstitution loc xtor ar subst
@@ -375,7 +375,7 @@ resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
   case res of
     (XtorNameResult dc ns ar) -> do
       when (length ar /= length subst) $
-               throwError $ LowerError loc (XtorArityMismatch xtor (length ar) (length subst)) :| []
+               throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
       when (dc /= Codata) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor."]
       analyzedSubst <- analyzeSubstitution loc xtor ar subst

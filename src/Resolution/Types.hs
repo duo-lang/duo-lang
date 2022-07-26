@@ -28,7 +28,7 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
     if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
-        else throwError (LowerError ts_loc MissingVarsInTypeScheme :| [])
+        else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
@@ -77,13 +77,13 @@ resolveTyp rep (TyRec loc v typ) = do
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
-    throwError (LowerError loc TopInPosPolarity :| [])
+    throwError (ErrResolution (TopInPosPolarity loc) :| [])
 resolveTyp NegRep (TyTop loc) =
     pure $ RST.TyTop loc Nothing
 resolveTyp PosRep (TyBot loc) =
     pure $ RST.TyBot loc Nothing
 resolveTyp NegRep (TyBot loc) =
-    throwError (LowerError loc BotInNegPolarity :| [])
+    throwError (ErrResolution (BotInNegPolarity loc) :| [])
 resolveTyp rep (TyBinOpChain fst rest) =
     resolveBinOpChain rep fst rest
 resolveTyp rep (TyBinOp loc fst op snd) =
@@ -141,13 +141,13 @@ desugaring loc PosRep UnionDesugaring tl tr = do
     tr <- resolveTyp PosRep tr
     pure $ RST.TyUnion loc Nothing tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
-    throwError (LowerError loc UnionInNegPolarity :| [])
+    throwError (ErrResolution (UnionInNegPolarity loc) :| [])
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
     pure $ RST.TyInter loc Nothing tl tr
 desugaring loc PosRep InterDesugaring _ _ =
-    throwError (LowerError loc IntersectionInPosPolarity :| [])
+    throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
     resolveTyp rep (TyNominal loc tyname [tl, tr])
 

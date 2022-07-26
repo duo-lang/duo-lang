@@ -45,7 +45,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive,
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc, defaultLoc )
+import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
 
@@ -62,10 +62,10 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
       (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (Annotated tyAnnotated)
       (Right False) -> do
-        let err = OtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                             , " Annotated type: " <> ppPrint tyAnnotated
-                                             , " Inferred type:  " <> ppPrint tyInferred
-                                             ]
+        let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                            , " Annotated type: " <> ppPrint tyAnnotated
+                                                            , " Inferred type:  " <> ppPrint tyInferred
+                                                            ]
         guardVerbose $ ppPrintIO err
         throwError (err NE.:| [])
 

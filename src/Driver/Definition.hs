@@ -5,7 +5,6 @@ import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
@@ -82,7 +81,7 @@ newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmp
   deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadState DriverState, MonadIO, MonadWriter [Warning])
 
 instance MonadFail DriverM where
-  fail str = throwError (OtherError defaultLoc(T.pack str) NE.:| [])
+  fail str = throwOtherError defaultLoc [T.pack str]
 
 execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) (a,DriverState),[Warning])
 execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
