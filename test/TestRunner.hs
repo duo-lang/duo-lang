@@ -112,7 +112,7 @@ main = do
     -- Run the testsuite
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
-      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec checkedExamplesFiltered parsedCounterExamples checkedCounterExamples)
+      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec parsedCounterExamples checkedCounterExamples)
       describe "Subsumption works" (Spec.Subsumption.spec symboltables)
       describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
       describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)

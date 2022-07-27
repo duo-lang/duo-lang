@@ -16,16 +16,10 @@ pendingFiles = [ ("examples/TypeClasses.duo", "Backend not implemented for type 
                ]
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
-spec :: [(FilePath, Either (NonEmpty Error) TST.Program)] -- ^ examples
-     -> [(FilePath, Either (NonEmpty Error) CST.Program)]
+spec :: [(FilePath, Either (NonEmpty Error) CST.Program)]
      -> [(FilePath, Either (NonEmpty Error) TST.Program)]
      -> Spec
-spec examples counterExamplesParsed counterExamplesChecked = do
-  describe "All the programs in the toplevel \"examples/\" folder typecheck." $ do
-    forM_ examples $ \(example, prog) -> do
-      case example `lookup` pendingFiles of
-         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
-         Nothing     -> it ("The file " ++ example ++ " typechecks.") $ prog `shouldSatisfy` isRight
+spec counterExamplesParsed counterExamplesChecked = do
   describe "All the programs in the \"test/counterexamples/\" folder can be parsed." $ do
     forM_ counterExamplesParsed $ \(example, prog) -> do
       describe ("The counterexample " ++ example ++ " can be parsed") $ do
