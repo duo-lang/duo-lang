@@ -9,12 +9,6 @@ import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Errors
 
-type Reason = String
-
-pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [ ("examples/TypeClasses.duo", "Backend not implemented for type classes")
-               ]
-
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: [(FilePath, Either (NonEmpty Error) CST.Program)]
      -> [(FilePath, Either (NonEmpty Error) TST.Program)]
