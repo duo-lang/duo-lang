@@ -80,18 +80,18 @@ getNewNodeLabel :: Gr NodeLabel b -> Set Node -> NodeLabel
 getNewNodeLabel gr ns = combineNodeLabels $ mapMaybe (lab gr) (S.toList ns)
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
-combineNodeLabels nls
-  = if not . allEq $ map nl_pol nls
-      then error "Tried to combine node labels of different polarity!"
-      else MkNodeLabel {
-        nl_pol = pol,
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _  _ _ _ <- nls],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
-        nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _  _ <- nls],
-        -- nl_primitive = S.unions [ pt | MkNodeLabel _ _ _ _ pt _ _ <- nls ],
-        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _  _ refs _ <- nls],
-        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _  _ _ _ refs <- nls]
-        }
+combineNodeLabels nls  
+  | not . allEq $ map nl_pol nls = error "Tried to combine node labels of different polarity!"
+  | allPrim nls = MkPrimitiveNodeLabel Pos S.empty
+  | allAlg nls = MkNodeLabel {
+                            nl_pol = pol,
+                            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _  _ _ _ <- nls],
+                            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
+                            nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _  _ <- nls],
+                            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _  _ refs _ <- nls],
+                            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _  _ _ _ refs <- nls]
+                           }
+  | otherwise =  error "Tried to combine Primitive and Algebraic Types"
   where
     pol = nl_pol (head nls)
     mrgDat [] = Nothing
@@ -104,7 +104,12 @@ combineNodeLabels nls
     mrgRefCodat refs = case pol of
       Pos -> M.unionsWith S.intersection refs
       Neg -> M.unionsWith S.union refs
-
+    allPrim [] = True
+    allPrim (MkPrimitiveNodeLabel{}:rs) = allPrim rs
+    allPrim (MkNodeLabel{}:_) = False
+    allAlg [] = True
+    allAlg (MkNodeLabel{}:rs) = allAlg rs
+    allAlg (MkPrimitiveNodeLabel{}:_) = False
 -- | This function computes the new typegraph and the new starting state.
 -- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
 newTypeGraph :: TransFunReindexed -- ^ The transition function of the powerset construction.
