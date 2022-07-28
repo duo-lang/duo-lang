@@ -75,11 +75,12 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 -- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
-newtype GenerateReader = GenerateReader { context :: [LinearContext Pos]
+data GenerateReader = GenerateReader { context :: [LinearContext Pos]
+                                     , location :: Loc
                                      }
 
-initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
-initialReader env = (env, GenerateReader { context = [] })
+initialReader :: Loc -> Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
+initialReader loc env = (env, GenerateReader { context = [], location = loc })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
@@ -88,8 +89,8 @@ initialReader env = (env, GenerateReader { context = [] })
 newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except (NonEmpty Error))) a }
   deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
-runGenM :: Map ModuleName Environment -> GenM a -> Either (NonEmpty Error) (a, ConstraintSet)
-runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
+runGenM :: Loc -> Map ModuleName Environment -> GenM a -> Either (NonEmpty Error) (a, ConstraintSet)
+runGenM loc env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState) of
   Left err -> Left err
   Right (x, state) -> Right (x, constraintSet state)
 
