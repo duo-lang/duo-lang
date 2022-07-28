@@ -26,6 +26,10 @@ defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkP
 class HasLoc a where
   getLoc :: a -> Loc
 
+-- | A typeclass for things to which we want to attach a source code location.
+class AttachLoc a where
+  attachLoc :: Loc -> a -> a
+
 ----------------------------------------------------------------------------------
 -- Helper Functions
 ----------------------------------------------------------------------------------

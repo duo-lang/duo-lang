@@ -10,71 +10,202 @@ import Syntax.Common
 import Utils
 
 ----------------------------------------------------------------------------------
+-- Errors emitted during the resolution phase
+----------------------------------------------------------------------------------
+
+data ResolutionError where
+  -- Type scheme violations
+  MissingVarsInTypeScheme :: Loc -> ResolutionError
+  -- Polarity violations
+  TopInPosPolarity :: Loc -> ResolutionError
+  BotInNegPolarity :: Loc -> ResolutionError
+  IntersectionInPosPolarity :: Loc -> ResolutionError
+  UnionInNegPolarity :: Loc -> ResolutionError
+  -- Operator errors
+  UnknownOperator :: Loc -> Text -> ResolutionError
+  MethodArityMismatch :: Loc
+                      -> MethodName
+                      -> ClassName
+                      -> Int
+                      -> Int
+                      -> ResolutionError
+  XtorArityMismatch :: Loc
+                    -> XtorName
+                    -> Int
+                    -> Int
+                    -> ResolutionError
+  UndefinedPrimOp :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolutionError
+  PrimOpArityMismatch :: Loc
+                      -> (PrimitiveType, PrimitiveOp)
+                      -> Int
+                      -> Int
+                      -> ResolutionError
+  CmdExpected :: Loc -> Text -> ResolutionError
+  InvalidStar  :: Loc -> Text -> ResolutionError
+
+deriving instance Show ResolutionError
+
+instance HasLoc ResolutionError where
+  getLoc (MissingVarsInTypeScheme loc) = loc
+  getLoc (TopInPosPolarity loc) = loc
+  getLoc (BotInNegPolarity loc) = loc
+  getLoc (IntersectionInPosPolarity loc) = loc
+  getLoc (UnionInNegPolarity loc) = loc
+  getLoc (UnknownOperator loc _) = loc
+  getLoc (MethodArityMismatch loc _ _ _ _) = loc
+  getLoc (XtorArityMismatch loc _ _ _) = loc
+  getLoc (UndefinedPrimOp loc _) = loc
+  getLoc (PrimOpArityMismatch loc _ _ _) = loc
+  getLoc (CmdExpected loc _) = loc
+  getLoc (InvalidStar loc _) = loc
+
+instance AttachLoc ResolutionError where
+  attachLoc loc (MissingVarsInTypeScheme _) = MissingVarsInTypeScheme loc
+  attachLoc loc (TopInPosPolarity _) = TopInPosPolarity loc
+  attachLoc loc (BotInNegPolarity _) = BotInNegPolarity loc
+  attachLoc loc (IntersectionInPosPolarity _) = IntersectionInPosPolarity loc
+  attachLoc loc (UnionInNegPolarity _) = UnionInNegPolarity loc
+  attachLoc loc (UnknownOperator _ op) = UnknownOperator loc op
+  attachLoc loc (XtorArityMismatch _ xt i1 i2) = XtorArityMismatch loc xt i1 i2
+  attachLoc loc (MethodArityMismatch _ mt ct i1 i2) = MethodArityMismatch loc mt ct i1 i2
+  attachLoc loc (UndefinedPrimOp _ op) = UndefinedPrimOp loc op
+  attachLoc loc (PrimOpArityMismatch _ po i1 i2) = PrimOpArityMismatch loc po i1 i2
+  attachLoc loc (CmdExpected _ t) = CmdExpected loc t
+  attachLoc loc (InvalidStar _ t) = InvalidStar loc t
+
+----------------------------------------------------------------------------------
+-- Errors emitted during the constraint generation phase
+----------------------------------------------------------------------------------
+
+data ConstraintGenerationError where
+  SomeConstraintGenerationError :: Loc -> Text -> ConstraintGenerationError
+
+deriving instance Show ConstraintGenerationError
+
+instance HasLoc ConstraintGenerationError where
+  getLoc (SomeConstraintGenerationError loc _) =
+    loc
+
+instance AttachLoc ConstraintGenerationError where
+  attachLoc loc (SomeConstraintGenerationError _ msg) =
+    SomeConstraintGenerationError loc msg
+
+----------------------------------------------------------------------------------
+-- Errors emitted during the constraint solving phase
+----------------------------------------------------------------------------------
+
+data ConstraintSolverError where
+  SomeConstraintSolverError :: Loc -> Text -> ConstraintSolverError
+
+deriving instance Show ConstraintSolverError
+
+instance HasLoc ConstraintSolverError where
+  getLoc (SomeConstraintSolverError loc _) =
+    loc
+
+instance AttachLoc ConstraintSolverError where
+  attachLoc loc (SomeConstraintSolverError _ msg) =
+    SomeConstraintSolverError loc msg
+
+----------------------------------------------------------------------------------
+-- Errors emitted during the type simplification phase
+----------------------------------------------------------------------------------
+
+data TypeAutomatonError where
+  SomeTypeAutomatonError :: Loc -> Text -> TypeAutomatonError
+
+deriving instance Show TypeAutomatonError
+
+instance HasLoc TypeAutomatonError where
+  getLoc (SomeTypeAutomatonError loc _) =
+    loc
+
+instance AttachLoc TypeAutomatonError where
+  attachLoc loc (SomeTypeAutomatonError _ msg) =
+    SomeTypeAutomatonError loc msg
+
+----------------------------------------------------------------------------------
+-- Errors emitted during evaluation
+----------------------------------------------------------------------------------
+
+data EvalError where
+  SomeEvalError :: Loc -> Text -> EvalError
+
+deriving instance Show EvalError
+
+instance HasLoc EvalError where
+  getLoc (SomeEvalError loc _) =
+    loc
+
+instance AttachLoc EvalError where
+  attachLoc loc (SomeEvalError _ msg) =
+    SomeEvalError loc msg
+
+----------------------------------------------------------------------------------
+-- Errors emitted during parsing
+----------------------------------------------------------------------------------
+
+data ParserError where
+  SomeParserError :: Loc -> Text -> ParserError
+
+deriving instance Show ParserError
+
+instance HasLoc ParserError where
+  getLoc (SomeParserError loc _) =
+    loc
+
+instance AttachLoc ParserError where
+  attachLoc loc (SomeParserError _ msg) =
+    SomeParserError loc msg
+
+----------------------------------------------------------------------------------
+-- Various other errors
+----------------------------------------------------------------------------------
+
+data OtherError where
+  SomeOtherError :: Loc -> Text -> OtherError
+
+deriving instance Show OtherError
+
+instance HasLoc OtherError where
+  getLoc (SomeOtherError loc _) =
+    loc
+
+instance AttachLoc OtherError where
+  attachLoc loc (SomeOtherError _ msg) =
+    SomeOtherError loc msg
+
+----------------------------------------------------------------------------------
 -- Errors
 ----------------------------------------------------------------------------------
 
-data LoweringError where
-  -- Type scheme violations
-  MissingVarsInTypeScheme :: LoweringError
-  -- Polarity violations
-  TopInPosPolarity :: LoweringError
-  BotInNegPolarity :: LoweringError
-  IntersectionInPosPolarity :: LoweringError
-  UnionInNegPolarity :: LoweringError
-  -- Operator errors
-  UnknownOperator :: Text -> LoweringError
-  XtorArityMismatch :: XtorName
-                -> Int
-                -> Int
-                -> LoweringError
-  MethodArityMismatch :: MethodName
-                -> ClassName
-                -> Int
-                -> Int
-                -> LoweringError
-  UndefinedPrimOp :: (PrimitiveType, PrimitiveOp) -> LoweringError
-  PrimOpArityMismatch :: (PrimitiveType, PrimitiveOp)
-                -> Int
-                -> Int
-                -> LoweringError
-  CmdExpected :: Text -> LoweringError                
-  InvalidStar  :: Text
-                -> LoweringError
-  deriving (Show, Eq)
-
 data Error where
-  ParserError           :: Loc -> Text          -> Error
-  GenConstraintsError   :: Loc -> Text          -> Error
-  EvalError             :: Loc -> Text          -> Error
-  SolveConstraintsError :: Loc -> Text          -> Error
-  TypeAutomatonError    :: Loc -> Text          -> Error
-  LowerError            :: Loc -> LoweringError -> Error
-  OtherError            :: Loc -> Text          -> Error
-  NoImplicitArg         :: Loc -> Text          -> Error
-  deriving (Show, Eq)
+  ErrConstraintGeneration :: ConstraintGenerationError -> Error
+  ErrResolution           :: ResolutionError           -> Error
+  ErrConstraintSolver     :: ConstraintSolverError     -> Error
+  ErrTypeAutomaton        :: TypeAutomatonError        -> Error
+  ErrEval                 :: EvalError                 -> Error
+  ErrOther                :: OtherError                -> Error
+  ErrParser               :: ParserError               -> Error
+  deriving (Show)
 
 instance HasLoc Error where
-  getLoc (ParserError loc _) = loc
-  getLoc (GenConstraintsError loc _) = loc
-  getLoc (EvalError loc _) = loc
-  getLoc (SolveConstraintsError loc _) = loc
-  getLoc (TypeAutomatonError loc _) = loc
-  getLoc (LowerError loc _) = loc
-  getLoc (OtherError loc _) = loc
-  getLoc (NoImplicitArg loc _) = loc
+  getLoc (ErrConstraintGeneration err) = getLoc err
+  getLoc (ErrResolution err)           = getLoc err
+  getLoc (ErrConstraintSolver err)     = getLoc err
+  getLoc (ErrTypeAutomaton err)        = getLoc err
+  getLoc (ErrEval err)                 = getLoc err
+  getLoc (ErrOther err)                = getLoc err
+  getLoc (ErrParser err)               = getLoc err
 
-attachLoc :: Loc -> Error -> Error
-attachLoc loc (ParserError _ msg) = ParserError loc msg
-attachLoc loc (GenConstraintsError _ txt) = GenConstraintsError loc txt
-attachLoc loc (EvalError _ txt) = EvalError loc txt
-attachLoc loc (SolveConstraintsError _ txt) = SolveConstraintsError loc txt
-attachLoc loc (TypeAutomatonError _ txt) = TypeAutomatonError loc txt
-attachLoc loc (LowerError _ err) = LowerError loc err
-attachLoc loc (OtherError _ txt) = OtherError loc txt
-attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
-
-
-
+instance AttachLoc Error where
+  attachLoc loc (ErrConstraintGeneration err) = ErrConstraintGeneration (attachLoc loc err)
+  attachLoc loc (ErrResolution err)           = ErrResolution (attachLoc loc err)
+  attachLoc loc (ErrConstraintSolver err)     = ErrConstraintSolver (attachLoc loc err)
+  attachLoc loc (ErrTypeAutomaton err)        = ErrTypeAutomaton (attachLoc loc err)
+  attachLoc loc (ErrEval err)                 = ErrEval (attachLoc loc err)
+  attachLoc loc (ErrOther err)                = ErrOther (attachLoc loc err)
+  attachLoc loc (ErrParser err)               = ErrParser (attachLoc loc err)
 
 ---------------------------------------------------------------------------------------------
 -- Throwing errors in a monadic context
@@ -83,27 +214,27 @@ attachLoc loc (NoImplicitArg _ txt) = NoImplicitArg loc txt
 throwGenError :: MonadError (NonEmpty Error) m
               => Loc -> [Text] -> m a
 throwGenError loc =
-  throwError . (NE.:| []) . GenConstraintsError loc . T.unlines
+  throwError . (NE.:| []) . (ErrConstraintGeneration . SomeConstraintGenerationError loc) . T.unlines
 
 throwEvalError :: MonadError (NonEmpty Error) m
                => Loc -> [Text] -> m a
 throwEvalError loc =
-  throwError . (NE.:| []) . EvalError loc . T.unlines
+  throwError . (NE.:| []) . (ErrEval . SomeEvalError loc) . T.unlines
 
 throwSolverError :: MonadError (NonEmpty Error) m
                  => Loc -> [Text] -> m a
 throwSolverError loc =
-  throwError . (NE.:| []) . SolveConstraintsError loc . T.unlines
+  throwError . (NE.:| []) . (ErrConstraintSolver . SomeConstraintSolverError loc) . T.unlines
 
 throwAutomatonError :: MonadError (NonEmpty Error) m
                     => Loc -> [Text] -> m a
 throwAutomatonError loc =
-  throwError . (NE.:| []) . TypeAutomatonError loc . T.unlines
+  throwError . (NE.:| []) . (ErrTypeAutomaton . SomeTypeAutomatonError loc) . T.unlines
 
 throwOtherError :: MonadError (NonEmpty Error) m
                 => Loc -> [Text] -> m a
 throwOtherError loc =
-  throwError . (NE.:| []) . OtherError loc . T.unlines
+  throwError . (NE.:| []) . (ErrOther . SomeOtherError loc) . T.unlines
 
 
 ---------------------------------------------------------------------------------------------
@@ -111,4 +242,17 @@ throwOtherError loc =
 ---------------------------------------------------------------------------------------------
 
 data Warning where
-  Warning :: Loc -> Text -> Warning
+  -- | Warning for producer that starts with the letter "k".
+  MisnamedProducerVar :: Loc -> Text -> Warning
+  -- | Warning for consumer that doesn't start with the letter "k".
+  MisnamedConsumerVar :: Loc -> Text -> Warning
+
+deriving instance Show Warning
+
+instance HasLoc Warning where
+  getLoc (MisnamedProducerVar loc _) = loc
+  getLoc (MisnamedConsumerVar loc _) = loc
+
+instance AttachLoc Warning where
+  attachLoc loc (MisnamedProducerVar _ msg) = MisnamedProducerVar loc msg
+  attachLoc loc (MisnamedConsumerVar _ msg) = MisnamedConsumerVar loc msg

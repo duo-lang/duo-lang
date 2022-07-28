@@ -471,12 +471,17 @@ resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } 
   Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
 resugarType _ = Nothing
 
+embedRecTVar :: RecTVar -> SkolemTVar
+embedRecTVar (MkRecTVar n) = MkSkolemTVar n
+
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
 embedType (RST.TyUniVar loc _ _ tv) =
   CST.TyUniVar loc tv
 embedType (RST.TySkolemVar loc _ _ tv) = 
   CST.TySkolemVar loc tv
+embedType (RST.TyRecVar loc _ _ tv) = 
+  CST.TySkolemVar loc $ embedRecTVar tv
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
@@ -498,9 +503,11 @@ embedType (RST.TyUnion loc _knd ty ty') =
 embedType (RST.TyInter loc _knd ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
 embedType (RST.TyRec loc _ tv ty) =
-  CST.TyRec loc tv (embedType ty)
-embedType (RST.TyPrim loc _ pt) =
-  CST.TyPrim loc pt
+  CST.TyRec loc (embedRecTVar tv) (embedType ty)
+embedType (RST.TyI64 loc _) =
+  CST.TyI64 loc
+embedType (RST.TyF64 loc _) =
+  CST.TyF64 loc
 embedType (RST.TyFlipPol _ ty) = embedType ty
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme

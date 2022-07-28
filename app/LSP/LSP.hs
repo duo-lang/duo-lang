@@ -167,13 +167,13 @@ class IsDiagnostic a where
   toDiagnostic :: a -> [Diagnostic]
 
 instance IsDiagnostic Warning where
-  toDiagnostic (Warning loc txt) = [diag]
+  toDiagnostic warn = [diag]
     where
-      diag = Diagnostic { _range = locToRange loc
+      diag = Diagnostic { _range = locToRange (getLoc warn)
                         , _severity = Just DsWarning
                         , _code = Nothing
                         , _source = Nothing
-                        , _message = ppPrint txt
+                        , _message = ppPrint warn
                         , _tags = Nothing
                         , _relatedInformation = Nothing
                         }

@@ -28,7 +28,8 @@ instance Derivable (Typ (pol :: Polarity)) (Typ (pol :: Polarity)) where
     derivable TyUnion{}               TyUnion{}               = False
     derivable TyInter{}               TyInter{}               = False
     derivable TyRec{}                 TyRec{}                 = False
-    derivable (TyPrim _ _ t1)         (TyPrim _ _ t2)         = t1 == t2
+    derivable (TyI64 _ t1)            (TyI64 _ t2)            = t1 == t2
+    derivable (TyF64 _ t1)            (TyF64 _ t2)            = t1 == t2
     derivable TyFlipPol{}             TyFlipPol{}             = False
     derivable TySkolemVar{}           _                       = True
     derivable TyUniVar{}              _                       = True

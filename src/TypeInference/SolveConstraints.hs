@@ -240,8 +240,9 @@ subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2
         f _ _ = error "cannot occur"
     pure (zipWith f args1 args2)
 -- Constraints between primitive types:
-subConstraints (SubType _ (TyPrim _ _ pt1) (TyPrim _ _ pt2)) | pt1 == pt2 = pure []
 -- Temporary solution: SkolemVars stand for class type vars
+subConstraints (SubType _ (TyI64 _ _) (TyI64 _ _)) = pure []
+subConstraints (SubType _ (TyF64 _ _) (TyF64 _ _)) = pure []
 subConstraints (SubType _ _ TySkolemVar {}) =
   pure []
 -- All other constraints cannot be solved.

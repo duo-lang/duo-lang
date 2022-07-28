@@ -51,13 +51,13 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
   case res of
     (MethodNameResult _cn arity) -> do
       when (length arity /= length pats) $
-        throwError (LowerError loc (XtorArityMismatch xt (length arity) (length pats)) :| [])
+        throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
       pats' <- zipWithM resolvePattern arity pats
       args <- mapM fromVar pats'
       pure $ PatClassMethod loc xt args
     (XtorNameResult dc ns arity) -> do
       when (length arity /= length pats) $
-        throwError (LowerError loc (XtorArityMismatch xt (length arity) (length pats)) :| [])
+        throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
       -- Check whether the Xtor is a Constructor/Destructor as expected.
       case (pc,dc) of
         (Cns, Data  ) -> throwOtherError loc ["Expected a destructor but found a constructor"]
@@ -68,11 +68,11 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
       pure (PatXtor loc pc ns xt pats')
 resolvePattern Prd (CST.PatVar loc var@(MkFreeVarName name)) = do
   when ("k" `T.isPrefixOf` name) $
-    tell [Warning loc ("Producer variable " <> name <> " should not start with letter k")]
+    tell [MisnamedProducerVar loc name]
   pure $ PatVar loc Prd var
 resolvePattern Cns (CST.PatVar loc var@(MkFreeVarName name))  = do
   unless ("k" `T.isPrefixOf` name) $
-    tell [Warning loc ("Consumer variable " <> name <> " should start with letter k")]
+    tell [MisnamedConsumerVar loc name]
   pure $ PatVar loc Cns var
 resolvePattern pc (CST.PatStar loc) = do
   pure $ PatStar loc pc
@@ -112,7 +112,7 @@ analyzePattern dc pat = do
           case pc of
             Cns -> pure $ ImplicitPrdPattern loc xt (args1', PrdRep, args2')
             Prd -> pure $ ImplicitCnsPattern loc xt (args1', CnsRep, args2')
-        n -> throwError $ LowerError loc (InvalidStar ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")) :| []
+        n -> throwError $ ErrResolution (InvalidStar loc ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")) :| []
     _ -> throwOtherError (getLoc pat) ["Invalid pattern in function \"analyzePattern\""]
 
 

@@ -42,8 +42,8 @@ import Control.Monad
 -- either `(Just n, Nothing)` or `(Nothing, Just n)`
 --
 -- Skolem variables exist both positively and negatively. They are therefore
--- mapped to a pair `(Just n, Just m)`
-newtype LookupEnv = LookupEnv { tvarEnv :: Map SkolemTVar (Maybe Node, Maybe Node) }
+-- mapped to a pair `(n,m)`
+data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar (Node,Node) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node)}
 
 type TTA a = StateT (TypeAutCore EdgeLabelEpsilon) (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
@@ -76,7 +76,8 @@ initialize tvars =
               { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
-    lookupEnv = LookupEnv { tvarEnv = M.fromList [(tv, (Just posNode,Just negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
+    lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
+        ,tRecVarEnv = M.empty
                           }
   in
     (initAut, lookupEnv)
@@ -111,31 +112,63 @@ newNodeM = do
 
 lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA Node
 lookupTVar PosRep tv = do
-  tvarEnv <- asks tvarEnv
-  case M.lookup tv tvarEnv of
+  tSkolemVarEnv <- asks tSkolemVarEnv
+  case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
                                               , "    " <> unSkolemTVar tv
                                               , "is not available in the automaton."
                                               ]
-    Just (Nothing,_) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
-                                                       , "The type variable:"
-                                                       , "    " <> unSkolemTVar tv
-                                                       , "exists only at negative polarity."
+    -- Skolem Variables cannot appear with only one polarity anymore
+    --Just (Nothing,_) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+    --                                                   , "The type variable:"
+    --                                                   , "    " <> unSkolemTVar tv
+    --                                                   , "exists only at negative polarity."
+    --                                                   ]
+    Just (pos,_) -> return pos
+lookupTVar NegRep tv = do
+  tSkolemVarEnv <- asks tSkolemVarEnv
+  case M.lookup tv tSkolemVarEnv of
+    Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                              , "The type variable:"
+                                              , "    " <> unSkolemTVar tv
+                                              , "is not available in the automaton."
+                                              ]
+    -- Skolem Variables cannot appear with only one polarity anymore
+    --Just (_,Nothing) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+    --                                                   , "The type variable:"
+    --                                                   , "    " <> unSkolemTVar tv
+    --                                                   , "exists only at positive polarity."
+    --                                                   ]
+    Just (_,neg) -> return neg
+
+lookupTRecVar :: PolarityRep pol -> RecTVar -> TTA Node
+lookupTRecVar PosRep tv = do
+  tRecVarEnv <- asks tRecVarEnv
+  case M.lookup tv tRecVarEnv of
+    Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
+                                              , "The Recursive Variable:"
+                                              , "   " <> unRecTVar tv
+                                              , "is not available in the automaton."
+                                              ]
+    Just (Nothing,_) -> throwAutomatonError defaultLoc ["Could not insert type into automaton."
+                                                       , "The Recursive Variable:"
+                                                       , "   " <> unRecTVar tv
+                                                       , "exists only in negative polarity."
                                                        ]
     Just (Just pos,_) -> return pos
-lookupTVar NegRep tv = do
-  tvarEnv <- asks tvarEnv
-  case M.lookup tv tvarEnv of
+lookupTRecVar NegRep tv = do
+  tRecVarEnv <- asks tRecVarEnv
+  case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
-                                              , "The type variable:"
-                                              , "    " <> unSkolemTVar tv
+                                              , "The Recursive Variable:"
+                                              , "   " <> unRecTVar tv
                                               , "is not available in the automaton."
                                               ]
-    Just (_,Nothing) -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
-                                                       , "The type variable:"
-                                                       , "    " <> unSkolemTVar tv
-                                                       , "exists only at positive polarity."
+    Just (_,Nothing) -> throwAutomatonError defaultLoc ["Could not insert type into automaton."
+                                                       , "The Recursive Variable:"
+                                                       , "   " <> unRecTVar tv
+                                                       , "exists only in positive polarity."
                                                        ]
     Just (_,Just neg) -> return neg
 
@@ -176,7 +209,7 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
                                                             , "    " <> unUniTVar tv
                                                             , "should not appear at this point in the program."
                                                             ]
-
+insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
 insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
@@ -203,8 +236,8 @@ insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol)
-  let extendEnv PosRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Just newNode, Nothing) tvars
-      extendEnv NegRep (LookupEnv tvars) = LookupEnv $ M.insert rv (Nothing, Just newNode) tvars
+  let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
+      extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
@@ -220,10 +253,15 @@ insertType (TyNominal _ rep _ tn args) = do
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode
-insertType (TyPrim _ rep pt) = do
+insertType (TyI64 _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton pt })
+  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton I64 })
+  return newNode
+insertType (TyF64 _ rep) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton F64 })
   return newNode
 insertType (TyFlipPol _ _) =
   throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]

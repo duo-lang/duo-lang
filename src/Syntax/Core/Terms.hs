@@ -236,7 +236,7 @@ termClosing = termClosingRec 0
 ---------------------------------------------------------------------------------
 
 checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
+checkIfBound env rep  (i, j) | i >= length env = Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
                              | otherwise = checkIfBoundInner (env !! i) rep (i,j)
 
 checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either Error ()
@@ -244,14 +244,14 @@ checkIfBoundInner vars PrdRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Prd,_) -> return ()
-      (Cns,_) -> Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
-    else Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Cns,_) -> Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
+    else Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 checkIfBoundInner vars CnsRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Cns,_) -> return ()
-      (Prd,_) -> Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
-    else Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Prd,_) -> Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
+    else Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 
 pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm -> Either Error ()
 pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm

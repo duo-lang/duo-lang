@@ -45,7 +45,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive,
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc, defaultLoc )
+import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
@@ -63,10 +63,10 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
       (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (Annotated tyAnnotated)
       (Right False) -> do
-        let err = OtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                             , " Annotated type: " <> ppPrint tyAnnotated
-                                             , " Inferred type:  " <> ppPrint tyInferred
-                                             ]
+        let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                            , " Annotated type: " <> ppPrint tyAnnotated
+                                                            , " Inferred type:  " <> ppPrint tyInferred
+                                                            ]
         guardVerbose $ ppPrintIO err
         throwError (err NE.:| [])
 
@@ -93,7 +93,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
-  let typ = zonk bisubst (TST.getTypeTerm tmInferred)
+  let typ = zonk UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
@@ -268,7 +268,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
       -- 4. Desugar the program
       let desugaredProg = desugarProgram resolvedDecls
       -- 5. Infer the declarations
@@ -293,7 +293,7 @@ inferProgramIO state mn decls = do
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
-        resolvedDecls <- liftEitherErr (runResolverM sts (resolveProgram decls))
+        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
         inferProgram mn (desugarProgram resolvedDecls)
   res <- execDriverM state action
   case res of

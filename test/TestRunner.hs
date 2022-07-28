@@ -2,6 +2,8 @@ module Main where
 
 import Control.Monad.Except (runExcept, forM)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Either (isRight)
+import Data.List (sort)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
@@ -42,7 +44,7 @@ filterP = some (argument str (metavar "FILES..." <> help "Specify files which sh
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
   examples <- listDirectory "test/counterexamples/"
-  return (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
+  pure  $ sort (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
 
 excluded :: [FilePath]
 excluded = ["fix.duo"]
@@ -89,6 +91,7 @@ main = do
     parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
     -- Collect the typechecked declarations
     checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
+    let checkedExamplesFiltered = filter (isRight . snd) checkedExamples
     checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
     peano_st <- getSymbolTable "examples/Peano.duo"
@@ -109,8 +112,7 @@ main = do
     -- Run the testsuite
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
-      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec checkedExamples parsedCounterExamples checkedCounterExamples)
+      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec parsedCounterExamples checkedCounterExamples)
       describe "Subsumption works" (Spec.Subsumption.spec symboltables)
-      describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamples)
-      describe "Focusing works" (Spec.Focusing.spec checkedExamples)
-
+      describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
+      describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)

@@ -125,7 +125,8 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyXRefined _ Codata tn xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   -- Primitive types
-  prettyAnn (CST.TyPrim _ pt) = "#" <> prettyAnn pt
+  prettyAnn (CST.TyI64 _) = "#I64"
+  prettyAnn (CST.TyF64 _) = "#F64"
   prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
 
 

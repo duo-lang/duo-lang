@@ -51,8 +51,8 @@ data PrdCnsTerm where
 deriving instance Show PrdCnsTerm
 
 instance Zonk PrdCnsTerm where
-  zonk bisubst (PrdTerm tm) = PrdTerm (zonk bisubst tm)
-  zonk bisubst (CnsTerm tm) = CnsTerm (zonk bisubst tm)
+  zonk vt bisubst (PrdTerm tm) = PrdTerm (zonk vt bisubst tm)
+  zonk vt bisubst (CnsTerm tm) = CnsTerm (zonk vt bisubst tm)
 
 type Substitution = [PrdCnsTerm]
 
@@ -71,8 +71,8 @@ data CmdCase = MkCmdCase
   }
 
 instance Zonk CmdCase where
-  zonk bisubst (MkCmdCase loc pat cmd) =
-    MkCmdCase loc pat (zonk bisubst cmd)
+  zonk vt bisubst (MkCmdCase loc pat cmd) =
+    MkCmdCase loc pat (zonk vt bisubst cmd)
 
 deriving instance Show CmdCase
 
@@ -128,19 +128,19 @@ deriving instance Show (Term pc)
 
 instance Zonk (Term pc) where
   -- Core constructs
-  zonk bisubst (BoundVar loc rep ty idx) =
-    BoundVar loc rep (zonk bisubst ty) idx
-  zonk bisubst (FreeVar loc rep ty nm)  =
-    FreeVar loc rep (zonk bisubst ty) nm
-  zonk bisubst (Xtor loc annot rep ty ns xt subst) =
-    Xtor loc annot rep (zonk bisubst ty) ns xt (zonk bisubst <$> subst)
-  zonk bisubst (XCase loc annot rep ty ns cases) =
-    XCase loc annot rep (zonk bisubst ty) ns (zonk bisubst <$> cases)
-  zonk bisubst (MuAbs loc annot rep ty fv cmd) =
-    MuAbs loc annot rep (zonk bisubst ty) fv (zonk bisubst cmd)
+  zonk vt bisubst (BoundVar loc rep ty idx) =
+    BoundVar loc rep (zonk vt bisubst ty) idx
+  zonk vt bisubst (FreeVar loc rep ty nm)  =
+    FreeVar loc rep (zonk vt bisubst ty) nm
+  zonk vt bisubst (Xtor loc annot rep ty ns xt subst) =
+    Xtor loc annot rep (zonk vt bisubst ty) ns xt (zonk vt bisubst <$> subst)
+  zonk vt bisubst (XCase loc annot rep ty ns cases) =
+    XCase loc annot rep (zonk vt bisubst ty) ns (zonk vt bisubst <$> cases)
+  zonk vt bisubst (MuAbs loc annot rep ty fv cmd) =
+    MuAbs loc annot rep (zonk vt bisubst ty) fv (zonk vt bisubst cmd)
   -- Primitive constructs  
-  zonk _ lit@PrimLitI64{} = lit
-  zonk _ lit@PrimLitF64{} = lit
+  zonk _vt _ lit@PrimLitI64{} = lit
+  zonk _vt _ lit@PrimLitF64{} = lit
 
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
 -- Core constructs
@@ -150,8 +150,8 @@ getTypeTerm (Xtor _ _ _ ty _ _ _) = ty
 getTypeTerm (XCase _ _ _ ty _ _)  = ty
 getTypeTerm (MuAbs _ _ _ ty _ _)  = ty
 -- Primitive constructs
-getTypeTerm (PrimLitI64 _ _) = TyPrim defaultLoc PosRep I64
-getTypeTerm (PrimLitF64 _ _) = TyPrim defaultLoc PosRep F64
+getTypeTerm (PrimLitI64 _ _) = TyI64 defaultLoc PosRep
+getTypeTerm (PrimLitF64 _ _) = TyF64 defaultLoc PosRep
 
 getTypArgs :: Substitution -> LinearContext Pos
 getTypArgs subst = getTypArgs'' <$> subst
@@ -181,22 +181,22 @@ data Command where
 deriving instance Show Command
 
 instance Zonk Command where
-  zonk bisubst (Apply ext annot kind prd cns) =
-    Apply ext annot kind (zonk bisubst prd) (zonk bisubst cns)
-  zonk bisubst (Print ext prd cmd) =
-    Print ext (zonk bisubst prd) (zonk bisubst cmd)
-  zonk bisubst (Read ext cns) =
-    Read ext (zonk bisubst cns)
-  zonk _ (Jump ext fv) =
+  zonk vt bisubst (Apply ext annot kind prd cns) =
+    Apply ext annot kind (zonk vt bisubst prd) (zonk vt bisubst cns)
+  zonk vt bisubst (Print ext prd cmd) =
+    Print ext (zonk vt bisubst prd) (zonk vt bisubst cmd)
+  zonk vt bisubst (Read ext cns) =
+    Read ext (zonk vt bisubst cns)
+  zonk _vt _ (Jump ext fv) =
     Jump ext fv
-  zonk bisubst (Method ext mn cn subst) =
-    Method ext mn cn (zonk bisubst <$> subst)
-  zonk _ (ExitSuccess ext) =
+  zonk vt bisubst (Method ext mn cn subst) =
+    Method ext mn cn (zonk vt bisubst <$> subst)
+  zonk _vt _ (ExitSuccess ext) =
     ExitSuccess ext
-  zonk _ (ExitFailure ext) =
+  zonk _vt _ (ExitFailure ext) =
     ExitFailure ext
-  zonk bisubst (PrimOp ext pt op subst) =
-    PrimOp ext pt op (zonk bisubst <$> subst)
+  zonk vt bisubst (PrimOp ext pt op subst) =
+    PrimOp ext pt op (zonk vt bisubst <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
@@ -298,7 +298,7 @@ commandClosing = commandClosingRec 0
 ---------------------------------------------------------------------------------
 
 checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ OtherError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
+checkIfBound env rep  (i, j) | i >= length env = Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
                              | otherwise = checkIfBoundInner (env !! i) rep (i,j)
 
 checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either Error ()
@@ -306,14 +306,14 @@ checkIfBoundInner vars PrdRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Prd,_) -> return ()
-      (Cns,_) -> Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
-    else Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Cns,_) -> Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
+    else Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 checkIfBoundInner vars CnsRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Cns,_) -> return ()
-      (Prd,_) -> Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
-    else Left $ OtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Prd,_) -> Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
+    else Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 
 pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm -> Either Error ()
 pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm

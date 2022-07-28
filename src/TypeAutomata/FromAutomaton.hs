@@ -116,7 +116,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache then
-    return $ TySkolemVar defaultLoc rep Nothing (MkSkolemTVar ("r" <> T.pack (show i)))
+    return $ TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i)))
   else
     nodeToTypeNoCache rep i
 
@@ -180,7 +180,10 @@ nodeToTypeNoCache rep i = do
           args <- sequence (f <$> argNodes)
           pure $ TyNominal defaultLoc rep Nothing tn args
     -- Creating primitive types
-    let prims = TyPrim defaultLoc rep <$> S.toList tps
+    let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
+        toPrimType rep I64 = TyI64 defaultLoc rep
+        toPrimType rep F64 = TyF64 defaultLoc rep
+    let prims = toPrimType rep <$> S.toList tps
 
     let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
     return $ case rep of
@@ -189,5 +192,5 @@ nodeToTypeNoCache rep i = do
 
   -- If the graph is cyclic, make a recursive type
   if i `elem` dfs (suc gr i) gr
-    then return $ TyRec defaultLoc rep (MkSkolemTVar ("r" <> T.pack (show i))) resType
+    then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
     else return resType

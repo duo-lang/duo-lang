@@ -18,12 +18,13 @@ import Syntax.Common
 import Utils
 import Errors
 import Control.Monad.Writer
+import qualified Data.Set as S
 
 ------------------------------------------------------------------------------
 -- Resolver Monad
 ------------------------------------------------------------------------------
 
-type ResolveReader = Map ModuleName SymbolTable
+data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar }
 
 type WarningWriter = Writer [Warning]
 
@@ -52,7 +53,7 @@ lookupXtor :: Loc
            -> ResolverM (ModuleName, XtorNameResolve)
            -- ^ The module where the xtor comes from, its sort and arity.
 lookupXtor loc xtor = do
-  symbolTables <- asks M.toList
+  symbolTables <- asks (M.toList . rr_modules)
   let results :: [(ModuleName, Maybe XtorNameResolve)]
       results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
   case filterJusts results of
@@ -69,7 +70,7 @@ lookupTypeConstructor :: Loc
                       -> ResolverM TypeNameResolve
                       -- ^ The resolved typename, and the relevant info.
 lookupTypeConstructor loc tn = do
-    symbolTables <- asks M.toList
+    symbolTables <- asks (M.toList . rr_modules)
     let results :: [(ModuleName, Maybe TypeNameResolve)]
         results = second (M.lookup tn . typeNameMap) <$> symbolTables
     case filterJusts results of
@@ -101,11 +102,11 @@ lookupTyOp :: Loc
 lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
 lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
 lookupTyOp loc op = do
-  symbolTables <- asks M.toList
+  symbolTables <- asks $ M.toList . rr_modules
   let results :: [(ModuleName, Maybe TyOp)]
       results = second (find (\tyop -> symbol tyop == op) . tyOps) <$> symbolTables
   case filterJusts results of
-    []    -> throwError (LowerError loc (UnknownOperator (ppPrint op)) NE.:| [])
+    []    -> throwError (ErrResolution (UnknownOperator loc (ppPrint op)) NE.:| [])
     [res] -> pure res
     _     -> throwOtherError loc ["Type operator " <> ppPrint op <> " found in multiple imports."]
-      
+
