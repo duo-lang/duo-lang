@@ -43,9 +43,6 @@ import Data.Text qualified as T
 import Driver.Environment
 import Errors
 import Lookup
-import Pretty.Pretty
-import Pretty.Terms ()
-import Pretty.Types ()
 import Syntax.Common.TypesPol
 import Syntax.Common
 import Syntax.RST.Program as RST
@@ -176,17 +173,18 @@ withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ct
 
 -- | Lookup a type of a bound variable in the context.
 lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
-lookupContext rep (i,j) = do
+lookupContext rep idx@(i,j) = do
+  let rep' = case rep of PrdRep -> Prd; CnsRep -> Cns
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
-    Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+    Nothing -> throwGenError (BoundVariableOutOfBounds defaultLoc rep' idx)
     Just lctxt -> case indexMaybe lctxt j of
-      Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+      Nothing -> throwGenError (BoundVariableOutOfBounds defaultLoc rep' idx)
       Just ty -> case (rep, ty) of
         (PrdRep, PrdCnsType PrdRep ty) -> return ty
         (CnsRep, PrdCnsType CnsRep ty) -> return ty
-        (PrdRep, PrdCnsType CnsRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
-        (CnsRep, PrdCnsType PrdRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
+        (PrdRep, PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode defaultLoc rep' idx)
+        (CnsRep, PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode defaultLoc rep' idx)
 
 
 ---------------------------------------------------------------------------------------------
@@ -269,7 +267,7 @@ checkCorrectness :: [XtorName]
 checkCorrectness matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError defaultLoc ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
+    (throwGenError (PatternMatchAdditional defaultLoc xn (data_name decl)))
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
@@ -279,8 +277,7 @@ checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
 checkExhaustiveness matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError defaultLoc ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
-                               ppPrint (data_name decl) <> " is not matched against." ])
+    (throwGenError (PatternMatchMissingXtor defaultLoc xn (data_name decl)))
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.
@@ -290,6 +287,6 @@ checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to chec
 checkInstanceCoverage RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
   let classMethods = msig_name <$> fst classdecl_methods
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
-    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
+    (throwGenError (InstanceImplementationMissing defaultLoc m))
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)
-    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is implemented but not declared." ])
+    (throwGenError (InstanceImplementationAdditional defaultLoc m))

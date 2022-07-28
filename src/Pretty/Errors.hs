@@ -62,8 +62,17 @@ instance PrettyAnn ResolutionError where
     prettyAnn loc <+> "Invalid Star: " <+> pretty t
 
 instance PrettyAnn ConstraintGenerationError where
-  prettyAnn (SomeConstraintGenerationError loc msg) =
-    prettyAnn loc <> "Constraint generation error:" <+> pretty msg
+  prettyAnn (BoundVariableOutOfBounds _ _ _) = "undefined"
+  prettyAnn (BoundVariableWrongMode _ _ _) = "undefined"
+  prettyAnn (PatternMatchMissingXtor _ _ _) = "undefined"
+  prettyAnn (PatternMatchAdditional _ _ _) = "undefined"
+  prettyAnn (InstanceImplementationMissing _ _) = "undefined"
+  prettyAnn (InstanceImplementationAdditional _ _) = "undefined"
+  prettyAnn (PrimitiveOpMissingSignature _ _ _) = "undefined"
+  prettyAnn (EmptyNominalMatch _) = "undefined"
+  prettyAnn (EmptyRefinementMatch _) = "undefined"
+  prettyAnn (LinearContextsUnequalLength _ _ _ _) = "undefined"
+  prettyAnn (LinearContextIncompatibleTypeMode _ _) = "undefined"
 
 instance PrettyAnn ConstraintSolverError where
   prettyAnn (SomeConstraintSolverError loc msg) =
@@ -133,8 +142,28 @@ instance ToReport ResolutionError where
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintGenerationError where
-  toReport (SomeConstraintGenerationError loc msg) =
-    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(BoundVariableOutOfBounds loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(BoundVariableWrongMode loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PatternMatchMissingXtor loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PatternMatchAdditional loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(InstanceImplementationMissing loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(InstanceImplementationAdditional loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PrimitiveOpMissingSignature loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(EmptyNominalMatch loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(EmptyRefinementMatch loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(LinearContextsUnequalLength loc _ _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(LinearContextIncompatibleTypeMode loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintSolverError where
   toReport (SomeConstraintSolverError loc msg) =
