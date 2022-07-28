@@ -32,8 +32,8 @@ evalTermOnce (Read _ cns) = do
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
-evalTermOnce Method {} =
-  throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
+evalTermOnce Method {} = return Nothing
+  -- throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
 evalTermOnce (Apply _ _ Nothing _ _) =
   throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ _ (Just kind) prd cns) = evalApplyOnce kind prd cns
