@@ -20,7 +20,7 @@ instance Show Loc where
   show (Loc _s1 _s2) = "<loc>"
 
 defaultLoc :: Loc
-defaultLoc = Loc (SourcePos "" (mkPos 1) (mkPos 1)) (SourcePos "" (mkPos 1) (mkPos 1))
+defaultLoc = Loc (SourcePos "DEFAULTFILELOC" (mkPos 1) (mkPos 1)) (SourcePos "DEFAULTFILELOC" (mkPos 1) (mkPos 1))
 
 -- | A typeclass for things which can be mapped to a source code location.
 class HasLoc a where
