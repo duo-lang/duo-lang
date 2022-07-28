@@ -66,7 +66,7 @@ genConstraintsTerm :: Core.Term pc
 -- Bound variables can be looked up in the context.
 --
 genConstraintsTerm (Core.BoundVar loc rep idx) = do
-  ty <- lookupContext rep idx
+  ty <- lookupContext loc rep idx
   return (TST.BoundVar loc rep ty idx)
 --
 -- Free variables:
@@ -152,9 +152,9 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
-  checkCorrectness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+  checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   -- We check that all xtors in the type declaration are matched against.
-  checkExhaustiveness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+  checkExhaustiveness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
 
@@ -183,7 +183,7 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
-  checkCorrectness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+  checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
                        -- Generate positive and negative unification variables for all variables
                        -- bound in the pattern.
@@ -253,7 +253,7 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We lookup the class declaration  of the instance.
   decl <- lookupClassDecl instancedecl_name
   -- We check that all implementations belong to the same type class.
-  checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
+  checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
   (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do

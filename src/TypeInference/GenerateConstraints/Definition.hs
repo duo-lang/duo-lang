@@ -174,19 +174,19 @@ withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ct
 ---------------------------------------------------------------------------------------------
 
 -- | Lookup a type of a bound variable in the context.
-lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
-lookupContext rep idx@(i,j) = do
+lookupContext :: Loc -> PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
+lookupContext loc rep idx@(i,j) = do
   let rep' = case rep of PrdRep -> Prd; CnsRep -> Cns
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
-    Nothing -> throwGenError (BoundVariableOutOfBounds defaultLoc rep' idx)
+    Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
     Just lctxt -> case indexMaybe lctxt j of
-      Nothing -> throwGenError (BoundVariableOutOfBounds defaultLoc rep' idx)
+      Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
       Just ty -> case (rep, ty) of
         (PrdRep, PrdCnsType PrdRep ty) -> return ty
         (CnsRep, PrdCnsType CnsRep ty) -> return ty
-        (PrdRep, PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode defaultLoc rep' idx)
-        (CnsRep, PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode defaultLoc rep' idx)
+        (PrdRep, PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
+        (CnsRep, PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
 
 
 ---------------------------------------------------------------------------------------------
@@ -263,32 +263,35 @@ fromMaybeVar (Just fv) = fv
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
-checkCorrectness :: [XtorName]
+checkCorrectness :: Loc 
+                 -> [XtorName]
                  -> DataDecl
                  -> GenM ()
-checkCorrectness matched decl = do
+checkCorrectness loc matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError (PatternMatchAdditional defaultLoc xn (data_name decl)))
+    (throwGenError (PatternMatchAdditional loc xn (data_name decl)))
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
-checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
+checkExhaustiveness :: Loc
+                    -> [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
-checkExhaustiveness matched decl = do
+checkExhaustiveness loc matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError (PatternMatchMissingXtor defaultLoc xn (data_name decl)))
+    (throwGenError (PatternMatchMissingXtor loc xn (data_name decl)))
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.
-checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to check against.
+checkInstanceCoverage :: Loc
+                      -> RST.ClassDeclaration -- ^ The class declaration to check against.
                       -> [MethodName]         -- ^ The methods implemented in the instance.
                       -> GenM ()
-checkInstanceCoverage RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
+checkInstanceCoverage loc RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
   let classMethods = msig_name <$> fst classdecl_methods
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
-    (throwGenError (InstanceImplementationMissing defaultLoc m))
+    (throwGenError (InstanceImplementationMissing loc m))
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)
-    (throwGenError (InstanceImplementationAdditional defaultLoc m))
+    (throwGenError (InstanceImplementationAdditional loc m))
