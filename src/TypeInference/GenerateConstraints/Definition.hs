@@ -35,6 +35,7 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Writer
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map ( Map )
 import Data.Map qualified as M
@@ -86,13 +87,13 @@ initialReader loc env = (env, GenerateReader { context = [], location = loc })
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except (NonEmpty Error))) a }
+newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (ExceptT (NonEmpty Error) (Writer [Warning]))) a }
   deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
-runGenM :: Loc -> Map ModuleName Environment -> GenM a -> Either (NonEmpty Error) (a, ConstraintSet)
-runGenM loc env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState) of
-  Left err -> Left err
-  Right (x, state) -> Right (x, constraintSet state)
+runGenM :: Loc -> Map ModuleName Environment -> GenM a -> (Either (NonEmpty Error) (a, ConstraintSet), [Warning])
+runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState)) of
+  (Left err, warns) -> (Left err, warns)
+  (Right (x, state),warns) -> (Right (x, constraintSet state), warns)
 
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
