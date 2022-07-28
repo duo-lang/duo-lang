@@ -159,14 +159,14 @@ data NodeLabel =
   |
   MkPrimitiveNodeLabel
     { pl_pol :: Polarity
-    , pl_prim :: Set PrimitiveType
+    , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
 
-emptyPrimNodeLabel :: Polarity -> NodeLabel
-emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
+-- emptyPrimNodeLabel :: Polarity -> NodeLabel
+-- emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
 singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty

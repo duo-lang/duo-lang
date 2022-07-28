@@ -127,16 +127,12 @@ nodeToType rep i = do
 nodeToPrimType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToPrimType rep i  = do
   gr <- asks graph
-  let (Just (MkPrimitiveNodeLabel _ tps)) = lab gr i 
+  let (Just (MkPrimitiveNodeLabel _ tp)) = lab gr i 
   -- Creating primitive types
   let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
       toPrimType rep I64 = TyI64 defaultLoc rep
       toPrimType rep F64 = TyF64 defaultLoc rep
-  let prims = toPrimType rep <$> S.toList tps
-  return $ case rep of
-      PosRep -> mkUnion defaultLoc Nothing prims
-      NegRep -> mkInter defaultLoc Nothing prims
-
+  return (toPrimType rep tp)
 
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i  = do

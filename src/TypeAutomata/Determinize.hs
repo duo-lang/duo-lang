@@ -6,7 +6,6 @@ import Data.Functor.Identity ( Identity(Identity) )
 import Data.Graph.Inductive.Graph
     ( Node, lab, lsuc, out, Graph(mkGraph) )
 import Data.Graph.Inductive.PatriciaTree ( Gr )
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
@@ -21,8 +20,8 @@ import TypeAutomata.Definition
       TypeAut'(TypeAut, ta_pol, ta_starts, ta_core),
       TypeAutCore(TypeAutCore, ta_gr, ta_flowEdges),
       TypeAutDet )
-import Utils ( allEq, intersections )
 import Data.Maybe (mapMaybe)
+
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:
@@ -80,36 +79,55 @@ getNewNodeLabel :: Gr NodeLabel b -> Set Node -> NodeLabel
 getNewNodeLabel gr ns = combineNodeLabels $ mapMaybe (lab gr) (S.toList ns)
 
 combineNodeLabels :: [NodeLabel] -> NodeLabel
-combineNodeLabels nls  
-  | not . allEq $ map nl_pol nls = error "Tried to combine node labels of different polarity!"
-  | allPrim nls = MkPrimitiveNodeLabel Pos S.empty
-  | allAlg nls = MkNodeLabel {
-                            nl_pol = pol,
-                            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _  _ _ _ <- nls],
-                            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- nls],
-                            nl_nominal = S.unions [ tn | MkNodeLabel _ _ _ tn _  _ <- nls],
-                            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _  _ refs _ <- nls],
-                            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _  _ _ _ refs <- nls]
-                           }
-  | otherwise =  error "Tried to combine Primitive and Algebraic Types"
+combineNodeLabels [] = error "No Labels to combine"
+combineNodeLabels [fstLabel@MkNodeLabel{}] = fstLabel
+combineNodeLabels (fstLabel@MkNodeLabel{}:rs) = 
+  case rs_merged of
+    (MkPrimitiveNodeLabel _ _) -> error "Tried to combine primitive type and algebraic type"
+    combLabel@MkNodeLabel{} ->
+      if nl_pol combLabel == pol then
+        MkNodeLabel {
+          nl_pol = pol,
+          nl_data = mrgDat (nl_data fstLabel) (nl_data combLabel),
+          nl_codata = mrgDat (nl_codata fstLabel) (nl_codata combLabel),
+          nl_nominal = mrgNom (nl_nominal fstLabel) (nl_nominal combLabel),
+          nl_ref_data = mrgRefDat [nl_ref_data fstLabel, nl_ref_codata combLabel],
+          nl_ref_codata = mrgRefCodat [nl_ref_codata fstLabel, nl_ref_codata combLabel]
+        }
+      else
+        error "Tried to combine node labels of different polarity!"
   where
-    pol = nl_pol (head nls)
-    mrgDat [] = Nothing
-    mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
-    mrgCodat [] = Nothing
-    mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
+    pol = nl_pol fstLabel
+    rs_merged = combineNodeLabels rs
+    mrgDat Nothing Nothing = Nothing
+    mrgDat Nothing (Just xtors) = Just xtors
+    mrgDat (Just xtors) Nothing = Just xtors
+    mrgDat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2}
+    mrgNom s1 s2 = case pol of {Pos -> S.intersection s1 s2; Neg -> S.union s1 s2}
     mrgRefDat refs = case pol of
       Pos -> M.unionsWith S.union refs
       Neg -> M.unionsWith S.intersection refs
     mrgRefCodat refs = case pol of
       Pos -> M.unionsWith S.intersection refs
       Neg -> M.unionsWith S.union refs
-    allPrim [] = True
-    allPrim (MkPrimitiveNodeLabel{}:rs) = allPrim rs
-    allPrim (MkNodeLabel{}:_) = False
-    allAlg [] = True
-    allAlg (MkNodeLabel{}:rs) = allAlg rs
-    allAlg (MkPrimitiveNodeLabel{}:_) = False
+combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
+combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) = 
+  case rs_merged of
+    MkNodeLabel{} -> error "Tried to combine primitive type and algebraic type"
+    combLabel@MkPrimitiveNodeLabel{} -> 
+      if pl_pol combLabel == pol then 
+        if pl_prim combLabel == primT then
+          MkPrimitiveNodeLabel pol primT
+        else
+          error ("Tried to combine " <> primToStr primT <> " and " <> primToStr (pl_prim combLabel))
+      else
+        error "Tried to combine node labels of different polarity!"
+  where 
+    pol = pl_pol fstLabel
+    primT = pl_prim fstLabel
+    rs_merged = combineNodeLabels rs
+    primToStr typ = case typ of {I64 -> "I64"; F64 -> "F64"}
+
 -- | This function computes the new typegraph and the new starting state.
 -- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
 newTypeGraph :: TransFunReindexed -- ^ The transition function of the powerset construction.
