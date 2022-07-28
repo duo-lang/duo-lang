@@ -1,4 +1,5 @@
 import Function;
+import Bool;
 
 --------------------------------------------------------------------------------------------
 -- Boxed 64-Bit floating point numbers
@@ -59,3 +60,12 @@ def prd divf : F64 -> F64 -> F64 := \x => \y =>
             MkF64(y) => mu k. Div#F64(x, y,mu z. MkF64(z) >> k)
         }
     };
+
+
+def prd ite : forall a. Bool -> a -> #F64 -> a \/ F64 := \b => \x => \y =>
+  case b of {
+    True => x,
+    False => mu k. Add#F64(y, 1.0#F64, mu z. MkF64(z) >> k)
+  };
+
+

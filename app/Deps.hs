@@ -4,14 +4,15 @@ import Data.List.NonEmpty ( NonEmpty )
 import Driver.Definition
 import Driver.DepGraph
 import Errors
-import Pretty.Pretty
+import Pretty.Errors (printLocatedReport)
 import Syntax.Common
+
 
 runDeps :: ModuleName -> IO ()
 runDeps mn = do
     res <- createDeps mn
     case res of
-        Left errs -> mapM_ ppPrintIO errs
+        Left errs -> mapM_ printLocatedReport errs
         Right (depGraph, compilationOrder) -> do
             putStrLn "Dependency graph:"
             printDepGraph depGraph

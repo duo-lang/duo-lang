@@ -68,11 +68,11 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
       pure (PatXtor loc pc ns xt pats')
 resolvePattern Prd (CST.PatVar loc var@(MkFreeVarName name)) = do
   when ("k" `T.isPrefixOf` name) $
-    tell [Warning loc ("Producer variable " <> name <> " should not start with letter k")]
+    tell [MisnamedProducerVar loc name]
   pure $ PatVar loc Prd var
 resolvePattern Cns (CST.PatVar loc var@(MkFreeVarName name))  = do
   unless ("k" `T.isPrefixOf` name) $
-    tell [Warning loc ("Consumer variable " <> name <> " should start with letter k")]
+    tell [MisnamedConsumerVar loc name]
   pure $ PatVar loc Cns var
 resolvePattern pc (CST.PatStar loc) = do
   pure $ PatStar loc pc
