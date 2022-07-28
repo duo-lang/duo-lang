@@ -44,9 +44,9 @@ genConstraintsCtxts ((PrdCnsType CnsRep ty1) : rest1) (PrdCnsType CnsRep ty2 : r
   addConstraint $ SubType info ty2 ty1
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) info =
-  throwGenError (LinearContextIncompatibleTypeMode defaultLoc info)
+  throwGenError (LinearContextIncompatibleTypeMode defaultLoc Prd info)
 genConstraintsCtxts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) info =
-  throwGenError (LinearContextIncompatibleTypeMode defaultLoc info)
+  throwGenError (LinearContextIncompatibleTypeMode defaultLoc Cns info)
 genConstraintsCtxts ctx1@[] ctx2@(_:_) info =
   throwGenError (LinearContextsUnequalLength defaultLoc info ctx1 ctx2)
 genConstraintsCtxts ctx1@(_:_) ctx2@[] info =
