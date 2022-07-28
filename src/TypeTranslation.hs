@@ -98,7 +98,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyRecVar defaultLoc NegRep Nothing tv
   else do
-    NominalDecl{..} <- lookupTypeName tn
+    NominalDecl{..} <- lookupTypeName defaultLoc tn
     tv <- freshTVar
     case data_polarity of
       Data -> do
@@ -139,7 +139,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyRecVar defaultLoc pr Nothing tv
   else do
-    NominalDecl{..} <- lookupTypeName tn
+    NominalDecl{..} <- lookupTypeName defaultLoc tn
     tv <- freshTVar
     case data_polarity of
       Data -> do

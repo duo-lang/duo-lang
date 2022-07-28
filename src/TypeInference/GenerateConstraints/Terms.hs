@@ -81,7 +81,7 @@ genConstraintsTerm (Core.BoundVar loc rep idx) = do
 -- scheme has to be instantiated with fresh unification variables.
 --
 genConstraintsTerm (Core.FreeVar loc rep v) = do
-  tys <- snd <$> lookupTerm rep v
+  tys <- snd <$> lookupTerm loc rep v
   ty <- instantiateTypeScheme v loc tys
   return (TST.FreeVar loc rep ty v)
 --
@@ -101,8 +101,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Nominal xt subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   -- Secondly we look up the argument types of the xtor in the type declaration.
-  decl <- lookupDataDecl xt
-  xtorSig <- lookupXtorSig xt NegRep
+  decl <- lookupDataDecl loc xt
+  xtorSig <- lookupXtorSig loc xt NegRep
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
@@ -122,8 +122,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   let substTypes = TST.getTypArgs substInferred
   -- Secondly we look up the argument types of the xtor in the type declaration.
   -- Since we infer refinement types, we have to look up the translated xtorSig.
-  decl <- lookupDataDecl xt
-  xtorSigUpper <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
+  decl <- lookupDataDecl loc xt
+  xtorSigUpper <- translateXtorSigUpper =<< lookupXtorSig loc xt NegRep
   -- Then we generate constraints between the inferred types of the substitution
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
@@ -155,7 +155,7 @@ genConstraintsTerm (Core.XCase loc _ _ Nominal []) =
   throwGenError (EmptyNominalMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
+  decl <- lookupDataDecl loc (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
   checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   -- We check that all xtors in the type declaration are matched against.
@@ -165,8 +165,8 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
 
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc' xt args, cmdcase_cmd} -> do
                    -- We lookup the types belonging to the xtor in the type declaration.
-                   posTypes <- sig_args <$> lookupXtorSig xt PosRep
-                   negTypes <- sig_args <$> lookupXtorSig xt NegRep
+                   posTypes <- sig_args <$> lookupXtorSig loc xt PosRep
+                   negTypes <- sig_args <$> lookupXtorSig loc xt NegRep
                    -- Substitute fresh unification variables for type parameters
                    let posTypes' = zonk SkolemRep tyParamsMap posTypes
                    let negTypes' = zonk SkolemRep tyParamsMap negTypes
@@ -186,7 +186,7 @@ genConstraintsTerm (Core.XCase loc _ _ Refinement []) =
   throwGenError (EmptyRefinementMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
+  decl <- lookupDataDecl loc (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
   checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
@@ -198,8 +198,8 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
                        -- We have to bound the unification variables with the lower and upper bounds generated
                        -- from the information in the type declaration. These lower and upper bounds correspond
                        -- to the least and greatest type translation.
-                       lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig xt PosRep)
-                       upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig xt NegRep)
+                       lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig loc xt PosRep)
+                       upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig loc xt NegRep)
                        genConstraintsCtxts lowerBound uvarsNeg (PatternMatchConstraint loc)
                        genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
                        -- For the type, we return the unification variables which are now bounded by the least
@@ -229,7 +229,7 @@ genConstraintsCommand (Core.ExitFailure loc) =
   return (TST.ExitFailure loc)
 genConstraintsCommand (Core.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
-  _ <- lookupCommand fv
+  _ <- lookupCommand loc fv
   return (TST.Jump loc fv)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
@@ -256,7 +256,7 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
 genConstraintsInstance :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
 genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
   -- We lookup the class declaration  of the instance.
-  decl <- lookupClassDecl instancedecl_name
+  decl <- lookupClassDecl instancedecl_loc instancedecl_name
   -- We check that all implementations belong to the same type class.
   checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
@@ -264,8 +264,8 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
-                   posTypes <- lookupMethodType mn decl PosRep
-                   negTypes <- lookupMethodType mn decl NegRep
+                   posTypes <- lookupMethodType instancecase_loc mn decl PosRep
+                   negTypes <- lookupMethodType instancecase_loc mn decl NegRep
                    -- Substitute fresh unification variables for type parameters
                    let posTypes' = zonk SkolemRep tyParamsMap posTypes
                    let negTypes' = zonk SkolemRep tyParamsMap negTypes
