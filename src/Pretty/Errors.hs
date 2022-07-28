@@ -186,14 +186,14 @@ printLocatedReport r = liftIO $ do
 ---------------------------------------------------------------------------------
 
 instance ToReport Warning where
-  toReport w@(MisnamedProducerVar loc var) =
+  toReport w@(MisnamedProducerVar loc _var) =
     let
         msg = ppPrint w
         hint = Hint "Rename the variable so that it doesn't start with the letter \"k\"."
         poshint = (toDiagnosePosition loc, This "producer variable")
     in
       warn (Just "W-000") msg [poshint] [hint]
-  toReport w@(MisnamedConsumerVar loc var) =
+  toReport w@(MisnamedConsumerVar loc _var) =
     let
         msg = ppPrint w
         hint = Hint "Rename the variable so that it starts with the letter \"k\"."
