@@ -22,6 +22,7 @@ import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
 import Utils (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
+import Syntax.Common (PrdCns(..))
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -62,8 +63,67 @@ instance PrettyAnn ResolutionError where
     prettyAnn loc <+> "Invalid Star: " <+> pretty t
 
 instance PrettyAnn ConstraintGenerationError where
-  prettyAnn (SomeConstraintGenerationError loc msg) =
-    prettyAnn loc <> "Constraint generation error:" <+> pretty msg
+  prettyAnn (BoundVariableOutOfBounds loc rep (i,j)) =
+    vsep [ prettyAnn loc
+         , "Bound Variable out of bounds:"
+         , "PrdCns:" <+> pretty (show rep)
+         , "Index:" <+> pretty (show (i,j))
+         ]
+  prettyAnn (BoundVariableWrongMode loc Prd (i,j)) = 
+    vsep [ prettyAnn loc
+         , "Bound Variable" <+> pretty (show (i,j)) <+> "was expected to be PrdType, but CnsType was found."
+         ]
+  prettyAnn (BoundVariableWrongMode loc Cns (i,j)) = 
+    vsep [ prettyAnn loc
+         , "Bound Variable" <+> pretty (show (i,j)) <+> "was expected to be CnsType, but PrdType was found."
+         ]
+  prettyAnn (PatternMatchMissingXtor loc xn tn) =
+    vsep [ prettyAnn loc
+         , "Pattern Match Exhaustiveness Error. Xtor:" <+> prettyAnn xn <+> "of type" <+> prettyAnn tn <+> "is not matched against."
+         ]
+    
+  prettyAnn (PatternMatchAdditional loc xn tn) =
+    vsep [ prettyAnn loc
+         , "Pattern Match Error. The xtor" <+> prettyAnn xn <+> "does not occur in the declaration of type" <+> prettyAnn tn
+         ]
+  prettyAnn (InstanceImplementationMissing loc m) =
+    vsep [ prettyAnn loc
+         , "Instance Declaration Error. Method: " <> prettyAnn m <> " is declared but not implemented."
+         ]
+  prettyAnn (InstanceImplementationAdditional loc m) =
+    vsep [ prettyAnn loc
+         , "Instance Declaration Error. Method: " <> prettyAnn m <> " is implemented but not declared."
+         ]
+  prettyAnn (PrimitiveOpMissingSignature loc op pt) =
+    vsep [ prettyAnn loc
+         , "Unreachable: Signature for primitive op" <+> pretty (primOpKeyword op) <> pretty (primTypeKeyword pt) <+> "not defined"
+         ]
+  prettyAnn (EmptyNominalMatch loc) =
+    vsep [ prettyAnn loc
+         , "Unreachable: A nominal match needs to have at least one case."
+         ]
+  prettyAnn (EmptyRefinementMatch loc) =
+    vsep [ prettyAnn loc
+         , "Unreachable: A refinement match needs to have at least one case."
+         ]
+  prettyAnn (LinearContextsUnequalLength loc info ctx1 ctx2) =
+    vsep [ prettyAnn loc
+         , "genConstraintsCtxts: Linear contexts have unequal length"
+         , "Constraint Info: " <> prettyAnn info
+         , "Pos context: " <> prettyAnn ctx1
+         , "Neg context: " <> prettyAnn ctx2
+         ]
+  prettyAnn (LinearContextIncompatibleTypeMode loc Prd info) =
+    vsep [ prettyAnn loc
+         , "genConstraintsCtxts: Tried to constrain PrdType by CnsType"
+         , "Constraint Info:" <+> prettyAnn info
+         ]
+  prettyAnn (LinearContextIncompatibleTypeMode loc Cns info) =
+    vsep [ prettyAnn loc
+         , "genConstraintsCtxts: Tried to constrain CnsType by PrdType"
+         , "Constraint Info:" <+> prettyAnn info
+         ]
+    
 
 instance PrettyAnn ConstraintSolverError where
   prettyAnn (SomeConstraintSolverError loc msg) =
@@ -133,8 +193,28 @@ instance ToReport ResolutionError where
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintGenerationError where
-  toReport (SomeConstraintGenerationError loc msg) =
-    err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(BoundVariableOutOfBounds loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(BoundVariableWrongMode loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PatternMatchMissingXtor loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PatternMatchAdditional loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(InstanceImplementationMissing loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(InstanceImplementationAdditional loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(PrimitiveOpMissingSignature loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(EmptyNominalMatch loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(EmptyRefinementMatch loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(LinearContextsUnequalLength loc _ _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(LinearContextIncompatibleTypeMode loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintSolverError where
   toReport (SomeConstraintSolverError loc msg) =
