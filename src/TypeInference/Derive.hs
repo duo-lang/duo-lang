@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module TypeInference.Derive
     ( Derivable(..)
@@ -9,7 +9,7 @@ import Syntax.Common (Polarity)
 
 -- | Defines the relationship between types for which we can derive an instance
 -- based on a given defind instance similar but not as strict as Eq.
-class Derivable a b where
+class Derivable a b | a -> b, b -> a where
     -- | Check whether an instance for a can be derived from an instance of b.
     derivable :: a -> b -> Bool
     -- | Check whether instance is derivable from one in a list of instances.
