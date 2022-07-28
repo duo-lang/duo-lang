@@ -23,6 +23,7 @@ import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
 import Utils (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
 import Syntax.Common (PrdCns(..))
+import System.Directory (doesFileExist)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -254,9 +255,10 @@ printLocatedReport r = liftIO $ do
   let report = toReport r
   let diag = addReport def report
   let (Loc (SourcePos fp _ _) _) = getLoc r
-  case fp of
-    "<interactive>" -> printDiagnostic stdout True True 4 defaultStyle diag
-    fp -> do
+  fileExists <- doesFileExist fp
+  if not fileExists
+    then printDiagnostic stdout True True 4 defaultStyle diag
+    else do
       fileContent <- readFile fp
       let diag' = addFile diag fp fileContent
       printDiagnostic stdout True True 4 defaultStyle diag'
