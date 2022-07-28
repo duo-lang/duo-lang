@@ -2,9 +2,11 @@ module TypeAutomata.Minimize ( minimize ) where
 
 import Data.Graph.Inductive.Graph
 import Data.List (intersect, (\\), delete, partition)
+import Data.Maybe (fromMaybe)
 
 import Data.Set (Set)
 import Data.Set qualified as S
+import qualified Data.Map as M
 
 import TypeAutomata.Definition
 
@@ -13,22 +15,47 @@ getAlphabet :: TypeGr -> [EdgeLabelNormal]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
 
 -- find all predecessors with connecting edge labelled by specified label
-predsWith :: TypeGr -> [Node] -> EdgeLabelNormal -> [Node]
-predsWith gr ns x = nub . map fst . filter ((==x).snd) $ concatMap (lpre gr) ns
+predsWith' :: TypeGr -> [Node] -> EdgeLabelNormal -> [Node]
+predsWith' gr ns x = nub . map fst . filter ((==x).snd) $ concatMap (lpre gr) ns
 
-splitAlong :: TypeGr -> [Node] -> EdgeLabelNormal -> [[Node]] -> [[Node]]
-splitAlong gr ds x ps = do
-  let re = predsWith gr ds x
+type Preds = M.Map (Node,EdgeLabelNormal) [Node]
+
+-- find all predecessors with connecting edge labelled by specified label
+predsWith :: Preds -> [Node] -> EdgeLabelNormal -> [Node]
+predsWith preds ns x = nub $ concatMap (\n -> fromMaybe [] $ M.lookup (n,x) preds) ns
+
+predsMap :: TypeGr -> Preds
+predsMap gr =
+  let alph  = getAlphabet gr
+      ns    = nodes gr
+
+      preds :: M.Map Node [(Node,EdgeLabelNormal)]
+      preds = M.fromList $ fmap(\n -> (n, lpre gr n)) ns
+
+      getPred :: Node -> EdgeLabelNormal -> [Node]
+      getPred n l = map fst . filter ((== l) . snd) $ fromMaybe [] $ M.lookup n preds
+
+      addCharNode :: EdgeLabelNormal -> Preds -> Node -> Preds
+      addCharNode a m n = M.insert (n,a) (getPred n a) m
+
+      addChar :: Preds -> EdgeLabelNormal -> Preds
+      addChar m a = foldl (addCharNode a) m ns
+
+  in  foldl addChar M.empty alph
+
+splitAlong :: Preds -> [Node] -> EdgeLabelNormal -> [[Node]] -> [[Node]]
+splitAlong preds ds x ps = do
+  let re = predsWith preds ds x
   p <- ps
   let (p1,p2) = (p `intersect` re, p \\ re)
   if null p1 || null p2 then [p] else [p1,p2]
 
 -- minimize by refining the equivalence
 -- this is done by taking refining the second partition an refining it via the first one
-minimize' :: TypeGr -> [[Node]] -> [[Node]] -> [[Node]]
-minimize' _ [] ps = ps
-minimize' gr (d:ds) ps = minimize' gr (delete d (foldr (splitAlong gr d) (d:ds) (getAlphabet gr)))
-                                      (foldr (splitAlong gr d) ps (getAlphabet gr))
+minimize' :: Preds -> [EdgeLabelNormal] -> [[Node]] -> [[Node]] -> [[Node]]
+minimize' _preds _alph []     ps = ps
+minimize' preds  alph  (d:ds) ps = minimize' preds alph (delete d (foldl (flip (splitAlong preds d)) (d:ds) alph))
+                                                                  (foldl (flip (splitAlong preds d)) ps     alph)
 
 -- partition list by equivalence (given as a function)
 myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
@@ -49,7 +76,7 @@ genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
 genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
   where
     distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
-    nodeSets = minimize' ta_gr distGroups distGroups
+    nodeSets = minimize' (predsMap ta_gr) (getAlphabet ta_gr) distGroups distGroups
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
