@@ -34,8 +34,9 @@ genConstraintsSubst :: Core.Substitution
 genConstraintsSubst subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
-genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 =
-  throwGenError (LinearContextsUnequalLength defaultLoc info ctx1 ctx2)
+genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((PrdCnsType PrdRep ty1) : rest1) (PrdCnsType PrdRep ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
@@ -43,14 +44,18 @@ genConstraintsCtxts ((PrdCnsType PrdRep ty1) : rest1) (PrdCnsType PrdRep ty2 : r
 genConstraintsCtxts ((PrdCnsType CnsRep ty1) : rest1) (PrdCnsType CnsRep ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
   genConstraintsCtxts rest1 rest2 info
-genConstraintsCtxts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) info =
-  throwGenError (LinearContextIncompatibleTypeMode defaultLoc Prd info)
-genConstraintsCtxts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) info =
-  throwGenError (LinearContextIncompatibleTypeMode defaultLoc Cns info)
-genConstraintsCtxts ctx1@[] ctx2@(_:_) info =
-  throwGenError (LinearContextsUnequalLength defaultLoc info ctx1 ctx2)
-genConstraintsCtxts ctx1@(_:_) ctx2@[] info =
-  throwGenError (LinearContextsUnequalLength defaultLoc info ctx1 ctx2)
+genConstraintsCtxts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextIncompatibleTypeMode loc Prd info)
+genConstraintsCtxts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextIncompatibleTypeMode loc Cns info)
+genConstraintsCtxts ctx1@[] ctx2@(_:_) info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
+genConstraintsCtxts ctx1@(_:_) ctx2@[] info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 
 
 ---------------------------------------------------------------------------------------------
@@ -144,10 +149,10 @@ genConstraintsTerm (Core.XCase loc annot rep Structural cases) = do
 --
 -- Nominal pattern and copattern matches
 --
-genConstraintsTerm (Core.XCase _ _ _ Nominal []) =
+genConstraintsTerm (Core.XCase loc _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
-  throwGenError (EmptyNominalMatch defaultLoc)
+  throwGenError (EmptyNominalMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
@@ -175,10 +180,10 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
 --
 -- Refinement pattern and copattern matches
 --
-genConstraintsTerm (Core.XCase _ _ _ Refinement []) =
+genConstraintsTerm (Core.XCase loc _ _ Refinement []) =
   -- We know that empty matches cannot be parsed as Refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
-  throwGenError (EmptyRefinementMatch defaultLoc)
+  throwGenError (EmptyRefinementMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
   decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
