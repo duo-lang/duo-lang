@@ -16,8 +16,7 @@ import Data.Either (isRight)
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [ ("examples/TypeClasses.duo", "Backend not implemented for type classes")
-               ]
+pendingFiles = []
 
 getProducers :: TST.Program -> [(FreeVarName, Term Prd)]
 getProducers prog = go prog []
