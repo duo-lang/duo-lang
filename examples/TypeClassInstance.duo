@@ -34,9 +34,9 @@ class Reader(-a : CBV) {
 };
 
 instance Reader Bool {
-  Reader(x, k) => True >> k
+  Reader(x, k) => x >> k
 };
 
--- def cmd main := Reader(False, case { True => ExitFailure, False => ExitSuccess });
+def cmd main := Reader(False, case { True => ExitFailure, False => ExitSuccess });
 
-def prd show : Bool -> Bool := \x => mu k. Reader(x, k);
+def prd eq : forall a. Eq a => a -> a -> Bool := \x y => mu k. Equals(x,y,k);
