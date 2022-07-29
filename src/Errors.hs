@@ -7,7 +7,9 @@ import Data.Text (Text)
 import Data.Text qualified as T
 
 import Syntax.Common
+import Syntax.Common.TypesPol
 import Utils
+import TypeInference.Constraints (ConstraintInfo)
 
 ----------------------------------------------------------------------------------
 -- Errors emitted during the resolution phase
@@ -78,17 +80,57 @@ instance AttachLoc ResolutionError where
 ----------------------------------------------------------------------------------
 
 data ConstraintGenerationError where
-  SomeConstraintGenerationError :: Loc -> Text -> ConstraintGenerationError
+  -- | A bound variable is not bound in the context. (Likely implementation error).
+  BoundVariableOutOfBounds :: Loc -> PrdCns -> Index -> ConstraintGenerationError
+  -- | A bound variable is used with the wrong mode (Prd/Cns).
+  BoundVariableWrongMode :: Loc -> PrdCns -> Index -> ConstraintGenerationError
+  -- | A pattern match fails to match on given constructor/destructor.
+  PatternMatchMissingXtor :: Loc -> XtorName -> RnTypeName -> ConstraintGenerationError
+  -- | A pattern match tries to match on a constructor/destructor not contained in declaration.
+  PatternMatchAdditional :: Loc -> XtorName -> RnTypeName -> ConstraintGenerationError
+  -- | Typeclass method contained in class declaration, but missing in instance implementation.
+  InstanceImplementationMissing :: Loc -> MethodName -> ConstraintGenerationError
+  -- | Typeclass method implemented in instance, but not contained in class declaration.
+  InstanceImplementationAdditional :: Loc -> MethodName -> ConstraintGenerationError
+  -- | Could not find signature for given primitive operation.
+  PrimitiveOpMissingSignature :: Loc -> PrimitiveOp -> PrimitiveType -> ConstraintGenerationError
+  -- | One cannot infer a type for an empty nominal match.
+  EmptyNominalMatch :: Loc -> ConstraintGenerationError
+  -- | One cannot infer a type for an empty refinement match.
+  EmptyRefinementMatch :: Loc -> ConstraintGenerationError
+  -- | Linear contexts have unequal length.
+  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> LinearContext Pos -> LinearContext Neg -> ConstraintGenerationError
+  LinearContextIncompatibleTypeMode :: Loc -> PrdCns -> ConstraintInfo -> ConstraintGenerationError
+
 
 deriving instance Show ConstraintGenerationError
 
 instance HasLoc ConstraintGenerationError where
-  getLoc (SomeConstraintGenerationError loc _) =
-    loc
+  getLoc (BoundVariableOutOfBounds loc _ _) = loc
+  getLoc (BoundVariableWrongMode loc _ _) = loc
+  getLoc (PatternMatchMissingXtor loc _ _) = loc
+  getLoc (PatternMatchAdditional loc _ _) = loc
+  getLoc (InstanceImplementationMissing loc _) = loc
+  getLoc (InstanceImplementationAdditional loc _) = loc
+  getLoc (PrimitiveOpMissingSignature loc _ _) = loc
+  getLoc (EmptyNominalMatch loc) = loc
+  getLoc (EmptyRefinementMatch loc) = loc
+  getLoc (LinearContextsUnequalLength loc _ _ _) = loc
+  getLoc (LinearContextIncompatibleTypeMode loc _ _) = loc
 
 instance AttachLoc ConstraintGenerationError where
-  attachLoc loc (SomeConstraintGenerationError _ msg) =
-    SomeConstraintGenerationError loc msg
+  attachLoc loc (BoundVariableOutOfBounds _ pc idx) = BoundVariableOutOfBounds loc pc idx
+  attachLoc loc (BoundVariableWrongMode _ pc idx) = BoundVariableWrongMode loc pc idx
+  attachLoc loc (PatternMatchMissingXtor _ xn tn)  = PatternMatchMissingXtor loc xn tn
+  attachLoc loc (PatternMatchAdditional _ xn tn) = PatternMatchAdditional loc xn tn
+  attachLoc loc (InstanceImplementationMissing _ mn) = InstanceImplementationMissing loc mn
+  attachLoc loc (InstanceImplementationAdditional _ mn) = InstanceImplementationAdditional loc mn
+  attachLoc loc (PrimitiveOpMissingSignature _ po pt) = PrimitiveOpMissingSignature loc po pt
+  attachLoc loc (EmptyNominalMatch _) = EmptyNominalMatch loc
+  attachLoc loc (EmptyRefinementMatch _) = EmptyRefinementMatch loc
+  attachLoc loc (LinearContextsUnequalLength _ ci ctx1 ctx2) = LinearContextsUnequalLength loc ci ctx1 ctx2
+  attachLoc loc (LinearContextIncompatibleTypeMode _ pc ci) = LinearContextIncompatibleTypeMode loc pc ci
+
 
 ----------------------------------------------------------------------------------
 -- Errors emitted during the constraint solving phase
@@ -212,9 +254,9 @@ instance AttachLoc Error where
 ---------------------------------------------------------------------------------------------
 
 throwGenError :: MonadError (NonEmpty Error) m
-              => Loc -> [Text] -> m a
-throwGenError loc =
-  throwError . (NE.:| []) . (ErrConstraintGeneration . SomeConstraintGenerationError loc) . T.unlines
+              => ConstraintGenerationError -> m a
+throwGenError  =
+  throwError . (NE.:| []) . ErrConstraintGeneration
 
 throwEvalError :: MonadError (NonEmpty Error) m
                => Loc -> [Text] -> m a

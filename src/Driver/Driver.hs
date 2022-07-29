@@ -84,7 +84,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let genFun = case pcdecl_isRec of
         Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         NonRecursive -> genConstraintsTerm pcdecl_term
-  (tmInferred, constraintSet) <- liftEitherErrLoc pcdecl_loc $ runGenM env genFun
+  (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
@@ -135,7 +135,7 @@ inferCommandDeclaration :: ModuleName
 inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErrLoc cmddecl_loc $ runGenM env (genConstraintsCommand cmddecl_cmd)
+  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraintsCommand cmddecl_cmd))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -156,7 +156,7 @@ inferInstanceDeclaration :: ModuleName
 inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (genConstraintsInstance decl)
+  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraintsInstance decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do

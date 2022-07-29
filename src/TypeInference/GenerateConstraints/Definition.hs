@@ -35,6 +35,7 @@ module TypeInference.GenerateConstraints.Definition
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Writer
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map ( Map )
 import Data.Map qualified as M
@@ -43,9 +44,6 @@ import Data.Text qualified as T
 import Driver.Environment
 import Errors
 import Lookup
-import Pretty.Pretty
-import Pretty.Terms ()
-import Pretty.Types ()
 import Syntax.Common.TypesPol
 import Syntax.Common
 import Syntax.RST.Program as RST
@@ -78,23 +76,24 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 -- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
-newtype GenerateReader = GenerateReader { context :: [LinearContext Pos]
+data GenerateReader = GenerateReader { context :: [LinearContext Pos]
+                                     , location :: Loc
                                      }
 
-initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
-initialReader env = (env, GenerateReader { context = [] })
+initialReader :: Loc -> Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
+initialReader loc env = (env, GenerateReader { context = [], location = loc })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except (NonEmpty Error))) a }
+newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (ExceptT (NonEmpty Error) (Writer [Warning]))) a }
   deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
-runGenM :: Map ModuleName Environment -> GenM a -> Either (NonEmpty Error) (a, ConstraintSet)
-runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
-  Left err -> Left err
-  Right (x, state) -> Right (x, constraintSet state)
+runGenM :: Loc -> Map ModuleName Environment -> GenM a -> (Either (NonEmpty Error) (a, ConstraintSet), [Warning])
+runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState)) of
+  (Left err, warns) -> (Left err, warns)
+  (Right (x, state),warns) -> (Right (x, constraintSet state), warns)
 
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
@@ -178,18 +177,19 @@ withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ct
 ---------------------------------------------------------------------------------------------
 
 -- | Lookup a type of a bound variable in the context.
-lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
-lookupContext rep (i,j) = do
+lookupContext :: Loc -> PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
+lookupContext loc rep idx@(i,j) = do
+  let rep' = case rep of PrdRep -> Prd; CnsRep -> Cns
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
-    Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+    Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
     Just lctxt -> case indexMaybe lctxt j of
-      Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+      Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
       Just ty -> case (rep, ty) of
         (PrdRep, PrdCnsType PrdRep ty) -> return ty
         (CnsRep, PrdCnsType CnsRep ty) -> return ty
-        (PrdRep, PrdCnsType CnsRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
-        (CnsRep, PrdCnsType PrdRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
+        (PrdRep, PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
+        (CnsRep, PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
 
 
 ---------------------------------------------------------------------------------------------
@@ -266,33 +266,35 @@ fromMaybeVar (Just fv) = fv
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
-checkCorrectness :: [XtorName]
+checkCorrectness :: Loc 
+                 -> [XtorName]
                  -> DataDecl
                  -> GenM ()
-checkCorrectness matched decl = do
+checkCorrectness loc matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError defaultLoc ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
+    (throwGenError (PatternMatchAdditional loc xn (data_name decl)))
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
-checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
+checkExhaustiveness :: Loc
+                    -> [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
-checkExhaustiveness matched decl = do
+checkExhaustiveness loc matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError defaultLoc ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
-                               ppPrint (data_name decl) <> " is not matched against." ])
+    (throwGenError (PatternMatchMissingXtor loc xn (data_name decl)))
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.
-checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to check against.
+checkInstanceCoverage :: Loc
+                      -> RST.ClassDeclaration -- ^ The class declaration to check against.
                       -> [MethodName]         -- ^ The methods implemented in the instance.
                       -> GenM ()
-checkInstanceCoverage RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
+checkInstanceCoverage loc RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
   let classMethods = msig_name <$> fst classdecl_methods
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
-    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
+    (throwGenError (InstanceImplementationMissing loc m))
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)
-    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is implemented but not declared." ])
+    (throwGenError (InstanceImplementationAdditional loc m))
