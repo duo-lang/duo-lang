@@ -20,6 +20,8 @@ import TypeAutomata.Definition
       TypeAut'(TypeAut, ta_pol, ta_starts, ta_core),
       TypeAutCore(TypeAutCore, ta_gr, ta_flowEdges),
       TypeAutDet )
+import Utils (intersections)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe)
 
 
@@ -88,28 +90,42 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
       if nl_pol combLabel == pol then
         MkNodeLabel {
           nl_pol = pol,
-          nl_data = mrgDat (nl_data fstLabel) (nl_data combLabel),
-          nl_codata = mrgDat (nl_codata fstLabel) (nl_codata combLabel),
-          nl_nominal = mrgNom (nl_nominal fstLabel) (nl_nominal combLabel),
-          nl_ref_data = mrgRefDat [nl_ref_data fstLabel, nl_ref_codata combLabel],
-          nl_ref_codata = mrgRefCodat [nl_ref_codata fstLabel, nl_ref_codata combLabel]
+          nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
+          nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- [fstLabel,combLabel]],
+          nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ <- [fstLabel, combLabel]],
+          nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ <- [fstLabel, combLabel]],
+          nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs <- [fstLabel, combLabel]]
         }
       else
         error "Tried to combine node labels of different polarity!"
   where
     pol = nl_pol fstLabel
-    rs_merged = combineNodeLabels rs
-    mrgDat Nothing Nothing = Nothing
-    mrgDat Nothing (Just xtors) = Just xtors
-    mrgDat (Just xtors) Nothing = Just xtors
-    mrgDat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2}
-    mrgNom s1 s2 = case pol of {Pos -> S.intersection s1 s2; Neg -> S.union s1 s2}
+    mrgDat [] = Nothing
+    mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
+    mrgCodat [] = Nothing
+    mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
     mrgRefDat refs = case pol of
       Pos -> M.unionsWith S.union refs
       Neg -> M.unionsWith S.intersection refs
     mrgRefCodat refs = case pol of
       Pos -> M.unionsWith S.intersection refs
       Neg -> M.unionsWith S.union refs
+    rs_merged = combineNodeLabels rs
+    --mrgDat Nothing Nothing = Nothing
+    --mrgDat Nothing (Just xtors) = Just xtors
+    --mrgDat (Just xtors) Nothing = Just xtors
+    --mrgDat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2}
+    --mrgCodat Nothing Nothing = Nothing
+    --mrgCodat Nothing (Just xtors) = Just xtors
+    --mrgCodat (Just xtors) Nothing = Just xtors
+    --mrgCodat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2}
+    --mrgNom s1 s2 = case pol of {Pos -> S.intersection s1 s2; Neg -> S.union s1 s2}
+    --mrgRefDat refs = case pol of
+    -- Pos -> M.unionsWith S.union refs
+    --  Neg -> M.unionsWith S.intersection refs
+    --mrgRefCodat refs = case pol of
+    --  Pos -> M.unionsWith S.intersection refs
+    --  Neg -> M.unionsWith S.union refs
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) = 
   case rs_merged of
