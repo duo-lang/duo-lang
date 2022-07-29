@@ -25,47 +25,46 @@ data F64 {
 };
 
 def prd f1 : #F64 := 1.0#F64;
-def prd f2 : F64 := MkF64(f1);
+--| def prd f2 : F64 := MkF64(f1);
 
-def cns f3 : #F64 := mu f. ExitSuccess;
+--| def cns f3 : #F64 := mu f. ExitSuccess;
 
--- | Addition of two 64-Bit floating point numbers.
-def prd addf : F64 -> F64 -> F64 := \x => \y =>
-    case x of {
-        MkF64(x) => case y of {
-            MkF64(y) => mu k. Add#F64(x, y,mu z. MkF64(z) >> k)
-        }
-    };
+--| Addition of two 64-Bit floating point numbers.
+--| def prd addf : F64 -> F64 -> F64 := \x => \y =>
+--|    case x of {
+--|        MkF64(x) => case y of {
+--|           MkF64(y) => mu k. Add#F64(x, y,mu z. MkF64(z) >> k)
+--|       }
+--|   };
+--|
+--| Subtraction of two 64-Bit floating point numbers.
+--|def prd subf : F64 -> F64 -> F64 := \x => \y =>
+--|   case x of {
+--|       MkF64(x) => case y of {
+--|           MkF64(y) => mu k. Sub#F64(x, y,mu z. MkF64(z) >> k)
+--|       }
+--|   };
 
--- | Subtraction of two 64-Bit floating point numbers.
-def prd subf : F64 -> F64 -> F64 := \x => \y =>
-    case x of {
-        MkF64(x) => case y of {
-            MkF64(y) => mu k. Sub#F64(x, y,mu z. MkF64(z) >> k)
-        }
-    };
+--| Multiplication of two 64-Bit floating point numbers.
+--|def prd mulf : F64 -> F64 -> F64 := \x => \y =>
+--|  case x of {
+--|  MkF64(x) => case y of {
+--|           MkF64(y) => mu k. Mul#F64(x, y,mu z. MkF64(z) >> k)
+--|       }
+--|   };
 
--- | Multiplication of two 64-Bit floating point numbers.
-def prd mulf : F64 -> F64 -> F64 := \x => \y =>
-    case x of {
-        MkF64(x) => case y of {
-            MkF64(y) => mu k. Mul#F64(x, y,mu z. MkF64(z) >> k)
-        }
-    };
-
--- | Division of two 64-Bit floating point numbers.
-def prd divf : F64 -> F64 -> F64 := \x => \y =>
-    case x of {
-        MkF64(x) => case y of {
-            MkF64(y) => mu k. Div#F64(x, y,mu z. MkF64(z) >> k)
-        }
-    };
-
-
-def prd ite : forall a. Bool -> a -> #F64 -> a \/ F64 := \b => \x => \y =>
-  case b of {
-    True => x,
-    False => mu k. Add#F64(y, 1.0#F64, mu z. MkF64(z) >> k)
-  };
+--| Division of two 64-Bit floating point numbers.
+--|def prd divf : F64 -> F64 -> F64 := \x => \y =>
+--|   case x of {
+--|        MkF64(x) => case y of {
+--|           MkF64(y) => mu k. Div#F64(x, y,mu z. MkF64(z) >> k)
+--|       }
+--|   };
+--|
+--| def prd ite : forall a. Bool -> a -> #F64 -> a \/ F64 := \b => \x => \y =>
+--| case b of {
+--|   True => x,
+--|   False => mu k. Add#F64(y, 1.0#F64, mu z. MkF64(z) >> k)
+--| };
 
 

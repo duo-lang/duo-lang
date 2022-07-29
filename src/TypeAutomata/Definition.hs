@@ -174,6 +174,10 @@ singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) 
 singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
 singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors)
 
+getPolarityNL :: NodeLabel -> Polarity
+getPolarityNL (MkNodeLabel pol _ _ _ _ _) = pol
+getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
+
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
 --------------------------------------------------------------------------------

@@ -84,6 +84,7 @@ lintStructuralNodes TypeAut { ta_core = TypeAutCore { ta_gr }} = forM_ (labNodes
 -- | Collect all the xtors labels of a node and check them.
 lintStructuralNode :: MonadError (NonEmpty Error) m
                    => Gr NodeLabel (EdgeLabel a) -> LNode NodeLabel -> m ()
+lintStructuralNode _ (_, MkPrimitiveNodeLabel{}) = pure ()
 lintStructuralNode gr (n, nl) = do
   let toList = maybe [] S.toList
   let xtors = toList (nl_data nl) ++ toList (nl_codata nl)
