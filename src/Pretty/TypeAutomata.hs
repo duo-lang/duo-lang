@@ -64,7 +64,7 @@ typeAutParams :: Bool -> GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabe
 typeAutParams showId = defaultParams
   { fmtNode = \(n,nl) ->
     [ style filled
-    , fillColor $ case nl_pol nl of {Pos -> White; Neg -> Gray}
+    , fillColor $ case getPolarityNL nl of {Pos -> White; Neg -> Gray}
     , textLabel (pack ((if showId then show n <> ": " else "") <> ppPrintString (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@EdgeSymbol {} -> regularEdgeStyle el
