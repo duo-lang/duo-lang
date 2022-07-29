@@ -236,24 +236,15 @@ genConstraintsCommand (Core.Jump loc fv) = do
   _ <- lookupCommand fv
   return (TST.Jump loc fv)
 genConstraintsCommand (Core.Method loc mn cn subst) = do
-  -- for class type var:
   decl <- lookupClassDecl cn
-    -- fresh type var for class type variable
+    -- fresh type var and subsitution for type class variable(s)
   tyParamsMap <- createMethodSubst loc decl
-
-  -- posTypes <- lookupMethodType mn decl PosRep
   negTypes <- lookupMethodType mn decl NegRep
-  
   let negTypes' = zonk SkolemRep tyParamsMap negTypes
-  -- let posTypes' = zonk SkolemRep tyParamsMap posTypes
-
   -- infer arg types
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
-
   genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
-  -- genConstraintsCtxts posTypes' negTypes' (TypeClassConstraint loc)
-
   return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
