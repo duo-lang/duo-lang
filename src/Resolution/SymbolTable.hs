@@ -56,7 +56,6 @@ data SymbolTable = MkSymbolTable
   { xtorNameMap  :: Map XtorName XtorNameResolve
   , typeNameMap  :: Map TypeName TypeNameResolve
   , freeVarMap   :: Map FreeVarName FreeVarNameResolve
-  , classMethods :: Map ClassName [XtorName] -- TODO: use MethodName instead
   , tyOps        :: [TyOp]
   , imports      :: [(ModuleName, Loc)]
   }
@@ -65,7 +64,6 @@ emptySymbolTable :: SymbolTable
 emptySymbolTable = MkSymbolTable { xtorNameMap  = M.empty
                                  , typeNameMap  = M.empty
                                  , freeVarMap   = M.empty
-                                 , classMethods = M.empty
                                  , tyOps        = []
                                  , imports      = []
                                  }
@@ -173,7 +171,6 @@ createSymbolTable' _ (SetDecl _) st = pure st
 createSymbolTable' _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_name, classdecl_methods})  st = do
   let xtor_names = sig_name <$> classdecl_methods
   mapM_ (flip (checkFreshXtorName classdecl_loc) st) xtor_names
-  pure $ st { classMethods = M.insert classdecl_name xtor_names (classMethods st)
-            , xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . linearContextToArity . sig_args <$> classdecl_methods)) (xtorNameMap st) }
+  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . linearContextToArity . sig_args <$> classdecl_methods)) (xtorNameMap st) }
 createSymbolTable' _ InstanceDecl {} st = pure st
 createSymbolTable' _ ParseErrorDecl st = pure st

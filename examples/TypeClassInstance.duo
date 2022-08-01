@@ -1,7 +1,6 @@
 
 import Bool;
 import Peano;
-import List;
 
 -- | Class definition.
 class Eq(+a : CBV) {
@@ -21,3 +20,23 @@ instance Eq Nat {
   Equals(x, y, k) => nateq x y >> k,
   Differ(x, y, k) => not (nateq x y) >> k
 };
+
+class Show(+a : CBV) {
+  Show(a)
+};
+
+instance Show Bool {
+  Show(x) => Print(x); ExitSuccess
+};
+
+class Reader(-a : CBV) {
+  Reader(Bool, return a)
+};
+
+instance Reader Bool {
+  Reader(x, k) => x >> k
+};
+
+def cmd main := Reader(False, case { True => ExitFailure, False => ExitSuccess });
+
+def prd eq : forall a. Eq a => a -> a -> Bool := \x y => mu k. Equals(x,y,k);

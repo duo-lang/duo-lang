@@ -27,7 +27,7 @@ import TypeAutomata.Definition
       EdgeLabel(..),
       NodeLabel(..),
       XtorLabel(..),
-      emptyNodeLabel,
+      emptyNodeLabel, 
       singleNodeLabel )
 import Utils ( enumerate, defaultLoc )
 import Control.Monad
@@ -256,12 +256,12 @@ insertType (TyNominal _ rep _ tn args) = do
 insertType (TyI64 _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton I64 })
+  insertNode newNode (MkPrimitiveNodeLabel pol I64)
   return newNode
 insertType (TyF64 _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_primitive = S.singleton F64 })
+  insertNode newNode (MkPrimitiveNodeLabel pol F64)
   return newNode
 insertType (TyFlipPol _ _) =
   throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]

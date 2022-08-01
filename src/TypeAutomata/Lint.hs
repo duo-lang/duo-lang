@@ -39,8 +39,8 @@ lintFlowEdges :: MonadError (NonEmpty Error) m
               => TypeAut' a f pol  -> m ()
 lintFlowEdges TypeAut { ta_core = TypeAutCore { ta_gr, ta_flowEdges } } = do
   forM_ ta_flowEdges $ \(left,right) -> do
-    leftPol <- nl_pol <$> getNodeLabel ta_gr left
-    rightPol <- nl_pol <$> getNodeLabel ta_gr right
+    leftPol <- getPolarityNL <$> getNodeLabel ta_gr left
+    rightPol <- getPolarityNL <$> getNodeLabel ta_gr right
     case leftPol of
       Pos -> throwAutomatonError defaultLoc ["TypeAutomata Linter: Left endpoint of flowedge is positive"]
       Neg -> pure ()
@@ -55,8 +55,8 @@ lintEpsilonEdges :: MonadError (NonEmpty Error) m
 lintEpsilonEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
   let edges = [(i,j) | (i,j,EpsilonEdge _) <- labEdges ta_gr]
   forM_ edges $ \(i,j) -> do
-    iPolarity <- nl_pol <$> getNodeLabel ta_gr i
-    jPolarity <- nl_pol <$> getNodeLabel ta_gr j
+    iPolarity <- getPolarityNL <$> getNodeLabel ta_gr i
+    jPolarity <- getPolarityNL <$> getNodeLabel ta_gr j
     if iPolarity /= jPolarity
       then throwAutomatonError defaultLoc ["TypeAutomata Linter: Epsilon Edge connects nodes with different polarity."]
       else pure ()
@@ -67,8 +67,8 @@ lintSymbolEdges :: MonadError (NonEmpty Error) m
 lintSymbolEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
   let edges = [(i,j,dataCodata,prdCns) | (i,j,EdgeSymbol dataCodata _ prdCns _) <- labEdges ta_gr]
   forM_ edges $ \(i,j, dataCodata, prdCns) -> do
-    iPolarity <- nl_pol <$> getNodeLabel ta_gr i
-    jPolarity <- nl_pol <$> getNodeLabel ta_gr j
+    iPolarity <- getPolarityNL <$> getNodeLabel ta_gr i
+    jPolarity <- getPolarityNL <$> getNodeLabel ta_gr j
     let err = "TypeAutomata Linter: Incorrect Symbol Edge"
     case (dataCodata, prdCns) of
       (Data, Prd)   -> if iPolarity == jPolarity then pure () else throwAutomatonError defaultLoc [err]
@@ -84,6 +84,7 @@ lintStructuralNodes TypeAut { ta_core = TypeAutCore { ta_gr }} = forM_ (labNodes
 -- | Collect all the xtors labels of a node and check them.
 lintStructuralNode :: MonadError (NonEmpty Error) m
                    => Gr NodeLabel (EdgeLabel a) -> LNode NodeLabel -> m ()
+lintStructuralNode _ (_, MkPrimitiveNodeLabel{}) = pure ()
 lintStructuralNode gr (n, nl) = do
   let toList = maybe [] S.toList
   let xtors = toList (nl_data nl) ++ toList (nl_codata nl)

@@ -115,17 +115,30 @@ nodeToType rep i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
-  if inCache then
-    return $ TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i)))
-  else
-    nodeToTypeNoCache rep i
+  gr <- asks graph
+  case lab gr i of 
+    Just MkPrimitiveNodeLabel{} -> nodeToPrimType rep i
+    _ -> if inCache then
+           return $ TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i)))
+         else
+           nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
+nodeToPrimType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
+nodeToPrimType rep i  = do
+  gr <- asks graph
+  let (Just (MkPrimitiveNodeLabel _ tp)) = lab gr i 
+  -- Creating primitive types
+  let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
+      toPrimType rep I64 = TyI64 defaultLoc rep
+      toPrimType rep F64 = TyF64 defaultLoc rep
+  return (toPrimType rep tp)
+
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
-nodeToTypeNoCache rep i = do
+nodeToTypeNoCache rep i  = do
   outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns tps refDat refCodat)) = lab gr i
+  let (Just (MkNodeLabel _ datSet codatSet tns refDat refCodat)) = lab gr i 
   let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
   let refDatTypes = M.toList refDat -- Unique data ref types
   let refCodatTypes = M.toList refCodat -- Unique codata ref types
@@ -179,13 +192,8 @@ nodeToTypeNoCache rep i = do
               f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
           args <- sequence (f <$> argNodes)
           pure $ TyNominal defaultLoc rep Nothing tn args
-    -- Creating primitive types
-    let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
-        toPrimType rep I64 = TyI64 defaultLoc rep
-        toPrimType rep F64 = TyF64 defaultLoc rep
-    let prims = toPrimType rep <$> S.toList tps
-
-    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals ++ prims
+    
+    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
     return $ case rep of
       PosRep -> mkUnion defaultLoc Nothing typs
       NegRep -> mkInter defaultLoc Nothing typs

@@ -48,6 +48,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
+import qualified Data.Set as S
 
 
 checkAnnot :: PolarityRep pol
@@ -162,7 +163,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { instanceEnv = M.insert instancedecl_name instancedecl_typ (instanceEnv env)}
+  let f env = env { instanceEnv = M.adjust (S.insert instancedecl_typ) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
@@ -170,7 +171,8 @@ inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
                       -> DriverM RST.ClassDeclaration
 inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
-  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)}
+  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)
+                  , instanceEnv = M.insert classdecl_name S.empty (instanceEnv env) }
   modifyEnvironment mn f
   pure decl
 

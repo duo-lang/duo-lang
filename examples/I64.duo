@@ -23,6 +23,11 @@ data I64 {
     MkI64(#I64)
 };
 
+def prd i1 : #I64 := 1#I64;
+def prd i2 : I64 := MkI64(i1);
+
+--| def cns i3 : #I64 := mu i. ExitSuccess;
+
 -- | Addition of two 64-Bit signed integers.
 def prd add : I64 -> I64 -> I64 := \x => \y =>
     case x of {

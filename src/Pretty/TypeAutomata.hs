@@ -24,11 +24,11 @@ instance PrettyAnn XtorLabel where
     prettyAnn labelName <> prettyArity labelArity
 
 instance PrettyAnn NodeLabel where
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns tps refDat refCodat) =
+  prettyAnn (MkPrimitiveNodeLabel _ tp) = prettyAnn tp
+  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) =
     intercalateX ";" (catMaybes [printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
                                 , printNominal tns
-                                , printPrimitives tps
                                 , printRefDat refDat
                                 , printRefCodat refCodat])
     where
@@ -37,9 +37,6 @@ instance PrettyAnn NodeLabel where
       printNominal tnSet = case S.toList tnSet of
         [] -> Nothing
         tns -> Just (intercalateX ";" ((\(tn, _) -> prettyAnn tn) <$> tns))
-      printPrimitives tpSet = case S.toList tpSet of
-        [] -> Nothing
-        tps -> Just (intercalateX ";" (prettyAnn <$> tps))
       printRefDat refDat = case M.toList refDat of
         [] -> Nothing
         refTns -> Just $ intercalateX "; " $ (\(key, content) -> angles $ mempty <+>
@@ -67,7 +64,7 @@ typeAutParams :: Bool -> GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabe
 typeAutParams showId = defaultParams
   { fmtNode = \(n,nl) ->
     [ style filled
-    , fillColor $ case nl_pol nl of {Pos -> White; Neg -> Gray}
+    , fillColor $ case getPolarityNL nl of {Pos -> White; Neg -> Gray}
     , textLabel (pack ((if showId then show n <> ": " else "") <> ppPrintString (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@EdgeSymbol {} -> regularEdgeStyle el

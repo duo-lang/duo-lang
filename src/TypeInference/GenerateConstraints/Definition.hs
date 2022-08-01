@@ -7,7 +7,8 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
-  , freshTVarsForInstance
+  , paramsMap
+  , createMethodSubst
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -29,8 +30,7 @@ module TypeInference.GenerateConstraints.Definition
   , translateXtorSigUpper
   , translateTypeUpper
   , translateXtorSigLower
-  , translateTypeLower
-  ) where
+  , translateTypeLower) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -125,42 +125,45 @@ freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([Var
 freshTVarsForTypeParams rep decl = 
   let MkPolyKind { kindArgs } = data_kind decl
       tn = data_name decl
-  in freshTVarsForTypeParams' rep kindArgs (Left tn)
-
-freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> (Typ Pos, Typ Neg) -> GenM ([VariantType pol], Bisubstitution SkolemVT)
-freshTVarsForInstance rep decl typ = 
-  let kindArgs = classdecl_kinds decl
-      cn = classdecl_name decl
   in do
-    (args, tyParams) <- freshTVarsForTypeParams' rep kindArgs (Right cn)
-    return (args, substituteInstanceType (head kindArgs) typ tyParams)
-
-
-freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution SkolemVT)
-freshTVarsForTypeParams' rep kindArgs tn = do
-  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
-  let map = paramsMap kindArgs vars
-  case rep of
-    PosRep -> pure (varTypes, map)
-    NegRep -> pure (varTypes, map)
+    (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    let map = paramsMap kindArgs vars
+    case rep of
+      PosRep -> pure (varTypes, map)
+      NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  Either RnTypeName ClassName -> [(SkolemTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars :: RnTypeName -> [(SkolemTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar ((case tn of Left tn -> TypeParameter tn; Right cn -> TypeClassInstance cn) tv)
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv)
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-   paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution SkolemVT
-   paramsMap kindArgs freshVars =
-     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+createMethodSubst :: Loc -> ClassDeclaration -> GenM (Bisubstitution SkolemVT)
+createMethodSubst loc decl = 
+  let kindArgs = classdecl_kinds decl
+      cn = classdecl_name decl
+  in do
+    vars <- freshTVars cn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    pure $ paramsMap kindArgs vars
+   where
+   freshTVars ::  ClassName -> [(SkolemTVar, Variance)] -> GenM [(Typ Pos, Typ Neg)]
+   freshTVars _ [] = pure []
+   freshTVars cn ((tv,variance) : vs) = do
+    vs' <- freshTVars cn vs
+    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv)
+    addConstraint $ case variance of
+       Covariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
+       Contravariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
+    pure ((tyPos, tyNeg) : vs')
 
-substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution SkolemVT -> Bisubstitution SkolemVT
-substituteInstanceType (_,tv,_) instanceType (MkBisubstitution subst) = MkBisubstitution $! M.adjust (const instanceType) tv subst
+paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution SkolemVT
+paramsMap kindArgs freshVars =
+  MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
