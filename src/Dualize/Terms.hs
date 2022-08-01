@@ -9,7 +9,7 @@ import Syntax.Common
 import Syntax.Common.TypesPol
 import Utils
 
-data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String
+data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String | DualMethod Loc String
   deriving Show
 
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
@@ -35,7 +35,7 @@ dualCmd (Apply _ annot kind prd cns) = do
 dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
-dualCmd (Method loc _ _ _) = Left $ DualPrint loc "Cannot dualize type class method"
+dualCmd (Method loc _ _ _) = Left $ DualMethod loc "Cannot dualize type class method"
 dualCmd (PrimOp loc _ op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
 dualCmd (ExitSuccess _) = return $ ExitSuccess defaultLoc
 dualCmd (ExitFailure _) = return $ ExitFailure defaultLoc
