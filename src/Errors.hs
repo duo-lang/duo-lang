@@ -25,6 +25,12 @@ data ResolutionError where
   UnionInNegPolarity :: Loc -> ResolutionError
   -- Operator errors
   UnknownOperator :: Loc -> Text -> ResolutionError
+  MethodArityMismatch :: Loc
+                      -> MethodName
+                      -> ClassName
+                      -> Int
+                      -> Int
+                      -> ResolutionError
   XtorArityMismatch :: Loc
                     -> XtorName
                     -> Int
@@ -48,6 +54,7 @@ instance HasLoc ResolutionError where
   getLoc (IntersectionInPosPolarity loc) = loc
   getLoc (UnionInNegPolarity loc) = loc
   getLoc (UnknownOperator loc _) = loc
+  getLoc (MethodArityMismatch loc _ _ _ _) = loc
   getLoc (XtorArityMismatch loc _ _ _) = loc
   getLoc (UndefinedPrimOp loc _) = loc
   getLoc (PrimOpArityMismatch loc _ _ _) = loc
@@ -62,6 +69,7 @@ instance AttachLoc ResolutionError where
   attachLoc loc (UnionInNegPolarity _) = UnionInNegPolarity loc
   attachLoc loc (UnknownOperator _ op) = UnknownOperator loc op
   attachLoc loc (XtorArityMismatch _ xt i1 i2) = XtorArityMismatch loc xt i1 i2
+  attachLoc loc (MethodArityMismatch _ mt ct i1 i2) = MethodArityMismatch loc mt ct i1 i2
   attachLoc loc (UndefinedPrimOp _ op) = UndefinedPrimOp loc op
   attachLoc loc (PrimOpArityMismatch _ po i1 i2) = PrimOpArityMismatch loc po i1 i2
   attachLoc loc (CmdExpected _ t) = CmdExpected loc t

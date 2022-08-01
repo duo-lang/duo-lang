@@ -49,6 +49,13 @@ instance PrettyAnn ResolutionError where
          , "  Specified Arity:" <+> pretty ar1
          , "  Used Arity:" <+> pretty ar2
          ]
+  prettyAnn (MethodArityMismatch loc mn cn ar1 ar2) =
+    vsep  [ prettyAnn loc
+          , "Arity mismatch:"
+          , "  Type class method:" <+> prettyAnn mn <+> "from class:" <+> prettyAnn cn
+          , "  Specified Arity:" <+> pretty ar1
+          , "  Used Arity:" <+> pretty ar2
+          ]
   prettyAnn (UndefinedPrimOp loc (pt, op)) = 
     prettyAnn loc <+> "Undefined primitive operator" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
   prettyAnn (PrimOpArityMismatch loc (pt, op) ar1 ar2) =
@@ -183,6 +190,8 @@ instance ToReport ResolutionError where
   toReport e@(UnknownOperator loc _op) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(XtorArityMismatch loc _ _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(MethodArityMismatch loc _ _ _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(UndefinedPrimOp loc _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []

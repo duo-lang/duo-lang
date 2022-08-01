@@ -19,8 +19,7 @@ import Errors
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [ ("examples/TypeClasses.duo", "Backend not implemented for type classes")
-               ]
+pendingFiles = []
 
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed

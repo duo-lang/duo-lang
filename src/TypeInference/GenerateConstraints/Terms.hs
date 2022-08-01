@@ -19,6 +19,7 @@ import TypeInference.Constraints
 import Utils
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
+import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -231,6 +232,17 @@ genConstraintsCommand (Core.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
   _ <- lookupCommand loc fv
   return (TST.Jump loc fv)
+genConstraintsCommand (Core.Method loc mn cn subst) = do
+  decl <- lookupClassDecl loc cn
+    -- fresh type var and subsitution for type class variable(s)
+  tyParamsMap <- createMethodSubst loc decl
+  negTypes <- lookupMethodType loc mn decl NegRep
+  let negTypes' = zonk SkolemRep tyParamsMap negTypes
+  -- infer arg types
+  substInferred <- genConstraintsSubst subst
+  let substTypes = TST.getTypArgs substInferred
+  genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
+  return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd
@@ -260,7 +272,7 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We check that all implementations belong to the same type class.
   checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
-  (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
+  let tyParamsMap = paramsMap (classdecl_kinds decl) [instancedecl_typ]
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
