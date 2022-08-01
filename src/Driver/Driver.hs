@@ -48,6 +48,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
+import qualified Data.Set as S
 
 
 checkAnnot :: PolarityRep pol
@@ -83,7 +84,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let genFun = case pcdecl_isRec of
         Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         NonRecursive -> genConstraintsTerm pcdecl_term
-  (tmInferred, constraintSet) <- liftEitherErrLoc pcdecl_loc $ runGenM env genFun
+  (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
@@ -134,7 +135,7 @@ inferCommandDeclaration :: ModuleName
 inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErrLoc cmddecl_loc $ runGenM env (genConstraintsCommand cmddecl_cmd)
+  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraintsCommand cmddecl_cmd))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -155,14 +156,14 @@ inferInstanceDeclaration :: ModuleName
 inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (instanceInferred,constraints) <- liftEitherErrLoc instancedecl_loc $ runGenM env (genConstraintsInstance decl)
+  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraintsInstance decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { instanceEnv = M.insert instancedecl_name instancedecl_typ (instanceEnv env)}
+  let f env = env { instanceEnv = M.adjust (S.insert instancedecl_typ) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
@@ -170,7 +171,8 @@ inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
                       -> DriverM RST.ClassDeclaration
 inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
-  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)}
+  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)
+                  , instanceEnv = M.insert classdecl_name S.empty (instanceEnv env) }
   modifyEnvironment mn f
   pure decl
 

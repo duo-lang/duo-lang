@@ -136,6 +136,8 @@ openCommandComplete (RST.Read loc cns) =
   RST.Read loc (openTermComplete cns)
 openCommandComplete (RST.Jump loc fv) =
   RST.Jump loc fv
+openCommandComplete (RST.Method loc mn cn subst) =
+  RST.Method loc mn cn (openPCTermComplete <$> subst)
 openCommandComplete (RST.ExitSuccess loc) =
   RST.ExitSuccess loc
 openCommandComplete (RST.ExitFailure loc) =
@@ -235,6 +237,9 @@ createNamesCommand (RST.ExitFailure loc) =
   pure $ RST.ExitFailure loc
 createNamesCommand (RST.Jump loc fv) =
   pure $ RST.Jump loc fv
+createNamesCommand (RST.Method loc mn cn subst) = do
+  subst' <- sequence $ createNamesPCTerm <$> subst
+  pure $ RST.Method loc mn cn subst'
 createNamesCommand (RST.Apply loc prd cns) = do
   prd' <- createNamesTerm prd
   cns' <- createNamesTerm cns
@@ -378,6 +383,8 @@ embedCommand (RST.Read loc cns) =
   CST.PrimCmdTerm $ CST.Read loc (embedTerm cns)
 embedCommand (RST.Jump loc fv) =
   CST.Var loc fv
+embedCommand (RST.Method loc mn _cn subst) =
+  CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.ToSTerm <$> embedSubst subst)
 embedCommand (RST.ExitSuccess loc) =
   CST.PrimCmdTerm $ CST.ExitSuccess loc
 embedCommand (RST.ExitFailure loc) =

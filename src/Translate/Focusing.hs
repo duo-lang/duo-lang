@@ -56,6 +56,13 @@ isFocusedTerm eo (MuAbs loc _annot pc ty v cmd) =
 isFocusedTerm _  lit@PrimLitI64{} = Just lit
 isFocusedTerm _  lit@PrimLitF64{} = Just lit
 
+isFocusedPCTerm :: EvaluationOrder -> PrdCnsTerm -> Maybe PrdCnsTerm
+isFocusedPCTerm eo (PrdTerm tm) = PrdTerm <$> isFocusedTerm eo tm
+isFocusedPCTerm eo (CnsTerm tm) = CnsTerm <$> isFocusedTerm eo tm
+
+isFocusedSubst :: EvaluationOrder -> Substitution -> Maybe Substitution
+isFocusedSubst eo subst = sequence (isFocusedPCTerm eo <$> subst)
+
 isFocusedCmdCase :: EvaluationOrder -> CmdCase -> Maybe CmdCase
 isFocusedCmdCase eo (MkCmdCase loc pat cmd) = MkCmdCase loc pat <$> isFocusedCmd eo cmd
 
@@ -65,6 +72,7 @@ isFocusedCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (Jus
 isFocusedCmd _  (ExitSuccess loc)          = Just (ExitSuccess loc)
 isFocusedCmd _  (ExitFailure loc)          = Just (ExitFailure loc)
 isFocusedCmd _  (Jump loc fv)              = Just (Jump loc fv)
+isFocusedCmd eo (Method loc mn cn subst)   = Method loc mn cn <$> isFocusedSubst eo subst
 isFocusedCmd eo (Print loc prd cmd)        = Print loc <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read loc cns)             = Read loc <$> isValueTerm eo CnsRep cns
 isFocusedCmd eo (PrimOp loc pt op subst)   = PrimOp loc pt op <$> isValueSubst eo subst
@@ -134,6 +142,9 @@ focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty 
 focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
 focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d
 
+focusPrdCnsTerm :: EvaluationOrder -> PrdCnsTerm -> PrdCnsTerm
+focusPrdCnsTerm eo (PrdTerm tm) = PrdTerm $ focusTerm eo tm
+focusPrdCnsTerm eo (CnsTerm tm) = CnsTerm $ focusTerm eo tm
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
@@ -216,6 +227,7 @@ focusCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (Just (C
 focusCmd _  (ExitSuccess loc) = ExitSuccess loc
 focusCmd _  (ExitFailure loc) = ExitFailure loc
 focusCmd _  (Jump loc fv) = Jump loc fv
+focusCmd eo (Method loc mn cn subst) = Method loc mn cn (focusPrdCnsTerm eo <$> subst)
 focusCmd eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focusCmd eo cmd)
 focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (focusTerm eo prd)
                                                              (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focusCmd eo cmd)))
