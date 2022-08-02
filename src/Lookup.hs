@@ -90,23 +90,23 @@ lookupCommand loc fv = do
 
 -- | Find the type declaration belonging to a given Xtor Name.
 lookupDataDecl :: EnvReader a m
-               => Loc -> XtorName -> m DataDecl
+               => Loc -> XtorName -> m RST.DataDecl
 lookupDataDecl loc xt = do
   let containsXtor :: XtorSig Pos -> Bool
       containsXtor sig = sig_name sig == xt
-  let typeContainsXtor :: DataDecl -> Bool
-      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
-                                                  | otherwise = False
+  let typeContainsXtor :: RST.DataDecl -> Bool
+      typeContainsXtor RST.NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
+                                                      | otherwise = False
   let err = ErrOther $ SomeOtherError loc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
   let f env = find typeContainsXtor (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
 -- | Find the type declaration belonging to a given TypeName.
 lookupTypeName :: EnvReader a m
-               => Loc -> RnTypeName -> m DataDecl
+               => Loc -> RnTypeName -> m RST.DataDecl
 lookupTypeName loc tn = do
   let err = ErrOther $ SomeOtherError loc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
-  let f env = find (\NominalDecl{..} -> data_name == tn) (fmap snd (declEnv env))
+  let f env = find (\RST.NominalDecl{..} -> data_name == tn) (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
 -- | Find the XtorSig belonging to a given XtorName.
@@ -114,14 +114,14 @@ lookupXtorSig :: EnvReader a m
               => Loc -> XtorName -> PolarityRep pol -> m (XtorSig pol)
 lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (data_xtors decl)) of
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (RST.data_xtors decl)) of
     Just xts -> return xts
-    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
+  case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
     Just xts -> return xts
-    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 
 -- | Find the class declaration for a classname.
 lookupClassDecl :: EnvReader a m

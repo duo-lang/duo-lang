@@ -5,7 +5,7 @@ import Syntax.Common
 import Syntax.TST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesPol ( DataDecl, TopAnnot, Typ )
+import Syntax.Common.TypesPol ( TopAnnot, Typ )
 import Utils ( Loc )
 
 
@@ -78,7 +78,7 @@ deriving instance Show InstanceDeclaration
 data Declaration where
   PrdCnsDecl     :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
   CmdDecl        :: CommandDeclaration                   -> Declaration
-  DataDecl       :: DataDecl                             -> Declaration
+  DataDecl       :: RST.DataDecl                         -> Declaration
   XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
   ImportDecl     :: CST.ImportDeclaration                -> Declaration
   SetDecl        :: CST.SetDeclaration                   -> Declaration

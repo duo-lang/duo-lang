@@ -3,7 +3,7 @@ module Syntax.RST.Program where
 
 import Syntax.Common
 import Syntax.RST.Terms( Command, Term, InstanceCase )
-import Syntax.Common.TypesPol ( TypeScheme, DataDecl, Typ, MethodSig )
+import Syntax.Common.TypesPol ( TypeScheme, Typ, MethodSig, XtorSig)
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
 
@@ -154,6 +154,30 @@ data ClassDeclaration = MkClassDeclaration
   }
 
 deriving instance Show ClassDeclaration
+
+------------------------------------------------------------------------------
+-- Data Type declarations
+------------------------------------------------------------------------------
+
+-- | A toplevel declaration of a data or codata type.
+data DataDecl = NominalDecl
+  { data_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , data_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , data_refined :: IsRefined
+    -- ^ Whether an ordinary or a refinement type is declared.
+  , data_name :: RnTypeName
+    -- ^ The name of the type. E.g. "List".
+  , data_polarity :: DataCodata
+    -- ^ Whether a data or codata type is declared.
+  , data_kind :: PolyKind
+    -- ^ The kind of the type constructor.
+  , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
+    -- The constructors/destructors of the declaration.
+  }
+
+deriving instance Show DataDecl
 
 ---------------------------------------------------------------------------------
 -- Declarations

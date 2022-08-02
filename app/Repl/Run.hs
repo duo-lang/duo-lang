@@ -36,8 +36,8 @@ import Repl.Repl
 import Driver.Definition
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.Common.TypesPol ( DataDecl(data_name))
 import Syntax.Common
+import Syntax.RST.Program qualified as RST
 
 ------------------------------------------------------------------------------
 -- Options
@@ -130,7 +130,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
       let keys = concat [ unFreeVarName <$> M.keys concatPrdEnv
                         , unFreeVarName <$> M.keys concatCnsEnv
                         , unFreeVarName <$> M.keys concatCmdEnv
-                        , (unTypeName . rnTnName . data_name . snd) <$> concatDeclEnv
+                        , (unTypeName . rnTnName . RST.data_name . snd) <$> concatDeclEnv
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion
