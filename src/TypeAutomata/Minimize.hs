@@ -2,17 +2,45 @@ module TypeAutomata.Minimize ( minimize ) where
 
 import Data.Graph.Inductive.Graph
 import Data.List (intersect, (\\), delete, partition)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 
 import Data.Set (Set)
 import Data.Set qualified as S
 import qualified Data.Map as M
 
 import TypeAutomata.Definition
+import Syntax.Common (RnTypeName, PrimitiveType, Polarity, Variance)
 
 
 getAlphabet :: TypeGr -> [EdgeLabelNormal]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
+
+data Alphabet where
+  AData         :: Polarity -> XtorLabel                   -> Alphabet
+  ACodata       :: Polarity -> XtorLabel                   -> Alphabet
+  ANominal      :: Polarity -> (RnTypeName, [Variance])    -> Alphabet
+  ARefinementD  :: Polarity -> (RnTypeName, Set XtorLabel) -> Alphabet
+  ARefinementCD :: Polarity -> (RnTypeName, Set XtorLabel) -> Alphabet
+  APrimitive    :: Polarity -> PrimitiveType               -> Alphabet
+    deriving Eq
+
+getLabels :: TypeGr -> [Alphabet]
+getLabels gr = nub $ concat $ catMaybes allLabels
+  where
+    ns = nodes gr
+    
+    allLabels :: [Maybe [Alphabet]]
+    allLabels = fmap labelToAlphabet . lab gr <$> ns
+
+    labelToAlphabet :: NodeLabel -> [Alphabet]
+    labelToAlphabet MkNodeLabel {..} =
+        let aData      = maybe [] (S.toList . fmap (AData nl_pol))   nl_data
+            aCodata    = maybe [] (S.toList . fmap (ACodata nl_pol)) nl_codata
+            aNominal   = S.toList $ fmap (ANominal nl_pol) nl_nominal
+            aRefData   = ARefinementD  nl_pol <$> M.toList nl_ref_data
+            aRefCodata = ARefinementCD nl_pol <$> M.toList nl_ref_codata
+        in aData ++ aCodata ++ aNominal ++ aRefData ++ aRefCodata
+    labelToAlphabet MkPrimitiveNodeLabel {..} = [ APrimitive pl_pol pl_prim ]
 
 -- find all predecessors with connecting edge labelled by specified label
 predsWith' :: TypeGr -> [Node] -> EdgeLabelNormal -> [Node]
