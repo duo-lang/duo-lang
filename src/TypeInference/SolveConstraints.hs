@@ -5,7 +5,7 @@ module TypeInference.SolveConstraints
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List (find)
+import Data.Foldable (find)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -72,17 +72,21 @@ getBounds uv = do
 
 addUpperBound :: UniTVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs kind) -> VariableState (ty:ubs) lbs kind)uv
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: UniTVar -> Syntax.Common.TypesPol.Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs kind) -> VariableState ubs (ty:lbs) kind) uv
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
+
+addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
+addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
+
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -101,6 +105,10 @@ solve (cs:css) = do
       (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
+      (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
+        addTypeClassConstraint uv cn
+      (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
+        addTypeClassConstraint uv cn
       _ -> do
         subCss <- subConstraints cs
         solve (subCss ++ css))
@@ -239,8 +247,10 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t1
                               , "by type"
                               , "    " <> ppPrint t2 ]
-subConstraints (TypeClass _ _cn _typ) = do
-  throwSolverError defaultLoc ["Solver for type class constraints not implemented yet."]
+-- subConstraints for type classes are deprecated
+-- type class constraints should only be resolved after subtype constraints
+subConstraints (TypeClassPos _ _cn _typ) = pure []
+subConstraints (TypeClassNeg _ _cn _tyn) = pure []
 
 ------------------------------------------------------------------------------
 -- Exported Function

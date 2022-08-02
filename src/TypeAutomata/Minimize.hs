@@ -53,7 +53,7 @@ genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
-minimize aut@TypeAut {ta_core} = removeRedundantEdgesAut aut'
+minimize aut@TypeAut {ta_core} = aut'
   where
     ta_core' = removeRedundantEdgesCore ta_core
     fun = genMinimizeFun ta_core'

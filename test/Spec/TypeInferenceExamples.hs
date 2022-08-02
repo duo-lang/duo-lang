@@ -12,26 +12,24 @@ import Errors
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
-pendingFiles = [ ("examples/TypeClasses.duo", "Backend not implemented for type classes")
+pendingFiles = [ ("test/counterexamples/CE_053.duo", "Constraint Solver for type class methods not implemented yet.")
                ]
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
-spec :: [(FilePath, Either (NonEmpty Error) TST.Program)] -- ^ examples
-     -> [(FilePath, Either (NonEmpty Error) CST.Program)]
+spec :: [(FilePath, Either (NonEmpty Error) CST.Program)]
      -> [(FilePath, Either (NonEmpty Error) TST.Program)]
      -> Spec
-spec examples counterExamplesParsed counterExamplesChecked = do
-  describe "All the programs in the toplevel \"examples/\" folder typecheck." $ do
-    forM_ examples $ \(example, prog) -> do
-      case example `lookup` pendingFiles of
-         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
-         Nothing     -> it ("The file " ++ example ++ " typechecks.") $ prog `shouldSatisfy` isRight
+spec counterExamplesParsed counterExamplesChecked = do
   describe "All the programs in the \"test/counterexamples/\" folder can be parsed." $ do
     forM_ counterExamplesParsed $ \(example, prog) -> do
-      describe ("The counterexample " ++ example ++ " can be parsed") $ do
-        it "Can be parsed" $ prog `shouldSatisfy` isRight
+      case example `lookup` pendingFiles of
+        Just reason -> it "" $ pendingWith $ "Could not parse file " ++ example ++ "\nReason: " ++ reason
+        Nothing     -> describe ("The counterexample " ++ example ++ " can be parsed") $ do
+          it "Can be parsed" $ prog `shouldSatisfy` isRight
 
   describe "All the programs in the \"test/counterexamples/\" folder don't typecheck." $ do
     forM_ counterExamplesChecked $ \(example,prog) -> do
-      describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
-        it "Doesn't typecheck" $  prog `shouldSatisfy` isLeft
+      case example `lookup` pendingFiles of
+        Just reason -> it "" $ pendingWith $ "Could not typecheck file " ++ example ++ "\nReason: " ++ reason
+        Nothing     -> describe ("The counterexample " ++ example ++ " doesn't typecheck.") $ do
+          it "Doesn't typecheck" $  prog `shouldSatisfy` isLeft

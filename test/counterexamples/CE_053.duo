@@ -1,10 +1,4 @@
--- Regression test for #359
--- We do not allow refinement types which refer to other nominal types.
-
-data Nat { Z, S(Nat) };
-
-refinement codata Point {
-  X(return Nat),
-  Y(return Nat),
-  Clone(return Point)
-};
+-- no instance definition for nominal type
+import Bool;
+class Foo(+a : CBV){ Foo(a) };
+def cmd main := Foo(True);

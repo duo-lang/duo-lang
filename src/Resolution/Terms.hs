@@ -245,14 +245,21 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
     ImplicitCases rep implicitCases -> do
       termCasesI <- sequence $ resolveTermCaseI rep <$> implicitCases
       pure $ RST.CocaseOfI loc rep ns tm' termCasesI
+resolveCommand (CST.Xtor loc xtor arity) = do
+  (_, res) <- lookupXtor loc xtor
+  case res of
+    (XtorNameResult _dc _ns _ar) -> throwError $ ErrResolution (CmdExpected loc "Method (Command) expected, but found Xtor") :| []
+    (MethodNameResult cn ar) -> do
+      let mn = MkMethodName $ unXtorName xtor
+      analyzedSubst <- analyzeMethodSubstitution loc mn cn ar arity
+      subst' <- case analyzedSubst of
+          ExplicitSubst es -> return (map snd es)
+          ImplicitSubst {} ->  throwOtherError loc ["The substitution in a method call cannot contain implicit arguments"]
+      pctms <- resolveTerms loc ar subst'
+      pure $! RST.Method loc mn cn pctms
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
-resolveCommand (CST.Xtor loc xtor _arity) = do
-  (_, res) <- lookupXtor loc xtor
-  case res of
-    (XtorNameResult _dc _ns _ar) -> throwError $ ErrResolution (CmdExpected loc "Command expected, but found Xtor") :| []
-    (MethodNameResult _cn _ar) -> throwOtherError loc ["Method calls not implemented yet"]
 resolveCommand (CST.Semi loc _ _ _) =
   throwError $ ErrResolution (CmdExpected loc "Command expected, but found Semi") :| []
 resolveCommand (CST.Dtor loc _ _ _) =
@@ -319,11 +326,8 @@ data AnalyzedSubstitution where
   ExplicitSubst :: [(PrdCns, CST.Term)] -> AnalyzedSubstitution
   ImplicitSubst :: [(PrdCns, CST.Term)] -> PrdCns -> [(PrdCns, CST.Term)] -> AnalyzedSubstitution
 
-analyzeSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
-analyzeSubstitution loc xtor arity subst = do
-  -- Check whether the arity corresponds to the length of the substitution
-  when (length arity /= length subst) $
-    throwError $ ErrResolution (XtorArityMismatch loc xtor (length arity) (length subst)) :| []
+analyzeSubstitution :: Loc -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
+analyzeSubstitution loc arity subst = do
   -- Dispatch on the number of stars in the substitution
   case length (filter isStarT subst) of
     0 -> pure $ ExplicitSubst (zip arity (toTm <$> subst))
@@ -333,6 +337,20 @@ analyzeSubstitution loc xtor arity subst = do
         (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
         _ -> throwOtherError loc ["Compiler bug in analyzeSubstitution"]
     n -> throwOtherError loc ["At most one star expected. Got " <> T.pack (show n) <> " stars."]
+
+analyzeXtorSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
+analyzeXtorSubstitution loc xtor arity subst = do
+  -- Check whether the arity corresponds to the length of the substitution
+  when (length arity /= length subst) $
+    throwError $ ErrResolution (XtorArityMismatch loc xtor (length arity) (length subst)) :| []
+  analyzeSubstitution loc arity subst
+
+analyzeMethodSubstitution :: Loc -> MethodName -> ClassName -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
+analyzeMethodSubstitution loc mn cn arity subst = do
+  -- Check whether the arity corresponds to the length of the substitution
+  when (length arity /= length subst) $
+    throwError $ ErrResolution (MethodArityMismatch loc mn cn (length arity) (length subst)) :| []
+  analyzeSubstitution loc arity subst
 
 resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
 resolvePrdCnsTerm Prd tm = RST.PrdTerm <$> resolveTerm PrdRep tm
@@ -363,7 +381,7 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
                throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
       when (dc /= Data) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor."]
-      analyzedSubst <- analyzeSubstitution loc xtor ar subst
+      analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
       subst' <- case analyzedSubst of
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a constructor call cannot contain implicit arguments"]
@@ -378,7 +396,7 @@ resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
                throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
       when (dc /= Codata) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor."]
-      analyzedSubst <- analyzeSubstitution loc xtor ar subst
+      analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
       subst' <- case analyzedSubst of
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a constructor call cannot contain implicit arguments"]
@@ -393,7 +411,7 @@ resolveTerm rep (CST.Semi loc xtor subst tm) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (dc /= Data) $
            throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor."]
-  analyzedSubst <- analyzeSubstitution loc xtor ar subst
+  analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
   case analyzedSubst of
     ExplicitSubst _explicitSubst -> do
       throwOtherError loc ["The substitution in a Semi must contain at least one implicit argument"]
@@ -418,7 +436,7 @@ resolveTerm rep (CST.Dtor loc xtor tm subst) = do
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
   when (dc /= Codata) $
            throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor."]
-  analyzedSubst <- analyzeSubstitution loc xtor ar subst
+  analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
   case analyzedSubst of
     ExplicitSubst _explicitSubst -> do
       throwOtherError loc ["The substitution in a dtor must contain at least one implicit argument"]

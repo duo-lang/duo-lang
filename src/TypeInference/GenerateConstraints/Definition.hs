@@ -7,7 +7,8 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
-  , freshTVarsForInstance
+  , paramsMap
+  , createMethodSubst
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -29,12 +30,12 @@ module TypeInference.GenerateConstraints.Definition
   , translateXtorSigUpper
   , translateTypeUpper
   , translateXtorSigLower
-  , translateTypeLower
-  ) where
+  , translateTypeLower) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Writer
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map ( Map )
 import Data.Map qualified as M
@@ -43,9 +44,6 @@ import Data.Text qualified as T
 import Driver.Environment
 import Errors
 import Lookup
-import Pretty.Pretty
-import Pretty.Terms ()
-import Pretty.Types ()
 import Syntax.Common.TypesPol
 import Syntax.Common
 import Syntax.RST.Program as RST
@@ -78,23 +76,24 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 -- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
-newtype GenerateReader = GenerateReader { context :: [LinearContext Pos]
+data GenerateReader = GenerateReader { context :: [LinearContext Pos]
+                                     , location :: Loc
                                      }
 
-initialReader :: Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
-initialReader env = (env, GenerateReader { context = [] })
+initialReader :: Loc -> Map ModuleName Environment -> (Map ModuleName Environment, GenerateReader)
+initialReader loc env = (env, GenerateReader { context = [], location = loc })
 
 ---------------------------------------------------------------------------------------------
 -- GenM
 ---------------------------------------------------------------------------------------------
 
-newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except (NonEmpty Error))) a }
+newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (ExceptT (NonEmpty Error) (Writer [Warning]))) a }
   deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
-runGenM :: Map ModuleName Environment -> GenM a -> Either (NonEmpty Error) (a, ConstraintSet)
-runGenM env m = case runExcept (runStateT (runReaderT  (getGenM m) (initialReader env)) initialState) of
-  Left err -> Left err
-  Right (x, state) -> Right (x, constraintSet state)
+runGenM :: Loc -> Map ModuleName Environment -> GenM a -> (Either (NonEmpty Error) (a, ConstraintSet), [Warning])
+runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState)) of
+  (Left err, warns) -> (Left err, warns)
+  (Right (x, state),warns) -> (Right (x, constraintSet state), warns)
 
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
@@ -126,42 +125,45 @@ freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([Var
 freshTVarsForTypeParams rep decl = 
   let MkPolyKind { kindArgs } = data_kind decl
       tn = data_name decl
-  in freshTVarsForTypeParams' rep kindArgs (Left tn)
-
-freshTVarsForInstance :: forall pol. PolarityRep pol -> ClassDeclaration -> (Typ Pos, Typ Neg) -> GenM ([VariantType pol], Bisubstitution SkolemVT)
-freshTVarsForInstance rep decl typ = 
-  let kindArgs = classdecl_kinds decl
-      cn = classdecl_name decl
   in do
-    (args, tyParams) <- freshTVarsForTypeParams' rep kindArgs (Right cn)
-    return (args, substituteInstanceType (head kindArgs) typ tyParams)
-
-
-freshTVarsForTypeParams' :: forall pol. PolarityRep pol -> [(Variance, SkolemTVar, MonoKind)] -> Either RnTypeName ClassName -> GenM ([VariantType pol], Bisubstitution SkolemVT)
-freshTVarsForTypeParams' rep kindArgs tn = do
-  (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
-  let map = paramsMap kindArgs vars
-  case rep of
-    PosRep -> pure (varTypes, map)
-    NegRep -> pure (varTypes, map)
+    (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    let map = paramsMap kindArgs vars
+    case rep of
+      PosRep -> pure (varTypes, map)
+      NegRep -> pure (varTypes, map)
   where
-   freshTVars ::  Either RnTypeName ClassName -> [(SkolemTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
+   freshTVars :: RnTypeName -> [(SkolemTVar, Variance)] -> GenM ([VariantType pol],[(Typ Pos, Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar ((case tn of Left tn -> TypeParameter tn; Right cn -> TypeClassInstance cn) tv)
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv)
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, PosRep) -> pure (ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-   paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution SkolemVT
-   paramsMap kindArgs freshVars =
-     MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+createMethodSubst :: Loc -> ClassDeclaration -> GenM (Bisubstitution SkolemVT)
+createMethodSubst loc decl = 
+  let kindArgs = classdecl_kinds decl
+      cn = classdecl_name decl
+  in do
+    vars <- freshTVars cn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    pure $ paramsMap kindArgs vars
+   where
+   freshTVars ::  ClassName -> [(SkolemTVar, Variance)] -> GenM [(Typ Pos, Typ Neg)]
+   freshTVars _ [] = pure []
+   freshTVars cn ((tv,variance) : vs) = do
+    vs' <- freshTVars cn vs
+    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv)
+    addConstraint $ case variance of
+       Covariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
+       Contravariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
+    pure ((tyPos, tyNeg) : vs')
 
-substituteInstanceType :: (Variance, SkolemTVar, MonoKind) -> (Typ Pos, Typ Neg) -> Bisubstitution SkolemVT -> Bisubstitution SkolemVT
-substituteInstanceType (_,tv,_) instanceType (MkBisubstitution subst) = MkBisubstitution $! M.adjust (const instanceType) tv subst
+paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(Typ Pos, Typ Neg)] -> Bisubstitution SkolemVT
+paramsMap kindArgs freshVars =
+  MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -175,18 +177,19 @@ withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ct
 ---------------------------------------------------------------------------------------------
 
 -- | Lookup a type of a bound variable in the context.
-lookupContext :: PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
-lookupContext rep (i,j) = do
+lookupContext :: Loc -> PrdCnsRep pc -> Index -> GenM (Typ (PrdCnsToPol pc))
+lookupContext loc rep idx@(i,j) = do
+  let rep' = case rep of PrdRep -> Prd; CnsRep -> Cns
   ctx <- asks (context . snd)
   case indexMaybe ctx i of
-    Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+    Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
     Just lctxt -> case indexMaybe lctxt j of
-      Nothing -> throwGenError defaultLoc ["Bound Variable out of bounds: ", "PrdCns: " <> T.pack (show rep),  "Index: " <> T.pack (show (i,j))]
+      Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
       Just ty -> case (rep, ty) of
         (PrdRep, PrdCnsType PrdRep ty) -> return ty
         (CnsRep, PrdCnsType CnsRep ty) -> return ty
-        (PrdRep, PrdCnsType CnsRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be PrdType, but CnsType was found."]
-        (CnsRep, PrdCnsType PrdRep _) -> throwGenError defaultLoc ["Bound Variable " <> T.pack (show (i,j)) <> " was expected to be CnsType, but PrdType was found."]
+        (PrdRep, PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
+        (CnsRep, PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
 
 
 ---------------------------------------------------------------------------------------------
@@ -263,33 +266,35 @@ fromMaybeVar (Just fv) = fv
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
-checkCorrectness :: [XtorName]
+checkCorrectness :: Loc 
+                 -> [XtorName]
                  -> DataDecl
                  -> GenM ()
-checkCorrectness matched decl = do
+checkCorrectness loc matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError defaultLoc ["Pattern Match Error. The xtor " <> ppPrint xn <> " does not occur in the declaration of type " <> ppPrint (data_name decl)])
+    (throwGenError (PatternMatchAdditional loc xn (data_name decl)))
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
-checkExhaustiveness :: [XtorName] -- ^ The xtor names used in the pattern match
+checkExhaustiveness :: Loc
+                    -> [XtorName] -- ^ The xtor names used in the pattern match
                     -> DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
-checkExhaustiveness matched decl = do
+checkExhaustiveness loc matched decl = do
   let declared = sig_name <$> fst (data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError defaultLoc ["Pattern Match Exhaustiveness Error. Xtor: " <> ppPrint xn <> " of type " <>
-                               ppPrint (data_name decl) <> " is not matched against." ])
+    (throwGenError (PatternMatchMissingXtor loc xn (data_name decl)))
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.
-checkInstanceCoverage :: RST.ClassDeclaration -- ^ The class declaration to check against.
+checkInstanceCoverage :: Loc
+                      -> RST.ClassDeclaration -- ^ The class declaration to check against.
                       -> [MethodName]         -- ^ The methods implemented in the instance.
                       -> GenM ()
-checkInstanceCoverage RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
+checkInstanceCoverage loc RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
   let classMethods = msig_name <$> fst classdecl_methods
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
-    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is declared but not implemented." ])
+    (throwGenError (InstanceImplementationMissing loc m))
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)
-    (throwGenError defaultLoc ["Instance Declaration Error. Method: " <> ppPrint m <> " is implemented but not declared." ])
+    (throwGenError (InstanceImplementationAdditional loc m))

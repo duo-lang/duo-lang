@@ -7,11 +7,7 @@ module TypeInference.GenerateConstraints.Terms
 
 import Control.Monad.Reader
 import Data.Map qualified as M
-import Data.Text qualified as T
-import Pretty.Terms ()
-import Pretty.Types ()
-import Pretty.Constraints ()
-import Pretty.Pretty ( ppPrint )
+import Errors
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.Core.Terms qualified as Core
@@ -23,6 +19,7 @@ import TypeInference.Constraints
 import Utils
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
+import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -38,12 +35,9 @@ genConstraintsSubst :: Core.Substitution
 genConstraintsSubst subst = sequence (genConstraintsPCTerm <$> subst)
 
 genConstraintsCtxts :: LinearContext Pos -> LinearContext Neg -> ConstraintInfo -> GenM ()
-genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 =
-  throwGenError defaultLoc ["genConstraintsCtxts: Linear contexts have unequal length"
-                           , "Constraint Info: " <> ppPrint info
-                           , "Pos context: " <> ppPrint ctx1
-                           , "Neg context: " <> ppPrint ctx2
-                           ]
+genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((PrdCnsType PrdRep ty1) : rest1) (PrdCnsType PrdRep ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
@@ -51,14 +45,18 @@ genConstraintsCtxts ((PrdCnsType PrdRep ty1) : rest1) (PrdCnsType PrdRep ty2 : r
 genConstraintsCtxts ((PrdCnsType CnsRep ty1) : rest1) (PrdCnsType CnsRep ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
   genConstraintsCtxts rest1 rest2 info
-genConstraintsCtxts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) info =
-  throwGenError defaultLoc ["genConstraintsCtxts: Tried to constrain PrdType by CnsType", "Constraint Info: " <> ppPrint info]
-genConstraintsCtxts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) info =
-  throwGenError defaultLoc ["genConstraintsCtxts: Tried to constrain CnsType by PrdType", "ConstraintInfo: " <> ppPrint info]
-genConstraintsCtxts [] (_:_) info =
-  throwGenError defaultLoc ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
-genConstraintsCtxts (_:_) [] info =
-  throwGenError defaultLoc ["genConstraintsCtxts: Linear contexts have unequal length.", "Constraint Info: " <> ppPrint info]
+genConstraintsCtxts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextIncompatibleTypeMode loc Prd info)
+genConstraintsCtxts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextIncompatibleTypeMode loc Cns info)
+genConstraintsCtxts ctx1@[] ctx2@(_:_) info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
+genConstraintsCtxts ctx1@(_:_) ctx2@[] info = do
+  loc <- asks (location . snd)
+  throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 
 
 ---------------------------------------------------------------------------------------------
@@ -74,7 +72,7 @@ genConstraintsTerm :: Core.Term pc
 -- Bound variables can be looked up in the context.
 --
 genConstraintsTerm (Core.BoundVar loc rep idx) = do
-  ty <- lookupContext rep idx
+  ty <- lookupContext loc rep idx
   return (TST.BoundVar loc rep ty idx)
 --
 -- Free variables:
@@ -84,7 +82,7 @@ genConstraintsTerm (Core.BoundVar loc rep idx) = do
 -- scheme has to be instantiated with fresh unification variables.
 --
 genConstraintsTerm (Core.FreeVar loc rep v) = do
-  tys <- snd <$> lookupTerm rep v
+  tys <- snd <$> lookupTerm loc rep v
   ty <- instantiateTypeScheme v loc tys
   return (TST.FreeVar loc rep ty v)
 --
@@ -104,8 +102,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Nominal xt subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   -- Secondly we look up the argument types of the xtor in the type declaration.
-  decl <- lookupDataDecl xt
-  xtorSig <- lookupXtorSig xt NegRep
+  decl <- lookupDataDecl loc xt
+  xtorSig <- lookupXtorSig loc xt NegRep
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
@@ -125,8 +123,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   let substTypes = TST.getTypArgs substInferred
   -- Secondly we look up the argument types of the xtor in the type declaration.
   -- Since we infer refinement types, we have to look up the translated xtorSig.
-  decl <- lookupDataDecl xt
-  xtorSigUpper <- translateXtorSigUpper =<< lookupXtorSig xt NegRep
+  decl <- lookupDataDecl loc xt
+  xtorSigUpper <- translateXtorSigUpper =<< lookupXtorSig loc xt NegRep
   -- Then we generate constraints between the inferred types of the substitution
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
@@ -152,24 +150,24 @@ genConstraintsTerm (Core.XCase loc annot rep Structural cases) = do
 --
 -- Nominal pattern and copattern matches
 --
-genConstraintsTerm (Core.XCase _ _ _ Nominal []) =
+genConstraintsTerm (Core.XCase loc _ _ Nominal []) =
   -- We know that empty matches cannot be parsed as nominal.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
-  throwGenError defaultLoc ["Unreachable: A nominal match needs to have at least one case."]
+  throwGenError (EmptyNominalMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
+  decl <- lookupDataDecl loc (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
-  checkCorrectness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+  checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   -- We check that all xtors in the type declaration are matched against.
-  checkExhaustiveness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+  checkExhaustiveness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
 
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc' xt args, cmdcase_cmd} -> do
                    -- We lookup the types belonging to the xtor in the type declaration.
-                   posTypes <- sig_args <$> lookupXtorSig xt PosRep
-                   negTypes <- sig_args <$> lookupXtorSig xt NegRep
+                   posTypes <- sig_args <$> lookupXtorSig loc xt PosRep
+                   negTypes <- sig_args <$> lookupXtorSig loc xt NegRep
                    -- Substitute fresh unification variables for type parameters
                    let posTypes' = zonk SkolemRep tyParamsMap posTypes
                    let negTypes' = zonk SkolemRep tyParamsMap negTypes
@@ -183,15 +181,15 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
 --
 -- Refinement pattern and copattern matches
 --
-genConstraintsTerm (Core.XCase _ _ _ Refinement []) =
+genConstraintsTerm (Core.XCase loc _ _ Refinement []) =
   -- We know that empty matches cannot be parsed as Refinement.
   -- It is therefore safe to pattern match on the head of the xtors in the other cases.
-  throwGenError defaultLoc ["Unreachable: A refinement match needs to have at least one case."]
+  throwGenError (EmptyRefinementMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
+  decl <- lookupDataDecl loc (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
   -- We check that all cases in the pattern match belong to the type declaration.
-  checkCorrectness ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+  checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
   inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
                        -- Generate positive and negative unification variables for all variables
                        -- bound in the pattern.
@@ -201,8 +199,8 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
                        -- We have to bound the unification variables with the lower and upper bounds generated
                        -- from the information in the type declaration. These lower and upper bounds correspond
                        -- to the least and greatest type translation.
-                       lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig xt PosRep)
-                       upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig xt NegRep)
+                       lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig loc xt PosRep)
+                       upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig loc xt NegRep)
                        genConstraintsCtxts lowerBound uvarsNeg (PatternMatchConstraint loc)
                        genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
                        -- For the type, we return the unification variables which are now bounded by the least
@@ -232,8 +230,19 @@ genConstraintsCommand (Core.ExitFailure loc) =
   return (TST.ExitFailure loc)
 genConstraintsCommand (Core.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
-  _ <- lookupCommand fv
+  _ <- lookupCommand loc fv
   return (TST.Jump loc fv)
+genConstraintsCommand (Core.Method loc mn cn subst) = do
+  decl <- lookupClassDecl loc cn
+    -- fresh type var and subsitution for type class variable(s)
+  tyParamsMap <- createMethodSubst loc decl
+  negTypes <- lookupMethodType loc mn decl NegRep
+  let negTypes' = zonk SkolemRep tyParamsMap negTypes
+  -- infer arg types
+  substInferred <- genConstraintsSubst subst
+  let substTypes = TST.getTypArgs substInferred
+  genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
+  return (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd
@@ -251,7 +260,7 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   case M.lookup (pt, op) primOps of
-    Nothing -> throwGenError loc [T.pack $ "Unreachable: Signature for primitive op " ++ primOpKeyword op ++ primTypeKeyword pt ++ " not defined"]
+    Nothing -> throwGenError (PrimitiveOpMissingSignature loc op pt)
     Just sig -> do
       _ <- genConstraintsCtxts substTypes sig (PrimOpArgsConstraint loc)
       return (TST.PrimOp loc pt op substInferred)
@@ -259,16 +268,16 @@ genConstraintsCommand (Core.PrimOp loc pt op subst) = do
 genConstraintsInstance :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
 genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
   -- We lookup the class declaration  of the instance.
-  decl <- lookupClassDecl instancedecl_name
+  decl <- lookupClassDecl instancedecl_loc instancedecl_name
   -- We check that all implementations belong to the same type class.
-  checkInstanceCoverage decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
+  checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
-  (_args, tyParamsMap) <- freshTVarsForInstance PosRep decl instancedecl_typ
+  let tyParamsMap = paramsMap (classdecl_kinds decl) [instancedecl_typ]
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
-                   posTypes <- lookupMethodType mn decl PosRep
-                   negTypes <- lookupMethodType mn decl NegRep
+                   posTypes <- lookupMethodType instancecase_loc mn decl PosRep
+                   negTypes <- lookupMethodType instancecase_loc mn decl NegRep
                    -- Substitute fresh unification variables for type parameters
                    let posTypes' = zonk SkolemRep tyParamsMap posTypes
                    let negTypes' = zonk SkolemRep tyParamsMap negTypes

@@ -93,6 +93,8 @@ desugarCmd (RST.Read loc cns) =
   Core.Read loc (desugarTerm cns)
 desugarCmd (RST.Jump loc fv) =
   Core.Jump loc fv
+desugarCmd (RST.Method loc mn cn subst) =
+  Core.Method loc mn cn (desugarPCTerm <$> subst)
 desugarCmd (RST.ExitSuccess loc) =
   Core.ExitSuccess loc
 desugarCmd (RST.ExitFailure loc) =
