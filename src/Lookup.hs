@@ -97,6 +97,8 @@ lookupDataDecl loc xt = do
   let typeContainsXtor :: RST.DataDecl -> Bool
       typeContainsXtor RST.NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                       | otherwise = False
+      typeContainsXtor RST.RefinementDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
+                                                         | otherwise = False                                                      
   let err = ErrOther $ SomeOtherError loc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
   let f env = find typeContainsXtor (fmap snd (declEnv env))
   snd <$> findFirstM f err
@@ -106,7 +108,9 @@ lookupTypeName :: EnvReader a m
                => Loc -> RnTypeName -> m RST.DataDecl
 lookupTypeName loc tn = do
   let err = ErrOther $ SomeOtherError loc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
-  let f env = find (\RST.NominalDecl{..} -> data_name == tn) (fmap snd (declEnv env))
+  let findFun RST.NominalDecl{..} = data_name == tn
+      findFun RST.RefinementDecl {..} = data_name == tn
+  let f env = find findFun (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
 -- | Find the XtorSig belonging to a given XtorName.

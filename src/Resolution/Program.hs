@@ -116,15 +116,21 @@ resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, d
       h r = r { rr_modules = f $ rr_modules r }
   xtors <- local h (resolveXtors data_xtors)
   -- Create the new data declaration
-  let dcl = RST.NominalDecl
-                { data_loc = data_loc
-                , data_doc = data_doc
-                , data_refined = data_refined
-                , data_name = data_name'
-                , data_polarity = data_polarity
-                , data_kind = polyKind
-                , data_xtors = xtors
-                }
+  let dcl = case data_refined of
+              NotRefined -> RST.NominalDecl { data_loc = data_loc
+                                            , data_doc = data_doc
+                                            , data_name = data_name'
+                                            , data_polarity = data_polarity
+                                            , data_kind = polyKind
+                                            , data_xtors = xtors
+                                            }
+              Refined -> RST.RefinementDecl { data_loc = data_loc
+                                            , data_doc = data_doc
+                                            , data_name = data_name'
+                                            , data_polarity = data_polarity
+                                            , data_kind = polyKind
+                                            , data_xtors = xtors
+                                            }
   pure dcl
 
 ---------------------------------------------------------------------------------
