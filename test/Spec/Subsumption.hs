@@ -28,8 +28,11 @@ subsumptionCheckPos env bspec s1 s2 = do
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
           (Right r1, Right r2) -> do
-            let Right b = subsume PosRep r1 r2
-            b `shouldBe` bspec
+            case subsume PosRep r1 r2 of
+              Right b -> b `shouldBe` bspec
+              Left err -> expectationFailure (show err)
+            
+            
 
 
 spec :: [(ModuleName, SymbolTable)] -> Spec
