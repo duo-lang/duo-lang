@@ -12,7 +12,6 @@ import Pretty.Common
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as Unpol
-import Syntax.Common.TypesPol qualified as Pol
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
@@ -39,7 +38,7 @@ instance PrettyAnn CST.DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
-instance PrettyAnn Pol.DataDecl where
+instance PrettyAnn RST.DataDecl where
   prettyAnn decl = prettyAnn (embedTyDecl decl)
 
 ---------------------------------------------------------------------------------

@@ -6,8 +6,8 @@ import Data.Set (Set)
 
 import Syntax.Common
 import Syntax.TST.Terms ( Command, Term )
-import Syntax.RST.Program ( ClassDeclaration )
-import Syntax.Common.TypesPol ( DataDecl, TypeScheme, Typ )
+import Syntax.RST.Program ( ClassDeclaration, DataDecl )
+import Syntax.Common.TypesPol ( TypeScheme, Typ )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
