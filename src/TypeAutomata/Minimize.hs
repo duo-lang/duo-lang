@@ -54,8 +54,88 @@ splitAlong preds ds x ps = do
 -- this is done by taking refining the second partition an refining it via the first one
 minimize' :: Preds -> [EdgeLabelNormal] -> [[Node]] -> [[Node]] -> [[Node]]
 minimize' _preds _alph []     ps = ps
-minimize' preds  alph  (d:ds) ps = minimize' preds alph (delete d (foldl (flip (splitAlong preds d)) (d:ds) alph))
-                                                                  (foldl (flip (splitAlong preds d)) ps     alph)
+minimize' preds  alph  (d:ds) ps =
+  let newDs = delete d (foldl (flip (splitAlong preds d)) (d:ds) alph)
+      newPs =           foldl (flip (splitAlong preds d)) ps     alph
+  in  minimize' preds alph newDs newPs
+
+-- an implementation of Hopcroft's minimisation algorithm
+-- with simplifications found in
+-- Re-describing an algorithm by Hopcroft (Timo Knuutila, 2001)
+-- the original Hopcroft
+-- 𝑄/𝜌 ← {𝐹, 𝑄 ⧵ 𝐹}
+-- 𝐿 ← {𝐹}
+-- while there exists 𝐴 ∈ 𝐿 do
+--    𝐿 ← 𝐿 ⧵ {𝐴}
+--    for each 𝑥 ∈ Σ do
+--      let 𝑋 = 𝛿−1
+--      𝑥 (𝐴)
+--      for each 𝑌 ∈ 𝑄/𝜌 s.t. (𝑌 ′ = 𝑌 ∩ 𝑋 ≠ ∅) ∧ (𝑌 ″ = 𝑌 ⧵ 𝑋 ≠ ∅) do
+--        𝑄/𝜌 ← (𝑄/𝜌 ⧵ {𝑌}) ∪ {𝑌 ′, 𝑌 ″}
+--        if 𝑌 ∈ 𝐿 then
+--          𝐿 ← (𝐿 ⧵ {𝑌}) ∪ {𝑌 ′, 𝑌 ″}
+--        else
+--          𝐿 ← 𝐿 ∪ {min(𝑌 ′, 𝑌 ″)}
+--      end
+--    end
+-- end
+--
+-- becomes the following variant (since 𝐿 ⊆ 𝑄/𝜌 is a loop invariant)
+--
+-- Let 𝑅 = 𝑄/𝜌 ⧵ 𝐿
+--  𝑅 ← {𝑄 ⧵ 𝐹}
+--  𝐿 ← {𝐹}
+--    while there exists 𝐴 ∈ 𝐿 do
+--      𝐿 ← 𝐿 ⧵ {𝐴}
+--      𝑅 ← 𝑅 ∪ {𝐴}
+--      for each 𝑥 ∈ Σ do
+--        let 𝑋 = 𝛿−1_𝑥 (𝐴)
+--        for each 𝑌 ∈ 𝑅 s.t. (𝑌 ′ = 𝑌 ∩ 𝑋 ≠ ∅) ∧ (𝑌 ″ = 𝑌 ⧵ 𝑋 ≠ ∅) do
+--          𝑅 ← (𝑅 ⧵ {𝑌}) ∪ {max(𝑌 ′, 𝑌 ″)}
+--          𝐿 ← 𝐿 ∪ {min(𝑌 ′, 𝑌 ″)}
+--        end
+--        for each 𝑌 ∈ 𝐿 s.t. (𝑌 ′ = 𝑌 ∩ 𝑋 ≠ ∅) ∧ (𝑌 ″ = 𝑌 ⧵ 𝑋 ≠ ∅) do
+--          𝐿 ← (𝐿 ⧵ {𝑌}) ∪ {𝑌 ′, 𝑌 ″}
+--      end
+--    end
+--  end
+
+type EquivalenceClass = [Node]
+
+minimize'' :: Preds -> [EdgeLabelNormal] -> [EquivalenceClass] -> [EquivalenceClass] -> [EquivalenceClass]
+minimize'' _preds _alph []     ps = ps
+minimize'' preds  alph  (l:ls) ps = minimize'' preds alph ls' ps'
+  where
+    (ps',ls') = refinePs alph (ps, ls)
+    refinePs :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
+    refinePs []       acc = acc
+    refinePs (a:alph) (ps,ls) = let pre = predsWith preds l a
+                                    (ps',ls') = refinePs' pre ps ([],ls)
+                                    ls'' = refineLs pre ls
+                                in refinePs alph (ps',ls' ++ ls'')
+
+    refinePs' :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
+    refinePs' _pre []      acc       = acc
+    refinePs' pre  (p:ps)  (ps',ls') = let (p1, p2, n1, n2) = splitPs pre p ([], [], 0, 0)
+                                           (p1', p2') = if n1 < n2 then (p1, p2) else (p2, p1)
+                                           ls''     = if null p1' then ls' else p1':ls'
+                                           ps''     = p2' : ps'
+                                      in refinePs' pre ps (ps'',ls'')
+    -- TODO: use fact this is sorted
+    splitPs :: [Node] -> EquivalenceClass -> (EquivalenceClass, EquivalenceClass, Int, Int) -> (EquivalenceClass, EquivalenceClass, Int, Int)
+    splitPs pre [] acc                           = acc
+    splitPs pre (p:ps) (inter,diff,ninter,ndiff) = let acc = if p `elem` pre
+                                                             then (p:inter, diff  , ninter+1, ndiff)
+                                                             else (inter  , p:diff, ninter  , ndiff+1)
+                                                   in  splitPs pre ps acc
+
+    refineLs :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
+    refineLs _pre [] = []
+    refineLs pre (l:ls) = splitLs pre l ++ refineLs pre ls
+
+    splitLs :: [Node] -> EquivalenceClass -> [EquivalenceClass]
+    splitLs pre l = let (l1,l2) = (l `intersect` pre, l \\ pre)
+                    in if null l1 || null l2 then [l] else [l1, l2]
 
 -- partition list by equivalence (given as a function)
 myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
