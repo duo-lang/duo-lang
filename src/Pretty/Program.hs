@@ -12,7 +12,6 @@ import Pretty.Common
 import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as Unpol
-import Syntax.Common.TypesPol qualified as Pol
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
@@ -24,8 +23,8 @@ import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 -- Data declarations
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn Unpol.DataDecl where
-  prettyAnn (Unpol.NominalDecl _ _ ref tn dc knd xtors) =
+instance PrettyAnn CST.DataDecl where
+  prettyAnn (CST.NominalDecl _ _ ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>
@@ -39,7 +38,7 @@ instance PrettyAnn Unpol.DataDecl where
     braces (mempty <+> cat (punctuate " , " (prettyAnn <$> xtors)) <+> mempty) <>
     semi
 
-instance PrettyAnn Pol.DataDecl where
+instance PrettyAnn RST.DataDecl where
   prettyAnn decl = prettyAnn (embedTyDecl decl)
 
 ---------------------------------------------------------------------------------

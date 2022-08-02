@@ -12,7 +12,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..), DataDecl(..) )
+import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..))
 import Syntax.Common.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
     ( DocComment,
@@ -22,7 +22,7 @@ import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
 import Syntax.Common.Types ( IsRec(Recursive) )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
---import Syntax.Core.Program qualified as Core
+import Syntax.RST.Program qualified as RST
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
 import Utils
@@ -97,7 +97,7 @@ generateCodeAction ident (Range {_start = start}) (TST.CmdDecl decl) | lookupPos
 
 generateCodeAction ident (Range {_start = _start}) (TST.DataDecl decl) = dualizeDecl
   where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident (data_loc decl) decl]
+    dualizeDecl = [generateDualizeDeclCodeAction ident (RST.data_loc decl) decl]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -160,8 +160,8 @@ generateDualizeEdit uri loc doc rep isrec fv tys tm  =
                   , _changeAnnotations = Nothing }
 
 
-generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> DataDecl -> Command |? CodeAction
-generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl = InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (data_name decl)
+generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
+generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl = InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (RST.data_name decl)
                                                                              , _kind = Just CodeActionQuickFix
                                                                              , _diagnostics = Nothing
                                                                              , _isPreferred = Nothing
@@ -172,7 +172,7 @@ generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl = InR $ Code
                                                                              }
 
 
-generateDualizeDeclEdit :: Uri -> Loc -> DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
 generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl

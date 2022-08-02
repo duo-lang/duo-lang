@@ -19,9 +19,8 @@ import Repl.Repl
 import Driver.Definition (DriverState(..))
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv))
-import Syntax.Common.TypesPol ( DataDecl(data_name) )
-
 import Syntax.Common
+import Syntax.RST.Program qualified as RST
 import Utils (trim)
 
 
@@ -57,7 +56,7 @@ showTypeCmd :: Text -> Repl ()
 showTypeCmd s = do
   env <- gets (drvEnv . replDriverState)
   let concatEnv = concat (fmap snd . declEnv <$> M.elems env)
-  let maybeDecl = find (\x -> rnTnName (data_name x) == MkTypeName s) concatEnv
+  let maybeDecl = find (\x -> rnTnName (RST.data_name x) == MkTypeName s) concatEnv
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
     Just decl -> prettyRepl decl
