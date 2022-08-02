@@ -2,6 +2,7 @@ module Dualize.Program where
 
 import Syntax.Common
 import Syntax.Common.TypesPol
+import Syntax.RST.Program qualified as RST
 import Dualize.Terms
 
 flipDC :: DataCodata -> DataCodata
@@ -11,9 +12,9 @@ flipDC Codata = Data
 dualPolyKind :: PolyKind -> PolyKind 
 dualPolyKind pk = pk 
 
-dualDataDecl :: DataDecl -> DataDecl
-dualDataDecl (NominalDecl loc doc isRefined rntn dc pk (sigsPos,sigsNeg)  ) =
-    NominalDecl loc doc isRefined (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg ) 
+dualDataDecl :: RST.DataDecl -> RST.DataDecl
+dualDataDecl (RST.NominalDecl loc doc isRefined rntn dc pk (sigsPos,sigsNeg)  ) =
+    RST.NominalDecl loc doc isRefined (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg ) 
 
 dualXtorSig ::  PolarityRep pol -> XtorSig pol -> XtorSig pol 
 dualXtorSig pol (MkXtorSig xtor lctx) = MkXtorSig (dualXtorName xtor) (dualPrdCnsType pol <$> lctx)

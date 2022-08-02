@@ -8,6 +8,7 @@ module TypeInference.GenerateConstraints.Terms
 import Control.Monad.Reader
 import Data.Map qualified as M
 import Errors
+import Syntax.RST.Program qualified as RST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.Core.Terms qualified as Core
@@ -112,8 +113,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Nominal xt subst) = do
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal xt substInferred)
-    CnsRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc PosRep Nothing (RST.data_name decl) args) Nominal xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc NegRep Nothing (RST.data_name decl) args) Nominal xt substInferred)
 --
 -- Refinement Xtors
 --
@@ -129,8 +130,8 @@ genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (TST.Xtor loc annot rep (TyDataRefined   defaultLoc PosRep (data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
-    CnsRep -> return (TST.Xtor loc annot rep (TyCodataRefined defaultLoc NegRep (data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TyDataRefined   defaultLoc PosRep (RST.data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TyCodataRefined defaultLoc NegRep (RST.data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
@@ -176,8 +177,8 @@ genConstraintsTerm (Core.XCase loc annot rep Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, MkXtorSig xt negTypes'))
   case rep of
-    PrdRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc PosRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc NegRep Nothing (data_name decl) args) Nominal (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc PosRep Nothing (RST.data_name decl) args) Nominal (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc NegRep Nothing (RST.data_name decl) args) Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
@@ -207,8 +208,8 @@ genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
                        -- and greatest type translation.
                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
   case rep of
-    PrdRep -> return $ TST.XCase loc annot rep (TyCodataRefined defaultLoc PosRep (data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TyDataRefined   defaultLoc NegRep (data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyCodataRefined defaultLoc PosRep (RST.data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyDataRefined   defaultLoc NegRep (RST.data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --

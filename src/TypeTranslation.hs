@@ -23,6 +23,7 @@ import Pretty.Types ()
 import Driver.Environment
 import Syntax.Common.TypesPol
 import Syntax.Common
+import Syntax.RST.Program qualified as RST
 import Utils
 
 ---------------------------------------------------------------------------------------------
@@ -98,7 +99,7 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyRecVar defaultLoc NegRep Nothing tv
   else do
-    NominalDecl{..} <- lookupTypeName defaultLoc tn
+    RST.NominalDecl{..} <- lookupTypeName defaultLoc tn
     tv <- freshTVar
     case data_polarity of
       Data -> do
@@ -139,7 +140,7 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyRecVar defaultLoc pr Nothing tv
   else do
-    NominalDecl{..} <- lookupTypeName defaultLoc tn
+    RST.NominalDecl{..} <- lookupTypeName defaultLoc tn
     tv <- freshTVar
     case data_polarity of
       Data -> do
