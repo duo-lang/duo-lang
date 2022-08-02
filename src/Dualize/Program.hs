@@ -13,8 +13,10 @@ dualPolyKind :: PolyKind -> PolyKind
 dualPolyKind pk = pk 
 
 dualDataDecl :: RST.DataDecl -> RST.DataDecl
-dualDataDecl (RST.NominalDecl loc doc isRefined rntn dc pk (sigsPos,sigsNeg)  ) =
-    RST.NominalDecl loc doc isRefined (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg ) 
+dualDataDecl (RST.NominalDecl loc doc rntn dc pk (sigsPos,sigsNeg)) =
+    RST.NominalDecl loc doc (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
+dualDataDecl (RST.RefinementDecl loc doc rntn dc pk (sigsPos,sigsNeg)) =
+    RST.RefinementDecl loc doc (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
 
 dualXtorSig ::  PolarityRep pol -> XtorSig pol -> XtorSig pol 
 dualXtorSig pol (MkXtorSig xtor lctx) = MkXtorSig (dualXtorName xtor) (dualPrdCnsType pol <$> lctx)

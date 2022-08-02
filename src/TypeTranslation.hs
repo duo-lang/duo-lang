@@ -99,16 +99,28 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyRecVar defaultLoc NegRep Nothing tv
   else do
-    RST.NominalDecl{..} <- lookupTypeName defaultLoc tn
-    tv <- freshTVar
-    case data_polarity of
-      Data -> do
-        -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
-      Codata -> do
-        -- Upper bound translation of codata is empty
-        return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
+    decl <- lookupTypeName defaultLoc tn
+    case decl of
+      RST.NominalDecl{..} -> do
+        tv <- freshTVar
+        case data_polarity of
+          Data -> do
+            -- Recursively translate xtor sig with mapping of current type name to new rec type var
+            xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
+            return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
+          Codata -> do
+            -- Upper bound translation of codata is empty
+            return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
+      RST.RefinementDecl{..} -> do
+        tv <- freshTVar
+        case data_polarity of
+          Data -> do
+            -- Recursively translate xtor sig with mapping of current type name to new rec type var
+            xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
+            return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
+          Codata -> do
+            -- Upper bound translation of codata is empty
+            return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
 translateTypeUpper' tv@TySkolemVar{} = return tv
 translateTypeUpper' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
@@ -140,16 +152,28 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
     return $ TyRecVar defaultLoc pr Nothing tv
   else do
-    RST.NominalDecl{..} <- lookupTypeName defaultLoc tn
-    tv <- freshTVar
-    case data_polarity of
-      Data -> do
-        -- Lower bound translation of data is empty
-        return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
-      Codata -> do
-        -- Recursively translate xtor sig with mapping of current type name to new rec type var
-        xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
-        return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
+    decl <- lookupTypeName defaultLoc tn
+    case decl of
+      RST.NominalDecl{..} -> do
+        tv <- freshTVar
+        case data_polarity of
+          Data -> do
+            -- Lower bound translation of data is empty
+            return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
+          Codata -> do
+            -- Recursively translate xtor sig with mapping of current type name to new rec type var
+            xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
+            return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
+      RST.RefinementDecl{..} -> do
+        tv <- freshTVar
+        case data_polarity of
+          Data -> do
+            -- Lower bound translation of data is empty
+            return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
+          Codata -> do
+            -- Recursively translate xtor sig with mapping of current type name to new rec type var
+            xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
+            return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
 translateTypeLower' tv@TySkolemVar{} = return tv
 translateTypeLower' ty = throwOtherError defaultLoc ["Cannot translate type " <> ppPrint ty]
 
