@@ -115,90 +115,82 @@ nodeToType rep i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
-  gr <- asks graph
-  case lab gr i of 
-    Just MkPrimitiveNodeLabel{} -> nodeToPrimType rep i
-    _ -> if inCache then
-           return $ TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i)))
-         else
-           nodeToTypeNoCache rep i
+  if inCache
+    then pure (TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i))))
+    else nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
-nodeToPrimType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
-nodeToPrimType rep i  = do
-  gr <- asks graph
-  let (Just (MkPrimitiveNodeLabel _ tp)) = lab gr i 
-  -- Creating primitive types
-  let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
-      toPrimType rep I64 = TyI64 defaultLoc rep
-      toPrimType rep F64 = TyF64 defaultLoc rep
-  return (toPrimType rep tp)
-
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i  = do
-  outs <- nodeToOuts i
   gr <- asks graph
-  let (Just (MkNodeLabel _ datSet codatSet tns refDat refCodat)) = lab gr i 
-  let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-  let refDatTypes = M.toList refDat -- Unique data ref types
-  let refCodatTypes = M.toList refCodat -- Unique codata ref types
-  resType <- local (visitNode i) $ do
-    -- Creating type variables
-    varL <- nodeToTVars rep i
-    -- Creating data types
-    datL <- case maybeDat of
-      Nothing -> return []
-      Just xtors -> do
-        sig <- forM xtors $ \xt -> do
-          let nodes = computeArgNodes outs Data xt
-          argTypes <- argNodesToArgTypes nodes rep
-          return (MkXtorSig (labelName xt) argTypes)
-        return [TyData defaultLoc rep sig]
-    -- Creating codata types
-    codatL <- case maybeCodat of
-      Nothing -> return []
-      Just xtors -> do
-        sig <- forM xtors $ \xt -> do
-          let nodes = computeArgNodes outs Codata xt
-          argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
-          return (MkXtorSig (labelName xt) argTypes)
-        return [TyCodata defaultLoc rep sig]
-    -- Creating ref data types
-    refDatL <- do
-      forM refDatTypes $ \(tn,xtors) -> do
-        sig <- forM (S.toList xtors) $ \xt -> do
-          let nodes = computeArgNodes outs Data xt
-          argTypes <- argNodesToArgTypes nodes rep
-          return (MkXtorSig (labelName xt) argTypes)
-        return $ TyDataRefined defaultLoc rep tn sig
-    -- Creating ref codata types
-    refCodatL <- do
-      forM refCodatTypes $ \(tn,xtors) -> do
-        sig <- forM (S.toList xtors) $ \xt -> do
-          let nodes = computeArgNodes outs Codata xt
-          argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
-          return (MkXtorSig (labelName xt) argTypes)
-        return $ TyCodataRefined defaultLoc rep tn sig
-    -- Creating Nominal types
-    let adjEdges = lsuc gr i
-    let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
-    let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
-          Just x -> pure x
-          Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
-    nominals <- do
-        forM (S.toList tns) $ \(tn, variances) -> do
-          argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
-          let f (node, Covariant) = CovariantType <$> nodeToType rep node
-              f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
-          args <- sequence (f <$> argNodes)
-          pure $ TyNominal defaultLoc rep Nothing tn args
+  case fromJust (lab gr i) of
+    MkPrimitiveNodeLabel _ tp -> do
+      let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
+          toPrimType rep I64 = TyI64 defaultLoc rep
+          toPrimType rep F64 = TyF64 defaultLoc rep
+      pure (toPrimType rep tp)
+    MkNodeLabel _ datSet codatSet tns refDat refCodat -> do
+      outs <- nodeToOuts i
+      let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
+      let refDatTypes = M.toList refDat -- Unique data ref types
+      let refCodatTypes = M.toList refCodat -- Unique codata ref types
+      resType <- local (visitNode i) $ do
+        -- Creating type variables
+        varL <- nodeToTVars rep i
+        -- Creating data types
+        datL <- case maybeDat of
+          Nothing -> return []
+          Just xtors -> do
+            sig <- forM xtors $ \xt -> do
+              let nodes = computeArgNodes outs Data xt
+              argTypes <- argNodesToArgTypes nodes rep
+              return (MkXtorSig (labelName xt) argTypes)
+            return [TyData defaultLoc rep sig]
+        -- Creating codata types
+        codatL <- case maybeCodat of
+          Nothing -> return []
+          Just xtors -> do
+            sig <- forM xtors $ \xt -> do
+              let nodes = computeArgNodes outs Codata xt
+              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+              return (MkXtorSig (labelName xt) argTypes)
+            return [TyCodata defaultLoc rep sig]
+        -- Creating ref data types
+        refDatL <- do
+          forM refDatTypes $ \(tn,xtors) -> do
+            sig <- forM (S.toList xtors) $ \xt -> do
+              let nodes = computeArgNodes outs Data xt
+              argTypes <- argNodesToArgTypes nodes rep
+              return (MkXtorSig (labelName xt) argTypes)
+            return $ TyDataRefined defaultLoc rep tn sig
+        -- Creating ref codata types
+        refCodatL <- do
+          forM refCodatTypes $ \(tn,xtors) -> do
+            sig <- forM (S.toList xtors) $ \xt -> do
+              let nodes = computeArgNodes outs Codata xt
+              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+              return (MkXtorSig (labelName xt) argTypes)
+            return $ TyCodataRefined defaultLoc rep tn sig
+        -- Creating Nominal types
+        let adjEdges = lsuc gr i
+        let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
+        let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
+              Just x -> pure x
+              Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
+        nominals <- do
+            forM (S.toList tns) $ \(tn, variances) -> do
+              argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
+              let f (node, Covariant) = CovariantType <$> nodeToType rep node
+                  f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+              args <- sequence (f <$> argNodes)
+              pure $ TyNominal defaultLoc rep Nothing tn args
     
-    let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
-    return $ case rep of
-      PosRep -> mkUnion defaultLoc Nothing typs
-      NegRep -> mkInter defaultLoc Nothing typs
+        let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
+        return $ case rep of
+          PosRep -> mkUnion defaultLoc Nothing typs
+          NegRep -> mkInter defaultLoc Nothing typs
 
-  -- If the graph is cyclic, make a recursive type
-  if i `elem` dfs (suc gr i) gr
-    then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
-    else return resType
+      -- If the graph is cyclic, make a recursive type
+      if i `elem` dfs (suc gr i) gr
+        then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
+        else return resType

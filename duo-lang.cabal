@@ -80,6 +80,7 @@ common shared-lang-options
 common shared-ghc-opts
   ghc-options:
     -Wall
+    -Wincomplete-uni-patterns
     -fwarn-tabs
     -fno-warn-name-shadowing
     -fno-warn-orphans
