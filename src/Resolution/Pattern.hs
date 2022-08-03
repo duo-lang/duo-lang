@@ -106,12 +106,14 @@ analyzePattern dc pat = do
           vars <- sequence (fromVar <$> pats)
           pure $ ExplicitPattern loc xt vars
         1 -> do
-          let (args1,PatStar _ pc:args2) = break isStar pats
-          args1' <- sequence (fromVar <$> args1)
-          args2' <- sequence (fromVar <$> args2)
-          case pc of
-            Cns -> pure $ ImplicitPrdPattern loc xt (args1', PrdRep, args2')
-            Prd -> pure $ ImplicitCnsPattern loc xt (args1', CnsRep, args2')
+          case break isStar pats of
+            (args1,PatStar _ pc:args2) -> do
+              args1' <- sequence (fromVar <$> args1)
+              args2' <- sequence (fromVar <$> args2)
+              case pc of
+                Cns -> pure $ ImplicitPrdPattern loc xt (args1', PrdRep, args2')
+                Prd -> pure $ ImplicitCnsPattern loc xt (args1', CnsRep, args2')
+            (_,_) -> throwOtherError loc ["Not reachable, since number \"1\" was returned in the check."]
         n -> throwError $ ErrResolution (InvalidStar loc ("More than one star used in binding site: " <> T.pack (show n) <> " stars used.")) :| []
     _ -> throwOtherError (getLoc pat) ["Invalid pattern in function \"analyzePattern\""]
 

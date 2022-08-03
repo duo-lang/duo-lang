@@ -62,7 +62,7 @@ typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1))
       Nothing -> False
       Just ((),mp) ->
         S.fromList flowEdges2 ==
-          S.fromList [(i',j') | (i,j) <- flowEdges1, let Just i' = M.lookup i mp, let Just j' = M.lookup j mp]
+          S.fromList [(i',j') | (i,j) <- flowEdges1, let i' = fromJust (M.lookup i mp), let j' = fromJust (M.lookup j mp)]
 
 sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
