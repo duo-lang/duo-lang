@@ -173,7 +173,7 @@ data DataDecl =
   , data_kind :: PolyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
-    -- The constructors/destructors of the declaration.
+    -- ^ The constructors/destructors of the declaration.
   }
   | RefinementDecl
   { data_loc :: Loc
@@ -186,8 +186,14 @@ data DataDecl =
     -- ^ Whether a data or codata type is declared.
   , data_kind :: PolyKind
     -- ^ The kind of the type constructor.
+  , data_upper :: Typ Neg
+    -- ^ The upper translation of the type.
+  , data_lower :: Typ Pos
+    -- ^ The lower translation of the type.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
-    -- The constructors/destructors of the declaration.
+    -- ^ The constructors/destructors of the declaration.
+  , data_xtors_refined :: ([XtorSig Pos], [XtorSig Neg])
+    -- ^ The refined constructors/destructors of the declaration.
   }
 
 deriving instance Show DataDecl
