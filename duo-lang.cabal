@@ -173,7 +173,6 @@ library
       TypeInference.GenerateConstraints.Terms
       TypeInference.SolveConstraints
       TypeInference.Constraints
-      TypeTranslation
       Translate.Focusing
       Translate.Reparse
       Translate.Embed
