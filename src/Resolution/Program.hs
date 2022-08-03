@@ -129,7 +129,10 @@ resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, d
                                             , data_name = data_name'
                                             , data_polarity = data_polarity
                                             , data_kind = polyKind
+                                            , data_upper = error "data_upper not initialized"
+                                            , data_lower = error "data_lower not initialized"
                                             , data_xtors = xtors
+                                            , data_xtors_refined = error "data_xtors_refined not initialized"
                                             }
   pure dcl
 
