@@ -7,6 +7,8 @@ module TypeInference.GenerateConstraints.Terms
 
 import Control.Monad.Reader
 import Data.Map qualified as M
+import Data.Maybe ( fromJust )
+import Data.List ( find ) 
 import Errors
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Terms qualified as TST
@@ -125,13 +127,16 @@ genConstraintsTerm (Core.Xtor loc annot rep Refinement xt subst) = do
   -- Secondly we look up the argument types of the xtor in the type declaration.
   -- Since we infer refinement types, we have to look up the translated xtorSig.
   decl <- lookupDataDecl loc xt
-  xtorSigUpper <- translateXtorSigUpper =<< lookupXtorSig loc xt NegRep
-  -- Then we generate constraints between the inferred types of the substitution
-  -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
-  genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
-  case rep of
-    PrdRep -> return (TST.Xtor loc annot rep (TyDataRefined   defaultLoc PosRep (RST.data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
-    CnsRep -> return (TST.Xtor loc annot rep (TyCodataRefined defaultLoc NegRep (RST.data_name decl) [MkXtorSig xt substTypes]) Refinement xt substInferred)
+  case decl of
+    RST.NominalDecl {} -> throwGenError (ExpectedRefinementFoundNominal loc xt)
+    RST.RefinementDecl _ _ rtn _ _ _ _ _ (_, xtorsUpper) -> do
+      let xtorSigUpper = fromJust (find (\(MkXtorSig xt' _) -> xt == xt') xtorsUpper)
+      -- Then we generate constraints between the inferred types of the substitution
+      -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
+      genConstraintsCtxts substTypes (sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+      case rep of
+        PrdRep -> return (TST.Xtor loc annot rep (TyDataRefined   defaultLoc PosRep rtn [MkXtorSig xt substTypes]) Refinement xt substInferred)
+        CnsRep -> return (TST.Xtor loc annot rep (TyCodataRefined defaultLoc NegRep rtn [MkXtorSig xt substTypes]) Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
@@ -188,28 +193,32 @@ genConstraintsTerm (Core.XCase loc _ _ Refinement []) =
   throwGenError (EmptyRefinementMatch loc)
 genConstraintsTerm (Core.XCase loc annot rep Refinement cases@(pmcase:_)) = do
   -- We lookup the data declaration based on the first pattern match case.
-  decl <- lookupDataDecl loc (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
-  -- We check that all cases in the pattern match belong to the type declaration.
-  checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
-  inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
-                       -- Generate positive and negative unification variables for all variables
-                       -- bound in the pattern.
-                       (uvarsPos, uvarsNeg) <- freshTVars args
-                       -- Check the command in the context extended with the positive unification variables
-                       cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
-                       -- We have to bound the unification variables with the lower and upper bounds generated
-                       -- from the information in the type declaration. These lower and upper bounds correspond
-                       -- to the least and greatest type translation.
-                       lowerBound <- sig_args <$> (translateXtorSigLower =<< lookupXtorSig loc xt PosRep)
-                       upperBound <- sig_args <$> (translateXtorSigUpper =<< lookupXtorSig loc xt NegRep)
-                       genConstraintsCtxts lowerBound uvarsNeg (PatternMatchConstraint loc)
-                       genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
-                       -- For the type, we return the unification variables which are now bounded by the least
-                       -- and greatest type translation.
-                       return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
-  case rep of
-    PrdRep -> return $ TST.XCase loc annot rep (TyCodataRefined defaultLoc PosRep (RST.data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TyDataRefined   defaultLoc NegRep (RST.data_name decl) (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+  let xt = case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt
+  decl <- lookupDataDecl loc xt
+  case decl of
+    RST.NominalDecl {} -> throwGenError (ExpectedRefinementFoundNominal loc xt)
+    RST.RefinementDecl _ _ rtn _ _ _ _ _ (xtorsLower, xtorsUpper) -> do
+      -- We check that all cases in the pattern match belong to the type declaration.
+      checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
+      inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
+                           -- Generate positive and negative unification variables for all variables
+                           -- bound in the pattern.
+                           (uvarsPos, uvarsNeg) <- freshTVars args
+                           -- Check the command in the context extended with the positive unification variables
+                           cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
+                           -- We have to bound the unification variables with the lower and upper bounds generated
+                           -- from the information in the type declaration. These lower and upper bounds correspond
+                           -- to the least and greatest type translation.
+                           let lowerBound = sig_args (fromJust (find (\(MkXtorSig xt' _) -> xt == xt') xtorsLower))
+                           let upperBound = sig_args (fromJust (find (\(MkXtorSig xt' _) -> xt == xt') xtorsUpper))
+                           genConstraintsCtxts lowerBound uvarsNeg (PatternMatchConstraint loc)
+                           genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
+                           -- For the type, we return the unification variables which are now bounded by the least
+                           -- and greatest type translation.
+                           return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, MkXtorSig xt uvarsNeg))
+      case rep of
+        PrdRep -> return $ TST.XCase loc annot rep (TyCodataRefined defaultLoc PosRep rtn (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
+        CnsRep -> return $ TST.XCase loc annot rep (TyDataRefined   defaultLoc NegRep rtn (snd <$> inferredCases)) Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --

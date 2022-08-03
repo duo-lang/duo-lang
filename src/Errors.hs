@@ -101,6 +101,7 @@ data ConstraintGenerationError where
   -- | Linear contexts have unequal length.
   LinearContextsUnequalLength :: Loc -> ConstraintInfo -> LinearContext Pos -> LinearContext Neg -> ConstraintGenerationError
   LinearContextIncompatibleTypeMode :: Loc -> PrdCns -> ConstraintInfo -> ConstraintGenerationError
+  ExpectedRefinementFoundNominal :: Loc -> XtorName -> ConstraintGenerationError
 
 
 deriving instance Show ConstraintGenerationError
@@ -117,6 +118,7 @@ instance HasLoc ConstraintGenerationError where
   getLoc (EmptyRefinementMatch loc) = loc
   getLoc (LinearContextsUnequalLength loc _ _ _) = loc
   getLoc (LinearContextIncompatibleTypeMode loc _ _) = loc
+  getLoc (ExpectedRefinementFoundNominal loc _) = loc
 
 instance AttachLoc ConstraintGenerationError where
   attachLoc loc (BoundVariableOutOfBounds _ pc idx) = BoundVariableOutOfBounds loc pc idx
@@ -130,6 +132,7 @@ instance AttachLoc ConstraintGenerationError where
   attachLoc loc (EmptyRefinementMatch _) = EmptyRefinementMatch loc
   attachLoc loc (LinearContextsUnequalLength _ ci ctx1 ctx2) = LinearContextsUnequalLength loc ci ctx1 ctx2
   attachLoc loc (LinearContextIncompatibleTypeMode _ pc ci) = LinearContextIncompatibleTypeMode loc pc ci
+  attachLoc loc (ExpectedRefinementFoundNominal _ tn) = ExpectedRefinementFoundNominal loc tn
 
 
 ----------------------------------------------------------------------------------

@@ -131,6 +131,11 @@ instance PrettyAnn ConstraintGenerationError where
          , "genConstraintsCtxts: Tried to constrain CnsType by PrdType"
          , "Constraint Info:" <+> prettyAnn info
          ]
+  prettyAnn (ExpectedRefinementFoundNominal loc xt) =
+    vsep [ prettyAnn loc
+         , "Expected to find a refinement type, but found a nominal type"
+         , "Constructor/Destructor:" <+> prettyAnn xt
+         ]
     
 
 instance PrettyAnn ConstraintSolverError where
@@ -225,7 +230,8 @@ instance ToReport ConstraintGenerationError where
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(LinearContextIncompatibleTypeMode loc _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-
+  toReport e@(ExpectedRefinementFoundNominal loc _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 instance ToReport ConstraintSolverError where
   toReport (SomeConstraintSolverError loc msg) =
     err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []

@@ -33,8 +33,6 @@ dualDataDecl RST.RefinementDecl {data_loc, data_doc, data_name, data_polarity, d
                        , data_xtors= (dualXtorSig PosRep <$> xtorsPos,dualXtorSig NegRep <$> xtorsNeg)
                        , data_xtors_refined = (dualXtorSig PosRep <$> xtorsRefPos,dualXtorSig NegRep <$> xtorsRefNeg)
                        }
---ndualDataDecl (RST.RefinementDecl loc doc rntn dc pk (sigsPos,sigsNeg)) =
---    RST.RefinementDecl loc doc (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
 
 dualXtorSig ::  PolarityRep pol -> XtorSig pol -> XtorSig pol 
 dualXtorSig pol (MkXtorSig xtor lctx) = MkXtorSig (dualXtorName xtor) (dualPrdCnsType pol <$> lctx)

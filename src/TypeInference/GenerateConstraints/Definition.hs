@@ -27,10 +27,7 @@ module TypeInference.GenerateConstraints.Definition
   , checkCorrectness
   , checkExhaustiveness
   , checkInstanceCoverage
-  , translateXtorSigUpper
-  , translateTypeUpper
-  , translateXtorSigLower
-  , translateTypeLower) where
+  ) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -48,7 +45,6 @@ import Syntax.Common.TypesPol
 import Syntax.Common
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
-import TypeTranslation qualified as TT
 import Utils
 
 ---------------------------------------------------------------------------------------------
@@ -211,42 +207,6 @@ addConstraint c = modify foo
   where
     foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
     bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
-
----------------------------------------------------------------------------------------------
--- Translate nominal types to structural refinement types
----------------------------------------------------------------------------------------------
-
--- | Recursively translate types in xtor signature to upper bound refinement types
-translateXtorSigUpper :: XtorSig Neg -> GenM (XtorSig Neg)
-translateXtorSigUpper xts = do
-  env <- asks fst
-  case TT.translateXtorSigUpper env xts of
-    Left err -> throwError err
-    Right xts' -> return xts'
-
--- | Recursively translate a nominal type to an upper bound refinement type
-translateTypeUpper :: Typ Neg -> GenM (Typ Neg)
-translateTypeUpper ty = do
-  env <- asks fst
-  case TT.translateTypeUpper env ty of
-    Left err -> throwError err
-    Right xts' -> return xts'
-
--- | Recursively translate types in xtor signature to lower bound refinement types
-translateXtorSigLower :: XtorSig Pos -> GenM (XtorSig Pos)
-translateXtorSigLower xts = do
-  env <- asks fst
-  case TT.translateXtorSigLower env xts of
-    Left err -> throwError err
-    Right xts' -> return xts'
-
--- | Recursively translate a nominal type to a lower bound refinement type
-translateTypeLower :: Typ Pos -> GenM (Typ Pos)
-translateTypeLower ty = do
-  env <- asks fst
-  case TT.translateTypeLower env ty of
-    Left err -> throwError err
-    Right xts' -> return xts'
 
 ---------------------------------------------------------------------------------------------
 -- Other
