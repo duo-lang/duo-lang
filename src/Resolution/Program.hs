@@ -109,17 +109,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
                         Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
                         Just knd -> knd
       checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
-      -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
-      let g :: TypeNameResolve -> TypeNameResolve
-          g (SynonymResult tn ty) = SynonymResult tn ty
-          g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
-
-          f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
-          f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
-
-          h :: ResolveReader -> ResolveReader
-          h r = r { rr_modules = f $ rr_modules r }
-      xtors <- local h (resolveXtors data_xtors)
+      xtors <- resolveXtors data_xtors
       pure RST.NominalDecl { data_loc = data_loc
                            , data_doc = data_doc
                            , data_name = data_name'
@@ -138,7 +128,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
                         Just knd -> case knd of
                           pk@(MkPolyKind [] _) -> pure pk
                           _                    -> throwOtherError data_loc ["Parameterized refinement types are currently not allowed."]
-      checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
+      -- checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
           g (SynonymResult tn ty) = SynonymResult tn ty
