@@ -97,7 +97,7 @@ checkVarianceDataDecl loc polyKind pol xtors = do
     Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
 
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
-resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
   -- Default the kind if none was specified:
   let polyKind = case data_kind of

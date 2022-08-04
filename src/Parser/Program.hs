@@ -190,7 +190,7 @@ dataDeclP doc = do
           else pure (Just knd)
     (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
     endPos <- symbolP SymSemi
-    pure $ DataDecl $ NominalDecl { data_loc = Loc startPos endPos
+    pure $ DataDecl $ MkDataDecl { data_loc = Loc startPos endPos
                                   , data_doc = doc
                                   , data_refined = refined
                                   , data_name = tn

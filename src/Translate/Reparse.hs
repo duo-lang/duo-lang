@@ -521,23 +521,23 @@ embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
 
 embedTyDecl :: RST.DataDecl -> CST.DataDecl
 embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-  CST.NominalDecl { data_loc = data_loc
-                  , data_doc = data_doc
-                  , data_refined = NotRefined
-                  , data_name = rnTnName data_name
-                  , data_polarity = data_polarity
-                  , data_kind = Just data_kind
-                  , data_xtors = embedXtorSig <$> fst data_xtors
-                  }
+  CST.MkDataDecl { data_loc = data_loc
+                 , data_doc = data_doc
+                 , data_refined = NotRefined
+                 , data_name = rnTnName data_name
+                 , data_polarity = data_polarity
+                 , data_kind = Just data_kind
+                 , data_xtors = embedXtorSig <$> fst data_xtors
+                 }
 embedTyDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-  CST.NominalDecl { data_loc = data_loc
-                  , data_doc = data_doc
-                  , data_refined = Refined
-                  , data_name = rnTnName data_name
-                  , data_polarity = data_polarity
-                  , data_kind = Just data_kind
-                  , data_xtors = embedXtorSig <$> fst data_xtors
-                  }
+  CST.MkDataDecl { data_loc = data_loc
+                 , data_doc = data_doc
+                 , data_refined = Refined
+                 , data_name = rnTnName data_name
+                 , data_polarity = data_polarity
+                 , data_kind = Just data_kind
+                 , data_xtors = embedXtorSig <$> fst data_xtors
+                 }
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
