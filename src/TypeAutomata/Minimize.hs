@@ -22,21 +22,21 @@ data Alphabet where
   ARefinementD  :: Polarity -> (RnTypeName, Set XtorLabel) -> Alphabet
   ARefinementCD :: Polarity -> (RnTypeName, Set XtorLabel) -> Alphabet
   APrimitive    :: Polarity -> PrimitiveType               -> Alphabet
-    deriving Eq
+    deriving (Eq,Ord)
 
 getLabels :: TypeGr -> [Alphabet]
 getLabels gr = nub $ concat $ catMaybes allLabels
   where
     ns = nodes gr
-    
+
     allLabels :: [Maybe [Alphabet]]
     allLabels = fmap labelToAlphabet . lab gr <$> ns
 
     labelToAlphabet :: NodeLabel -> [Alphabet]
     labelToAlphabet MkNodeLabel {..} =
-        let aData      = maybe [] (S.toList . fmap (AData nl_pol))   nl_data
-            aCodata    = maybe [] (S.toList . fmap (ACodata nl_pol)) nl_codata
-            aNominal   = S.toList $ fmap (ANominal nl_pol) nl_nominal
+        let aData      = maybe [] (fmap (AData nl_pol) . S.toList)   nl_data
+            aCodata    = maybe [] (fmap (ACodata nl_pol) . S.toList) nl_codata
+            aNominal   = (ANominal nl_pol) <$> S.toList nl_nominal
             aRefData   = ARefinementD  nl_pol <$> M.toList nl_ref_data
             aRefCodata = ARefinementCD nl_pol <$> M.toList nl_ref_codata
         in aData ++ aCodata ++ aNominal ++ aRefData ++ aRefCodata
