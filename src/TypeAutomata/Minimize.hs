@@ -16,12 +16,12 @@ getAlphabet :: TypeGr -> [EdgeLabelNormal]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
 
 data Alphabet where
-  AData         :: Polarity -> XtorLabel                   -> Alphabet
-  ACodata       :: Polarity -> XtorLabel                   -> Alphabet
-  ANominal      :: Polarity -> (RnTypeName, [Variance])    -> Alphabet
-  ARefinementD  :: Polarity -> (RnTypeName, Set XtorLabel) -> Alphabet
-  ARefinementCD :: Polarity -> (RnTypeName, Set XtorLabel) -> Alphabet
-  APrimitive    :: Polarity -> PrimitiveType               -> Alphabet
+  AData         :: XtorLabel                   -> Alphabet
+  ACodata       :: XtorLabel                   -> Alphabet
+  ANominal      :: (RnTypeName, [Variance])    -> Alphabet
+  ARefinementD  :: (RnTypeName, Set XtorLabel) -> Alphabet
+  ARefinementCD :: (RnTypeName, Set XtorLabel) -> Alphabet
+  APrimitive    :: PrimitiveType               -> Alphabet
     deriving (Eq,Ord)
 
 getLabels :: TypeGr -> [Alphabet]
@@ -34,13 +34,13 @@ getLabels gr = nub $ concat $ catMaybes allLabels
 
     labelToAlphabet :: NodeLabel -> [Alphabet]
     labelToAlphabet MkNodeLabel {..} =
-        let aData      = maybe [] (fmap (AData nl_pol) . S.toList)   nl_data
-            aCodata    = maybe [] (fmap (ACodata nl_pol) . S.toList) nl_codata
-            aNominal   = (ANominal nl_pol) <$> S.toList nl_nominal
-            aRefData   = ARefinementD  nl_pol <$> M.toList nl_ref_data
-            aRefCodata = ARefinementCD nl_pol <$> M.toList nl_ref_codata
+        let aData      = maybe [] (fmap AData . S.toList)   nl_data
+            aCodata    = maybe [] (fmap ACodata . S.toList) nl_codata
+            aNominal   = ANominal <$> S.toList nl_nominal
+            aRefData   = ARefinementD  <$> M.toList nl_ref_data
+            aRefCodata = ARefinementCD <$> M.toList nl_ref_codata
         in aData ++ aCodata ++ aNominal ++ aRefData ++ aRefCodata
-    labelToAlphabet MkPrimitiveNodeLabel {..} = [ APrimitive pl_pol pl_prim ]
+    labelToAlphabet MkPrimitiveNodeLabel {..} = [ APrimitive pl_prim ]
 
 -- find all predecessors with connecting edge labelled by specified label
 predsWith' :: TypeGr -> [Node] -> EdgeLabelNormal -> [Node]
