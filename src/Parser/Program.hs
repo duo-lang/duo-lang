@@ -176,26 +176,19 @@ dataCodataPrefixP = do
 
 dataDeclP :: Maybe DocComment -> Parser Declaration
 dataDeclP doc = do
-  o <- getOffset
   startPos <- getSourcePos
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
     knd <- optional (try (symbolP SymColon) >> polyKindP)
-    knd' <- case knd of
-      Nothing -> pure Nothing
-      Just knd -> do
-        if refined == Refined && not (null (allTypeVars knd))
-          then region (setErrorOffset o) (fail "Parametrized refinement types are not supported, yet")
-          else pure (Just knd)
     (xtors, _pos) <- braces (xtorDeclP `sepBy` symbolP SymComma)
     endPos <- symbolP SymSemi
-    pure $ DataDecl $ NominalDecl { data_loc = Loc startPos endPos
+    pure $ DataDecl $ MkDataDecl { data_loc = Loc startPos endPos
                                   , data_doc = doc
                                   , data_refined = refined
                                   , data_name = tn
                                   , data_polarity = dataCodata
-                                  , data_kind = knd'
+                                  , data_kind = knd
                                   , data_xtors = combineXtors xtors
                                   }
 

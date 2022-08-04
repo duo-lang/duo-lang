@@ -129,7 +129,7 @@ createSymbolTable' _ (XtorDecl MkStructuralXtorDeclaration {strxtordecl_loc, str
   checkFreshXtorName strxtordecl_loc strxtordecl_name st
   let xtorResolve = XtorNameResult strxtordecl_xdata Structural (fst <$> strxtordecl_arity)
   pure $ st { xtorNameMap = M.insert strxtordecl_name xtorResolve (xtorNameMap st)}
-createSymbolTable' mn (DataDecl NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
+createSymbolTable' mn (DataDecl MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
   checkFreshTypeName data_loc data_name st
   forM_ (sig_name <$> data_xtors) $ \xtorName -> checkFreshXtorName data_loc xtorName st

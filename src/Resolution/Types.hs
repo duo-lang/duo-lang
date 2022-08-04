@@ -10,6 +10,7 @@ import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Errors
+import Pretty.Pretty
 import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.Common
@@ -66,8 +67,8 @@ resolveTyp rep (TyNominal loc name args) = do
                 typ' <- resolveTyp rep typ
                 pure $ RST.TySyn loc rep name' typ'
             _ -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
-        NominalResult _ _ Refined _ -> do
-            throwOtherError loc ["Refined type cannot be used as a nominal type constructor."]
+        NominalResult rtn _ Refined _ -> do
+            throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
         NominalResult name' _ NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
