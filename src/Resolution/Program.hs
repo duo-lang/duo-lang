@@ -133,9 +133,11 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       -------------------------------------------------------------------------
       NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
       -- Default the kind if none was specified:
-      let polyKind = case data_kind of
-                        Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
-                        Just knd -> knd
+      polyKind <- case data_kind of
+                        Nothing -> pure $ MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Just knd -> case knd of
+                          pk@(MkPolyKind [] _) -> pure pk
+                          _                    -> throwOtherError data_loc ["Parameterized refinement types are currently not allowed."]
       checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
