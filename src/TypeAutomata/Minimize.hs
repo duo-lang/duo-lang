@@ -2,14 +2,14 @@ module TypeAutomata.Minimize ( minimize ) where
 
 import Data.Graph.Inductive.Graph
 import Data.List (intersect, (\\), delete, partition)
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe, catMaybes, fromJust)
 
 import Data.Set (Set)
 import Data.Set qualified as S
 import qualified Data.Map as M
 
 import TypeAutomata.Definition
-import Syntax.Common (RnTypeName, PrimitiveType, Polarity, Variance)
+import Syntax.Common (RnTypeName, PrimitiveType, Polarity(..), Variance)
 
 
 getAlphabet :: TypeGr -> [EdgeLabelNormal]
@@ -179,12 +179,23 @@ equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
 equalNodes aut@TypeAutCore{ ta_gr } i j =
   (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
+splitByPolarity :: TypeAutCore EdgeLabelNormal -> (EquivalenceClass, EquivalenceClass)
+splitByPolarity TypeAutCore {ta_gr} = (pos, neg)
+  where
+    ns = (\x -> (x, fromJust $ lab ta_gr x)) <$> nodes ta_gr
+    pos = fst <$> filter (\(_,l) -> Pos == getPol l) ns
+    neg = fst <$> filter (\(_,l) -> Neg == getPol l) ns
+    getPol :: NodeLabel -> Polarity
+    getPol MkNodeLabel {nl_pol} = nl_pol
+    getPol MkPrimitiveNodeLabel {pl_pol} = pl_pol
+
 -- generate a function that maps each node to the representative of its respective equivalence class
 genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
 genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
   where
     distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
     nodeSets = minimize' (predsMap ta_gr) (getAlphabet ta_gr) distGroups distGroups
+    (pos,neg) = splitByPolarity aut
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
