@@ -139,17 +139,23 @@ refinementTypeP Codata = do
 -- Primitive types
 ---------------------------------------------------------------------------------
 
-tyI64P :: Parser (Typ, SourcePos)
-tyI64P = do
+primTypeP :: Keyword -> (Loc -> Typ) -> Parser (Typ, SourcePos)
+primTypeP kw constr = do
   startPos <- getSourcePos
-  endPos <- keywordP KwI64
-  pure (TyI64 (Loc startPos endPos), endPos)
+  endPos <- keywordP kw
+  pure (constr (Loc startPos endPos), endPos)
+
+tyI64P :: Parser (Typ, SourcePos)
+tyI64P = primTypeP KwI64 TyI64
 
 tyF64P :: Parser (Typ, SourcePos)
-tyF64P = do
-  startPos <- getSourcePos
-  endPos <- keywordP KwF64
-  pure (TyF64 (Loc startPos endPos), endPos)
+tyF64P = primTypeP KwF64 TyF64
+
+tyCharP :: Parser (Typ, SourcePos)
+tyCharP = primTypeP KwChar TyChar
+
+tyStringP :: Parser (Typ, SourcePos)
+tyStringP = primTypeP KwString TyString
 
 ---------------------------------------------------------------------------------
 -- Type Parser
@@ -186,6 +192,8 @@ typAtomP = tyParensP
   <|> tyBotP
   <|> tyI64P
   <|> tyF64P
+  <|> tyCharP
+  <|> tyStringP
   <|> typeVariableP
 
 

@@ -223,6 +223,8 @@ genConstraintsTerm (Core.MuAbs loc annot CnsRep bs cmd) = do
   return (TST.MuAbs loc annot CnsRep uvneg bs cmdInferred)
 genConstraintsTerm (Core.PrimLitI64 loc i) = pure $ TST.PrimLitI64 loc i
 genConstraintsTerm (Core.PrimLitF64 loc d) = pure $ TST.PrimLitF64 loc d
+genConstraintsTerm (Core.PrimLitChar loc d) = pure $ TST.PrimLitChar loc d
+genConstraintsTerm (Core.PrimLitString loc d) = pure $ TST.PrimLitString loc d
 
 genConstraintsCommand :: Core.Command -> GenM TST.Command
 genConstraintsCommand (Core.ExitSuccess loc) =

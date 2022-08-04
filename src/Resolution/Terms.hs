@@ -274,6 +274,10 @@ resolveCommand (CST.PrimLitI64 loc _) =
   throwError $ ErrResolution (CmdExpected loc "Command expected, but found #I64 literal") :| []
 resolveCommand (CST.PrimLitF64 loc _) =
   throwError $ ErrResolution (CmdExpected loc "Command expected, but found #F64 literal") :| []
+resolveCommand (CST.PrimLitChar loc _) =
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found #Char literal") :| []
+resolveCommand (CST.PrimLitString loc _) =
+  throwError $ ErrResolution (CmdExpected loc "Command expected, but found #String literal") :| []
 resolveCommand (CST.NatLit loc _ _) =
   throwError $ ErrResolution (CmdExpected loc "Command expected, but found Nat literal") :| []
 resolveCommand (CST.FunApp loc _ _) =
@@ -536,6 +540,14 @@ resolveTerm CnsRep (CST.PrimLitI64 loc _) =
 resolveTerm PrdRep (CST.PrimLitF64 loc d) =
   pure $ RST.PrimLitF64 loc d
 resolveTerm CnsRep (CST.PrimLitF64 loc _) =
+  throwOtherError loc ["Cannot resolve primitive literal to a consumer."]
+resolveTerm PrdRep (CST.PrimLitChar loc d) =
+  pure $ RST.PrimLitChar loc d
+resolveTerm CnsRep (CST.PrimLitChar loc _) =
+  throwOtherError loc ["Cannot resolve primitive literal to a consumer."]
+resolveTerm PrdRep (CST.PrimLitString loc d) =
+  pure $ RST.PrimLitString loc d
+resolveTerm CnsRep (CST.PrimLitString loc _) =
   throwOtherError loc ["Cannot resolve primitive literal to a consumer."]
 resolveTerm PrdRep (CST.NatLit loc ns i) =
   resolveNatLit loc ns i

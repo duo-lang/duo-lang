@@ -142,7 +142,7 @@ combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
     pol = pl_pol fstLabel
     primT = pl_prim fstLabel
     rs_merged = combineNodeLabels rs
-    primToStr typ = case typ of {I64 -> "I64"; F64 -> "F64"}
+    primToStr typ = case typ of {I64 -> "I64"; F64 -> "F64" ; PChar -> "Char" ; PString -> "String"}
 
 -- | This function computes the new typegraph and the new starting state.
 -- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.

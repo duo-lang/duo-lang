@@ -73,6 +73,18 @@ xtorP = do
 -- Literals and primitives
 --------------------------------------------------------------------------------------------
 
+charLitP :: Parser (CST.Term, SourcePos)
+charLitP = do
+  startPos <- getSourcePos
+  (c, endPos) <- charP
+  return (CST.PrimLitChar (Loc startPos endPos) c, endPos)
+
+stringLitP :: Parser (CST.Term, SourcePos)
+stringLitP = do
+  startPos <- getSourcePos
+  (c, endPos) <- stringP
+  return (CST.PrimLitString (Loc startPos endPos) c, endPos)
+
 natLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
 natLitP ns = do
   startPos <- getSourcePos
@@ -373,6 +385,8 @@ termParensP = do
 --      | \x => t
 termBotP :: Parser (CST.Term, SourcePos)
 termBotP = freeVar <|>
+  stringLitP <|>
+  charLitP <|>
   i64LitP <|>
   f64LitP <|>
   primitiveCmdP <|>

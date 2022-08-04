@@ -183,6 +183,8 @@ data Term (pc :: PrdCns) where
   ---------------------------------------------------------------------------------
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
+  PrimLitChar :: Loc -> Char -> Term Prd
+  PrimLitString :: Loc -> String -> Term Prd
 
 deriving instance Show (Term pc)
 
@@ -259,6 +261,8 @@ termOpeningRec k args (Lambda loc pcrep ns tm) =
 -- Primitive constructs
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
+termOpeningRec _ _ lit@PrimLitChar{} = lit
+termOpeningRec _ _ lit@PrimLitString{} = lit
 
 
 commandOpeningRec :: Int -> Substitution -> Command -> Command
@@ -342,6 +346,8 @@ termClosingRec k args (Lambda loc pcrep fv tm) =
 -- Primitive constructs
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
+termClosingRec _ _ lit@PrimLitChar{} = lit
+termClosingRec _ _ lit@PrimLitString{} = lit
 
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
