@@ -134,28 +134,29 @@ minimize'' :: Preds -> [EdgeLabelNormal] -> [EquivalenceClass] -> [EquivalenceCl
 minimize'' _preds _alph []     ps = ps
 minimize'' preds  alph  (l:ls) ps = minimize'' preds alph ls' ps'
   where
-    (ps',ls') = refinePs alph (ps, ls)
+    (ps',ls') = refinePs alph (l:ps, ls)
+
     refinePs :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
     refinePs []       acc = acc
     refinePs (a:alph) (ps,ls) = let pre = predsWith preds l a
-                                    (ps',ls') = refinePs' pre ps ([],ls)
+                                    (ps',ls') = refinePs' pre ps ([],[])
                                     ls'' = refineLs pre ls
                                 in refinePs alph (ps',ls' ++ ls'')
 
     refinePs' :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
     refinePs' _pre []      acc       = acc
-    refinePs' pre  (p:ps)  (ps',ls') = let (p1, p2, n1, n2) = splitPs pre p ([], [], 0, 0)
-                                           (p1', p2') = if n1 < n2 then (p1, p2) else (p2, p1)
-                                           ls''     = if null p1' then ls' else p1':ls'
-                                           ps''     = p2' : ps'
+    refinePs' pre  (p:ps)  (ps',ls') = let  (p1, p2, n1, n2) = splitPs pre p ([], [], 0, 0)
+                                            (p1', p2') = if n1 < n2 then (p1, p2) else (p2, p1)
+                                            ls''     = if null p1' then ls' else p1':ls'
+                                            ps''     = p2' : ps'
                                       in refinePs' pre ps (ps'',ls'')
     -- TODO: use fact this is sorted
     splitPs :: [Node] -> EquivalenceClass -> (EquivalenceClass, EquivalenceClass, Int, Int) -> (EquivalenceClass, EquivalenceClass, Int, Int)
-    splitPs pre [] acc                           = acc
+    splitPs _pre [] acc                          = acc
     splitPs pre (p:ps) (inter,diff,ninter,ndiff) = let acc = if p `elem` pre
                                                              then (p:inter, diff  , ninter+1, ndiff)
                                                              else (inter  , p:diff, ninter  , ndiff+1)
-                                                   in  splitPs pre ps acc
+                                                    in  splitPs pre ps acc
 
     refineLs :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
     refineLs _pre [] = []
@@ -189,13 +190,50 @@ splitByPolarity TypeAutCore {ta_gr} = (pos, neg)
     getPol MkNodeLabel {nl_pol} = nl_pol
     getPol MkPrimitiveNodeLabel {pl_pol} = pl_pol
 
+
+-- We don't have a direct notion for accepting states, so we unroll the definition of the
+-- minimisation algorithm once
+initialSplit :: TypeAutCore EdgeLabelNormal -> ([EquivalenceClass], [EquivalenceClass])
+initialSplit aut@TypeAutCore { ta_gr } = (rest,catMaybes [posMin,negMin])
+  where
+    distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
+    (posMin,negMin,rest) = getMins distGroups
+  
+    getMins :: [EquivalenceClass]
+            -> (Maybe EquivalenceClass, Maybe EquivalenceClass, [EquivalenceClass])
+    getMins []                 = (Nothing, Nothing, [])
+    getMins ([]        : _iss) = error "Minimize: Empty equivalence class should not exist"
+    getMins (eq@(nd : _) : iss)  =
+      let l = fromJust $ lab ta_gr nd
+          pol = getLabelPol l
+          (p,n,iss') = getMins iss
+          (p',n',iss'')  = case (pol, p, n) of
+                            (Pos, Nothing, _) -> (Just eq, n, iss')
+                            (Pos, Just ns, _) ->
+                              if length ns > length eq
+                              then (Just eq, n, ns : iss')
+                              else (Just ns, n, eq : iss')
+                            (Neg, _, Nothing) -> (p, Just eq, iss')
+                            (Neg, _, Just ns) ->
+                              if length ns > length eq
+                              then (p, Just eq, ns : iss')
+                              else (p, Just ns, eq : iss')
+      in (p', n', iss'')
+
+getLabelPol :: NodeLabel -> Polarity
+getLabelPol MkNodeLabel {nl_pol} = nl_pol
+getLabelPol MkPrimitiveNodeLabel {pl_pol} = pl_pol
+
 -- generate a function that maps each node to the representative of its respective equivalence class
 genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
 genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
   where
-    distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
-    nodeSets = minimize' (predsMap ta_gr) (getAlphabet ta_gr) distGroups distGroups
-    (pos,neg) = splitByPolarity aut
+    preds = predsMap ta_gr
+    alph = getAlphabet ta_gr
+    --  distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
+    --  (pos,neg) = splitByPolarity aut
+    (ls,ps) = initialSplit aut
+    nodeSets = minimize'' preds alph ls ps
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
@@ -204,5 +242,3 @@ minimize aut@TypeAut {ta_core} = aut'
     ta_core' = removeRedundantEdgesCore ta_core
     fun = genMinimizeFun ta_core'
     aut' = mapTypeAut fun aut
-
-
