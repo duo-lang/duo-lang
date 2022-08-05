@@ -83,26 +83,26 @@ predsMap gr =
 
 type EquivalenceClass = [Node]
 
-minimize'' :: Preds -> [EdgeLabelNormal] -> [EquivalenceClass] -> [EquivalenceClass] -> [EquivalenceClass]
-minimize'' _preds _alph []     ps = ps
-minimize'' preds  alph  (l:ls) ps = minimize'' preds alph ls' ps'
+minimize' :: Preds -> [EdgeLabelNormal] -> [EquivalenceClass] -> [EquivalenceClass] -> [EquivalenceClass]
+minimize' _preds _alph []     ps = ps
+minimize' preds  alph  (w:ws) ps = minimize' preds alph ws' ps'
   where
-    (ps',ls') = refinePs alph (l:ps, ls)
+    (ws',ps') = refineAllLetters alph (ws, w:ps)
 
-    refinePs :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
-    refinePs []       acc = acc
-    refinePs (a:alph) (ps,ls) = let pre = predsWith preds l a
-                                    (ps',ls') = refinePs' pre ps ([],[])
-                                    ls'' = refineLs pre ls
-                                in refinePs alph (ps',ls' ++ ls'')
+    refineAllLetters :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
+    refineAllLetters []       acc = acc
+    refineAllLetters (a:alph) (ws,ps) = let pre       = predsWith preds w a
+                                            (ws',ps') = refinePs pre ps ([],[])
+                                            ws''      = refineWaiting pre ws
+                                        in refineAllLetters alph (ws' ++ ws'', ps')
 
-    refinePs' :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
-    refinePs' _pre []      acc       = acc
-    refinePs' pre  (p:ps)  (ps',ls') = let  (p1, p2, n1, n2) = splitPs pre p ([], [], 0, 0)
-                                            (p1', p2') = if n1 < n2 then (p1, p2) else (p2, p1)
-                                            ls''     = if null p1' then ls' else p1':ls'
-                                            ps''     = p2' : ps'
-                                      in refinePs' pre ps (ps'',ls'')
+    refinePs :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
+    refinePs _pre []      acc       = acc
+    refinePs pre  (p:ps)  (ws',ps') = let (p1, p2, n1, n2) = splitPs pre p ([], [], 0, 0)
+                                          (p1', p2')       = if n1 < n2 then (p1, p2) else (p2, p1)
+                                          ws''             = if null p1' then ws' else p1':ws'
+                                          ps''             = p2' : ps'
+                                      in refinePs pre ps (ws'',ps'')
     -- TODO: use fact this is sorted
     splitPs :: [Node] -> EquivalenceClass -> (EquivalenceClass, EquivalenceClass, Int, Int) -> (EquivalenceClass, EquivalenceClass, Int, Int)
     splitPs _pre [] acc                          = acc
@@ -111,9 +111,9 @@ minimize'' preds  alph  (l:ls) ps = minimize'' preds alph ls' ps'
                                                              else (inter  , p:diff, ninter  , ndiff+1)
                                                     in  splitPs pre ps acc
 
-    refineLs :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
-    refineLs _pre [] = []
-    refineLs pre (l:ls) = splitLs pre l ++ refineLs pre ls
+    refineWaiting :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
+    refineWaiting _pre [] = []
+    refineWaiting pre (l:ls) = splitLs pre l ++ refineWaiting pre ls
 
     splitLs :: [Node] -> EquivalenceClass -> [EquivalenceClass]
     splitLs pre l = let (l1,l2) = (l `intersect` pre, l \\ pre)
@@ -175,7 +175,7 @@ genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
     --  distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
     --  (pos,neg) = splitByPolarity aut
     (ls,ps) = initialSplit aut
-    nodeSets = minimize'' preds alph ls ps
+    nodeSets = minimize' preds alph ls ps
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
