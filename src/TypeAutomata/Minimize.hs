@@ -1,7 +1,7 @@
 module TypeAutomata.Minimize ( minimize ) where
 
-import Data.Graph.Inductive.Graph
-import Data.List (intersect, (\\), delete, partition)
+import Data.Graph.Inductive.Graph ( lab, lpre, nodes, Graph(labEdges), Node )
+import Data.List (intersect, (\\), partition)
 import Data.Maybe (fromMaybe, catMaybes, fromJust)
 
 import Data.Set (Set)
@@ -9,42 +9,11 @@ import Data.Set qualified as S
 import qualified Data.Map as M
 
 import TypeAutomata.Definition
-import Syntax.Common (RnTypeName, PrimitiveType, Polarity(..), Variance)
+import Syntax.Common.Polarity ( Polarity(..) )
 
 
 getAlphabet :: TypeGr -> [EdgeLabelNormal]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
-
-data Alphabet where
-  AData         :: XtorLabel                   -> Alphabet
-  ACodata       :: XtorLabel                   -> Alphabet
-  ANominal      :: (RnTypeName, [Variance])    -> Alphabet
-  ARefinementD  :: (RnTypeName, Set XtorLabel) -> Alphabet
-  ARefinementCD :: (RnTypeName, Set XtorLabel) -> Alphabet
-  APrimitive    :: PrimitiveType               -> Alphabet
-    deriving (Eq,Ord)
-
-getLabels :: TypeGr -> [Alphabet]
-getLabels gr = nub $ concat $ catMaybes allLabels
-  where
-    ns = nodes gr
-
-    allLabels :: [Maybe [Alphabet]]
-    allLabels = fmap labelToAlphabet . lab gr <$> ns
-
-    labelToAlphabet :: NodeLabel -> [Alphabet]
-    labelToAlphabet MkNodeLabel {..} =
-        let aData      = maybe [] (fmap AData . S.toList)   nl_data
-            aCodata    = maybe [] (fmap ACodata . S.toList) nl_codata
-            aNominal   = ANominal <$> S.toList nl_nominal
-            aRefData   = ARefinementD  <$> M.toList nl_ref_data
-            aRefCodata = ARefinementCD <$> M.toList nl_ref_codata
-        in aData ++ aCodata ++ aNominal ++ aRefData ++ aRefCodata
-    labelToAlphabet MkPrimitiveNodeLabel {..} = [ APrimitive pl_prim ]
-
--- find all predecessors with connecting edge labelled by specified label
-predsWith' :: TypeGr -> [Node] -> EdgeLabelNormal -> [Node]
-predsWith' gr ns x = nub . map fst . filter ((==x).snd) $ concatMap (lpre gr) ns
 
 type Preds = M.Map (Node,EdgeLabelNormal) [Node]
 
@@ -70,22 +39,6 @@ predsMap gr =
       addChar m a = foldl (addCharNode a) m ns
 
   in  foldl addChar M.empty alph
-
-splitAlong :: Preds -> [Node] -> EdgeLabelNormal -> [[Node]] -> [[Node]]
-splitAlong preds ds x ps = do
-  let re = predsWith preds ds x
-  p <- ps
-  let (p1,p2) = (p `intersect` re, p \\ re)
-  if null p1 || null p2 then [p] else [p1,p2]
-
--- minimize by refining the equivalence
--- this is done by taking refining the second partition an refining it via the first one
-minimize' :: Preds -> [EdgeLabelNormal] -> [[Node]] -> [[Node]] -> [[Node]]
-minimize' _preds _alph []     ps = ps
-minimize' preds  alph  (d:ds) ps =
-  let newDs = delete d (foldl (flip (splitAlong preds d)) (d:ds) alph)
-      newPs =           foldl (flip (splitAlong preds d)) ps     alph
-  in  minimize' preds alph newDs newPs
 
 -- an implementation of Hopcroft's minimisation algorithm
 -- with simplifications found in
@@ -179,17 +132,6 @@ flowNeighbors TypeAutCore { ta_flowEdges } i =
 equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
 equalNodes aut@TypeAutCore{ ta_gr } i j =
   (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
-
-splitByPolarity :: TypeAutCore EdgeLabelNormal -> (EquivalenceClass, EquivalenceClass)
-splitByPolarity TypeAutCore {ta_gr} = (pos, neg)
-  where
-    ns = (\x -> (x, fromJust $ lab ta_gr x)) <$> nodes ta_gr
-    pos = fst <$> filter (\(_,l) -> Pos == getPol l) ns
-    neg = fst <$> filter (\(_,l) -> Neg == getPol l) ns
-    getPol :: NodeLabel -> Polarity
-    getPol MkNodeLabel {nl_pol} = nl_pol
-    getPol MkPrimitiveNodeLabel {pl_pol} = pl_pol
-
 
 -- We don't have a direct notion for accepting states, so we unroll the definition of the
 -- minimisation algorithm once
