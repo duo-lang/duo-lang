@@ -123,6 +123,8 @@ data Term (pc :: PrdCns) where
   ---------------------------------------------------------------------------------
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
+  PrimLitChar :: Loc -> Char -> Term Prd
+  PrimLitString :: Loc -> String -> Term Prd
 
 deriving instance Show (Term pc)
 
@@ -141,6 +143,8 @@ instance Zonk (Term pc) where
   -- Primitive constructs  
   zonk _vt _ lit@PrimLitI64{} = lit
   zonk _vt _ lit@PrimLitF64{} = lit
+  zonk _vt _ lit@PrimLitChar{} = lit
+  zonk _vt _ lit@PrimLitString{} = lit
 
 getTypeTerm :: forall pc. Term pc -> Typ (PrdCnsToPol pc)
 -- Core constructs
@@ -152,6 +156,8 @@ getTypeTerm (MuAbs _ _ _ ty _ _)  = ty
 -- Primitive constructs
 getTypeTerm (PrimLitI64 _ _) = TyI64 defaultLoc PosRep
 getTypeTerm (PrimLitF64 _ _) = TyF64 defaultLoc PosRep
+getTypeTerm (PrimLitChar _ _) = TyChar defaultLoc PosRep
+getTypeTerm (PrimLitString _ _) = TyString defaultLoc PosRep
 
 getTypArgs :: Substitution -> LinearContext Pos
 getTypArgs subst = getTypArgs'' <$> subst
@@ -224,6 +230,8 @@ termOpeningRec k args (MuAbs loc annot rep ty fv cmd) =
 -- Primitive constructs
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
+termOpeningRec _ _ lit@PrimLitChar{} = lit
+termOpeningRec _ _ lit@PrimLitString{} = lit
 
 commandOpeningRec :: Int -> Substitution -> Command -> Command
 commandOpeningRec _ _ (ExitSuccess loc) =
@@ -270,6 +278,8 @@ termClosingRec k vars (MuAbs loc annot pc ty fv cmd) =
 -- Primitive constructs
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
+termClosingRec _ _ lit@PrimLitChar{} = lit
+termClosingRec _ _ lit@PrimLitString{} = lit
 
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
@@ -332,6 +342,8 @@ termLocallyClosedRec env (MuAbs _ _ CnsRep _ _ cmd) = commandLocallyClosedRec ([
 -- Primitive constructs  
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
+termLocallyClosedRec _ (PrimLitChar _ _) = Right ()
+termLocallyClosedRec _ (PrimLitString _ _) = Right ()
 
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
@@ -384,6 +396,8 @@ shiftTermRec dir n (MuAbs loc annot pcrep ty bs cmd) =
 -- Primitive constructs
 shiftTermRec _ _ lit@PrimLitI64{} = lit
 shiftTermRec _ _ lit@PrimLitF64{} = lit
+shiftTermRec _ _ lit@PrimLitChar{} = lit
+shiftTermRec _ _ lit@PrimLitString{} = lit
 
 shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
 shiftCmdCaseRec dir n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =

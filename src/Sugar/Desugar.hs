@@ -66,6 +66,10 @@ desugarTerm (RST.PrimLitI64 loc i) =
   Core.PrimLitI64 loc i
 desugarTerm (RST.PrimLitF64 loc d) =
   Core.PrimLitF64 loc d
+desugarTerm (RST.PrimLitChar loc d) =
+  Core.PrimLitChar loc d
+desugarTerm (RST.PrimLitString loc d) =
+  Core.PrimLitString loc d
 
 desugarCmdCase :: RST.CmdCase -> Core.CmdCase
 desugarCmdCase (RST.MkCmdCase loc pat cmd) =

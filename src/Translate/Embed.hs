@@ -58,6 +58,10 @@ embedCoreTerm (Core.PrimLitI64 loc d) =
     RST.PrimLitI64 loc d
 embedCoreTerm (Core.PrimLitF64 loc d) =
     RST.PrimLitF64 loc d
+embedCoreTerm (Core.PrimLitChar loc d) =
+    RST.PrimLitChar loc d
+embedCoreTerm (Core.PrimLitString loc d) =
+    RST.PrimLitString loc d
 
 embedTermCase :: Core.TermCase pc -> RST.TermCase pc
 embedTermCase (Core.MkTermCase loc pat t) = RST.MkTermCase loc pat (embedCoreTerm t)
@@ -179,6 +183,10 @@ embedTSTTerm (TST.PrimLitI64 loc i) =
     Core.PrimLitI64 loc i
 embedTSTTerm (TST.PrimLitF64 loc d) =
     Core.PrimLitF64 loc d
+embedTSTTerm (TST.PrimLitChar loc d) =
+    Core.PrimLitChar loc d
+embedTSTTerm (TST.PrimLitString loc d) =
+    Core.PrimLitString loc d
 
 
 embedTSTCommand :: TST.Command -> Core.Command

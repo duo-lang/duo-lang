@@ -127,6 +127,8 @@ instance PrettyAnn CST.Typ where
   -- Primitive types
   prettyAnn (CST.TyI64 _) = "#I64"
   prettyAnn (CST.TyF64 _) = "#F64"
+  prettyAnn (CST.TyChar _) = "#Char"
+  prettyAnn (CST.TyString _) = "#String"
   prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
 
 

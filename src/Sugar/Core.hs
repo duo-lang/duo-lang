@@ -298,4 +298,4 @@ pattern RawXtor loc pc ns xt subst = Xtor loc XtorAnnotOrig pc ns xt subst
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc
 pattern RawMuAbs loc pc name cmd = MuAbs loc MuAnnotOrig pc name cmd 
 
-{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, Lambda, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64 #-}
+{-# COMPLETE RawCase, RawXtor, RawMuAbs, XCaseI, CocaseOf, Lambda, CaseOf, Dtor, Semi, BoundVar, FreeVar, PrimLitI64, PrimLitF64, PrimLitChar, PrimLitString #-}

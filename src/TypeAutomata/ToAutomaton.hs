@@ -263,6 +263,16 @@ insertType (TyF64 _ rep) = do
   newNode <- newNodeM
   insertNode newNode (MkPrimitiveNodeLabel pol F64)
   return newNode
+insertType (TyChar _ rep) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode (MkPrimitiveNodeLabel pol PChar)
+  return newNode
+insertType (TyString _ rep) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode (MkPrimitiveNodeLabel pol PString)
+  return newNode
 insertType (TyFlipPol _ _) =
   throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]
 

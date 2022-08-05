@@ -157,6 +157,10 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.PrimLitF64 _ f) =
     annLiteral (prettyAnn f <>
     "#F64")
+  prettyAnn (CST.PrimLitChar _ f) =
+    annLiteral (prettyAnn ("'" ++ (f : "'")))
+  prettyAnn (CST.PrimLitString _ f) =
+    annLiteral (prettyAnn ("\"" ++ f ++  "\""))
   prettyAnn (CST.TermParens _ tm) =
     parens (prettyAnn tm)
   prettyAnn (CST.FunApp _ tm1 tm2) =

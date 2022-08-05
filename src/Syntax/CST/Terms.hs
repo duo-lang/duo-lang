@@ -90,6 +90,8 @@ data Term where
     Dtor :: Loc -> XtorName -> Term -> SubstitutionI -> Term
     PrimLitI64 :: Loc -> Integer -> Term
     PrimLitF64 :: Loc -> Double -> Term
+    PrimLitChar :: Loc -> Char -> Term
+    PrimLitString :: Loc -> String -> Term
     NatLit :: Loc -> NominalStructural -> Int -> Term
     TermParens :: Loc -> Term -> Term
     FunApp :: Loc -> Term -> Term -> Term
@@ -111,6 +113,8 @@ instance HasLoc Term where
   getLoc (CocaseOf loc _ _) = loc
   getLoc (PrimLitI64 loc _) = loc
   getLoc (PrimLitF64 loc _) = loc
+  getLoc (PrimLitChar loc _) = loc
+  getLoc (PrimLitString loc _) = loc
   getLoc (NatLit loc _ _) = loc
   getLoc (TermParens loc _) = loc
   getLoc (FunApp loc _ _) = loc

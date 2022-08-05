@@ -55,6 +55,8 @@ isFocusedTerm eo (MuAbs loc _annot pc ty v cmd) =
     MuAbs loc MuAnnotOrig pc ty v <$> isFocusedCmd eo cmd
 isFocusedTerm _  lit@PrimLitI64{} = Just lit
 isFocusedTerm _  lit@PrimLitF64{} = Just lit
+isFocusedTerm _  lit@PrimLitChar{} = Just lit
+isFocusedTerm _  lit@PrimLitString{} = Just lit
 
 isFocusedPCTerm :: EvaluationOrder -> PrdCnsTerm -> Maybe PrdCnsTerm
 isFocusedPCTerm eo (PrdTerm tm) = PrdTerm <$> isFocusedTerm eo tm
@@ -141,6 +143,8 @@ focusTerm eo (XCase loc _annot rep ty ns cases) = XCase loc MatchAnnotOrig rep t
 focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty v (focusCmd eo cmd)
 focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
 focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d
+focusTerm _ (PrimLitChar loc d)              = PrimLitChar loc d
+focusTerm _ (PrimLitString loc d)            = PrimLitString loc d
 
 focusPrdCnsTerm :: EvaluationOrder -> PrdCnsTerm -> PrdCnsTerm
 focusPrdCnsTerm eo (PrdTerm tm) = PrdTerm $ focusTerm eo tm
