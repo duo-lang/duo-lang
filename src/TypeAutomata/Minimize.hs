@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 module TypeAutomata.Minimize ( minimize ) where
 
 import Data.Graph.Inductive.Graph ( lab, lpre, nodes, Graph(labEdges), Node )
@@ -86,34 +85,34 @@ predsMap gr =
 type EquivalenceClass = [Node]
 
 minimize' :: Preds -> [EdgeLabelNormal] -> [EquivalenceClass] -> [EquivalenceClass] -> [EquivalenceClass]
-minimize' _preds _alph []     ps = ps
-minimize' preds  alph  (w:ws) ps = minimize' preds alph ws' ps'
+minimize' _preds _alph []     rs = rs
+minimize' preds  alph  (w:ws) rs = minimize' preds alph ws' rs'
   where
-    (ws',ps') = refineAllLetters alph (ws, w:ps)
+    (ws',rs') = refineAllLetters alph (ws, w:rs)
 
     refineAllLetters :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
     refineAllLetters []       acc = acc
-    refineAllLetters (a:alph) (ws,ps) = let pre       = sort $ predsWith preds w a
-                                            (ws',ps') = refinePs pre ps ([],[])
+    refineAllLetters (a:alph) (ws,rs) = let pre       = sort $ predsWith preds w a
                                             ws''      = refineWaiting pre ws
-                                        in refineAllLetters alph (ws' ++ ws'', ps')
+                                            (ws',rs') = refineRest pre rs ([],[])
+                                        in refineAllLetters alph (ws' ++ ws'', rs')
 
-    refinePs :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
-    refinePs _pre []      acc       = acc
-    refinePs pre  (p:ps)  (ws',ps') = let (p1, p2, n1, n2) = splitSorted pre p
-                                          -- take the smaller one as p1'
-                                          (p1', p2')       = if n1 < n2 then (p1, p2) else (p2, p1)
-                                          -- p1' might be empty. If so, don't add it
-                                          ws''             = if null p1' then ws' else p1':ws'
-                                          ps''             = p2' : ps'
-                                      in refinePs pre ps (ws'',ps'')
+    refineRest :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
+    refineRest _pre []      acc       = acc
+    refineRest pre  (r:rs)  (ws',rs') = let (r1, r2, n1, n2) = splitSorted pre r
+                                            -- take the smaller one as r1'
+                                            (r1', r2')       = if n1 < n2 then (r1, r2) else (r2, r1)
+                                            -- r1' might be empty. If so, don't add it
+                                            ws''             = if null r1' then ws' else r1':ws'
+                                            rs''             = r2' : rs'
+                                        in refineRest pre rs (ws'',rs'')
 
     refineWaiting :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
-    refineWaiting pre ls = concatMap (splitLs pre) ls
+    refineWaiting pre ls = concatMap (splitWaiting pre) ls
 
-    splitLs :: [Node] -> EquivalenceClass -> [EquivalenceClass]
-    splitLs pre l = let (l1,l2,_,_) = splitSorted pre l
-                    in if null l1 || null l2 then [l] else [l1, l2]
+    splitWaiting :: [Node] -> EquivalenceClass -> [EquivalenceClass]
+    splitWaiting pre l = let (l1,l2,_,_) = splitSorted pre l
+                         in if null l1 || null l2 then [l] else [l1, l2]
 
 splitSorted :: (Ord a) => [a] -> [a] -> ([a], [a], Int, Int)
 splitSorted splitter splittee = (reverse inter, reverse diff, ni, nd)
@@ -154,9 +153,9 @@ initialSplit aut@TypeAutCore { ta_gr } = (rest,catMaybes [posMin,negMin])
   
     getMins :: [EquivalenceClass]
             -> (Maybe EquivalenceClass, Maybe EquivalenceClass, [EquivalenceClass])
-    getMins []                 = (Nothing, Nothing, [])
-    getMins ([]        : _iss) = error "Minimize: Empty equivalence class should not exist"
-    getMins (eq@(nd : _) : iss)  =
+    getMins []                  = (Nothing, Nothing, [])
+    getMins ([]        : _iss)  = error "Minimize: Empty equivalence class should not exist"
+    getMins (eq@(nd : _) : iss) =
       let l = fromJust $ lab ta_gr nd
           pol = getLabelPol l
           (p,n,iss') = getMins iss
@@ -181,17 +180,15 @@ getLabelPol MkPrimitiveNodeLabel {pl_pol} = pl_pol
 genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
 genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
   where
-    preds = predsMap ta_gr
-    alph = getAlphabet ta_gr
-    --  distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
-    --  (pos,neg) = splitByPolarity aut
-    (ls,ps) = initialSplit aut
-    nodeSets = minimize' preds alph ls ps
+    preds        = predsMap ta_gr
+    alph         = getAlphabet ta_gr
+    (ls,ps)      = initialSplit aut
+    nodeSets     = minimize' preds alph ls ps
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
 minimize aut@TypeAut {ta_core} = aut'
   where
     ta_core' = removeRedundantEdgesCore ta_core
-    fun = genMinimizeFun ta_core'
-    aut' = mapTypeAut fun aut
+    fun      = genMinimizeFun ta_core'
+    aut'     = mapTypeAut fun aut
