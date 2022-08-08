@@ -1,7 +1,8 @@
+{-# LANGUAGE BangPatterns #-}
 module TypeAutomata.Minimize ( minimize ) where
 
 import Data.Graph.Inductive.Graph ( lab, lpre, nodes, Graph(labEdges), Node )
-import Data.List (intersect, (\\), partition)
+import Data.List (partition, sort)
 import Data.Maybe (fromMaybe, catMaybes, fromJust)
 
 import Data.Set (Set)
@@ -15,11 +16,12 @@ import Syntax.Common.Polarity ( Polarity(..) )
 getAlphabet :: TypeGr -> [EdgeLabelNormal]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
 
-type Preds = M.Map (Node,EdgeLabelNormal) [Node]
+-- map a pair of a node and an edge label to the node's predecessors along the label
+type Preds = M.Map (Node,EdgeLabelNormal) (Set Node)
 
 -- find all predecessors with connecting edge labelled by specified label
 predsWith :: Preds -> [Node] -> EdgeLabelNormal -> [Node]
-predsWith preds ns x = nub $ concatMap (\n -> fromMaybe [] $ M.lookup (n,x) preds) ns
+predsWith preds ns x = S.toList $ S.unions $ (\n -> fromMaybe S.empty $ M.lookup (n,x) preds) <$> ns
 
 predsMap :: TypeGr -> Preds
 predsMap gr =
@@ -29,8 +31,8 @@ predsMap gr =
       preds :: M.Map Node [(Node,EdgeLabelNormal)]
       preds = M.fromList $ fmap(\n -> (n, lpre gr n)) ns
 
-      getPred :: Node -> EdgeLabelNormal -> [Node]
-      getPred n l = map fst . filter ((== l) . snd) $ fromMaybe [] $ M.lookup n preds
+      getPred :: Node -> EdgeLabelNormal -> Set Node
+      getPred n l = S.fromList $ map fst . filter ((== l) . snd) $ fromMaybe [] $ M.lookup n preds
 
       addCharNode :: EdgeLabelNormal -> Preds -> Node -> Preds
       addCharNode a m n = M.insert (n,a) (getPred n a) m
@@ -91,33 +93,41 @@ minimize' preds  alph  (w:ws) ps = minimize' preds alph ws' ps'
 
     refineAllLetters :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
     refineAllLetters []       acc = acc
-    refineAllLetters (a:alph) (ws,ps) = let pre       = predsWith preds w a
+    refineAllLetters (a:alph) (ws,ps) = let pre       = sort $ predsWith preds w a
                                             (ws',ps') = refinePs pre ps ([],[])
                                             ws''      = refineWaiting pre ws
                                         in refineAllLetters alph (ws' ++ ws'', ps')
 
     refinePs :: [Node] -> [EquivalenceClass] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
     refinePs _pre []      acc       = acc
-    refinePs pre  (p:ps)  (ws',ps') = let (p1, p2, n1, n2) = splitPs pre p ([], [], 0, 0)
+    refinePs pre  (p:ps)  (ws',ps') = let (p1, p2, n1, n2) = splitSorted pre p
+                                          -- take the smaller one as p1'
                                           (p1', p2')       = if n1 < n2 then (p1, p2) else (p2, p1)
+                                          -- p1' might be empty. If so, don't add it
                                           ws''             = if null p1' then ws' else p1':ws'
                                           ps''             = p2' : ps'
                                       in refinePs pre ps (ws'',ps'')
-    -- TODO: use fact this is sorted
-    splitPs :: [Node] -> EquivalenceClass -> (EquivalenceClass, EquivalenceClass, Int, Int) -> (EquivalenceClass, EquivalenceClass, Int, Int)
-    splitPs _pre [] acc                          = acc
-    splitPs pre (p:ps) (inter,diff,ninter,ndiff) = let acc = if p `elem` pre
-                                                             then (p:inter, diff  , ninter+1, ndiff)
-                                                             else (inter  , p:diff, ninter  , ndiff+1)
-                                                    in  splitPs pre ps acc
 
     refineWaiting :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
-    refineWaiting _pre [] = []
-    refineWaiting pre (l:ls) = splitLs pre l ++ refineWaiting pre ls
+    refineWaiting pre ls = concatMap (splitLs pre) ls
 
     splitLs :: [Node] -> EquivalenceClass -> [EquivalenceClass]
-    splitLs pre l = let (l1,l2) = (l `intersect` pre, l \\ pre)
+    splitLs pre l = let (l1,l2,_,_) = splitSorted pre l
                     in if null l1 || null l2 then [l] else [l1, l2]
+
+splitSorted :: (Ord a) => [a] -> [a] -> ([a], [a], Int, Int)
+splitSorted splitter splittee = (reverse inter, reverse diff, ni, nd)
+  where
+    (inter, diff, ni, nd) = go splitter splittee ([], [], 0, 0)
+
+    go :: (Ord a) => [a] -> [a] -> ([a], [a], Int, Int) -> ([a], [a], Int, Int)
+    go []     ps      (is, ds, ni, nd)      = (is, reverse ps ++ ds, ni, nd + length ps)
+    go _ss    []      (is, ds, ni, nd)      = (is, ds, ni, nd)
+    go (s:ss) (p:ps)  acc@(is, ds, ni, nd)  =
+        case compare s p of
+          LT -> go ss     (p:ps)  acc
+          EQ -> go ss     ps      (p:is, ds, ni+1, nd)
+          GT -> go (s:ss) ps      (is, p:ds, ni, nd+1)
 
 -- partition list by equivalence (given as a function)
 myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
@@ -138,8 +148,9 @@ equalNodes aut@TypeAutCore{ ta_gr } i j =
 initialSplit :: TypeAutCore EdgeLabelNormal -> ([EquivalenceClass], [EquivalenceClass])
 initialSplit aut@TypeAutCore { ta_gr } = (rest,catMaybes [posMin,negMin])
   where
+    distGroups :: [EquivalenceClass]
     distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
-    (posMin,negMin,rest) = getMins distGroups
+    (posMin,negMin,rest) = getMins $ sort <$> distGroups
   
     getMins :: [EquivalenceClass]
             -> (Maybe EquivalenceClass, Maybe EquivalenceClass, [EquivalenceClass])
