@@ -128,6 +128,8 @@ nodeToTypeNoCache rep i  = do
       let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
           toPrimType rep I64 = TyI64 defaultLoc rep
           toPrimType rep F64 = TyF64 defaultLoc rep
+          toPrimType rep PChar = TyChar defaultLoc rep
+          toPrimType rep PString = TyString defaultLoc rep
       pure (toPrimType rep tp)
     MkNodeLabel _ datSet codatSet tns refDat refCodat -> do
       outs <- nodeToOuts i

@@ -110,6 +110,8 @@ data Term (pc :: PrdCns) where
   -- | Primitive literals
   PrimLitI64 :: Loc -> Integer -> Term Prd
   PrimLitF64 :: Loc -> Double -> Term Prd
+  PrimLitChar :: Loc -> Char -> Term Prd
+  PrimLitString :: Loc -> String -> Term Prd
 --deriving instance Eq (Term Prd)
 --deriving instance Eq (Term Cns)
 deriving instance Show (Term Prd)
@@ -161,6 +163,8 @@ termOpeningRec k args (MuAbs loc annot rep fv cmd) =
   MuAbs loc annot rep fv (commandOpeningRec (k+1) args cmd)
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
+termOpeningRec _ _ lit@PrimLitChar{} = lit
+termOpeningRec _ _ lit@PrimLitString{} = lit
 
 
 commandOpeningRec :: Int -> Substitution -> Command -> Command
@@ -206,6 +210,8 @@ termClosingRec k vars (MuAbs loc annot pc fv cmd) =
   MuAbs loc annot pc fv (commandClosingRec (k+1) vars cmd)
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
+termClosingRec _ _ lit@PrimLitChar{} = lit
+termClosingRec _ _ lit@PrimLitString{} = lit
 
 commandClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosingRec _ _ (ExitSuccess ext) =
@@ -268,6 +274,8 @@ termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(C
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
+termLocallyClosedRec _ (PrimLitChar _ _) = Right ()
+termLocallyClosedRec _ (PrimLitString _ _) = Right ()
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
 commandLocallyClosedRec _ (ExitSuccess _) = Right ()
@@ -307,6 +315,8 @@ shiftTermRec dir n (MuAbs loc annot pcrep bs cmd) =
   MuAbs loc annot pcrep bs (shiftCmdRec dir (n + 1) cmd)
 shiftTermRec _ _ lit@PrimLitI64{} = lit
 shiftTermRec _ _ lit@PrimLitF64{} = lit
+shiftTermRec _ _ lit@PrimLitChar{} = lit
+shiftTermRec _ _ lit@PrimLitString{} = lit
 
 shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
 shiftCmdCaseRec dir n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftCmdRec dir n cmd)

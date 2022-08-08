@@ -68,6 +68,8 @@ checkVarianceTyp _loc _var _polyKind (TyTop _loc') = return ()
 checkVarianceTyp _loc _var _polyKind (TyBot _loc') = return ()
 checkVarianceTyp _loc _var _polyKind (TyI64 _loc') = return ()
 checkVarianceTyp _loc _var _polyKind (TyF64 _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (TyChar _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (TyString _loc') = return ()
 checkVarianceTyp loc var polyKind (TyBinOpChain ty tys) = do
   -- see comments for TyBinOp
   checkVarianceTyp loc var polyKind ty
@@ -97,41 +99,56 @@ checkVarianceDataDecl loc polyKind pol xtors = do
     Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
 
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
-resolveDataDecl CST.NominalDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
-  NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
-  -- Default the kind if none was specified:
-  let polyKind = case data_kind of
-                    Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
-                    Just knd -> knd
-  checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
-  -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
-  let g :: TypeNameResolve -> TypeNameResolve
-      g (SynonymResult tn ty) = SynonymResult tn ty
-      g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
+resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
+  case data_refined of
+    NotRefined -> do
+      -------------------------------------------------------------------------
+      -- Nominal Data Type
+      -------------------------------------------------------------------------
+      NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
+      -- Default the kind if none was specified:
+      let polyKind = case data_kind of
+                        Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Just knd -> knd
+      checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
+      xtors <- resolveXtors data_xtors
+      pure RST.NominalDecl { data_loc = data_loc
+                           , data_doc = data_doc
+                           , data_name = data_name'
+                           , data_polarity = data_polarity
+                           , data_kind = polyKind
+                           , data_xtors = xtors
+                           }
+    Refined -> do
+      -------------------------------------------------------------------------
+      -- Refinement Data Type
+      -------------------------------------------------------------------------
+      NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
+      -- Default the kind if none was specified:
+      polyKind <- case data_kind of
+                        Nothing -> pure $ MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Just knd -> case knd of
+                          pk@(MkPolyKind [] _) -> pure pk
+                          _                    -> throwOtherError data_loc ["Parameterized refinement types are currently not allowed."]
+      -- checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
+      -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
+      let g :: TypeNameResolve -> TypeNameResolve
+          g (SynonymResult tn ty) = SynonymResult tn ty
+          g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
 
-      f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
-      f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
+          f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
+          f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
 
-      h :: ResolveReader -> ResolveReader
-      h r = r { rr_modules = f $ rr_modules r }
-  xtors <- local h (resolveXtors data_xtors)
-  -- Create the new data declaration
-  let dcl = case data_refined of
-              NotRefined -> RST.NominalDecl { data_loc = data_loc
-                                            , data_doc = data_doc
-                                            , data_name = data_name'
-                                            , data_polarity = data_polarity
-                                            , data_kind = polyKind
-                                            , data_xtors = xtors
-                                            }
-              Refined -> RST.RefinementDecl { data_loc = data_loc
-                                            , data_doc = data_doc
-                                            , data_name = data_name'
-                                            , data_polarity = data_polarity
-                                            , data_kind = polyKind
-                                            , data_xtors = xtors
-                                            }
-  pure dcl
+          h :: ResolveReader -> ResolveReader
+          h r = r { rr_modules = f $ rr_modules r }
+      xtors <- local h (resolveXtors data_xtors)
+      pure RST.RefinementDecl { data_loc = data_loc
+                              , data_doc = data_doc
+                              , data_name = data_name'
+                              , data_polarity = data_polarity
+                              , data_kind = polyKind
+                              , data_xtors = xtors
+                              }
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations

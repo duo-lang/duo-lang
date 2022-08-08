@@ -241,6 +241,8 @@ subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2
 -- Constraints between primitive types:
 subConstraints (SubType _ (TyI64 _ _) (TyI64 _ _)) = pure []
 subConstraints (SubType _ (TyF64 _ _) (TyF64 _ _)) = pure []
+subConstraints (SubType _ (TyChar _ _) (TyChar _ _)) = pure []
+subConstraints (SubType _ (TyString _ _) (TyString _ _)) = pure []
 -- All other constraints cannot be solved.
 subConstraints (SubType _ t1 t2) = do
   throwSolverError defaultLoc ["Cannot constraint type"

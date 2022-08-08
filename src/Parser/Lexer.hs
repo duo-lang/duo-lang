@@ -6,6 +6,8 @@ module Parser.Lexer
   , docCommentP
     -- Literals
   , natP
+  , charP
+  , stringP
   , intP
   , uintP
   , floatP
@@ -41,6 +43,7 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Parser.Definition
 import Syntax.Common
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
+import Data.Char (isAlphaNum, isSpace, isPunctuation)
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -99,6 +102,22 @@ natP = do
   (numStr, pos) <- lexeme (some numberChar)
   return (read numStr, pos)
 
+scharP :: Parser Char
+scharP = satisfy isSChar <?> "string character"
+  where
+    isSChar c = isAlphaNum c || isSpace c || (isPunctuation c && c /= '"' && c /= '\'')
+
+charP :: Parser (Char, SourcePos)
+charP = do
+  (ch, pos) <- betweenP (symbolP SymSingleQuote) (symbolP SymSingleQuote) scharP
+  return (ch, pos)
+
+stringP :: Parser (String, SourcePos)
+stringP = do
+  s <- symbolP SymDoubleQuote >> manyTill scharP (symbolP SymDoubleQuote)
+  pos <- getSourcePos
+  return (s, pos)
+
 uintP :: Parser (Integer, SourcePos)
 uintP = do
   pos <- getSourcePos
@@ -155,7 +174,7 @@ operatorP = f <|> g
 checkTick :: NominalStructural -> Parser ()
 checkTick Nominal = return ()
 checkTick Refinement = return ()
-checkTick Structural = () <$ symbolP SymTick
+checkTick Structural = () <$ symbolP SymSingleQuote
 
 -------------------------------------------------------------------------------------------
 -- Keywords
@@ -176,8 +195,12 @@ data Keyword where
   KwCBN         :: Keyword
   KwI64         :: Keyword
   KwF64         :: Keyword
+  KwChar        :: Keyword
+  KwString      :: Keyword
   KwF64Rep      :: Keyword
   KwI64Rep      :: Keyword
+  KwCharRep     :: Keyword
+  KwStringRep   :: Keyword
   KwOperator    :: Keyword
   KwAt          :: Keyword
   KwLeftAssoc   :: Keyword
@@ -221,8 +244,12 @@ instance Show Keyword where
   show KwCBN         = "CBN"
   show KwI64         = "#I64"
   show KwF64         = "#F64"
+  show KwChar        = "#Char"
+  show KwString      = "#String"
   show KwF64Rep      = "F64Rep"
   show KwI64Rep      = "I64Rep"
+  show KwCharRep     = "CharRep"
+  show KwStringRep   = "StringRep"
   show KwOperator    = "operator"
   show KwAt          = "at"
   show KwLeftAssoc   = "leftassoc"
@@ -268,8 +295,12 @@ isDeclarationKw KwCBV         = False
 isDeclarationKw KwCBN         = False
 isDeclarationKw KwI64         = False
 isDeclarationKw KwF64         = False
+isDeclarationKw KwChar        = False
+isDeclarationKw KwString      = False
 isDeclarationKw KwF64Rep      = False
 isDeclarationKw KwI64Rep      = False
+isDeclarationKw KwCharRep     = False
+isDeclarationKw KwStringRep   = False
 isDeclarationKw KwOperator    = False
 isDeclarationKw KwAt          = False
 isDeclarationKw KwLeftAssoc   = False
@@ -289,10 +320,10 @@ isDeclarationKw KwData        = True
 isDeclarationKw KwCodata      = True
 isDeclarationKw KwSet         = True
 isDeclarationKw KwImport      = True
-isDeclarationKw KwPrd         = False 
-isDeclarationKw KwCns         = False 
-isDeclarationKw KwCmd         = False 
-isDeclarationKw KwReturn      = False 
+isDeclarationKw KwPrd         = False
+isDeclarationKw KwCns         = False
+isDeclarationKw KwCmd         = False
+isDeclarationKw KwReturn      = False
 isDeclarationKw KwClass       = True
 isDeclarationKw KwInstance    = True
 
@@ -343,7 +374,8 @@ data Symbol where
   SymDoubleSemi       :: Symbol
   SymColon            :: Symbol
   SymPipe             :: Symbol
-  SymTick             :: Symbol
+  SymSingleQuote      :: Symbol
+  SymDoubleQuote      :: Symbol
   SymBackslash        :: Symbol
   SymColoneq          :: Symbol
   SymDoubleRightArrow :: Symbol
@@ -376,7 +408,8 @@ instance Show Symbol where
   show SymDoubleSemi       = ";;"
   show SymColon            = ":"
   show SymPipe             = "|"
-  show SymTick             = "'"
+  show SymSingleQuote      = "'"
+  show SymDoubleQuote      = "\""
   show SymBackslash        = "\\"
   show SymColoneq          = ":="
   show SymDoubleRightArrow = "=>"

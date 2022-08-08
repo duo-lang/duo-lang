@@ -140,6 +140,8 @@ instance ToJumpMap (RST.Term pc) where
   toJumpMap (RST.Lambda _ _ _ tm) = toJumpMap tm
   toJumpMap RST.PrimLitI64 {} = M.empty
   toJumpMap RST.PrimLitF64 {} = M.empty
+  toJumpMap RST.PrimLitChar {} = M.empty
+  toJumpMap RST.PrimLitString {} = M.empty
 
 
 ---------------------------------------------------------------------------------
@@ -182,6 +184,8 @@ instance ToJumpMap (RST.Typ pol) where
     toJumpMap ty
   toJumpMap RST.TyI64 {} = M.empty
   toJumpMap RST.TyF64 {} = M.empty
+  toJumpMap RST.TyChar {} = M.empty
+  toJumpMap RST.TyString {} = M.empty
   toJumpMap (RST.TyFlipPol _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.XtorSig pol) where

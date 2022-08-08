@@ -26,6 +26,8 @@ dualTerm rep (MuAbs _ annot pc ty fv cmd) = do
     return $ MuAbs defaultLoc (dualMuAnnot annot)  (flipPrdCns pc)  (dualType' rep ty) (dualFVName <$> fv) cmd'
 dualTerm _ (PrimLitI64 loc i) = Left $ DualPrim loc $ "Cannot dualize integer literal: " ++ show i
 dualTerm _ (PrimLitF64 loc i) = Left $ DualPrim loc $ "Cannot dualize floating point literal: " ++ show i
+dualTerm _ (PrimLitChar loc i) = Left $ DualPrim loc $ "Cannot dualize character literal: " ++ show i
+dualTerm _ (PrimLitString loc i) = Left $ DualPrim loc $ "Cannot dualize string literal: " ++ show i
 
 dualCmd :: Command -> Either DualizeError Command
 dualCmd (Apply _ annot kind prd cns) = do
@@ -118,6 +120,8 @@ dualType pol (TyRecVar _loc _ kind x) = TyRecVar defaultLoc (flipPolarityRep pol
 dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyI64 loc _ ) = TyI64 loc (flipPolarityRep pol)
 dualType pol (TyF64 loc _ ) = TyF64 loc (flipPolarityRep pol)
+dualType pol (TyChar loc _ ) = TyChar loc (flipPolarityRep pol)
+dualType pol (TyString loc _ ) = TyString loc (flipPolarityRep pol)
 -- @BinderDavid please check
 dualType _ (TyBot loc mk) = TyTop loc mk
 dualType _ (TyTop loc mk) = TyBot loc mk

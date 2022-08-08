@@ -24,7 +24,7 @@ import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.DataDecl where
-  prettyAnn (CST.NominalDecl _ _ ref tn dc knd xtors) =
+  prettyAnn (CST.MkDataDecl _ _ ref tn dc knd xtors) =
     (case ref of
       Refined -> annKeyword "refinement" <+> mempty
       NotRefined -> mempty) <>

@@ -126,6 +126,10 @@ openTermComplete (RST.PrimLitI64 loc i) =
   RST.PrimLitI64 loc i
 openTermComplete (RST.PrimLitF64 loc d) =
   RST.PrimLitF64 loc d
+openTermComplete (RST.PrimLitChar loc d) =
+  RST.PrimLitChar loc d
+openTermComplete (RST.PrimLitString loc d) =
+  RST.PrimLitString loc d
 
 openCommandComplete :: RST.Command -> RST.Command
 openCommandComplete (RST.Apply loc t1 t2) =
@@ -229,6 +233,10 @@ createNamesTerm (RST.PrimLitI64 loc i) =
   pure (RST.PrimLitI64 loc i)
 createNamesTerm (RST.PrimLitF64 loc d) =
   pure (RST.PrimLitF64 loc d)
+createNamesTerm (RST.PrimLitChar loc d) =
+  pure (RST.PrimLitChar loc d)
+createNamesTerm (RST.PrimLitString loc d) =
+  pure (RST.PrimLitString loc d)
 
 createNamesCommand :: RST.Command -> CreateNameM RST.Command
 createNamesCommand (RST.ExitSuccess loc) =
@@ -361,6 +369,10 @@ embedTerm (RST.PrimLitI64 loc i) =
   CST.PrimLitI64 loc i
 embedTerm (RST.PrimLitF64 loc d) =
   CST.PrimLitF64 loc d
+embedTerm (RST.PrimLitChar loc d) =
+  CST.PrimLitChar loc d
+embedTerm (RST.PrimLitString loc d) =
+  CST.PrimLitString loc d
 
 
 embedPCTerm :: RST.PrdCnsTerm -> CST.Term
@@ -508,6 +520,10 @@ embedType (RST.TyI64 loc _) =
   CST.TyI64 loc
 embedType (RST.TyF64 loc _) =
   CST.TyF64 loc
+embedType (RST.TyChar loc _) =
+  CST.TyChar loc
+embedType (RST.TyString loc _) =
+  CST.TyString loc
 embedType (RST.TyFlipPol _ ty) = embedType ty
 
 embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
@@ -521,23 +537,23 @@ embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
 
 embedTyDecl :: RST.DataDecl -> CST.DataDecl
 embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-  CST.NominalDecl { data_loc = data_loc
-                  , data_doc = data_doc
-                  , data_refined = NotRefined
-                  , data_name = rnTnName data_name
-                  , data_polarity = data_polarity
-                  , data_kind = Just data_kind
-                  , data_xtors = embedXtorSig <$> fst data_xtors
-                  }
+  CST.MkDataDecl { data_loc = data_loc
+                 , data_doc = data_doc
+                 , data_refined = NotRefined
+                 , data_name = rnTnName data_name
+                 , data_polarity = data_polarity
+                 , data_kind = Just data_kind
+                 , data_xtors = embedXtorSig <$> fst data_xtors
+                 }
 embedTyDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-  CST.NominalDecl { data_loc = data_loc
-                  , data_doc = data_doc
-                  , data_refined = Refined
-                  , data_name = rnTnName data_name
-                  , data_polarity = data_polarity
-                  , data_kind = Just data_kind
-                  , data_xtors = embedXtorSig <$> fst data_xtors
-                  }
+  CST.MkDataDecl { data_loc = data_loc
+                 , data_doc = data_doc
+                 , data_refined = Refined
+                 , data_name = rnTnName data_name
+                 , data_polarity = data_polarity
+                 , data_kind = Just data_kind
+                 , data_xtors = embedXtorSig <$> fst data_xtors
+                 }
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad

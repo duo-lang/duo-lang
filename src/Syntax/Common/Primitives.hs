@@ -7,13 +7,17 @@ import Syntax.Common.PrdCns
 data PrimitiveType =
       I64 -- ^ Primitive signed 64-bit integer
     | F64 -- ^ Primitive double-precision floating point
+    | PChar
+    | PString
     deriving (Show, Eq, Ord)
 
 primTypeKeyword :: PrimitiveType -> String
 primTypeKeyword I64 = "#I64"
 primTypeKeyword F64 = "#F64"
+primTypeKeyword PChar = "#Char"
+primTypeKeyword PString = "#String"
 
-data PrimitiveOp = Add | Sub | Mul | Div | Mod
+data PrimitiveOp = Add | Sub | Mul | Div | Mod | Append | Prepend
   deriving (Show, Eq, Ord)
 
 primOpKeyword :: PrimitiveOp -> String
@@ -22,6 +26,8 @@ primOpKeyword Sub = "Sub"
 primOpKeyword Mul = "Mul"
 primOpKeyword Div = "Div"
 primOpKeyword Mod = "Mod"
+primOpKeyword Append = "Append"
+primOpKeyword Prepend = "Prepend"
 
 -- | Primitive operations and their arities
 primOps :: Map (PrimitiveType, PrimitiveOp) Arity
@@ -37,5 +43,9 @@ primOps = fromList
     ((F64, Add), [Prd, Prd, Cns]),
     ((F64, Sub), [Prd, Prd, Cns]),
     ((F64, Mul), [Prd, Prd, Cns]),
-    ((F64, Div), [Prd, Prd, Cns])
+    ((F64, Div), [Prd, Prd, Cns]),
+    -- Char
+    ((PChar, Prepend), [Prd, Prd, Cns]),
+    -- String
+    ((PString, Append), [Prd, Prd, Cns])
   ]

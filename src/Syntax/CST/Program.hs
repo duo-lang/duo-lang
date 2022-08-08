@@ -220,7 +220,7 @@ instance HasLoc ClassDeclaration where
 ------------------------------------------------------------------------------
 
 -- | A toplevel declaration of a data or codata type.
-data DataDecl = NominalDecl
+data DataDecl = MkDataDecl
   { data_loc :: Loc
     -- ^ The source code location of the declaration.
   , data_doc :: Maybe DocComment

@@ -206,6 +206,14 @@ instance ToHoverMap (Term pc) where
     mkHoverMap loc $ T.unlines [ "#### Literal"
                                , "- Raw `#F64` literal"
                                ]
+  toHoverMap (PrimLitChar loc _) =
+    mkHoverMap loc $ T.unlines [ "#### Literal"
+                               , "- Raw `#Char` literal"
+                               ]
+  toHoverMap (PrimLitString loc _) =
+    mkHoverMap loc $ T.unlines [ "#### Literal"
+                               , "- Raw `#String` literal"
+                               ]
   toHoverMap (XCaseI loc _pcrep CnsRep ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
   toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
@@ -387,6 +395,22 @@ instance ToHoverMap (Typ pol) where
     let
       msg = T.unlines [ "#### Primitive Type"
                       , "- Name: #F64"
+                      , "- Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      mkHoverMap loc msg
+  toHoverMap (TyChar loc rep) =
+    let
+      msg = T.unlines [ "#### Primitive Type"
+                      , "- Name: #Char"
+                      , "- Polarity: " <> prettyPolRep rep
+                      ]
+    in
+      mkHoverMap loc msg
+  toHoverMap (TyString loc rep) =
+    let
+      msg = T.unlines [ "#### Primitive Type"
+                      , "- Name: #String"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in

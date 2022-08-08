@@ -103,6 +103,8 @@ monoKindP :: Parser MonoKind
 monoKindP = CBox <$> evalOrderP
          <|> CRep I64 <$ keywordP KwI64Rep
          <|> CRep F64 <$ keywordP KwF64Rep
+         <|> CRep PChar <$ keywordP KwCharRep
+         <|> CRep PString <$ keywordP KwStringRep
 
 ---------------------------------------------------------------------------------
 -- PolyKinds
