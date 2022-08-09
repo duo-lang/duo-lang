@@ -6,8 +6,27 @@ import Prettyprinter
 import Text.Megaparsec.Pos
 
 import Pretty.Pretty
-import Syntax.Common
-import Utils
+import Syntax.Common.Names
+    ( Associativity(..),
+      ClassName(MkClassName),
+      DocComment(unDocComment),
+      FreeVarName(MkFreeVarName),
+      MethodName(MkMethodName),
+      ModuleName(MkModuleName),
+      Precedence(..),
+      RecTVar(MkRecTVar),
+      RnTypeName(MkRnTypeName, rnTnName),
+      SkolemTVar(MkSkolemTVar),
+      TypeName(MkTypeName),
+      UniTVar(MkUniTVar),
+      XtorName(MkXtorName) )
+import Syntax.Common.XData ( DataCodata(..) )
+import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
+import Syntax.Common.Types ( NominalStructural(..) )
+import Syntax.Common.Primitives ( PrimitiveType(..) )
+import Syntax.Common.Kinds
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
+import Utils ( Loc(..) )
 
 
 instance PrettyAnn a => PrettyAnn (NonEmpty a) where

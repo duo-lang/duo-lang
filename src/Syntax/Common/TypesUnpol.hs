@@ -1,6 +1,10 @@
 module Syntax.Common.TypesUnpol where
 
-import Syntax.Common
+import Syntax.Common.Names
+    ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
+import Syntax.Common.XData ( DataCodata )
+import Syntax.Common.PrdCns ( Arity, PrdCns(Cns, Prd) )
+
 import Data.List.NonEmpty (NonEmpty)
 import Utils ( Loc, HasLoc(..))
 

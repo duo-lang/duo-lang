@@ -22,7 +22,10 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Driver.Environment
 import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.PrdCns
+import Syntax.Common.XData
 import Syntax.RST.Program qualified as RST
 import Utils
 

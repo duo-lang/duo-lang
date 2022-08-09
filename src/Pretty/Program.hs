@@ -9,9 +9,13 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
-import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as Unpol
+import Syntax.Common.Kinds
+import Syntax.Common.PrdCns
+import Syntax.Common.XData
+import Syntax.Common.Types
+import Syntax.Common.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST

@@ -7,12 +7,12 @@ import GitHash (tGitInfoCwd, giHash, giBranch)
 
 import Options (Options(..), parseOptions)
 import Run (runRun)
+import Syntax.Common.Names
 import Typecheck (runTypecheck)
 import Deps (runDeps)
 import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
 import Paths_duo_lang (version)
-import Syntax.Common
 import Utils (trimStr)
 
 main :: IO ()

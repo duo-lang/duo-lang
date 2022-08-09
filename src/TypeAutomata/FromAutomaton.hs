@@ -1,7 +1,12 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
-import Syntax.Common
 import Syntax.Common.TypesPol
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.XData
+import Syntax.Common.PrdCns
+import Syntax.Common.Primitives
+import Syntax.Common.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import TypeAutomata.BicliqueDecomp

@@ -1,6 +1,9 @@
 module Dualize.Program where
 
-import Syntax.Common
+import Syntax.Common.Polarity
+import Syntax.Common.Kinds
+import Syntax.Common.XData
+import Syntax.Common.PrdCns
 import Syntax.Common.TypesPol
 import Syntax.RST.Program qualified as RST
 import Dualize.Terms

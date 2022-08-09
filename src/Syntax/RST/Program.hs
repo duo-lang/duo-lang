@@ -1,9 +1,27 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.RST.Program where
 
-import Syntax.Common
 import Syntax.RST.Terms( Command, Term, InstanceCase )
 import Syntax.Common.TypesPol ( TypeScheme, Typ, MethodSig, XtorSig)
+import Syntax.Common.Names
+    ( Associativity,
+      ClassName,
+      DocComment,
+      FreeVarName,
+      Precedence,
+      RnTypeName,
+      SkolemTVar,
+      TyOpName,
+      TypeName,
+      XtorName )
+import Syntax.Common.PrdCns
+    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.Types ( IsRec )
+import Syntax.Common.Kinds
+    ( EvaluationOrder, MonoKind, PolyKind, Variance )
+import Syntax.Common.XData ( DataCodata )
+import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
+
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
 

@@ -23,10 +23,12 @@ import Driver.Environment (Environment(..), emptyEnvironment)
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
-import Syntax.Common
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol
+import Syntax.Common.Names
+import Syntax.Common.PrdCns
+import Syntax.Common.Polarity
 import Utils
 
 ---------------------------------------------------------------------------------

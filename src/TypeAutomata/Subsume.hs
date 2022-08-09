@@ -14,7 +14,7 @@ import Control.Monad.State
 
 import Errors
 import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.Common.Polarity
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)

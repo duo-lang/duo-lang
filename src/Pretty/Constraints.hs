@@ -7,7 +7,8 @@ import Data.Map qualified as M
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
 import TypeInference.Constraints
 
 ---------------------------------------------------------------------------------

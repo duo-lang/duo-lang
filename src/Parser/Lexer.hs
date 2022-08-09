@@ -40,8 +40,10 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
+import Syntax.Common.Types
+import Syntax.Common.Names
+import Syntax.Common.Primitives
 import Parser.Definition
-import Syntax.Common
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 import Data.Char (isAlphaNum, isSpace, isPunctuation)
 

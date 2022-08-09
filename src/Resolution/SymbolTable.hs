@@ -8,7 +8,11 @@ import Data.Map qualified as M
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.XData
+import Syntax.Common.Types
+import Syntax.Common.Kinds
+import Syntax.Common.PrdCns
 import Syntax.CST.Program
 import Syntax.Common.TypesUnpol
 import Utils

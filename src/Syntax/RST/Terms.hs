@@ -22,9 +22,13 @@ module Syntax.RST.Terms
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 
-import Utils
-import Syntax.Common
-import Syntax.Common.Pattern
+import Utils ( Loc )
+import Syntax.Common.Names
+    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
+import Syntax.Common.Pattern ( Pattern(..), PatternI(..) )
+import Syntax.Common.Types ( NominalStructural )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 
 ---------------------------------------------------------------------------------
 -- Variable representation

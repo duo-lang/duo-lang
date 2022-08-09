@@ -28,7 +28,10 @@ import Resolution.Program (resolveProgram)
 import Resolution.SymbolTable
 import Resolution.Definition
 
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.Types
+import Syntax.Common.PrdCns
 import Syntax.CST.Program qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST

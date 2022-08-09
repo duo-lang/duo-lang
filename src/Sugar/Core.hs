@@ -20,7 +20,10 @@ module Sugar.Core(
   where
 
 import Syntax.Core.Terms
-import Syntax.Common
+import Syntax.Common.Types
+import Syntax.Common.Annot
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
 import Utils
 import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.Common.Pattern

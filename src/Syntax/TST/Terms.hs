@@ -24,9 +24,23 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.Common
+import Syntax.Common.PrdCns
+    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.Names
+    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+import Syntax.Common.Annot
+    ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
+import Syntax.Common.Types ( NominalStructural )
+import Syntax.Common.Polarity
+    ( Polarity(Pos), PolarityRep(PosRep) )
+import Syntax.Common.Kinds ( MonoKind )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 import Syntax.Common.TypesPol
-import Syntax.Common.Pattern
+    ( LinearContext,
+      PrdCnsType(PrdCnsType),
+      Typ(TyString, TyI64, TyF64, TyChar),
+      Zonk(..) )
+import Syntax.Common.Pattern ( Pattern(..) )
 import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------

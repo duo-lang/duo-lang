@@ -15,7 +15,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Syntax.Common ( SkolemTVar(MkSkolemTVar) )
+import Syntax.Common.Names ( SkolemTVar(MkSkolemTVar) )
 
 -------------------------------------------------------------------------------------
 -- Compute Biclique Decomposition

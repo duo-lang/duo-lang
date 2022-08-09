@@ -11,10 +11,17 @@ import Data.Text qualified as T
 
 import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
-import Syntax.Common
 import Syntax.TST.Terms
 import Utils
 import Syntax.Common.TypesPol (Typ(..))
+import Syntax.Common.PrdCns
+import Syntax.Common.Kinds
+import Syntax.Common.Types
+import Syntax.Common.Names
+import Syntax.Common.Primitives
+import Syntax.Common.Annot
+import Syntax.Common.Polarity
+
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
 ---------------------------------------------------------------------------------

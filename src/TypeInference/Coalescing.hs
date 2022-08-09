@@ -9,7 +9,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 
 import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
 import TypeInference.Constraints
 import Utils
 

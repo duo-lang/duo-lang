@@ -1,7 +1,9 @@
 module Syntax.CST.Terms where
 
-import Syntax.Common
-import Utils
+import Syntax.Common.Names ( FreeVarName, XtorName )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
+import Syntax.Common.Types ( NominalStructural )
+import Utils ( HasLoc(..), Loc )
 
 --------------------------------------------------------------------------------------------
 -- Substitutions 

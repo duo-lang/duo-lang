@@ -11,7 +11,12 @@ import Text.Read (readMaybe)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.PrdCns
+import Syntax.Common.Polarity
+import Syntax.Common.Kinds
+import Syntax.Common.Annot
+import Syntax.Common.Types
 import Syntax.TST.Terms
 import Utils
 import Syntax.Common.TypesPol (Typ (TyNominal))

@@ -11,7 +11,8 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 
-import Syntax.Common
+import Syntax.Common.Polarity
+import Syntax.Common.Primitives
 import TypeAutomata.Definition
     ( EdgeLabelNormal,
       NodeLabel(..),
@@ -111,21 +112,6 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
       Pos -> M.unionsWith S.intersection refs
       Neg -> M.unionsWith S.union refs
     rs_merged = combineNodeLabels rs
-    --mrgDat Nothing Nothing = Nothing
-    --mrgDat Nothing (Just xtors) = Just xtors
-    --mrgDat (Just xtors) Nothing = Just xtors
-    --mrgDat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2}
-    --mrgCodat Nothing Nothing = Nothing
-    --mrgCodat Nothing (Just xtors) = Just xtors
-    --mrgCodat (Just xtors) Nothing = Just xtors
-    --mrgCodat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2}
-    --mrgNom s1 s2 = case pol of {Pos -> S.intersection s1 s2; Neg -> S.union s1 s2}
-    --mrgRefDat refs = case pol of
-    -- Pos -> M.unionsWith S.union refs
-    --  Neg -> M.unionsWith S.intersection refs
-    --mrgRefCodat refs = case pol of
-    --  Pos -> M.unionsWith S.intersection refs
-    --  Neg -> M.unionsWith S.union refs
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) = 
   case rs_merged of

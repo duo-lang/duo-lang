@@ -2,8 +2,10 @@ module TypeInference.Constraints where
 
 import Data.Map (Map)
 
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
 import Syntax.Common.TypesPol ( Typ )
+import Syntax.Common.Kinds
 import Utils ( Loc )
 
 

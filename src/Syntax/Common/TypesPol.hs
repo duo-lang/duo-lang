@@ -6,7 +6,13 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Kind ( Type )
 
-import Syntax.Common
+import Syntax.Common.PrdCns
+    ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
+import Syntax.Common.Kinds ( MonoKind, Variance(..) )
+import Syntax.Common.Polarity
+    ( FlipPol, Polarity(..), PolarityRep(..) )
+import Syntax.Common.Names
+    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 import Utils
 
 ------------------------------------------------------------------------------

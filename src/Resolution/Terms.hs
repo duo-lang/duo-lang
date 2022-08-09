@@ -14,7 +14,11 @@ import Resolution.SymbolTable
 import Resolution.Pattern
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
+import Syntax.Common.XData
+import Syntax.Common.Primitives
+import Syntax.Common.Types
 import Utils
 
 ---------------------------------------------------------------------------------

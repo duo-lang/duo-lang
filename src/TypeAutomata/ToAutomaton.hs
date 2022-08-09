@@ -15,8 +15,13 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.Common
 import Syntax.Common.TypesPol
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.XData
+import Syntax.Common.Kinds
+import Syntax.Common.PrdCns
+import Syntax.Common.Primitives
 import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),

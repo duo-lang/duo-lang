@@ -1,12 +1,15 @@
 module Syntax.Core.Program where
 
-import Syntax.Common
 import Syntax.Core.Terms( Command, Term, InstanceCase )
 import Syntax.Common.TypesPol ( TypeScheme, Typ )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Utils ( Loc )
-
+import Syntax.Common.Names ( ClassName, DocComment, FreeVarName )
+import Syntax.Common.Types ( IsRec )
+import Syntax.Common.PrdCns
+    ( PrdCns(Prd, Cns), PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration

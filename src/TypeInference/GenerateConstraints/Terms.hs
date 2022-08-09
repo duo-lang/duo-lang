@@ -13,8 +13,11 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
-import Syntax.Common hiding (primOps)
 import Syntax.Common.TypesPol
+import Syntax.Common.PrdCns
+import Syntax.Common.Types
+import Syntax.Common.Names
+import Syntax.Common.Polarity
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils

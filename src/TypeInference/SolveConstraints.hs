@@ -15,13 +15,14 @@ import Data.Set qualified as S
 import Driver.Environment (Environment)
 import Errors
 import Syntax.Common.TypesPol
-import Syntax.Common
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
---import Syntax.Common.TypesUnpol (Typ(TyUniVar))
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.PrdCns
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

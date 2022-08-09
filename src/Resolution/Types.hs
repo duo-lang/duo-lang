@@ -13,10 +13,15 @@ import Errors
 import Pretty.Pretty
 import Resolution.Definition
 import Resolution.SymbolTable
-import Syntax.Common
 import Syntax.Common.TypesPol ( freeTVars )
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.Common.TypesUnpol
+import Syntax.Common.Polarity
+import Syntax.Common.XData
+import Syntax.Common.Kinds
+import Syntax.Common.Names
+import Syntax.Common.Types
+import Syntax.Common.PrdCns
 import Utils (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 

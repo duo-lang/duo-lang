@@ -29,8 +29,8 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
-import Syntax.Common
 import Syntax.RST.Terms qualified as RST
+import Syntax.Common.Names
 import Syntax.Common.TypesPol qualified as RST
 import Syntax.RST.Program qualified as RST
 import Translate.Embed

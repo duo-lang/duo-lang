@@ -11,7 +11,12 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
-import Syntax.Common
+import Syntax.Common.Names ( RnTypeName, XtorName )
+import Syntax.Common.PrdCns ( Arity, PrdCns )
+import Syntax.Common.XData ( DataCodata(..) )
+import Syntax.Common.Polarity ( Polarity, PolarityRep )
+import Syntax.Common.Primitives ( PrimitiveType )
+import Syntax.Common.Kinds ( Variance )
 
 --------------------------------------------------------------------------------
 -- # Type Automata

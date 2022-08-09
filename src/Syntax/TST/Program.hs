@@ -1,11 +1,15 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.TST.Program where
 
-import Syntax.Common
 import Syntax.TST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesPol ( TopAnnot, Typ )
+import Syntax.Common.Names ( ClassName, DocComment, FreeVarName )
+import Syntax.Common.PrdCns
+    ( PrdCns(Prd, Cns), PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.Types ( IsRec )
+import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
 import Utils ( Loc )
 
 

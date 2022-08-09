@@ -22,9 +22,13 @@ import Data.Text qualified as T
 import Syntax.Common.Annot
 import Utils
 import Errors
-import Syntax.Common
 import Syntax.TST.Terms (ShiftDirection(..))
-import Syntax.Common.Pattern
+import Syntax.Common.Pattern ( Pattern(..) )
+import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
+import Syntax.Common.Names
+    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+import Syntax.Common.Types ( NominalStructural )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 
 ---------------------------------------------------------------------------------
 -- Variable representation

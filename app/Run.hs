@@ -7,7 +7,8 @@ import Driver.Driver ( runCompilationModule )
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
 import Pretty.Pretty (ppPrintIO)
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Sugar.Desugar (desugarEnvironment)

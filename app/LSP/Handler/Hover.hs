@@ -18,7 +18,11 @@ import System.Log.Logger ( debugM )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Common ()
 import Pretty.Types ()
-import Syntax.Common
+import Syntax.Common.PrdCns
+import Syntax.Common.Types
+import Syntax.Common.Names
+import Syntax.Common.Kinds
+import Syntax.Common.Polarity
 import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST

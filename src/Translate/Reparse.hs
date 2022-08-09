@@ -26,7 +26,6 @@ import Data.Bifunctor
 import Data.Text qualified as T
 import Data.Maybe (fromJust)
 
-import Syntax.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.CST.Terms qualified as CST
@@ -36,6 +35,21 @@ import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.Common.TypesUnpol (TypeScheme(ts_constraints))
+import Syntax.Common.Names
+    ( BinOp(InterOp, CustomOp, UnionOp),
+      FreeVarName(MkFreeVarName),
+      MethodName(unMethodName),
+      RecTVar(MkRecTVar),
+      RnTypeName(MkRnTypeName, rnTnName),
+      SkolemTVar(MkSkolemTVar),
+      TyOpName(MkTyOpName),
+      TypeName(MkTypeName),
+      XtorName(MkXtorName) )
+import Syntax.Common.PrdCns
+    ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
+import Syntax.Common.Types
+    ( IsRefined(Refined, NotRefined), NominalStructural(Nominal) )
+import Syntax.Common.XData ( DataCodata(Codata, Data) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.

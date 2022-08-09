@@ -16,7 +16,12 @@ import Syntax.Common.TypesUnpol qualified as CST
 import Syntax.Common.TypesUnpol (XtorSig (sig_args), PrdCnsTyp (PrdType, CnsType), Typ (..))
 import Syntax.RST.Program qualified as RST
 import Syntax.Common.TypesPol qualified as RST
-import Syntax.Common
+import Syntax.Common.Polarity
+import Syntax.Common.Kinds
+import Syntax.Common.XData
+import Syntax.Common.Names
+import Syntax.Common.PrdCns
+import Syntax.Common.Types
 import Utils (Loc, defaultLoc)
 
 

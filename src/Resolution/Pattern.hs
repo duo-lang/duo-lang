@@ -13,8 +13,11 @@ import Data.Text qualified as T
 import Errors
 import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
-import Syntax.Common
 import Syntax.CST.Terms qualified as CST
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
+import Syntax.Common.Types
+import Syntax.Common.XData
 import Utils ( Loc, HasLoc(getLoc))
 
 ---------------------------------------------------------------------------------

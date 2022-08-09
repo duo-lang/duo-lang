@@ -138,7 +138,6 @@ library
       Sugar.TST
       Syntax.TST.Program
       Syntax.TST.Terms
-      Syntax.Common
       Syntax.Common.Kinds
       Syntax.Common.Names
       Syntax.Common.Polarity
