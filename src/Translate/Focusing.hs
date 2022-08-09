@@ -13,10 +13,10 @@ import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
 import Utils
+import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Types (Typ(..))
 import Syntax.Common.PrdCns
 import Syntax.Common.Kinds
-import Syntax.Common.Types
 import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Syntax.Common.Annot
@@ -169,14 +169,14 @@ betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
-focusXtor :: EvaluationOrder -> PrdCnsRep pc ->  Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
+focusXtor :: EvaluationOrder -> PrdCnsRep pc ->  Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
 focusXtor eo PrdRep ty ns xt subst =
     MuAbs defaultLoc MuAnnotOrig PrdRep ty Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd ShiftUp (focusXtor' eo PrdRep ty ns xt subst [])))
 focusXtor eo CnsRep ty ns xt subst =
     MuAbs defaultLoc MuAnnotOrig CnsRep ty Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd ShiftUp (focusXtor' eo CnsRep ty ns xt subst [])))
 
 
-focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
+focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  CST.NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusXtor' eo CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (FreeVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
                                                                            (Xtor defaultLoc XtorAnnotOrig CnsRep ty ns xt (reverse pcterms'))
 focusXtor' eo PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (Just (CBox eo)) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (reverse pcterms'))

@@ -20,19 +20,19 @@ module Sugar.Core(
   where
 
 import Syntax.Core.Terms
-import Syntax.Common.Types
 import Syntax.Common.Annot
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Utils
 import Syntax.TST.Terms (ShiftDirection(..))
+import Syntax.CST.Terms qualified as CST
 import Syntax.Common.Pattern
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >
 --   Annotations used on RHS: ApplyAnnotCaseOfCmd, MatchAnnotCaseOfCmd
 
-pattern CaseOfCmd :: Loc -> NominalStructural -> Term Prd -> [CmdCase] -> Command
+pattern CaseOfCmd :: Loc -> CST.NominalStructural -> Term Prd -> [CmdCase] -> Command
 pattern CaseOfCmd loc ns t cases <- Apply loc ApplyAnnotCaseOfCmd t (XCase _ MatchAnnotCaseOfCmd CnsRep ns cases)
  where
     CaseOfCmd loc ns t cases = Apply loc ApplyAnnotCaseOfCmd t (XCase loc MatchAnnotCaseOfCmd CnsRep ns cases)
@@ -41,7 +41,7 @@ pattern CaseOfCmd loc ns t cases <- Apply loc ApplyAnnotCaseOfCmd t (XCase _ Mat
 --   [[cocase e of { Dtor(xs) => cmd }]] = < cocase { Dtor(xs) => [[cmd]] } | [[e]] >
 --   Annotations used on RHS: ApplyAnnotCocaseOfCmd, MatchAnnotCocaseOfCmd
 
-pattern CocaseOfCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
+pattern CocaseOfCmd :: Loc -> CST.NominalStructural -> Term Cns -> [CmdCase] -> Command
 pattern CocaseOfCmd loc ns t cases <- Apply loc ApplyAnnotCocaseOfCmd (XCase _ MatchAnnotCocaseOfCmd PrdRep ns cases) t
  where
     CocaseOfCmd loc ns t cases = Apply loc ApplyAnnotCocaseOfCmd (XCase loc MatchAnnotCocaseOfCmd PrdRep ns cases) t
@@ -73,7 +73,7 @@ resugarCmdCase _ cmd = error $ "cannot resugar " ++ show cmd
 --      < [[e]] | case { Ctor(xs,k,ys) => < k | [[cns]] > } >
 --   Annotations used on RHS: ApplyAnnotCaseOfIInner, ApplyAnnotCaseOfIOuter, MatchAnnotCaseOfI
 
-pattern CaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
+pattern CaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
 pattern CaseOfI loc rep ns t cases <-
   Apply loc ApplyAnnotCaseOfIOuter t (XCase _ MatchAnnotCaseOfI (flipPrdCns -> rep) ns (map (resugarCmdCase rep) -> cases))
   where
@@ -101,7 +101,7 @@ pattern CaseOfI loc rep ns t cases <-
 --      < cocase { Dtor(xs,k,ys) => < k | [[cns]] > } | [[e]] >
 --   Annotations used on RHS: ApplyAnnotCaseOfIInner, ApplyAnnotCaseOfIOuter, MatchAnnotCaseOfI
 
-pattern CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
+pattern CocaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 pattern CocaseOfI loc rep ns t cases <-
   Apply loc ApplyAnnotCocaseOfIOuter (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) ns (map (resugarCmdCase rep) -> cases)) t
   where
@@ -141,7 +141,7 @@ resVar = MkFreeVarName "$result"
 --   [[Ctor(as,*,bs) ;; e]] = mu k. <  Ctor([[as]],k,[[bs]])  |  [[e]]  >
 --   Annotations used on RHS: MuAnnotSemi, ApplyAnnotSemi, XtorAnnotSemi
 
-pattern Semi :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
+pattern Semi :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
 pattern Semi loc rep ns xt substi t <-
     MuAbs loc MuAnnotSemi rep _ (shiftCmd ShiftDown -> Apply _ ApplyAnnotSemi (Xtor _ (XtorAnnotSemi i) PrdRep ns xt (resugarSubst rep i -> substi)) t)
     where 
@@ -162,7 +162,7 @@ pattern Semi loc rep ns xt substi t <-
 --   [[e.Dtor(as,*,bs)]]    = mu k. <  [[e]]  | Dtor([[as]], k, [[bs]])
 --   Annotations used on RHS: MuAnnotDtor, ApplyAnnotDtor, XtorAnnotDtor
 
-pattern Dtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
+pattern Dtor :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
 pattern Dtor loc rep ns xt t substi <-
     MuAbs loc MuAnnotDtor rep _ (shiftCmd ShiftDown -> Apply _ ApplyAnnotDtor t (Xtor _ (XtorAnnotDtor i) CnsRep ns xt (resugarSubst rep i -> substi)) )
     where 
@@ -199,7 +199,7 @@ resugarTermCase _ cmd = error $ "compiler bug: resugarTermCase : cannot resugar 
 --  [[case e of { Ctor(xs) => cns }]] = mu k. < [[e]]  |  case { Ctor(xs) => < k  | [[cns]] > }
 --  Annotations used on RHS: MuAnnotCaseOf, ApplyAnnotCaseOfOuter, ApplyAnnotCaseOfInner, MatchAnnotCaseOf
 
-pattern CaseOf   :: Loc -> PrdCnsRep pc ->  NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
+pattern CaseOf   :: Loc -> PrdCnsRep pc ->  CST.NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
 pattern CaseOf loc rep ns t cases <- 
   MuAbs loc MuAnnotCaseOf rep Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotCaseOfOuter t (XCase _ MatchAnnotCaseOf CnsRep ns (map (resugarTermCase rep) -> cases)))
   where   
@@ -223,7 +223,7 @@ pattern CaseOf loc rep ns t cases <-
 --  [[cocase e of { Dtor(xs) => cns }]] = mu k. < cocase { Dtor(xs) => < k  |  [[cns ]]}  | [[e]] >
 --  Annotations used on RHS: MuAnnotCocaseOf, ApplyAnnotCocaseOfOuter, ApplyAnnotCocaseOfInner, MatchAnnotCocaseOf
 
-pattern CocaseOf   :: Loc -> PrdCnsRep pc ->  NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
+pattern CocaseOf   :: Loc -> PrdCnsRep pc ->  CST.NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
 pattern CocaseOf loc rep ns t cases <- 
   MuAbs loc MuAnnotCocaseOf rep Nothing (shiftCmd ShiftDown -> Apply _ ApplyAnnotCocaseOfOuter (XCase _ MatchAnnotCocaseOf PrdRep ns (map (resugarTermCase rep) -> cases)) t)
   where   
@@ -258,7 +258,7 @@ resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 --   [[cocase { Dtor(xs,*,ys) => cns }]] = cocase { Dtor(xs,k,ys) => < k | [[cns]] > }
 --   Annotations used on RHS: MatchAnnotXCaseI, ApplyAnnotXCaseI
 
-pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> NominalStructural -> [TermCaseI pc] -> Term pc'            
+pattern XCaseI :: Loc -> PrdCnsRep pc -> PrdCnsRep pc' -> CST.NominalStructural -> [TermCaseI pc] -> Term pc'            
 pattern XCaseI loc rep rep' ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ns (map (resugarCmdCase' rep) -> cases)   
   where 
    XCaseI loc PrdRep rep' ns cases =    
@@ -287,15 +287,15 @@ extractCmdCase CnsRep [MkCmdCase _ (XtorPat _ (MkXtorName "CoAp") [(Cns,Just fv)
 extractCmdCase _ _ = Nothing 
 
 pattern Lambda  :: Loc ->  PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc 
-pattern Lambda loc pc fv tm <- XCase loc MatchAnnotLambda pc Nominal (extractCmdCase pc -> Just (fv,tm))
+pattern Lambda loc pc fv tm <- XCase loc MatchAnnotLambda pc CST.Nominal (extractCmdCase pc -> Just (fv,tm))
   where 
-    Lambda loc PrdRep x tm = XCase loc MatchAnnotLambda PrdRep Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]  
-    Lambda loc CnsRep x tm = XCase loc MatchAnnotLambda CnsRep Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )]  
+    Lambda loc PrdRep x tm = XCase loc MatchAnnotLambda PrdRep CST.Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]  
+    Lambda loc CnsRep x tm = XCase loc MatchAnnotLambda CnsRep CST.Nominal [MkCmdCase loc (XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )]  
 
-pattern RawCase ::  Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+pattern RawCase ::  Loc -> PrdCnsRep pc -> CST.NominalStructural -> [CmdCase] -> Term pc
 pattern RawCase loc pc ns cases = XCase loc MatchAnnotOrig pc ns cases 
 
-pattern RawXtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
+pattern RawXtor :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
 pattern RawXtor loc pc ns xt subst = Xtor loc XtorAnnotOrig pc ns xt subst 
 
 pattern RawMuAbs :: Loc -> PrdCnsRep pc -> Maybe FreeVarName -> Command -> Term pc

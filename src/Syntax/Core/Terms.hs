@@ -23,11 +23,11 @@ import Syntax.Common.Annot
 import Utils
 import Errors
 import Syntax.TST.Terms (ShiftDirection(..))
+import Syntax.CST.Terms qualified as CST
 import Syntax.Common.Pattern ( Pattern(..) )
 import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.Common.Types ( NominalStructural )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 
 ---------------------------------------------------------------------------------
@@ -102,10 +102,10 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> CST.NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c

@@ -40,9 +40,9 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
-import Syntax.Common.Types
 import Syntax.Common.Names
 import Syntax.Common.Primitives
+import Syntax.CST.Terms qualified as CST
 import Parser.Definition
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 import Data.Char (isAlphaNum, isSpace, isPunctuation)
@@ -173,10 +173,10 @@ operatorP = f <|> g
 
 ---
 
-checkTick :: NominalStructural -> Parser ()
-checkTick Nominal = return ()
-checkTick Refinement = return ()
-checkTick Structural = () <$ symbolP SymSingleQuote
+checkTick :: CST.NominalStructural -> Parser ()
+checkTick CST.Nominal = return ()
+checkTick CST.Refinement = return ()
+checkTick CST.Structural = () <$ symbolP SymSingleQuote
 
 -------------------------------------------------------------------------------------------
 -- Keywords

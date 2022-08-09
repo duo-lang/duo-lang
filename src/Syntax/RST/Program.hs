@@ -16,7 +16,6 @@ import Syntax.Common.Names
       XtorName )
 import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
-import Syntax.Common.Types ( IsRec )
 import Syntax.Common.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
 import Syntax.CST.Types ( DataCodata )
@@ -37,7 +36,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ The documentation string of the declaration.
   , pcdecl_pc :: PrdCnsRep pc
     -- ^ Whether a producer or consumer is declared.
-  , pcdecl_isRec :: IsRec
+  , pcdecl_isRec :: CST.IsRec
     -- ^ Whether the declaration can refer to itself recursively.
   , pcdecl_name :: FreeVarName
     -- ^ The name of the producer / consumer.

@@ -16,7 +16,6 @@ import Syntax.Common.Names
       TypeName,
       XtorName )
 import Syntax.Common.PrdCns ( PrdCns )
-import Syntax.Common.Types ( IsRec, IsRefined )
 import Syntax.Common.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
 import Utils ( HasLoc(..), Loc )
@@ -24,6 +23,11 @@ import Utils ( HasLoc(..), Loc )
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
 ---------------------------------------------------------------------------------
+
+data IsRec where
+  Recursive :: IsRec
+  NonRecursive :: IsRec
+  deriving (Show, Eq, Ord)
 
 -- | A toplevel producer or consumer declaration.
 data PrdCnsDeclaration = MkPrdCnsDeclaration
@@ -232,6 +236,9 @@ instance HasLoc ClassDeclaration where
 ------------------------------------------------------------------------------
 -- Data Type declarations
 ------------------------------------------------------------------------------
+
+data IsRefined = Refined | NotRefined
+  deriving (Show, Ord, Eq)
 
 -- | A toplevel declaration of a data or codata type.
 data DataDecl = MkDataDecl

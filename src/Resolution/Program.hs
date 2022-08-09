@@ -19,7 +19,6 @@ import Syntax.Common.Polarity
 import Syntax.Common.Kinds
 import Syntax.Common.Names
 import Syntax.Common.PrdCns
-import Syntax.Common.Types
 import Utils (Loc, defaultLoc)
 
 
@@ -104,7 +103,7 @@ checkVarianceDataDecl loc polyKind pol xtors = do
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
 resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   case data_refined of
-    NotRefined -> do
+    CST.NotRefined -> do
       -------------------------------------------------------------------------
       -- Nominal Data Type
       -------------------------------------------------------------------------
@@ -122,7 +121,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
                            , data_kind = polyKind
                            , data_xtors = xtors
                            }
-    Refined -> do
+    CST.Refined -> do
       -------------------------------------------------------------------------
       -- Refinement Data Type
       -------------------------------------------------------------------------
@@ -137,7 +136,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
           g (SynonymResult tn ty) = SynonymResult tn ty
-          g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
+          g (NominalResult tn dc _ polykind) = NominalResult tn dc CST.NotRefined polykind
 
           f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
           f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))

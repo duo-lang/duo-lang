@@ -21,7 +21,6 @@ import Syntax.Common.Names
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
-import Syntax.Common.Types ( NominalStructural(..) )
 import Syntax.Common.Primitives ( PrimitiveType(..) )
 import Syntax.Common.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
@@ -105,15 +104,6 @@ prettyArity (Cns:rest) = parens "-" <> prettyArity rest
 prettyPrdCns :: PrdCns -> Doc Annotation
 prettyPrdCns Prd = "prd"
 prettyPrdCns Cns = "cns"
-
----------------------------------------------------------------------------------
--- Data/Codata and Nominal/Structural/Refinement
----------------------------------------------------------------------------------
-
-instance PrettyAnn NominalStructural where
-  prettyAnn Nominal = "Nominal"
-  prettyAnn Structural = "Structural"
-  prettyAnn Refinement = "Refinement"
 
 ---------------------------------------------------------------------------------
 -- Primitives

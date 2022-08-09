@@ -17,7 +17,6 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
-import Syntax.Common.Types
 import Utils ( Loc, HasLoc(getLoc))
 
 ---------------------------------------------------------------------------------
@@ -29,7 +28,7 @@ import Utils ( Loc, HasLoc(getLoc))
 
 data Pattern where
   PatClassMethod :: Loc -> XtorName -> [(Loc, PrdCns, FreeVarName)] -> Pattern
-  PatXtor        :: Loc -> PrdCns -> NominalStructural -> XtorName -> [Pattern] -> Pattern
+  PatXtor        :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [Pattern] -> Pattern
   PatVar         :: Loc -> PrdCns -> FreeVarName -> Pattern
   PatStar        :: Loc -> PrdCns -> Pattern
   PatWildcard    :: Loc -> PrdCns -> Pattern

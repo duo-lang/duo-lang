@@ -18,7 +18,6 @@ import Syntax.CST.Types qualified as CST
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Syntax.Common.Primitives
-import Syntax.Common.Types
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -293,8 +292,8 @@ resolveCommand (CST.CoLambda loc _ _) =
 
 
 
-casesToNS :: [CST.TermCase] -> ResolverM NominalStructural
-casesToNS [] = pure Structural
+casesToNS :: [CST.TermCase] -> ResolverM CST.NominalStructural
+casesToNS [] = pure CST.Structural
 casesToNS (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.PatXtor _ tmcase_name _ }:_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
@@ -302,7 +301,7 @@ casesToNS _ =
   throwOtherError defaultLoc ["casesToNS called with invalid argument"]
 
 -- | Lower a natural number literal.
-resolveNatLit :: Loc -> NominalStructural -> Int -> ResolverM (RST.Term Prd)
+resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
 resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") []
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
@@ -313,11 +312,11 @@ resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term
 resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
+  pure $ RST.Dtor loc PrdRep CST.Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
+  pure $ RST.Semi loc CnsRep CST.Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True

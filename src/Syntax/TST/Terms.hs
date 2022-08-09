@@ -30,11 +30,11 @@ import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Common.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
-import Syntax.Common.Types ( NominalStructural )
 import Syntax.Common.Polarity
     ( Polarity(Pos), PolarityRep(PosRep) )
 import Syntax.Common.Kinds ( MonoKind )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
+import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Types
     ( LinearContext,
       PrdCnsType(PrdCnsType),
@@ -123,10 +123,10 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> CST.NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c

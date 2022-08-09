@@ -143,7 +143,6 @@ library
       Syntax.Common.Polarity
       Syntax.Common.Primitives
       Syntax.Common.PrdCns
-      Syntax.Common.Types
       Syntax.Common.Annot
       Syntax.Common.Pattern
       Syntax.Core.Terms

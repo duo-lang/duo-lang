@@ -30,7 +30,6 @@ import Resolution.Definition
 
 import Syntax.Common.Names
 import Syntax.Common.Polarity
-import Syntax.Common.Types
 import Syntax.Common.PrdCns
 import Syntax.CST.Program qualified as CST
 import Syntax.RST.Program qualified as RST
@@ -85,8 +84,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   env <- gets drvEnv
   -- 1. Generate the constraints.
   let genFun = case pcdecl_isRec of
-        Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
-        NonRecursive -> genConstraintsTerm pcdecl_term
+        CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
+        CST.NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.

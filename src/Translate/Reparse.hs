@@ -46,8 +46,6 @@ import Syntax.Common.Names
       XtorName(MkXtorName) )
 import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
-import Syntax.Common.Types
-    ( IsRefined(Refined, NotRefined), NominalStructural(Nominal) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -332,15 +330,15 @@ createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat,
 ---------------------------------------------------------------------------------
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "Z") []) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
 
 embedTerm :: RST.Term pc -> CST.Term
 embedTerm (isNumSTermRST -> Just i) =
-  CST.NatLit defaultLoc Nominal i
+  CST.NatLit defaultLoc CST.Nominal i
 -- Core constructs
 embedTerm RST.BoundVar{} =
   error "Should have been removed by opening"
@@ -551,7 +549,7 @@ embedTyDecl :: RST.DataDecl -> CST.DataDecl
 embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
   CST.MkDataDecl { data_loc = data_loc
                  , data_doc = data_doc
-                 , data_refined = NotRefined
+                 , data_refined = CST.NotRefined
                  , data_name = rnTnName data_name
                  , data_polarity = data_polarity
                  , data_kind = Just data_kind
@@ -560,7 +558,7 @@ embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data
 embedTyDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
   CST.MkDataDecl { data_loc = data_loc
                  , data_doc = data_doc
-                 , data_refined = Refined
+                 , data_refined = CST.Refined
                  , data_name = rnTnName data_name
                  , data_polarity = data_polarity
                  , data_kind = Just data_kind

@@ -18,7 +18,6 @@ import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.Common.Types
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Utils

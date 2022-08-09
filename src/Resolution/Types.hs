@@ -15,10 +15,10 @@ import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types
+import Syntax.CST.Program qualified as CST
 import Syntax.Common.Polarity
 import Syntax.Common.Kinds
 import Syntax.Common.Names
-import Syntax.Common.Types
 import Syntax.Common.PrdCns
 import Utils (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
@@ -70,9 +70,9 @@ resolveTyp rep (TyNominal loc name args) = do
                 typ' <- resolveTyp rep typ
                 pure $ RST.TySyn loc rep name' typ'
             _ -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
-        NominalResult rtn _ Refined _ -> do
+        NominalResult rtn _ CST.Refined _ -> do
             throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
-        NominalResult name' _ NotRefined polykind -> do
+        NominalResult name' _ CST.NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 resolveTyp rep (TyRec loc v typ) = do

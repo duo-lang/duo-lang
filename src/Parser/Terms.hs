@@ -19,7 +19,6 @@ import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common.Types
 import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Utils
@@ -87,7 +86,7 @@ stringLitP = do
   (c, endPos) <- stringP
   return (CST.PrimLitString (Loc startPos endPos) c, endPos)
 
-natLitP :: NominalStructural -> Parser (CST.Term, SourcePos)
+natLitP :: CST.NominalStructural -> Parser (CST.Term, SourcePos)
 natLitP ns = do
   startPos <- getSourcePos
   () <- checkTick ns
@@ -392,8 +391,8 @@ termBotP = freeVar <|>
   i64LitP <|>
   f64LitP <|>
   primitiveCmdP <|>
-  natLitP Structural <|>
-  natLitP Nominal <|>
+  natLitP CST.Structural <|>
+  natLitP CST.Nominal <|>
   xtorP <|>
   caseP <|>
   cocaseP <|>
