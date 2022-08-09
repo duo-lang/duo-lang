@@ -114,10 +114,10 @@ dualType' PrdRep t = dualType PosRep t
 dualType' CnsRep t = dualType NegRep t
 
 dualType :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
-dualType pol (TyUniVar _loc _ kind x) = TyUniVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
-dualType pol (TySkolemVar _loc _ kind x) = TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
-dualType pol (TyRecVar _loc _ kind x) = TyRecVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
-dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
+dualType pol (TyUniVar _loc _ kind x) = TyUniVar defaultLoc (flipPolarityRep pol) (dualKind <$> kind) x
+dualType pol (TySkolemVar _loc _ kind x) = TySkolemVar defaultLoc (flipPolarityRep pol) (dualKind <$> kind) x
+dualType pol (TyRecVar _loc _ kind x) = TyRecVar defaultLoc (flipPolarityRep pol) (dualKind <$> kind) x
+dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyI64 loc _ ) = TyI64 loc (flipPolarityRep pol)
 dualType pol (TyF64 loc _ ) = TyF64 loc (flipPolarityRep pol)
 dualType pol (TyChar loc _ ) = TyChar loc (flipPolarityRep pol)
@@ -159,6 +159,10 @@ dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
 dualMonoKind :: MonoKind -> MonoKind
 dualMonoKind mk = mk
+
+dualKind :: Kind -> Kind
+dualKind (Left mk) = Left mk
+dualKind (Right poly) = Right poly
 
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)
 dualTypeScheme pol (TypeScheme _  ts_vars ty) = TypeScheme defaultLoc ts_vars (dualType pol ty)

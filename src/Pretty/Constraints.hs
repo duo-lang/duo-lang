@@ -154,14 +154,21 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyA
                                                     ]
                                              ]
 
+prettyKindSubst :: (KVar, Kind) -> Doc Annotation
+prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
+
 
 instance PrettyAnn (Bisubstitution UniVT) where
   prettyAnn uvsubst = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution (UniTVar)                "
     , "---------------------------------------------------------"
+    , "" 
+    , "Unification Variables: "
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList (fst (bisubst_map uvsubst)))
     , ""
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList (bisubst_map uvsubst))
+    , "Kind Variables: "
+    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (bisubst_map uvsubst)))
     ]
 
 instance PrettyAnn (Bisubstitution SkolemVT) where
