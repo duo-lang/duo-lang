@@ -10,7 +10,7 @@ import Data.List.NonEmpty ( NonEmpty )
 import Errors
 import Pretty.Pretty
 import Syntax.Common.PrdCns
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.Annot
 import Syntax.TST.Terms
 import Eval.Definition

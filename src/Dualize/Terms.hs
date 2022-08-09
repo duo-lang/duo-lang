@@ -10,7 +10,7 @@ import Syntax.Common.Primitives
 import Syntax.Common.Annot
 import Syntax.Common.Names
 import Syntax.Common.Polarity
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.RST.Types
 import Utils
 

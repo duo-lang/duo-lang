@@ -14,7 +14,7 @@ import Pretty.Terms ()
 import Syntax.Common.Names
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.Annot
 import Syntax.TST.Terms
 import Utils

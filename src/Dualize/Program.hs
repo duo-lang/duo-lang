@@ -1,7 +1,7 @@
 module Dualize.Program where
 
 import Syntax.Common.Polarity
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
 import Syntax.CST.Types qualified as CST
 import Syntax.RST.Types qualified as RST

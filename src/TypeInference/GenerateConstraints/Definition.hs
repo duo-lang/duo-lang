@@ -46,7 +46,7 @@ import Errors
 import Lookup
 import Syntax.RST.Types
 import Syntax.Common.Names
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
 import Syntax.RST.Program as RST

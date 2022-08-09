@@ -16,7 +16,7 @@ import Syntax.Common.Names
       XtorName )
 import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
 import Syntax.CST.Types ( DataCodata )
 import Syntax.Common.Polarity ( Polarity(Neg, Pos) )

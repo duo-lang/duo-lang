@@ -16,7 +16,7 @@ import Syntax.Common.PrdCns ( Arity, PrdCns )
 import Syntax.CST.Types ( DataCodata(..) )
 import Syntax.Common.Polarity ( Polarity, PolarityRep )
 import Syntax.Common.Primitives ( PrimitiveType )
-import Syntax.Common.Kinds ( Variance )
+import Syntax.CST.Kinds ( Variance )
 
 --------------------------------------------------------------------------------
 -- # Type Automata

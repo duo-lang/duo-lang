@@ -27,7 +27,7 @@ import Syntax.TST.Terms
 import Syntax.Common.Names
 import Syntax.Common.Annot
 import Syntax.Common.PrdCns
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Utils
 import Syntax.RST.Types
 import Syntax.CST.Terms qualified as CST

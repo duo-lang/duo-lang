@@ -8,7 +8,7 @@ import Data.Kind ( Type )
 
 import Syntax.Common.PrdCns
     ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
-import Syntax.Common.Kinds ( MonoKind, Variance(..) )
+import Syntax.CST.Kinds ( MonoKind, Variance(..) )
 import Syntax.Common.Polarity
     ( FlipPol, Polarity(..), PolarityRep(..) )
 import Syntax.Common.Names

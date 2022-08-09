@@ -11,7 +11,7 @@ import Pretty.Types ()
 import Pretty.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Syntax.Core.Program qualified as Core

@@ -16,7 +16,7 @@ import Utils
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Types (Typ(..))
 import Syntax.Common.PrdCns
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Syntax.Common.Annot

@@ -19,7 +19,7 @@ import Syntax.RST.Types
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.Names
 import Syntax.Common.Polarity
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
 import Syntax.Common.Primitives
 import TypeAutomata.Definition

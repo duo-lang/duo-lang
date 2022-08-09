@@ -16,7 +16,7 @@ import Syntax.Common.Names
       TypeName,
       XtorName )
 import Syntax.Common.PrdCns ( PrdCns )
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
 import Utils ( HasLoc(..), Loc )
 

@@ -32,7 +32,7 @@ import Syntax.Common.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Common.Polarity
     ( Polarity(Pos), PolarityRep(PosRep) )
-import Syntax.Common.Kinds ( MonoKind )
+import Syntax.CST.Kinds ( MonoKind )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST

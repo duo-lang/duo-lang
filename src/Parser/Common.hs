@@ -23,7 +23,7 @@ import Text.Megaparsec
 import Parser.Definition
 import Parser.Lexer
 import Syntax.Common.Names
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.Primitives
 import Data.Functor ( ($>) )
 

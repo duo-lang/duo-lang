@@ -6,7 +6,7 @@ import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
 import Syntax.Common.Primitives
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import TypeAutomata.BicliqueDecomp

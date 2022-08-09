@@ -22,7 +22,7 @@ import Syntax.Common.Names
       XtorName(MkXtorName) )
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
 import Syntax.Common.Primitives ( PrimitiveType(..) )
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
 import Utils ( Loc(..) )
 

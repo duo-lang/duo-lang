@@ -17,7 +17,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.Polarity
-import Syntax.Common.Kinds
+import Syntax.CST.Kinds
 import Syntax.Common.Names
 import Syntax.Common.PrdCns
 import Utils (Loc(..), defaultLoc)
