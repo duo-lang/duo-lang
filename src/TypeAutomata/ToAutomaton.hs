@@ -15,7 +15,7 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.XData

@@ -19,7 +19,7 @@ import Syntax.Common.Annot
 import Syntax.Common.Types
 import Syntax.TST.Terms
 import Utils
-import Syntax.Common.TypesPol (Typ (TyNominal))
+import Syntax.RST.Types (Typ (TyNominal))
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad

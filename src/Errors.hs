@@ -10,7 +10,7 @@ import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Utils
 import TypeInference.Constraints (ConstraintInfo)
 

@@ -2,7 +2,7 @@
 module Syntax.RST.Program where
 
 import Syntax.RST.Terms( Command, Term, InstanceCase )
-import Syntax.Common.TypesPol ( TypeScheme, Typ, MethodSig, XtorSig)
+import Syntax.RST.Types ( TypeScheme, Typ, MethodSig, XtorSig)
 import Syntax.Common.Names
     ( Associativity,
       ClassName,

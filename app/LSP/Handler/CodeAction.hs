@@ -12,7 +12,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.Common.TypesPol ( TypeScheme, TopAnnot(..))
+import Syntax.RST.Types ( TypeScheme, TopAnnot(..))
 import Syntax.Common.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
     ( DocComment,

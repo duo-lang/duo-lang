@@ -13,7 +13,7 @@ import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
 import Utils
-import Syntax.Common.TypesPol (Typ(..))
+import Syntax.RST.Types (Typ(..))
 import Syntax.Common.PrdCns
 import Syntax.Common.Kinds
 import Syntax.Common.Types

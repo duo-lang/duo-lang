@@ -4,7 +4,7 @@ module Syntax.TST.Program where
 import Syntax.TST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesPol ( TopAnnot, Typ )
+import Syntax.RST.Types ( TopAnnot, Typ )
 import Syntax.Common.Names ( ClassName, DocComment, FreeVarName )
 import Syntax.Common.PrdCns
     ( PrdCns(Prd, Cns), PrdCnsRep(..), PrdCnsToPol )

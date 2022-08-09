@@ -146,7 +146,6 @@ library
       Syntax.Common.Types
       Syntax.Common.XData
       Syntax.Common.Annot
-      Syntax.Common.TypesPol
       Syntax.Common.Pattern
       Syntax.Core.Terms
       Syntax.Core.Program
@@ -155,6 +154,7 @@ library
       Syntax.CST.Types
       Syntax.RST.Program
       Syntax.RST.Terms
+      Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize

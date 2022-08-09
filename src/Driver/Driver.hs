@@ -49,7 +49,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
 

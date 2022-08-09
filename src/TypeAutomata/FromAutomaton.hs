@@ -1,6 +1,6 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.XData

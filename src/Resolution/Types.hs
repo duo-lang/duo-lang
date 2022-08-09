@@ -13,8 +13,7 @@ import Errors
 import Pretty.Pretty
 import Resolution.Definition
 import Resolution.SymbolTable
-import Syntax.Common.TypesPol ( freeTVars )
-import Syntax.Common.TypesPol qualified as RST
+import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types
 import Syntax.Common.Polarity
 import Syntax.Common.XData
@@ -32,7 +31,7 @@ import Control.Monad.Reader (asks, MonadReader (local))
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
+    if RST.freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 

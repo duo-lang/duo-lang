@@ -4,7 +4,7 @@ import Syntax.Common.Polarity
 import Syntax.Common.Kinds
 import Syntax.Common.XData
 import Syntax.Common.PrdCns
-import Syntax.Common.TypesPol
+import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Dualize.Terms
 
@@ -21,11 +21,11 @@ dualDataDecl (RST.NominalDecl loc doc rntn dc pk (sigsPos,sigsNeg)) =
 dualDataDecl (RST.RefinementDecl loc doc rntn dc pk (sigsPos,sigsNeg)) =
     RST.RefinementDecl loc doc (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
 
-dualXtorSig ::  PolarityRep pol -> XtorSig pol -> XtorSig pol 
-dualXtorSig pol (MkXtorSig xtor lctx) = MkXtorSig (dualXtorName xtor) (dualPrdCnsType pol <$> lctx)
+dualXtorSig ::  PolarityRep pol -> RST.XtorSig pol -> RST.XtorSig pol 
+dualXtorSig pol (RST.MkXtorSig xtor lctx) = RST.MkXtorSig (dualXtorName xtor) (dualPrdCnsType pol <$> lctx)
 
-dualPrdCnsType :: PolarityRep pol -> PrdCnsType pol -> PrdCnsType pol
-dualPrdCnsType PosRep (PrdCnsType PrdRep ty) = PrdCnsType CnsRep (dualType' PrdRep ty)
-dualPrdCnsType NegRep (PrdCnsType PrdRep ty) = PrdCnsType CnsRep (dualType' CnsRep ty)
-dualPrdCnsType PosRep (PrdCnsType CnsRep ty) = PrdCnsType PrdRep (dualType' CnsRep ty)
-dualPrdCnsType NegRep (PrdCnsType CnsRep ty) = PrdCnsType PrdRep (dualType' PrdRep ty)
+dualPrdCnsType :: PolarityRep pol -> RST.PrdCnsType pol -> RST.PrdCnsType pol
+dualPrdCnsType PosRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (dualType' PrdRep ty)
+dualPrdCnsType NegRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (dualType' CnsRep ty)
+dualPrdCnsType PosRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (dualType' CnsRep ty)
+dualPrdCnsType NegRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (dualType' PrdRep ty)

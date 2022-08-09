@@ -30,7 +30,7 @@ import Syntax.Common.Annot
 import Syntax.Common.PrdCns
 import Syntax.Common.Kinds
 import Utils
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >

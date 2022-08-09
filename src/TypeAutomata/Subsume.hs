@@ -13,7 +13,7 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Errors
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Syntax.Common.Polarity
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)

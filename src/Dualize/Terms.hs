@@ -11,7 +11,7 @@ import Syntax.Common.Annot
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.Kinds
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Utils
 
 data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String | DualMethod Loc String

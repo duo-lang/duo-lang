@@ -27,7 +27,7 @@ import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Sugar.TST
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Utils (Loc)
 
 ---------------------------------------------------------------------------------

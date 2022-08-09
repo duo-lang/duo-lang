@@ -25,7 +25,7 @@ import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Program qualified as RST
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Syntax.Common.Names
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity

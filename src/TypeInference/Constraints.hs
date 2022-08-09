@@ -4,7 +4,7 @@ import Data.Map (Map)
 
 import Syntax.Common.Names
 import Syntax.Common.Polarity
-import Syntax.Common.TypesPol ( Typ )
+import Syntax.RST.Types ( Typ )
 import Syntax.Common.Kinds
 import Utils ( Loc )
 

@@ -44,7 +44,7 @@ import Data.Text qualified as T
 import Driver.Environment
 import Errors
 import Lookup
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Syntax.Common.Names
 import Syntax.Common.Kinds
 import Syntax.Common.PrdCns

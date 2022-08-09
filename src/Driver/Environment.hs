@@ -9,7 +9,7 @@ import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
 import Syntax.TST.Terms ( Command, Term )
 import Syntax.RST.Program ( ClassDeclaration, DataDecl )
-import Syntax.Common.TypesPol ( TypeScheme, Typ )
+import Syntax.RST.Types ( TypeScheme, Typ )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------

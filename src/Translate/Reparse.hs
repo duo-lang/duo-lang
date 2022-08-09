@@ -30,7 +30,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
-import Syntax.Common.TypesPol qualified as RST
+import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))

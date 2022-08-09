@@ -35,7 +35,7 @@ import Syntax.Common.Polarity
     ( Polarity(Pos), PolarityRep(PosRep) )
 import Syntax.Common.Kinds ( MonoKind )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
     ( LinearContext,
       PrdCnsType(PrdCnsType),
       Typ(TyString, TyI64, TyF64, TyChar),

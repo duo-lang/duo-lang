@@ -1,7 +1,7 @@
 module Syntax.Core.Program where
 
 import Syntax.Core.Terms( Command, Term, InstanceCase )
-import Syntax.Common.TypesPol ( TypeScheme, Typ )
+import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Utils ( Loc )
@@ -27,7 +27,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ Whether the declaration can refer to itself recursively.
   , pcdecl_name :: FreeVarName
     -- ^ The name of the producer / consumer.
-  , pcdecl_annot :: Maybe (TypeScheme (PrdCnsToPol pc))
+  , pcdecl_annot :: Maybe (RST.TypeScheme (PrdCnsToPol pc))
     -- ^ The type signature.
   , pcdecl_term :: Term pc
     -- ^ The term itself.
@@ -65,7 +65,7 @@ data InstanceDeclaration = MkInstanceDeclaration
     -- ^ The documentation string of the declaration.
   , instancedecl_name :: ClassName
     -- ^ The name of the type class the instance is for.
-  , instancedecl_typ :: (Typ Pos, Typ Neg)
+  , instancedecl_typ :: (RST.Typ Pos, RST.Typ Neg)
     -- ^ The type the instance is being defined for.
   , instancedecl_cases :: [InstanceCase]
     -- ^ The method definitions for the class.
