@@ -20,7 +20,7 @@ module Sugar.Core(
   where
 
 import Syntax.Core.Terms
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Utils

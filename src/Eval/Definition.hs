@@ -15,7 +15,7 @@ import Syntax.Common.Names
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
 import Syntax.CST.Kinds
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Utils
 import Syntax.RST.Types (Typ (TyNominal))

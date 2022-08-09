@@ -19,7 +19,7 @@ import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
 import Syntax.Common.Names
 import Syntax.Common.Primitives
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Syntax.Common.Polarity
 
 ---------------------------------------------------------------------------------

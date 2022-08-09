@@ -28,7 +28,7 @@ import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.Common.Annot
+import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Common.Polarity
     ( Polarity(Pos), PolarityRep(PosRep) )

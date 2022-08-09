@@ -11,7 +11,7 @@ import Errors
 import Pretty.Pretty
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives

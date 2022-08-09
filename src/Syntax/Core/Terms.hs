@@ -19,7 +19,7 @@ module Syntax.Core.Terms
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Utils
 import Errors
 import Syntax.TST.Terms (ShiftDirection(..))

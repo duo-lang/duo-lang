@@ -7,7 +7,7 @@ import Data.Functor ( (<&>) )
 import Syntax.TST.Terms
 import Syntax.Common.PrdCns
 import Syntax.Common.Primitives
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.CST.Kinds
