@@ -16,7 +16,6 @@ import Resolution.SymbolTable
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types
 import Syntax.Common.Polarity
-import Syntax.Common.XData
 import Syntax.Common.Kinds
 import Syntax.Common.Names
 import Syntax.Common.Types

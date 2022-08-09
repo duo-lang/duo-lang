@@ -21,7 +21,6 @@ import Syntax.CST.Types
 import Syntax.Common.Types
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
-import Syntax.Common.XData
 import Utils
 
 

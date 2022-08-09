@@ -22,7 +22,6 @@ import Parser.Lexer
 import Syntax.CST.Types
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
-import Syntax.Common.XData
 import Utils ( Loc(..) )
 import Control.Monad (void)
 

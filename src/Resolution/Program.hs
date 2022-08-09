@@ -17,7 +17,6 @@ import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.Common.Polarity
 import Syntax.Common.Kinds
-import Syntax.Common.XData
 import Syntax.Common.Names
 import Syntax.Common.PrdCns
 import Syntax.Common.Types
@@ -47,13 +46,13 @@ checkVarianceTyp loc var polyKind (CST.TySkolemVar _loc' tVar) =
                  else throwOtherError loc ["Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var')]
 checkVarianceTyp loc var polyKind (CST.TyXData _loc' dataCodata  xtorSigs) = do
   let var' = var <> case dataCodata of
-                      Data   -> Covariant
-                      Codata -> Contravariant
+                      CST.Data   -> Covariant
+                      CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
 checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs) = do
   let var' = var <> case dataCodata of
-                      Data   -> Covariant
-                      Codata -> Contravariant
+                      CST.Data   -> Covariant
+                      CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
 checkVarianceTyp loc var polyKind (CST.TyNominal _loc' tyName tys) = do
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
@@ -96,11 +95,11 @@ checkVarianceXtor loc var polyKind xtor = do
     f (CST.PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty
     f (CST.CnsType ty) = checkVarianceTyp loc (Contravariant <> var) polyKind ty
 
-checkVarianceDataDecl :: Loc -> PolyKind -> DataCodata -> [CST.XtorSig] -> ResolverM ()
+checkVarianceDataDecl :: Loc -> PolyKind -> CST.DataCodata -> [CST.XtorSig] -> ResolverM ()
 checkVarianceDataDecl loc polyKind pol xtors = do
   case pol of
-    Data   -> sequence_ $ checkVarianceXtor loc Covariant     polyKind <$> xtors
-    Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
+    CST.Data   -> sequence_ $ checkVarianceXtor loc Covariant     polyKind <$> xtors
+    CST.Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
 
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
 resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
@@ -112,7 +111,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
       -- Default the kind if none was specified:
       let polyKind = case data_kind of
-                        Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Nothing -> MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> knd
       checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
       xtors <- resolveXtors data_xtors
@@ -130,7 +129,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
       -- Default the kind if none was specified:
       polyKind <- case data_kind of
-                        Nothing -> pure $ MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Nothing -> pure $ MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> case knd of
                           pk@(MkPolyKind [] _) -> pure pk
                           _                    -> throwOtherError data_loc ["Parameterized refinement types are currently not allowed."]
@@ -208,7 +207,7 @@ resolveStructuralXtorDeclaration :: CST.StructuralXtorDeclaration
 resolveStructuralXtorDeclaration CST.MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} = do
   let evalOrder = case strxtordecl_evalOrder of
                   Just eo -> eo
-                  Nothing -> case strxtordecl_xdata of Data -> CBV; Codata -> CBN
+                  Nothing -> case strxtordecl_xdata of CST.Data -> CBV; CST.Codata -> CBN
   pure $ RST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
                                          , strxtordecl_doc = strxtordecl_doc
                                          , strxtordecl_xdata = strxtordecl_xdata

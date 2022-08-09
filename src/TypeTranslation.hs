@@ -25,8 +25,8 @@ import Syntax.RST.Types
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
-import Syntax.Common.XData
 import Syntax.RST.Program qualified as RST
+import Syntax.CST.Types qualified as CST
 import Utils
 
 ---------------------------------------------------------------------------------------------
@@ -107,21 +107,21 @@ translateTypeUpper' (TyNominal _ NegRep _ tn _) = do
       RST.NominalDecl{..} -> do
         tv <- freshTVar
         case data_polarity of
-          Data -> do
+          CST.Data -> do
             -- Recursively translate xtor sig with mapping of current type name to new rec type var
             xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
             return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
-          Codata -> do
+          CST.Codata -> do
             -- Upper bound translation of codata is empty
             return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
       RST.RefinementDecl{..} -> do
         tv <- freshTVar
         case data_polarity of
-          Data -> do
+          CST.Data -> do
             -- Recursively translate xtor sig with mapping of current type name to new rec type var
             xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
             return $ TyRec defaultLoc NegRep tv $ TyDataRefined defaultLoc NegRep tn xtss
-          Codata -> do
+          CST.Codata -> do
             -- Upper bound translation of codata is empty
             return $ TyRec defaultLoc NegRep tv $ TyCodataRefined defaultLoc NegRep tn []
 translateTypeUpper' tv@TySkolemVar{} = return tv
@@ -160,20 +160,20 @@ translateTypeLower' (TyNominal _ pr _ tn _) = do
       RST.NominalDecl{..} -> do
         tv <- freshTVar
         case data_polarity of
-          Data -> do
+          CST.Data -> do
             -- Lower bound translation of data is empty
             return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
-          Codata -> do
+          CST.Codata -> do
             -- Recursively translate xtor sig with mapping of current type name to new rec type var
             xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
             return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss
       RST.RefinementDecl{..} -> do
         tv <- freshTVar
         case data_polarity of
-          Data -> do
+          CST.Data -> do
             -- Lower bound translation of data is empty
             return $ TyRec defaultLoc pr tv $ TyDataRefined defaultLoc pr tn []
-          Codata -> do
+          CST.Codata -> do
             -- Recursively translate xtor sig with mapping of current type name to new rec type var
             xtss <- mapM (withVarMap (M.insert tn tv) . translateXtorSigUpper') $ snd data_xtors
             return $ TyRec defaultLoc pr tv $ TyCodataRefined defaultLoc pr tn xtss

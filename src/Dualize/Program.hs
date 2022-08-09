@@ -2,15 +2,15 @@ module Dualize.Program where
 
 import Syntax.Common.Polarity
 import Syntax.Common.Kinds
-import Syntax.Common.XData
 import Syntax.Common.PrdCns
+import Syntax.CST.Types qualified as CST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Dualize.Terms
 
-flipDC :: DataCodata -> DataCodata
-flipDC Data = Codata 
-flipDC Codata = Data 
+flipDC :: CST.DataCodata -> CST.DataCodata
+flipDC CST.Data = CST.Codata 
+flipDC CST.Codata = CST.Data 
 
 dualPolyKind :: PolyKind -> PolyKind 
 dualPolyKind pk = pk 

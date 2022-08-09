@@ -13,7 +13,6 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.Kinds
 import Syntax.Common.PrdCns
-import Syntax.Common.XData
 import Syntax.Common.Types
 import Syntax.Common.Names
 import Syntax.Core.Program qualified as Core
@@ -95,7 +94,7 @@ prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
   prettyAnn CST.MkStructuralXtorDeclaration { strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder } =
-    annKeyword (case strxtordecl_xdata of Data -> "constructor"; Codata -> "destructor") <+>
+    annKeyword (case strxtordecl_xdata of CST.Data -> "constructor"; CST.Codata -> "destructor") <+>
     prettyAnn strxtordecl_name <>
     prettyCCList strxtordecl_arity <+>
     (case strxtordecl_evalOrder of

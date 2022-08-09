@@ -3,7 +3,7 @@ module Syntax.CST.Program where
 import Data.Text (Text)
 
 import Syntax.CST.Terms ( Term, TermCase )
-import Syntax.CST.Types ( Typ, TypeScheme, XtorSig )
+import Syntax.CST.Types ( Typ, TypeScheme, XtorSig, DataCodata)
 import Syntax.Common.Names
     ( Associativity,
       ClassName,
@@ -19,7 +19,6 @@ import Syntax.Common.PrdCns ( PrdCns )
 import Syntax.Common.Types ( IsRec, IsRefined )
 import Syntax.Common.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Syntax.Common.XData ( DataCodata )
 import Utils ( HasLoc(..), Loc )
 
 ---------------------------------------------------------------------------------

@@ -9,7 +9,6 @@ import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.Names
-import Syntax.Common.XData
 import Translate.Reparse
 
 ---------------------------------------------------------------------------------
@@ -60,6 +59,10 @@ instance PrettyAnn BinOp where
   prettyAnn (CustomOp op) = prettyAnn op
   prettyAnn UnionOp = unionSym
   prettyAnn InterOp = interSym
+
+instance PrettyAnn CST.DataCodata where
+  prettyAnn CST.Data = annKeyword "data"
+  prettyAnn CST.Codata = annKeyword "codata"
 
 ---------------------------------------------------------------------------------
 -- Wrappers
@@ -116,14 +119,14 @@ instance PrettyAnn CST.Typ where
     in
       prettyAnn ty <> hsep (NE.toList (f <$> tys))
   -- Structural data and codata types
-  prettyAnn (CST.TyXData _ Data   xtors) =
+  prettyAnn (CST.TyXData _ CST.Data   xtors) =
     angles' commaSym  (prettyAnn <$> xtors)
-  prettyAnn (CST.TyXData _ Codata xtors) =
+  prettyAnn (CST.TyXData _ CST.Codata xtors) =
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (CST.TyXRefined _ Data   tn xtors) =
+  prettyAnn (CST.TyXRefined _ CST.Data   tn xtors) =
     angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (CST.TyXRefined _ Codata tn xtors) =
+  prettyAnn (CST.TyXRefined _ CST.Codata tn xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   -- Primitive types
   prettyAnn (CST.TyI64 _) = "#I64"

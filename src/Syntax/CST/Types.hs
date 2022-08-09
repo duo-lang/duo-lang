@@ -2,7 +2,6 @@ module Syntax.CST.Types where
 
 import Syntax.Common.Names
     ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
-import Syntax.Common.XData ( DataCodata )
 import Syntax.Common.PrdCns ( Arity, PrdCns(Cns, Prd) )
 
 import Data.List.NonEmpty (NonEmpty)
@@ -11,6 +10,8 @@ import Utils ( Loc, HasLoc(..))
 ---------------------------------------------------------------------------------
 -- Parse Types
 ---------------------------------------------------------------------------------
+
+data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data Typ where
   TyUniVar :: Loc -> UniTVar -> Typ

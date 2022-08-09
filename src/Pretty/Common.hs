@@ -20,7 +20,6 @@ import Syntax.Common.Names
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
-import Syntax.Common.XData ( DataCodata(..) )
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
 import Syntax.Common.Types ( NominalStructural(..) )
 import Syntax.Common.Primitives ( PrimitiveType(..) )
@@ -110,10 +109,6 @@ prettyPrdCns Cns = "cns"
 ---------------------------------------------------------------------------------
 -- Data/Codata and Nominal/Structural/Refinement
 ---------------------------------------------------------------------------------
-
-instance PrettyAnn DataCodata where
-  prettyAnn Data = annKeyword "data"
-  prettyAnn Codata = annKeyword "codata"
 
 instance PrettyAnn NominalStructural where
   prettyAnn Nominal = "Nominal"

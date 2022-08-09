@@ -48,7 +48,6 @@ import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
 import Syntax.Common.Types
     ( IsRefined(Refined, NotRefined), NominalStructural(Nominal) )
-import Syntax.Common.XData ( DataCodata(Codata, Data) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -508,13 +507,13 @@ embedType (RST.TySkolemVar loc _ _ tv) =
 embedType (RST.TyRecVar loc _ _ tv) = 
   CST.TySkolemVar loc $ embedRecTVar tv
 embedType (RST.TyData loc _ xtors) =
-  CST.TyXData loc Data (embedXtorSig <$> xtors)
+  CST.TyXData loc CST.Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
-  CST.TyXData loc Codata (embedXtorSig <$> xtors)
+  CST.TyXData loc CST.Codata (embedXtorSig <$> xtors)
 embedType (RST.TyDataRefined loc _ tn xtors) =
-  CST.TyXRefined loc Data (rnTnName tn) (embedXtorSig <$> xtors)
+  CST.TyXRefined loc CST.Data (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyCodataRefined loc _ tn xtors) =
-  CST.TyXRefined loc Codata (rnTnName tn) (embedXtorSig <$> xtors)
+  CST.TyXRefined loc CST.Codata (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyNominal loc _ _ nm args) =
   CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =

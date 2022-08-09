@@ -13,7 +13,7 @@ import Data.Void
 
 import Syntax.Common.Names ( RnTypeName, XtorName )
 import Syntax.Common.PrdCns ( Arity, PrdCns )
-import Syntax.Common.XData ( DataCodata(..) )
+import Syntax.CST.Types ( DataCodata(..) )
 import Syntax.Common.Polarity ( Polarity, PolarityRep )
 import Syntax.Common.Primitives ( PrimitiveType )
 import Syntax.Common.Kinds ( Variance )

@@ -9,7 +9,6 @@ import Errors
 import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.Common.Names
-import Syntax.Common.XData
 import Syntax.Common.Types
 import Syntax.Common.Kinds
 import Syntax.Common.PrdCns

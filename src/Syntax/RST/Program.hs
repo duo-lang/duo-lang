@@ -19,7 +19,7 @@ import Syntax.Common.PrdCns
 import Syntax.Common.Types ( IsRec )
 import Syntax.Common.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Syntax.Common.XData ( DataCodata )
+import Syntax.CST.Types ( DataCodata )
 import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
 
 import Utils ( Loc )
