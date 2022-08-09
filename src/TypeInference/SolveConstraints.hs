@@ -33,7 +33,7 @@ data SolverState = SolverState
   }
 
 createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) =
+createInitState (ConstraintSet _ uvs _) =
   SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
               , sst_cache = S.empty
               }
@@ -260,7 +260,7 @@ subConstraints (TypeClassNeg _ _cn _tyn) = pure []
 
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) env = do
+solveConstraints constraintSet@(ConstraintSet css _ _ ) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
   pure (MkSolverResult (sst_bounds solverState))
 

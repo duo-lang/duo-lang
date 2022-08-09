@@ -55,6 +55,7 @@ data UVarProvenance
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
                                    , cs_uvars :: [(UniTVar, UVarProvenance)]
+                                   , cs_kvars :: [KVar]
                                    }
 
 ------------------------------------------------------------------------------
