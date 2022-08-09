@@ -26,7 +26,6 @@ import Utils ( Loc )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
-import Syntax.Common.Pattern ( Pattern(..), PatternI(..) )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 import Syntax.CST.Terms qualified as CST
 
@@ -65,6 +64,17 @@ type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+
+data Pattern where
+  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+
+deriving instance Eq Pattern
+deriving instance Show Pattern
+
+data PatternI where
+  XtorPatI :: Loc -> XtorName -> ([(PrdCns, Maybe FreeVarName)], (), [(PrdCns, Maybe FreeVarName)]) -> PatternI
+deriving instance Eq PatternI
+deriving instance Show PatternI
 
 -- | Represents one case in a pattern match or copattern match.
 --

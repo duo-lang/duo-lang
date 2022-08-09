@@ -2,7 +2,7 @@ module Sugar.Core(
   pattern CaseOfCmd,
   pattern CocaseOfCmd,
   TermCaseI (..),
-  PatternI (..),
+  RST.PatternI (..),
   pattern CaseOfI,
   pattern CocaseOfI,
   SubstitutionI,
@@ -26,7 +26,7 @@ import Syntax.Common.Names
 import Utils
 import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common.Pattern
+import Syntax.RST.Terms qualified as RST
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >
@@ -53,16 +53,16 @@ mySplitAt n x = (a, (), tail b)
 
 data TermCaseI (pc :: PrdCns) = MkTermCaseI
   { tmcasei_loc  :: Loc
-  , tmcasei_pat :: PatternI
+  , tmcasei_pat :: RST.PatternI
   , tmcasei_term :: Term pc
   }
 resugarCmdCase :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase PrdRep (MkCmdCase loc (XtorPat _ xt cases)
                 (Apply _ (ApplyAnnotXCaseOfIInner i) t {-(BoundVar _ CnsRep (0,_))-} _)) =
-                      MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
+                      MkTermCaseI loc (RST.XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase CnsRep (MkCmdCase loc (XtorPat _ xt cases)
                 (Apply _ (ApplyAnnotXCaseOfIInner i) {-(BoundVar _ PrdRep (0,_))-} _ t)) =
-                      MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
+                      MkTermCaseI loc (RST.XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase _ cmd = error $ "cannot resugar " ++ show cmd
 
 
@@ -79,14 +79,14 @@ pattern CaseOfI loc rep ns t cases <-
   where
     CaseOfI loc PrdRep ns t cases =
      let
-       desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+       desugarmatchCase (MkTermCaseI _ (RST.XtorPatI loc xt (as1, (), as2)) t) =
          let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2)  in
          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseOfIInner $ length as1) t (BoundVar loc CnsRep (0,length as1))
      in
        Apply loc ApplyAnnotCaseOfIOuter t (XCase loc MatchAnnotCaseOfI CnsRep ns $ desugarmatchCase <$> cases)
     CaseOfI loc CnsRep ns t cases =
      let
-       desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+       desugarmatchCase (MkTermCaseI _ (RST.XtorPatI loc xt (as1, (), as2)) t) =
          let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2)  in
          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseOfIInner $ length as1)  (BoundVar loc PrdRep (0,length as1)) t
      in
@@ -107,14 +107,14 @@ pattern CocaseOfI loc rep ns t cases <-
   where
     CocaseOfI loc PrdRep ns t cases =
      let
-       desugarcomatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+       desugarcomatchCase (MkTermCaseI _ (RST.XtorPatI loc xt (as1, (), as2)) t) =
          let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2)  in
          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseOfIInner $ length as1) t (BoundVar loc CnsRep (0,length as1))
      in
        Apply loc ApplyAnnotCocaseOfIOuter (XCase loc MatchAnnotCocaseOfI PrdRep ns $ desugarcomatchCase <$> cases) t
     CocaseOfI loc CnsRep ns t cases =
      let
-       desugarcomatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+       desugarcomatchCase (MkTermCaseI _ (RST.XtorPatI loc xt (as1, (), as2)) t) =
          let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2)  in
          MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseOfIInner $ length as1)  (BoundVar loc PrdRep (0,length as1)) t
      in
@@ -243,10 +243,10 @@ pattern CocaseOf loc rep ns t cases <-
 resugarCmdCase' :: PrdCnsRep pc -> CmdCase -> TermCaseI pc
 resugarCmdCase' PrdRep (MkCmdCase loc (XtorPat _ xt cases)
                 (Apply _ (ApplyAnnotXCaseI i) t {-(BoundVar _ CnsRep (0,_))-} _ )) =
-                      MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
+                      MkTermCaseI loc (RST.XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' CnsRep (MkCmdCase loc (XtorPat _ xt cases)
                 (Apply _ (ApplyAnnotXCaseI i) {-(BoundVar _ PrdRep (0,_))-} _ t)) =
-                      MkTermCaseI loc (XtorPatI loc xt (mySplitAt i cases)) t
+                      MkTermCaseI loc (RST.XtorPatI loc xt (mySplitAt i cases)) t
 resugarCmdCase' _ cmd = error $ "cannot resugar " ++ show cmd
 
 -- XCaseI unifies CaseI and CocaseI
@@ -263,14 +263,14 @@ pattern XCaseI loc rep rep' ns cases <- XCase loc (MatchAnnotXCaseI rep) rep' ns
   where 
    XCaseI loc PrdRep rep' ns cases =    
     let
-        desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+        desugarmatchCase (MkTermCaseI _ (RST.XtorPatI loc xt (as1, (), as2)) t) =
           let pat = XtorPat loc xt (as1 ++ [(Cns,Nothing)] ++ as2) in
           MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) t (BoundVar loc CnsRep (0,length as1))
     in
         XCase loc (MatchAnnotXCaseI PrdRep) rep' ns $ desugarmatchCase <$> cases
    XCaseI loc CnsRep rep' ns cases =    
     let
-        desugarmatchCase (MkTermCaseI _ (XtorPatI loc xt (as1, (), as2)) t) =
+        desugarmatchCase (MkTermCaseI _ (RST.XtorPatI loc xt (as1, (), as2)) t) =
           let pat = XtorPat loc xt (as1 ++ [(Prd,Nothing)] ++ as2) in
           MkCmdCase loc pat $ Apply loc (ApplyAnnotXCaseI $ length as1) (BoundVar loc PrdRep (0,length as1)) t
     in

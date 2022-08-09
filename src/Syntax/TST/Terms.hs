@@ -3,7 +3,7 @@ module Syntax.TST.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution
-  , Pattern(..)
+  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
@@ -35,12 +35,12 @@ import Syntax.Common.Polarity
 import Syntax.Common.Kinds ( MonoKind )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 import Syntax.CST.Terms qualified as CST
+import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types
     ( LinearContext,
       PrdCnsType(PrdCnsType),
       Typ(TyString, TyI64, TyF64, TyChar),
       Zonk(..) )
-import Syntax.Common.Pattern ( Pattern(..) )
 import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ type Substitution = [PrdCnsTerm]
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_pat :: Pattern
+  , cmdcase_pat :: RST.Pattern
   , cmdcase_cmd  :: Command
   }
 
@@ -100,7 +100,7 @@ deriving instance Show CmdCase
 --
 data InstanceCase = MkInstanceCase
   { instancecase_loc :: Loc
-  , instancecase_pat :: Pattern
+  , instancecase_pat :: RST.Pattern
   , instancecase_cmd :: Command
   }
 
@@ -361,7 +361,7 @@ termLocallyClosedRec _ (PrimLitString _ _) = Right ()
 
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
-cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do
+cmdCaseLocallyClosedRec env (MkCmdCase _ (RST.XtorPat _ _ args) cmd)= do
   commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
@@ -378,7 +378,7 @@ termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
 instanceCaseLocallyClosed :: InstanceCase -> Either Error ()
-instanceCaseLocallyClosed (MkInstanceCase _ (XtorPat _ _ args) cmd) =
+instanceCaseLocallyClosed (MkInstanceCase _ (RST.XtorPat _ _ args) cmd) =
   commandLocallyClosedRec [second (const ()) <$> args] cmd
 
 ---------------------------------------------------------------------------------
