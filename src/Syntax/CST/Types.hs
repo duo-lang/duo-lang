@@ -1,4 +1,4 @@
-module Syntax.Common.TypesUnpol where
+module Syntax.CST.Types where
 
 import Syntax.Common.Names
     ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )

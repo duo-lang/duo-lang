@@ -3,7 +3,7 @@ module Syntax.CST.Program where
 import Data.Text (Text)
 
 import Syntax.CST.Terms ( Term, TermCase )
-import Syntax.Common.TypesUnpol ( Typ, TypeScheme, XtorSig )
+import Syntax.CST.Types ( Typ, TypeScheme, XtorSig )
 import Syntax.Common.Names
     ( Associativity,
       ClassName,

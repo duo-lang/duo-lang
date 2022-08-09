@@ -15,7 +15,7 @@ import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.Common.TypesPol ( freeTVars )
 import Syntax.Common.TypesPol qualified as RST
-import Syntax.Common.TypesUnpol
+import Syntax.CST.Types
 import Syntax.Common.Polarity
 import Syntax.Common.XData
 import Syntax.Common.Kinds

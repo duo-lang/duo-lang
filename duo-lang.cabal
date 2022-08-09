@@ -146,13 +146,13 @@ library
       Syntax.Common.Types
       Syntax.Common.XData
       Syntax.Common.Annot
-      Syntax.Common.TypesUnpol
       Syntax.Common.TypesPol
       Syntax.Common.Pattern
       Syntax.Core.Terms
       Syntax.Core.Program
       Syntax.CST.Program
       Syntax.CST.Terms
+      Syntax.CST.Types
       Syntax.RST.Program
       Syntax.RST.Terms
       TypeAutomata.BicliqueDecomp

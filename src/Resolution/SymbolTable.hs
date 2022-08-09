@@ -14,7 +14,7 @@ import Syntax.Common.Types
 import Syntax.Common.Kinds
 import Syntax.Common.PrdCns
 import Syntax.CST.Program
-import Syntax.Common.TypesUnpol
+import Syntax.CST.Types
 import Utils
 
 ---------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesUnpol qualified as Unpol
+import Syntax.CST.Types qualified as CST
 import Syntax.Common.Kinds
 import Syntax.Common.PrdCns
 import Syntax.Common.XData
@@ -68,7 +68,7 @@ instance PrettyAnn CST.PrdCnsDeclaration where
     prettyAnn pcdecl_term <>
     semi
 
-prettyAnnot :: Maybe Unpol.TypeScheme -> Doc Annotation
+prettyAnnot :: Maybe CST.TypeScheme -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 

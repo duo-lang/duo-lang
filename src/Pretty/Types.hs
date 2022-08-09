@@ -7,7 +7,7 @@ import Prettyprinter
 import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.Common.TypesPol qualified as RST
-import Syntax.Common.TypesUnpol qualified as CST
+import Syntax.CST.Types qualified as CST
 import Syntax.Common.Names
 import Syntax.Common.XData
 import Translate.Reparse
