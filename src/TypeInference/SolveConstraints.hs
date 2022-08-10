@@ -1,5 +1,6 @@
 module TypeInference.SolveConstraints
-  ( solveConstraints
+  ( solveConstraints,
+    KindPolicy(..)
   ) where
 
 import Control.Monad.Except
@@ -21,6 +22,7 @@ import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
+import TypeInference.GenerateConstraints.Definition ( InferenceMode(..) )
 --import Syntax.Common.TypesUnpol (Typ(TyUniVar))
 
 ------------------------------------------------------------------------------
@@ -30,12 +32,16 @@ import Utils ( defaultLoc )
 data SolverState = SolverState
   { sst_bounds :: Map UniTVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
+  , sst_kvars :: [([KVar],Maybe Kind)]
+  , sst_inferMode :: InferenceMode
   }
 
-createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs _) =
+createInitState :: ConstraintSet -> InferenceMode -> SolverState
+createInitState (ConstraintSet _ uvs kuvs) im =
   SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
               , sst_cache = S.empty
+              , sst_kvars = [([kv],Nothing) | kv <- kuvs]
+              , sst_inferMode = im
               }
 
 
@@ -52,13 +58,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation when inserting into cache
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+    modifyCache f = modify (\(SolverState gr cache kvars im) -> SolverState gr (f cache) kvars im)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
+modifyBounds f uv = modify (\(SolverState varMap cache kvars im) -> SolverState (M.adjust f uv varMap) cache kvars im)
 
 getBounds :: UniTVar -> SolverM VariableState
 getBounds uv = do
@@ -69,6 +75,12 @@ getBounds uv = do
                                            , "which is not a valid unification variable."
                                            ]
     Just vs -> return vs
+
+getKVars :: SolverM [([KVar], Maybe Kind)]
+getKVars = gets sst_kvars
+
+putKVars :: [([KVar],Maybe Kind)] -> SolverM ()
+putKVars x = modify (\s -> s { sst_kvars = x })
 
 addUpperBound :: UniTVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
@@ -87,6 +99,13 @@ addLowerBound uv ty = do
 addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
 addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
 
+lookupKVar :: KVar -> [([KVar], Maybe Kind)] -> Maybe Kind
+lookupKVar _ [] = Nothing
+lookupKVar kv ((ls,kind):rs) = if kv `elem` ls then kind else lookupKVar kv rs
+
+addKVar :: (KVar, Maybe Kind) -> [([KVar], Maybe Kind)] -> [([KVar],Maybe Kind)]
+addKVar (kv, kind) [] = [([kv],kind)]
+addKVar (kv,kind) ((kvs,kind2):rs) = if kind == kind2 then (kv:kvs, kind):rs else (kvs,kind2):addKVar (kv,kind) rs
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -99,6 +118,9 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
+      (KindEq _ k1 k2) -> do 
+        unifyKinds k1 k2 
+        solve css
       (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
@@ -112,7 +134,40 @@ solve (cs:css) = do
       _ -> do
         subCss <- subConstraints cs
         solve (subCss ++ css))
+------------------------------------------------------------------------------
+-- Kind Inference
+------------------------------------------------------------------------------
+unifyKinds :: Kind -> Kind -> SolverM()
+unifyKinds (Left (CBox cc1)) (Left (CBox cc2)) = 
+  if cc1 == cc2
+    then return ()
+    else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+unifyKinds (Left (KiVar kv)) (Left (KiVar kv')) = do
+  sets <- getKVars
+  let k1 = lookupKVar kv sets
+  let k2 = lookupKVar kv' sets
+  case (k1,k2) of 
+    (cc1, Nothing) -> putKVars $ addKVar (kv', cc1) (addKVar (kv, cc1) sets)
+    (Nothing, cc2) -> putKVars $ addKVar (kv', cc2) (addKVar (kv, cc2) sets)
+    (Just cc1, Just cc2) | cc1 == cc2 -> putKVars $ addKVar (kv', Just cc1) (addKVar (kv, Just cc1) sets) 
+                         | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+unifyKinds (Left (KiVar kv)) kind = do 
+  sets <- getKVars
+  let boundKind = lookupKVar kv sets
+  case boundKind of 
+    Nothing -> putKVars (addKVar (kv, Just kind) sets)
+    Just kind2 -> 
+      if kind==kind2 
+        then return ()
+        else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint kind2]
+unifyKinds kind (Left (KiVar kv)) = unifyKinds (Left (KiVar kv)) kind
+unifyKinds _ _ = throwSolverError defaultLoc ["Not implemented"]
 
+data KindPolicy
+  = DefaultCBV
+  | DefaultCBN
+  | ErrorUnresolved
+  deriving (Show, Eq)
 ------------------------------------------------------------------------------
 -- Computing Subconstraints
 ------------------------------------------------------------------------------
@@ -253,14 +308,15 @@ subConstraints (SubType _ t1 t2) = do
 -- type class constraints should only be resolved after subtype constraints
 subConstraints (TypeClassPos _ _cn _typ) = pure []
 subConstraints (TypeClassNeg _ _cn _tyn) = pure []
+subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
 
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
-solveConstraints constraintSet@(ConstraintSet css _ _ ) env = do
-  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
+solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  InferenceMode -> Either (NonEmpty Error) SolverResult
+solveConstraints constraintSet@(ConstraintSet css _ _ ) env im = do
+  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
   pure (MkSolverResult (sst_bounds solverState))
 

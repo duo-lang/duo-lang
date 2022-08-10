@@ -21,6 +21,8 @@ import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)
 
+import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
+
 ------------------------------------------------------------------------------
 -- Typeinference Options
 ------------------------------------------------------------------------------
@@ -30,6 +32,8 @@ data InferenceOptions = InferenceOptions
     -- ^ Whether to print debug information to the terminal.
   , infOptsPrintGraphs :: Bool
     -- ^ Whether to print graphs from type simplification.
+  , infOptsMode        :: InferenceMode 
+    -- ^ Whether to infer nominal or refinement types
   , infOptsSimplify    :: Bool
     -- ^ Whether or not to simplify types.
   , infOptsLibPath     :: [FilePath]
@@ -40,6 +44,7 @@ defaultInferenceOptions :: InferenceOptions
 defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
+  , infOptsMode = InferNominal
   , infOptsSimplify = True
   , infOptsLibPath = [".", "examples"]
   }

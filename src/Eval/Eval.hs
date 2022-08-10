@@ -36,6 +36,7 @@ evalTermOnce Method {} = return Nothing
   -- throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
 evalTermOnce (Apply _ _ Nothing _ _) =
   throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
+evalTermOnce (Apply _ _ (Just (KiVar _)) _ _) = throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (KindVar)"]
 evalTermOnce (Apply _ _ (Just kind) prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
 

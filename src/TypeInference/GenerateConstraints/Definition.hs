@@ -20,6 +20,7 @@ module TypeInference.GenerateConstraints.Definition
     -- Adding a constraint
   , addConstraint
     -- Other
+  , InferenceMode (..)
   , PrdCnsToPol
   , foo
   , fromMaybeVar
