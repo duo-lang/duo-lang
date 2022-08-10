@@ -44,7 +44,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsCommand,
       genConstraintsTermRecursive,
       genConstraintsInstance )
-import TypeInference.SolveConstraints (solveConstraints)
+import TypeInference.SolveConstraints (solveConstraints, KindPolicy (ErrorUnresolved))
 import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
 import Syntax.Common.TypesPol
 import Sugar.Desugar (desugarProgram)
@@ -86,7 +86,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env (infOptsMode infopts)
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -136,7 +136,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraintsCommand cmddecl_cmd))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env InferNominal
+  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env InferNominal ErrorUnresolved
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -157,7 +157,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraintsInstance decl))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env InferNominal
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env InferNominal ErrorUnresolved
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult

@@ -73,6 +73,7 @@ data VariableState = VariableState
 emptyVarState :: MonoKind -> VariableState
 emptyVarState = VariableState [] [] []
 
-newtype SolverResult = MkSolverResult
+data SolverResult = MkSolverResult
   { tvarSolution :: Map UniTVar VariableState
+  , kvarSolution :: Map KVar Kind
     }

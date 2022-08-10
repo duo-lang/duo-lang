@@ -12,9 +12,11 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Maybe (isJust, fromJust)
 
 import Driver.Environment (Environment)
 import Errors
+import Syntax.Common.TypesPol (Bisubstitution(..))
 import Syntax.Common.TypesPol
 import Syntax.Common
 import Pretty.Pretty
@@ -163,6 +165,18 @@ unifyKinds (Left (KiVar kv)) kind = do
 unifyKinds kind (Left (KiVar kv)) = unifyKinds (Left (KiVar kv)) kind
 unifyKinds _ _ = throwSolverError defaultLoc ["Not implemented"]
 
+computeKVarSolution :: KindPolicy -> [([KVar], Maybe Kind)] -> Either (NonEmpty Error) (Map KVar Kind)
+computeKVarSolution DefaultCBV sets = return $ computeKVarSolution' ((\(xs,kind) -> case kind of Nothing -> (xs, Left (CBox CBV)); Just kind' -> (xs,kind')) <$> sets)
+computeKVarSolution DefaultCBN sets = return $ computeKVarSolution' ((\(xs,kind) -> case kind of Nothing -> (xs,Left (CBox CBN)); Just kind' -> (xs,kind')) <$> sets)
+computeKVarSolution ErrorUnresolved sets = if all (\(_,kind) -> isJust kind) sets 
+                                           then return $ computeKVarSolution' (map (\(xs,mkind) -> (xs, fromJust mkind)) sets)
+                                           else throwSolverError defaultLoc [ "Tried to retrieve bounds for variable:"]
+
+computeKVarSolution' :: [([KVar],Kind)] -> Map KVar Kind
+computeKVarSolution' sets = M.fromList (concat (f <$> sets))
+  where 
+    f :: ([a], Kind) -> [(a,Kind)]
+    f (xs,kind) = zip xs (repeat kind)
 data KindPolicy
   = DefaultCBV
   | DefaultCBN
@@ -314,9 +328,20 @@ subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not
 -- Exported Function
 ------------------------------------------------------------------------------
 
--- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  InferenceMode -> Either (NonEmpty Error) SolverResult
-solveConstraints constraintSet@(ConstraintSet css _ _ ) env im = do
-  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
-  pure (MkSolverResult (sst_bounds solverState))
+zonkVariableState :: Map KVar Kind -> VariableState -> VariableState
+zonkVariableState m (VariableState lbs ubs tc k) = do
+  let bisubst = (MkBisubstitution (M.empty, m) :: Bisubstitution UniVT)
+  let zonkedlbs = zonk UniRep bisubst <$> lbs
+  let zonkedubs = zonk UniRep bisubst <$> ubs
+  let zonkedKind = zonkKind bisubst (Just (Left k))
+  case zonkedKind of 
+    Just (Left x) -> VariableState zonkedlbs zonkedubs tc x
+    _ -> error "Not implemented"
 
+-- | Creates the variable states that results from solving constraints.
+solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  InferenceMode -> KindPolicy -> Either (NonEmpty Error) SolverResult
+solveConstraints constraintSet@(ConstraintSet css _ _ ) env im policy = do
+  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet im)
+  kvarSolution <- computeKVarSolution policy (sst_kvars solverState)
+  let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
+  return $ MkSolverResult tvarSol kvarSolution
