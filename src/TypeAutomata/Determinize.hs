@@ -24,6 +24,7 @@ import TypeAutomata.Definition
 import Utils (intersections)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Foldable (foldl')
 
 
 ---------------------------------------------------------------------------------------
@@ -151,7 +152,7 @@ flowEdges :: TransFunReindexed
 flowEdges transFun flowedges = nub $ concatMap reindexFlowEdge flowedges
   where
     getPartitions :: TransFunReindexed -> Map Node (Set Node) -> Map Node (Set Node)
-    getPartitions tf m = foldl (\m (n,ns,_) -> foldl (\m n' -> M.insertWith S.union n' (S.singleton n) m) m ns) m tf
+    getPartitions tf m = foldl' (\m (n,ns,_) -> foldl' (\m n' -> M.insertWith S.union n' (S.singleton n) m) m ns) m tf
 
     partitionMap :: Map Node (Set Node)
     partitionMap = getPartitions transFun M.empty
