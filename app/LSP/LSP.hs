@@ -33,10 +33,10 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
+import Syntax.Common.Names
 import Driver.Driver
 import Utils
 
-import Syntax.Common
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
 import LSP.Handler.CodeAction ( codeActionHandler )

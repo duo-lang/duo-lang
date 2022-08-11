@@ -4,14 +4,13 @@ import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Types qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
 import Syntax.Common.PrdCns
-import Syntax.Common.TypesPol
+
 import Translate.Reparse ()
-import qualified Syntax.Common.TypesPol as TST
-import qualified Syntax.Common.TypesPol as Core
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -103,7 +102,7 @@ embedPrdCnsDeclaration Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl
                             , pcdecl_pc = pcdecl_pc
                             , pcdecl_isRec = pcdecl_isRec
                             , pcdecl_name = pcdecl_name
-                            , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                            , pcdecl_annot = pcdecl_annot
                             , pcdecl_term = embedCoreTerm pcdecl_term
                             }
 
@@ -210,20 +209,17 @@ embedTSTCommand (TST.PrimOp loc ty op subst) =
 embedTSTProg :: TST.Program -> Core.Program
 embedTSTProg = fmap embedTSTDecl
 
-embedTypeScheme :: TST.TypeScheme pol -> Core.TypeScheme pol
-embedTypeScheme (TypeScheme loc tvars mt) = Core.TypeScheme loc tvars mt
-
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Annotated tys, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc
                              , pcdecl_isRec = pcdecl_isRec
                              , pcdecl_name = pcdecl_name
-                             , pcdecl_annot = Just $ embedTypeScheme tys
+                             , pcdecl_annot = Just tys
                              , pcdecl_term = embedTSTTerm pcdecl_term
                              }
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Inferred _, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Inferred _, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc

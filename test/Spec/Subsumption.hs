@@ -10,7 +10,8 @@ import Pretty.Types ()
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Types
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
 import TypeAutomata.Subsume (subsume)
 
 subsumptionCheckPos :: [(ModuleName, SymbolTable)] -> Bool -> Text -> Text -> Spec

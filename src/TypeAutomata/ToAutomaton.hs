@@ -15,8 +15,13 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.Common
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
+import Syntax.CST.Types qualified as CST
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.CST.Kinds
+import Syntax.Common.PrdCns
+import Syntax.Common.Primitives
 import TypeAutomata.Definition
     ( TypeAutEps,
       TypeAut'(..),
@@ -181,7 +186,7 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> TTA Node
+insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn xtors = do
   newNode <- newNodeM
   insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)))
@@ -241,10 +246,10 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _ polrep xtors)   = insertXtors Data   (polarityRepToPol polrep) Nothing xtors
-insertType (TyCodata _ polrep xtors) = insertXtors Codata (polarityRepToPol polrep) Nothing xtors
-insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors Data   (polarityRepToPol polrep) (Just mtn) xtors
-insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors Codata (polarityRepToPol polrep) (Just mtn) xtors
+insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
+insertType (TyCodata _ polrep xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
+insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
+insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep _ tn args) = do
   let pol = polarityRepToPol rep

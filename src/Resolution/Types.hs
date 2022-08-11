@@ -13,10 +13,13 @@ import Errors
 import Pretty.Pretty
 import Resolution.Definition
 import Resolution.SymbolTable
-import Syntax.Common
-import Syntax.Common.TypesPol ( freeTVars )
-import Syntax.Common.TypesPol qualified as RST
-import Syntax.Common.TypesUnpol
+import Syntax.RST.Types qualified as RST
+import Syntax.CST.Types
+import Syntax.CST.Program qualified as CST
+import Syntax.Common.Polarity
+import Syntax.CST.Kinds
+import Syntax.Common.Names
+import Syntax.Common.PrdCns
 import Utils (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 
@@ -27,7 +30,7 @@ import Control.Monad.Reader (asks, MonadReader (local))
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
+    if RST.freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 
@@ -67,9 +70,9 @@ resolveTyp rep (TyNominal loc name args) = do
                 typ' <- resolveTyp rep typ
                 pure $ RST.TySyn loc rep name' typ'
             _ -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
-        NominalResult rtn _ Refined _ -> do
+        NominalResult rtn _ CST.Refined _ -> do
             throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
-        NominalResult name' _ NotRefined polykind -> do
+        NominalResult name' _ CST.NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep Nothing name' args'
 resolveTyp rep (TyRec loc v typ) = do

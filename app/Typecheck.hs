@@ -2,7 +2,7 @@
 module Typecheck where
 
 import Options (DebugFlags(..))
-import Syntax.Common
+import Syntax.Common.Names
 import Driver.Driver (runCompilationModule, defaultInferenceOptions)
 import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setPrintGraphOpts, setDebugOpts)
 import Pretty.Errors (printLocatedReport)

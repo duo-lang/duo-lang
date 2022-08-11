@@ -1,4 +1,5 @@
-module Syntax.Common.Annot where
+module Syntax.Core.Annot where
+
 import Syntax.Common.PrdCns (PrdCnsRep, PrdCns)
 
 data MuAnnot where

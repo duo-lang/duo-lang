@@ -2,9 +2,16 @@ module TypeInference.GenerateConstraints.Primitives where
 
 import Data.Map
 
-import Syntax.Common
-import Syntax.Common.TypesPol
-import Utils
+import Syntax.Common.Primitives
+    ( PrimitiveOp(..), PrimitiveType(..) )
+import Syntax.Common.Polarity
+    ( Polarity(Neg), PolarityRep(PosRep, NegRep) )
+import Syntax.RST.Types
+    ( LinearContext,
+      PrdCnsType(PrdCnsType),
+      Typ(TyString, TyI64, TyF64, TyChar) )
+import Syntax.Common.PrdCns ( PrdCnsRep(CnsRep, PrdRep) )
+import Utils ( defaultLoc )
 
 simplePrimBinOp :: PrimitiveType -> LinearContext Neg
 simplePrimBinOp I64 = [PrdCnsType PrdRep (TyI64 defaultLoc NegRep), PrdCnsType PrdRep (TyI64 defaultLoc NegRep), PrdCnsType CnsRep (TyI64 defaultLoc PosRep)]

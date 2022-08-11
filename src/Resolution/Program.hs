@@ -12,11 +12,13 @@ import Resolution.SymbolTable
 import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesUnpol qualified as CST
-import Syntax.Common.TypesUnpol (XtorSig (sig_args), PrdCnsTyp (PrdType, CnsType), Typ (..))
+import Syntax.CST.Types qualified as CST
 import Syntax.RST.Program qualified as RST
-import Syntax.Common.TypesPol qualified as RST
-import Syntax.Common
+import Syntax.RST.Types qualified as RST
+import Syntax.Common.Polarity
+import Syntax.CST.Kinds
+import Syntax.Common.Names
+import Syntax.Common.PrdCns
 import Utils (Loc, defaultLoc)
 
 
@@ -32,83 +34,83 @@ resolveXtors sigs = do
     pure (posSigs, negSigs)
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
-checkVarianceTyp _ _ tv(TyUniVar loc _) =
+checkVarianceTyp _ _ tv(CST.TyUniVar loc _) =
   throwOtherError loc ["The Unification Variable " <> T.pack (show  tv) <> " should not appear in the program at this point"]
-checkVarianceTyp loc var polyKind (TySkolemVar _loc' tVar) =
+checkVarianceTyp loc var polyKind (CST.TySkolemVar _loc' tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
     Nothing   -> throwOtherError loc ["Type variable not bound by declaration: " <> T.pack (show tVar)]
     Just var' -> if var == var'
                  then return ()
                  else throwOtherError loc ["Variance mismatch for variable " <> T.pack (show tVar) <> ":\nFound: " <> T.pack (show var) <> "\nRequired: " <> T.pack (show var')]
-checkVarianceTyp loc var polyKind (TyXData _loc' dataCodata  xtorSigs) = do
+checkVarianceTyp loc var polyKind (CST.TyXData _loc' dataCodata  xtorSigs) = do
   let var' = var <> case dataCodata of
-                      Data   -> Covariant
-                      Codata -> Contravariant
+                      CST.Data   -> Covariant
+                      CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
-checkVarianceTyp loc var polyKind (TyXRefined _loc' dataCodata  _tn xtorSigs) = do
+checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs) = do
   let var' = var <> case dataCodata of
-                      Data   -> Covariant
-                      Codata -> Contravariant
+                      CST.Data   -> Covariant
+                      CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
-checkVarianceTyp loc var polyKind (TyNominal _loc' tyName tys) = do
+checkVarianceTyp loc var polyKind (CST.TyNominal _loc' tyName tys) = do
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
   go ((\(v,_,_) -> v) <$> kindArgs polyKind') tys
   where
-    go :: [Variance] -> [Typ] -> ResolverM ()
+    go :: [Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
     go (v:vs) (t:ts)  = do
       checkVarianceTyp loc (v <> var) polyKind t
       go vs ts
     go [] (_:_)       = throwOtherError loc ["Type Constructor " <> T.pack (show tyName) <> " is applied to too many arguments"]
     go (_:_) []       = throwOtherError loc ["Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"]
-checkVarianceTyp loc var polyKind (TyRec _loc' _tVar ty) =
+checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
-checkVarianceTyp _loc _var _polyKind (TyTop _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyBot _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyI64 _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyF64 _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyChar _loc') = return ()
-checkVarianceTyp _loc _var _polyKind (TyString _loc') = return ()
-checkVarianceTyp loc var polyKind (TyBinOpChain ty tys) = do
+checkVarianceTyp _loc _var _polyKind (CST.TyTop _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (CST.TyBot _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (CST.TyI64 _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (CST.TyF64 _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (CST.TyChar _loc') = return ()
+checkVarianceTyp _loc _var _polyKind (CST.TyString _loc') = return ()
+checkVarianceTyp loc var polyKind (CST.TyBinOpChain ty tys) = do
   -- see comments for TyBinOp
   checkVarianceTyp loc var polyKind ty
   case tys of
     ((_,_,ty') :| tys') -> do
       checkVarianceTyp loc var polyKind ty'
       sequence_ $ (\(_,_,ty) -> checkVarianceTyp loc var polyKind ty) <$> tys'
-checkVarianceTyp loc var polyKind (TyBinOp _loc' ty _binOp ty') = do
+checkVarianceTyp loc var polyKind (CST.TyBinOp _loc' ty _binOp ty') = do
   -- this might need to check whether only allowed binOps are used here (i.e. forbid data Union +a +b { Union(a \/ b) } )
   -- also, might need variance check
   checkVarianceTyp loc var polyKind ty
   checkVarianceTyp loc var polyKind ty'
-checkVarianceTyp loc var polyKind (TyParens _loc' ty) = checkVarianceTyp loc var polyKind ty
+checkVarianceTyp loc var polyKind (CST.TyParens _loc' ty) = checkVarianceTyp loc var polyKind ty
 
-checkVarianceXtor :: Loc -> Variance -> PolyKind -> XtorSig -> ResolverM ()
+checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
-  sequence_ $ f <$> sig_args xtor
+  sequence_ $ f <$> CST.sig_args xtor
   where
-    f :: PrdCnsTyp -> ResolverM ()
-    f (PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty
-    f (CnsType ty) = checkVarianceTyp loc (Contravariant <> var) polyKind ty
+    f :: CST.PrdCnsTyp -> ResolverM ()
+    f (CST.PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty
+    f (CST.CnsType ty) = checkVarianceTyp loc (Contravariant <> var) polyKind ty
 
-checkVarianceDataDecl :: Loc -> PolyKind -> DataCodata -> [XtorSig] -> ResolverM ()
+checkVarianceDataDecl :: Loc -> PolyKind -> CST.DataCodata -> [CST.XtorSig] -> ResolverM ()
 checkVarianceDataDecl loc polyKind pol xtors = do
   case pol of
-    Data   -> sequence_ $ checkVarianceXtor loc Covariant     polyKind <$> xtors
-    Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
+    CST.Data   -> sequence_ $ checkVarianceXtor loc Covariant     polyKind <$> xtors
+    CST.Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
 
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
 resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
   case data_refined of
-    NotRefined -> do
+    CST.NotRefined -> do
       -------------------------------------------------------------------------
       -- Nominal Data Type
       -------------------------------------------------------------------------
       NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
       -- Default the kind if none was specified:
       let polyKind = case data_kind of
-                        Nothing -> MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Nothing -> MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> knd
       checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
       xtors <- resolveXtors data_xtors
@@ -119,14 +121,14 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
                            , data_kind = polyKind
                            , data_xtors = xtors
                            }
-    Refined -> do
+    CST.Refined -> do
       -------------------------------------------------------------------------
       -- Refinement Data Type
       -------------------------------------------------------------------------
       NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
       -- Default the kind if none was specified:
       polyKind <- case data_kind of
-                        Nothing -> pure $ MkPolyKind [] (case data_polarity of Data -> CBV; Codata -> CBN)
+                        Nothing -> pure $ MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> case knd of
                           pk@(MkPolyKind [] _) -> pure pk
                           _                    -> throwOtherError data_loc ["Parameterized refinement types are currently not allowed."]
@@ -134,7 +136,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
           g (SynonymResult tn ty) = SynonymResult tn ty
-          g (NominalResult tn dc _ polykind) = NominalResult tn dc NotRefined polykind
+          g (NominalResult tn dc _ polykind) = NominalResult tn dc CST.NotRefined polykind
 
           f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
           f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
@@ -204,7 +206,7 @@ resolveStructuralXtorDeclaration :: CST.StructuralXtorDeclaration
 resolveStructuralXtorDeclaration CST.MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} = do
   let evalOrder = case strxtordecl_evalOrder of
                   Just eo -> eo
-                  Nothing -> case strxtordecl_xdata of Data -> CBV; Codata -> CBN
+                  Nothing -> case strxtordecl_xdata of CST.Data -> CBV; CST.Codata -> CBN
   pure $ RST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
                                          , strxtordecl_doc = strxtordecl_doc
                                          , strxtordecl_xdata = strxtordecl_xdata
@@ -248,7 +250,7 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
-checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [XtorSig] -> ResolverM ()
+checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [CST.XtorSig] -> ResolverM ()
 checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc Covariant (MkPolyKind kinds CBV))
 
 resolveMethods :: [CST.XtorSig]

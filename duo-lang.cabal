@@ -138,24 +138,20 @@ library
       Sugar.TST
       Syntax.TST.Program
       Syntax.TST.Terms
-      Syntax.Common
-      Syntax.Common.Kinds
       Syntax.Common.Names
       Syntax.Common.Polarity
       Syntax.Common.Primitives
       Syntax.Common.PrdCns
-      Syntax.Common.Types
-      Syntax.Common.XData
-      Syntax.Common.Annot
-      Syntax.Common.TypesUnpol
-      Syntax.Common.TypesPol
-      Syntax.Common.Pattern
+      Syntax.Core.Annot
       Syntax.Core.Terms
       Syntax.Core.Program
+      Syntax.CST.Kinds
       Syntax.CST.Program
       Syntax.CST.Terms
+      Syntax.CST.Types
       Syntax.RST.Program
       Syntax.RST.Terms
+      Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Determinize

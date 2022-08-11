@@ -1,9 +1,26 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.RST.Program where
 
-import Syntax.Common
 import Syntax.RST.Terms( Command, Term, InstanceCase )
-import Syntax.Common.TypesPol ( TypeScheme, Typ, MethodSig, XtorSig)
+import Syntax.RST.Types ( TypeScheme, Typ, MethodSig, XtorSig)
+import Syntax.Common.Names
+    ( Associativity,
+      ClassName,
+      DocComment,
+      FreeVarName,
+      Precedence,
+      RnTypeName,
+      SkolemTVar,
+      TyOpName,
+      TypeName,
+      XtorName )
+import Syntax.Common.PrdCns
+    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
+import Syntax.CST.Kinds
+    ( EvaluationOrder, MonoKind, PolyKind, Variance )
+import Syntax.CST.Types ( DataCodata )
+import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
+
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
 
@@ -19,7 +36,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ The documentation string of the declaration.
   , pcdecl_pc :: PrdCnsRep pc
     -- ^ Whether a producer or consumer is declared.
-  , pcdecl_isRec :: IsRec
+  , pcdecl_isRec :: CST.IsRec
     -- ^ Whether the declaration can refer to itself recursively.
   , pcdecl_name :: FreeVarName
     -- ^ The name of the producer / consumer.

@@ -6,8 +6,25 @@ import Prettyprinter
 import Text.Megaparsec.Pos
 
 import Pretty.Pretty
-import Syntax.Common
-import Utils
+import Syntax.Common.Names
+    ( Associativity(..),
+      ClassName(MkClassName),
+      DocComment(unDocComment),
+      FreeVarName(MkFreeVarName),
+      MethodName(MkMethodName),
+      ModuleName(MkModuleName),
+      Precedence(..),
+      RecTVar(MkRecTVar),
+      RnTypeName(MkRnTypeName, rnTnName),
+      SkolemTVar(MkSkolemTVar),
+      TypeName(MkTypeName),
+      UniTVar(MkUniTVar),
+      XtorName(MkXtorName) )
+import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
+import Syntax.Common.Primitives ( PrimitiveType(..) )
+import Syntax.CST.Kinds
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
+import Utils ( Loc(..) )
 
 
 instance PrettyAnn a => PrettyAnn (NonEmpty a) where
@@ -87,19 +104,6 @@ prettyArity (Cns:rest) = parens "-" <> prettyArity rest
 prettyPrdCns :: PrdCns -> Doc Annotation
 prettyPrdCns Prd = "prd"
 prettyPrdCns Cns = "cns"
-
----------------------------------------------------------------------------------
--- Data/Codata and Nominal/Structural/Refinement
----------------------------------------------------------------------------------
-
-instance PrettyAnn DataCodata where
-  prettyAnn Data = annKeyword "data"
-  prettyAnn Codata = annKeyword "codata"
-
-instance PrettyAnn NominalStructural where
-  prettyAnn Nominal = "Nominal"
-  prettyAnn Structural = "Structural"
-  prettyAnn Refinement = "Refinement"
 
 ---------------------------------------------------------------------------------
 -- Primitives

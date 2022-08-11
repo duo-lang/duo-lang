@@ -14,14 +14,15 @@ import Data.Set qualified as S
 
 import Driver.Environment (Environment)
 import Errors
-import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.RST.Types
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
---import Syntax.Common.TypesUnpol (Typ(TyUniVar))
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.PrdCns
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -70,14 +71,14 @@ getBounds uv = do
                                            ]
     Just vs -> return vs
 
-addUpperBound :: UniTVar -> Syntax.Common.TypesPol.Typ Neg -> SolverM [Constraint ConstraintInfo]
+addUpperBound :: UniTVar -> Syntax.RST.Types.Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
-addLowerBound :: UniTVar -> Syntax.Common.TypesPol.Typ Pos -> SolverM [Constraint ConstraintInfo]
+addLowerBound :: UniTVar -> Syntax.RST.Types.Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv

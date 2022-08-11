@@ -26,16 +26,26 @@ import Data.Bifunctor
 import Data.Text qualified as T
 import Data.Maybe (fromJust)
 
-import Syntax.Common
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesUnpol qualified as CST
+import Syntax.CST.Types qualified as CST
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
-import Syntax.Common.TypesPol qualified as RST
+import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
-import Syntax.Common.TypesUnpol (TypeScheme(ts_constraints))
+import Syntax.Common.Names
+    ( BinOp(InterOp, CustomOp, UnionOp),
+      FreeVarName(MkFreeVarName),
+      MethodName(unMethodName),
+      RecTVar(MkRecTVar),
+      RnTypeName(MkRnTypeName, rnTnName),
+      SkolemTVar(MkSkolemTVar),
+      TyOpName(MkTyOpName),
+      TypeName(MkTypeName),
+      XtorName(MkXtorName) )
+import Syntax.Common.PrdCns
+    ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -320,15 +330,15 @@ createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat,
 ---------------------------------------------------------------------------------
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "Z") []) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
 
 embedTerm :: RST.Term pc -> CST.Term
 embedTerm (isNumSTermRST -> Just i) =
-  CST.NatLit defaultLoc Nominal i
+  CST.NatLit defaultLoc CST.Nominal i
 -- Core constructs
 embedTerm RST.BoundVar{} =
   error "Should have been removed by opening"
@@ -495,13 +505,13 @@ embedType (RST.TySkolemVar loc _ _ tv) =
 embedType (RST.TyRecVar loc _ _ tv) = 
   CST.TySkolemVar loc $ embedRecTVar tv
 embedType (RST.TyData loc _ xtors) =
-  CST.TyXData loc Data (embedXtorSig <$> xtors)
+  CST.TyXData loc CST.Data (embedXtorSig <$> xtors)
 embedType (RST.TyCodata loc _ xtors) =
-  CST.TyXData loc Codata (embedXtorSig <$> xtors)
+  CST.TyXData loc CST.Codata (embedXtorSig <$> xtors)
 embedType (RST.TyDataRefined loc _ tn xtors) =
-  CST.TyXRefined loc Data (rnTnName tn) (embedXtorSig <$> xtors)
+  CST.TyXRefined loc CST.Data (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyCodataRefined loc _ tn xtors) =
-  CST.TyXRefined loc Codata (rnTnName tn) (embedXtorSig <$> xtors)
+  CST.TyXRefined loc CST.Codata (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyNominal loc _ _ nm args) =
   CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =
@@ -539,7 +549,7 @@ embedTyDecl :: RST.DataDecl -> CST.DataDecl
 embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
   CST.MkDataDecl { data_loc = data_loc
                  , data_doc = data_doc
-                 , data_refined = NotRefined
+                 , data_refined = CST.NotRefined
                  , data_name = rnTnName data_name
                  , data_polarity = data_polarity
                  , data_kind = Just data_kind
@@ -548,7 +558,7 @@ embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data
 embedTyDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
   CST.MkDataDecl { data_loc = data_loc
                  , data_doc = data_doc
-                 , data_refined = Refined
+                 , data_refined = CST.Refined
                  , data_name = rnTnName data_name
                  , data_polarity = data_polarity
                  , data_kind = Just data_kind

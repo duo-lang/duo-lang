@@ -33,7 +33,9 @@ import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
 import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
 import Translate.Focusing ( focusCmd, focusEnvironment )
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.Core.Program qualified as Core
 import TypeAutomata.Subsume ( subsume )

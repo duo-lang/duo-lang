@@ -3,7 +3,7 @@ module Syntax.Core.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution
-  , Pattern(..)
+  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
@@ -19,12 +19,16 @@ module Syntax.Core.Terms
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
-import Syntax.Common.Annot
+import Syntax.Core.Annot
 import Utils
 import Errors
-import Syntax.Common
 import Syntax.TST.Terms (ShiftDirection(..))
-import Syntax.Common.Pattern
+import Syntax.CST.Terms qualified as CST
+import Syntax.RST.Terms qualified as RST
+import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
+import Syntax.Common.Names
+    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -60,7 +64,7 @@ type Substitution = [PrdCnsTerm]
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_pat :: Pattern
+  , cmdcase_pat :: RST.Pattern
   , cmdcase_cmd  :: Command
   }
 
@@ -77,7 +81,7 @@ deriving instance Show CmdCase
 --
 data InstanceCase = MkInstanceCase
   { instancecase_loc :: Loc
-  , instancecase_pat :: Pattern
+  , instancecase_pat :: RST.Pattern
   , instancecase_cmd :: Command
   }
 
@@ -98,10 +102,10 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> CST.NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -269,7 +273,7 @@ termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
+  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = RST.XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()

@@ -9,7 +9,9 @@ import Data.List.NonEmpty ( NonEmpty )
 
 import Errors
 import Pretty.Pretty
-import Syntax.Common
+import Syntax.Common.PrdCns
+import Syntax.CST.Kinds
+import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives
