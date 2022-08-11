@@ -1,7 +1,5 @@
 module TypeInference.GenerateConstraints.Primitives where
 
-import Data.Map
-
 import Syntax.Common.Primitives
     ( PrimitiveOp(..), PrimitiveType(..) )
 import Syntax.Common.Polarity
@@ -20,22 +18,20 @@ simplePrimBinOp PChar = [PrdCnsType PrdRep (TyChar defaultLoc NegRep), PrdCnsTyp
 simplePrimBinOp PString = [PrdCnsType PrdRep (TyString defaultLoc NegRep), PrdCnsType PrdRep (TyString defaultLoc NegRep), PrdCnsType CnsRep (TyString defaultLoc PosRep)]
 
 -- | Primitive operations and their signatures
-primOps :: Map (PrimitiveType, PrimitiveOp) (LinearContext Neg)
-primOps = fromList
-  [
-    -- I64
-    ((I64, Add), simplePrimBinOp I64),
-    ((I64, Sub), simplePrimBinOp I64),
-    ((I64, Mul), simplePrimBinOp I64),
-    ((I64, Div), simplePrimBinOp I64),
-    ((I64, Mod), simplePrimBinOp I64),
-    -- F64
-    ((F64, Add), simplePrimBinOp F64),
-    ((F64, Sub), simplePrimBinOp F64),
-    ((F64, Mul), simplePrimBinOp F64),
-    ((F64, Div), simplePrimBinOp F64),
-    -- Char
-    ((PChar, Prepend), simplePrimBinOp PChar),
-    -- String
-    ((PString, Append), simplePrimBinOp PString)
-  ]
+primOps :: PrimitiveOp -> LinearContext Neg
+-- I64
+primOps I64Add = simplePrimBinOp I64
+primOps I64Sub = simplePrimBinOp I64
+primOps I64Mul = simplePrimBinOp I64
+primOps I64Div = simplePrimBinOp I64
+primOps I64Mod = simplePrimBinOp I64
+-- F64
+primOps F64Add = simplePrimBinOp F64
+primOps F64Sub = simplePrimBinOp F64
+primOps F64Mul = simplePrimBinOp F64
+primOps F64Div = simplePrimBinOp F64
+-- Char
+primOps CharPrepend = simplePrimBinOp PChar
+-- String
+primOps StringAppend = simplePrimBinOp PString
+

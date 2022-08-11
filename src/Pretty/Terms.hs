@@ -9,7 +9,6 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common.Names ( FreeVarName )
-import Syntax.Common.Primitives ( primOpKeyword, primTypeKeyword )
 import Translate.Embed
 import Translate.Reparse
 
@@ -204,9 +203,8 @@ instance PrettyAnn CST.Term where
     brackets (prettyAnn cns)
   prettyAnn (CST.Apply _ t1 t2) =
     group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
-  prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ pt op subst)) =
-    annKeyword (prettyAnn (primOpKeyword op)) <>
-    annTypeName (prettyAnn (primTypeKeyword pt)) <>
+  prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ op subst)) =
+    annKeyword (prettyAnn op) <>
     parens' comma (prettyAnn <$> subst)
 
 ---------------------------------------------------------------------------------

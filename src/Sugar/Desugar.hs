@@ -105,8 +105,8 @@ desugarCmd (RST.ExitSuccess loc) =
   Core.ExitSuccess loc
 desugarCmd (RST.ExitFailure loc) =
   Core.ExitFailure loc
-desugarCmd (RST.PrimOp loc pt op subst) =
-  Core.PrimOp loc pt op (desugarPCTerm <$> subst)
+desugarCmd (RST.PrimOp loc op subst) =
+  Core.PrimOp loc op (desugarPCTerm <$> subst)
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
 -- uses pattern synonyms defined in Sugar.Core 

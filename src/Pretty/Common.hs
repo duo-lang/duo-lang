@@ -21,7 +21,7 @@ import Syntax.Common.Names
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
-import Syntax.Common.Primitives ( PrimitiveType(..) )
+import Syntax.Common.Primitives ( PrimitiveOp(..) )
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
 import Utils ( Loc(..) )
@@ -109,11 +109,21 @@ prettyPrdCns Cns = "cns"
 -- Primitives
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn PrimitiveType where
-  prettyAnn I64 = "I64"
-  prettyAnn F64 = "F64"
-  prettyAnn PChar = "Char"
-  prettyAnn PString = "String"
+instance PrettyAnn PrimitiveOp where
+  prettyAnn I64Add = "Add#I64"
+  prettyAnn I64Sub = "Sub#I64"
+  prettyAnn I64Mul = "Mul#I64"
+  prettyAnn I64Div = "Div#I64"
+  prettyAnn I64Mod = "Mod#I64"
+  -- F64 Ops
+  prettyAnn F64Add = "Add#F64"
+  prettyAnn F64Sub = "Sub#F64"
+  prettyAnn F64Mul = "Mul#F64"
+  prettyAnn F64Div = "Div#F64"
+  -- Char Ops
+  prettyAnn CharPrepend = "Prepend#Char"
+  -- String Ops
+  prettyAnn StringAppend = "Append#String"
 
 ---------------------------------------------------------------------------------
 -- Kinds
@@ -125,10 +135,10 @@ instance PrettyAnn EvaluationOrder where
 
 instance PrettyAnn MonoKind where
   prettyAnn (CBox eo)  = prettyAnn eo
-  prettyAnn (CRep I64) = "I64Rep"
-  prettyAnn (CRep F64) = "F64Rep"
-  prettyAnn (CRep PChar) = "CharRep"
-  prettyAnn (CRep PString) = "StringRep"
+  prettyAnn I64Rep = "I64Rep"
+  prettyAnn F64Rep = "F64Rep"
+  prettyAnn CharRep = "CharRep"
+  prettyAnn StringRep = "StringRep"
 
 instance PrettyAnn Variance where
   prettyAnn Covariant     = annSymbol "+"

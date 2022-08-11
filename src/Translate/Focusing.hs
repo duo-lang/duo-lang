@@ -84,7 +84,7 @@ isFocusedCmd _  (Jump loc fv)              = Just (Jump loc fv)
 isFocusedCmd eo (Method loc mn cn subst)   = Method loc mn cn <$> isFocusedSubst eo subst
 isFocusedCmd eo (Print loc prd cmd)        = Print loc <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read loc cns)             = Read loc <$> isValueTerm eo CnsRep cns
-isFocusedCmd eo (PrimOp loc pt op subst)   = PrimOp loc pt op <$> isValueSubst eo subst
+isFocusedCmd eo (PrimOp loc op subst)      = PrimOp loc op <$> isValueSubst eo subst
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -214,8 +214,8 @@ focusInstanceCase eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, in
                    }
 
 
-focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
-focusPrimOp _  (pt, op) [] pcterms' = PrimOp defaultLoc pt op (reverse pcterms')
+focusPrimOp :: EvaluationOrder -> PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
+focusPrimOp _  op [] pcterms' = PrimOp defaultLoc op (reverse pcterms')
 focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
     let
@@ -245,7 +245,7 @@ focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (foc
 focusCmd eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
 focusCmd eo (Read loc cns) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0))))
                                                         (focusTerm eo cns)
-focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
+focusCmd eo (PrimOp _ op subst) = focusPrimOp eo op subst []
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs

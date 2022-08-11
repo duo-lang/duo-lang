@@ -26,7 +26,7 @@ import Utils ( Loc )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
-import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
+import Syntax.Common.Primitives ( PrimitiveOp )
 import Syntax.CST.Terms qualified as CST
 
 ---------------------------------------------------------------------------------
@@ -219,7 +219,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
   CaseOfCmd :: Loc -> CST.NominalStructural -> Term Prd -> [CmdCase] -> Command
   CaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
   CocaseOfCmd :: Loc -> CST.NominalStructural -> Term Cns -> [CmdCase] -> Command
@@ -294,8 +294,8 @@ commandOpeningRec k args (Method loc mn cn subst) =
   Method loc mn cn (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (Apply loc t1 t2) =
   Apply loc (termOpeningRec k args t1) (termOpeningRec k args t2)
-commandOpeningRec k args (PrimOp loc pt op subst) =
-  PrimOp loc pt op (pctermOpeningRec k args <$> subst)
+commandOpeningRec k args (PrimOp loc op subst) =
+  PrimOp loc op (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (CaseOfCmd loc ns t cmdcases) =
   CaseOfCmd loc ns  (termOpeningRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cmdcases
 commandOpeningRec k args (CaseOfI loc pcrep ns t tmcasesI) =
@@ -379,8 +379,8 @@ commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
 commandClosingRec k args (Apply ext t1 t2) =
   Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
-commandClosingRec k args (PrimOp ext pt op subst) =
-  PrimOp ext pt op (pctermClosingRec k args <$> subst)
+commandClosingRec k args (PrimOp ext op subst) =
+  PrimOp ext op (pctermClosingRec k args <$> subst)
 commandClosingRec k args (CaseOfCmd loc ns t cmdcases) =
   CaseOfCmd loc ns  (termClosingRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args cmdcase_cmd }) cmdcases
 commandClosingRec k args (CaseOfI loc pcrep ns t tmcasesI) =

@@ -24,7 +24,6 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.Common.Names
 import Syntax.CST.Kinds
-import Syntax.Common.Primitives
 import Data.Functor ( ($>) )
 
 ---------------------------------------------------------------------------------
@@ -103,10 +102,10 @@ evalOrderP = (keywordP KwCBV $> CBV) <|> (keywordP KwCBN $> CBN)
 -- | Parses one of the keywords "CBV" or "CBN"
 monoKindP :: Parser MonoKind
 monoKindP = CBox <$> evalOrderP
-         <|> CRep I64 <$ keywordP KwI64Rep
-         <|> CRep F64 <$ keywordP KwF64Rep
-         <|> CRep PChar <$ keywordP KwCharRep
-         <|> CRep PString <$ keywordP KwStringRep
+         <|> I64Rep <$ keywordP KwI64Rep
+         <|> F64Rep <$ keywordP KwF64Rep
+         <|> CharRep <$ keywordP KwCharRep
+         <|> StringRep <$ keywordP KwStringRep
 
 ---------------------------------------------------------------------------------
 -- PolyKinds

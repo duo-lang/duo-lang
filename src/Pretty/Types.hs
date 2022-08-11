@@ -9,6 +9,7 @@ import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.Names
+import Syntax.Common.Primitives
 import Translate.Reparse
 
 ---------------------------------------------------------------------------------
@@ -93,6 +94,11 @@ instance PrettyAnn CST.XtorSig where
 ---------------------------------------------------------------------------------
 -- Typ
 ---------------------------------------------------------------------------------
+instance PrettyAnn PrimitiveType where
+  prettyAnn I64 = "I64"
+  prettyAnn F64 = "F64"
+  prettyAnn PChar = "Char"
+  prettyAnn PString = "String"
 
 instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embedType typ)

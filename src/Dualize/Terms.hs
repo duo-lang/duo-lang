@@ -43,7 +43,7 @@ dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
 dualCmd (Method loc _ _ _) = Left $ DualMethod loc "Cannot dualize type class method"
-dualCmd (PrimOp loc _ op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
+dualCmd (PrimOp loc op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
 dualCmd (ExitSuccess _) = return $ ExitSuccess defaultLoc
 dualCmd (ExitFailure _) = return $ ExitFailure defaultLoc
 

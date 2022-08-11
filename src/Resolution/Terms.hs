@@ -4,7 +4,6 @@ import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty((:|)))
-import Data.Map qualified as M
 import Data.Text qualified as T
 
 import Errors
@@ -183,12 +182,6 @@ resolveInstanceCases cases = do
 -- Resolving PrimCommands
 ---------------------------------------------------------------------------------
 
-getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolverM Arity
-getPrimOpArity loc primOp = do
-  case M.lookup primOp primOps of
-    Nothing -> throwError $ ErrResolution (UndefinedPrimOp loc primOp) :| []
-    Just aritySpecified -> return aritySpecified
-
 resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
 resolvePrimCommand (CST.Print loc tm cmd) = do
   tm' <- resolveTerm PrdRep tm
@@ -201,12 +194,12 @@ resolvePrimCommand (CST.ExitSuccess loc) =
   pure $ RST.ExitSuccess loc
 resolvePrimCommand (CST.ExitFailure loc) =
   pure $ RST.ExitFailure loc
-resolvePrimCommand (CST.PrimOp loc pt op args) = do
-  reqArity <- getPrimOpArity loc (pt, op)
+resolvePrimCommand (CST.PrimOp loc op args) = do
+  let reqArity = primOps op
   when (length reqArity /= length args) $
-         throwError $ ErrResolution (PrimOpArityMismatch loc (pt,op) (length reqArity) (length args)) :| []
+         throwError $ ErrResolution (PrimOpArityMismatch loc op (length reqArity) (length args)) :| []
   args' <- resolveTerms loc reqArity args
-  pure $ RST.PrimOp loc pt op args'
+  pure $ RST.PrimOp loc op args'
 
 ---------------------------------------------------------------------------------
 -- Resolving Commands

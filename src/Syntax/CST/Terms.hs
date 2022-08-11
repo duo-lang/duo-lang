@@ -1,7 +1,7 @@
 module Syntax.CST.Terms where
 
 import Syntax.Common.Names ( FreeVarName, XtorName )
-import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
+import Syntax.Common.Primitives ( PrimitiveOp )
 import Utils ( HasLoc(..), Loc )
 
 --------------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ data PrimCommand where
   Read  :: Loc -> Term -> PrimCommand
   ExitSuccess  :: Loc -> PrimCommand
   ExitFailure :: Loc -> PrimCommand
-  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> [Term] -> PrimCommand
+  PrimOp :: Loc -> PrimitiveOp -> [Term] -> PrimCommand
   -- Sugar Nodes
 
 deriving instance Show PrimCommand
@@ -81,7 +81,7 @@ instance HasLoc PrimCommand where
   getLoc (Read loc _) = loc 
   getLoc (ExitSuccess loc) = loc 
   getLoc (ExitFailure loc) = loc 
-  getLoc (PrimOp loc _ _ _) = loc
+  getLoc (PrimOp loc _ _) = loc
 
 data Term where
     PrimCmdTerm :: PrimCommand -> Term 

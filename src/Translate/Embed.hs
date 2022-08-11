@@ -88,8 +88,8 @@ embedCoreCommand (Core.ExitSuccess loc) =
     RST.ExitSuccess loc
 embedCoreCommand (Core.ExitFailure loc) =
     RST.ExitFailure loc
-embedCoreCommand (Core.PrimOp loc ty op subst) =
-    RST.PrimOp loc ty op (embedSubst subst)
+embedCoreCommand (Core.PrimOp loc op subst) =
+    RST.PrimOp loc op (embedSubst subst)
 
 
 embedCoreProg :: Core.Program -> RST.Program
@@ -203,8 +203,8 @@ embedTSTCommand (TST.ExitSuccess loc) =
     Core.ExitSuccess loc
 embedTSTCommand (TST.ExitFailure loc) =
     Core.ExitFailure loc
-embedTSTCommand (TST.PrimOp loc ty op subst) =
-    Core.PrimOp loc ty op (embedTSTSubst subst)
+embedTSTCommand (TST.PrimOp loc op subst) =
+    Core.PrimOp loc op (embedTSTSubst subst)
 
 embedTSTProg :: TST.Program -> Core.Program
 embedTSTProg = fmap embedTSTDecl
