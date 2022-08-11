@@ -8,7 +8,7 @@ import Data.Map qualified as M
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
 import Syntax.CST.Program

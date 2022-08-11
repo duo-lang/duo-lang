@@ -14,7 +14,7 @@ import Errors
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
 import Syntax.CST.Types
-import Syntax.Common.Names
+import Syntax.RST.Names
 import TypeAutomata.Definition
 import Utils ( defaultLoc, enumerate )
 

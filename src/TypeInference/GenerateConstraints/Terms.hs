@@ -15,7 +15,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Types
 import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.Polarity
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints

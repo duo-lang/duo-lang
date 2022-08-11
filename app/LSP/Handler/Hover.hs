@@ -20,7 +20,7 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.CST.Kinds
 import Syntax.Common.Polarity
 import Syntax.TST.Terms hiding (Command)

@@ -10,7 +10,7 @@ import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Translate.Embed
 import Syntax.CST.Kinds
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing

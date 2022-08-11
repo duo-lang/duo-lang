@@ -24,7 +24,7 @@ module Sugar.TST (
   where
 
 import Syntax.TST.Terms
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Core.Annot
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds

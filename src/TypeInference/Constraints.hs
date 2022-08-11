@@ -2,7 +2,7 @@ module TypeInference.Constraints where
 
 import Data.Map (Map)
 
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.Polarity
 import Syntax.RST.Types ( Typ )
 import Syntax.CST.Kinds

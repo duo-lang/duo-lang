@@ -33,7 +33,7 @@ import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
 import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
 import Translate.Focusing ( focusCmd, focusEnvironment )
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.Polarity
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST

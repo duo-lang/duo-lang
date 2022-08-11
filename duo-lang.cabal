@@ -138,7 +138,6 @@ library
       Sugar.TST
       Syntax.TST.Program
       Syntax.TST.Terms
-      Syntax.Common.Names
       Syntax.Common.Polarity
       Syntax.Common.PrdCns
       Syntax.Core.Annot
@@ -148,8 +147,10 @@ library
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types
+      Syntax.CST.Names
       Syntax.RST.Program
       Syntax.RST.Terms
+      Syntax.RST.Names
       Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition

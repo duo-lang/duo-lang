@@ -11,7 +11,7 @@ import Syntax.Common.PrdCns
 import Syntax.CST.Kinds ( MonoKind, Variance(..) )
 import Syntax.Common.Polarity
     ( FlipPol, Polarity(..), PolarityRep(..) )
-import Syntax.Common.Names
+import Syntax.RST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 import Utils
 

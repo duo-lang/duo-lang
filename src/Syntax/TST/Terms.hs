@@ -26,7 +26,7 @@ import Utils
 import Errors
 import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
-import Syntax.Common.Names
+import Syntax.RST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )

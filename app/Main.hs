@@ -7,7 +7,7 @@ import GitHash (tGitInfoCwd, giHash, giBranch)
 
 import Options (Options(..), parseOptions)
 import Run (runRun)
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Typecheck (runTypecheck)
 import Deps (runDeps)
 import Repl.Run (runRepl)

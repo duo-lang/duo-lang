@@ -1,6 +1,6 @@
 module Syntax.CST.Terms where
 
-import Syntax.Common.Names ( FreeVarName, XtorName )
+import Syntax.CST.Names ( FreeVarName, XtorName )
 import Utils ( HasLoc(..), Loc )
 
 --------------------------------------------------------------------------------------------

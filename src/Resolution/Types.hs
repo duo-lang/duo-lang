@@ -18,7 +18,7 @@ import Syntax.CST.Types
 import Syntax.CST.Program qualified as CST
 import Syntax.Common.Polarity
 import Syntax.CST.Kinds
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.PrdCns
 import Utils (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))

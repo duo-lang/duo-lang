@@ -10,7 +10,7 @@ import Pretty.Types ()
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Types
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.Polarity
 import TypeAutomata.Subsume (subsume)
 

@@ -26,7 +26,7 @@ import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
-import Syntax.Common.Names
+import Syntax.RST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 
 ---------------------------------------------------------------------------------

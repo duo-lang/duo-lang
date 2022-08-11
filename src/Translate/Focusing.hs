@@ -17,7 +17,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Types (Typ(..))
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Core.Annot
 import Syntax.Common.Polarity
 

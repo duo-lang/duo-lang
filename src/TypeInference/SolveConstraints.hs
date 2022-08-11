@@ -20,7 +20,7 @@ import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
 

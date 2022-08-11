@@ -11,7 +11,7 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
-import Syntax.Common.Names ( RnTypeName, XtorName )
+import Syntax.RST.Names ( RnTypeName, XtorName )
 import Syntax.Common.PrdCns ( Arity, PrdCns )
 import Syntax.CST.Types ( DataCodata(..) )
 import Syntax.Common.Polarity ( Polarity, PolarityRep )

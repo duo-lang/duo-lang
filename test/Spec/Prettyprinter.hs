@@ -9,7 +9,7 @@ import Parser.Parser
 import Pretty.Pretty
 import Pretty.Errors ()
 import Pretty.Program ()
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Driver.Definition

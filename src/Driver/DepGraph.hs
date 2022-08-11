@@ -32,7 +32,7 @@ import Pretty.Pretty ( ppPrint, ppPrintString )
 import Driver.Definition ( DriverM, findModule )
 import Resolution.SymbolTable
     ( SymbolTable(imports), createSymbolTable )
-import Syntax.Common.Names ( ModuleName(..) )
+import Syntax.RST.Names ( ModuleName(..) )
 import Errors ( throwOtherError )
 import Utils ( defaultLoc )
 

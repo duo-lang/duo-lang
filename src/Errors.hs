@@ -6,7 +6,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.CST.Terms
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity

@@ -45,7 +45,7 @@ import Driver.Environment
 import Errors
 import Lookup
 import Syntax.RST.Types
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity

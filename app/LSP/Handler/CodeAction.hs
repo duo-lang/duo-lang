@@ -14,7 +14,7 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Syntax.RST.Types ( TypeScheme, TopAnnot(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
-import Syntax.Common.Names
+import Syntax.RST.Names
     ( DocComment,
       FreeVarName(unFreeVarName),
       ModuleName(MkModuleName) )

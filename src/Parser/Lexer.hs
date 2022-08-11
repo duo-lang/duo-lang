@@ -40,7 +40,7 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.CST.Terms qualified as CST
 import Parser.Definition
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)

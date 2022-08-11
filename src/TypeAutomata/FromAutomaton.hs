@@ -2,7 +2,7 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.RST.Types
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds

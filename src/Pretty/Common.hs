@@ -6,7 +6,7 @@ import Prettyprinter
 import Text.Megaparsec.Pos
 
 import Pretty.Pretty
-import Syntax.Common.Names
+import Syntax.RST.Names
     ( Associativity(..),
       ClassName(MkClassName),
       DocComment(unDocComment),

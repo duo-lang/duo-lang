@@ -13,7 +13,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.RST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
