@@ -1,9 +1,6 @@
 module Syntax.Common.Primitives
   ( PrimitiveOp(..)
-  , primOps
   ) where
-
-import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
 
 data PrimitiveOp where
   -- I64 Ops
@@ -22,23 +19,4 @@ data PrimitiveOp where
   -- String Ops
   StringAppend :: PrimitiveOp
   deriving (Show, Eq, Ord, Enum, Bounded)
-
-
--- | Primitive operations and their arities
-primOps :: PrimitiveOp -> Arity
--- I64
-primOps I64Add = [Prd, Prd, Cns]
-primOps I64Sub = [Prd, Prd, Cns]
-primOps I64Mul = [Prd, Prd, Cns]
-primOps I64Div = [Prd, Prd, Cns]
-primOps I64Mod = [Prd, Prd, Cns]
--- F64
-primOps F64Add = [Prd, Prd, Cns]
-primOps F64Sub = [Prd, Prd, Cns]
-primOps F64Mul = [Prd, Prd, Cns]
-primOps F64Div = [Prd, Prd, Cns]
--- Char
-primOps CharPrepend = [Prd, Prd, Cns]
--- String
-primOps StringAppend = [Prd, Prd, Cns]
 

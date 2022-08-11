@@ -182,6 +182,24 @@ resolveInstanceCases cases = do
 -- Resolving PrimCommands
 ---------------------------------------------------------------------------------
 
+-- | Primitive operations and their arities
+primOpsArity :: PrimitiveOp -> Arity
+-- I64
+primOpsArity I64Add = [Prd, Prd, Cns]
+primOpsArity I64Sub = [Prd, Prd, Cns]
+primOpsArity I64Mul = [Prd, Prd, Cns]
+primOpsArity I64Div = [Prd, Prd, Cns]
+primOpsArity I64Mod = [Prd, Prd, Cns]
+-- F64
+primOpsArity F64Add = [Prd, Prd, Cns]
+primOpsArity F64Sub = [Prd, Prd, Cns]
+primOpsArity F64Mul = [Prd, Prd, Cns]
+primOpsArity F64Div = [Prd, Prd, Cns]
+-- Char
+primOpsArity CharPrepend = [Prd, Prd, Cns]
+-- String
+primOpsArity StringAppend = [Prd, Prd, Cns]
+
 resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
 resolvePrimCommand (CST.Print loc tm cmd) = do
   tm' <- resolveTerm PrdRep tm
@@ -195,7 +213,7 @@ resolvePrimCommand (CST.ExitSuccess loc) =
 resolvePrimCommand (CST.ExitFailure loc) =
   pure $ RST.ExitFailure loc
 resolvePrimCommand (CST.PrimOp loc op args) = do
-  let reqArity = primOps op
+  let reqArity = primOpsArity op
   when (length reqArity /= length args) $
          throwError $ ErrResolution (PrimOpArityMismatch loc op (length reqArity) (length args)) :| []
   args' <- resolveTerms loc reqArity args
