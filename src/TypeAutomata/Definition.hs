@@ -15,7 +15,6 @@ import Syntax.Common.Names ( RnTypeName, XtorName )
 import Syntax.Common.PrdCns ( Arity, PrdCns )
 import Syntax.CST.Types ( DataCodata(..) )
 import Syntax.Common.Polarity ( Polarity, PolarityRep )
-import Syntax.Common.Primitives ( PrimitiveType )
 import Syntax.CST.Kinds ( Variance )
 
 --------------------------------------------------------------------------------
@@ -151,6 +150,14 @@ data XtorLabel = MkXtorLabel
   }
   deriving (Eq, Show, Ord)
 
+-- | A primitive type/calling convention
+data PrimitiveType =
+      I64 -- ^ Primitive signed 64-bit integer
+    | F64 -- ^ Primitive double-precision floating point
+    | PChar
+    | PString
+    deriving (Show, Eq, Ord)
+    
 data NodeLabel = 
   MkNodeLabel
     { nl_pol :: Polarity

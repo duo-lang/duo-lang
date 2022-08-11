@@ -1,14 +1,9 @@
-module Syntax.Common.Primitives where
+module Syntax.Common.Primitives
+  ( PrimitiveOp(..)
+  , primOps
+  ) where
 
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
-
--- | A primitive type/calling convention
-data PrimitiveType =
-      I64 -- ^ Primitive signed 64-bit integer
-    | F64 -- ^ Primitive double-precision floating point
-    | PChar
-    | PString
-    deriving (Show, Eq, Ord)
 
 data PrimitiveOp where
   -- I64 Ops

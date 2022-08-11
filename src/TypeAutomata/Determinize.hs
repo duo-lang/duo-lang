@@ -12,15 +12,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 
 import Syntax.Common.Polarity
-import Syntax.Common.Primitives
 import TypeAutomata.Definition
-    ( EdgeLabelNormal,
-      NodeLabel(..),
-      Nubable(nub),
-      TypeAut,
-      TypeAut'(TypeAut, ta_pol, ta_starts, ta_core),
-      TypeAutCore(TypeAutCore, ta_gr, ta_flowEdges),
-      TypeAutDet )
 import Utils (intersections)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe)
