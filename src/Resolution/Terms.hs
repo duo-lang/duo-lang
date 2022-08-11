@@ -16,7 +16,6 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
-import Syntax.Common.Primitives
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -183,22 +182,22 @@ resolveInstanceCases cases = do
 ---------------------------------------------------------------------------------
 
 -- | Primitive operations and their arities
-primOpsArity :: PrimitiveOp -> Arity
+primOpsArity :: CST.PrimitiveOp -> Arity
 -- I64
-primOpsArity I64Add = [Prd, Prd, Cns]
-primOpsArity I64Sub = [Prd, Prd, Cns]
-primOpsArity I64Mul = [Prd, Prd, Cns]
-primOpsArity I64Div = [Prd, Prd, Cns]
-primOpsArity I64Mod = [Prd, Prd, Cns]
+primOpsArity CST.I64Add = [Prd, Prd, Cns]
+primOpsArity CST.I64Sub = [Prd, Prd, Cns]
+primOpsArity CST.I64Mul = [Prd, Prd, Cns]
+primOpsArity CST.I64Div = [Prd, Prd, Cns]
+primOpsArity CST.I64Mod = [Prd, Prd, Cns]
 -- F64
-primOpsArity F64Add = [Prd, Prd, Cns]
-primOpsArity F64Sub = [Prd, Prd, Cns]
-primOpsArity F64Mul = [Prd, Prd, Cns]
-primOpsArity F64Div = [Prd, Prd, Cns]
+primOpsArity CST.F64Add = [Prd, Prd, Cns]
+primOpsArity CST.F64Sub = [Prd, Prd, Cns]
+primOpsArity CST.F64Mul = [Prd, Prd, Cns]
+primOpsArity CST.F64Div = [Prd, Prd, Cns]
 -- Char
-primOpsArity CharPrepend = [Prd, Prd, Cns]
+primOpsArity CST.CharPrepend = [Prd, Prd, Cns]
 -- String
-primOpsArity StringAppend = [Prd, Prd, Cns]
+primOpsArity CST.StringAppend = [Prd, Prd, Cns]
 
 resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
 resolvePrimCommand (CST.Print loc tm cmd) = do

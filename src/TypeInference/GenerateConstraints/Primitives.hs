@@ -1,9 +1,8 @@
 module TypeInference.GenerateConstraints.Primitives where
 
-import Syntax.Common.Primitives
-    ( PrimitiveOp(..) )
 import Syntax.Common.Polarity
     ( Polarity(Neg), PolarityRep(PosRep, NegRep) )
+import Syntax.CST.Terms (PrimitiveOp(..))
 import Syntax.RST.Types
     ( LinearContext,
       PrdCnsType(PrdCnsType),

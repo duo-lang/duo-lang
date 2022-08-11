@@ -18,7 +18,6 @@ import Syntax.RST.Types (Typ(..))
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
 import Syntax.Common.Names
-import Syntax.Common.Primitives
 import Syntax.Core.Annot
 import Syntax.Common.Polarity
 
@@ -214,7 +213,7 @@ focusInstanceCase eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, in
                    }
 
 
-focusPrimOp :: EvaluationOrder -> PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
+focusPrimOp :: EvaluationOrder -> CST.PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusPrimOp _  op [] pcterms' = PrimOp defaultLoc op (reverse pcterms')
 focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =

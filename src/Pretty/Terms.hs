@@ -208,6 +208,26 @@ instance PrettyAnn CST.Term where
     parens' comma (prettyAnn <$> subst)
 
 ---------------------------------------------------------------------------------
+-- Primitives
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.PrimitiveOp where
+  prettyAnn CST.I64Add = "Add#I64"
+  prettyAnn CST.I64Sub = "Sub#I64"
+  prettyAnn CST.I64Mul = "Mul#I64"
+  prettyAnn CST.I64Div = "Div#I64"
+  prettyAnn CST.I64Mod = "Mod#I64"
+  -- F64 Ops
+  prettyAnn CST.F64Add = "Add#F64"
+  prettyAnn CST.F64Sub = "Sub#F64"
+  prettyAnn CST.F64Mul = "Mul#F64"
+  prettyAnn CST.F64Div = "Div#F64"
+  -- Char Ops
+  prettyAnn CST.CharPrepend = "Prepend#Char"
+  -- String Ops
+  prettyAnn CST.StringAppend = "Append#String"
+
+---------------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------------
 

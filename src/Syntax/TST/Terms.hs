@@ -33,7 +33,6 @@ import Syntax.Core.Annot
 import Syntax.Common.Polarity
     ( Polarity(Pos), PolarityRep(PosRep) )
 import Syntax.CST.Kinds ( MonoKind )
-import Syntax.Common.Primitives ( PrimitiveOp )
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types
@@ -196,7 +195,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> CST.PrimitiveOp -> Substitution -> Command
 
 deriving instance Show Command
 

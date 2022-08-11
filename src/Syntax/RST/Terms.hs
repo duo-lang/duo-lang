@@ -26,7 +26,6 @@ import Utils ( Loc )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
-import Syntax.Common.Primitives ( PrimitiveOp )
 import Syntax.CST.Terms qualified as CST
 
 ---------------------------------------------------------------------------------
@@ -219,7 +218,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> CST.PrimitiveOp -> Substitution -> Command
   CaseOfCmd :: Loc -> CST.NominalStructural -> Term Prd -> [CmdCase] -> Command
   CaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
   CocaseOfCmd :: Loc -> CST.NominalStructural -> Term Cns -> [CmdCase] -> Command

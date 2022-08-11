@@ -28,7 +28,6 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.Common.Primitives ( PrimitiveOp )
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -138,7 +137,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> CST.PrimitiveOp -> Substitution -> Command
 
 --deriving instance Eq Command
 deriving instance Show Command

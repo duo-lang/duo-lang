@@ -21,7 +21,6 @@ import Syntax.Common.Names
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
-import Syntax.Common.Primitives ( PrimitiveOp(..) )
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
 import Utils ( Loc(..) )
@@ -104,26 +103,6 @@ prettyArity (Cns:rest) = parens "-" <> prettyArity rest
 prettyPrdCns :: PrdCns -> Doc Annotation
 prettyPrdCns Prd = "prd"
 prettyPrdCns Cns = "cns"
-
----------------------------------------------------------------------------------
--- Primitives
----------------------------------------------------------------------------------
-
-instance PrettyAnn PrimitiveOp where
-  prettyAnn I64Add = "Add#I64"
-  prettyAnn I64Sub = "Sub#I64"
-  prettyAnn I64Mul = "Mul#I64"
-  prettyAnn I64Div = "Div#I64"
-  prettyAnn I64Mod = "Mod#I64"
-  -- F64 Ops
-  prettyAnn F64Add = "Add#F64"
-  prettyAnn F64Sub = "Sub#F64"
-  prettyAnn F64Mul = "Mul#F64"
-  prettyAnn F64Div = "Div#F64"
-  -- Char Ops
-  prettyAnn CharPrepend = "Prepend#Char"
-  -- String Ops
-  prettyAnn StringAppend = "Append#String"
 
 ---------------------------------------------------------------------------------
 -- Kinds

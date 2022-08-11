@@ -6,15 +6,20 @@ import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
 import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
 import Syntax.Core.Annot
 import Syntax.Common.Names
 import Syntax.Common.Polarity
+import Syntax.CST.Terms (PrimitiveOp)
 import Syntax.CST.Kinds
 import Syntax.RST.Types
 import Utils
 
-data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String | DualMethod Loc String
+data DualizeError
+    = DualPrim Loc String 
+    | DualPrint Loc String  
+    | DualRead Loc String 
+    | DualPrimOp Loc PrimitiveOp String 
+    | DualMethod Loc String
   deriving Show
 
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
