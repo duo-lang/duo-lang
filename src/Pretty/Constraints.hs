@@ -6,9 +6,11 @@ import Data.Map qualified as M
 
 import Pretty.Pretty
 import Pretty.Types ()
-import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.RST.Types
+import Syntax.Common.Names
+import Syntax.Common.Polarity
 import TypeInference.Constraints
+import Syntax.CST.Kinds
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints

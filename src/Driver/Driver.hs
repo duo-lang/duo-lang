@@ -28,7 +28,9 @@ import Resolution.Program (resolveProgram)
 import Resolution.SymbolTable
 import Resolution.Definition
 
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.PrdCns
 import Syntax.CST.Program qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
@@ -46,7 +48,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints, KindPolicy (ErrorUnresolved))
 import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
 
@@ -81,8 +83,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   env <- gets drvEnv
   -- 1. Generate the constraints.
   let genFun = case pcdecl_isRec of
-        Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
-        NonRecursive -> genConstraintsTerm pcdecl_term
+        CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
+        CST.NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.

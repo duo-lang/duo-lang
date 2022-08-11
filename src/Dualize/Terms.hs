@@ -5,8 +5,13 @@ import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
-import Syntax.Common
-import Syntax.Common.TypesPol
+import Syntax.Common.PrdCns
+import Syntax.Common.Primitives
+import Syntax.Core.Annot
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.CST.Kinds
+import Syntax.RST.Types
 import Utils
 
 data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String | DualMethod Loc String

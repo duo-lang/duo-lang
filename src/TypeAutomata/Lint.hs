@@ -11,7 +11,10 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 
 import Errors
-import Syntax.Common
+import Syntax.Common.Polarity
+import Syntax.Common.PrdCns
+import Syntax.CST.Types
+import Syntax.Common.Names
 import TypeAutomata.Definition
 import Utils ( defaultLoc, enumerate )
 

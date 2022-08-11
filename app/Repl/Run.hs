@@ -36,8 +36,8 @@ import Repl.Repl
 import Driver.Definition
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
-import Syntax.Common
 import Syntax.RST.Program qualified as RST
+import Syntax.Common.Names
 
 ------------------------------------------------------------------------------
 -- Options

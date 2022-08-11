@@ -13,8 +13,10 @@ import Data.Text qualified as T
 import Errors
 import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
-import Syntax.Common
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types qualified as CST
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
 import Utils ( Loc, HasLoc(getLoc))
 
 ---------------------------------------------------------------------------------
@@ -26,7 +28,7 @@ import Utils ( Loc, HasLoc(getLoc))
 
 data Pattern where
   PatClassMethod :: Loc -> XtorName -> [(Loc, PrdCns, FreeVarName)] -> Pattern
-  PatXtor        :: Loc -> PrdCns -> NominalStructural -> XtorName -> [Pattern] -> Pattern
+  PatXtor        :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [Pattern] -> Pattern
   PatVar         :: Loc -> PrdCns -> FreeVarName -> Pattern
   PatStar        :: Loc -> PrdCns -> Pattern
   PatWildcard    :: Loc -> PrdCns -> Pattern
@@ -60,10 +62,10 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
         throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
       -- Check whether the Xtor is a Constructor/Destructor as expected.
       case (pc,dc) of
-        (Cns, Data  ) -> throwOtherError loc ["Expected a destructor but found a constructor"]
-        (Prd, Codata) -> throwOtherError loc ["Expected a constructor but found a destructor"]
-        (Prd, Data  ) -> pure ()
-        (Cns, Codata) -> pure ()
+        (Cns, CST.Data  ) -> throwOtherError loc ["Expected a destructor but found a constructor"]
+        (Prd, CST.Codata) -> throwOtherError loc ["Expected a constructor but found a destructor"]
+        (Prd, CST.Data  ) -> pure ()
+        (Cns, CST.Codata) -> pure ()
       pats' <- zipWithM resolvePattern arity pats
       pure (PatXtor loc pc ns xt pats')
 resolvePattern Prd (CST.PatVar loc var@(MkFreeVarName name)) = do
@@ -96,9 +98,9 @@ fromVar :: Pattern -> ResolverM (Loc, PrdCns, FreeVarName)
 fromVar (PatVar loc pc var) = pure (loc, pc, var)
 fromVar pat = throwOtherError (getLoc pat) ["Called function \"fromVar\" on pattern which is not a variable."]
 
-analyzePattern :: DataCodata -> CST.Pattern -> ResolverM AnalyzedPattern
+analyzePattern :: CST.DataCodata -> CST.Pattern -> ResolverM AnalyzedPattern
 analyzePattern dc pat = do
-  pat' <- resolvePattern (case dc of Data -> Prd; Codata -> Cns) pat
+  pat' <- resolvePattern (case dc of CST.Data -> Prd; CST.Codata -> Cns) pat
   case pat' of
     PatXtor loc _pc _ns xt pats -> do
       case length (filter isStar pats) of

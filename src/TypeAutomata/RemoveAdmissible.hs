@@ -12,7 +12,7 @@ import Data.Tuple (swap)
 
 import Syntax.Common.Polarity ( Polarity(Pos, Neg) )
 import Syntax.Common.PrdCns ( PrdCns(Cns, Prd) )
-import Syntax.Common.XData ( DataCodata(Codata, Data) )
+import Syntax.CST.Types ( DataCodata(Codata, Data) )
 import TypeAutomata.Definition
 import Control.Monad.State.Strict (MonadState (get, put), modify, gets, State, runState, evalState)
 import GHC.Base (Alternative)

@@ -2,14 +2,32 @@ module Syntax.CST.Program where
 
 import Data.Text (Text)
 
-import Syntax.CST.Terms
-import Syntax.Common.TypesUnpol
-import Syntax.Common
-import Utils
+import Syntax.CST.Terms ( Term, TermCase )
+import Syntax.CST.Types ( Typ, TypeScheme, XtorSig, DataCodata)
+import Syntax.Common.Names
+    ( Associativity,
+      ClassName,
+      DocComment,
+      FreeVarName,
+      ModuleName,
+      Precedence,
+      SkolemTVar,
+      TyOpName,
+      TypeName,
+      XtorName )
+import Syntax.Common.PrdCns ( PrdCns )
+import Syntax.CST.Kinds
+    ( EvaluationOrder, MonoKind, PolyKind, Variance )
+import Utils ( HasLoc(..), Loc )
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
 ---------------------------------------------------------------------------------
+
+data IsRec where
+  Recursive :: IsRec
+  NonRecursive :: IsRec
+  deriving (Show, Eq, Ord)
 
 -- | A toplevel producer or consumer declaration.
 data PrdCnsDeclaration = MkPrdCnsDeclaration
@@ -218,6 +236,9 @@ instance HasLoc ClassDeclaration where
 ------------------------------------------------------------------------------
 -- Data Type declarations
 ------------------------------------------------------------------------------
+
+data IsRefined = Refined | NotRefined
+  deriving (Show, Ord, Eq)
 
 -- | A toplevel declaration of a data or codata type.
 data DataDecl = MkDataDecl

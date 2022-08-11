@@ -11,10 +11,15 @@ import Text.Read (readMaybe)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Common
+import Syntax.Common.Names
+import Syntax.Common.PrdCns
+import Syntax.Common.Polarity
+import Syntax.CST.Kinds
+import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Utils
-import Syntax.Common.TypesPol (Typ (TyNominal))
+import Syntax.RST.Types (Typ (TyNominal))
+import Syntax.CST.Terms qualified as CST
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
@@ -53,8 +58,8 @@ natType :: Typ 'Pos
 natType = TyNominal defaultLoc PosRep (Just (Left (CBox CBV))) peanoNm []
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType Nominal (MkXtorName "Z") []
-convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") []
+convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)

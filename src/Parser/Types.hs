@@ -19,8 +19,9 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Parser.Common
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Common
-import Syntax.Common.TypesUnpol
+import Syntax.CST.Types
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
 import Utils ( Loc(..) )
 import Control.Monad (void)
 

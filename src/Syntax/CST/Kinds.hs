@@ -1,4 +1,4 @@
-module Syntax.Common.Kinds where
+module Syntax.CST.Kinds where
 
 import Data.Set (Set)
 import Data.Set qualified as S

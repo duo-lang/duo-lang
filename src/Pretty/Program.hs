@@ -9,9 +9,11 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
-import Syntax.Common
 import Syntax.CST.Program qualified as CST
-import Syntax.Common.TypesUnpol qualified as Unpol
+import Syntax.CST.Types qualified as CST
+import Syntax.CST.Kinds
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
@@ -26,8 +28,8 @@ import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 instance PrettyAnn CST.DataDecl where
   prettyAnn (CST.MkDataDecl _ _ ref tn dc knd xtors) =
     (case ref of
-      Refined -> annKeyword "refinement" <+> mempty
-      NotRefined -> mempty) <>
+      CST.Refined -> annKeyword "refinement" <+> mempty
+      CST.NotRefined -> mempty) <>
     prettyAnn dc <+>
     prettyAnn tn <+>
     (case knd of
@@ -46,7 +48,7 @@ instance PrettyAnn RST.DataDecl where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.PrdCnsDeclaration where
-  prettyAnn CST.MkPrdCnsDeclaration { pcdecl_pc, pcdecl_isRec = Recursive, pcdecl_name, pcdecl_annot, pcdecl_term} =
+  prettyAnn CST.MkPrdCnsDeclaration { pcdecl_pc, pcdecl_isRec = CST.Recursive, pcdecl_name, pcdecl_annot, pcdecl_term} =
     annKeyword "def" <+>
     annKeyword "rec" <+>
     prettyPrdCns pcdecl_pc <+>
@@ -55,7 +57,7 @@ instance PrettyAnn CST.PrdCnsDeclaration where
     annSymbol ":=" <+>
     prettyAnn pcdecl_term <>
     semi
-  prettyAnn CST.MkPrdCnsDeclaration { pcdecl_pc, pcdecl_isRec = NonRecursive, pcdecl_name, pcdecl_annot, pcdecl_term} =
+  prettyAnn CST.MkPrdCnsDeclaration { pcdecl_pc, pcdecl_isRec = CST.NonRecursive, pcdecl_name, pcdecl_annot, pcdecl_term} =
     annKeyword "def" <+>
     prettyPrdCns pcdecl_pc <+>
     prettyAnn pcdecl_name <+>
@@ -64,7 +66,7 @@ instance PrettyAnn CST.PrdCnsDeclaration where
     prettyAnn pcdecl_term <>
     semi
 
-prettyAnnot :: Maybe Unpol.TypeScheme -> Doc Annotation
+prettyAnnot :: Maybe CST.TypeScheme -> Doc Annotation
 prettyAnnot Nothing    = mempty
 prettyAnnot (Just tys) = annSymbol ":" <+> prettyAnn tys
 
@@ -91,7 +93,7 @@ prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
   prettyAnn CST.MkStructuralXtorDeclaration { strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder } =
-    annKeyword (case strxtordecl_xdata of Data -> "constructor"; Codata -> "destructor") <+>
+    annKeyword (case strxtordecl_xdata of CST.Data -> "constructor"; CST.Codata -> "destructor") <+>
     prettyAnn strxtordecl_name <>
     prettyCCList strxtordecl_arity <+>
     (case strxtordecl_evalOrder of

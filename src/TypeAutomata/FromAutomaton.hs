@@ -1,7 +1,12 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
-import Syntax.Common
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
+import Syntax.CST.Types qualified as CST
+import Syntax.Common.Names
+import Syntax.Common.Polarity
+import Syntax.Common.PrdCns
+import Syntax.Common.Primitives
+import Syntax.CST.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import TypeAutomata.BicliqueDecomp
@@ -85,7 +90,7 @@ nodeToOuts i = do
 
 -- | Compute the Nodes which have to be turned into the argument types for one constructor or destructor.
 computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a node.
-                -> DataCodata -- ^ Whether we want to construct a constructor or destructor
+                -> CST.DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorLabel -- ^ The Label of the constructor / destructor
                 -> [(PrdCns,[Node])] -- ^ The nodes which contain the arguments of the constructor / destructor
 computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
@@ -144,7 +149,7 @@ nodeToTypeNoCache rep i  = do
           Nothing -> return []
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
-              let nodes = computeArgNodes outs Data xt
+              let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
             return [TyData defaultLoc rep sig]
@@ -153,7 +158,7 @@ nodeToTypeNoCache rep i  = do
           Nothing -> return []
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
-              let nodes = computeArgNodes outs Codata xt
+              let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
             return [TyCodata defaultLoc rep sig]
@@ -161,7 +166,7 @@ nodeToTypeNoCache rep i  = do
         refDatL <- do
           forM refDatTypes $ \(tn,xtors) -> do
             sig <- forM (S.toList xtors) $ \xt -> do
-              let nodes = computeArgNodes outs Data xt
+              let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
             return $ TyDataRefined defaultLoc rep tn sig
@@ -169,7 +174,7 @@ nodeToTypeNoCache rep i  = do
         refCodatL <- do
           forM refCodatTypes $ \(tn,xtors) -> do
             sig <- forM (S.toList xtors) $ \xt -> do
-              let nodes = computeArgNodes outs Codata xt
+              let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
             return $ TyCodataRefined defaultLoc rep tn sig

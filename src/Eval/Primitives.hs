@@ -1,6 +1,9 @@
 module Eval.Primitives where
 
-import Syntax.Common
+import Syntax.Common.Primitives
+import Syntax.Common.PrdCns
+import Syntax.Core.Annot
+import Syntax.CST.Kinds
 import Syntax.TST.Terms
 
 import Eval.Definition

@@ -5,7 +5,7 @@ import Driver.Definition
 import Driver.DepGraph
 import Errors
 import Pretty.Errors (printLocatedReport)
-import Syntax.Common
+import Syntax.Common.Names
 
 
 runDeps :: ModuleName -> IO ()

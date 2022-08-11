@@ -3,7 +3,7 @@ module Syntax.TST.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution
-  , Pattern(..)
+  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
@@ -24,9 +24,23 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.Common
-import Syntax.Common.TypesPol
-import Syntax.Common.Pattern
+import Syntax.Common.PrdCns
+    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
+import Syntax.Common.Names
+    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+import Syntax.Core.Annot
+    ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
+import Syntax.Common.Polarity
+    ( Polarity(Pos), PolarityRep(PosRep) )
+import Syntax.CST.Kinds ( MonoKind )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
+import Syntax.CST.Terms qualified as CST
+import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Types
+    ( LinearContext,
+      PrdCnsType(PrdCnsType),
+      Typ(TyString, TyI64, TyF64, TyChar),
+      Zonk(..) )
 import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------
@@ -66,7 +80,7 @@ type Substitution = [PrdCnsTerm]
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_pat :: Pattern
+  , cmdcase_pat :: RST.Pattern
   , cmdcase_cmd  :: Command
   }
 
@@ -86,7 +100,7 @@ deriving instance Show CmdCase
 --
 data InstanceCase = MkInstanceCase
   { instancecase_loc :: Loc
-  , instancecase_pat :: Pattern
+  , instancecase_pat :: RST.Pattern
   , instancecase_cmd :: Command
   }
 
@@ -109,10 +123,10 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> CST.NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -347,7 +361,7 @@ termLocallyClosedRec _ (PrimLitString _ _) = Right ()
 
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
-cmdCaseLocallyClosedRec env (MkCmdCase _ (XtorPat _ _ args) cmd)= do
+cmdCaseLocallyClosedRec env (MkCmdCase _ (RST.XtorPat _ _ args) cmd)= do
   commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
@@ -364,7 +378,7 @@ termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
 instanceCaseLocallyClosed :: InstanceCase -> Either Error ()
-instanceCaseLocallyClosed (MkInstanceCase _ (XtorPat _ _ args) cmd) =
+instanceCaseLocallyClosed (MkInstanceCase _ (RST.XtorPat _ _ args) cmd) =
   commandLocallyClosedRec [second (const ()) <$> args] cmd
 
 ---------------------------------------------------------------------------------

@@ -12,8 +12,9 @@ import Prettyprinter
 import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX)
 import Pretty.Common
 import Pretty.Types (pipeSym)
-import Syntax.Common
 import TypeAutomata.Definition
+import Syntax.Common.PrdCns
+import Syntax.Common.Polarity
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Type Automata

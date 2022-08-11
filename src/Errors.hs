@@ -6,8 +6,11 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Syntax.Common
-import Syntax.Common.TypesPol
+import Syntax.Common.Names
+import Syntax.Common.Primitives
+import Syntax.Common.PrdCns
+import Syntax.Common.Polarity
+import Syntax.RST.Types
 import Utils
 import TypeInference.Constraints (ConstraintInfo)
 

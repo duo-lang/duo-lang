@@ -1,7 +1,8 @@
 module Syntax.CST.Terms where
 
-import Syntax.Common
-import Utils
+import Syntax.Common.Names ( FreeVarName, XtorName )
+import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
+import Utils ( HasLoc(..), Loc )
 
 --------------------------------------------------------------------------------------------
 -- Substitutions 
@@ -57,6 +58,11 @@ instance HasLoc TermCase where
 -- Terms
 --------------------------------------------------------------------------------------------
 
+data NominalStructural where
+  Nominal :: NominalStructural
+  Structural :: NominalStructural
+  Refinement :: NominalStructural
+  deriving (Eq, Ord, Show)
 
 data PrimCommand where
   -- AST Nodes

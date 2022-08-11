@@ -18,12 +18,17 @@ import System.Log.Logger ( debugM )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Common ()
 import Pretty.Types ()
-import Syntax.Common
+import Pretty.Terms ()
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
+import Syntax.CST.Kinds
+import Syntax.Common.Polarity
 import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
+import Syntax.CST.Terms qualified as CST
 import Sugar.TST
-import Syntax.Common.TypesPol
+import Syntax.RST.Types
 import Utils (Loc)
 
 ---------------------------------------------------------------------------------
@@ -95,7 +100,7 @@ freeVarToHoverMap loc ty = mkHoverMap loc msg
                     , "- Type: `" <> ppPrint ty <> "`"
                     ]
 
-xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xtorToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> CST.NominalStructural -> HoverMap
 xtorToHoverMap loc pc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -109,7 +114,7 @@ xtorToHoverMap loc pc ty ns = mkHoverMap loc msg
                           , "- Type: `" <> ppPrint ty <> "`"
                           ]
 
-xcaseToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> NominalStructural -> HoverMap
+xcaseToHoverMap :: Loc -> PrdCnsRep pc -> Typ pol -> CST.NominalStructural -> HoverMap
 xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -135,7 +140,7 @@ muAbsToHoverMap loc pc ty = mkHoverMap loc msg
                           , "- Type: `" <> ppPrint ty <> "`"
                           ]
 
-dtorToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+dtorToHoverMap :: Loc -> Typ pol -> CST.NominalStructural -> HoverMap
 dtorToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -153,7 +158,7 @@ lambdaToHoverMap loc ty = mkHoverMap loc msg
                     , "- Type: `" <> ppPrint ty <> "`"
                     ]
 
-caseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+caseToHoverMap :: Loc -> Typ pol -> CST.NominalStructural -> HoverMap
 caseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -162,7 +167,7 @@ caseToHoverMap loc ty ns = mkHoverMap loc msg
                     , "- Type: `" <> ppPrint ty <> "`"
                     ]
 
-cocaseToHoverMap :: Loc -> Typ pol -> NominalStructural -> HoverMap
+cocaseToHoverMap :: Loc -> Typ pol -> CST.NominalStructural -> HoverMap
 cocaseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text

@@ -14,7 +14,10 @@ import Resolution.SymbolTable
 import Resolution.Pattern
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common
+import Syntax.CST.Types qualified as CST
+import Syntax.Common.PrdCns
+import Syntax.Common.Names
+import Syntax.Common.Primitives
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -85,7 +88,7 @@ adjustPat (_loc, pc, var) = (pc,var)
 
 -- Refines `CST.TermCase` to either `IntermediateCase` or `IntermediateCaseI`, depending on
 -- the number of stars.
-analyzeCase :: DataCodata
+analyzeCase :: CST.DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
             -> ResolverM SomeIntermediateCase
@@ -111,7 +114,7 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
                                     , icasei_term = tmcase_term
                                     }
 
-analyzeCases :: DataCodata
+analyzeCases :: CST.DataCodata
              -> [CST.TermCase]
              -> ResolverM SomeIntermediateCases
 analyzeCases dc cases = do
@@ -226,7 +229,7 @@ resolveCommand (CST.Apply loc tm1 tm2) = do
 resolveCommand (CST.CaseOf loc tm cases) = do
   tm' <- resolveTerm PrdRep tm
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Data cases
+  intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ resolveCommandCase <$> explicitCases
@@ -237,7 +240,7 @@ resolveCommand (CST.CaseOf loc tm cases) = do
 resolveCommand (CST.CocaseOf loc tm cases) = do
   tm' <- resolveTerm CnsRep tm
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Codata cases
+  intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cmdCases <- sequence $ resolveCommandCase <$> explicitCases
@@ -289,8 +292,8 @@ resolveCommand (CST.CoLambda loc _ _) =
 
 
 
-casesToNS :: [CST.TermCase] -> ResolverM NominalStructural
-casesToNS [] = pure Structural
+casesToNS :: [CST.TermCase] -> ResolverM CST.NominalStructural
+casesToNS [] = pure CST.Structural
 casesToNS (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.PatXtor _ tmcase_name _ }:_) = do
   (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
   pure ns
@@ -298,7 +301,7 @@ casesToNS _ =
   throwOtherError defaultLoc ["casesToNS called with invalid argument"]
 
 -- | Lower a natural number literal.
-resolveNatLit :: Loc -> NominalStructural -> Int -> ResolverM (RST.Term Prd)
+resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
 resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") []
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
@@ -309,11 +312,11 @@ resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term
 resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
+  pure $ RST.Dtor loc PrdRep CST.Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
+  pure $ RST.Semi loc CnsRep CST.Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
@@ -383,7 +386,7 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
     (XtorNameResult dc ns ar) -> do
       when (length ar /= length subst) $
                throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
-      when (dc /= Data) $
+      when (dc /= CST.Data) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor."]
       analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
       subst' <- case analyzedSubst of
@@ -398,7 +401,7 @@ resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
     (XtorNameResult dc ns ar) -> do
       when (length ar /= length subst) $
                throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
-      when (dc /= Codata) $
+      when (dc /= CST.Codata) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor."]
       analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
       subst' <- case analyzedSubst of
@@ -413,7 +416,7 @@ resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
 resolveTerm rep (CST.Semi loc xtor subst tm) = do
   tm' <- resolveTerm CnsRep tm
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
-  when (dc /= Data) $
+  when (dc /= CST.Data) $
            throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor."]
   analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
   case analyzedSubst of
@@ -438,7 +441,7 @@ resolveTerm rep (CST.Semi loc xtor subst tm) = do
 resolveTerm rep (CST.Dtor loc xtor tm subst) = do
   tm' <- resolveTerm PrdRep tm
   (_, XtorNameResult dc ns ar) <- lookupXtor loc xtor
-  when (dc /= Codata) $
+  when (dc /= CST.Codata) $
            throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor."]
   analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
   case analyzedSubst of
@@ -469,7 +472,7 @@ resolveTerm CnsRep (CST.Cocase loc _) =
   throwOtherError loc ["Cannot resolve copattern match to a consumer."]
 resolveTerm PrdRep (CST.Cocase loc cases)  = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Codata cases
+  intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence $ resolveCommandCase <$> explicitCases
@@ -479,7 +482,7 @@ resolveTerm PrdRep (CST.Cocase loc cases)  = do
       pure $ RST.CocaseI loc rep ns cases'
 resolveTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Data cases
+  intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence $ resolveCommandCase <$> explicitCases
@@ -492,7 +495,7 @@ resolveTerm CnsRep (CST.Case loc cases)  = do
 ---------------------------------------------------------------------------------
 resolveTerm PrdRep (CST.CaseOf loc t cases)  = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Data cases
+  intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence (resolveTermCase PrdRep <$> explicitCases)
@@ -502,7 +505,7 @@ resolveTerm PrdRep (CST.CaseOf loc t cases)  = do
       throwOtherError loc ["Cannot resolve case-of with implicit cases to producer."]
 resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Codata cases
+  intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence (resolveTermCase PrdRep <$> explicitCases)
@@ -512,7 +515,7 @@ resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
       throwOtherError loc ["Cannot resolve cocase-of with implicit cases to producer"]
 resolveTerm CnsRep (CST.CaseOf loc t cases) = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Data cases
+  intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence (resolveTermCase CnsRep <$> explicitCases)
@@ -522,7 +525,7 @@ resolveTerm CnsRep (CST.CaseOf loc t cases) = do
       throwOtherError loc ["Cannot resolve case-of with implicit cases to consumer."]
 resolveTerm CnsRep (CST.CocaseOf loc t cases) = do
   ns <- casesToNS cases
-  intermediateCases <- analyzeCases Codata cases
+  intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- sequence (resolveTermCase CnsRep <$> explicitCases)

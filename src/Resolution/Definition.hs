@@ -14,7 +14,7 @@ import Pretty.Pretty
 import Pretty.Common ()
 import Pretty.Types ()
 import Resolution.SymbolTable
-import Syntax.Common
+import Syntax.Common.Names
 import Utils
 import Errors
 import Control.Monad.Writer

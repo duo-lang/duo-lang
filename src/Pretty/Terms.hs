@@ -10,10 +10,17 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.Common.Names ( FreeVarName )
 import Syntax.Common.Primitives ( primOpKeyword, primTypeKeyword )
-import Syntax.Common.Types
-    ( NominalStructural(Refinement, Structural, Nominal) )
 import Translate.Embed
 import Translate.Reparse
+
+---------------------------------------------------------------------------------
+-- Data/Codata and Nominal/Structural/Refinement
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.NominalStructural where
+  prettyAnn CST.Nominal = "Nominal"
+  prettyAnn CST.Structural = "Structural"
+  prettyAnn CST.Refinement = "Refinement"
 
 ---------------------------------------------------------------------------------
 -- Patterns
@@ -177,11 +184,11 @@ instance PrettyAnn CST.Term where
     hsep (prettyAnn <$> (var:params)) <+>
     annSymbol "=<" <+>
     prettyAnn body
-  prettyAnn (CST.NatLit _ Structural n) =
+  prettyAnn (CST.NatLit _ CST.Structural n) =
     prettyAnn ("'" :: String) <> prettyAnn (show n)
-  prettyAnn (CST.NatLit _ Nominal n) =
+  prettyAnn (CST.NatLit _ CST.Nominal n) =
     prettyAnn (show n)
-  prettyAnn (CST.NatLit _ Refinement n) =
+  prettyAnn (CST.NatLit _ CST.Refinement n) =
     prettyAnn (show n)
   prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
     annKeyword "ExitSuccess"

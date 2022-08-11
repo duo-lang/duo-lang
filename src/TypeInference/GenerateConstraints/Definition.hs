@@ -45,8 +45,11 @@ import Data.Text qualified as T
 import Driver.Environment
 import Errors
 import Lookup
-import Syntax.Common.TypesPol
-import Syntax.Common
+import Syntax.RST.Types
+import Syntax.Common.Names
+import Syntax.CST.Kinds
+import Syntax.Common.PrdCns
+import Syntax.Common.Polarity
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
