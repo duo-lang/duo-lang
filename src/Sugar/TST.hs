@@ -232,7 +232,7 @@ isDesugaredCommand CocaseOfI {} = False
 isDesugaredCommand CaseOfI {} = False
 isDesugaredCommand CocaseOfCmd {} = False
 isDesugaredCommand CaseOfCmd {} = False
-isDesugaredCommand (PrimOp _ _ _ subst) =
+isDesugaredCommand (PrimOp _ _ subst) =
   and (isDesugaredPCTerm <$> subst)
 isDesugaredCommand (RawApply _ _ prd cns) =
   isDesugaredTerm prd && isDesugaredTerm cns
@@ -257,8 +257,8 @@ resetAnnotationTerm (XCase loc _ pc ty ns cases) = XCase loc MatchAnnotOrig pc t
 resetAnnotationTerm t = t
 
 resetAnnotationCmd :: Command -> Command
-resetAnnotationCmd (PrimOp a b c subst) =
-  PrimOp a b c (resetAnnotationPC <$> subst)
+resetAnnotationCmd (PrimOp a op subst) =
+  PrimOp a op (resetAnnotationPC <$> subst)
 resetAnnotationCmd (Apply l _ kind t1 t2) = Apply l ApplyAnnotOrig kind (resetAnnotationTerm t1) (resetAnnotationTerm t2)
 resetAnnotationCmd (Print loc t cmd) = Print loc (resetAnnotationTerm t) (resetAnnotationCmd cmd)
 resetAnnotationCmd (Read loc t) = Read loc (resetAnnotationTerm t)

@@ -41,11 +41,13 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Syntax.Common.Names
-import Syntax.Common.Primitives
 import Syntax.CST.Terms qualified as CST
 import Parser.Definition
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 import Data.Char (isAlphaNum, isSpace, isPunctuation)
+import Pretty.Pretty (ppPrint)
+import Pretty.Terms ()
+import Pretty.Common ()
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -358,12 +360,12 @@ checkReserved :: Text -> Parser ()
 checkReserved str | str `elem` (T.pack . show <$> keywords) = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
 
-primOpKeywordP :: PrimitiveType -> PrimitiveOp -> Parser (PrimitiveType, PrimitiveOp, SourcePos)
-primOpKeywordP pt op = do
-  _ <- string (T.pack (primOpKeyword op ++ primTypeKeyword pt))
+primOpKeywordP :: CST.PrimitiveOp -> Parser (CST.PrimitiveOp, SourcePos)
+primOpKeywordP op = do
+  _ <- string (ppPrint op)
   endPos <- getSourcePos
   sc
-  pure (pt, op, endPos)
+  pure (op, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Symbols

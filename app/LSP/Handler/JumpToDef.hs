@@ -114,7 +114,7 @@ instance ToJumpMap RST.Command where
   toJumpMap (RST.Method _ _ _ subst) = toJumpMap subst
   toJumpMap RST.ExitSuccess {} = M.empty
   toJumpMap RST.ExitFailure {} = M.empty
-  toJumpMap (RST.PrimOp _ _ _ subst) = toJumpMap subst
+  toJumpMap (RST.PrimOp _ _ subst) = toJumpMap subst
   toJumpMap (RST.CaseOfCmd _ _ tm cases) =
     M.unions (toJumpMap tm : (toJumpMap <$> cases))
   toJumpMap (RST.CaseOfI _ _ _ tm casesi) =

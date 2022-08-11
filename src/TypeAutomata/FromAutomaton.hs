@@ -5,7 +5,6 @@ import Syntax.CST.Types qualified as CST
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
 import Syntax.CST.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition

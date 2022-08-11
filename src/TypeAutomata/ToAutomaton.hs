@@ -21,19 +21,7 @@ import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.CST.Kinds
 import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
 import TypeAutomata.Definition
-    ( TypeAutEps,
-      TypeAut'(..),
-      TypeGrEps,
-      TypeAutCore(..),
-      FlowEdge,
-      EdgeLabelEpsilon,
-      EdgeLabel(..),
-      NodeLabel(..),
-      XtorLabel(..),
-      emptyNodeLabel, 
-      singleNodeLabel )
 import Utils ( enumerate, defaultLoc )
 import Control.Monad
 
