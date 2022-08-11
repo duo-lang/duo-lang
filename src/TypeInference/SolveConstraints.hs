@@ -23,6 +23,7 @@ import Utils ( defaultLoc )
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
+import Syntax.CST.Kinds
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -31,12 +32,14 @@ import Syntax.Common.PrdCns
 data SolverState = SolverState
   { sst_bounds :: Map UniTVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
+  , sst_kvars :: Map (Maybe MonoKind) (Set KVar)
   }
 
 createInitState :: ConstraintSet -> SolverState
-createInitState (ConstraintSet _ uvs) =
+createInitState (ConstraintSet _ uvs kuvs) =
   SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
               , sst_cache = S.empty
+              , sst_kvars = M.singleton Nothing (S.fromList kuvs)
               }
 
 
@@ -53,13 +56,13 @@ addToCache :: Constraint ConstraintInfo -> SolverM ()
 addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation when inserting into cache
   where
     modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache) -> SolverState gr (f cache))
+    modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
-modifyBounds f uv = modify (\(SolverState varMap cache) -> SolverState (M.adjust f uv varMap) cache)
+modifyBounds f uv = modify (\(SolverState varMap cache kvars) -> SolverState (M.adjust f uv varMap) cache kvars)
 
 getBounds :: UniTVar -> SolverM VariableState
 getBounds uv = do
@@ -254,6 +257,7 @@ subConstraints (SubType _ t1 t2) = do
 -- type class constraints should only be resolved after subtype constraints
 subConstraints (TypeClassPos _ _cn _typ) = pure []
 subConstraints (TypeClassNeg _ _cn _tyn) = pure []
+subConstraints KindEq{} = error "Not implemented"
 
 ------------------------------------------------------------------------------
 -- Exported Function
@@ -261,7 +265,7 @@ subConstraints (TypeClassNeg _ _cn _tyn) = pure []
 
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
-solveConstraints constraintSet@(ConstraintSet css _) env = do
+solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  pure (MkSolverResult (sst_bounds solverState))
+  pure (MkSolverResult (sst_bounds solverState ) M.empty)
 

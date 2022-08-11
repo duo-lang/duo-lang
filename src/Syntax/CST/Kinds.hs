@@ -5,6 +5,7 @@ import Data.Set qualified as S
 
 import Syntax.Common.Names
 import Syntax.Common.Primitives
+import Data.Text
 
 ---------------------------------------------------------------------------------
 -- Variance
@@ -27,6 +28,14 @@ data EvaluationOrder = CBV | CBN
   deriving (Show, Eq, Ord)
 
 ---------------------------------------------------------------------------------
+-- Kind Variables
+---------------------------------------------------------------------------------
+
+-- | A Kind Variable that is used for inferred kinds
+newtype KVar = MkKVar { unKVar :: Text }
+  deriving (Show, Eq, Ord)
+
+---------------------------------------------------------------------------------
 -- MonoKind
 ---------------------------------------------------------------------------------
 
@@ -34,6 +43,7 @@ data EvaluationOrder = CBV | CBN
 data MonoKind
   = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
   | CRep PrimitiveType    -- ^ Primitive type representation
+  | KindVar KVar 
   deriving (Show, Eq, Ord)
 
 ------------------------------------------------------------------------------
@@ -47,6 +57,12 @@ data PolyKind =
 
 deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
+deriving instance (Ord PolyKind)
+
+freeKindVars :: MonoKind -> Maybe KVar
+freeKindVars (CBox _) = Nothing
+freeKindVars (CRep _) = Nothing
+freeKindVars (KindVar v) = Just v
 
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars MkPolyKind{ kindArgs } =

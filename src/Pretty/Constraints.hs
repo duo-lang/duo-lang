@@ -10,6 +10,7 @@ import Syntax.RST.Types
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import TypeInference.Constraints
+import Syntax.CST.Kinds
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
@@ -46,6 +47,8 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type variable"  <+> prettyAnn tv <+> "of type class" <+> prettyAnn cn)
 
 instance PrettyAnn (Constraint ConstraintInfo) where
+  prettyAnn (KindEq ann k1 k2) = 
+    prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
   prettyAnn (TypeClassPos ann cn typ) =
@@ -57,13 +60,15 @@ printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
-  prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
+  prettyAnn ConstraintSet { cs_constraints, cs_uvars, cs_kvars } = vsep
     [ "---------------------------------------------------------"
     , "                    Generated Constraints"
     , "---------------------------------------------------------"
     , ""
     , "Generated unification variables:"
     , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
+    , ""
+    , nest 3 (line' <> vsep (prettyAnn <$> cs_kvars))
     , ""
     , "Generated constraints:"
     , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
@@ -155,14 +160,21 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyA
                                                     ]
                                              ]
 
+prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
+prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
+
 
 instance PrettyAnn (Bisubstitution UniVT) where
   prettyAnn uvsubst = vsep
     [ "---------------------------------------------------------"
     , "                 Bisubstitution (UniTVar)                "
     , "---------------------------------------------------------"
+    , "" 
+    , "Unification Variables: "
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList (fst (bisubst_map uvsubst)))
     , ""
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList (bisubst_map uvsubst))
+    , "Kind Variables: "
+    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (bisubst_map uvsubst)))
     ]
 
 instance PrettyAnn (Bisubstitution SkolemVT) where

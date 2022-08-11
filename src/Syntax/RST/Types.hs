@@ -8,7 +8,7 @@ import Data.Kind ( Type )
 
 import Syntax.Common.PrdCns
     ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
-import Syntax.CST.Kinds ( MonoKind, Variance(..) )
+import Syntax.CST.Kinds ( MonoKind(..), Variance(..),KVar )
 import Syntax.Common.Polarity
     ( FlipPol, Polarity(..), PolarityRep(..) )
 import Syntax.Common.Names
@@ -227,7 +227,7 @@ data VarType
   | RecVT
 
 type family BisubstMap (vt :: VarType) :: Type where
-  BisubstMap UniVT    = Map UniTVar (Typ Pos, Typ Neg)
+  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar MonoKind)
   BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
   BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
 
@@ -243,10 +243,10 @@ class Zonk (a :: Type) where
   zonk :: VarTypeRep vt -> Bisubstitution vt -> a -> a
 
 instance Zonk (Typ pol) where
-  zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
+  zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (fst (bisubst_map bisubst)) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
-  zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
+  zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (fst (bisubst_map bisubst)) of
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
   zonk SkolemRep _ ty@TyUniVar{} = ty
@@ -275,6 +275,8 @@ instance Zonk (Typ pol) where
      TyDataRefined loc rep tn (zonk vt bisubst <$> xtors)
   zonk vt bisubst (TyCodataRefined loc rep tn xtors) =
      TyCodataRefined loc rep tn (zonk vt bisubst <$> xtors)
+  zonk UniRep bisubst (TyNominal loc rep kind tn args) =
+     TyNominal loc rep (zonkKind bisubst kind) tn (zonk UniRep bisubst <$> args) 
   zonk vt bisubst (TyNominal loc rep kind tn args) =
      TyNominal loc rep kind tn (zonk vt bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =
@@ -312,6 +314,13 @@ instance Zonk (LinearContext pol) where
 instance Zonk (PrdCnsType pol) where
   zonk vt bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk vt bisubst ty)
 
+zonkKind :: Bisubstitution UniVT -> Maybe MonoKind -> Maybe MonoKind
+zonkKind _ Nothing = Nothing
+zonkKind _ (Just (CBox cc)) = Just (CBox cc)
+zonkKind _ (Just (CRep prim)) =  Just (CRep prim)
+zonkKind bisubst (Just kindV@(KindVar kv)) = case M.lookup kv (snd (bisubst_map bisubst)) of
+    Nothing -> Just kindV
+    Just kind' -> Just kind'
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol
