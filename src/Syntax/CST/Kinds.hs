@@ -46,6 +46,10 @@ data MonoKind
   | KindVar KVar 
   deriving (Show, Eq, Ord)
 
+-- | A kind Variable used for top and bottom kinds, as they can have any kind
+anyKind::MonoKind
+anyKind = KindVar (MkKVar (Data.Text.pack "TopBotKind"))
+
 ------------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------------

@@ -65,12 +65,6 @@ autToType aut@TypeAut{..} = do
                   , ts_vars = tvars startState
                   , ts_monotype = monotype
                   }
-
-getNodeKind :: Node -> TypeGr -> MonoKind
-getNodeKind i gr = case lab gr i of 
-  Nothing -> CBox CBV
-  Just (MkNodeLabel _ _ _ mk _ _ _) -> mk
-  Just (MkPrimitiveNodeLabel _ pt) -> CRep pt
   
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
@@ -103,12 +97,6 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
   where
     argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
     args = argFun <$> enumerate labelArity
-
-
-compareKinds :: [MonoKind] -> MonoKind
-compareKinds [] = error "Can't create union/intersection with no kind"
-compareKinds [mk] = mk
-compareKinds (mk:rest) = if compareKinds rest == mk then mk else error "Can't create union/intersection of types with different kinds"
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)

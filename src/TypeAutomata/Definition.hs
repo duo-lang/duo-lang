@@ -16,7 +16,7 @@ import Syntax.Common.PrdCns ( Arity, PrdCns )
 import Syntax.CST.Types ( DataCodata(..) )
 import Syntax.Common.Polarity ( Polarity, PolarityRep )
 import Syntax.Common.Primitives ( PrimitiveType )
-import Syntax.CST.Kinds ( Variance, MonoKind(..), EvaluationOrder(..) )
+import Syntax.CST.Kinds ( Variance, MonoKind(..) )
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -168,8 +168,8 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> NodeLabel
-emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing (CBox CBV) S.empty M.empty M.empty
+emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
+emptyNodeLabel pol mk = MkNodeLabel pol Nothing Nothing mk S.empty M.empty M.empty
 
 -- emptyPrimNodeLabel :: Polarity -> NodeLabel
 -- emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
@@ -271,3 +271,14 @@ removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundan
 
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es
+
+compareKinds :: [MonoKind] -> MonoKind
+compareKinds [] = error "Can't create union/intersection with no kind"
+compareKinds [mk] = mk
+compareKinds (mk:rest) = if compareKinds rest == mk then mk else error "Can't create union/intersection of types with different kinds"
+
+getNodeKind :: Node -> TypeGr -> MonoKind
+getNodeKind i gr = case lab gr i of 
+  Nothing -> error "No kind available for Node"
+  Just (MkNodeLabel _ _ _ mk _ _ _) -> mk
+  Just (MkPrimitiveNodeLabel _ pt) -> CRep pt

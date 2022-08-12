@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
+import Data.Text qualified as T
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
@@ -33,7 +34,7 @@ import TypeAutomata.Definition
       NodeLabel(..),
       XtorLabel(..),
       emptyNodeLabel, 
-      singleNodeLabel )
+      singleNodeLabel)
 import Utils ( enumerate, defaultLoc )
 import Control.Monad
 
@@ -67,7 +68,15 @@ createNodes :: [SkolemTVar] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel
 createNodes tvars = createNode <$> createPairs tvars
   where
     createNode :: (SkolemTVar, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos (createKVar tv PosRep)), (negNode, emptyNodeLabel Neg (createKVar tv NegRep)), (negNode, posNode))
+    
+    createKVar :: SkolemTVar -> PolarityRep pol -> MonoKind
+    createKVar sv pol = KindVar (MkKVar (T.pack ("k" <> T.unpack (unSkolemTVar sv) <>  polToString pol)))
+
+    polToString :: PolarityRep pol -> String
+    polToString pol = case pol of
+      PosRep -> "Pos"
+      NegRep -> "Neg"
 
     createPairs :: [SkolemTVar] -> [(SkolemTVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -217,22 +226,22 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
 insertType (TyTop _ _) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg)
+  insertNode newNode (emptyNodeLabel Neg anyKind)
   pure newNode
 insertType (TyBot _ _) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos)
+  insertNode newNode (emptyNodeLabel Pos anyKind)
   pure newNode
-insertType (TyUnion _ _ ty1 ty2) = do
+insertType (TyUnion _ mk ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
+  insertNode newNode (emptyNodeLabel Pos mk)
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
-insertType (TyInter _ _ ty1 ty2) = do
+insertType (TyInter _ mk ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg)
+  insertNode newNode (emptyNodeLabel Neg mk)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
@@ -240,10 +249,11 @@ insertType (TyInter _ _ ty1 ty2) = do
 insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel pol)
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
+  --gr <- gets ta_gr
+  insertNode newNode (emptyNodeLabel pol (CBox CBV)) -- (getNodeKind n gr))
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
@@ -251,10 +261,10 @@ insertType (TyCodata _ polrep xtors) = insertXtors CST.Codata (polarityRepToPol 
 insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
 insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
 insertType (TySyn _ _ _ ty) = insertType ty
-insertType (TyNominal _ rep _ tn args) = do
+insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, toVariance <$> args) })
+  insertNode newNode ((emptyNodeLabel pol mk) { nl_nominal = S.singleton (tn, toVariance <$> args) })
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode

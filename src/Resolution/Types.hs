@@ -85,9 +85,9 @@ resolveTyp rep (TyRec loc v typ) = do
 resolveTyp PosRep (TyTop loc) =
     throwError (ErrResolution (TopInPosPolarity loc) :| [])
 resolveTyp NegRep (TyTop loc) =
-    pure $ RST.TyTop loc (CBox CBV)
+    pure $ RST.TyTop loc anyKind
 resolveTyp PosRep (TyBot loc) =
-    pure $ RST.TyBot loc (CBox CBV)
+    pure $ RST.TyBot loc anyKind
 resolveTyp NegRep (TyBot loc) =
     throwError (ErrResolution (BotInNegPolarity loc) :| [])
 resolveTyp rep (TyBinOpChain fst rest) =
