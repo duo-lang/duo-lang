@@ -63,8 +63,8 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: Map ModuleName FilePath
-  , drvSymbols :: Map ModuleName SymbolTable
+  , drvFiles   :: !(Map ModuleName (FilePath, CST.Program))
+  , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Program
   }
 
@@ -109,12 +109,15 @@ getSymbolTables = gets drvSymbols
 
 getModuleDeclarations :: ModuleName -> DriverM CST.Program
 getModuleDeclarations mn = do
-      mod <- findModule mn defaultLoc
-      case mod of
-        Left fp -> do
-          file <- liftIO $ T.readFile fp
-          runFileParser fp programP file
-        Right decls -> return decls
+        moduleMap <- gets drvFiles
+        case M.lookup mn moduleMap of
+          Just (_fp, decls) -> return decls
+          Nothing -> do
+            fp <- findModule mn defaultLoc
+            file <- liftIO $ T.readFile fp
+            decls <- runFileParser fp programP file
+            modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
+            return decls
 
 -- AST Cache
 
@@ -155,7 +158,7 @@ guardVerbose action = do
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
-findModule :: ModuleName -> Loc ->  DriverM (Either FilePath CST.Program)
+findModule :: ModuleName -> Loc ->  DriverM FilePath
 findModule (MkModuleName mod) loc = do
   libpaths <- gets $ infOptsLibPath . drvOpts
   fps <- forM libpaths $ \libpath -> do
