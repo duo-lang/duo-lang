@@ -105,21 +105,29 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
     args = argFun <$> enumerate labelArity
 
 
+compareKinds :: [MonoKind] -> MonoKind
+compareKinds [] = error "Can't create union/intersection with no kind"
+compareKinds [mk] = mk
+compareKinds (mk:rest) = if compareKinds rest == mk then mk else error "Can't create union/intersection of types with different kinds"
+
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes argNodes rep = do
   forM argNodes $ \ns -> do
+    gr <- asks graph 
     case ns of
       (Prd, ns) -> do
+         let kind = compareKinds (map (`getNodeKind` gr) ns)
          typs <- forM ns (nodeToType rep)
          pure $ PrdCnsType PrdRep $ case rep of
-                                       PosRep -> mkUnion defaultLoc (CBox CBV) typs
-                                       NegRep -> mkInter defaultLoc (CBox CBV) typs
+                                       PosRep -> mkUnion defaultLoc kind typs
+                                       NegRep -> mkInter defaultLoc kind typs
       (Cns, ns) -> do
+         let kind = compareKinds (map (`getNodeKind` gr) ns)
          typs <- forM ns (nodeToType (flipPolarityRep rep))
          pure $ PrdCnsType CnsRep $ case rep of
-                                       PosRep -> mkInter defaultLoc (CBox CBV) typs
-                                       NegRep -> mkUnion defaultLoc (CBox CBV) typs
+                                       PosRep -> mkInter defaultLoc kind typs
+                                       NegRep -> mkUnion defaultLoc kind typs
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
