@@ -29,7 +29,7 @@ import Data.Text.Lazy (pack)
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintString )
-import Driver.Definition ( DriverM, findModule )
+import Driver.Definition ( DriverM, findModule, getModuleDeclarations )
 import Resolution.SymbolTable
     ( SymbolTable(imports), createSymbolTable )
 import Syntax.Common.Names ( ModuleName(..) )
@@ -84,9 +84,7 @@ createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGrap
                                   | otherwise = do
                                       -- We have to insert the current modulename
                                       let (this, depGraph') = lookupOrInsert depGraph mn
-                                      fp <- findModule mn defaultLoc
-                                      file <- liftIO $ T.readFile fp
-                                      decls <- runFileParser fp programP file
+                                      decls <- getModuleDeclarations mn
                                       symTable <- createSymbolTable mn decls
                                       let importedModules :: [ModuleName] = fst <$> imports symTable
                                       -- We have to insert all the imported module names

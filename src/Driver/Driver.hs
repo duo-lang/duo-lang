@@ -262,9 +262,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      fp <- findModule mn defaultLoc
-      file <- liftIO $ T.readFile fp
-      decls <- runFileParser fp programP file
+      decls <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- createSymbolTable mn decls
       addSymboltable mn st

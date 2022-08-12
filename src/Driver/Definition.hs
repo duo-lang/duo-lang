@@ -20,6 +20,10 @@ import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)
+import qualified Syntax.CST.Program as CST (Program)
+import qualified Data.Text.IO as T
+import Parser.Definition (runFileParser)
+import Parser.Parser (programP)
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -101,6 +105,17 @@ getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets drvSymbols
 
 
+-- Modules and declarations
+
+getModuleDeclarations :: ModuleName -> DriverM CST.Program
+getModuleDeclarations mn = do
+      mod <- findModule mn defaultLoc
+      case mod of
+        Left fp -> do
+          file <- liftIO $ T.readFile fp
+          runFileParser fp programP file
+        Right decls -> return decls
+
 -- AST Cache
 
 addTypecheckedProgram :: ModuleName -> TST.Program -> DriverM ()
@@ -140,7 +155,7 @@ guardVerbose action = do
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
-findModule :: ModuleName -> Loc ->  DriverM FilePath
+findModule :: ModuleName -> Loc ->  DriverM (Either FilePath CST.Program)
 findModule (MkModuleName mod) loc = do
   libpaths <- gets $ infOptsLibPath . drvOpts
   fps <- forM libpaths $ \libpath -> do
