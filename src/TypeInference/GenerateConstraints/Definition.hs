@@ -63,15 +63,16 @@ import Utils
 ---------------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState
-  { varCount :: Int
+  { uVarCount :: Int
   , constraintSet :: ConstraintSet
+  , kVarCount :: Int
   }
 
 initialConstraintSet :: ConstraintSet
 initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [], cs_kvars = []}
 
 initialState :: GenerateState
-initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
+initialState = GenerateState { uVarCount = 0, constraintSet = initialConstraintSet, kVarCount = 0}
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -105,14 +106,17 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
 
 freshTVar :: UVarProvenance -> GenM (Typ Pos, Typ Neg)
 freshTVar uvp = do
-  var <- gets varCount
-  let tvar = MkUniTVar ("u" <> T.pack (show var))
+  uCount <- gets uVarCount
+  kCount <- gets kVarCount
+  let tvar = MkUniTVar ("u" <> T.pack (show uCount))
+  let kvarPos = MkKVar ("kp" <> T.pack (show kCount))
+  let kvarNeg = MkKVar ("kn" <> T.pack (show kCount))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
+  modify (\gs@GenerateState{} -> gs { uVarCount = uCount + 1 , kVarCount = kCount + 2})
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TyUniVar defaultLoc PosRep (CBox CBV) tvar, TyUniVar defaultLoc NegRep (CBox CBV) tvar)
+  return (TyUniVar defaultLoc PosRep (KindVar kvarPos) tvar, TyUniVar defaultLoc NegRep (KindVar kvarNeg) tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
