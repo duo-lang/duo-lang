@@ -35,14 +35,16 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyUniVar loc v) =
-    pure $ RST.TyUniVar loc rep (CBox CBV) v
+resolveTyp rep (TyUniVar loc v) = do
+    kv <- freshKVar
+    pure $ RST.TyUniVar loc rep (KindVar kv) v
 resolveTyp rep (TySkolemVar loc v) = do
     recVars <- asks rr_recVars
+    kv <- freshKVar
     let vr = skolemToRecRVar v
     if vr `S.member` recVars
-      then pure $ RST.TyRecVar loc rep (CBox CBV) vr
-      else pure $ RST.TySkolemVar loc rep (CBox CBV) v
+      then pure $ RST.TyRecVar loc rep (KindVar kv) vr
+      else pure $ RST.TySkolemVar loc rep (KindVar kv) v
 
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
@@ -147,13 +149,15 @@ desugaring :: Loc -> PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> Resolver
 desugaring loc PosRep UnionDesugaring tl tr = do
     tl <- resolveTyp PosRep tl
     tr <- resolveTyp PosRep tr
-    pure $ RST.TyUnion loc (CBox CBV) tl tr
+    kv <- freshKVar
+    pure $ RST.TyUnion loc (KindVar kv) tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
     throwError (ErrResolution (UnionInNegPolarity loc) :| [])
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
-    pure $ RST.TyInter loc (CBox CBV) tl tr
+    kv <- freshKVar
+    pure $ RST.TyInter loc (KindVar kv) tl tr
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do

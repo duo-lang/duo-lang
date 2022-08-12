@@ -15,6 +15,7 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Resolution.SymbolTable
 import Syntax.Common.Names
+import Syntax.CST.Kinds
 import Utils
 import Errors
 import Control.Monad.Writer
@@ -24,7 +25,7 @@ import qualified Data.Set as S
 -- Resolver Monad
 ------------------------------------------------------------------------------
 
-data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar }
+data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar, rr_kvarCount :: Int }
 
 type WarningWriter = Writer [Warning]
 
@@ -45,6 +46,11 @@ filterJusts :: [(a, Maybe b)] -> [(a,b)]
 filterJusts [] = []
 filterJusts ((_,Nothing):xs) = filterJusts xs
 filterJusts ((x,Just y):xs) = (x,y):filterJusts xs
+
+freshKVar :: ResolverM KVar
+freshKVar = do
+  cnt <- asks rr_kvarCount
+  local (\r -> r {rr_kvarCount = cnt+1}) $ return (MkKVar ("k"<>T.pack (show cnt)))
 
 lookupXtor :: Loc
            -- ^ The location of the xtor to be looked up
