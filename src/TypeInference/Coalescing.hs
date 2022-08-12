@@ -13,19 +13,25 @@ import Syntax.Common.Names
 import Syntax.Common.Polarity
 import TypeInference.Constraints
 import Utils
-import Syntax.CST.Kinds (MonoKind(..), EvaluationOrder(..))
+import Syntax.CST.Kinds (MonoKind(..),KVar(..))
 
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
 
-data CoalesceState  = CoalesceState  { s_var_counter :: Int, s_recursive :: Map (UniTVar, Polarity) RecTVar }
+data CoalesceState  = CoalesceState  { s_var_counter :: Int, s_recursive :: Map (UniTVar, Polarity) RecTVar} --, k_var_counter :: Int }
 data CoalesceReader = CoalesceReader { r_result :: SolverResult, r_inProcess :: Set (UniTVar, Polarity) }
 
 type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 
 runCoalesceM :: SolverResult ->  CoalesceM a -> a
-runCoalesceM res m = evalState (runReaderT m (CoalesceReader res S.empty)) (CoalesceState 0 M.empty)
+runCoalesceM res m = evalState (runReaderT m (CoalesceReader res S.empty)) (CoalesceState 0 M.empty)-- 0)
+
+--freshKVar :: CoalesceM KVar
+--freshKVar = do 
+--  i <- gets k_var_counter
+--  modify (\s -> s { k_var_counter = i+1})
+--  return (MkKVar (T.pack $ "kk" ++ show i))
 
 freshRecVar :: CoalesceM RecTVar
 freshRecVar = do
@@ -67,8 +73,8 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
     where
         res = M.keys tvarSolution
         -- TODO: replace CBV/CBN with actual kind
-        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep (CBox CBV) tvar
-                    y <- coalesceType $ TyUniVar defaultLoc NegRep (CBox CBN) tvar
+        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep (KindVar (MkKVar (T.pack "kStartPos"))) tvar
+                    y <- coalesceType $ TyUniVar defaultLoc NegRep (KindVar (MkKVar (T.pack "kStartNeg"))) tvar
                     return (x, y)
 
         xs = zip res $ runCoalesceM result $ mapM f res
