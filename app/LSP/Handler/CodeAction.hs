@@ -12,17 +12,14 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.RST.Types ( TypeScheme, TopAnnot(..))
+import Syntax.RST.Types ( TopAnnot(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
-    ( DocComment,
-      FreeVarName(unFreeVarName),
+    ( FreeVarName(unFreeVarName),
       ModuleName(MkModuleName) )
-import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
-import Syntax.TST.Terms qualified as TST
+import Syntax.Common.PrdCns ( PrdCnsRep(..) )
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
-import Syntax.CST.Program qualified as CST
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
 import Utils
@@ -70,12 +67,12 @@ generateCodeActions ident rng program = List (join ls)
 generateCodeActionPrdCnsDeclaration :: TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> [Command |? CodeAction]
 generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } =
   [generateAnnotCodeAction ident decl]
-generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration {pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
+generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated _, pcdecl_term } =
   let
     desugar  = [ generateDesugarCodeAction ident decl | not (isDesugaredTerm pcdecl_term)]
     cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
     cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
-    dualize  = [ generateDualizeCodeAction ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term]
+    dualize  = [ generateDualizeCodeAction ident decl]
   in
     desugar ++ cbvfocus ++ cbnfocus ++ dualize
 
@@ -130,20 +127,22 @@ generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated _ } = err
 ---------------------------------------------------------------------------------
 -- Provide Dualize Action
 ---------------------------------------------------------------------------------
-generateDualizeCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
-generateDualizeCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Dualize term " <> ppPrint fv
-                                                                             , _kind = Just CodeActionQuickFix
-                                                                             , _diagnostics = Nothing
-                                                                             , _isPreferred = Nothing
-                                                                             , _disabled = Nothing
-                                                                             , _edit = Just (generateDualizeEdit uri loc doc rep isrec fv tys tm)
-                                                                             , _command = Nothing
-                                                                             , _xdata = Nothing
-                                                                             }
+
+generateDualizeCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
+generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
+  InR $ CodeAction { _title = "Dualize term " <> ppPrint (TST.pcdecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateDualizeEdit uri decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
 
 
-generateDualizeEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
-generateDualizeEdit uri loc doc rep isrec fv tys tm  =
+generateDualizeEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Annotated tys) tm) =
   let
     tm' = dualTerm rep tm
     replacement = case tm' of
@@ -156,7 +155,7 @@ generateDualizeEdit uri loc doc rep isrec fv tys tm  =
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
-
+generateDualizeEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } = error "Should not occur"
 
 generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
 generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
