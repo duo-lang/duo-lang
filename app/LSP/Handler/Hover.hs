@@ -19,7 +19,7 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.TST.Terms hiding (Command)

@@ -18,7 +18,7 @@ import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
 import Syntax.CST.Types
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Kinds
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 

@@ -18,7 +18,7 @@ import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Types (Typ(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.CST.Kinds
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.Core.Annot
 
 ---------------------------------------------------------------------------------

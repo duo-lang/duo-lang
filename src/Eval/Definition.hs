@@ -11,7 +11,7 @@ import Text.Read (readMaybe)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.Core.Annot
 import Syntax.TST.Terms

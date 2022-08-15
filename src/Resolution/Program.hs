@@ -19,7 +19,7 @@ import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Kinds
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils (Loc, defaultLoc)
 
 

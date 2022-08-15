@@ -23,7 +23,7 @@ import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 
 import Utils ( Loc )
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )

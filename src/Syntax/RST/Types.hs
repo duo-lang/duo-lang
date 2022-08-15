@@ -8,7 +8,7 @@ import Data.Kind ( Type )
 
 import Syntax.CST.Kinds ( MonoKind, Variance(..) )
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 import Utils
 

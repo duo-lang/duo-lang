@@ -13,7 +13,7 @@ import Data.Text qualified as T
 import Errors
 import Syntax.CST.Types
 import Syntax.RST.Types ( Polarity(..) )
-import Syntax.Common.Names
+import Syntax.CST.Names
 import TypeAutomata.Definition
 import Utils ( defaultLoc, enumerate )
 

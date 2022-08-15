@@ -4,7 +4,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.TST.Terms ( Command, Term )
 import Syntax.RST.Program ( ClassDeclaration, DataDecl )
 import Syntax.RST.Types ( TypeScheme, Typ, Polarity(..))

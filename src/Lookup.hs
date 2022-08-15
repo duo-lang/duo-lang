@@ -27,7 +27,7 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types
 import Syntax.CST.Types (PrdCnsRep(..))
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils
 
 ---------------------------------------------------------------------------------

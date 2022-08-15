@@ -15,7 +15,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils
 
 ---------------------------------------------------------------------------------

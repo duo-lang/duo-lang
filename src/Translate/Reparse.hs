@@ -35,7 +35,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( BinOp(InterOp, CustomOp, UnionOp),
       FreeVarName(MkFreeVarName),
       MethodName(unMethodName),

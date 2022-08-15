@@ -1,6 +1,6 @@
 module Syntax.CST.Types where
 
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
 
 import Data.List.NonEmpty (NonEmpty)

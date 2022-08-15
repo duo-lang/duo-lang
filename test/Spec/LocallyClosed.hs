@@ -9,7 +9,7 @@ import Pretty.Pretty ( ppPrintString )
 import Pretty.Errors ()
 import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClosed, instanceCaseLocallyClosed, Pattern (XtorPat) )
 import Syntax.TST.Program qualified as TST
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Errors ( Error )
 import Data.Either (isRight)

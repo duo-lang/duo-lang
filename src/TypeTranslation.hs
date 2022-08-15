@@ -22,7 +22,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Driver.Environment
 import Syntax.RST.Types
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..))

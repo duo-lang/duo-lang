@@ -6,7 +6,7 @@ import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
 import Syntax.Core.Annot
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Terms (PrimitiveOp)
 import Syntax.CST.Kinds
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))

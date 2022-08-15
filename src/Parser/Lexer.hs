@@ -42,7 +42,7 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Terms qualified as CST
 import Parser.Definition
 import Pretty.Pretty (ppPrint)

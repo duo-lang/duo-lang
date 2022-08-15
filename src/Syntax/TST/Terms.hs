@@ -24,7 +24,7 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )

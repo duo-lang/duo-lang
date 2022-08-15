@@ -18,7 +18,7 @@ import Pretty.Types ()
 import Syntax.RST.Types
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Kinds
 import TypeAutomata.Definition
 import Utils ( enumerate, defaultLoc )

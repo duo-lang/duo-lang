@@ -18,7 +18,7 @@ import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils
 
 --------------------------------------------------------------------------------------------

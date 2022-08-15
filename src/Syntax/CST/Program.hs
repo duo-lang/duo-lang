@@ -5,7 +5,7 @@ import Data.Text (Text)
 import Syntax.CST.Terms ( Term, TermCase )
 import Syntax.CST.Types
     ( TypeScheme, XtorSig, Typ, DataCodata, PrdCns )
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( Associativity,
       ClassName,
       DocComment,

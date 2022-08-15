@@ -6,7 +6,7 @@ import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Types ( TopAnnot, Typ, Polarity(..))
-import Syntax.Common.Names ( ClassName, DocComment, FreeVarName )
+import Syntax.CST.Names ( ClassName, DocComment, FreeVarName )
 import Utils ( Loc )
 
 

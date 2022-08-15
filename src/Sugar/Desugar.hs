@@ -18,7 +18,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Program qualified as Core
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Types (PrdCnsRep(..))
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.Core.Annot
 import qualified Sugar.Core as Core
 
