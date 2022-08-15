@@ -15,14 +15,11 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
 import Errors
-import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveProgram)
 import Resolution.SymbolTable
@@ -47,7 +44,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive,
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
+import Utils ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
