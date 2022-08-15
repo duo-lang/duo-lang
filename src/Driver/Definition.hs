@@ -109,6 +109,8 @@ getModuleErrors ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (m
 getErrors :: DriverState -> [Error]
 getErrors ds = concat $ M.elems $ drvErrs ds
 
+addErrors :: ModuleName -> [Error] -> DriverM ()
+addErrors mn errs = modify (\ds -> ds { drvErrs = mapAppend mn errs $ drvErrs ds } )
 
 -- Symbol tables
 
