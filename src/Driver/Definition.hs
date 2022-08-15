@@ -24,6 +24,8 @@ import qualified Syntax.CST.Program as CST (Program)
 import qualified Data.Text.IO as T
 import Parser.Definition (runFileParser)
 import Parser.Parser (programP)
+import Data.Maybe ( fromMaybe )
+import TypeAutomata.Definition (Nubable(nub))
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
@@ -66,6 +68,7 @@ data DriverState = MkDriverState
   , drvFiles   :: !(Map ModuleName CST.Program)
   , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Program
+  , drvErrs    :: Map ModuleName [Error]
   }
 
 defaultDriverState :: DriverState
@@ -75,6 +78,7 @@ defaultDriverState = MkDriverState
   , drvFiles = M.empty
   , drvSymbols = M.empty
   , drvASTs = M.empty
+  , drvErrs = M.empty
   }
 
 ---------------------------------------------------------------------------------
@@ -86,6 +90,20 @@ newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmp
 
 instance MonadFail DriverM where
   fail str = throwOtherError defaultLoc [T.pack str]
+
+getDependencies :: DriverState -> ModuleName -> [ModuleName]
+getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) directDeps
+  where
+    directDeps = maybe [] (fmap fst . imports) . M.lookup mn . drvSymbols $ ds
+
+getModuleErrors :: DriverState -> ModuleName -> [Error]
+getModuleErrors ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (mn:mns)
+  where
+  mns :: [ModuleName]
+  mns = getDependencies ds mn
+
+getErrors :: DriverState -> [Error]
+getErrors ds = concat $ M.elems $ drvErrs ds
 
 execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) (a,DriverState),[Warning])
 execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
@@ -130,12 +148,11 @@ getModuleDeclarations mn = do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
             decls <- runFileParser fp programP file
-            modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn decls drvFiles })
+            addModuleDeclarations mn decls
             return decls
 
 addModuleDeclarations :: ModuleName -> CST.Program -> DriverM ()
 addModuleDeclarations mn decls = do
-        moduleMap <- gets drvFiles
         modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn decls drvFiles })
 
 -- AST Cache
