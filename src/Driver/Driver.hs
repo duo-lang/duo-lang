@@ -22,7 +22,6 @@ import Driver.DepGraph
 import Errors
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveProgram)
-import Resolution.SymbolTable
 import Resolution.Definition
 
 import Syntax.Common.Names
@@ -261,7 +260,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       -- 1. Find the corresponding file and parse its contents.
       decls <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- createSymbolTable mn decls
+      st <- getSymbolTable  mn decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
@@ -286,12 +285,9 @@ inferProgramIO  :: DriverState -- ^ Initial State
 inferProgramIO state mn decls = do
   let action :: DriverM TST.Program
       action = do
-        st <- createSymbolTable mn decls
-        forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
-        addSymboltable (MkModuleName "This") st
-        sts <- getSymbolTables
-        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
-        inferProgram mn (desugarProgram resolvedDecls)
+        addModuleDeclarations mn decls
+        runCompilationModule mn
+        queryTypecheckedProgram mn
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)

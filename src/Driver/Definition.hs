@@ -63,7 +63,7 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: !(Map ModuleName (FilePath, CST.Program))
+  , drvFiles   :: !(Map ModuleName CST.Program)
   , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Program
   }
@@ -104,6 +104,20 @@ addSymboltable mn st = modify f
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets drvSymbols
 
+getSymbolTable  :: ModuleName
+                -> CST.Program
+                -> DriverM SymbolTable
+getSymbolTable mn p = do
+  sts <- getSymbolTables
+  case M.lookup mn sts of
+    Nothing -> do
+      st <- createSymbolTable mn p
+      addSymboltable mn st
+      return st
+    Just st -> return st
+
+getImports :: ModuleName -> DriverM (Maybe [ModuleName])
+getImports mn = gets $ fmap (fmap fst . imports) . M.lookup mn . drvSymbols
 
 -- Modules and declarations
 
@@ -111,13 +125,18 @@ getModuleDeclarations :: ModuleName -> DriverM CST.Program
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
-          Just (_fp, decls) -> return decls
+          Just decls -> return decls
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
             decls <- runFileParser fp programP file
-            modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
+            modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn decls drvFiles })
             return decls
+
+addModuleDeclarations :: ModuleName -> CST.Program -> DriverM ()
+addModuleDeclarations mn decls = do
+        moduleMap <- gets drvFiles
+        modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn decls drvFiles })
 
 -- AST Cache
 

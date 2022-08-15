@@ -108,7 +108,6 @@ checkFreshFreeVarName loc fv st =
   then throwOtherError loc ["FreeVarName is already used: " <> ppPrint fv]
   else pure ()
 
-
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.
 createSymbolTable :: MonadError (NonEmpty Error) m
