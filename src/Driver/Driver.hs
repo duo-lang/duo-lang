@@ -10,7 +10,7 @@ module Driver.Driver
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.List.NonEmpty ( NonEmpty )
+import Data.List.NonEmpty ( NonEmpty ((:|)) )
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -252,15 +252,25 @@ runCompilationModule mn = do
   runCompilationPlan compilationOrder
 
 runCompilationPlan :: CompilationOrder -> DriverM ()
-runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
+runCompilationPlan compilationOrder = do
+  forM_ compilationOrder compileModule
+  --  errs <- concat <$> mapM (gets . flip getModuleErrors) compilationOrder
+  errs <- case reverse compilationOrder of 
+            [] -> return []
+            (m:_) -> gets $ flip getModuleErrors m
+  case errs of
+    [] -> return ()
+    (e:es) -> throwError (e :| es)
   where
     compileModule :: ModuleName -> DriverM ()
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      decls <- getModuleDeclarations mn
+      --  decls <- getModuleDeclarations mn
+      decls <- catchError (getModuleDeclarations mn)
+                          (\(err :| errs) -> addErrors mn (err:errs) >> return [])
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- getSymbolTable  mn decls
+      st <- getSymbolTable mn decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
