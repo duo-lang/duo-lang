@@ -13,7 +13,6 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 import Data.Maybe (fromJust)
 import Data.List (intersperse)
 import Control.Monad.Except
@@ -26,10 +25,8 @@ import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
 import Data.Text.Lazy (pack)
 
-import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintString )
-import Driver.Definition ( DriverM, findModule, getModuleDeclarations )
+import Driver.Definition ( DriverM, getModuleDeclarations )
 import Resolution.SymbolTable
     ( SymbolTable(imports), createSymbolTable )
 import Syntax.Common.Names ( ModuleName(..) )
