@@ -2,9 +2,8 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.RST.Types
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition

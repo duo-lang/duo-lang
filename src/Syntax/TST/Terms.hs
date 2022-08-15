@@ -24,22 +24,20 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.Common.PrdCns
-    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
-import Syntax.Common.Polarity
-    ( Polarity(Pos), PolarityRep(PosRep) )
 import Syntax.CST.Kinds ( MonoKind )
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types
     ( LinearContext,
       PrdCnsType(PrdCnsType),
       Typ(TyString, TyI64, TyF64, TyChar),
-      Zonk(..) )
+      Zonk(..), Polarity(..), PolarityRep(..))
+import Syntax.RST.Program (PrdCnsToPol)
 import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------

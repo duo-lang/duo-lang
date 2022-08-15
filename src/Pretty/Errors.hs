@@ -22,8 +22,8 @@ import Pretty.Terms ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Utils (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
-import Syntax.Common.PrdCns (PrdCns(..))
 import System.Directory (doesFileExist)
+import Syntax.CST.Types (PrdCns(..))
 
 
 ---------------------------------------------------------------------------------

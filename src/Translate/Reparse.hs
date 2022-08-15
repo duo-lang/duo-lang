@@ -28,6 +28,7 @@ import Data.Maybe (fromJust)
 
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -44,8 +45,6 @@ import Syntax.Common.Names
       TyOpName(MkTyOpName),
       TypeName(MkTypeName),
       XtorName(MkXtorName) )
-import Syntax.Common.PrdCns
-    ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.

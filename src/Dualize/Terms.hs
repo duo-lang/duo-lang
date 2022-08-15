@@ -5,13 +5,13 @@ import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
-import Syntax.Common.PrdCns
 import Syntax.Core.Annot
 import Syntax.Common.Names
-import Syntax.Common.Polarity
 import Syntax.CST.Terms (PrimitiveOp)
 import Syntax.CST.Kinds
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types
+import Syntax.RST.Program (PrdCnsToPol)
 import Utils
 
 data DualizeError

@@ -2,10 +2,27 @@ module Syntax.CST.Types where
 
 import Syntax.Common.Names
     ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
-import Syntax.Common.PrdCns ( Arity, PrdCns(Cns, Prd) )
 
 import Data.List.NonEmpty (NonEmpty)
 import Utils ( Loc, HasLoc(..))
+
+---------------------------------------------------------------------------------
+-- Producer / Consumer
+---------------------------------------------------------------------------------
+
+data PrdCns
+  = Prd
+  | Cns
+  deriving (Eq, Show, Ord)
+
+-- | Singleton Type for PrdCns
+data PrdCnsRep pc where
+  PrdRep :: PrdCnsRep Prd
+  CnsRep :: PrdCnsRep Cns
+deriving instance Show (PrdCnsRep pc)
+deriving instance Eq (PrdCnsRep pc)
+
+type Arity = [PrdCns]
 
 ---------------------------------------------------------------------------------
 -- Parse Types

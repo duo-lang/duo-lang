@@ -26,10 +26,11 @@ module Sugar.TST (
 import Syntax.TST.Terms
 import Syntax.Common.Names
 import Syntax.Core.Annot
-import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
 import Utils
 import Syntax.RST.Types
+import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 
 -- CaseOfCmd:

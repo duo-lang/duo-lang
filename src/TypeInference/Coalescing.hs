@@ -10,7 +10,6 @@ import Data.Text qualified as T
 
 import Syntax.RST.Types
 import Syntax.Common.Names
-import Syntax.Common.Polarity
 import TypeInference.Constraints
 import Utils
 

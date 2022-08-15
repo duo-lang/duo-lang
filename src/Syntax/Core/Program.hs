@@ -2,13 +2,12 @@ module Syntax.Core.Program where
 
 import Syntax.Core.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Types (Polarity(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Utils ( Loc )
 import Syntax.Common.Names ( ClassName, DocComment, FreeVarName )
-import Syntax.Common.PrdCns
-    ( PrdCns(Prd, Cns), PrdCnsRep(..), PrdCnsToPol )
-import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -26,7 +25,7 @@ data PrdCnsDeclaration pc = MkPrdCnsDeclaration
     -- ^ Whether the declaration can refer to itself recursively.
   , pcdecl_name :: FreeVarName
     -- ^ The name of the producer / consumer.
-  , pcdecl_annot :: Maybe (RST.TypeScheme (PrdCnsToPol pc))
+  , pcdecl_annot :: Maybe (RST.TypeScheme (RST.PrdCnsToPol pc))
     -- ^ The type signature.
   , pcdecl_term :: Term pc
     -- ^ The term itself.

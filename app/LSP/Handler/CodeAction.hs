@@ -12,17 +12,17 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.RST.Types ( TypeScheme, TopAnnot(..))
+import Syntax.RST.Types ( TypeScheme, TopAnnot(..), PolarityRep(..) )
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.Common.Names
     ( DocComment,
       FreeVarName(unFreeVarName),
       ModuleName(MkModuleName) )
-import Syntax.Common.PrdCns ( PrdCnsRep(..), PrdCnsToPol )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
 import Utils
@@ -33,7 +33,6 @@ import Pretty.Program ()
 import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
-import Syntax.Common.Polarity
 import Data.Text (pack, append)
 import Dualize.Program (dualDataDecl)
 
@@ -104,7 +103,7 @@ generateCodeAction _ _ _ = []
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
 
-generateAnnotCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
+generateAnnotCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (RST.PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
 generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Annotate type for " <> ppPrint fv
                                                                              , _kind = Just CodeActionQuickFix
                                                                              , _diagnostics = Nothing
@@ -114,7 +113,7 @@ generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm
                                                                              , _command = Nothing
                                                                              , _xdata = Nothing
                                                                              }
-generateAnnotEdit :: forall pc. Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
+generateAnnotEdit :: forall pc. Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (RST.PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
 generateAnnotEdit uri loc doc rep isrec fv tys tm  =
   let
     newDecl :: TST.PrdCnsDeclaration pc
@@ -132,7 +131,7 @@ generateAnnotEdit uri loc doc rep isrec fv tys tm  =
 ---------------------------------------------------------------------------------
 -- Provide Dualize Action
 ---------------------------------------------------------------------------------
-generateDualizeCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
+generateDualizeCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (RST.PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
 generateDualizeCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Dualize term " <> ppPrint fv
                                                                              , _kind = Just CodeActionQuickFix
                                                                              , _diagnostics = Nothing
@@ -144,7 +143,7 @@ generateDualizeCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys 
                                                                              }
 
 
-generateDualizeEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
+generateDualizeEdit :: Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (RST.PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
 generateDualizeEdit uri loc doc rep isrec fv tys tm  =
   let
     tm' = dualTerm rep tm
@@ -189,7 +188,7 @@ generateDualizeDeclEdit uri loc decl =
 ---------------------------------------------------------------------------------
 
 
-generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
+generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (TST.Term pc, Loc, TypeScheme (RST.PrdCnsToPol pc))) -> Command |? CodeAction
 generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName name
                                                                   , _kind = Just CodeActionQuickFix
                                                                   , _diagnostics = Nothing
@@ -200,7 +199,7 @@ generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title =
                                                                   , _xdata = Nothing
                                                                   }
 
-generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
+generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (TST.Term pc, Loc, TypeScheme (RST.PrdCnsToPol pc))) -> WorkspaceEdit
 generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
   let
     newDecl :: TST.Declaration = case pc of
@@ -241,7 +240,7 @@ generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
 -- Provide Desugar Actions
 ---------------------------------------------------------------------------------
 
-generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
+generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (RST.PrdCnsToPol pc))) -> Command |? CodeAction
 generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> unFreeVarName name
                                                                     , _kind = Just CodeActionQuickFix
                                                                     , _diagnostics = Nothing
@@ -252,7 +251,7 @@ generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "
                                                                     , _xdata = Nothing
                                                                     }
 
-generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
+generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (RST.PrdCnsToPol pc))) -> WorkspaceEdit
 generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
   let
     newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration defaultLoc Nothing rep CST.Recursive name (Inferred ty) (resetAnnotationTerm tm))

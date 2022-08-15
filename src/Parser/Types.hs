@@ -20,7 +20,6 @@ import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Types
-import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Utils ( Loc(..) )
 import Control.Monad (void)

@@ -5,11 +5,10 @@ import Data.Map qualified as M
 import Data.Set (Set)
 
 import Syntax.Common.Names
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
 import Syntax.TST.Terms ( Command, Term )
 import Syntax.RST.Program ( ClassDeclaration, DataDecl )
-import Syntax.RST.Types ( TypeScheme, Typ )
+import Syntax.RST.Types ( TypeScheme, Typ, Polarity(..))
+import Syntax.CST.Types( PrdCns(..) )
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------

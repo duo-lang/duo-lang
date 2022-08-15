@@ -139,8 +139,6 @@ library
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.Common.Names
-      Syntax.Common.Polarity
-      Syntax.Common.PrdCns
       Syntax.Core.Annot
       Syntax.Core.Terms
       Syntax.Core.Program

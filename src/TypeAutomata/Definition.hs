@@ -12,9 +12,8 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
 import Syntax.Common.Names ( RnTypeName, XtorName )
-import Syntax.Common.PrdCns ( Arity, PrdCns )
-import Syntax.CST.Types ( DataCodata(..) )
-import Syntax.Common.Polarity ( Polarity, PolarityRep )
+import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
+import Syntax.RST.Types ( Polarity, PolarityRep(..))
 import Syntax.CST.Kinds ( Variance )
 
 --------------------------------------------------------------------------------

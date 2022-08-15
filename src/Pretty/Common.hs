@@ -20,7 +20,7 @@ import Syntax.Common.Names
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
-import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
+import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
 import Utils ( Loc(..) )

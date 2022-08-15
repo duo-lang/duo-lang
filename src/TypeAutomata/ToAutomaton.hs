@@ -17,10 +17,9 @@ import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Syntax.RST.Types
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.Common.Names
-import Syntax.Common.Polarity
 import Syntax.CST.Kinds
-import Syntax.Common.PrdCns
 import TypeAutomata.Definition
 import Utils ( enumerate, defaultLoc )
 import Control.Monad

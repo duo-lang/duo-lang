@@ -10,14 +10,13 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
-
-import Syntax.Common.Polarity
-import TypeAutomata.Definition
-import Utils (intersections)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Foldable (foldl')
 
+import TypeAutomata.Definition
+import Utils (intersections)
+import Syntax.RST.Types ( Polarity(Neg, Pos) )
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:

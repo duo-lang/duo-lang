@@ -1,5 +1,6 @@
 module Translate.Embed where
 
+import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Program qualified as RST
@@ -8,7 +9,6 @@ import Syntax.RST.Types qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
-import Syntax.Common.PrdCns
 
 import Translate.Reparse ()
 

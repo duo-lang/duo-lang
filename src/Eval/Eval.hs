@@ -9,8 +9,8 @@ import Data.List.NonEmpty ( NonEmpty )
 
 import Errors
 import Pretty.Pretty
-import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Eval.Definition

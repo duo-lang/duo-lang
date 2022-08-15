@@ -19,10 +19,9 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
-import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Syntax.CST.Kinds
-import Syntax.Common.Polarity
+import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST

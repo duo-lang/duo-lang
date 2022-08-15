@@ -6,14 +6,53 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Kind ( Type )
 
-import Syntax.Common.PrdCns
-    ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
 import Syntax.CST.Kinds ( MonoKind, Variance(..) )
-import Syntax.Common.Polarity
-    ( FlipPol, Polarity(..), PolarityRep(..) )
+import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.Common.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 import Utils
+
+------------------------------------------------------------------------------
+-- Polarity
+------------------------------------------------------------------------------
+
+data Polarity = Pos | Neg deriving (Eq, Ord, Show)
+
+data PolarityRep pol where
+  PosRep :: PolarityRep Pos
+  NegRep :: PolarityRep Neg
+
+deriving instance Show (PolarityRep pol)
+deriving instance Eq (PolarityRep pol)
+deriving instance Ord (PolarityRep pol)
+
+flipPol :: Polarity -> Polarity
+flipPol Pos = Neg
+flipPol Neg = Pos
+
+type family FlipPol (pol :: Polarity) :: Polarity where
+  FlipPol Pos = Neg
+  FlipPol Neg = Pos
+
+flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
+flipPolarityRep PosRep = NegRep
+flipPolarityRep NegRep = PosRep
+
+polarityRepToPol :: PolarityRep pol -> Polarity
+polarityRepToPol PosRep = Pos
+polarityRepToPol NegRep = Neg
+
+type family PrdCnsFlip (pc :: PrdCns) (pol :: Polarity) :: Polarity where
+  PrdCnsFlip Prd pol = pol
+  PrdCnsFlip Cns pol = FlipPol pol
+
+type family FlipPrdCns (pc :: PrdCns) :: PrdCns where
+  FlipPrdCns Prd = Cns
+  FlipPrdCns Cns = Prd
+
+flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
+flipPrdCns PrdRep = CnsRep
+flipPrdCns CnsRep = PrdRep
 
 ------------------------------------------------------------------------------
 -- CovContraList

@@ -13,12 +13,13 @@ import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Types qualified as RST
-import Syntax.Common.Polarity
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Kinds
 import Syntax.Common.Names
-import Syntax.Common.PrdCns
 import Utils (Loc, defaultLoc)
 
 

@@ -1,13 +1,14 @@
 module TypeInference.GenerateConstraints.Primitives where
 
-import Syntax.Common.Polarity
-    ( Polarity(Neg), PolarityRep(PosRep, NegRep) )
 import Syntax.CST.Terms (PrimitiveOp(..))
+import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.RST.Types
     ( LinearContext,
       PrdCnsType(PrdCnsType),
-      Typ(TyString, TyI64, TyF64, TyChar) )
-import Syntax.Common.PrdCns ( PrdCnsRep(CnsRep, PrdRep) )
+      Typ(TyString, TyI64, TyF64, TyChar)
+      , Polarity(..)
+      , PolarityRep(..)
+      )
 import Utils ( defaultLoc )
 
 

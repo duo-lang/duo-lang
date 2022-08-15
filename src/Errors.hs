@@ -8,8 +8,7 @@ import Data.Text qualified as T
 
 import Syntax.Common.Names
 import Syntax.CST.Terms
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
+import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Utils
 import TypeInference.Constraints (ConstraintInfo)

@@ -8,15 +8,14 @@ module TypeInference.GenerateConstraints.Terms
 import Control.Monad.Reader
 import Errors
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Types
-import Syntax.Common.PrdCns
 import Syntax.Common.Names
-import Syntax.Common.Polarity
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils

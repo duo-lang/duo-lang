@@ -22,10 +22,10 @@ import Data.Text qualified as T
 import Syntax.Core.Annot
 import Utils
 import Errors
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
-import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
 import Syntax.Common.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 
