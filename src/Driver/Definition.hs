@@ -91,10 +91,14 @@ newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmp
 instance MonadFail DriverM where
   fail str = throwOtherError defaultLoc [T.pack str]
 
-getDependencies :: DriverState -> ModuleName -> [ModuleName]
-getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) directDeps
-  where
-    directDeps = maybe [] (fmap fst . imports) . M.lookup mn . drvSymbols $ ds
+execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) (a,DriverState),[Warning])
+execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
+
+---------------------------------------------------------------------------------
+-- Utility functions
+---------------------------------------------------------------------------------
+
+-- Error list
 
 getModuleErrors :: DriverState -> ModuleName -> [Error]
 getModuleErrors ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (mn:mns)
@@ -105,12 +109,6 @@ getModuleErrors ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (m
 getErrors :: DriverState -> [Error]
 getErrors ds = concat $ M.elems $ drvErrs ds
 
-execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) (a,DriverState),[Warning])
-execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
-
----------------------------------------------------------------------------------
--- Utility functions
----------------------------------------------------------------------------------
 
 -- Symbol tables
 
@@ -136,6 +134,12 @@ getSymbolTable mn p = do
 
 getImports :: ModuleName -> DriverM (Maybe [ModuleName])
 getImports mn = gets $ fmap (fmap fst . imports) . M.lookup mn . drvSymbols
+
+getDependencies :: DriverState -> ModuleName -> [ModuleName]
+getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) directDeps
+  where
+    directDeps = maybe [] (fmap fst . imports) . M.lookup mn . drvSymbols $ ds
+
 
 -- Modules and declarations
 
