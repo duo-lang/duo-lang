@@ -72,10 +72,10 @@ generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_
   [generateAnnotCodeAction ident decl]
 generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration {pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
   let
-    desugar  = [ generateDesugarCodeAction pcdecl_pc ident (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | not (isDesugaredTerm pcdecl_term)]
+    desugar  = [ generateDesugarCodeAction ident decl | not (isDesugaredTerm pcdecl_term)]
     cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
     cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
-    dualize = [generateDualizeCodeAction ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term]
+    dualize  = [ generateDualizeCodeAction ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term]
   in
     desugar ++ cbvfocus ++ cbnfocus ++ dualize
 
@@ -241,27 +241,29 @@ generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
 -- Provide Desugar Actions
 ---------------------------------------------------------------------------------
 
-generateDesugarCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
-generateDesugarCodeAction rep ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> unFreeVarName name
-                                                                    , _kind = Just CodeActionQuickFix
-                                                                    , _diagnostics = Nothing
-                                                                    , _isPreferred = Nothing
-                                                                    , _disabled = Nothing
-                                                                    , _edit = Just (generateDesugarEdit rep ident arg)
-                                                                    , _command = Nothing
-                                                                    , _xdata = Nothing
-                                                                    }
+generateDesugarCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
+generateDesugarCodeAction ident decl =
+  InR $ CodeAction { _title = "Desugar " <> unFreeVarName (TST.pcdecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateDesugarEdit ident decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
 
-generateDesugarEdit :: PrdCnsRep pc -> TextDocumentIdentifier  -> (FreeVarName,(TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
-generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
+generateDesugarEdit :: forall pc. TextDocumentIdentifier  -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateDesugarEdit (TextDocumentIdentifier uri) (TST.MkPrdCnsDeclaration loc doc rep isRec name (Annotated ty) tm) =
   let
-    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration defaultLoc Nothing rep CST.Recursive name (Inferred ty) (resetAnnotationTerm tm))
+    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration defaultLoc doc rep isRec name (Annotated ty) (resetAnnotationTerm tm))
     replacement = ppPrint newDecl
-    edit = TextEdit {_range=locToRange loc, _newText=replacement}
+    edit = TextEdit {_range =locToRange loc, _newText = replacement}
   in
-    WorkspaceEdit { _changes= Just (Map.singleton uri (List [edit]))
-                  , _documentChanges=Nothing
-                  , _changeAnnotations=Nothing}
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing}
+generateDesugarEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } = error "Should not occur"
 
 generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
 generateCmdDesugarCodeAction ident decl =
