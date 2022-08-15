@@ -80,9 +80,9 @@ generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration {pcdecl_l
     desugar ++ cbvfocus ++ cbnfocus ++ dualize
 
 generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDeclaration -> [Command |? CodeAction]
-generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_loc, cmddecl_name, cmddecl_cmd } =
+generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_cmd } =
   let
-    desugar = [ generateCmdDesugarCodeAction ident (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | not (isDesugaredCommand cmddecl_cmd)]
+    desugar = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
     cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBV cmddecl_cmd)]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
   in
@@ -159,15 +159,16 @@ generateDualizeEdit uri loc doc rep isrec fv tys tm  =
 
 
 generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
-generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl = InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (RST.data_name decl)
-                                                                             , _kind = Just CodeActionQuickFix
-                                                                             , _diagnostics = Nothing
-                                                                             , _isPreferred = Nothing
-                                                                             , _disabled = Nothing
-                                                                             , _edit = Just (generateDualizeDeclEdit uri loc decl)
-                                                                             , _command = Nothing
-                                                                             , _xdata = Nothing
-                                                                             }
+generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
+  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (RST.data_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateDualizeDeclEdit uri loc decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
 
 
 generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
@@ -262,23 +263,24 @@ generateDesugarEdit rep (TextDocumentIdentifier uri) (name, (tm,loc,ty)) =
                   , _documentChanges=Nothing
                   , _changeAnnotations=Nothing}
 
-generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> (FreeVarName, (TST.Command, Loc)) -> Command |? CodeAction
-generateCmdDesugarCodeAction ident arg@(name,_) = InR $ CodeAction { _title = "Desugar " <> unFreeVarName name
-                                                                   , _kind = Just CodeActionQuickFix
-                                                                   , _diagnostics = Nothing
-                                                                   , _isPreferred = Nothing
-                                                                   , _disabled = Nothing
-                                                                   , _edit = Just (generateCmdDesugarEdit ident arg)
-                                                                   , _command = Nothing
-                                                                   , _xdata = Nothing
-                                                                   }
+generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
+generateCmdDesugarCodeAction ident decl =
+  InR $ CodeAction { _title = "Desugar " <> unFreeVarName (TST.cmddecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateCmdDesugarEdit ident decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
 
-generateCmdDesugarEdit :: TextDocumentIdentifier -> (FreeVarName, (TST.Command, Loc)) -> WorkspaceEdit
-generateCmdDesugarEdit (TextDocumentIdentifier uri) (name, (cmd,loc)) =
+generateCmdDesugarEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
+generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
   let
-    newDecl = TST.CmdDecl (TST.MkCommandDeclaration defaultLoc Nothing name (resetAnnotationCmd cmd))
+    newDecl = TST.CmdDecl (TST.MkCommandDeclaration defaultLoc Nothing (TST.cmddecl_name decl) (resetAnnotationCmd (TST.cmddecl_cmd decl)))
     replacement = ppPrint newDecl
-    edit = TextEdit {_range = locToRange loc, _newText= replacement }
+    edit = TextEdit {_range = locToRange (TST.cmddecl_loc decl), _newText = replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
