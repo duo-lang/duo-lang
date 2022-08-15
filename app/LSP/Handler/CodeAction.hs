@@ -30,7 +30,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import Translate.Focusing ( focusTerm, isFocusedTerm, isFocusedCmd, focusCmd )
+import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import Syntax.Common.Polarity
@@ -70,21 +70,21 @@ generateCodeActions ident rng program = List (join ls)
 generateCodeActionPrdCnsDeclaration :: TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> [Command |? CodeAction]
 generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } =
   [generateAnnotCodeAction ident decl]
-generateCodeActionPrdCnsDeclaration ident TST.MkPrdCnsDeclaration {pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
+generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration {pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
   let
     desugar  = [ generateDesugarCodeAction pcdecl_pc ident (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | not (isDesugaredTerm pcdecl_term)]
-    cbvfocus = [ generateFocusCodeAction pcdecl_pc ident CBV (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
-    cbnfocus = [ generateFocusCodeAction pcdecl_pc ident CBN (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
+    cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
+    cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
     dualize = [generateDualizeCodeAction ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term]
   in
     desugar ++ cbvfocus ++ cbnfocus ++ dualize
 
 generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDeclaration -> [Command |? CodeAction]
-generateCodeActionCommandDeclaration ident TST.MkCommandDeclaration {cmddecl_loc, cmddecl_name, cmddecl_cmd } =
+generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_loc, cmddecl_name, cmddecl_cmd } =
   let
     desugar = [ generateCmdDesugarCodeAction ident (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | not (isDesugaredCommand cmddecl_cmd)]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBV (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBV cmddecl_cmd)]
-    cbnfocus = [ generateCmdFocusCodeAction ident CBN (cmddecl_name, (cmddecl_cmd, cmddecl_loc)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBV cmddecl_cmd)]
+    cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
   in
     desugar ++ cbvfocus ++ cbnfocus
 
@@ -187,48 +187,49 @@ generateDualizeDeclEdit uri loc decl =
 ---------------------------------------------------------------------------------
 
 
-generateFocusCodeAction :: PrdCnsRep pc -> TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> Command |? CodeAction
-generateFocusCodeAction rep ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName name
-                                                                  , _kind = Just CodeActionQuickFix
-                                                                  , _diagnostics = Nothing
-                                                                  , _isPreferred = Nothing
-                                                                  , _disabled = Nothing
-                                                                  , _edit = Just (generateFocusEdit rep eo ident arg)
-                                                                  , _command = Nothing
-                                                                  , _xdata = Nothing
-                                                                  }
+generateFocusCodeAction :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
+generateFocusCodeAction ident eo decl =
+  InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName (TST.pcdecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateFocusEdit ident eo decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
 
-generateFocusEdit :: PrdCnsRep pc -> EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (TST.Term pc, Loc, TypeScheme (PrdCnsToPol pc))) -> WorkspaceEdit
-generateFocusEdit pc eo (TextDocumentIdentifier uri) (name,(tm,loc,ty)) =
+generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
-    newDecl :: TST.Declaration = case pc of
-                PrdRep -> TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration defaultLoc Nothing PrdRep CST.Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm)))
-                CnsRep -> TST.PrdCnsDecl CnsRep (TST.MkPrdCnsDeclaration defaultLoc Nothing CnsRep CST.Recursive name (Inferred ty) (focusTerm eo (resetAnnotationTerm tm)))
+    newDecl :: TST.Declaration
+    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focusPrdCnsDeclaration eo decl)
     replacement = ppPrint newDecl
-    edit = TextEdit {_range= locToRange loc, _newText= replacement }
+    edit = TextEdit {_range = locToRange (TST.pcdecl_loc decl), _newText = replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
 
-generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvaluationOrder -> (FreeVarName, (TST.Command, Loc)) -> Command |? CodeAction
-generateCmdFocusCodeAction ident eo arg@(name, _) = InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName name
-                                                                  , _kind = Just CodeActionQuickFix
-                                                                  , _diagnostics = Nothing
-                                                                  , _isPreferred = Nothing
-                                                                  , _disabled = Nothing
-                                                                  , _edit = Just (generateCmdFocusEdit eo ident arg)
-                                                                  , _command = Nothing
-                                                                  , _xdata = Nothing
-                                                                  }
+generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> Command |? CodeAction
+generateCmdFocusCodeAction ident eo decl =
+  InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName (TST.cmddecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateCmdFocusEdit ident eo decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
 
-generateCmdFocusEdit ::  EvaluationOrder -> TextDocumentIdentifier ->  (FreeVarName, (TST.Command, Loc)) -> WorkspaceEdit
-generateCmdFocusEdit eo (TextDocumentIdentifier uri) (name,(cmd,loc)) =
+generateCmdFocusEdit :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> WorkspaceEdit
+generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
-    newDecl = TST.CmdDecl (TST.MkCommandDeclaration defaultLoc Nothing name (focusCmd eo (resetAnnotationCmd cmd)))
+    newDecl = TST.CmdDecl (focusCommandDeclaration eo decl)
     replacement = ppPrint newDecl
-    edit = TextEdit {_range= locToRange loc, _newText= replacement }
+    edit = TextEdit {_range= locToRange (TST.cmddecl_loc decl), _newText= replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
