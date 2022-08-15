@@ -36,18 +36,17 @@ module Parser.Lexer
 import Data.Foldable (asum)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Char (isAlphaNum, isSpace, isPunctuation)
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
+import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 
 import Syntax.Common.Names
 import Syntax.CST.Terms qualified as CST
 import Parser.Definition
-import Text.Megaparsec.Char.Lexer (decimal, signed, float)
-import Data.Char (isAlphaNum, isSpace, isPunctuation)
 import Pretty.Pretty (ppPrint)
 import Pretty.Terms ()
-import Pretty.Common ()
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:

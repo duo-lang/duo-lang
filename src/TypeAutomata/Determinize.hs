@@ -15,7 +15,8 @@ import Syntax.Common.Polarity
 import TypeAutomata.Definition
 import Utils (intersections)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Foldable (foldl')
 
 
 ---------------------------------------------------------------------------------------
@@ -76,7 +77,7 @@ getNewNodeLabel gr ns = combineNodeLabels $ mapMaybe (lab gr) (S.toList ns)
 combineNodeLabels :: [NodeLabel] -> NodeLabel
 combineNodeLabels [] = error "No Labels to combine"
 combineNodeLabels [fstLabel@MkNodeLabel{}] = fstLabel
-combineNodeLabels (fstLabel@MkNodeLabel{}:rs) = 
+combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     (MkPrimitiveNodeLabel _ _) -> error "Tried to combine primitive type and algebraic type"
     combLabel@MkNodeLabel{} ->
@@ -105,18 +106,18 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
       Neg -> M.unionsWith S.union refs
     rs_merged = combineNodeLabels rs
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
-combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) = 
+combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of
     MkNodeLabel{} -> error "Tried to combine primitive type and algebraic type"
-    combLabel@MkPrimitiveNodeLabel{} -> 
-      if pl_pol combLabel == pol then 
+    combLabel@MkPrimitiveNodeLabel{} ->
+      if pl_pol combLabel == pol then
         if pl_prim combLabel == primT then
           MkPrimitiveNodeLabel pol primT
         else
           error ("Tried to combine " <> primToStr primT <> " and " <> primToStr (pl_prim combLabel))
       else
         error "Tried to combine node labels of different polarity!"
-  where 
+  where
     pol = pl_pol fstLabel
     primT = pl_prim fstLabel
     rs_merged = combineNodeLabels rs
@@ -140,8 +141,17 @@ newTypeGraph transFun gr =
 flowEdges :: TransFunReindexed
                  -> [(Node,Node)] -- ^ Old flowedges
                  -> [(Node,Node)] -- ^ New flowedges
-flowEdges transFun flowedges =
-  [(i,j) | (i,ns,_) <- transFun, (j,ms,_) <- transFun, not $ null [(n,m) | n <- S.toList ns, m <- S.toList ms, (n,m) `elem` flowedges]]
+flowEdges transFun flowedges = nub $ concatMap reindexFlowEdge flowedges
+  where
+    getPartitions :: TransFunReindexed -> Map Node (Set Node) -> Map Node (Set Node)
+    getPartitions tf m = foldl' (\m (n,ns,_) -> foldl' (\m n' -> M.insertWith S.union n' (S.singleton n) m) m ns) m tf
+
+    partitionMap :: Map Node (Set Node)
+    partitionMap = getPartitions transFun M.empty
+
+    reindexFlowEdge :: (Node,Node) -> [(Node,Node)]
+    reindexFlowEdge (l,r) = [ (l',r') | l' <- S.toList $ fromMaybe S.empty $ M.lookup l partitionMap,
+                                        r' <- S.toList $ fromMaybe S.empty $ M.lookup r partitionMap]
 
 ------------------------------------------------------------------------------
 -- Lift the determinization algorithm to type graphs.
