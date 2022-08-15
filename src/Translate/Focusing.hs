@@ -3,6 +3,8 @@ module Translate.Focusing
   , focusTerm
   , focusCmd
   , focusEnvironment
+  , focusPrdCnsDeclaration
+  , focusCommandDeclaration
   , isFocusedTerm
   , isFocusedCmd
   ) where
@@ -250,6 +252,7 @@ focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
+
 focusPrdCnsDeclaration :: EvaluationOrder -> PrdCnsDeclaration pc -> PrdCnsDeclaration pc
 focusPrdCnsDeclaration eo MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
     MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc

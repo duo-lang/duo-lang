@@ -1,6 +1,8 @@
 module Sugar.Desugar
   ( desugarTerm
   , desugarPCTerm
+  , desugarPrdCnsDeclaration
+  , desugarCommandDeclaration
   , desugarProgram
   , desugarCmd
   , desugarEnvironment
