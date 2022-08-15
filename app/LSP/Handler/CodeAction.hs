@@ -68,9 +68,8 @@ generateCodeActions ident rng program = List (join ls)
 
 
 generateCodeActionPrdCnsDeclaration :: TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> [Command |? CodeAction]
-generateCodeActionPrdCnsDeclaration ident TST.MkPrdCnsDeclaration {pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Inferred tys, pcdecl_term } =
-  [ generateAnnotCodeAction   ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term
-  , generateDualizeCodeAction ident pcdecl_loc pcdecl_doc pcdecl_pc pcdecl_isRec pcdecl_name tys pcdecl_term ]
+generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } =
+  [generateAnnotCodeAction ident decl]
 generateCodeActionPrdCnsDeclaration ident TST.MkPrdCnsDeclaration {pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = Annotated tys, pcdecl_term } =
   let
     desugar  = [ generateDesugarCodeAction pcdecl_pc ident (pcdecl_name, (pcdecl_term, pcdecl_loc, tys)) | not (isDesugaredTerm pcdecl_term)]
@@ -90,12 +89,11 @@ generateCodeActionCommandDeclaration ident TST.MkCommandDeclaration {cmddecl_loc
     desugar ++ cbvfocus ++ cbnfocus
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
-generateCodeAction ident (Range {_start = start }) (TST.PrdCnsDecl _ decl) | lookupPos start (TST.pcdecl_loc decl) =
+generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | lookupPos start (TST.pcdecl_loc decl) =
   generateCodeActionPrdCnsDeclaration ident decl
-generateCodeAction ident (Range {_start = start}) (TST.CmdDecl decl) | lookupPos start (TST.cmddecl_loc decl) =
+generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos start (TST.cmddecl_loc decl) =
   generateCodeActionCommandDeclaration ident decl
-
-generateCodeAction ident (Range {_start = _start}) (TST.DataDecl decl) = dualizeDecl
+generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
   where     
     dualizeDecl = [generateDualizeDeclCodeAction ident (RST.data_loc decl) decl]
 generateCodeAction _ _ _ = []
@@ -104,30 +102,30 @@ generateCodeAction _ _ _ = []
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
 
-generateAnnotCodeAction :: TextDocumentIdentifier -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> Command |? CodeAction
-generateAnnotCodeAction (TextDocumentIdentifier uri) loc doc rep isrec fv tys tm = InR $ CodeAction { _title = "Annotate type for " <> ppPrint fv
-                                                                             , _kind = Just CodeActionQuickFix
-                                                                             , _diagnostics = Nothing
-                                                                             , _isPreferred = Nothing
-                                                                             , _disabled = Nothing
-                                                                             , _edit = Just (generateAnnotEdit uri loc doc rep isrec fv tys tm)
-                                                                             , _command = Nothing
-                                                                             , _xdata = Nothing
-                                                                             }
-generateAnnotEdit :: forall pc. Uri -> Loc -> Maybe DocComment -> PrdCnsRep pc -> CST.IsRec -> FreeVarName -> TypeScheme (PrdCnsToPol pc) -> TST.Term pc -> WorkspaceEdit
-generateAnnotEdit uri loc doc rep isrec fv tys tm  =
+generateAnnotCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
+generateAnnotCodeAction (TextDocumentIdentifier uri) decl =
+  InR $ CodeAction { _title = "Annotate type for " <> ppPrint (TST.pcdecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateAnnotEdit uri decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
+generateAnnotEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateAnnotEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Inferred tys) tm) =
   let
-    newDecl :: TST.PrdCnsDeclaration pc
-    newDecl = TST.MkPrdCnsDeclaration loc doc rep isrec fv (Annotated tys) tm
-    newDecl' :: TST.Declaration
-    newDecl' = TST.PrdCnsDecl rep newDecl
-    replacement = ppPrint newDecl'
+    newDecl :: TST.Declaration
+    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Annotated tys) tm)
+    replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange loc, _newText = replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
-
+generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated _ } = error "Should not occur"
 
 ---------------------------------------------------------------------------------
 -- Provide Dualize Action
