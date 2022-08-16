@@ -108,8 +108,10 @@ scharP = satisfy isSChar <?> "string character"
 
 charP :: Parser (Char, SourcePos)
 charP = do
-  (ch, pos) <- betweenP (symbolP SymSingleQuote) (symbolP SymSingleQuote) scharP
-  return (ch, pos)
+  _ <- symbolP SymSingleQuote
+  ch <- scharP
+  pos <- symbolP SymSingleQuote
+  pure (ch, pos)
 
 stringP :: Parser (String, SourcePos)
 stringP = do
@@ -462,15 +464,30 @@ checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> opera
 -- Parens
 -------------------------------------------------------------------------------------------
 
-betweenP :: Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
-betweenP open close middle = do
-  _ <- open
-  res <- middle
-  endPos <- close
+parens :: Parser a -> Parser (a, SourcePos)
+parens parser = do
+  _ <- symbolP SymParenLeft
+  res <- parser
+  endPos <- symbolP SymParenRight
   pure (res, endPos)
 
-parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
-parens    = betweenP (symbolP SymParenLeft)   (symbolP SymParenRight)
-braces    = betweenP (symbolP SymBraceLeft)   (symbolP SymBraceRight)
-brackets  = betweenP (symbolP SymBracketLeft) (symbolP SymBracketRight)
-angles    = betweenP (symbolP SymAngleLeft)   (symbolP SymAngleRight)
+braces :: Parser a -> Parser (a, SourcePos)
+braces parser = do
+  _ <- symbolP SymBraceLeft
+  res <- parser
+  endPos <- symbolP SymBraceRight
+  pure (res, endPos)
+
+brackets :: Parser a -> Parser (a, SourcePos)
+brackets parser = do
+  _ <- symbolP SymBracketLeft
+  res <- parser
+  endPos <- symbolP SymBracketRight
+  pure (res, endPos)
+
+angles :: Parser a -> Parser (a, SourcePos)
+angles parser = do
+  _ <- symbolP SymAngleLeft
+  res <- parser
+  endPos <- symbolP SymAngleRight
+  pure (res, endPos)
