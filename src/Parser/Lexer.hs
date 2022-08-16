@@ -462,14 +462,14 @@ checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> opera
 -- Parens
 -------------------------------------------------------------------------------------------
 
-betweenP :: Show a => Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
+betweenP :: Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
 betweenP open close middle = do
   _ <- open
   res <- middle
   endPos <- close
   pure (res, endPos)
 
-parens, braces, brackets, angles :: Show a => Parser a -> Parser (a, SourcePos)
+parens, braces, brackets, angles :: Parser a -> Parser (a, SourcePos)
 parens    = betweenP (symbolP SymParenLeft)   (symbolP SymParenRight)
 braces    = betweenP (symbolP SymBraceLeft)   (symbolP SymBraceRight)
 brackets  = betweenP (symbolP SymBracketLeft) (symbolP SymBracketRight)
