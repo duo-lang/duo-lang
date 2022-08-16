@@ -141,7 +141,8 @@ polyKindP = f <|> g
   where
     f = MkPolyKind [] <$> evalOrderP
     g = do
-      (kindArgs,_) <- parens (tParamP `sepBy` (symbolP SymComma >> sc))
+      (kindArgs,_) <- parensP (tParamP `sepBy` (symbolP SymComma >> sc))
+      sc
       symbolP SymSimpleRightArrow
       sc
       MkPolyKind kindArgs <$> evalOrderP

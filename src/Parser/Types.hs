@@ -39,7 +39,10 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  args <- optional $ fst <$> (parens (returnP typP `sepBy` (symbolP SymComma >> sc)) <?> "argument list")
+  args <- optional $ do
+    (args,_) <- parensP (returnP typP `sepBy` (symbolP SymComma >> sc))
+    sc
+    pure args
   return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
 
 -- | Parse a Constructor or destructor signature. E.g.
@@ -65,7 +68,10 @@ combineXtors = fmap combineXtor
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos = parens ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
+nominalTypeArgsP endPos = do
+  args <- parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
+  sc
+  pure args
 
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
@@ -82,11 +88,13 @@ nominalTypeP = do
 xdataTypeP :: DataCodata -> Parser (Typ, SourcePos)
 xdataTypeP Data = do
   startPos <- getSourcePos
-  (xtorSigs, endPos) <- angles (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  (xtorSigs, endPos) <- anglesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  sc
   pure (TyXData (Loc startPos endPos) Data xtorSigs, endPos)
 xdataTypeP Codata = do
   startPos <- getSourcePos
-  (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  (xtorSigs, endPos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  sc
   pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
 
 
@@ -119,21 +127,23 @@ recTypeP = do
 refinementTypeP :: DataCodata -> Parser (Typ, SourcePos)
 refinementTypeP Data = do
   startPos <- getSourcePos
-  ((tn, ctors), endPos) <- angles (do
+  ((tn, ctors), endPos) <- anglesP (do
     (tn,_) <- typeNameP
     symbolP SymPipe
     sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, ctors))
+  sc
   pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
 refinementTypeP Codata = do
   startPos <- getSourcePos
-  ((tn, dtors), endPos) <- braces (do
+  ((tn, dtors), endPos) <- bracesP (do
     (tn,_) <- typeNameP
     symbolP SymPipe
     sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, dtors))
+  sc
   pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
 
 ---------------------------------------------------------------------------------
@@ -165,7 +175,8 @@ tyStringP = primTypeP KwString TyString
 tyParensP :: Parser (Typ, SourcePos)
 tyParensP = do
   startPos <- getSourcePos
-  (typ, endPos) <- parens (fst <$> typP)
+  (typ, endPos) <- parensP (fst <$> typP)
+  sc
   pure (TyParens (Loc startPos endPos) typ, endPos)
 
 tyTopP :: Parser (Typ, SourcePos)

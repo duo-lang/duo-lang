@@ -23,10 +23,10 @@ module Parser.Lexer
   , Symbol(..)
   , symbolP
   -- Parens
-  , angles
-  , parens
-  , brackets
-  , braces
+  , anglesP
+  , parensP
+  , bracketsP
+  , bracesP
   -- Other
   , primOpKeywordP
   , checkTick
@@ -470,42 +470,46 @@ checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> opera
 -- Parens
 -------------------------------------------------------------------------------------------
 
-parens :: Parser a -> Parser (a, SourcePos)
-parens parser = do
+-- | The parser provided to `parens` must parse its own trailing whitespace.
+-- The `parens` parser doesn't parse trailing whitespace.
+parensP :: Parser a -> Parser (a, SourcePos)
+parensP parser = do
   symbolP SymParenLeft
   sc
   res <- parser
   symbolP SymParenRight
-  sc
   endPos <- getSourcePos
   pure (res, endPos)
 
-braces :: Parser a -> Parser (a, SourcePos)
-braces parser = do
+-- | The parser provided to `braces` must parse its own trailing whitespace.
+-- The `braces` parser doesn't parse trailing whitespace.
+bracesP :: Parser a -> Parser (a, SourcePos)
+bracesP parser = do
   symbolP SymBraceLeft
   sc
   res <- parser
   symbolP SymBraceRight
-  sc
   endPos <- getSourcePos
   pure (res, endPos)
 
-brackets :: Parser a -> Parser (a, SourcePos)
-brackets parser = do
+-- | The parser provided to `brackets` must parse its own trailing whitespace.
+-- The `brackets` parser doesn't parse trailing whitespace.
+bracketsP :: Parser a -> Parser (a, SourcePos)
+bracketsP parser = do
   symbolP SymBracketLeft
   sc
   res <- parser
   symbolP SymBracketRight
-  sc
   endPos <- getSourcePos
   pure (res, endPos)
 
-angles :: Parser a -> Parser (a, SourcePos)
-angles parser = do
+-- | The parser provided to `angles` must parse its own trailing whitespace.
+-- The `angles` parser doesn't parse trailing whitespace.
+anglesP :: Parser a -> Parser (a, SourcePos)
+anglesP parser = do
   symbolP SymAngleLeft
   sc
   res <- parser
   symbolP SymAngleRight
-  sc
   endPos <- getSourcePos
   pure (res, endPos)

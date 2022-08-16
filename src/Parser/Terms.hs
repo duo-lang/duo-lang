@@ -30,7 +30,10 @@ import Utils
 -- E.g.: "(t1,t2,t3)"
 substitutionP :: Parser ([CST.Term], SourcePos)
 substitutionP = do
-     s <- optional $ fst <$> parens ( (fst <$> termTopP) `sepBy` (symbolP SymComma >> sc))
+     s <- optional $ do
+      (s,_) <- parensP ( (fst <$> termTopP) `sepBy` (symbolP SymComma >> sc))
+      sc
+      pure s
      pos <- getSourcePos
      return (Data.Maybe.fromMaybe [] s,pos)
 
@@ -48,7 +51,10 @@ termOrStarP = starP <|> nonStarP
 
 substitutionIP :: Parser ([CST.TermOrStar], SourcePos)
 substitutionIP = do
-     s <- optional $ fst <$> parens  ((fst <$> termOrStarP) `sepBy` (symbolP SymComma >> sc))
+     s <- optional $ do
+      (args,_) <- parensP ((fst <$> termOrStarP) `sepBy` (symbolP SymComma >> sc))
+      sc
+      pure args
      pos <- getSourcePos
      return (Data.Maybe.fromMaybe [] s,pos)
 
@@ -161,7 +167,8 @@ printCmdP :: Parser (CST.Term, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwPrint
-  (arg,_) <- parens (fst <$> termTopP)
+  (arg,_) <- parensP (fst <$> termTopP)
+  sc
   symbolP SymSemi
   sc
   (cmd, endPos) <- termTopP
@@ -171,7 +178,8 @@ readCmdP :: Parser (CST.Term, SourcePos)
 readCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwRead
-  (arg,endPos) <- brackets (fst <$> termTopP)
+  (arg,endPos) <- bracketsP (fst <$> termTopP)
+  sc
   return (CST.PrimCmdTerm $ CST.Read (Loc startPos endPos) arg, endPos)
 
 primitiveCmdP :: Parser (CST.Term, SourcePos)
@@ -265,7 +273,10 @@ patVariableP = do
 -- | Parses a list of patterns in parentheses, or nothing at all: `(pat_1,...,pat_n)`
 patternListP :: Parser ([CST.Pattern], SourcePos)
 patternListP = do
-  s <- optional $ fst <$> parens ((fst <$> patternP) `sepBy` (symbolP SymComma >> sc))
+  s <- optional $ do
+    (args,_) <- parensP ((fst <$> patternP) `sepBy` (symbolP SymComma >> sc))
+    sc
+    pure args
   endPos <- getSourcePos
   return (Data.Maybe.fromMaybe [] s, endPos)
 
@@ -307,7 +318,8 @@ caseP = do
 caseRestP :: SourcePos -- ^ The source position of the start of the "case" keyword
           -> Parser (CST.Term, SourcePos)
 caseRestP startPos = do
-  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  sc
   pure (CST.Case (Loc startPos endPos) cases, endPos)
 
 -- | Parses the second half of a "caseof" construct, i.e.
@@ -318,7 +330,8 @@ caseOfRestP :: SourcePos -- ^ The source position of the start of the "case" key
 caseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
-  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  sc
   return (CST.CaseOf (Loc startPos endPos) arg cases, endPos)
 
 -- | Parses all constructs of the forms:
@@ -336,7 +349,8 @@ cocaseP = do
 cocaseRestP :: SourcePos -- ^ The source position of the start of the "cocase" keyword
             -> Parser (CST.Term, SourcePos)
 cocaseRestP startPos = do
-  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  sc
   return (CST.Cocase (Loc startPos endPos) cases, endPos)
 
 -- | Parses the second half of a "caseof" construct, i.e.
@@ -347,7 +361,8 @@ cocaseOfRestP :: SourcePos -- ^ The source position of the start of the "cocase"
 cocaseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
-  (cases, endPos) <- braces ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  sc
   return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
 
 termCaseP :: Parser (CST.TermCase, SourcePos)
@@ -391,7 +406,8 @@ lambdaP = do
 termParensP :: Parser (CST.Term, SourcePos)
 termParensP = do
   startPos <- getSourcePos
-  (tm,endPos) <- parens (fst <$> termTopP)
+  (tm,endPos) <- parensP (fst <$> termTopP)
+  sc
   return (CST.TermParens (Loc startPos endPos) tm, endPos)
 
 

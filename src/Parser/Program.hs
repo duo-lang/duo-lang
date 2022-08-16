@@ -197,7 +197,8 @@ dataDeclP doc = do
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
     knd <- optional (try (symbolP SymColon >> sc) >> polyKindP)
-    (xtors, _pos) <- braces (xtorDeclP `sepBy` (symbolP SymComma >> sc))
+    (xtors, _pos) <- bracesP (xtorDeclP `sepBy` (symbolP SymComma >> sc))
+    sc
     symbolP SymSemi
     endPos <- getSourcePos
     sc
@@ -223,7 +224,10 @@ xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
-  args <- optional $ fst <$> (parens (returnP monoKindP `sepBy` (symbolP SymComma >> sc)) <?> "argument list")
+  args <- optional $ do 
+    (args,_) <- parensP (returnP monoKindP `sepBy` (symbolP SymComma >> sc)) <?> "argument list"
+    sc
+    pure args
   ret <- optional (try (symbolP SymColon >> sc) >> evalOrderP)
   symbolP SymSemi
   endPos <- getSourcePos
@@ -247,8 +251,10 @@ classDeclarationP doc = do
   try (void (keywordP KwClass))
   recoverDeclaration $ do
     className     <- fst <$> classNameP
-    typeVars      <- fst <$> parens (tParamP `sepBy` (symbolP SymComma >> sc))
-    (xtors, _pos) <- braces (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+    typeVars      <- fst <$> parensP (tParamP `sepBy` (symbolP SymComma >> sc))
+    sc
+    (xtors, _pos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+    sc
     symbolP SymSemi
     endPos <- getSourcePos
     sc
@@ -267,7 +273,8 @@ instanceDeclarationP doc = do
   recoverDeclaration $ do
     className  <- fst <$> classNameP
     typ        <- fst <$> typP
-    (cases, _) <- braces ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+    (cases, _) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+    sc
     symbolP SymSemi
     endPos <- getSourcePos
     sc
