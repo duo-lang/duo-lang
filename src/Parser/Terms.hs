@@ -265,7 +265,7 @@ patVariableP = do
 -- | Parses a list of patterns in parentheses, or nothing at all: `(pat_1,...,pat_n)`
 patternListP :: Parser ([CST.Pattern], SourcePos)
 patternListP = do
-  s <- optional $ fst <$> parens ((fst <$> patternP) `sepBy` symbolP SymComma)
+  s <- optional $ fst <$> parens ((fst <$> patternP) `sepBy` (symbolP SymComma >> sc))
   endPos <- getSourcePos
   return (Data.Maybe.fromMaybe [] s, endPos)
 

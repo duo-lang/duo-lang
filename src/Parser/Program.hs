@@ -21,8 +21,6 @@ import Syntax.CST.Types
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Utils
-import Text.Megaparsec (getSourcePos)
-
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
