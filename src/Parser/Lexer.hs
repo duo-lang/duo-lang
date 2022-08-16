@@ -47,7 +47,6 @@ import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Syntax.CST.Terms qualified as CST
 
-
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
 --
@@ -108,15 +107,19 @@ scharP = satisfy isSChar <?> "string character"
 
 charP :: Parser (Char, SourcePos)
 charP = do
-  _ <- symbolP SymSingleQuote
+  symbolP SymSingleQuote
   ch <- scharP
-  pos <- symbolP SymSingleQuote
+  symbolP SymSingleQuote
+  pos <- getSourcePos
+  sc
   pure (ch, pos)
 
 stringP :: Parser (String, SourcePos)
 stringP = do
-  s <- symbolP SymDoubleQuote >> manyTill scharP (symbolP SymDoubleQuote)
+  symbolP SymDoubleQuote
+  s <- manyTill scharP (symbolP SymDoubleQuote)
   pos <- getSourcePos
+  sc
   return (s, pos)
 
 uintP :: Parser (Integer, SourcePos)
@@ -170,7 +173,11 @@ operatorP = funOperator <|> otherOperator
   where
     -- We have to treat the function arrow specially, since we want to allow it
     -- as an operator, but it is also a reserved symbol.
-    funOperator = symbolP SymSimpleRightArrow >>= \pos -> pure ("->",pos)
+    funOperator = do
+      symbolP SymSimpleRightArrow
+      pos <- getSourcePos
+      sc
+      pure ("->",pos)
     otherOperator = do
       name <- T.pack <$> many (symbolChar <|> punctuationChar)
       checkReservedOp name
@@ -443,12 +450,11 @@ instance Show Symbol where
   show SymAngleLeft        = "<"
   show SymAngleRight       = ">"
 
-symbolP :: Symbol -> Parser SourcePos
+-- | symbolP does NOT consume trailing whitespace.
+symbolP :: Symbol -> Parser ()
 symbolP sym = do
   _ <- string (T.pack (show sym))
-  endPos <- getSourcePos
-  sc
-  return endPos
+  pure ()
 
 operators :: [Symbol]
 operators = enumFromTo minBound maxBound
@@ -466,28 +472,40 @@ checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> opera
 
 parens :: Parser a -> Parser (a, SourcePos)
 parens parser = do
-  _ <- symbolP SymParenLeft
+  symbolP SymParenLeft
+  sc
   res <- parser
-  endPos <- symbolP SymParenRight
+  symbolP SymParenRight
+  sc
+  endPos <- getSourcePos
   pure (res, endPos)
 
 braces :: Parser a -> Parser (a, SourcePos)
 braces parser = do
-  _ <- symbolP SymBraceLeft
+  symbolP SymBraceLeft
+  sc
   res <- parser
-  endPos <- symbolP SymBraceRight
+  symbolP SymBraceRight
+  sc
+  endPos <- getSourcePos
   pure (res, endPos)
 
 brackets :: Parser a -> Parser (a, SourcePos)
 brackets parser = do
-  _ <- symbolP SymBracketLeft
+  symbolP SymBracketLeft
+  sc
   res <- parser
-  endPos <- symbolP SymBracketRight
+  symbolP SymBracketRight
+  sc
+  endPos <- getSourcePos
   pure (res, endPos)
 
 angles :: Parser a -> Parser (a, SourcePos)
 angles parser = do
-  _ <- symbolP SymAngleLeft
+  symbolP SymAngleLeft
+  sc
   res <- parser
-  endPos <- symbolP SymAngleRight
+  symbolP SymAngleRight
+  sc
+  endPos <- getSourcePos
   pure (res, endPos)

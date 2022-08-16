@@ -23,9 +23,6 @@ import Syntax.CST.Types
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Utils ( Loc(..) )
-import Control.Monad (void)
-
-
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
@@ -42,7 +39,7 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  args <- optional $ fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
+  args <- optional $ fst <$> (parens (returnP typP `sepBy` (symbolP SymComma >> sc)) <?> "argument list")
   return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
 
 -- | Parse a Constructor or destructor signature. E.g.
@@ -68,7 +65,7 @@ combineXtors = fmap combineXtor
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos = parens ((fst <$> typP) `sepBy` symbolP SymComma) <|> pure ([], endPos)
+nominalTypeArgsP endPos = parens ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
 
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
@@ -85,11 +82,11 @@ nominalTypeP = do
 xdataTypeP :: DataCodata -> Parser (Typ, SourcePos)
 xdataTypeP Data = do
   startPos <- getSourcePos
-  (xtorSigs, endPos) <- angles (xtorSignatureP `sepBy` symbolP SymComma)
+  (xtorSigs, endPos) <- angles (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
   pure (TyXData (Loc startPos endPos) Data xtorSigs, endPos)
 xdataTypeP Codata = do
   startPos <- getSourcePos
-  (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` symbolP SymComma)
+  (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
   pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
 
 
@@ -103,14 +100,15 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
-  return (TySkolemVar (Loc startPos endPos) tvar, endPos)
+  pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
   startPos <- getSourcePos
   _ <- keywordP KwRec
   (rv,_) <- tvarP
-  _ <- symbolP SymDot
+  symbolP SymDot
+  sc
   (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)
 
@@ -123,16 +121,18 @@ refinementTypeP Data = do
   startPos <- getSourcePos
   ((tn, ctors), endPos) <- angles (do
     (tn,_) <- typeNameP
-    _ <- symbolP SymPipe
-    ctors <- xtorSignatureP `sepBy` symbolP SymComma
+    symbolP SymPipe
+    sc
+    ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, ctors))
   pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
 refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, dtors), endPos) <- braces (do
     (tn,_) <- typeNameP
-    _ <- symbolP SymPipe
-    dtors <- xtorSignatureP `sepBy` symbolP SymComma
+    symbolP SymPipe
+    sc
+    dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, dtors))
   pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
 
@@ -228,9 +228,9 @@ typP = do
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
+  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
-  tConstraints <- option [] (constraintP `sepBy` symbolP SymComma <* symbolP SymDoubleRightArrow)
+  tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
   pure (TypeScheme (Loc startPos endPos) tvars' tConstraints monotype)
 
@@ -243,6 +243,7 @@ typeClassConstraintP = try $ do
 subTypeConstraintP :: Parser (Constraint, SourcePos)
 subTypeConstraintP = try $ do
   t1 <- fst <$> typP
-  void $ symbolP SymSubtype
+  symbolP SymSubtype
+  sc
   (t2, pos) <- typP
   return (SubType t1 t2, pos)

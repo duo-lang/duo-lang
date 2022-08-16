@@ -81,9 +81,19 @@ tyOpNameP = try $ do
 tyBinOpP :: Parser (BinOp, SourcePos)
 tyBinOpP = try (interOp <|> unionOp <|> customOp)
   where
-    interOp  = symbolP SymIntersection >>= \pos -> pure (InterOp, pos)
-    unionOp  = symbolP SymUnion >>= \pos -> pure (UnionOp, pos)
-    customOp = tyOpNameP >>= (\(op,pos) -> pure (CustomOp op, pos))
+    interOp  = do
+      symbolP SymIntersection
+      pos <- getSourcePos
+      sc
+      pure (InterOp, pos)
+    unionOp  = do
+      symbolP SymUnion
+      pos <- getSourcePos
+      sc
+      pure (UnionOp, pos)
+    customOp = do
+      (op, pos) <- tyOpNameP
+      pure (CustomOp op, pos)
 
 precedenceP :: Parser Precedence
 precedenceP = do
@@ -115,21 +125,32 @@ monoKindP = CBox <$> evalOrderP
 ---------------------------------------------------------------------------------
 
 varianceP :: Parser Variance
-varianceP = (symbolP SymPlus $> Covariant) <|> (symbolP SymMinus $> Contravariant)
+varianceP = variantP <|> covariantP
+  where
+    variantP = do
+      symbolP SymPlus
+      sc
+      pure Covariant
+    covariantP = do
+      symbolP SymMinus
+      sc
+      pure Contravariant
 
 polyKindP :: Parser PolyKind
 polyKindP = f <|> g
   where
     f = MkPolyKind [] <$> evalOrderP
     g = do
-      (kindArgs,_) <- parens (tParamP `sepBy` symbolP SymComma)
-      _ <- symbolP SymSimpleRightArrow
+      (kindArgs,_) <- parens (tParamP `sepBy` (symbolP SymComma >> sc))
+      symbolP SymSimpleRightArrow
+      sc
       MkPolyKind kindArgs <$> evalOrderP
 
 tParamP :: Parser (Variance, SkolemTVar, MonoKind)
 tParamP = do
   v <- varianceP
   (tvar,_) <- tvarP
-  _ <- symbolP SymColon
+  symbolP SymColon
+  sc
   kind <- monoKindP
   pure (v, tvar, kind)
