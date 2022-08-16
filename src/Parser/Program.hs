@@ -114,7 +114,8 @@ setDeclP :: Maybe DocComment -> Parser Declaration
 setDeclP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwSet))
-  (txt,_) <- allCaseId
+  (txt,_) <- allCaseIdL
+  sc
   symbolP SymSemi
   endPos <- getSourcePos
   sc

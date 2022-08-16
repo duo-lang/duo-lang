@@ -247,9 +247,9 @@ typeSchemeP = do
 
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
-  cname <- fst <$> upperCaseId
+  (cname,_) <- classNameP
   (tvar, pos) <- tvarP
-  return (TypeClass (MkClassName cname) tvar, pos)
+  return (TypeClass cname tvar, pos)
 
 subTypeConstraintP :: Parser (Constraint, SourcePos)
 subTypeConstraintP = try $ do

@@ -35,38 +35,45 @@ import Syntax.Common.Primitives
 
 freeVarNameP :: Parser (FreeVarName, SourcePos)
 freeVarNameP = try $ do
-  (name, pos) <- lowerCaseId
+  (name, pos) <- lowerCaseIdL
+  sc
   return (MkFreeVarName name, pos)
 
 tvarP :: Parser (SkolemTVar, SourcePos)
 tvarP = try $ do
-  (name, pos) <- lowerCaseId
+  (name, pos) <- lowerCaseIdL
+  sc
   return (MkSkolemTVar name, pos)
 
 
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
-  (name, pos) <- upperCaseId
+  (name, pos) <- upperCaseIdL
+  sc
   return (MkXtorName name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = try $ do
-  (name, pos) <- upperCaseId
+  (name, pos) <- upperCaseIdL
+  sc
   return (MkTypeName name, pos)
 
 moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
-  (name, pos) <- upperCaseId
+  (name, pos) <- upperCaseIdL
+  sc
   return (MkModuleName name, pos)
 
 classNameP :: Parser (ClassName, SourcePos)
 classNameP = try $ do
-  (name, pos) <- upperCaseId
+  (name, pos) <- upperCaseIdL
+  sc
   return (MkClassName name, pos)
 
 methodNameP :: Parser (MethodName, SourcePos)
 methodNameP = try $ do
-  (name, pos) <- upperCaseId
+  (name, pos) <- upperCaseIdL
+  sc
   return (MkMethodName name, pos)
 
 ---------------------------------------------------------------------------------

@@ -12,10 +12,11 @@ module Parser.Lexer
   , uintP
   , floatP
     -- Identifier
-  , lowerCaseId
-  , upperCaseId
+  , lowerCaseIdL
+  , upperCaseIdL
+  , allCaseIdL
+    -- Operators
   , operatorP
-  , allCaseId
   -- Keywords
   , Keyword(..)
   , keywordP
@@ -141,32 +142,39 @@ floatP = do
   pure (f, pos)
 
 -------------------------------------------------------------------------------------------
--- Names
+-- Identifier
 -------------------------------------------------------------------------------------------
 
-lowerCaseId :: Parser (Text, SourcePos)
-lowerCaseId = do
+-- | Parses a lower case identifer, eg `foo`.
+-- Does not parse trailing whitespace.
+lowerCaseIdL :: Parser (Text, SourcePos)
+lowerCaseIdL = do
   name <- T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   pos <- getSourcePos
-  sc
   pure (name, pos)
 
-upperCaseId :: Parser (Text, SourcePos)
-upperCaseId = do
+-- | Parses an upper case identifier, e.g. `Foo`.
+-- Does not parse trailing whitespace.
+upperCaseIdL :: Parser (Text, SourcePos)
+upperCaseIdL = do
   name <- T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
   pos <- getSourcePos
-  sc
   pure (name, pos)
 
-allCaseId :: Parser (Text, SourcePos)
-allCaseId = do
+-- | Parses an upper or lower case identifier, e.g. `Foo` or `foo`.
+-- Does not parse trailing whitespace.
+allCaseIdL :: Parser (Text, SourcePos)
+allCaseIdL = do
   name <- T.pack <$> many alphaNumChar
   checkReserved name
   pos <- getSourcePos
-  sc
   pure (name, pos)
+
+-------------------------------------------------------------------------------------------
+-- Operators
+-------------------------------------------------------------------------------------------
 
 operatorP :: Parser (Text, SourcePos)
 operatorP = funOperator <|> otherOperator
