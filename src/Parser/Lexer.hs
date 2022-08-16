@@ -42,10 +42,11 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 
+import Parser.Definition
 import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Syntax.CST.Terms qualified as CST
-import Parser.Definition
+
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -85,6 +86,7 @@ docCommentP = do
   endPos <- getSourcePos
   pure (MkDocComment comment, endPos)
 
+-- | The space consumer. Consumes Comments but not doc comments.
 sc :: Parser ()
 sc = L.space space1 commentP empty
 
@@ -92,17 +94,12 @@ sc = L.space space1 commentP empty
 -- Helper functions
 -------------------------------------------------------------------------------------------
 
-lexeme :: Parser a -> Parser (a, SourcePos)
-lexeme p = do
-  res <- p
-  endPos <- getSourcePos
-  sc
-  return (res, endPos)
-
 natP :: Parser (Int, SourcePos)
 natP = do
-  (numStr, pos) <- lexeme (some numberChar)
-  return (read numStr, pos)
+  numStr <- some numberChar
+  endPos <- getSourcePos
+  sc
+  return (read numStr, endPos)
 
 scharP :: Parser Char
 scharP = satisfy isSChar <?> "string character"
@@ -144,31 +141,39 @@ floatP = do
 
 lowerCaseId :: Parser (Text, SourcePos)
 lowerCaseId = do
-  (name, pos) <- lexeme (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
+  name <- T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
+  pos <- getSourcePos
+  sc
   pure (name, pos)
 
 upperCaseId :: Parser (Text, SourcePos)
 upperCaseId = do
-  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
+  name <- T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
+  pos <- getSourcePos
+  sc
   pure (name, pos)
 
 allCaseId :: Parser (Text, SourcePos)
 allCaseId = do
-  (name, pos) <- lexeme $ T.pack <$> many alphaNumChar
+  name <- T.pack <$> many alphaNumChar
   checkReserved name
+  pos <- getSourcePos
+  sc
   pure (name, pos)
 
 operatorP :: Parser (Text, SourcePos)
-operatorP = f <|> g
+operatorP = funOperator <|> otherOperator
   where
     -- We have to treat the function arrow specially, since we want to allow it
     -- as an operator, but it is also a reserved symbol.
-    f = symbolP SymSimpleRightArrow >>= \pos -> pure ("->",pos)
-    g = do
-      (name, pos) <- lexeme $ T.pack <$> many (symbolChar <|> punctuationChar)
+    funOperator = symbolP SymSimpleRightArrow >>= \pos -> pure ("->",pos)
+    otherOperator = do
+      name <- T.pack <$> many (symbolChar <|> punctuationChar)
       checkReservedOp name
+      pos <- getSourcePos
+      sc
       pure (name, pos)
 
 ---

@@ -16,8 +16,10 @@ module Parser.Common
   , evalOrderP
   , monoKindP
   , polyKindP
-  ,methodNameP) where
+  , methodNameP
+  ) where
 
+import Data.Functor ( ($>) )
 import Text.Megaparsec
 
 import Parser.Definition
@@ -25,7 +27,7 @@ import Parser.Lexer
 import Syntax.Common.Names
 import Syntax.CST.Kinds
 import Syntax.Common.Primitives
-import Data.Functor ( ($>) )
+
 
 ---------------------------------------------------------------------------------
 -- Names
