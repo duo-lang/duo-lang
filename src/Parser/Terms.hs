@@ -44,7 +44,6 @@ substitutionIP = do
       (args,_) <- parensP ((fst <$> termOrStarP) `sepBy` (symbolP SymComma >> sc))
       pure args
      pos <- getSourcePos
-     sc
      return (Data.Maybe.fromMaybe [] s,pos)
 
 
@@ -64,6 +63,7 @@ xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
   (subst, _) <- substitutionIP
+  sc
   afterSemi <- optional $ fst <$> do
     symbolP SymDoubleSemi
     sc
@@ -466,6 +466,7 @@ destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
   (substi, endPos) <- substitutionIP
+  sc
   return (xt, substi, endPos)
 
 termTopP :: Parser (CST.Term, SourcePos)
