@@ -104,7 +104,8 @@ natLitP :: CST.NominalStructural -> Parser (CST.Term, SourcePos)
 natLitP ns = do
   startPos <- getSourcePos
   () <- checkTick ns
-  (num, endPos) <- natP <* notFollowedBy (symbolP SymHash >> sc)
+  (num, endPos) <- natP <* notFollowedBy (symbolP SymHash)
+  sc
   return (CST.NatLit (Loc startPos endPos) ns num, endPos)
 
 f64LitP :: Parser (CST.Term, SourcePos)

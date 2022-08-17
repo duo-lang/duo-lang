@@ -105,6 +105,7 @@ tyBinOpP = try (interOp <|> unionOp <|> customOp)
 precedenceP :: Parser Precedence
 precedenceP = do
   (n,_) <- natP
+  sc
   pure (MkPrecedence n)
 
 associativityP :: Parser Associativity

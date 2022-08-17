@@ -98,7 +98,6 @@ natP :: Parser (Int, SourcePos)
 natP = do
   numStr <- some numberChar
   endPos <- getSourcePos
-  sc
   return (read numStr, endPos)
 
 scharP :: Parser Char
