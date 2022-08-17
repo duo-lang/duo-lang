@@ -67,12 +67,14 @@ freeVar :: Parser (CST.Term, SourcePos)
 freeVar = do
   startPos <- getSourcePos
   (v, endPos) <- freeVarNameP
+  sc
   return (CST.Var (Loc startPos endPos) v, endPos)
 
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
+  sc
   (subst, _) <- substitutionIP
   afterSemi <- optional $ fst <$> do
     symbolP SymDoubleSemi
@@ -140,6 +142,7 @@ muAbstraction =  do
   _ <- keywordP KwMu
   sc
   (v, _pos) <- freeVarNameP
+  sc
   symbolP SymDot
   sc
   (cmd, endPos) <- termTopP
@@ -279,6 +282,7 @@ patVariableP :: Parser (CST.Pattern, SourcePos)
 patVariableP = do
   startPos <- getSourcePos
   (fv, endPos) <- freeVarNameP
+  sc
   pure (CST.PatVar (Loc startPos endPos) fv, endPos)
 
 -- | Parses a list of patterns in parentheses, or nothing at all: `(pat_1,...,pat_n)`
@@ -296,6 +300,7 @@ patXtorP :: Parser (CST.Pattern, SourcePos)
 patXtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
+  sc
   (args,endPos) <- patternListP
   pure (CST.PatXtor (Loc startPos endPos) xt args, endPos)
 
@@ -401,7 +406,7 @@ lambdaP = do
   startPos <- getSourcePos
   symbolP SymBackslash
   sc
-  bvars <- some $ fst <$> freeVarNameP
+  bvars <- some $ fst <$> (freeVarNameP <* sc)
   (do
     symbolP SymDoubleRightArrow
     sc
@@ -488,6 +493,7 @@ termMiddleP =  applicationP -- applicationP handles the case of 0-ary applicatio
 destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
+  sc
   (substi, endPos) <- substitutionIP
   return (xt, substi, endPos)
 

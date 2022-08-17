@@ -18,6 +18,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Common
 import Parser.Definition
+import Parser.Kinds
 import Parser.Lexer
 import Syntax.CST.Types
 import Syntax.Common.PrdCns
@@ -39,6 +40,7 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
+  sc
   args <- optional $ do
     (args,_) <- parensP (returnP typP `sepBy` (symbolP SymComma >> sc))
     sc
@@ -79,6 +81,7 @@ nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
+  sc
   (args, endPos') <- nominalTypeArgsP endPos
   pure (TyNominal (Loc startPos endPos') name args, endPos')
 
@@ -108,6 +111,7 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
+  sc
   pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
@@ -116,6 +120,7 @@ recTypeP = do
   _ <- keywordP KwRec
   sc
   (rv,_) <- tvarP
+  sc
   symbolP SymDot
   sc
   (ty, endPos) <- typP
@@ -130,6 +135,7 @@ refinementTypeP Data = do
   startPos <- getSourcePos
   ((tn, ctors), endPos) <- anglesP (do
     (tn,_) <- typeNameP
+    sc
     symbolP SymPipe
     sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
@@ -140,6 +146,7 @@ refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, dtors), endPos) <- bracesP (do
     (tn,_) <- typeNameP
+    sc
     symbolP SymPipe
     sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
@@ -218,6 +225,7 @@ tyOpChainP = do
   let f = do
           startPos <- getSourcePos
           (op, endPos) <- tyBinOpP
+          sc
           (typ,pos) <- typAtomP
           pure ((Loc startPos endPos, op, typ), pos)
   lst <- some f
@@ -243,7 +251,7 @@ typP = do
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> tvarP) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
@@ -252,7 +260,9 @@ typeSchemeP = do
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
   (cname,_) <- classNameP
+  sc
   (tvar, pos) <- tvarP
+  sc
   return (TypeClass cname tvar, pos)
 
 subTypeConstraintP :: Parser (Constraint, SourcePos)

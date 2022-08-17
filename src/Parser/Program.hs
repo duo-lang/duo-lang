@@ -13,6 +13,7 @@ import Text.Megaparsec.Char (eol)
 
 import Parser.Common
 import Parser.Definition
+import Parser.Kinds
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types
@@ -43,6 +44,7 @@ prdCnsDeclarationP doc startPos pc = do
       _ <- (case pc of Prd -> keywordP KwPrd ; Cns -> keywordP KwCns)
       sc
       (v, _pos) <- freeVarNameP
+      sc
       pure (isRec, v)
     annot <- annotP
     symbolP SymColoneq
@@ -67,6 +69,7 @@ cmdDeclarationP doc startPos = do
       _ <- keywordP KwCmd
       sc
       (v, _pos) <- freeVarNameP
+      sc
       symbolP SymColoneq
       sc
       pure v
@@ -101,6 +104,7 @@ importDeclP doc = do
   try (void (keywordP KwImport))
   sc
   (mn, _) <- moduleNameP
+  sc
   symbolP SymSemi
   endPos <- getSourcePos
   sc
@@ -134,6 +138,17 @@ setDeclP doc = do
 -- Type Operator Declaration
 ---------------------------------------------------------------------------------
 
+precedenceP :: Parser Precedence
+precedenceP = do
+  (n,_) <- natP
+  sc
+  pure (MkPrecedence n)
+
+associativityP :: Parser Associativity
+associativityP = leftAssoc <|> rightAssoc
+  where
+    leftAssoc  = keywordP KwLeftAssoc  >> sc >> pure LeftAssoc
+    rightAssoc = keywordP KwRightAssoc >> sc >> pure RightAssoc
 
 -- | Parses a type operator declaration of the form
 --       "type operator -> at 5 := Fun;"
@@ -144,6 +159,7 @@ typeOperatorDeclP doc = do
   sc
   recoverDeclaration $ do
     (sym,_) <- tyOpNameP
+    sc
     assoc <- associativityP
     _ <- keywordP KwAt
     sc
@@ -151,6 +167,7 @@ typeOperatorDeclP doc = do
     symbolP SymColoneq
     sc
     (tyname,_) <- typeNameP
+    sc
     symbolP SymSemi
     endPos <- getSourcePos
     sc
@@ -174,6 +191,7 @@ tySynP doc = do
   sc
   recoverDeclaration $ do
     (tn,_) <- typeNameP
+    sc
     symbolP SymColoneq
     sc
     (ty, _) <- typP
@@ -206,6 +224,7 @@ dataDeclP doc = do
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
+    sc
     knd <- optional (try (symbolP SymColon >> sc) >> polyKindP)
     (xtors, _pos) <- bracesP (xtorDeclP `sepBy` (symbolP SymComma >> sc))
     sc
@@ -234,6 +253,7 @@ xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
+  sc
   args <- optional $ do 
     (args,_) <- parensP (returnP monoKindP `sepBy` (symbolP SymComma >> sc)) <?> "argument list"
     sc
@@ -261,7 +281,7 @@ classDeclarationP doc = do
   try (void (keywordP KwClass))
   sc
   recoverDeclaration $ do
-    className     <- fst <$> classNameP
+    className     <- fst <$> (classNameP <* sc)
     typeVars      <- fst <$> parensP (tParamP `sepBy` (symbolP SymComma >> sc))
     sc
     (xtors, _pos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
@@ -283,7 +303,7 @@ instanceDeclarationP doc = do
   try (void (keywordP KwInstance))
   sc
   recoverDeclaration $ do
-    className  <- fst <$> classNameP
+    className  <- fst <$> (classNameP <* sc)
     typ        <- fst <$> typP
     (cases, _) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
     sc
