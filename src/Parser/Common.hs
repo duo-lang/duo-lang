@@ -52,13 +52,11 @@ moduleNameP = try $ do
 classNameP :: Parser (ClassName, SourcePos)
 classNameP = try $ do
   (name, pos) <- upperCaseIdL
-  sc
   return (MkClassName name, pos)
 
 methodNameP :: Parser (MethodName, SourcePos)
 methodNameP = try $ do
   (name, pos) <- upperCaseIdL
-  sc
   return (MkMethodName name, pos)
 
 ---------------------------------------------------------------------------------

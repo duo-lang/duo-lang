@@ -280,7 +280,7 @@ classDeclarationP doc = do
   try (void (keywordP KwClass))
   sc
   recoverDeclaration $ do
-    className     <- fst <$> classNameP
+    className     <- fst <$> (classNameP <* sc)
     typeVars      <- fst <$> parensP (tParamP `sepBy` (symbolP SymComma >> sc))
     sc
     (xtors, _pos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
@@ -302,7 +302,7 @@ instanceDeclarationP doc = do
   try (void (keywordP KwInstance))
   sc
   recoverDeclaration $ do
-    className  <- fst <$> classNameP
+    className  <- fst <$> (classNameP <* sc)
     typ        <- fst <$> typP
     (cases, _) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
     sc

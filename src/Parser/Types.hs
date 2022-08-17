@@ -259,6 +259,7 @@ typeSchemeP = do
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
   (cname,_) <- classNameP
+  sc
   (tvar, pos) <- tvarP
   sc
   return (TypeClass cname tvar, pos)
