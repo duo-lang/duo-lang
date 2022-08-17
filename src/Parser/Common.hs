@@ -19,7 +19,6 @@ module Parser.Common
   , methodNameP
   ) where
 
-import Data.Functor ( ($>) )
 import Text.Megaparsec
 
 import Parser.Definition
