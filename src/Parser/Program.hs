@@ -134,6 +134,17 @@ setDeclP doc = do
 -- Type Operator Declaration
 ---------------------------------------------------------------------------------
 
+precedenceP :: Parser Precedence
+precedenceP = do
+  (n,_) <- natP
+  sc
+  pure (MkPrecedence n)
+
+associativityP :: Parser Associativity
+associativityP = leftAssoc <|> rightAssoc
+  where
+    leftAssoc  = keywordP KwLeftAssoc  >> sc >> pure LeftAssoc
+    rightAssoc = keywordP KwRightAssoc >> sc >> pure RightAssoc
 
 -- | Parses a type operator declaration of the form
 --       "type operator -> at 5 := Fun;"

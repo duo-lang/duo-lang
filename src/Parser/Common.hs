@@ -9,8 +9,6 @@ module Parser.Common
     -- Type Operators
   , tyOpNameP
   , tyBinOpP
-  , precedenceP
-  , associativityP
   , tParamP
     -- Kinds
   , evalOrderP
@@ -101,17 +99,6 @@ tyBinOpP = try (interOp <|> unionOp <|> customOp)
     customOp = do
       (op, pos) <- tyOpNameP
       pure (CustomOp op, pos)
-
-precedenceP :: Parser Precedence
-precedenceP = do
-  (n,_) <- natP
-  sc
-  pure (MkPrecedence n)
-
-associativityP :: Parser Associativity
-associativityP = (keywordP KwLeftAssoc  >> sc >> pure LeftAssoc) <|>
-                 (keywordP KwRightAssoc >> sc >> pure RightAssoc)
-
 
 ---------------------------------------------------------------------------------
 -- EvaluationOrder and MonoKinds
