@@ -36,15 +36,14 @@ import Syntax.Core.Program as Core
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
-import TypeInference.GenerateConstraints.Definition
-    ( runGenM,InferenceMode(..) )
+import TypeInference.GenerateConstraints.Definition ( runGenM )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
       genConstraintsTermRecursive,
       genConstraintsInstance )
-import TypeInference.SolveConstraints (solveConstraints, KindPolicy (ErrorUnresolved))
-import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
+import TypeInference.SolveConstraints (solveConstraints)
+import Utils ( Loc,AttachLoc(attachLoc) )
 
 import Syntax.RST.Types
 import Sugar.Desugar (desugarProgram)
@@ -86,7 +85,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env (infOptsMode infopts) ErrorUnresolved
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -136,7 +135,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraintsCommand cmddecl_cmd))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env InferNominal ErrorUnresolved
+  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult
@@ -157,7 +156,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraintsInstance decl))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env InferNominal ErrorUnresolved
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
       ppPrintIO constraints
       ppPrintIO solverResult

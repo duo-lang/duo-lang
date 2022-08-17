@@ -165,9 +165,5 @@ dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 dualMonoKind :: MonoKind -> MonoKind
 dualMonoKind mk = mk
 
-dualKind :: Kind -> Kind
-dualKind (Left mk) = Left mk
-dualKind (Right poly) = Right poly
-
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)
 dualTypeScheme pol (TypeScheme _  ts_vars ty) = TypeScheme defaultLoc ts_vars (dualType pol ty)

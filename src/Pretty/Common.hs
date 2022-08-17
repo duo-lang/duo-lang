@@ -145,9 +145,5 @@ instance PrettyAnn PolyKind where
     annSymbol "->" <+>
     prettyAnn returnKind
 
-instance PrettyAnn Kind where 
-  prettyAnn (Left mk) = prettyAnn mk
-  prettyAnn (Right pk) = prettyAnn pk
-
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
 prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k
