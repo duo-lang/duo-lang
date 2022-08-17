@@ -20,6 +20,10 @@ import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)
+import qualified Syntax.CST.Program as CST (Program)
+import qualified Data.Text.IO as T
+import Parser.Definition (runFileParser)
+import Parser.Parser (programP)
 
 import TypeInference.GenerateConstraints.Definition (InferenceMode(..))
 
@@ -64,8 +68,8 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: Map ModuleName FilePath
-  , drvSymbols :: Map ModuleName SymbolTable
+  , drvFiles   :: !(Map ModuleName (FilePath, CST.Program))
+  , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Program
   }
 
@@ -105,6 +109,20 @@ addSymboltable mn st = modify f
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets drvSymbols
 
+
+-- Modules and declarations
+
+getModuleDeclarations :: ModuleName -> DriverM CST.Program
+getModuleDeclarations mn = do
+        moduleMap <- gets drvFiles
+        case M.lookup mn moduleMap of
+          Just (_fp, decls) -> return decls
+          Nothing -> do
+            fp <- findModule mn defaultLoc
+            file <- liftIO $ T.readFile fp
+            decls <- runFileParser fp programP file
+            modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
+            return decls
 
 -- AST Cache
 

@@ -15,14 +15,11 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
 
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
 import Errors
-import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveProgram)
 import Resolution.SymbolTable
@@ -48,6 +45,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints, KindPolicy (ErrorUnresolved))
 import Utils ( Loc, defaultLoc, AttachLoc(attachLoc) )
+
 import Syntax.RST.Types
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
@@ -261,9 +259,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      fp <- findModule mn defaultLoc
-      file <- liftIO $ T.readFile fp
-      decls <- runFileParser fp programP file
+      decls <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- createSymbolTable mn decls
       addSymboltable mn st
