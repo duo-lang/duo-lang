@@ -454,10 +454,14 @@ termBotP = freeVar <|>
 
 -------------------------------------------------------------------------------------------
 -- Middle Parser
+--
+-- Function applications
 -------------------------------------------------------------------------------------------
 
-applicationP :: Parser (CST.Term, SourcePos)
-applicationP = do
+-- m ::= b ... b (n-ary application, left associative)
+--     | b
+termMiddleP :: Parser (CST.Term, SourcePos)
+termMiddleP = do
   startPos <- getSourcePos
   aterms <- some termBotP
   return $ mkApps startPos aterms
@@ -471,12 +475,6 @@ mkApps startPos ((a1,_):(a2,endPos):as) =
     tm = CST.FunApp (Loc startPos endPos) a1 a2
   in
     mkApps startPos ((tm,endPos):as)
-
-
--- m ::= b ... b (n-ary application, left associative)
---     | b
-termMiddleP :: Parser (CST.Term, SourcePos)
-termMiddleP =  applicationP -- applicationP handles the case of 0-ary application
 
 -------------------------------------------------------------------------------------------
 -- Top Parser
