@@ -151,13 +151,6 @@ muAbstraction =  do
 -- Commands
 --------------------------------------------------------------------------------------------
 
-applyCmdP :: Parser (CST.Term, SourcePos)
-applyCmdP =  do
-  symbolP SymCommand
-  sc
-  (cns, endPos) <- termTopP
-  pure (cns,endPos)
-
 exitSuccessCmdP :: Parser (CST.Term, SourcePos)
 exitSuccessCmdP = do
   startPos <- getSourcePos
@@ -464,20 +457,21 @@ termMiddleP :: Parser (CST.Term, SourcePos)
 termMiddleP = do
   startPos <- getSourcePos
   aterms <- some termBotP
-  return $ mkApps startPos aterms
-
-
-mkApps :: SourcePos -> [(CST.Term, SourcePos)] -> (CST.Term, SourcePos)
-mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
-mkApps _startPos [x] = x
-mkApps startPos ((a1,_):(a2,endPos):as) =
-  let
-    tm = CST.FunApp (Loc startPos endPos) a1 a2
-  in
-    mkApps startPos ((tm,endPos):as)
+  pure (mkApps startPos aterms)
+  where
+    mkApps :: SourcePos -> [(CST.Term, SourcePos)] -> (CST.Term, SourcePos)
+    mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
+    mkApps _startPos [x] = x
+    mkApps startPos ((a1,_):(a2,endPos):as) =
+      let
+        tm = CST.FunApp (Loc startPos endPos) a1 a2
+      in
+        mkApps startPos ((tm,endPos):as)
 
 -------------------------------------------------------------------------------------------
 -- Top Parser
+--
+-- Destructor chains.
 -------------------------------------------------------------------------------------------
 
 -- | Parses "D(t,..*.,t)"
@@ -487,28 +481,21 @@ destructorP = do
   (substi, endPos) <- substitutionIP
   return (xt, substi, endPos)
 
-destructorChainP :: Parser [(XtorName, [CST.TermOrStar], SourcePos)]
-destructorChainP = many (symbolP SymDot >> destructorP)
-
-dtorP :: Parser (CST.Term, SourcePos)
-dtorP =  do
-  startPos <- getSourcePos
-  (destructee, endPos) <- termMiddleP
-  destructorChain <- destructorChainP
-  let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
-  return (res, endPos)
-
 termTopP :: Parser (CST.Term, SourcePos)
 termTopP =  do
+  -- Parse a termMiddleP
   startPos <- getSourcePos
-  d <- dtorP
-  m <- optional applyCmdP
+  (destructee, endPos) <- termMiddleP
+  -- Parse a list of ".D(...)" applications
+  destructorChain <- many (symbolP SymDot >> destructorP)
+  let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
+  let d = (res, endPos)
+  -- Optionally parse the rest of a command, i.e. " >> t"
+  m <- optional (symbolP SymCommand >> sc >> termTopP)
   endPos <- getSourcePos
   return $ case m of
     Nothing -> d
     Just x -> (CST.Apply (Loc startPos endPos) (fst d) (fst x), endPos)
-
-
 
 -------------------------------------------------------------------------------------------
 -- Exported Parsers
