@@ -181,13 +181,11 @@ operatorP = funOperator <|> otherOperator
     funOperator = do
       symbolP SymSimpleRightArrow
       pos <- getSourcePos
-      sc
       pure ("->",pos)
     otherOperator = do
       name <- T.pack <$> many (symbolChar <|> punctuationChar)
       checkReservedOp name
       pos <- getSourcePos
-      sc
       pure (name, pos)
 
 ---

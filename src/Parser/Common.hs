@@ -83,6 +83,7 @@ methodNameP = try $ do
 tyOpNameP :: Parser (TyOpName, SourcePos)
 tyOpNameP = try $ do
   (name, pos) <- operatorP
+  sc
   return (MkTyOpName name, pos)
 
 tyBinOpP :: Parser (BinOp, SourcePos)
