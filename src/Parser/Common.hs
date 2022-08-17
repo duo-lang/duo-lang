@@ -47,7 +47,6 @@ typeNameP = try $ do
 moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
   (name, pos) <- upperCaseIdL
-  sc
   return (MkModuleName name, pos)
 
 classNameP :: Parser (ClassName, SourcePos)

@@ -104,6 +104,7 @@ importDeclP doc = do
   try (void (keywordP KwImport))
   sc
   (mn, _) <- moduleNameP
+  sc
   symbolP SymSemi
   endPos <- getSourcePos
   sc
