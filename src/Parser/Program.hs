@@ -13,6 +13,7 @@ import Text.Megaparsec.Char (eol)
 
 import Parser.Common
 import Parser.Definition
+import Parser.Kinds
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types

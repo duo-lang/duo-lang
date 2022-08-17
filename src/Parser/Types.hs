@@ -18,6 +18,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Common
 import Parser.Definition
+import Parser.Kinds
 import Parser.Lexer
 import Syntax.CST.Types
 import Syntax.Common.PrdCns
