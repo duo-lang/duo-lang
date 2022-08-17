@@ -66,7 +66,6 @@ methodNameP = try $ do
 tyOpNameP :: Parser (TyOpName, SourcePos)
 tyOpNameP = try $ do
   (name, pos) <- operatorP
-  sc
   return (MkTyOpName name, pos)
 
 tyBinOpP :: Parser (BinOp, SourcePos)
@@ -75,12 +74,10 @@ tyBinOpP = try (interOp <|> unionOp <|> customOp)
     interOp  = do
       symbolP SymIntersection
       pos <- getSourcePos
-      sc
       pure (InterOp, pos)
     unionOp  = do
       symbolP SymUnion
       pos <- getSourcePos
-      sc
       pure (UnionOp, pos)
     customOp = do
       (op, pos) <- tyOpNameP

@@ -225,6 +225,7 @@ tyOpChainP = do
   let f = do
           startPos <- getSourcePos
           (op, endPos) <- tyBinOpP
+          sc
           (typ,pos) <- typAtomP
           pure ((Loc startPos endPos, op, typ), pos)
   lst <- some f

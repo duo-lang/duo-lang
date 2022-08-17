@@ -159,6 +159,7 @@ typeOperatorDeclP doc = do
   sc
   recoverDeclaration $ do
     (sym,_) <- tyOpNameP
+    sc
     assoc <- associativityP
     _ <- keywordP KwAt
     sc
