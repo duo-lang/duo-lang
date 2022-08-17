@@ -26,7 +26,6 @@ import Syntax.Common.Names
 freeVarNameP :: Parser (FreeVarName, SourcePos)
 freeVarNameP = try $ do
   (name, pos) <- lowerCaseIdL
-  sc
   return (MkFreeVarName name, pos)
 
 tvarP :: Parser (SkolemTVar, SourcePos)

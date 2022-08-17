@@ -44,6 +44,7 @@ prdCnsDeclarationP doc startPos pc = do
       _ <- (case pc of Prd -> keywordP KwPrd ; Cns -> keywordP KwCns)
       sc
       (v, _pos) <- freeVarNameP
+      sc
       pure (isRec, v)
     annot <- annotP
     symbolP SymColoneq
@@ -68,6 +69,7 @@ cmdDeclarationP doc startPos = do
       _ <- keywordP KwCmd
       sc
       (v, _pos) <- freeVarNameP
+      sc
       symbolP SymColoneq
       sc
       pure v
