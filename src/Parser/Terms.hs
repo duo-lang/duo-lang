@@ -53,9 +53,9 @@ substitutionIP :: Parser ([CST.TermOrStar], SourcePos)
 substitutionIP = do
      s <- optional $ do
       (args,_) <- parensP ((fst <$> termOrStarP) `sepBy` (symbolP SymComma >> sc))
-      sc
       pure args
      pos <- getSourcePos
+     sc
      return (Data.Maybe.fromMaybe [] s,pos)
 
 
@@ -74,7 +74,6 @@ xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
-  sc
   (subst, _) <- substitutionIP
   afterSemi <- optional $ fst <$> do
     symbolP SymDoubleSemi
@@ -142,7 +141,6 @@ muAbstraction =  do
   _ <- keywordP KwMu
   sc
   (v, _pos) <- freeVarNameP
-  sc
   symbolP SymDot
   sc
   (cmd, endPos) <- termTopP
@@ -178,7 +176,6 @@ printCmdP :: Parser (CST.Term, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwPrint
-  sc
   (arg,_) <- parensP (fst <$> termTopP)
   sc
   symbolP SymSemi
@@ -190,7 +187,6 @@ readCmdP :: Parser (CST.Term, SourcePos)
 readCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwRead
-  sc
   (arg,endPos) <- bracketsP (fst <$> termTopP)
   sc
   return (CST.PrimCmdTerm $ CST.Read (Loc startPos endPos) arg, endPos)
@@ -199,7 +195,6 @@ primitiveCmdP :: Parser (CST.Term, SourcePos)
 primitiveCmdP = do
   startPos <- getSourcePos
   (pt, op, _) <- asum (uncurry primOpKeywordP <$> keys primOps)
-  sc
   (subst, endPos) <- substitutionP
   pure (CST.PrimCmdTerm $ CST.PrimOp (Loc startPos endPos) pt op subst, endPos)
 
@@ -290,7 +285,6 @@ patternListP :: Parser ([CST.Pattern], SourcePos)
 patternListP = do
   s <- optional $ do
     (args,_) <- parensP ((fst <$> patternP) `sepBy` (symbolP SymComma >> sc))
-    sc
     pure args
   endPos <- getSourcePos
   return (Data.Maybe.fromMaybe [] s, endPos)
@@ -300,8 +294,8 @@ patXtorP :: Parser (CST.Pattern, SourcePos)
 patXtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
-  sc
   (args,endPos) <- patternListP
+  sc
   pure (CST.PatXtor (Loc startPos endPos) xt args, endPos)
 
 
@@ -405,7 +399,6 @@ lambdaP :: Parser (CST.Term, SourcePos)
 lambdaP = do
   startPos <- getSourcePos
   symbolP SymBackslash
-  sc
   bvars <- some $ fst <$> (freeVarNameP <* sc)
   (do
     symbolP SymDoubleRightArrow
@@ -493,12 +486,11 @@ termMiddleP =  applicationP -- applicationP handles the case of 0-ary applicatio
 destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
-  sc
   (substi, endPos) <- substitutionIP
   return (xt, substi, endPos)
 
 destructorChainP :: Parser [(XtorName, [CST.TermOrStar], SourcePos)]
-destructorChainP = many (symbolP SymDot >> sc >> destructorP) -- Remove space consumer!
+destructorChainP = many (symbolP SymDot >> destructorP)
 
 dtorP :: Parser (CST.Term, SourcePos)
 dtorP =  do
