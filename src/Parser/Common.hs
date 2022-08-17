@@ -18,7 +18,6 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.Common.Names
 
-
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------
@@ -66,6 +65,7 @@ methodNameP = try $ do
 tyOpNameP :: Parser (TyOpName, SourcePos)
 tyOpNameP = try $ do
   (name, pos) <- operatorP
+  sc
   return (MkTyOpName name, pos)
 
 tyBinOpP :: Parser (BinOp, SourcePos)
@@ -82,4 +82,3 @@ tyBinOpP = try (interOp <|> unionOp <|> customOp)
     customOp = do
       (op, pos) <- tyOpNameP
       pure (CustomOp op, pos)
-
