@@ -196,6 +196,7 @@ primitiveCmdP :: Parser (CST.Term, SourcePos)
 primitiveCmdP = do
   startPos <- getSourcePos
   (pt, op, _) <- asum (uncurry primOpKeywordP <$> keys primOps)
+  sc
   (subst, endPos) <- substitutionP
   pure (CST.PrimCmdTerm $ CST.PrimOp (Loc startPos endPos) pt op subst, endPos)
 

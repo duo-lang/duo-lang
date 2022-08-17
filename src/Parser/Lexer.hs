@@ -377,7 +377,6 @@ primOpKeywordP :: PrimitiveType -> PrimitiveOp -> Parser (PrimitiveType, Primiti
 primOpKeywordP pt op = do
   _ <- string (T.pack (primOpKeyword op ++ primTypeKeyword pt))
   endPos <- getSourcePos
-  sc
   pure (pt, op, endPos)
 
 -------------------------------------------------------------------------------------------
