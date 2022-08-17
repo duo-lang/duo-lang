@@ -429,7 +429,7 @@ termMiddleP :: Parser (CST.Term, SourcePos)
 termMiddleP = do
   startPos <- getSourcePos
   term <- termBotP
-  aterms <- many (try (sc >> termBotP))
+  aterms <- many (try (scne >> termBotP))
   pure (mkApps startPos (term:aterms))
   where
     mkApps :: SourcePos -> [(CST.Term, SourcePos)] -> (CST.Term, SourcePos)
