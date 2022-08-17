@@ -126,7 +126,7 @@ muAbstraction =  do
   (v, _pos) <- freeVarNameP
   symbolP SymDot
   sc
-  (cmd, endPos) <- term2P
+  (cmd, endPos) <- term3P
   pure (CST.MuAbs (Loc startPos endPos) v cmd, endPos)
 
 
@@ -154,7 +154,7 @@ printCmdP = do
   sc
   symbolP SymSemi
   sc
-  (cmd, endPos) <- term2P
+  (cmd, endPos) <- term3P
   return (CST.PrimCmdTerm $ CST.Print (Loc startPos endPos) arg cmd, endPos)
 
 readCmdP :: Parser (CST.Term, SourcePos)
@@ -193,31 +193,33 @@ primitiveCmdP = do
 --      | (e)                              Parenthesized expression
 --      | \x => e                          Lambda abstraction         (Syntax sugar)
 --      | e >> e                           Command / Cut
---      | C(e,...,e) ; e                   Semicolon sugar
+--      | C(e,...,e) ;; e                   Semicolon sugar
 --
 -- cse ::= pat => e
 -- v   ::= x | *
 
 -- This ambiguous grammar can be disambiguated into the following set of grammars,
--- with abbreviations t2, t1, t0
+-- with abbreviations t3, t2, t1, t0
 
 -- t0  ::= x
 --      | primcmd 
 --      | n
---      | C(t2,...,t2)[{t2}] [ ; t2]
+--      | C(t3,...,t3)[{t3}] [ ;; t3]
 --      | case { cse,...,cse }    
 --      | case t { cse,...,cse }    
 --      | cocase { cse,...,cse }    
 --      | cocase t { cse,...,cse }    
---      | (t2)
---      | \x => t2
+--      | (t3)
+--      | \x => t3
 --
 -- t1 ::= t0 ... t0 (n-ary application, left associative, n >= 1)
 --      | t0
 --
--- t2 ::= t1.D(t2,...,t2). ... .D(t2,...,t2) [ >> t1] (n-ary destructor application, n >= 1, also commands)
+-- t2 ::= t1.D(t3,...,t3). ... .D(t3,...,t3) (n-ary destructor application, n >= 1)
 --      | t1
 -- 
+-- t3 ::= t2 >> t2
+--      | t2
 
 
 -------------------------------------------------------------------------------------------
@@ -351,7 +353,7 @@ termCaseP =  do
   (pat,_) <- patternP
   symbolP SymDoubleRightArrow
   sc
-  (t, endPos) <- term2P
+  (t, endPos) <- term3P
   let pmcase = CST.MkTermCase { tmcase_loc  = Loc startPos endPos
                               , tmcase_pat = pat
                               , tmcase_term  = t }
@@ -385,17 +387,17 @@ lambdaP = do
 termParensP :: Parser (CST.Term, SourcePos)
 termParensP = do
   startPos <- getSourcePos
-  (tm,endPos) <- parensP (fst <$> term2P)
+  (tm,endPos) <- parensP (fst <$> term3P)
   return (CST.TermParens (Loc startPos endPos) tm, endPos)
 
 
 -- b  ::= x
 --      | n
---      | C(t,...,t)
+--      | C(t3,...,t3)
 --      | match t with {...}
 --      | comatch {...}
---      | (t)
---      | \x => t
+--      | (t3)
+--      | \x => t3
 term0P :: Parser (CST.Term, SourcePos)
 term0P = freeVar <|>
   stringLitP <|>
@@ -447,7 +449,7 @@ term1P = do
 -- Destructor chains.
 -------------------------------------------------------------------------------------------
 
--- | Parses "D(t2,..*.,t2)"
+-- | Parses "D(t3,..*.,t3)"
 destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
@@ -463,19 +465,30 @@ term2P =  do
   -- Parse a list of ".D(...)" applications
   destructorChain <- many (symbolP SymDot >> destructorP)
   let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
-  let d = (res, endPos)
   sc
-  -- Optionally parse the rest of a command, i.e. " >> t"
+  pure (res, endPos)
+
+-------------------------------------------------------------------------------------------
+-- Level 3 Parser
+--
+-- Commands
+-------------------------------------------------------------------------------------------
+
+term3P :: Parser(CST.Term, SourcePos)
+term3P = do
+  startPos <- getSourcePos
+  d@(prd,_) <- term2P
+  -- Optionally parse the rest of a command, i.e. " >> t2"
   m <- optional (symbolP SymCommand >> sc >> term2P)
   endPos <- getSourcePos
   return $ case m of
     Nothing -> d
-    Just x -> (CST.Apply (Loc startPos endPos) (fst d) (fst x), endPos)
+    Just (cns, _) -> (CST.Apply (Loc startPos endPos) prd cns, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Exported Parsers
 -------------------------------------------------------------------------------------------
 
 termP :: Parser (CST.Term, SourcePos)
-termP = term2P
+termP = term3P
 
