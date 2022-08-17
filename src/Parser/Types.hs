@@ -109,6 +109,7 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
+  sc
   pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
@@ -117,6 +118,7 @@ recTypeP = do
   _ <- keywordP KwRec
   sc
   (rv,_) <- tvarP
+  sc
   symbolP SymDot
   sc
   (ty, endPos) <- typP
@@ -244,7 +246,7 @@ typP = do
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> tvarP) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
@@ -254,6 +256,7 @@ typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
   (cname,_) <- classNameP
   (tvar, pos) <- tvarP
+  sc
   return (TypeClass cname tvar, pos)
 
 subTypeConstraintP :: Parser (Constraint, SourcePos)

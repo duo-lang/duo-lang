@@ -62,6 +62,7 @@ tParamP :: Parser (Variance, SkolemTVar, MonoKind)
 tParamP = do
   v <- varianceP
   (tvar,_) <- tvarP
+  sc
   symbolP SymColon
   sc
   kind <- monoKindP

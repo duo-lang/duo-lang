@@ -31,7 +31,6 @@ freeVarNameP = try $ do
 tvarP :: Parser (SkolemTVar, SourcePos)
 tvarP = try $ do
   (name, pos) <- lowerCaseIdL
-  sc
   return (MkSkolemTVar name, pos)
 
 
