@@ -26,17 +26,6 @@ import Utils
 -- Substitutions and implicit substitutions
 --------------------------------------------------------------------------------------------
 
--- | Parse a substitution,
--- E.g.: "(t1,t2,t3)"
-substitutionP :: Parser ([CST.Term], SourcePos)
-substitutionP = do
-     s <- optional $ do
-      (s,_) <- parensP ( (fst <$> termTopP) `sepBy` (symbolP SymComma >> sc))
-      sc
-      pure s
-     pos <- getSourcePos
-     return (Data.Maybe.fromMaybe [] s,pos)
-
 termOrStarP :: Parser (CST.TermOrStar, SourcePos)
 termOrStarP = starP <|> nonStarP
   where
@@ -188,11 +177,9 @@ primitiveCmdP :: Parser (CST.Term, SourcePos)
 primitiveCmdP = do
   startPos <- getSourcePos
   (pt, op, _) <- asum (uncurry primOpKeywordP <$> keys primOps)
-  (subst, endPos) <- substitutionP
+  (subst,endPos) <- parensP ( (fst <$> termTopP) `sepBy` (symbolP SymComma >> sc))
+  sc
   pure (CST.PrimCmdTerm $ CST.PrimOp (Loc startPos endPos) pt op subst, endPos)
-
-
-
 
 -------------------------------------------------------------------------------------------
 -- BNF Grammar
