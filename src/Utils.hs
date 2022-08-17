@@ -13,7 +13,7 @@ import Text.Megaparsec.Pos
 -- Source code locations
 ----------------------------------------------------------------------------------
 
-data Loc = Loc SourcePos SourcePos
+data Loc = Loc !SourcePos !SourcePos
   deriving (Eq, Ord)
 
 instance Show Loc where
