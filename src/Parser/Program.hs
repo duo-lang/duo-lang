@@ -248,6 +248,7 @@ xtorDeclarationP doc = do
   startPos <- getSourcePos
   dc <- ctorDtorP
   (xt, _) <- xtorNameP
+  sc
   args <- optional $ do 
     (args,_) <- parensP (returnP monoKindP `sepBy` (symbolP SymComma >> sc)) <?> "argument list"
     sc

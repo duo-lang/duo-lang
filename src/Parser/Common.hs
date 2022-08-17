@@ -37,7 +37,6 @@ tvarP = try $ do
 xtorNameP :: Parser (XtorName, SourcePos)
 xtorNameP = try $ do
   (name, pos) <- upperCaseIdL
-  sc
   return (MkXtorName name, pos)
 
 typeNameP :: Parser (TypeName, SourcePos)

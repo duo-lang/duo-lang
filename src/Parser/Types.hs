@@ -40,6 +40,7 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
+  sc
   args <- optional $ do
     (args,_) <- parensP (returnP typP `sepBy` (symbolP SymComma >> sc))
     sc

@@ -74,6 +74,7 @@ xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
+  sc
   (subst, _) <- substitutionIP
   afterSemi <- optional $ fst <$> do
     symbolP SymDoubleSemi
@@ -299,6 +300,7 @@ patXtorP :: Parser (CST.Pattern, SourcePos)
 patXtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
+  sc
   (args,endPos) <- patternListP
   pure (CST.PatXtor (Loc startPos endPos) xt args, endPos)
 
@@ -491,6 +493,7 @@ termMiddleP =  applicationP -- applicationP handles the case of 0-ary applicatio
 destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
+  sc
   (substi, endPos) <- substitutionIP
   return (xt, substi, endPos)
 
