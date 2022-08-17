@@ -81,6 +81,7 @@ nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
+  sc
   (args, endPos') <- nominalTypeArgsP endPos
   pure (TyNominal (Loc startPos endPos') name args, endPos')
 
@@ -134,6 +135,7 @@ refinementTypeP Data = do
   startPos <- getSourcePos
   ((tn, ctors), endPos) <- anglesP (do
     (tn,_) <- typeNameP
+    sc
     symbolP SymPipe
     sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
@@ -144,6 +146,7 @@ refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, dtors), endPos) <- bracesP (do
     (tn,_) <- typeNameP
+    sc
     symbolP SymPipe
     sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)

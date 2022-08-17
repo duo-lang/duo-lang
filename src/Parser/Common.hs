@@ -42,7 +42,6 @@ xtorNameP = try $ do
 typeNameP :: Parser (TypeName, SourcePos)
 typeNameP = try $ do
   (name, pos) <- upperCaseIdL
-  sc
   return (MkTypeName name, pos)
 
 moduleNameP :: Parser (ModuleName, SourcePos)

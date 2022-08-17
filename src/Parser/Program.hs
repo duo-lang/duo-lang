@@ -165,6 +165,7 @@ typeOperatorDeclP doc = do
     symbolP SymColoneq
     sc
     (tyname,_) <- typeNameP
+    sc
     symbolP SymSemi
     endPos <- getSourcePos
     sc
@@ -188,6 +189,7 @@ tySynP doc = do
   sc
   recoverDeclaration $ do
     (tn,_) <- typeNameP
+    sc
     symbolP SymColoneq
     sc
     (ty, _) <- typP
@@ -220,6 +222,7 @@ dataDeclP doc = do
   (refined, dataCodata) <- dataCodataPrefixP
   recoverDeclaration $ do
     (tn, _pos) <- typeNameP
+    sc
     knd <- optional (try (symbolP SymColon >> sc) >> polyKindP)
     (xtors, _pos) <- bracesP (xtorDeclP `sepBy` (symbolP SymComma >> sc))
     sc
