@@ -111,7 +111,6 @@ charP = do
   ch <- scharP
   symbolP SymSingleQuote
   pos <- getSourcePos
-  sc
   pure (ch, pos)
 
 stringP :: Parser (String, SourcePos)
@@ -119,7 +118,6 @@ stringP = do
   symbolP SymDoubleQuote
   s <- manyTill scharP (symbolP SymDoubleQuote)
   pos <- getSourcePos
-  sc
   return (s, pos)
 
 uintP :: Parser (Integer, SourcePos)

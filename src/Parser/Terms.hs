@@ -92,12 +92,14 @@ charLitP :: Parser (CST.Term, SourcePos)
 charLitP = do
   startPos <- getSourcePos
   (c, endPos) <- charP
+  sc
   return (CST.PrimLitChar (Loc startPos endPos) c, endPos)
 
 stringLitP :: Parser (CST.Term, SourcePos)
 stringLitP = do
   startPos <- getSourcePos
   (c, endPos) <- stringP
+  sc
   return (CST.PrimLitString (Loc startPos endPos) c, endPos)
 
 natLitP :: CST.NominalStructural -> Parser (CST.Term, SourcePos)
