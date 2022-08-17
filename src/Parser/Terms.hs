@@ -116,6 +116,7 @@ f64LitP = do
   (double, endPos) <- try $ do
     (double,_) <- floatP
     endPos <- keywordP KwF64
+    sc
     pure (double, endPos)
   pure (CST.PrimLitF64 (Loc startPos endPos) double, endPos)
 
@@ -125,6 +126,7 @@ i64LitP = do
   (int, endPos) <- try $ do
     (int,_) <- intP
     endPos <- keywordP KwI64
+    sc
     pure (int, endPos)
   pure (CST.PrimLitI64 (Loc startPos endPos) int, endPos)
 
@@ -136,6 +138,7 @@ muAbstraction :: Parser (CST.Term, SourcePos)
 muAbstraction =  do
   startPos <- getSourcePos
   _ <- keywordP KwMu
+  sc
   (v, _pos) <- freeVarNameP
   symbolP SymDot
   sc
@@ -158,18 +161,21 @@ exitSuccessCmdP :: Parser (CST.Term, SourcePos)
 exitSuccessCmdP = do
   startPos <- getSourcePos
   endPos <- keywordP KwExitSuccess
+  sc
   return (CST.PrimCmdTerm $ CST.ExitSuccess (Loc startPos endPos), endPos)
 
 exitFailureCmdP :: Parser (CST.Term, SourcePos)
 exitFailureCmdP = do
   startPos <- getSourcePos
   endPos <- keywordP KwExitFailure
+  sc
   return (CST.PrimCmdTerm $ CST.ExitFailure (Loc startPos endPos), endPos)
 
 printCmdP :: Parser (CST.Term, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwPrint
+  sc
   (arg,_) <- parensP (fst <$> termTopP)
   sc
   symbolP SymSemi
@@ -181,6 +187,7 @@ readCmdP :: Parser (CST.Term, SourcePos)
 readCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwRead
+  sc
   (arg,endPos) <- bracketsP (fst <$> termTopP)
   sc
   return (CST.PrimCmdTerm $ CST.Read (Loc startPos endPos) arg, endPos)
@@ -313,6 +320,7 @@ caseP :: Parser (CST.Term, SourcePos)
 caseP = do
   startPos <- getSourcePos
   _ <- keywordP KwCase
+  sc
   caseRestP startPos <|> caseOfRestP startPos
 
 -- | Parses the second half of a "case" construct, i.e.
@@ -333,6 +341,7 @@ caseOfRestP :: SourcePos -- ^ The source position of the start of the "case" key
 caseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
+  sc
   (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
   sc
   return (CST.CaseOf (Loc startPos endPos) arg cases, endPos)
@@ -344,6 +353,7 @@ cocaseP :: Parser (CST.Term, SourcePos)
 cocaseP = do
   startPos <- getSourcePos
   _ <- keywordP KwCocase
+  sc
   cocaseRestP startPos <|> cocaseOfRestP startPos
 
 -- | Parses the second half of a "cocase" construct, i.e.
@@ -364,6 +374,7 @@ cocaseOfRestP :: SourcePos -- ^ The source position of the start of the "cocase"
 cocaseOfRestP startPos =  do
   (arg, _pos) <- termTopP
   _ <- keywordP KwOf
+  sc
   (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
   sc
   return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)

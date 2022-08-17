@@ -359,9 +359,7 @@ declKeywords = filter isDeclarationKw keywords
 keywordP :: Keyword -> Parser SourcePos
 keywordP kw = do
   _ <- string (T.pack (show kw)) <* notFollowedBy alphaNumChar
-  endPos <- getSourcePos
-  sc
-  return endPos
+  getSourcePos
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do

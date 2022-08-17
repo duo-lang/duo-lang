@@ -110,8 +110,8 @@ precedenceP = do
   pure (MkPrecedence n)
 
 associativityP :: Parser Associativity
-associativityP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|>
-                 (keywordP KwRightAssoc >> pure RightAssoc)
+associativityP = (keywordP KwLeftAssoc  >> sc >> pure LeftAssoc) <|>
+                 (keywordP KwRightAssoc >> sc >> pure RightAssoc)
 
 
 ---------------------------------------------------------------------------------
@@ -119,15 +119,16 @@ associativityP = (keywordP KwLeftAssoc >> pure LeftAssoc) <|>
 ---------------------------------------------------------------------------------
 
 evalOrderP :: Parser EvaluationOrder
-evalOrderP = (keywordP KwCBV $> CBV) <|> (keywordP KwCBN $> CBN)
+evalOrderP = (keywordP KwCBV >> sc >> pure CBV) <|> 
+             (keywordP KwCBN >> sc >> pure CBN)
 
 -- | Parses one of the keywords "CBV" or "CBN"
 monoKindP :: Parser MonoKind
 monoKindP = CBox <$> evalOrderP
-         <|> CRep I64 <$ keywordP KwI64Rep
-         <|> CRep F64 <$ keywordP KwF64Rep
-         <|> CRep PChar <$ keywordP KwCharRep
-         <|> CRep PString <$ keywordP KwStringRep
+         <|> CRep I64 <$ (keywordP KwI64Rep >> sc)
+         <|> CRep F64 <$ (keywordP KwF64Rep >> sc)
+         <|> CRep PChar <$ (keywordP KwCharRep >> sc)
+         <|> CRep PString <$ (keywordP KwStringRep >> sc)
 
 ---------------------------------------------------------------------------------
 -- PolyKinds

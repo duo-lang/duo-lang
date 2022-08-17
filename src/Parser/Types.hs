@@ -29,7 +29,7 @@ import Utils ( Loc(..) )
 ---------------------------------------------------------------------------------
 returnP :: Parser a -> Parser (PrdCns,a)
 returnP p = do
-  r <- optional (keywordP KwReturn)
+  r <- optional (keywordP KwReturn >> sc)
   b <- p
   return $ case r of
     Just _ -> (Cns,b)
@@ -114,6 +114,7 @@ recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
   startPos <- getSourcePos
   _ <- keywordP KwRec
+  sc
   (rv,_) <- tvarP
   symbolP SymDot
   sc
@@ -154,6 +155,7 @@ primTypeP :: Keyword -> (Loc -> Typ) -> Parser (Typ, SourcePos)
 primTypeP kw constr = do
   startPos <- getSourcePos
   endPos <- keywordP kw
+  sc
   pure (constr (Loc startPos endPos), endPos)
 
 tyI64P :: Parser (Typ, SourcePos)
@@ -183,12 +185,14 @@ tyTopP :: Parser (Typ, SourcePos)
 tyTopP = do
   startPos <- getSourcePos
   endPos <- keywordP KwTop
+  sc
   pure (TyTop (Loc startPos endPos), endPos)
 
 tyBotP :: Parser (Typ, SourcePos)
 tyBotP = do
   startPos <- getSourcePos
   endPos <- keywordP KwBot
+  sc
   pure (TyBot (Loc startPos endPos), endPos)
 
 -- | Parse atomic types (i,e, without tyop chains)
@@ -239,7 +243,7 @@ typP = do
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> tvarP) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP

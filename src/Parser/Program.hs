@@ -31,7 +31,7 @@ recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilK
 ---------------------------------------------------------------------------------
 
 isRecP :: Parser IsRec
-isRecP = option NonRecursive (try (keywordP KwRec) >> pure Recursive)
+isRecP = option NonRecursive (try (keywordP KwRec >> sc) >> pure Recursive)
 
 annotP :: Parser (Maybe TypeScheme)
 annotP = optional (try (notFollowedBy (symbolP SymColoneq >> sc) *> (symbolP SymColon >> sc)) >> typeSchemeP)
@@ -41,6 +41,7 @@ prdCnsDeclarationP doc startPos pc = do
     (isRec, v) <- try $ do
       isRec <- isRecP
       _ <- (case pc of Prd -> keywordP KwPrd ; Cns -> keywordP KwCns)
+      sc
       (v, _pos) <- freeVarNameP
       pure (isRec, v)
     annot <- annotP
@@ -64,6 +65,7 @@ cmdDeclarationP :: Maybe DocComment -> SourcePos -> Parser Declaration
 cmdDeclarationP doc startPos = do
     v <- try $ do
       _ <- keywordP KwCmd
+      sc
       (v, _pos) <- freeVarNameP
       symbolP SymColoneq
       sc
@@ -83,6 +85,7 @@ defDeclarationP :: Maybe DocComment -> Parser Declaration
 defDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwDef))
+  sc
   recoverDeclaration $
     cmdDeclarationP doc startPos <|>
     prdCnsDeclarationP doc startPos Prd <|>
@@ -96,6 +99,7 @@ importDeclP :: Maybe DocComment -> Parser Declaration
 importDeclP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwImport))
+  sc
   (mn, _) <- moduleNameP
   symbolP SymSemi
   endPos <- getSourcePos
@@ -114,6 +118,7 @@ setDeclP :: Maybe DocComment -> Parser Declaration
 setDeclP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwSet))
+  sc
   (txt,_) <- allCaseIdL
   sc
   symbolP SymSemi
@@ -135,11 +140,13 @@ setDeclP doc = do
 typeOperatorDeclP :: Maybe DocComment -> Parser Declaration
 typeOperatorDeclP doc = do
   startPos <- getSourcePos
-  try (void (keywordP KwType *> keywordP KwOperator))
+  try (void (keywordP KwType >> sc >> keywordP KwOperator))
+  sc
   recoverDeclaration $ do
     (sym,_) <- tyOpNameP
     assoc <- associativityP
     _ <- keywordP KwAt
+    sc
     prec <- precedenceP
     symbolP SymColoneq
     sc
@@ -164,6 +171,7 @@ tySynP :: Maybe DocComment -> Parser Declaration
 tySynP doc = do
   startPos <- getSourcePos
   _ <- keywordP KwType
+  sc
   recoverDeclaration $ do
     (tn,_) <- typeNameP
     symbolP SymColoneq
@@ -185,8 +193,9 @@ tySynP doc = do
 
 dataCodataPrefixP :: Parser (IsRefined,DataCodata)
 dataCodataPrefixP = do
-  refined <- optional (keywordP KwRefinement)
+  refined <- optional (keywordP KwRefinement >> sc)
   dataCodata <- (keywordP KwData >> return Data) <|> (keywordP KwCodata >> return Codata)
+  sc
   case refined of
     Nothing -> pure (NotRefined, dataCodata)
     Just _ -> pure (Refined, dataCodata)
@@ -218,7 +227,7 @@ dataDeclP doc = do
 
 -- | Parses either "constructor" or "destructor"
 ctorDtorP :: Parser DataCodata
-ctorDtorP = (keywordP KwConstructor >> pure Data) <|> (keywordP KwDestructor >> pure Codata)
+ctorDtorP = (keywordP KwConstructor >> sc >> pure Data) <|> (keywordP KwDestructor >> sc >> pure Codata)
 
 xtorDeclarationP :: Maybe DocComment -> Parser Declaration
 xtorDeclarationP doc = do
@@ -250,6 +259,7 @@ classDeclarationP :: Maybe DocComment -> Parser Declaration
 classDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwClass))
+  sc
   recoverDeclaration $ do
     className     <- fst <$> classNameP
     typeVars      <- fst <$> parensP (tParamP `sepBy` (symbolP SymComma >> sc))
@@ -271,6 +281,7 @@ instanceDeclarationP :: Maybe DocComment -> Parser Declaration
 instanceDeclarationP doc = do
   startPos <- getSourcePos
   try (void (keywordP KwInstance))
+  sc
   recoverDeclaration $ do
     className  <- fst <$> classNameP
     typ        <- fst <$> typP
