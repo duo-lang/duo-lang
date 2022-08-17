@@ -55,7 +55,8 @@ checkArgs cmd _ _ = throwEvalError defaultLoc [ "Error during evaluation of:"
                                               ]
 
 natType :: Typ 'Pos
-natType = TyNominal defaultLoc PosRep (Just (Left (CBox CBV))) peanoNm []
+
+natType = TyNominal defaultLoc PosRep (CBox CBV) peanoNm []
 
 convertInt :: Int -> Term Prd
 convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") []

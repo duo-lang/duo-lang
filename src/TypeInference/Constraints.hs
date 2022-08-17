@@ -39,7 +39,7 @@ data ConstraintInfo
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
-  KindEq :: a -> Kind -> Kind -> Constraint a
+  KindEq :: a -> MonoKind -> MonoKind -> Constraint a
   TypeClassPos :: a -> ClassName -> Typ Pos -> Constraint a
   TypeClassNeg :: a -> ClassName -> Typ Neg -> Constraint a
     deriving (Eq, Ord, Functor)
@@ -77,5 +77,5 @@ emptyVarState = VariableState [] [] []
 
 data SolverResult = MkSolverResult
   { tvarSolution :: Map UniTVar VariableState
-  , kvarSolution :: Map KVar Kind
+  , kvarSolution :: Map KVar MonoKind
     }

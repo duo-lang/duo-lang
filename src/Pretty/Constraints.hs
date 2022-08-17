@@ -160,7 +160,7 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyA
                                                     ]
                                              ]
 
-prettyKindSubst :: (KVar, Kind) -> Doc Annotation
+prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
 prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
 
 

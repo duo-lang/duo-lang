@@ -5,10 +5,11 @@ import Data.Set qualified as S
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Kind ( Type )
+import Data.Maybe
 
 import Syntax.Common.PrdCns
     ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
-import Syntax.CST.Kinds ( MonoKind(..), Variance(..),Kind,KVar )
+import Syntax.CST.Kinds ( MonoKind(..), Variance(..),KVar )
 import Syntax.Common.Polarity
     ( FlipPol, Polarity(..), PolarityRep(..) )
 import Syntax.Common.Names
@@ -86,9 +87,9 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar :: Loc -> PolarityRep pol -> Maybe Kind -> SkolemTVar -> Typ pol
-  TyUniVar :: Loc -> PolarityRep pol -> Maybe Kind -> UniTVar -> Typ pol
-  TyRecVar :: Loc -> PolarityRep pol -> Maybe Kind -> RecTVar -> Typ pol
+  TySkolemVar :: Loc -> PolarityRep pol -> MonoKind -> SkolemTVar -> Typ pol
+  TyUniVar :: Loc -> PolarityRep pol -> MonoKind -> UniTVar -> Typ pol
+  TyRecVar :: Loc -> PolarityRep pol -> MonoKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
@@ -96,14 +97,14 @@ data Typ (pol :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: Loc -> PolarityRep pol -> Maybe Kind -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal :: Loc -> PolarityRep pol -> MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
   TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
-  TyBot :: Loc -> Maybe Kind -> Typ Pos
-  TyTop :: Loc -> Maybe Kind -> Typ Neg
-  TyUnion :: Loc -> Maybe Kind -> Typ Pos -> Typ Pos -> Typ Pos
-  TyInter :: Loc -> Maybe Kind -> Typ Neg -> Typ Neg -> Typ Neg
+  TyBot :: Loc -> MonoKind -> Typ Pos
+  TyTop :: Loc -> MonoKind -> Typ Neg
+  TyUnion :: Loc -> MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter :: Loc -> MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
   TyRec :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
@@ -118,12 +119,13 @@ deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
-mkUnion :: Loc -> Maybe Kind -> [Typ Pos] -> Typ Pos
+
+mkUnion :: Loc -> MonoKind -> [Typ Pos] -> Typ Pos
 mkUnion loc knd []     = TyBot loc knd
 mkUnion _   _   [t]    = t
 mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
 
-mkInter :: Loc -> Maybe Kind -> [Typ Neg] -> Typ Neg
+mkInter :: Loc -> MonoKind -> [Typ Neg] -> Typ Neg
 mkInter loc knd []     = TyTop loc knd
 mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
@@ -227,7 +229,7 @@ data VarType
   | RecVT
 
 type family BisubstMap (vt :: VarType) :: Type where
-  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar Kind)
+  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar MonoKind)
   BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
   BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
 
@@ -314,15 +316,10 @@ instance Zonk (LinearContext pol) where
 instance Zonk (PrdCnsType pol) where
   zonk vt bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk vt bisubst ty)
 
-zonkKind :: Bisubstitution UniVT -> Maybe Kind -> Maybe Kind
-zonkKind _ Nothing = Nothing
-zonkKind _ (Just (Left (CBox cc))) = Just (Left (CBox cc))
-zonkKind _ (Just (Left (CRep prim))) =  Just (Left (CRep prim))
-zonkKind bisubst (Just (Left kind@(KiVar kv))) = case M.lookup kv (snd (bisubst_map bisubst)) of
-    Nothing -> Just (Left kind)
-    Just kind' -> Just kind'
-zonkKind _ (Just (Right poly)) = Just (Right poly)
-
+zonkKind :: Bisubstitution UniVT -> MonoKind -> MonoKind
+zonkKind _ (CBox cc) = CBox cc
+zonkKind _ (CRep prim) =  CRep prim
+zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol

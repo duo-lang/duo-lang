@@ -24,6 +24,7 @@ import Utils
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
+import Syntax.CST.Kinds
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -116,8 +117,8 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Nominal xt subst) = do
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc PosRep Nothing (RST.data_name decl) args) CST.Nominal xt substInferred)
-    CnsRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc NegRep Nothing (RST.data_name decl) args) CST.Nominal xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc PosRep (CBox CBV) (RST.data_name decl) args) CST.Nominal xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TyNominal defaultLoc NegRep (CBox CBV) (RST.data_name decl) args) CST.Nominal xt substInferred)
 --
 -- Refinement Xtors
 --
@@ -180,8 +181,8 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, MkXtorSig xt negTypes'))
   case rep of
-    PrdRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc PosRep Nothing (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc NegRep Nothing (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc PosRep (CBox CBV) (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TyNominal defaultLoc NegRep (CBox CBV) (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
 --
 -- Refinement pattern and copattern matches
 --
@@ -255,7 +256,7 @@ genConstraintsCommand (Core.Print loc prd cmd) = do
   return (TST.Print loc prd' cmd')
 genConstraintsCommand (Core.Read loc cns) = do
   cns' <- genConstraintsTerm cns
-  addConstraint (SubType (ReadConstraint loc)  (TyNominal defaultLoc PosRep Nothing peanoNm []) (TST.getTypeTerm cns'))
+  addConstraint (SubType (ReadConstraint loc)  (TyNominal defaultLoc PosRep (CBox CBV) peanoNm []) (TST.getTypeTerm cns'))
   return (TST.Read loc cns')
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1

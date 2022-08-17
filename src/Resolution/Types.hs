@@ -35,14 +35,16 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyUniVar loc v) =
-    pure $ RST.TyUniVar loc rep Nothing v
+resolveTyp rep (TyUniVar loc v) = do
+    kv <- freshKVar
+    pure $ RST.TyUniVar loc rep (KindVar kv) v
 resolveTyp rep (TySkolemVar loc v) = do
     recVars <- asks rr_recVars
+    kv <- freshKVar
     let vr = skolemToRecRVar v
     if vr `S.member` recVars
-      then pure $ RST.TyRecVar loc rep Nothing vr
-      else pure $ RST.TySkolemVar loc rep Nothing v
+      then pure $ RST.TyRecVar loc rep (KindVar kv) vr
+      else pure $ RST.TySkolemVar loc rep (KindVar kv) v
 
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
@@ -74,7 +76,7 @@ resolveTyp rep (TyNominal loc name args) = do
             throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
         NominalResult name' _ CST.NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
-            pure $ RST.TyNominal loc rep Nothing name' args'
+            pure $ RST.TyNominal loc rep (CBox (returnKind polykind)) name' args'
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
@@ -83,9 +85,9 @@ resolveTyp rep (TyRec loc v typ) = do
 resolveTyp PosRep (TyTop loc) =
     throwError (ErrResolution (TopInPosPolarity loc) :| [])
 resolveTyp NegRep (TyTop loc) =
-    pure $ RST.TyTop loc Nothing
+    pure $ RST.TyTop loc anyKind
 resolveTyp PosRep (TyBot loc) =
-    pure $ RST.TyBot loc Nothing
+    pure $ RST.TyBot loc anyKind
 resolveTyp NegRep (TyBot loc) =
     throwError (ErrResolution (BotInNegPolarity loc) :| [])
 resolveTyp rep (TyBinOpChain fst rest) =
@@ -147,13 +149,15 @@ desugaring :: Loc -> PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> Resolver
 desugaring loc PosRep UnionDesugaring tl tr = do
     tl <- resolveTyp PosRep tl
     tr <- resolveTyp PosRep tr
-    pure $ RST.TyUnion loc Nothing tl tr
+    kv <- freshKVar
+    pure $ RST.TyUnion loc (KindVar kv) tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
     throwError (ErrResolution (UnionInNegPolarity loc) :| [])
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
-    pure $ RST.TyInter loc Nothing tl tr
+    kv <- freshKVar
+    pure $ RST.TyInter loc (KindVar kv) tl tr
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do

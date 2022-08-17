@@ -13,18 +13,25 @@ import Syntax.Common.Names
 import Syntax.Common.Polarity
 import TypeInference.Constraints
 import Utils
+import Syntax.CST.Kinds (MonoKind(..),KVar(..))
 
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
 
-data CoalesceState  = CoalesceState  { s_var_counter :: Int, s_recursive :: Map (UniTVar, Polarity) RecTVar }
+data CoalesceState  = CoalesceState  { s_var_counter :: Int, s_recursive :: Map (UniTVar, Polarity) RecTVar} --, k_var_counter :: Int }
 data CoalesceReader = CoalesceReader { r_result :: SolverResult, r_inProcess :: Set (UniTVar, Polarity) }
 
 type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 
 runCoalesceM :: SolverResult ->  CoalesceM a -> a
-runCoalesceM res m = evalState (runReaderT m (CoalesceReader res S.empty)) (CoalesceState 0 M.empty)
+runCoalesceM res m = evalState (runReaderT m (CoalesceReader res S.empty)) (CoalesceState 0 M.empty)-- 0)
+
+--freshKVar :: CoalesceM KVar
+--freshKVar = do 
+--  i <- gets k_var_counter
+--  modify (\s -> s { k_var_counter = i+1})
+--  return (MkKVar (T.pack $ "kk" ++ show i))
 
 freshRecVar :: CoalesceM RecTVar
 freshRecVar = do
@@ -65,8 +72,9 @@ coalesce :: SolverResult -> Bisubstitution UniVT
 coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs, M.empty)
     where
         res = M.keys tvarSolution
-        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep Nothing tvar
-                    y <- coalesceType $ TyUniVar defaultLoc NegRep Nothing tvar
+        -- TODO: replace CBV/CBN with actual kind
+        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep (KindVar (MkKVar (T.pack "kStartPos"))) tvar
+                    y <- coalesceType $ TyUniVar defaultLoc NegRep (KindVar (MkKVar (T.pack "kStartNeg"))) tvar
                     return (x, y)
 
         xs = zip res $ runCoalesceM result $ mapM f res
@@ -74,12 +82,12 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (TySkolemVar loc rep mono tv) =  return (TySkolemVar loc rep mono tv)
 coalesceType (TyRecVar loc rep mono tv) = return (TyRecVar loc rep mono tv)
-coalesceType (TyUniVar _ PosRep _ tv) = do
+coalesceType (TyUniVar _ PosRep mono tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
         then do
             recVar <- getOrElseUpdateRecVar (tv, Pos)
-            return (TyRecVar defaultLoc PosRep Nothing recVar)
+            return (TyRecVar defaultLoc PosRep mono recVar)
         else do
             VariableState { vst_lowerbounds } <- getVariableState tv
             let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
@@ -88,14 +96,14 @@ coalesceType (TyUniVar _ PosRep _ tv) = do
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> do
                     newName <- freshSkolemVar
-                    return $                                            mkUnion defaultLoc Nothing (TySkolemVar defaultLoc PosRep Nothing newName : lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc Nothing (TyRecVar defaultLoc PosRep Nothing recVar  : lbs'))
-coalesceType (TyUniVar _ NegRep _ tv) = do
+                    return $                                            mkUnion defaultLoc mono (TySkolemVar defaultLoc PosRep mono newName : lbs')
+                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mono (TyRecVar defaultLoc PosRep mono recVar  : lbs'))
+coalesceType (TyUniVar _ NegRep mono tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
         then do
             recVar <- getOrElseUpdateRecVar (tv, Neg)
-            return (TyRecVar defaultLoc NegRep Nothing recVar)
+            return (TyRecVar defaultLoc NegRep mono recVar)
         else do
             VariableState { vst_upperbounds } <- getVariableState tv
             let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
@@ -104,8 +112,8 @@ coalesceType (TyUniVar _ NegRep _ tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
                     newName <- freshSkolemVar
-                    return $                                            mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing newName : ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyRecVar defaultLoc NegRep Nothing recVar  : ubs'))
+                    return $                                            mkInter defaultLoc mono (TySkolemVar defaultLoc NegRep mono newName : ubs')
+                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mono (TyRecVar defaultLoc NegRep mono recVar  : ubs'))
 coalesceType (TyData loc rep xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData loc rep xtors')

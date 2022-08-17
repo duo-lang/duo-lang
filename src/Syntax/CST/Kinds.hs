@@ -43,8 +43,12 @@ newtype KVar = MkKVar { unKVar :: Text }
 data MonoKind
   = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
   | CRep PrimitiveType    -- ^ Primitive type representation
-  | KiVar KVar 
+  | KindVar KVar 
   deriving (Show, Eq, Ord)
+
+-- | A kind Variable used for top and bottom kinds, as they can have any kind
+anyKind::MonoKind
+anyKind = KindVar (MkKVar (Data.Text.pack "TopBotKind"))
 
 ------------------------------------------------------------------------------
 -- Kinds
@@ -59,15 +63,10 @@ deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
 deriving instance (Ord PolyKind)
 
-type Kind = Either MonoKind PolyKind
-
-freeKindVars :: Kind -> Maybe KVar
-freeKindVars (Right _) = Nothing
-freeKindVars (Left mk) =
-  case mk of 
-    CBox _ -> Nothing
-    CRep _ -> Nothing
-    KiVar kv -> Just kv 
+freeKindVars :: MonoKind -> Maybe KVar
+freeKindVars (CBox _) = Nothing
+freeKindVars (CRep _) = Nothing
+freeKindVars (KindVar v) = Just v
 
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars MkPolyKind{ kindArgs } =

@@ -62,11 +62,10 @@ autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  --  , ts_vars = [] --tvars startState
                   , ts_vars = tvars startState
                   , ts_monotype = monotype
                   }
-
+  
 visitNode :: Node -> AutToTypeState -> AutToTypeState
 visitNode i aut@AutToTypeState { graph, cache } =
   aut { graph = delEdges [(i,n) | n <- suc graph i, i `elem` dfs [n] graph] graph
@@ -79,8 +78,9 @@ checkCache i = do
 
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
+  gr <- asks graph
   tvMap <- asks tvMap
-  return (TySkolemVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TySkolemVar defaultLoc rep (getNodeKind i gr) <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -98,30 +98,33 @@ computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
     argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
     args = argFun <$> enumerate labelArity
 
-
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes argNodes rep = do
   forM argNodes $ \ns -> do
+    gr <- asks graph 
     case ns of
       (Prd, ns) -> do
+         let kind = compareKinds (map (`getNodeKind` gr) ns)
          typs <- forM ns (nodeToType rep)
          pure $ PrdCnsType PrdRep $ case rep of
-                                       PosRep -> mkUnion defaultLoc Nothing typs
-                                       NegRep -> mkInter defaultLoc Nothing typs
+                                       PosRep -> mkUnion defaultLoc kind typs
+                                       NegRep -> mkInter defaultLoc kind typs
       (Cns, ns) -> do
+         let kind = compareKinds (map (`getNodeKind` gr) ns)
          typs <- forM ns (nodeToType (flipPolarityRep rep))
          pure $ PrdCnsType CnsRep $ case rep of
-                                       PosRep -> mkInter defaultLoc Nothing typs
-                                       NegRep -> mkUnion defaultLoc Nothing typs
+                                       PosRep -> mkInter defaultLoc kind typs
+                                       NegRep -> mkUnion defaultLoc kind typs
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
+  gr <- asks graph
   if inCache
-    then pure (TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i))))
+    then pure (TyRecVar defaultLoc rep (getNodeKind i gr) (MkRecTVar ("r" <> T.pack (show i))))
     else nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
@@ -136,7 +139,7 @@ nodeToTypeNoCache rep i  = do
           toPrimType rep PChar = TyChar defaultLoc rep
           toPrimType rep PString = TyString defaultLoc rep
       pure (toPrimType rep tp)
-    MkNodeLabel _ datSet codatSet tns refDat refCodat -> do
+    MkNodeLabel _ datSet codatSet _ tns refDat refCodat -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList refDat -- Unique data ref types
@@ -190,12 +193,12 @@ nodeToTypeNoCache rep i  = do
               let f (node, Covariant) = CovariantType <$> nodeToType rep node
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
               args <- sequence (f <$> argNodes)
-              pure $ TyNominal defaultLoc rep Nothing tn args
+              pure $ TyNominal defaultLoc rep (getNodeKind i gr) tn args
     
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
-          PosRep -> mkUnion defaultLoc Nothing typs
-          NegRep -> mkInter defaultLoc Nothing typs
+          PosRep -> mkUnion defaultLoc (getNodeKind i gr) typs
+          NegRep -> mkInter defaultLoc (getNodeKind i gr) typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr

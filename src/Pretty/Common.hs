@@ -22,8 +22,7 @@ import Syntax.Common.Names
       XtorName(MkXtorName) )
 import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
 import Syntax.Common.Primitives ( PrimitiveType(..) )
-import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..),Kind )
+import Syntax.CST.Kinds  ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..))
 import Utils ( Loc(..) )
 
 
@@ -129,7 +128,7 @@ instance PrettyAnn MonoKind where
   prettyAnn (CRep F64) = "F64Rep"
   prettyAnn (CRep PChar) = "CharRep"
   prettyAnn (CRep PString) = "StringRep"
-  prettyAnn (KiVar kv) = prettyAnn kv
+  prettyAnn (KindVar kv) = prettyAnn kv
 
 instance PrettyAnn KVar where
   prettyAnn (MkKVar kv) = prettyAnn kv
