@@ -41,7 +41,7 @@ data SolverState = SolverState
 
 createInitState :: ConstraintSet -> InferenceMode -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) im =
-  SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
+  SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (KiVar (MkKVar "TODO"))) | uv <- uvs]
               , sst_cache = S.empty
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               , sst_inferMode = im
