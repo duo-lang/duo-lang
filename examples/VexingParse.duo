@@ -1,0 +1,22 @@
+-- Regression test. See issue #387 and issue #217.
+--
+-- The problem has to do with the expression
+--   "add 1 xs.Length(*)"
+-- which gets parsed as
+--   "(add 1 xs).Length(*)"
+-- instead of
+--   "add 1 (xs.Length(*))"
+
+import Peano;
+
+codata List2 : (+a : CBV) -> CBN {
+    Nth(Nat, return a),
+    Length(return Nat)
+};
+
+def prd cons2 : forall a. a -> List2(a) -> List2(a) :=
+  \x xs => cocase {
+    Nth(n,*) => case n of { Z => x, S(m) => xs.Nth(m,*)},
+    Length(*) => add 1 xs.Length(*)
+ 
+  };
