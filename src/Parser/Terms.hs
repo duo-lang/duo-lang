@@ -176,31 +176,11 @@ primitiveCmdP = do
 -------------------------------------------------------------------------------------------
 --
 -- Square brackets [] are part of the grammar syntax and denote optional parts of a production
-
--- primcmd ::=  Exit | ExitFailure | Print(t) | Read(t) | Prim(..)
-
--- e  ::= 
---      | primcmd
---      | e e                              Application                (Syntax Sugar)
---      | e.D(e,...,e)                     Dtor
---      | n                                Natural number literal     (Syntax Sugar)
---      | x                                Variable
---      | C(e,...,e)                       Ctor
---      | case { cse,...,cse }    
---      | case e { cse,...,cse }    
---      | cocase { cse,...,cse }    
---      | cocase e { cse,...,cse }    
---      | (e)                              Parenthesized expression
---      | \x => e                          Lambda abstraction         (Syntax sugar)
---      | e >> e                           Command / Cut
---      | C(e,...,e) ;; e                   Semicolon sugar
 --
+-- primcmd ::=  Exit | ExitFailure | Print(t) | Read(t) | Prim(..)
 -- cse ::= pat => e
 -- v   ::= x | *
-
--- This ambiguous grammar can be disambiguated into the following set of grammars,
--- with abbreviations t3, t2, t1, t0
-
+--
 -- t0  ::= x
 --      | primcmd 
 --      | n
@@ -220,8 +200,8 @@ primitiveCmdP = do
 -- 
 -- t3 ::= t2 >> t2
 --      | t2
-
-
+--
+--
 -------------------------------------------------------------------------------------------
 -- Pattern Parser
 -------------------------------------------------------------------------------------------
@@ -399,7 +379,9 @@ termParensP = do
 --      | (t3)
 --      | \x => t3
 term0P :: Parser (CST.Term, SourcePos)
-term0P = freeVar <|>
+term0P =
+  termParensP <|>
+  freeVar <|>
   stringLitP <|>
   charLitP <|>
   i64LitP <|>
@@ -411,40 +393,14 @@ term0P = freeVar <|>
   caseP <|>
   cocaseP <|>
   muAbstraction  <|>
-  termParensP <|>
   lambdaP <|>
   readCmdP <|>
   printCmdP <|>
   exitFailureCmdP <|>
   exitSuccessCmdP
 
-
 -------------------------------------------------------------------------------------------
 -- Level 1 Parser
---
--- Function applications
--------------------------------------------------------------------------------------------
-
--- t1 ::= t0 ... t0 (n-ary application, left associative)
---      | t0
-term1P :: Parser (CST.Term, SourcePos)
-term1P = do
-  startPos <- getSourcePos
-  term <- term0P
-  aterms <- many (try (scne >> term0P))
-  pure (mkApps startPos (term:aterms))
-  where
-    mkApps :: SourcePos -> [(CST.Term, SourcePos)] -> (CST.Term, SourcePos)
-    mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
-    mkApps _startPos [x] = x
-    mkApps startPos ((a1,_):(a2,endPos):as) =
-      let
-        tm = CST.FunApp (Loc startPos endPos) a1 a2
-      in
-        mkApps startPos ((tm,endPos):as)
-
--------------------------------------------------------------------------------------------
--- Level 2 Parser
 --
 -- Destructor chains.
 -------------------------------------------------------------------------------------------
@@ -457,16 +413,42 @@ destructorP = do
   sc
   return (xt, substi, endPos)
 
-term2P :: Parser (CST.Term, SourcePos)
-term2P =  do
+term1P :: Parser (CST.Term, SourcePos)
+term1P =  do
   -- Parse a termMiddleP
   startPos <- getSourcePos
-  (destructee, endPos) <- term1P
+  (destructee, endPos) <- term0P
   -- Parse a list of ".D(...)" applications
   destructorChain <- many (symbolP SymDot >> destructorP)
   let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
   sc
   pure (res, endPos)
+
+-------------------------------------------------------------------------------------------
+-- Level 2 Parser
+--
+-- Function applications
+-------------------------------------------------------------------------------------------
+
+-- t2 ::= t1 ... t1 (n-ary application, left associative)
+--      | t1
+term2P :: Parser (CST.Term, SourcePos)
+term2P = do
+  startPos <- getSourcePos
+  term <- term1P
+  aterms <- many (try (scne >> term1P))
+  pure (mkApps startPos (term:aterms))
+  where
+    mkApps :: SourcePos -> [(CST.Term, SourcePos)] -> (CST.Term, SourcePos)
+    mkApps _startPos []  = error "Impossible! The `some` parser in applicationP parses at least one element."
+    mkApps _startPos [x] = x
+    mkApps startPos ((a1,_):(a2,endPos):as) =
+      let
+        tm = CST.FunApp (Loc startPos endPos) a1 a2
+      in
+        mkApps startPos ((tm,endPos):as)
+
+
 
 -------------------------------------------------------------------------------------------
 -- Level 3 Parser
