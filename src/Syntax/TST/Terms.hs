@@ -24,6 +24,7 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
+import Syntax.TST.Types
 import Syntax.Common.PrdCns
     ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
 import Syntax.Common.Names
@@ -36,11 +37,6 @@ import Syntax.CST.Kinds ( MonoKind )
 import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
-import Syntax.RST.Types
-    ( LinearContext,
-      PrdCnsType(PrdCnsType),
-      Typ(TyString, TyI64, TyF64, TyChar),
-      Zonk(..) )
 import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------

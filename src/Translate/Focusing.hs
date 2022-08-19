@@ -14,9 +14,10 @@ import Data.Text qualified as T
 import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
+import Syntax.TST.Types
 import Utils
 import Syntax.CST.Terms qualified as CST
-import Syntax.RST.Types (Typ(..))
+-- import Syntax.RST.Types (Typ(..))
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
 import Syntax.Common.Names

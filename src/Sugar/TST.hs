@@ -29,7 +29,7 @@ import Syntax.Core.Annot
 import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
 import Utils
-import Syntax.RST.Types
+import Syntax.TST.Types
 import Syntax.CST.Terms qualified as CST
 
 -- CaseOfCmd:
