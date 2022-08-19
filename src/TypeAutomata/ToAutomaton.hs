@@ -195,10 +195,10 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> TTA Node
-insertXtors dc pol mtn xtors = do
+insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> MonoKind -> TTA Node
+insertXtors dc pol mtn xtors mk = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc (CBox CBV) mtn  (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol dc mk mtn  (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -256,10 +256,11 @@ insertType (TyRec _ rep rv ty) = do
   insertNode newNode (emptyNodeLabel pol (CBox CBV)) -- (getNodeKind n gr))
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
-insertType (TyCodata _ polrep xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
-insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
-insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
+-- for now, only default values CBV and CBN are used, later these types will all have type annotations
+insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors (CBox CBV)
+insertType (TyCodata _ polrep xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors (CBox CBN)
+insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors (CBox CBV)
+insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors (CBox CBN)
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
