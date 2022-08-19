@@ -13,7 +13,7 @@ import Syntax.Common.Names
 import Syntax.Common.Polarity
 import TypeInference.Constraints
 import Utils
-import Syntax.CST.Kinds (MonoKind(..),KVar(..))
+import qualified Data.Maybe as M
 
 ---------------------------------------------------------------------------------
 -- Coalescing
@@ -72,12 +72,13 @@ coalesce :: SolverResult -> Bisubstitution UniVT
 coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs, M.empty)
     where
         res = M.keys tvarSolution
-        -- TODO: replace CBV/CBN with actual kind
-        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep (KindVar (MkKVar (T.pack "kStartPos"))) tvar
-                    y <- coalesceType $ TyUniVar defaultLoc NegRep (KindVar (MkKVar (T.pack "kStartNeg"))) tvar
+        kinds = map (\x -> vst_kind (M.fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res
+        f (tvar,mk) = do
+                    x <- coalesceType $ TyUniVar defaultLoc PosRep mk tvar
+                    y <- coalesceType $ TyUniVar defaultLoc NegRep mk tvar
                     return (x, y)
 
-        xs = zip res $ runCoalesceM result $ mapM f res
+        xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (TySkolemVar loc rep mono tv) =  return (TySkolemVar loc rep mono tv)
