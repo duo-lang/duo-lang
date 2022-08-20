@@ -258,10 +258,10 @@ runCompilationModule mn = do
 runCompilationPlan :: CompilationOrder -> DriverM ()
 runCompilationPlan compilationOrder = do
   forM_ compilationOrder compileModule
-  --  errs <- concat <$> mapM (gets . flip getModuleErrors) compilationOrder
+  --  errs <- concat <$> mapM (gets . flip getModuleErrorsTrans) compilationOrder
   errs <- case reverse compilationOrder of
             [] -> return []
-            (m:_) -> gets $ flip getModuleErrors m
+            (m:_) -> gets $ flip getModuleErrorsTrans m
   case errs of
     [] -> return ()
     (e:es) -> throwError (e :| es)

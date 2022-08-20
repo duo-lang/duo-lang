@@ -101,7 +101,10 @@ execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) stat
 -- Error list
 
 getModuleErrors :: DriverState -> ModuleName -> [Error]
-getModuleErrors ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (mn:mns)
+getModuleErrors ds mn = fromMaybe [] $ M.lookup mn $ drvErrs ds
+
+getModuleErrorsTrans :: DriverState -> ModuleName -> [Error]
+getModuleErrorsTrans ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (mn:mns)
   where
   mns :: [ModuleName]
   mns = getDependencies ds mn
