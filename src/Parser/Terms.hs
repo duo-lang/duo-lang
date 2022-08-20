@@ -410,7 +410,6 @@ destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
   (substi, endPos) <- substitutionIP
-  sc
   return (xt, substi, endPos)
 
 term1P :: Parser (CST.Term, SourcePos)
@@ -421,7 +420,6 @@ term1P =  do
   -- Parse a list of ".D(...)" applications
   destructorChain <- many (symbolP SymDot >> destructorP)
   let (res,_) = foldl (\(tm,sp) (xtor,toss,pos) -> (CST.Dtor (Loc sp pos) xtor tm toss,pos)) (destructee,startPos) destructorChain
-  sc
   pure (res, endPos)
 
 -------------------------------------------------------------------------------------------
@@ -437,6 +435,7 @@ term2P = do
   startPos <- getSourcePos
   term <- term1P
   aterms <- many (try (scne >> term1P))
+  sc
   pure (mkApps startPos (term:aterms))
   where
     mkApps :: SourcePos -> [(CST.Term, SourcePos)] -> (CST.Term, SourcePos)
