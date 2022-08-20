@@ -47,6 +47,7 @@ import Utils ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
+import Data.Maybe (catMaybes)
 
 
 checkAnnot :: PolarityRep pol
@@ -237,7 +238,10 @@ inferDecl mn (Core.InstanceDecl decl) = do
   pure (TST.InstanceDecl decl')
 
 inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
-inferProgram mn decls = sequence $ inferDecl mn <$> decls
+inferProgram mn decls = catMaybes <$> mapM inferDecl' decls
+  where
+    inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
+    inferDecl' d = catchError (Just <$> inferDecl mn d) (addErrorsNonEmpty mn Nothing)
 
 ---------------------------------------------------------------------------------
 -- Infer programs
@@ -255,7 +259,7 @@ runCompilationPlan :: CompilationOrder -> DriverM ()
 runCompilationPlan compilationOrder = do
   forM_ compilationOrder compileModule
   --  errs <- concat <$> mapM (gets . flip getModuleErrors) compilationOrder
-  errs <- case reverse compilationOrder of 
+  errs <- case reverse compilationOrder of
             [] -> return []
             (m:_) -> gets $ flip getModuleErrors m
   case errs of
@@ -268,7 +272,7 @@ runCompilationPlan compilationOrder = do
       -- 1. Find the corresponding file and parse its contents.
       --  decls <- getModuleDeclarations mn
       decls <- catchError (getModuleDeclarations mn)
-                          (\(err :| errs) -> addErrors mn (err:errs) >> return [])
+                          (addErrorsNonEmpty mn [])
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- getSymbolTable mn decls
       addSymboltable mn st

@@ -4,7 +4,7 @@ import Control.Monad.Except
 import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( doesFileExist )
@@ -111,6 +111,9 @@ getErrors ds = concat $ M.elems $ drvErrs ds
 
 addErrors :: ModuleName -> [Error] -> DriverM ()
 addErrors mn errs = modify (\ds -> ds { drvErrs = mapAppend mn errs $ drvErrs ds } )
+
+addErrorsNonEmpty :: ModuleName -> a -> NonEmpty Error -> DriverM a
+addErrorsNonEmpty mn a (e :| es) = addErrors mn (e : es) >> return a
 
 -- Symbol tables
 
