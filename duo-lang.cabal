@@ -139,7 +139,7 @@ library
       Sugar.TST
       Syntax.TST.Program
       Syntax.TST.Terms
-	  Syntax.TST.Types
+      Syntax.TST.Types
       Syntax.Common.Names
       Syntax.Common.Polarity
       Syntax.Common.Primitives
