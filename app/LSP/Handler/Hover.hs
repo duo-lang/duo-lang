@@ -33,6 +33,8 @@ import Syntax.RST.Types
 import Syntax.RST.Program qualified as RST
 import Utils (Loc)
 import Syntax.CST.Program qualified as CST
+import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_loc))
+import Syntax.CST.Program (ImportDeclaration(imprtdecl_loc))
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -445,34 +447,42 @@ instance ToHoverMap TST.CommandDeclaration where
     toHoverMap cmddecl_cmd
 
 instance ToHoverMap RST.DataDecl where
-  toHoverMap RST.NominalDecl { data_loc, data_polarity } =
-    let
+  toHoverMap RST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
+    where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-    in
-      mkHoverMap data_loc msg
-  toHoverMap RST.RefinementDecl { data_loc, data_polarity } =
-    let
+  toHoverMap RST.RefinementDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
+    where
       msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-    in
-      mkHoverMap data_loc msg
-
+      
 instance ToHoverMap RST.StructuralXtorDeclaration where
-  toHoverMap _ = M.empty
+  toHoverMap RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_xdata } = mkHoverMap strxtordecl_loc msg
+    where
+      msg = T.unlines [ "#### Structural " <> case strxtordecl_xdata of { Data -> "constructor"; Codata -> "destructor"} <> " declaration"]
 
 instance ToHoverMap CST.ImportDeclaration where
-  toHoverMap _ = M.empty
+  toHoverMap CST.MkImportDeclaration { imprtdecl_loc } = mkHoverMap imprtdecl_loc msg
+    where
+      msg = T.unlines [ "#### Module import"]
 
 instance ToHoverMap CST.SetDeclaration where
-  toHoverMap _ = M.empty
+  toHoverMap CST.MkSetDeclaration { setdecl_loc } = mkHoverMap setdecl_loc msg
+    where
+      msg = T.unlines [ "#### Set option"]
 
 instance ToHoverMap RST.TyOpDeclaration where
-  toHoverMap _ = M.empty
+  toHoverMap RST.MkTyOpDeclaration { tyopdecl_loc } = mkHoverMap tyopdecl_loc msg
+    where
+      msg = T.unlines [ "#### Binary type operator"]
 
 instance ToHoverMap RST.TySynDeclaration where
-  toHoverMap _ = M.empty
+  toHoverMap RST.MkTySynDeclaration { tysyndecl_loc } = mkHoverMap tysyndecl_loc msg
+    where
+      msg = T.unlines [ "#### Type synonym"]
 
 instance ToHoverMap RST.ClassDeclaration where
-  toHoverMap _ = M.empty
+  toHoverMap RST.MkClassDeclaration { classdecl_loc } = mkHoverMap classdecl_loc msg
+    where
+      msg = T.unlines [ "#### Type class"]
 
 instance ToHoverMap TST.InstanceDeclaration where
   toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
