@@ -271,37 +271,37 @@ embedTSTDecl (TST.InstanceDecl decl) =
     Core.InstanceDecl (embedTSTInstanceDeclaration decl)
 
 
-embedPrdCnsType :: TST.PrdCnsType pol -> RST.PrdCnsType pol
-embedPrdCnsType (TST.PrdCnsType pc tp) = RST.PrdCnsType pc (embedType tp)
+embedTSTPrdCnsType :: TST.PrdCnsType pol -> RST.PrdCnsType pol
+embedTSTPrdCnsType (TST.PrdCnsType pc tp) = RST.PrdCnsType pc (embedTSTType tp)
 
-embedXtorSig :: TST.XtorSig pol -> RST.XtorSig pol
-embedXtorSig TST.MkXtorSig {sig_name = name, sig_args = cont} = RST.MkXtorSig {sig_name=name, sig_args = map embedPrdCnsType cont}
+embedTSTXtorSig :: TST.XtorSig pol -> RST.XtorSig pol
+embedTSTXtorSig TST.MkXtorSig {sig_name = name, sig_args = cont} = RST.MkXtorSig {sig_name=name, sig_args = map embedTSTPrdCnsType cont}
 
-embedVarType :: TST.VariantType pol -> RST.VariantType pol
-embedVarType (TST.CovariantType tp) = RST.CovariantType (embedType tp)
-embedVarType (TST.ContravariantType tp) = RST.ContravariantType (embedType tp)
+embedTSTVarType :: TST.VariantType pol -> RST.VariantType pol
+embedTSTVarType (TST.CovariantType tp) = RST.CovariantType (embedTSTType tp)
+embedTSTVarType (TST.ContravariantType tp) = RST.ContravariantType (embedTSTType tp)
 
 
-embedType :: TST.Typ pol -> RST.Typ pol
-embedType (TST.TySkolemVar loc pol mk tv) = RST.TySkolemVar loc pol mk tv
-embedType (TST.TyUniVar loc pol mk tv) = RST.TyUniVar loc pol mk tv
-embedType (TST.TyRecVar loc pol mk tv) = RST.TyRecVar loc pol mk tv
-embedType (TST.TyData loc pol xtors) = RST.TyData loc pol (map embedXtorSig xtors)
-embedType (TST.TyCodata loc pol xtors) = RST.TyCodata loc pol (map embedXtorSig xtors)
-embedType (TST.TyDataRefined loc pol tn xtors) = RST.TyDataRefined loc pol tn (map embedXtorSig xtors)
-embedType (TST.TyCodataRefined loc pol tn xtors) = RST.TyCodataRefined loc pol tn (map embedXtorSig xtors)
-embedType (TST.TyNominal loc pol mk tn varty) = RST.TyNominal loc pol mk tn (map embedVarType varty)
-embedType (TST.TySyn loc pol tn tp) = RST.TySyn loc pol tn (embedType tp)
-embedType (TST.TyBot loc mk) = RST.TyBot loc mk 
-embedType (TST.TyTop loc mk) = RST.TyTop loc mk
-embedType (TST.TyUnion loc mk tp1 tp2) = RST.TyUnion loc mk (embedType tp1) (embedType tp2)
-embedType (TST.TyInter loc mk tn1 tn2) = RST.TyInter loc mk (embedType tn1) (embedType tn2)
-embedType (TST.TyRec loc pol rv tp) = RST.TyRec loc pol rv (embedType tp)
-embedType (TST.TyI64 loc pol) = RST.TyI64 loc pol
-embedType (TST.TyF64 loc pol) = RST.TyF64 loc pol
-embedType (TST.TyChar loc pol) = RST.TyChar loc pol
-embedType (TST.TyString loc pol) = RST.TyString loc pol
-embedType (TST.TyFlipPol pol tp) = RST.TyFlipPol pol (embedType tp)
+embedTSTType :: TST.Typ pol -> RST.Typ pol
+embedTSTType (TST.TySkolemVar loc pol mk tv) = RST.TySkolemVar loc pol mk tv
+embedTSTType (TST.TyUniVar loc pol mk tv) = RST.TyUniVar loc pol mk tv
+embedTSTType (TST.TyRecVar loc pol mk tv) = RST.TyRecVar loc pol mk tv
+embedTSTType (TST.TyData loc pol xtors) = RST.TyData loc pol (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyCodata loc pol xtors) = RST.TyCodata loc pol (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyDataRefined loc pol tn xtors) = RST.TyDataRefined loc pol tn (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyCodataRefined loc pol tn xtors) = RST.TyCodataRefined loc pol tn (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyNominal loc pol mk tn varty) = RST.TyNominal loc pol mk tn (map embedTSTVarType varty)
+embedTSTType (TST.TySyn loc pol tn tp) = RST.TySyn loc pol tn (embedTSTType tp)
+embedTSTType (TST.TyBot loc mk) = RST.TyBot loc mk 
+embedTSTType (TST.TyTop loc mk) = RST.TyTop loc mk
+embedTSTType (TST.TyUnion loc mk tp1 tp2) = RST.TyUnion loc mk (embedTSTType tp1) (embedTSTType tp2)
+embedTSTType (TST.TyInter loc mk tn1 tn2) = RST.TyInter loc mk (embedTSTType tn1) (embedTSTType tn2)
+embedTSTType (TST.TyRec loc pol rv tp) = RST.TyRec loc pol rv (embedTSTType tp)
+embedTSTType (TST.TyI64 loc pol) = RST.TyI64 loc pol
+embedTSTType (TST.TyF64 loc pol) = RST.TyF64 loc pol
+embedTSTType (TST.TyChar loc pol) = RST.TyChar loc pol
+embedTSTType (TST.TyString loc pol) = RST.TyString loc pol
+embedTSTType (TST.TyFlipPol pol tp) = RST.TyFlipPol pol (embedTSTType tp)
 
 
 

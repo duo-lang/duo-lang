@@ -27,7 +27,7 @@ dualXtorSig pol (RST.MkXtorSig xtor lctx) = RST.MkXtorSig (dualXtorName xtor) (d
 
 
 dualPrdCnsType :: PolarityRep pol -> RST.PrdCnsType pol -> RST.PrdCnsType pol
-dualPrdCnsType PosRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (embedType (dualType' PrdRep (unEmbedType ty)))
-dualPrdCnsType NegRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (embedType (dualType' CnsRep (unEmbedType ty)))
-dualPrdCnsType PosRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (embedType (dualType' CnsRep (unEmbedType ty)))
-dualPrdCnsType NegRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (embedType (dualType' PrdRep (unEmbedType ty)))
+dualPrdCnsType PosRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (embedTSTType (dualType' PrdRep (unEmbedType ty)))
+dualPrdCnsType NegRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (embedTSTType (dualType' CnsRep (unEmbedType ty)))
+dualPrdCnsType PosRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (embedTSTType (dualType' CnsRep (unEmbedType ty)))
+dualPrdCnsType NegRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (embedTSTType (dualType' PrdRep (unEmbedType ty)))

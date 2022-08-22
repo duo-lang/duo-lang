@@ -8,8 +8,10 @@ import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
+import Syntax.TST.Types qualified as TST
 import Syntax.Common.Names
 import Translate.Reparse
+import Translate.Embed
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -97,6 +99,9 @@ instance PrettyAnn CST.XtorSig where
 instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embedType typ)
 
+instance PrettyAnn (TST.Typ pol) where
+  prettyAnn typ = prettyAnn (embedTSTType typ)
+
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
   prettyAnn CST.TyTop {} = topSym
@@ -134,7 +139,6 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyChar _) = "#Char"
   prettyAnn (CST.TyString _) = "#String"
   prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
-
 
 ---------------------------------------------------------------------------------
 -- TypScheme
