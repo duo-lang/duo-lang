@@ -22,6 +22,7 @@ import Pretty.Terms ()
 import Syntax.Common.PrdCns
 import Syntax.Common.Names
 import Syntax.CST.Kinds
+import Syntax.CST.Types (DataCodata(..))
 import Syntax.Common.Polarity
 import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
@@ -443,10 +444,17 @@ instance ToHoverMap TST.CommandDeclaration where
   toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
     toHoverMap cmddecl_cmd
 
-
-
 instance ToHoverMap RST.DataDecl where
-  toHoverMap _ = M.empty
+  toHoverMap RST.NominalDecl { data_loc, data_polarity } =
+    let
+      msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
+    in
+      mkHoverMap data_loc msg
+  toHoverMap RST.RefinementDecl { data_loc, data_polarity } =
+    let
+      msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
+    in
+      mkHoverMap data_loc msg
 
 instance ToHoverMap RST.StructuralXtorDeclaration where
   toHoverMap _ = M.empty
@@ -465,7 +473,7 @@ instance ToHoverMap RST.TySynDeclaration where
 
 instance ToHoverMap RST.ClassDeclaration where
   toHoverMap _ = M.empty
-  
+
 instance ToHoverMap TST.InstanceDeclaration where
   toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
     M.unions $! toHoverMap <$> instancedecl_cases
