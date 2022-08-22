@@ -112,6 +112,7 @@ library
       Lookup
       Parser.Common
       Parser.Definition
+      Parser.Kinds
       Parser.Lexer
       Parser.Parser
       Parser.Program
