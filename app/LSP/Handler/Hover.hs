@@ -33,8 +33,6 @@ import Syntax.RST.Types
 import Syntax.RST.Program qualified as RST
 import Utils (Loc)
 import Syntax.CST.Program qualified as CST
-import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_loc))
-import Syntax.CST.Program (ImportDeclaration(imprtdecl_loc))
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
