@@ -29,7 +29,9 @@ import Syntax.TST.Program qualified as TST
 import Syntax.CST.Terms qualified as CST
 import Sugar.TST
 import Syntax.RST.Types
+import Syntax.RST.Program qualified as RST
 import Utils (Loc)
+import Syntax.CST.Program qualified as CST
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -426,7 +428,7 @@ instance ToHoverMap (TypeScheme pol) where
   toHoverMap (TypeScheme { ts_monotype }) = toHoverMap ts_monotype
 
 ---------------------------------------------------------------------------------
--- Converting a program to a HoverMap
+-- Converting declarations to a HoverMap
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap (TST.PrdCnsDeclaration pc) where
@@ -441,20 +443,47 @@ instance ToHoverMap TST.CommandDeclaration where
   toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
     toHoverMap cmddecl_cmd
 
+
+
+instance ToHoverMap RST.DataDecl where
+  toHoverMap _ = M.empty
+
+instance ToHoverMap RST.StructuralXtorDeclaration where
+  toHoverMap _ = M.empty
+
+instance ToHoverMap CST.ImportDeclaration where
+  toHoverMap _ = M.empty
+
+instance ToHoverMap CST.SetDeclaration where
+  toHoverMap _ = M.empty
+
+instance ToHoverMap RST.TyOpDeclaration where
+  toHoverMap _ = M.empty
+
+instance ToHoverMap RST.TySynDeclaration where
+  toHoverMap _ = M.empty
+
+instance ToHoverMap RST.ClassDeclaration where
+  toHoverMap _ = M.empty
+  
 instance ToHoverMap TST.InstanceDeclaration where
   toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
     M.unions $! toHoverMap <$> instancedecl_cases
 
+---------------------------------------------------------------------------------
+-- Converting a program to a HoverMap
+---------------------------------------------------------------------------------
+
 instance ToHoverMap TST.Declaration where
   toHoverMap (TST.PrdCnsDecl _ decl) = toHoverMap decl
-  toHoverMap (TST.CmdDecl decl)  = toHoverMap decl
-  toHoverMap (TST.DataDecl _decl) = M.empty
-  toHoverMap (TST.XtorDecl _) = M.empty
-  toHoverMap (TST.ImportDecl _) = M.empty
-  toHoverMap (TST.SetDecl _) = M.empty
-  toHoverMap (TST.TyOpDecl _) = M.empty
-  toHoverMap (TST.TySynDecl _) = M.empty
-  toHoverMap (TST.ClassDecl _decl) = M.empty
+  toHoverMap (TST.CmdDecl decl)      = toHoverMap decl
+  toHoverMap (TST.DataDecl decl)     = toHoverMap decl
+  toHoverMap (TST.XtorDecl decl)     = toHoverMap decl
+  toHoverMap (TST.ImportDecl decl)   = toHoverMap decl
+  toHoverMap (TST.SetDecl decl)      = toHoverMap decl
+  toHoverMap (TST.TyOpDecl decl)     = toHoverMap decl
+  toHoverMap (TST.TySynDecl decl)    = toHoverMap decl
+  toHoverMap (TST.ClassDecl decl)    = toHoverMap decl
   toHoverMap (TST.InstanceDecl decl) = toHoverMap decl
 
 instance ToHoverMap TST.Program where
