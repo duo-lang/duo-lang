@@ -280,10 +280,11 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 
 
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> ModuleName
+                -> FilePath
                 -> [CST.Declaration]
                 -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
-inferProgramIO state mn decls = do
+inferProgramIO state fp decls = do
+  let mn = MkModuleName (T.pack fp) -- TODO: Buggy
   let action :: DriverM TST.Program
       action = do
         st <- createSymbolTable mn decls

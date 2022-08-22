@@ -213,7 +213,7 @@ publishErrors uri = do
         Left errs -> do
           sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
         Right decls -> do
-          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
           sendDiagnostics (toNormalizedUri uri) warnings 
           case res of
             Left errs -> do

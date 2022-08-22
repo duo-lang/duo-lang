@@ -8,15 +8,14 @@ import Control.Monad (join)
 import Data.Maybe ( fromMaybe, isNothing )
 import System.Log.Logger ( debugM )
 import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Syntax.RST.Types ( TopAnnot(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
-import Syntax.Common.Names
-    ( FreeVarName(unFreeVarName),
-      ModuleName(MkModuleName) )
+import Syntax.Common.Names ( FreeVarName(unFreeVarName) )
 import Syntax.Common.PrdCns ( PrdCnsRep(..) )
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
@@ -51,7 +50,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
       case res of
         Left _err -> do
           responder (Right (List []))

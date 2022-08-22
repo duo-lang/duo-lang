@@ -66,7 +66,7 @@ getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> (fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls)
+      fmap snd <$> (fst <$> inferProgramIO defaultDriverState fp decls)
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
