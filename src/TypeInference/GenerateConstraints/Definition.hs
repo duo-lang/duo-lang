@@ -15,6 +15,7 @@ module TypeInference.GenerateConstraints.Definition
   , lookupContext
     -- Running computations in extended context or environment.
   , withContext
+  , withContextTST
     -- Instantiating type schemes
   , instantiateTypeScheme
     -- Adding a constraint
@@ -174,9 +175,11 @@ paramsMap kindArgs freshVars =
 -- Running computations in an extended context or environment
 ---------------------------------------------------------------------------------------------
 
-withContext :: TST.LinearContext 'Pos -> GenM a -> GenM a
-withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ctx:context }))
+withContext :: RST.LinearContext 'Pos -> GenM a -> GenM a
+withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = unEmbedLinearContext ctx:context }))
 
+withContextTST :: TST.LinearContext 'Pos -> GenM a -> GenM a
+withContextTST ctx = local (\(env, gr@GenerateReader{..}) -> (env, gr {context = ctx:context}))
 ---------------------------------------------------------------------------------------------
 -- Looking up types in the context and environment
 ---------------------------------------------------------------------------------------------

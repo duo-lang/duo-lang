@@ -33,6 +33,7 @@ import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
 import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
 import Translate.Focusing ( focusCmd, focusEnvironment )
+import Translate.Embed
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.CST.Kinds
@@ -122,7 +123,7 @@ subsumeRepl txt = do
     sts <- getSymbolTables
     resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t1))
     resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t2))
-    isSubsumed <-  liftEitherErr (subsume PosRep resolved_t1 resolved_t2,[])
+    isSubsumed <-  liftEitherErr (subsume PosRep (unEmbedTypeScheme resolved_t1) (unEmbedTypeScheme resolved_t2),[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"

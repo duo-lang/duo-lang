@@ -211,16 +211,16 @@ embedTSTProg :: TST.Program -> Core.Program
 embedTSTProg = fmap embedTSTDecl
 
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Annotated tys, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Annotated tys, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc
                              , pcdecl_isRec = pcdecl_isRec
                              , pcdecl_name = pcdecl_name
-                             , pcdecl_annot = Just tys
+                             , pcdecl_annot = Just (embedTSTTypeScheme tys)
                              , pcdecl_term = embedTSTTerm pcdecl_term
                              }
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Inferred _, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Inferred _, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc
@@ -243,7 +243,7 @@ embedTSTInstanceDeclaration TST.MkInstanceDeclaration { instancedecl_loc, instan
     Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                , instancedecl_doc = instancedecl_doc
                                , instancedecl_name = instancedecl_name
-                               , instancedecl_typ = instancedecl_typ
+                               , instancedecl_typ = (embedTSTType.fst $ instancedecl_typ, embedTSTType.snd $ instancedecl_typ)
                                , instancedecl_cases = embedTSTInstanceCase <$> instancedecl_cases
                                }
 
@@ -281,6 +281,11 @@ embedTSTVarType :: TST.VariantType pol -> RST.VariantType pol
 embedTSTVarType (TST.CovariantType tp) = RST.CovariantType (embedTSTType tp)
 embedTSTVarType (TST.ContravariantType tp) = RST.ContravariantType (embedTSTType tp)
 
+embedTSTTypeScheme :: TST.TypeScheme pol -> RST.TypeScheme pol
+embedTSTTypeScheme TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} = RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = embedTSTType mt}
+
+embedTSTLinearContext :: TST.LinearContext pol-> RST.LinearContext pol
+embedTSTLinearContext  = map embedTSTPrdCnsType
 
 embedTSTType :: TST.Typ pol -> RST.Typ pol
 embedTSTType (TST.TySkolemVar loc pol mk tv) = RST.TySkolemVar loc pol mk tv
@@ -316,6 +321,13 @@ unEmbedXtorSig RST.MkXtorSig {sig_name = name, sig_args = cont} = TST.MkXtorSig 
 unEmbedVarType :: RST.VariantType pol -> TST.VariantType pol
 unEmbedVarType (RST.CovariantType tp) = TST.CovariantType (unEmbedType tp)
 unEmbedVarType (RST.ContravariantType tp) = TST.ContravariantType (unEmbedType tp)
+
+unEmbedTypeScheme :: RST.TypeScheme pol -> TST.TypeScheme pol
+unEmbedTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} = TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = unEmbedType mt}
+
+
+unEmbedLinearContext :: RST.LinearContext pol -> TST.LinearContext pol
+unEmbedLinearContext = map unEmbedPrdCnsType
 
 unEmbedType :: RST.Typ pol -> TST.Typ pol
 unEmbedType (RST.TySkolemVar loc pol mk tv) = TST.TySkolemVar loc pol mk tv

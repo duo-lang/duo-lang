@@ -10,7 +10,8 @@ import Syntax.Common.Names
 import Syntax.Common.Primitives
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
-import Syntax.RST.Types
+import Syntax.RST.Types qualified as RST
+import Syntax.TST.Types qualified as TST
 import Utils
 import TypeInference.Constraints (ConstraintInfo)
 
@@ -102,7 +103,7 @@ data ConstraintGenerationError where
   -- | One cannot infer a type for an empty refinement match.
   EmptyRefinementMatch :: Loc -> ConstraintGenerationError
   -- | Linear contexts have unequal length.
-  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> LinearContext Pos -> LinearContext Neg -> ConstraintGenerationError
+  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> RST.LinearContext Pos -> RST.LinearContext Neg -> ConstraintGenerationError
   LinearContextIncompatibleTypeMode :: Loc -> PrdCns -> ConstraintInfo -> ConstraintGenerationError
 
 

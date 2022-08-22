@@ -9,7 +9,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Pretty.TypeAutomata (typeAutToDot)
 
 import Errors ( Error )    
-import Syntax.RST.Types ( TypeScheme )
+import Syntax.TST.Types ( TypeScheme )
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton ( typeToAut )
 import TypeAutomata.FromAutomaton ( autToType )

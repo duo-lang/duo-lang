@@ -1,6 +1,6 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
-import Syntax.RST.Types
+import Syntax.TST.Types
 import Syntax.CST.Types qualified as CST
 import Syntax.Common.Names
 import Syntax.Common.Polarity

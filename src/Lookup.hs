@@ -24,8 +24,9 @@ import Errors
 import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.TST.Terms qualified as TST
+import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program qualified as RST
-import Syntax.RST.Types
+import Syntax.RST.Types qualified as RST
 import Syntax.Common.Names
 import Syntax.Common.PrdCns
 import Syntax.Common.Polarity
@@ -58,7 +59,7 @@ findFirstM f err = asks fst >>= \env -> go (M.toList env)
 
 -- | Lookup the term and the type of a term bound in the environment.
 lookupTerm :: EnvReader a m
-           => Loc -> PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TypeScheme (PrdCnsToPol pc))
+           => Loc -> PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TST.TypeScheme (PrdCnsToPol pc))
 lookupTerm loc PrdRep fv = do
   env <- asks fst
   let err = ErrOther $ SomeOtherError loc ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
@@ -94,8 +95,8 @@ lookupCommand loc fv = do
 lookupDataDecl :: EnvReader a m
                => Loc -> XtorName -> m RST.DataDecl
 lookupDataDecl loc xt = do
-  let containsXtor :: XtorSig Pos -> Bool
-      containsXtor sig = sig_name sig == xt
+  let containsXtor :: RST.XtorSig Pos -> Bool
+      containsXtor sig = RST.sig_name sig == xt
   let typeContainsXtor :: RST.DataDecl -> Bool
       typeContainsXtor RST.NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                       | otherwise = False
@@ -117,15 +118,15 @@ lookupTypeName loc tn = do
 
 -- | Find the XtorSig belonging to a given XtorName.
 lookupXtorSig :: EnvReader a m
-              => Loc -> XtorName -> PolarityRep pol -> m (XtorSig pol)
+              => Loc -> XtorName -> PolarityRep pol -> m (RST.XtorSig pol)
 lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (RST.data_xtors decl)) of
+  case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (fst (RST.data_xtors decl)) of
     Just xts -> return xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
+  case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
     Just xts -> return xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 
@@ -139,22 +140,22 @@ lookupClassDecl loc cn = do
 
 -- | Find the class declaration for a classname.
 lookupMethodType :: EnvReader a m
-               => Loc -> MethodName -> RST.ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
+               => Loc -> MethodName -> RST.ClassDeclaration -> PolarityRep pol -> m (RST.LinearContext pol)
 lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } PosRep =
-  case find ( \MkMethodSig{..} -> msig_name == mn) (fst classdecl_methods) of
+  case find ( \RST.MkMethodSig{..} -> msig_name == mn) (fst classdecl_methods) of
     Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
-    Just msig -> pure $ msig_args msig
+    Just msig -> pure $ RST.msig_args msig
 lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } NegRep =
-  case find ( \MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
+  case find ( \RST.MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
     Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
-    Just msig -> pure $ msig_args msig
+    Just msig -> pure $ RST.msig_args msig
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.
 ---------------------------------------------------------------------------------
 
 withTerm :: forall a m b pc. EnvReader a m
-         => ModuleName -> PrdCnsRep pc -> FreeVarName -> TST.Term pc -> Loc -> TypeScheme (PrdCnsToPol pc)
+         => ModuleName -> PrdCnsRep pc -> FreeVarName -> TST.Term pc -> Loc -> TST.TypeScheme (PrdCnsToPol pc)
          -> (m b -> m b)
 withTerm mn PrdRep fv tm loc tys action = do
   let modifyEnv :: Environment -> Environment

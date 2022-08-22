@@ -76,6 +76,9 @@ instance PrettyAnn (RST.VariantType pol) where
 instance PrettyAnn (RST.PrdCnsType pol) where
   prettyAnn pctype = prettyAnn (embedPrdCnsType pctype)
 
+instance PrettyAnn (TST.PrdCnsType pol) where 
+  prettyAnn pctype = prettyAnn (embedTSTPrdCnsType pctype)
+
 instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.PrdType ty) = prettyAnn ty
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
@@ -85,9 +88,15 @@ instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.LinearContext where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
+ 
+instance {-# OVERLAPPING #-} PrettyAnn (TST.LinearContext pol) where 
+  prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
 
 instance PrettyAnn (RST.XtorSig pol) where
   prettyAnn xtorSig = prettyAnn (embedXtorSig xtorSig)
+
+instance PrettyAnn (TST.XtorSig pol) where
+  prettyAnn xtorSig = prettyAnn (embedTSTXtorSig xtorSig)
 
 instance PrettyAnn CST.XtorSig where
   prettyAnn (CST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
@@ -146,6 +155,9 @@ instance PrettyAnn CST.Typ where
 
 instance PrettyAnn (RST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTypeScheme tys)
+
+instance PrettyAnn (TST.TypeScheme pol) where
+  prettyAnn tys = prettyAnn (embedTSTTypeScheme tys)
 
 instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
