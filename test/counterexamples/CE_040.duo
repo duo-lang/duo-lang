@@ -2,5 +2,5 @@
 destructor A(CBV) : CBV;
 
 def prd foo := cocase {
-    A(x,y) => ExitSuccess
+    A(x,y) => #ExitSuccess
 };

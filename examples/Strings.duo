@@ -36,15 +36,15 @@ def prd helloBoxed : String := MkString(hello);
 def prd append : String -> String -> String :=
   \s => \t => case s of {
     MkString(s) => case t of {
-      MkString(t) => mu k. Append#String(s,t, mu z. MkString(z) >> k)
+      MkString(t) => mu k. #StringAppend(s,t, mu z. MkString(z) >> k)
     }
   };
 
 def prd prepend : Char -> String -> String :=
   \c => \s => case c of {
     MkChar(c) => case s of {
-      MkString(s) => mu k. Prepend#Char(c,s, mu z. MkString(z) >> k)
+      MkString(s) => mu k. #CharPrepend(c,s, mu z. MkString(z) >> k)
     }
   };
 
-def prd hello3 : String := mu k. Prepend#Char('!',"", mu x. Append#String(hello,x,mu z. MkString(z) >> k));
+def prd hello3 : String := mu k. #CharPrepend('!',"", mu x. #StringAppend(hello,x,mu z. MkString(z) >> k));

@@ -33,7 +33,7 @@ def prd f2 : F64 := MkF64(f1);
 def prd addf : F64 -> F64 -> F64 := \x => \y =>
     case x of {
         MkF64(x) => case y of {
-           MkF64(y) => mu k. Add#F64(x, y,mu z. MkF64(z) >> k)
+           MkF64(y) => mu k. #F64Add(x, y,mu z. MkF64(z) >> k)
        }
    };
 
@@ -41,7 +41,7 @@ def prd addf : F64 -> F64 -> F64 := \x => \y =>
 def prd subf : F64 -> F64 -> F64 := \x => \y =>
    case x of {
        MkF64(x) => case y of {
-           MkF64(y) => mu k. Sub#F64(x, y,mu z. MkF64(z) >> k)
+           MkF64(y) => mu k. #F64Sub(x, y,mu z. MkF64(z) >> k)
        }
    };
 
@@ -49,7 +49,7 @@ def prd subf : F64 -> F64 -> F64 := \x => \y =>
 def prd mulf : F64 -> F64 -> F64 := \x => \y =>
   case x of {
   MkF64(x) => case y of {
-           MkF64(y) => mu k. Mul#F64(x, y,mu z. MkF64(z) >> k)
+           MkF64(y) => mu k. #F64Mul(x, y,mu z. MkF64(z) >> k)
        }
    };
 
@@ -57,7 +57,7 @@ def prd mulf : F64 -> F64 -> F64 := \x => \y =>
 def prd divf : F64 -> F64 -> F64 := \x => \y =>
    case x of {
         MkF64(x) => case y of {
-           MkF64(y) => mu k. Div#F64(x, y,mu z. MkF64(z) >> k)
+           MkF64(y) => mu k. #F64Div(x, y,mu z. MkF64(z) >> k)
        }
    };
 
