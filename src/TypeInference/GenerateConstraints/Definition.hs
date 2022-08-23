@@ -15,7 +15,6 @@ module TypeInference.GenerateConstraints.Definition
   , lookupContext
     -- Running computations in extended context or environment.
   , withContext
-  , withContextTST
     -- Instantiating type schemes
   , instantiateTypeScheme
     -- Adding a constraint
@@ -82,7 +81,7 @@ initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSe
 -- The context contains monotypes, whereas the environment contains type schemes.
 ---------------------------------------------------------------------------------------------
 
-data GenerateReader = GenerateReader { context :: [TST.LinearContext Pos]
+data GenerateReader = GenerateReader { context :: [RST.LinearContext Pos]
                                      , location :: Loc
                                      }
 
@@ -176,16 +175,14 @@ paramsMap kindArgs freshVars =
 ---------------------------------------------------------------------------------------------
 
 withContext :: RST.LinearContext 'Pos -> GenM a -> GenM a
-withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = unEmbedLinearContext ctx:context }))
+withContext ctx = local (\(env,gr@GenerateReader{..}) -> (env, gr { context = ctx:context }))
 
-withContextTST :: TST.LinearContext 'Pos -> GenM a -> GenM a
-withContextTST ctx = local (\(env, gr@GenerateReader{..}) -> (env, gr {context = ctx:context}))
 ---------------------------------------------------------------------------------------------
 -- Looking up types in the context and environment
 ---------------------------------------------------------------------------------------------
 
 -- | Lookup a type of a bound variable in the context.
-lookupContext :: Loc -> PrdCnsRep pc -> Index -> GenM (TST.Typ (PrdCnsToPol pc))
+lookupContext :: Loc -> PrdCnsRep pc -> Index -> GenM (RST.Typ (PrdCnsToPol pc))
 lookupContext loc rep idx@(i,j) = do
   let rep' = case rep of PrdRep -> Prd; CnsRep -> Cns
   ctx <- asks (context . snd)
@@ -194,10 +191,10 @@ lookupContext loc rep idx@(i,j) = do
     Just lctxt -> case indexMaybe lctxt j of
       Nothing -> throwGenError (BoundVariableOutOfBounds loc rep' idx)
       Just ty -> case (rep, ty) of
-        (PrdRep, TST.PrdCnsType PrdRep ty) -> return ty
-        (CnsRep, TST.PrdCnsType CnsRep ty) -> return ty
-        (PrdRep, TST.PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
-        (CnsRep, TST.PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
+        (PrdRep, RST.PrdCnsType PrdRep ty) -> return ty
+        (CnsRep, RST.PrdCnsType CnsRep ty) -> return ty
+        (PrdRep, RST.PrdCnsType CnsRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
+        (CnsRep, RST.PrdCnsType PrdRep _) -> throwGenError (BoundVariableWrongMode loc rep' idx)
 
 
 ---------------------------------------------------------------------------------------------
