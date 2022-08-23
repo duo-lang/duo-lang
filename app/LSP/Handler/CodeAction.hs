@@ -1,37 +1,35 @@
 {-# LANGUAGE TypeOperators #-}
 module LSP.Handler.CodeAction (codeActionHandler) where
 
+import Control.Monad (join)
+import Control.Monad.IO.Class ( MonadIO(liftIO) )
+import Data.HashMap.Strict qualified as Map
+import Data.Maybe ( fromMaybe, isNothing )
+import Data.Text qualified as T
 import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
-import Control.Monad (join)
-import Data.Maybe ( fromMaybe, isNothing )
 import System.Log.Logger ( debugM )
-import Data.HashMap.Strict qualified as Map
-import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
-import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.RST.Types ( TopAnnot(..), PolarityRep(..) )
-import Syntax.CST.Kinds ( EvaluationOrder(..) )
-import Syntax.CST.Names
-    ( FreeVarName(unFreeVarName),
-      ModuleName(MkModuleName) )
-import Syntax.TST.Program qualified as TST
-import Syntax.RST.Program qualified as RST
-import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
-import Utils
+import Dualize.Program (dualDataDecl)
+import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
+import LSP.Definition ( LSPMonad )
+import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
-import Data.Text (pack, append)
-import Dualize.Program (dualDataDecl)
+import Syntax.CST.Types (PrdCnsRep(..))
+import Syntax.CST.Kinds ( EvaluationOrder(..) )
+import Syntax.CST.Names ( FreeVarName(..) )
+import Syntax.RST.Types ( TopAnnot(..), PolarityRep(..) )
+import Syntax.RST.Program qualified as RST
+import Syntax.TST.Program qualified as TST
+import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -42,7 +40,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
   let (RequestMessage _ _ _ (CodeActionParams _workDoneToken _partialResultToken ident@(TextDocumentIdentifier uri) range _context)) = req
   liftIO $ debugM "lspserver.codeActionHandler" ("Received codeAction request: " <> show uri <> " range: " <> show range)
   mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
+  let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
   let decls = runFileParser fp programP file
@@ -50,7 +48,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
       case res of
         Left _err -> do
           responder (Right (List []))
@@ -145,11 +143,11 @@ generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Annotated
   let
     tm' = dualTerm rep tm
     replacement = case tm' of
-      (Left error) -> ppPrint $ pack (show error)
+      (Left error) -> ppPrint $ T.pack (show error)
       (Right tm'') -> case rep of
         PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (Annotated (dualTypeScheme PosRep tys)) tm''))
         CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (Annotated (dualTypeScheme NegRep tys)) tm''))
-    edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
@@ -174,7 +172,7 @@ generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
     replacement = ppPrint (TST.DataDecl decl')
-    edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing

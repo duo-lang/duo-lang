@@ -118,7 +118,7 @@ checkFreshFreeVarName loc fv st =
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.
 createSymbolTable :: MonadError (NonEmpty Error) m
-                  => ModuleName
+                  => (FilePath, ModuleName)
                   -> Program
                   -> m SymbolTable
 createSymbolTable mn prog = createSymbolTableAcc prog emptySymbolTable
@@ -129,7 +129,8 @@ createSymbolTable mn prog = createSymbolTableAcc prog emptySymbolTable
       createSymbolTableAcc xs acc'
 
 createSymbolTable' :: MonadError (NonEmpty Error) m
-                   => ModuleName
+                   => (FilePath, ModuleName)
+                      -- ^ FilePath and ModuleName of the module for which the symbol table is created
                    -> Declaration
                    -> SymbolTable
                    -> m SymbolTable
@@ -138,7 +139,7 @@ createSymbolTable' _ (XtorDecl MkStructuralXtorDeclaration {strxtordecl_loc, str
   checkFreshXtorName strxtordecl_loc strxtordecl_name st
   let xtorResolve = XtorNameResult strxtordecl_xdata Structural (fst <$> strxtordecl_arity)
   pure $ st { xtorNameMap = M.insert strxtordecl_name xtorResolve (xtorNameMap st)}
-createSymbolTable' mn (DataDecl MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
+createSymbolTable' (fp,mn) (DataDecl MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors }) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
   checkFreshTypeName data_loc data_name st
   forM_ (sig_name <$> data_xtors) $ \xtorName -> checkFreshXtorName data_loc xtorName st
@@ -150,7 +151,12 @@ createSymbolTable' mn (DataDecl MkDataDecl { data_loc, data_doc, data_refined, d
                Refined -> Refinement
                NotRefined -> Nominal
   let xtors = M.fromList [(sig_name xt, XtorNameResult data_polarity ns (linearContextToArity (sig_args xt)))| xt <- data_xtors]
-  let rnTypeName = MkRnTypeName { rnTnLoc = data_loc, rnTnDoc = data_doc, rnTnModule = mn , rnTnName = data_name }
+  let rnTypeName = MkRnTypeName { rnTnLoc = data_loc
+                                , rnTnDoc = data_doc
+                                , rnTnFp = Just fp
+                                , rnTnModule = mn
+                                , rnTnName = data_name
+                                }
   let nominalResult = NominalResult rnTypeName data_polarity data_refined polyKind
   pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
             , typeNameMap = M.insert data_name nominalResult (typeNameMap st)}
@@ -163,10 +169,15 @@ createSymbolTable' _ (TyOpDecl MkTyOpDeclaration { tyopdecl_sym, tyopdecl_prec, 
     pure $ st { tyOps = tyOp : tyOps st }
 createSymbolTable' _ (ImportDecl MkImportDeclaration { imprtdecl_loc, imprtdecl_module }) st =
   pure $ st { imports = (imprtdecl_module,imprtdecl_loc):imports st }
-createSymbolTable' mn (TySynDecl MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res }) st = do
+createSymbolTable' (fp,mn) (TySynDecl MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res }) st = do
   -- Check whether the TypeName is already declared in this module
   checkFreshTypeName tysyndecl_loc tysyndecl_name st
-  let rnTypeName = MkRnTypeName { rnTnLoc = tysyndecl_loc, rnTnDoc = tysyndecl_doc, rnTnModule = mn , rnTnName = tysyndecl_name }
+  let rnTypeName = MkRnTypeName { rnTnLoc = tysyndecl_loc
+                                , rnTnDoc = tysyndecl_doc
+                                , rnTnFp = Just fp
+                                , rnTnModule = mn
+                                , rnTnName = tysyndecl_name
+                                }
   let synonymResult = SynonymResult rnTypeName tysyndecl_res
   pure $ st { typeNameMap = M.insert tysyndecl_name synonymResult (typeNameMap st) }
 createSymbolTable' _ (PrdCnsDecl MkPrdCnsDeclaration { pcdecl_loc, pcdecl_name }) st = do

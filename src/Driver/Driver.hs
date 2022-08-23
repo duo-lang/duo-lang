@@ -15,6 +15,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import System.FilePath ( takeBaseName )
 
 import Driver.Definition
 import Driver.Environment
@@ -259,9 +260,9 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      decls <- getModuleDeclarations mn
+      (fp,decls) <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- createSymbolTable mn decls
+      st <- createSymbolTable (fp,mn) decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
@@ -279,14 +280,18 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 ---------------------------------------------------------------------------------
 
 
+filePathToModuleName :: FilePath -> ModuleName
+filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
+
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> ModuleName
+                -> FilePath
                 -> [CST.Declaration]
                 -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
-inferProgramIO state mn decls = do
+inferProgramIO state fp decls = do
+  let mn = filePathToModuleName fp
   let action :: DriverM TST.Program
       action = do
-        st <- createSymbolTable mn decls
+        st <- createSymbolTable (fp,mn) decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables

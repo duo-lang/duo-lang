@@ -7,7 +7,7 @@ import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist )
+import System.Directory ( doesFileExist, makeAbsolute )
 
 
 import Driver.Environment ( Environment, emptyEnvironment )
@@ -107,17 +107,17 @@ getSymbolTables = gets drvSymbols
 
 -- Modules and declarations
 
-getModuleDeclarations :: ModuleName -> DriverM CST.Program
+getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Program)
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
-          Just (_fp, decls) -> return decls
+          Just (fp, decls) -> return (fp, decls)
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
             decls <- runFileParser fp programP file
             modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
-            return decls
+            return (fp, decls)
 
 -- AST Cache
 
@@ -174,7 +174,8 @@ findModule (MkModuleName mod) loc = do
   let misses = lefts fps'
   case hits of
     [] -> throwOtherError loc $ ["Could not locate library: " <> mod <> "\n" <> "Paths searched:"] <> fmap T.pack misses
-    (fp:_) -> return fp
+    (fp:_) -> liftIO $ makeAbsolute fp
+      
 
 liftErr :: NonEmpty Error -> DriverM a
 liftErr errs = do
