@@ -148,11 +148,14 @@ printCmdP :: Parser (CST.Term, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
   _ <- keywordP KwPrint
-  (arg,_) <- parensP (fst <$> term2P)
-  sc
-  symbolP SymSemi
-  sc
-  (cmd, endPos) <- term3P
+  ((arg, cmd),endPos) <- parensP $ do
+    (arg,_) <- term2P
+    sc
+    symbolP SymComma
+    sc
+    (cmd,_) <- term3P
+    sc
+    pure (arg, cmd)
   return (CST.PrimCmdTerm $ CST.Print (Loc startPos endPos) arg cmd, endPos)
 
 readCmdP :: Parser (CST.Term, SourcePos)

@@ -84,4 +84,4 @@ def rec prd compare : Nat -> Nat -> Ordering :=
 
 def prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
-def cmd main := Print(sort compare testlist); ExitSuccess;
+def cmd main := Print(sort compare testlist, ExitSuccess);

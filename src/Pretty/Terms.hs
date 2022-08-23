@@ -195,9 +195,7 @@ instance PrettyAnn CST.Term where
     annKeyword "ExitFailure"
   prettyAnn (CST.PrimCmdTerm (CST.Print _ t cmd)) =
     annKeyword "Print" <>
-    parens (prettyAnn t) <>
-    semi <+>
-    prettyAnn cmd
+    parens' comma [prettyAnn t, prettyAnn cmd]
   prettyAnn (CST.PrimCmdTerm (CST.Read _ cns)) =
     annKeyword "Read" <>
     brackets (prettyAnn cns)
