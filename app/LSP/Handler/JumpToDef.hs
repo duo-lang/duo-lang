@@ -4,6 +4,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
+import Data.Text qualified as T
 import Language.LSP.Types
     ( Uri(Uri, getUri),
       Range,
@@ -30,7 +31,7 @@ import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Syntax.RST.Terms qualified as RST
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Translate.Embed
@@ -48,7 +49,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
       Right decls -> do
-        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
         case res of
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
@@ -114,7 +115,7 @@ instance ToJumpMap RST.Command where
   toJumpMap (RST.Method _ _ _ subst) = toJumpMap subst
   toJumpMap RST.ExitSuccess {} = M.empty
   toJumpMap RST.ExitFailure {} = M.empty
-  toJumpMap (RST.PrimOp _ _ _ subst) = toJumpMap subst
+  toJumpMap (RST.PrimOp _ _ subst) = toJumpMap subst
   toJumpMap (RST.CaseOfCmd _ _ tm cases) =
     M.unions (toJumpMap tm : (toJumpMap <$> cases))
   toJumpMap (RST.CaseOfI _ _ _ tm casesi) =
@@ -235,8 +236,8 @@ instance ToJumpMap RST.Declaration where
 
 
 instance ToLocation RnTypeName where
-  toLocation MkRnTypeName { rnTnLoc, rnTnModule } =
+  toLocation MkRnTypeName { rnTnLoc, rnTnFp } =
     let rng = locToRange rnTnLoc
-    in  Location { _uri = Uri $ "" <> unModuleName rnTnModule
+    in  Location { _uri = Uri $ maybe "" T.pack rnTnFp
                  , _range = rng
                  }

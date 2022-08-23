@@ -3,6 +3,8 @@ module Translate.Focusing
   , focusTerm
   , focusCmd
   , focusEnvironment
+  , focusPrdCnsDeclaration
+  , focusCommandDeclaration
   , isFocusedTerm
   , isFocusedCmd
   ) where
@@ -14,13 +16,12 @@ import Syntax.TST.Program
 import Syntax.TST.Terms
 import Utils
 import Syntax.CST.Terms qualified as CST
-import Syntax.RST.Types (Typ(..))
-import Syntax.Common.PrdCns
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Syntax.RST.Types (Typ(..), PolarityRep(..))
+import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.CST.Kinds
-import Syntax.Common.Names
-import Syntax.Common.Primitives
+import Syntax.CST.Names
 import Syntax.Core.Annot
-import Syntax.Common.Polarity
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -84,7 +85,7 @@ isFocusedCmd _  (Jump loc fv)              = Just (Jump loc fv)
 isFocusedCmd eo (Method loc mn cn subst)   = Method loc mn cn <$> isFocusedSubst eo subst
 isFocusedCmd eo (Print loc prd cmd)        = Print loc <$> isValueTerm eo PrdRep prd <*> isFocusedCmd eo cmd
 isFocusedCmd eo (Read loc cns)             = Read loc <$> isValueTerm eo CnsRep cns
-isFocusedCmd eo (PrimOp loc pt op subst)   = PrimOp loc pt op <$> isValueSubst eo subst
+isFocusedCmd eo (PrimOp loc op subst)      = PrimOp loc op <$> isValueSubst eo subst
 
 ---------------------------------------------------------------------------------
 -- The Focusing Algorithm
@@ -214,8 +215,8 @@ focusInstanceCase eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, in
                    }
 
 
-focusPrimOp :: EvaluationOrder -> (PrimitiveType, PrimitiveOp) -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
-focusPrimOp _  (pt, op) [] pcterms' = PrimOp defaultLoc pt op (reverse pcterms')
+focusPrimOp :: EvaluationOrder -> CST.PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
+focusPrimOp _  op [] pcterms' = PrimOp defaultLoc op (reverse pcterms')
 focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
     let
@@ -245,11 +246,12 @@ focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (foc
 focusCmd eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
 focusCmd eo (Read loc cns) = Apply loc ApplyAnnotOrig (Just (CBox eo)) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0))))
                                                         (focusTerm eo cns)
-focusCmd eo (PrimOp _ pt op subst) = focusPrimOp eo (pt, op) subst []
+focusCmd eo (PrimOp _ op subst) = focusPrimOp eo op subst []
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
+
 focusPrdCnsDeclaration :: EvaluationOrder -> PrdCnsDeclaration pc -> PrdCnsDeclaration pc
 focusPrdCnsDeclaration eo MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
     MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc

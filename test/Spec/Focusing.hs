@@ -10,7 +10,6 @@ import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Translate.Embed
 import Syntax.CST.Kinds
-import Syntax.Common.Names
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
@@ -31,7 +30,7 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
         Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
         Right decls -> do
           let focusedDecls :: CST.Program = reparseProgram $ embedCoreProg $ embedTSTProg $ focusProgram cbx decls
-          res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "Test:Focusing") focusedDecls
+          res <- runIO $ inferProgramIO defaultDriverState "Test:Focusing" focusedDecls
           case res of
             (Left err,_) -> do
               let msg = unlines [ "---------------------------------"

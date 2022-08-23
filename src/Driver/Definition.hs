@@ -7,7 +7,7 @@ import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist )
+import System.Directory ( doesFileExist, makeAbsolute )
 
 
 import Driver.Environment ( Environment, emptyEnvironment )
@@ -15,7 +15,7 @@ import Errors
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedReport )
 import Resolution.SymbolTable
-import Syntax.Common.Names ( ModuleName(MkModuleName) )
+import Syntax.CST.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
@@ -65,7 +65,7 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: !(Map ModuleName CST.Program)
+  , drvFiles   :: !(Map ModuleName (FilePath, CST.Program))
   , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Program
   , drvErrs    :: Map ModuleName [Error]
@@ -128,14 +128,15 @@ addSymboltable mn st = modify f
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets drvSymbols
 
-getSymbolTable  :: ModuleName
+getSymbolTable  :: FilePath
+                -> ModuleName
                 -> CST.Program
                 -> DriverM SymbolTable
-getSymbolTable mn p = do
+getSymbolTable fp mn p = do
   sts <- getSymbolTables
   case M.lookup mn sts of
     Nothing -> do
-      st <- createSymbolTable mn p
+      st <- createSymbolTable fp mn p
       addSymboltable mn st
       return st
     Just st -> return st
@@ -151,21 +152,21 @@ getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) direc
 
 -- Modules and declarations
 
-getModuleDeclarations :: ModuleName -> DriverM CST.Program
+getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Program)
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
-          Just decls -> return decls
+          Just (fp, decls) -> return (fp, decls)
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
             decls <- runFileParser fp programP file
-            addModuleDeclarations mn decls
-            return decls
+            addModuleDeclarations mn fp decls
+            return (fp, decls)
 
-addModuleDeclarations :: ModuleName -> CST.Program -> DriverM ()
-addModuleDeclarations mn decls = do
-        modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn decls drvFiles })
+addModuleDeclarations :: ModuleName -> FilePath -> CST.Program -> DriverM ()
+addModuleDeclarations mn fp decls = do
+        modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
 
 -- AST Cache
 
@@ -222,7 +223,8 @@ findModule (MkModuleName mod) loc = do
   let misses = lefts fps'
   case hits of
     [] -> throwOtherError loc $ ["Could not locate library: " <> mod <> "\n" <> "Paths searched:"] <> fmap T.pack misses
-    (fp:_) -> return fp
+    (fp:_) -> liftIO $ makeAbsolute fp
+      
 
 liftErr :: NonEmpty Error -> DriverM a
 liftErr errs = do

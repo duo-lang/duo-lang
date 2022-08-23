@@ -1,6 +1,6 @@
 module Syntax.Core.Annot where
 
-import Syntax.Common.PrdCns (PrdCnsRep, PrdCns)
+import Syntax.CST.Types ( PrdCnsRep, PrdCns )
 
 data MuAnnot where
   -- | User-written Mu abstraction

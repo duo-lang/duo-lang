@@ -20,9 +20,8 @@ import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
-import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
+import Syntax.CST.Types ( PrdCnsRep(..))
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

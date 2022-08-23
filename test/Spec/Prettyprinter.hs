@@ -9,7 +9,6 @@ import Parser.Parser
 import Pretty.Pretty
 import Pretty.Errors ()
 import Pretty.Program ()
-import Syntax.Common.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Driver.Definition
@@ -48,7 +47,7 @@ spec parseExamples typeCheckExamples = do
                 Right decls -> case runFileParser example programP (ppPrint decls) of
                   Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
                   Right decls -> do
-                    res <- runIO $ inferProgramIO defaultDriverState (MkModuleName "Test:Prettyprinter") decls
+                    res <- runIO $ inferProgramIO defaultDriverState "Test:Prettyprinter" decls
                     it "Can be parsed and typechecked again." $
                         fst res `shouldSatisfy` isRight
 

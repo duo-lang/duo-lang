@@ -4,7 +4,6 @@ import Control.Monad.Except (runExcept, forM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
 import System.Environment (withArgs)
@@ -23,7 +22,7 @@ import Spec.TypeInferenceExamples qualified
 import Spec.Subsumption qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
@@ -66,14 +65,14 @@ getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> (fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls)
+      fmap snd <$> (fst <$> inferProgramIO defaultDriverState fp decls)
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable (MkModuleName "<BOOM>") decls))
+    Right decls -> pure (runExcept (createSymbolTable "<BOOM>" (MkModuleName "<BOOM>") decls))
     Left err -> return (Left err)
 
 

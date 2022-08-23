@@ -1,6 +1,8 @@
 module Sugar.Desugar
   ( desugarTerm
   , desugarPCTerm
+  , desugarPrdCnsDeclaration
+  , desugarCommandDeclaration
   , desugarProgram
   , desugarCmd
   , desugarEnvironment
@@ -17,9 +19,9 @@ import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Program qualified as Core
 import Syntax.Core.Terms qualified as Core
-import Syntax.Common.Names
+import Syntax.CST.Types (PrdCnsRep(..))
+import Syntax.CST.Names
 import Syntax.Core.Annot
-import Syntax.Common.PrdCns
 import qualified Sugar.Core as Core
 
 
@@ -105,8 +107,8 @@ desugarCmd (RST.ExitSuccess loc) =
   Core.ExitSuccess loc
 desugarCmd (RST.ExitFailure loc) =
   Core.ExitFailure loc
-desugarCmd (RST.PrimOp loc pt op subst) =
-  Core.PrimOp loc pt op (desugarPCTerm <$> subst)
+desugarCmd (RST.PrimOp loc op subst) =
+  Core.PrimOp loc op (desugarPCTerm <$> subst)
 ---------------------------------------------------------------------------------
 -- Syntactic sugar
 -- uses pattern synonyms defined in Sugar.Core 

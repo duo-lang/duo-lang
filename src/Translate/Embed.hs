@@ -1,5 +1,6 @@
 module Translate.Embed where
 
+import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Program qualified as RST
@@ -8,7 +9,6 @@ import Syntax.RST.Types qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
-import Syntax.Common.PrdCns
 
 import Translate.Reparse ()
 
@@ -88,8 +88,8 @@ embedCoreCommand (Core.ExitSuccess loc) =
     RST.ExitSuccess loc
 embedCoreCommand (Core.ExitFailure loc) =
     RST.ExitFailure loc
-embedCoreCommand (Core.PrimOp loc ty op subst) =
-    RST.PrimOp loc ty op (embedSubst subst)
+embedCoreCommand (Core.PrimOp loc op subst) =
+    RST.PrimOp loc op (embedSubst subst)
 
 
 embedCoreProg :: Core.Program -> RST.Program
@@ -203,8 +203,8 @@ embedTSTCommand (TST.ExitSuccess loc) =
     Core.ExitSuccess loc
 embedTSTCommand (TST.ExitFailure loc) =
     Core.ExitFailure loc
-embedTSTCommand (TST.PrimOp loc ty op subst) =
-    Core.PrimOp loc ty op (embedTSTSubst subst)
+embedTSTCommand (TST.PrimOp loc op subst) =
+    Core.PrimOp loc op (embedTSTSubst subst)
 
 embedTSTProg :: TST.Program -> Core.Program
 embedTSTProg = fmap embedTSTDecl

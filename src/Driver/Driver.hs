@@ -15,6 +15,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import System.FilePath ( takeBaseName )
 
 import Driver.Definition
 import Driver.Environment
@@ -24,10 +25,9 @@ import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveProgram)
 import Resolution.Definition
 
-import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
@@ -45,6 +45,7 @@ import TypeInference.GenerateConstraints.Terms
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types
+import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
@@ -271,10 +272,10 @@ runCompilationPlan compilationOrder = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
       --  decls <- getModuleDeclarations mn
-      decls <- catchError (getModuleDeclarations mn)
-                          (addErrorsNonEmpty mn [])
+      (fp,decls) <- catchError  (getModuleDeclarations mn)
+                                (addErrorsNonEmpty mn (undefined, []))
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- getSymbolTable mn decls
+      st <- getSymbolTable fp mn decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
@@ -292,14 +293,18 @@ runCompilationPlan compilationOrder = do
 ---------------------------------------------------------------------------------
 
 
+filePathToModuleName :: FilePath -> ModuleName
+filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
+
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> ModuleName
+                -> FilePath
                 -> [CST.Declaration]
                 -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
-inferProgramIO state mn decls = do
+inferProgramIO state fp decls = do
+  let mn = filePathToModuleName fp
   let action :: DriverM TST.Program
       action = do
-        addModuleDeclarations mn decls
+        addModuleDeclarations mn fp decls
         runCompilationModule mn
         queryTypecheckedProgram mn
   res <- execDriverM state action

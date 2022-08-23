@@ -4,7 +4,6 @@ import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
 import Data.Bifunctor ( second )
 import Data.List.NonEmpty (NonEmpty((:|)))
-import Data.Map qualified as M
 import Data.Text qualified as T
 
 import Errors
@@ -15,9 +14,8 @@ import Resolution.Pattern
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
-import Syntax.Common.Primitives
+import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
+import Syntax.CST.Names
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -183,11 +181,23 @@ resolveInstanceCases cases = do
 -- Resolving PrimCommands
 ---------------------------------------------------------------------------------
 
-getPrimOpArity :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolverM Arity
-getPrimOpArity loc primOp = do
-  case M.lookup primOp primOps of
-    Nothing -> throwError $ ErrResolution (UndefinedPrimOp loc primOp) :| []
-    Just aritySpecified -> return aritySpecified
+-- | Primitive operations and their arities
+primOpsArity :: CST.PrimitiveOp -> Arity
+-- I64
+primOpsArity CST.I64Add = [Prd, Prd, Cns]
+primOpsArity CST.I64Sub = [Prd, Prd, Cns]
+primOpsArity CST.I64Mul = [Prd, Prd, Cns]
+primOpsArity CST.I64Div = [Prd, Prd, Cns]
+primOpsArity CST.I64Mod = [Prd, Prd, Cns]
+-- F64
+primOpsArity CST.F64Add = [Prd, Prd, Cns]
+primOpsArity CST.F64Sub = [Prd, Prd, Cns]
+primOpsArity CST.F64Mul = [Prd, Prd, Cns]
+primOpsArity CST.F64Div = [Prd, Prd, Cns]
+-- Char
+primOpsArity CST.CharPrepend = [Prd, Prd, Cns]
+-- String
+primOpsArity CST.StringAppend = [Prd, Prd, Cns]
 
 resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
 resolvePrimCommand (CST.Print loc tm cmd) = do
@@ -201,12 +211,12 @@ resolvePrimCommand (CST.ExitSuccess loc) =
   pure $ RST.ExitSuccess loc
 resolvePrimCommand (CST.ExitFailure loc) =
   pure $ RST.ExitFailure loc
-resolvePrimCommand (CST.PrimOp loc pt op args) = do
-  reqArity <- getPrimOpArity loc (pt, op)
+resolvePrimCommand (CST.PrimOp loc op args) = do
+  let reqArity = primOpsArity op
   when (length reqArity /= length args) $
-         throwError $ ErrResolution (PrimOpArityMismatch loc (pt,op) (length reqArity) (length args)) :| []
+         throwError $ ErrResolution (PrimOpArityMismatch loc op (length reqArity) (length args)) :| []
   args' <- resolveTerms loc reqArity args
-  pure $ RST.PrimOp loc pt op args'
+  pure $ RST.PrimOp loc op args'
 
 ---------------------------------------------------------------------------------
 -- Resolving Commands
