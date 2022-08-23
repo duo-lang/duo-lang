@@ -15,6 +15,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import System.FilePath ( takeBaseName )
 
 import Driver.Definition
 import Driver.Environment
@@ -280,7 +281,7 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
 
 
 filePathToModuleName :: FilePath -> ModuleName
-filePathToModuleName fp = MkModuleName (T.pack fp)
+filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> FilePath
