@@ -1,4 +1,11 @@
-module Resolution.SymbolTable where
+module Resolution.SymbolTable
+  ( TyOp(..)
+  , TyOpDesugaring(..)
+  , TypeNameResolve(..)
+  , XtorNameResolve(..)
+  , SymbolTable(..)
+  , createSymbolTable
+  ) where
 
 import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty)
