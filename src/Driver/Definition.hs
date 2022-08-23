@@ -107,17 +107,17 @@ getSymbolTables = gets drvSymbols
 
 -- Modules and declarations
 
-getModuleDeclarations :: ModuleName -> DriverM CST.Program
+getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Program)
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
-          Just (_fp, decls) -> return decls
+          Just (fp, decls) -> return (fp, decls)
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
             decls <- runFileParser fp programP file
             modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
-            return decls
+            return (fp, decls)
 
 -- AST Cache
 

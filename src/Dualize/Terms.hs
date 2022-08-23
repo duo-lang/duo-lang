@@ -150,7 +150,7 @@ dualVariantType PosRep (ContravariantType ty) = ContravariantType (dualType NegR
 dualVariantType NegRep (ContravariantType ty) = ContravariantType (dualType PosRep ty)
 
 dualRnTypeName :: RnTypeName -> RnTypeName
-dualRnTypeName (MkRnTypeName _loc _doc mn tn) = MkRnTypeName defaultLoc Nothing mn (dualTypeName tn)
+dualRnTypeName (MkRnTypeName _loc _doc _fp mn tn) = MkRnTypeName defaultLoc Nothing Nothing mn (dualTypeName tn)
 
 -- >>> dualTypeName (MkTypeName "Foo")
 -- MkTypeName {unTypeName = "CoFoo"}

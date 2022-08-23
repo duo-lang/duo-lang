@@ -259,9 +259,9 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      decls <- getModuleDeclarations mn
+      (fp,decls) <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- createSymbolTable mn decls
+      st <- createSymbolTable (fp,mn) decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
@@ -290,7 +290,7 @@ inferProgramIO state fp decls = do
   let mn = filePathToModuleName fp
   let action :: DriverM TST.Program
       action = do
-        st <- createSymbolTable mn decls
+        st <- createSymbolTable (fp,mn) decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
