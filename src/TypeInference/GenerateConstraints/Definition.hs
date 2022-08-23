@@ -280,19 +280,19 @@ checkXtorSig :: RST.XtorSig pol -> TST.XtorSig pol
 checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = TST.MkXtorSig {sig_name = nm, sig_args = checkLinearContext ctxt }
 
 checkKind :: RST.Typ pol -> TST.Typ pol 
-checkKind (RST.TySkolemVar loc pol mk tv) = TST.TySkolemVar loc pol mk tv
-checkKind (RST.TyUniVar loc pol mk tv) = TST.TyUniVar loc pol mk tv
-checkKind (RST.TyRecVar loc pol mk rv) = TST.TyRecVar loc pol mk rv
+checkKind (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol Nothing tv
+checkKind (RST.TyUniVar loc pol tv) = TST.TyUniVar loc pol Nothing tv
+checkKind (RST.TyRecVar loc pol rv) = TST.TyRecVar loc pol Nothing rv
 checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol (map checkXtorSig xtors)
 checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol (map checkXtorSig xtors)
 checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol tn (map checkXtorSig xtors)
 checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol tn (map checkXtorSig xtors)
-checkKind (RST.TyNominal loc pol mk tn vart) = TST.TyNominal loc pol mk tn (map checkVariantType vart)
+checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol Nothing tn (map checkVariantType vart)
 checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty)
-checkKind (RST.TyBot loc mk) = TST.TyBot loc mk
-checkKind (RST.TyTop loc mk) = TST.TyTop loc mk
-checkKind (RST.TyUnion loc mk ty1 ty2) = TST.TyUnion loc mk (checkKind ty1) (checkKind ty2)
-checkKind (RST.TyInter loc mk ty1 ty2) = TST.TyInter loc mk (checkKind ty1) (checkKind ty2)
+checkKind (RST.TyBot loc) = TST.TyBot loc Nothing
+checkKind (RST.TyTop loc) = TST.TyTop loc Nothing
+checkKind (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc Nothing (checkKind ty1) (checkKind ty2)
+checkKind (RST.TyInter loc ty1 ty2) = TST.TyInter loc Nothing (checkKind ty1) (checkKind ty2)
 checkKind (RST.TyRec loc pol rv ty) = TST.TyRec loc pol rv (checkKind ty)
 checkKind (RST.TyI64 loc pol) = TST.TyI64 loc pol
 checkKind (RST.TyF64 loc pol) = TST.TyF64 loc pol
