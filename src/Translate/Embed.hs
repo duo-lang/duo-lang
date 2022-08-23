@@ -288,19 +288,19 @@ embedTSTLinearContext :: TST.LinearContext pol-> RST.LinearContext pol
 embedTSTLinearContext  = map embedTSTPrdCnsType
 
 embedTSTType :: TST.Typ pol -> RST.Typ pol
-embedTSTType (TST.TySkolemVar loc pol mk tv) = RST.TySkolemVar loc pol mk tv
-embedTSTType (TST.TyUniVar loc pol mk tv) = RST.TyUniVar loc pol mk tv
-embedTSTType (TST.TyRecVar loc pol mk tv) = RST.TyRecVar loc pol mk tv
+embedTSTType (TST.TySkolemVar loc pol _ tv) = RST.TySkolemVar loc pol tv
+embedTSTType (TST.TyUniVar loc pol _ tv) = RST.TyUniVar loc pol tv
+embedTSTType (TST.TyRecVar loc pol _ tv) = RST.TyRecVar loc pol tv
 embedTSTType (TST.TyData loc pol xtors) = RST.TyData loc pol (map embedTSTXtorSig xtors)
 embedTSTType (TST.TyCodata loc pol xtors) = RST.TyCodata loc pol (map embedTSTXtorSig xtors)
 embedTSTType (TST.TyDataRefined loc pol tn xtors) = RST.TyDataRefined loc pol tn (map embedTSTXtorSig xtors)
 embedTSTType (TST.TyCodataRefined loc pol tn xtors) = RST.TyCodataRefined loc pol tn (map embedTSTXtorSig xtors)
-embedTSTType (TST.TyNominal loc pol mk tn varty) = RST.TyNominal loc pol mk tn (map embedTSTVarType varty)
+embedTSTType (TST.TyNominal loc pol _ tn varty) = RST.TyNominal loc pol tn (map embedTSTVarType varty)
 embedTSTType (TST.TySyn loc pol tn tp) = RST.TySyn loc pol tn (embedTSTType tp)
-embedTSTType (TST.TyBot loc mk) = RST.TyBot loc mk 
-embedTSTType (TST.TyTop loc mk) = RST.TyTop loc mk
-embedTSTType (TST.TyUnion loc mk tp1 tp2) = RST.TyUnion loc mk (embedTSTType tp1) (embedTSTType tp2)
-embedTSTType (TST.TyInter loc mk tn1 tn2) = RST.TyInter loc mk (embedTSTType tn1) (embedTSTType tn2)
+embedTSTType (TST.TyBot loc) = RST.TyBot loc 
+embedTSTType (TST.TyTop loc) = RST.TyTop loc 
+embedTSTType (TST.TyUnion loc _ tp1 tp2) = RST.TyUnion loc (embedTSTType tp1) (embedTSTType tp2)
+embedTSTType (TST.TyInter loc _ tn1 tn2) = RST.TyInter loc (embedTSTType tn1) (embedTSTType tn2)
 embedTSTType (TST.TyRec loc pol rv tp) = RST.TyRec loc pol rv (embedTSTType tp)
 embedTSTType (TST.TyI64 loc pol) = RST.TyI64 loc pol
 embedTSTType (TST.TyF64 loc pol) = RST.TyF64 loc pol

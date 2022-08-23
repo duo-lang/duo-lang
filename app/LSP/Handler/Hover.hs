@@ -358,14 +358,14 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyTop loc _knd) =
+  toHoverMap (TST.TyTop loc) =
     let
       msg = T.unlines [ "#### Top type"
                       , "- Polarity: " <> prettyPolRep NegRep
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyBot loc _knd) =
+  toHoverMap (TST.TyBot loc) =
     let
       msg = T.unlines [ "#### Bot type"
                       , "- Polarity: " <> prettyPolRep PosRep

@@ -83,9 +83,9 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
-  TyUniVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
-  TyRecVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> RecTVar -> Typ pol
+  TySkolemVar     :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
+  TyUniVar        :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
+  TyRecVar        :: Loc -> PolarityRep pol -> Maybe MonoKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
@@ -93,35 +93,35 @@ data Typ (pol :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: Loc -> PolarityRep pol -> Maybe MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> Maybe MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
-  TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
+  TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
-  TyBot :: Loc -> Maybe MonoKind -> Typ Pos
-  TyTop :: Loc -> Maybe MonoKind -> Typ Neg
-  TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
-  TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
+  TyBot           :: Loc -> Typ Pos
+  TyTop           :: Loc -> Typ Neg
+  TyUnion         :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter         :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
-  TyRec :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
+  TyRec           :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
-  TyI64 :: Loc -> PolarityRep pol -> Typ pol
-  TyF64 :: Loc -> PolarityRep pol -> Typ pol
-  TyChar :: Loc -> PolarityRep pol -> Typ pol
-  TyString :: Loc -> PolarityRep pol -> Typ pol
+  TyI64           :: Loc -> PolarityRep pol -> Typ pol
+  TyF64           :: Loc -> PolarityRep pol -> Typ pol
+  TyChar          :: Loc -> PolarityRep pol -> Typ pol
+  TyString        :: Loc -> PolarityRep pol -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
-  TyFlipPol :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
+  TyFlipPol       :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
 mkUnion :: Loc -> Maybe MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc knd []     = TyBot loc knd
+mkUnion loc _   []     = TyBot loc
 mkUnion _   _   [t]    = t
 mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
 
 mkInter :: Loc -> Maybe MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc knd []     = TyTop loc knd
+mkInter loc _   []     = TyTop loc 
 mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 
@@ -276,10 +276,10 @@ instance Zonk (Typ pol) where
      TyNominal loc rep kind tn (zonk vt bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =
      TySyn loc rep nm (zonk vt bisubst ty)
-  zonk _vt _ (TyTop loc knd) =
-    TyTop loc knd
-  zonk _vt _ (TyBot loc knd) =
-    TyBot loc knd
+  zonk _vt _ (TyTop loc) =
+    TyTop loc
+  zonk _vt _ (TyBot loc) =
+    TyBot loc
   zonk vt bisubst (TyUnion loc knd ty ty') =
     TyUnion loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk vt bisubst (TyInter loc knd ty ty') =

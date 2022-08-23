@@ -172,9 +172,9 @@ subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ _ (TyTop _ _)) =
+subConstraints (SubType _ _ (TyTop _)) =
   pure []
-subConstraints (SubType _ (TyBot _ _) _) =
+subConstraints (SubType _ (TyBot _) _) =
   pure []
 subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) =
   pure [ SubType IntersectionUnionSubConstraint ty1 ty3
