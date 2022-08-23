@@ -10,14 +10,9 @@ import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
 import System.Log.Logger ( debugM )
-import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
 import Syntax.RST.Types ( PolarityRep(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
-import Syntax.CST.Names
-    ( FreeVarName(unFreeVarName),
-      ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types (PrdCnsRep(..))
@@ -32,12 +27,7 @@ import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Syntax.CST.Types (PrdCnsRep(..))
-import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.CST.Names ( FreeVarName(..) )
-import Syntax.RST.Types ( TopAnnot(..), PolarityRep(..) )
-import Syntax.RST.Program qualified as RST
-import Syntax.TST.Program qualified as TST
 import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
 import Utils
 
