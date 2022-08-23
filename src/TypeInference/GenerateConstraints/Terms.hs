@@ -6,10 +6,10 @@ module TypeInference.GenerateConstraints.Terms
   ) where
 
 import Control.Monad.Reader
-import Data.Map qualified as M
 import Data.Bifunctor (bimap)
 import Errors
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -17,9 +17,8 @@ import Syntax.TST.Types qualified as TST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Types qualified as RST
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
+import Syntax.CST.Names
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
 import Utils
@@ -233,13 +232,13 @@ genConstraintsTerm (Core.PrimLitString loc d) = pure $ TST.PrimLitString loc d
 
 genConstraintsCommand :: Core.Command -> GenM TST.Command
 genConstraintsCommand (Core.ExitSuccess loc) =
-  return (TST.ExitSuccess loc)
+  pure (TST.ExitSuccess loc)
 genConstraintsCommand (Core.ExitFailure loc) =
-  return (TST.ExitFailure loc)
+  pure (TST.ExitFailure loc)
 genConstraintsCommand (Core.Jump loc fv) = do
   -- Ensure that the referenced command is in scope
   _ <- lookupCommand loc fv
-  return (TST.Jump loc fv)
+  pure (TST.Jump loc fv)
 genConstraintsCommand (Core.Method loc mn cn subst) = do
   decl <- lookupClassDecl loc cn
     -- fresh type var and subsitution for type class variable(s)
@@ -250,11 +249,11 @@ genConstraintsCommand (Core.Method loc mn cn subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
-  return (TST.Method loc mn cn substInferred)
+  pure (TST.Method loc mn cn substInferred)
 genConstraintsCommand (Core.Print loc prd cmd) = do
   prd' <- genConstraintsTerm prd
   cmd' <- genConstraintsCommand cmd
-  return (TST.Print loc prd' cmd')
+  pure (TST.Print loc prd' cmd')
 genConstraintsCommand (Core.Read loc cns) = do
   cns' <- genConstraintsTerm cns
   addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep Nothing peanoNm []) (TST.getTypeTerm cns'))
@@ -263,16 +262,14 @@ genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1
   t2' <- genConstraintsTerm t2
   addConstraint (SubType (CommandConstraint loc) (TST.getTypeTerm t1') (TST.getTypeTerm t2'))
-  return (TST.Apply loc annot Nothing t1' t2')
-genConstraintsCommand (Core.PrimOp loc pt op subst) = do
+  pure (TST.Apply loc annot Nothing t1' t2')
+genConstraintsCommand (Core.PrimOp loc op subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
-  case M.lookup (pt, op) primOps of
-    Nothing -> throwGenError (PrimitiveOpMissingSignature loc op pt)
-    Just sig -> do
-      _ <- genConstraintsCtxts substTypes (map checkPrdCnsType sig) (PrimOpArgsConstraint loc)
-      return (TST.PrimOp loc pt op substInferred)
-
+  let sig = primOps op 
+  _ <- genConstraintsCtxts substTypes (map checkPrdCnsType sig) (PrimOpArgsConstraint loc)
+  pure (TST.PrimOp loc op substInferred)
+  
 genConstraintsInstance :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
 genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
   -- We lookup the class declaration  of the instance.

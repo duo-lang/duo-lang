@@ -6,12 +6,11 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
 
-import Syntax.Common.Names
-import Syntax.Common.Primitives
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
-import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
+import Syntax.CST.Names
+import Syntax.CST.Terms
+import Syntax.CST.Types (PrdCns)
+import Syntax.RST.Types
 import Utils
 import TypeInference.Constraints (ConstraintInfo)
 
@@ -40,9 +39,8 @@ data ResolutionError where
                     -> Int
                     -> Int
                     -> ResolutionError
-  UndefinedPrimOp :: Loc -> (PrimitiveType, PrimitiveOp) -> ResolutionError
   PrimOpArityMismatch :: Loc
-                      -> (PrimitiveType, PrimitiveOp)
+                      -> PrimitiveOp
                       -> Int
                       -> Int
                       -> ResolutionError
@@ -60,7 +58,6 @@ instance HasLoc ResolutionError where
   getLoc (UnknownOperator loc _) = loc
   getLoc (MethodArityMismatch loc _ _ _ _) = loc
   getLoc (XtorArityMismatch loc _ _ _) = loc
-  getLoc (UndefinedPrimOp loc _) = loc
   getLoc (PrimOpArityMismatch loc _ _ _) = loc
   getLoc (CmdExpected loc _) = loc
   getLoc (InvalidStar loc _) = loc
@@ -74,7 +71,6 @@ instance AttachLoc ResolutionError where
   attachLoc loc (UnknownOperator _ op) = UnknownOperator loc op
   attachLoc loc (XtorArityMismatch _ xt i1 i2) = XtorArityMismatch loc xt i1 i2
   attachLoc loc (MethodArityMismatch _ mt ct i1 i2) = MethodArityMismatch loc mt ct i1 i2
-  attachLoc loc (UndefinedPrimOp _ op) = UndefinedPrimOp loc op
   attachLoc loc (PrimOpArityMismatch _ po i1 i2) = PrimOpArityMismatch loc po i1 i2
   attachLoc loc (CmdExpected _ t) = CmdExpected loc t
   attachLoc loc (InvalidStar _ t) = InvalidStar loc t
@@ -96,8 +92,6 @@ data ConstraintGenerationError where
   InstanceImplementationMissing :: Loc -> MethodName -> ConstraintGenerationError
   -- | Typeclass method implemented in instance, but not contained in class declaration.
   InstanceImplementationAdditional :: Loc -> MethodName -> ConstraintGenerationError
-  -- | Could not find signature for given primitive operation.
-  PrimitiveOpMissingSignature :: Loc -> PrimitiveOp -> PrimitiveType -> ConstraintGenerationError
   -- | One cannot infer a type for an empty nominal match.
   EmptyNominalMatch :: Loc -> ConstraintGenerationError
   -- | One cannot infer a type for an empty refinement match.
@@ -116,7 +110,6 @@ instance HasLoc ConstraintGenerationError where
   getLoc (PatternMatchAdditional loc _ _) = loc
   getLoc (InstanceImplementationMissing loc _) = loc
   getLoc (InstanceImplementationAdditional loc _) = loc
-  getLoc (PrimitiveOpMissingSignature loc _ _) = loc
   getLoc (EmptyNominalMatch loc) = loc
   getLoc (EmptyRefinementMatch loc) = loc
   getLoc (LinearContextsUnequalLength loc _ _ _) = loc
@@ -129,7 +122,6 @@ instance AttachLoc ConstraintGenerationError where
   attachLoc loc (PatternMatchAdditional _ xn tn) = PatternMatchAdditional loc xn tn
   attachLoc loc (InstanceImplementationMissing _ mn) = InstanceImplementationMissing loc mn
   attachLoc loc (InstanceImplementationAdditional _ mn) = InstanceImplementationAdditional loc mn
-  attachLoc loc (PrimitiveOpMissingSignature _ po pt) = PrimitiveOpMissingSignature loc po pt
   attachLoc loc (EmptyNominalMatch _) = EmptyNominalMatch loc
   attachLoc loc (EmptyRefinementMatch _) = EmptyRefinementMatch loc
   attachLoc loc (LinearContextsUnequalLength _ ci ctx1 ctx2) = LinearContextsUnequalLength loc ci ctx1 ctx2

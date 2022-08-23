@@ -16,24 +16,12 @@ import Data.Set qualified as S
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol)
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
+import Syntax.CST.Names
 import Syntax.CST.Kinds
-import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
 import TypeAutomata.Definition
-    ( TypeAutEps,
-      TypeAut'(..),
-      TypeGrEps,
-      TypeAutCore(..),
-      FlowEdge,
-      EdgeLabelEpsilon,
-      EdgeLabel(..),
-      NodeLabel(..),
-      XtorLabel(..),
-      emptyNodeLabel, 
-      singleNodeLabel )
 import Utils ( enumerate, defaultLoc )
 import Control.Monad
 

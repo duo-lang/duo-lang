@@ -14,15 +14,15 @@ import Data.Set qualified as S
 
 import Driver.Environment (Environment)
 import Errors
-import Syntax.TST.Types qualified as TST
+import Syntax.TST.Types 
+import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
-import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
+import Syntax.CST.Types ( PrdCnsRep(..))
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -71,14 +71,14 @@ getBounds uv = do
                                            ]
     Just vs -> return vs
 
-addUpperBound :: UniTVar -> TST.Typ Neg -> SolverM [Constraint ConstraintInfo]
+addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
-addLowerBound :: UniTVar -> TST.Typ Pos -> SolverM [Constraint ConstraintInfo]
+addLowerBound :: UniTVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv
@@ -100,15 +100,15 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
-      (SubType _ (TST.TyUniVar _ PosRep _ uv) ub) -> do
+      (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType _ lb (TST.TyUniVar _ NegRep _ uv)) -> do
+      (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
-      (TypeClassPos _ cn (TST.TyUniVar _ PosRep _ uv)) -> do
+      (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
         addTypeClassConstraint uv cn
-      (TypeClassNeg _ cn (TST.TyUniVar _ NegRep _ uv)) -> do
+      (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
         addTypeClassConstraint uv cn
       _ -> do
         subCss <- subConstraints cs
@@ -118,30 +118,30 @@ solve (cs:css) = do
 -- Computing Subconstraints
 ------------------------------------------------------------------------------
 
-lookupXtor :: XtorName -> [TST.XtorSig pol] -> SolverM (TST.XtorSig pol)
-lookupXtor xtName xtors = case find (\(TST.MkXtorSig xtName' _) -> xtName == xtName') xtors of
+lookupXtor :: XtorName -> [XtorSig pol] -> SolverM (XtorSig pol)
+lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName') xtors of
   Nothing -> throwSolverError defaultLoc ["The xtor"
                                          , ppPrint xtName
                                          , "is not contained in the list of xtors"
                                          , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [TST.XtorSig Neg] -> TST.XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
-checkXtor xtors2 (TST.MkXtorSig xtName subst1) = do
-  TST.MkXtorSig _ subst2 <- lookupXtor xtName xtors2
+checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
+checkXtor xtors2 (MkXtorSig xtName subst1) = do
+  MkXtorSig _ subst2 <- lookupXtor xtName xtors2
   checkContexts subst1 subst2
 
-checkContexts :: TST.LinearContext Pos -> TST.LinearContext Neg -> SolverM [Constraint ConstraintInfo]
+checkContexts :: LinearContext Pos -> LinearContext Neg -> SolverM [Constraint ConstraintInfo]
 checkContexts [] [] = return []
-checkContexts (TST.PrdCnsType PrdRep ty1:rest1) (TST.PrdCnsType PrdRep ty2:rest2) = do
+checkContexts (PrdCnsType PrdRep ty1:rest1) (PrdCnsType PrdRep ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty1 ty2:xs)
-checkContexts (TST.PrdCnsType CnsRep ty1:rest1) (TST.PrdCnsType CnsRep ty2:rest2) = do
+checkContexts (PrdCnsType CnsRep ty1:rest1) (PrdCnsType CnsRep ty2:rest2) = do
   xs <- checkContexts rest1 rest2
   return (SubType XtorSubConstraint ty2 ty1:xs)
-checkContexts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) =
+checkContexts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain PrdType by CnsType."]
-checkContexts (TST.PrdCnsType CnsRep _:_) (TST.PrdCnsType PrdRep _:_) =
+checkContexts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain CnsType by PrdType."]
 checkContexts []    (_:_) =
   throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
@@ -159,9 +159,9 @@ subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInf
 -- Type synonyms are unfolded and are not preserved through constraint solving.
 -- A more efficient solution to directly compare type synonyms is possible in the
 -- future.
-subConstraints (SubType annot (TST.TySyn _ _ _ ty) ty') =
+subConstraints (SubType annot (TySyn _ _ _ ty) ty') =
   pure [SubType annot ty ty']
-subConstraints (SubType annot ty (TST.TySyn _ _ _ ty')) =
+subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
   pure [SubType annot ty ty']
 -- Intersection and union constraints:
 --
@@ -172,15 +172,15 @@ subConstraints (SubType annot ty (TST.TySyn _ _ _ ty')) =
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ _ (TST.TyTop _ _)) =
+subConstraints (SubType _ _ (TyTop _ _)) =
   pure []
-subConstraints (SubType _ (TST.TyBot _ _) _) =
+subConstraints (SubType _ (TyBot _ _) _) =
   pure []
-subConstraints (SubType _ (TST.TyUnion _ _ ty1 ty2) ty3) =
+subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) =
   pure [ SubType IntersectionUnionSubConstraint ty1 ty3
        , SubType IntersectionUnionSubConstraint ty2 ty3
        ]
-subConstraints (SubType _ ty1 (TST.TyInter _ _ ty2 ty3)) =
+subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) =
   pure [ SubType IntersectionUnionSubConstraint ty1 ty2
        , SubType IntersectionUnionSubConstraint ty1 ty3
        ]
@@ -193,10 +193,10 @@ subConstraints (SubType _ ty1 (TST.TyInter _ _ ty2 ty3)) =
 --     rec a.ty1 <: ty2          ~>     ty1 [rec a.ty1 / a] <: ty2
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
-subConstraints (SubType _ ty@TST.TyRec{} ty') =
-  return [SubType RecTypeSubConstraint (TST.unfoldRecType ty) ty']
-subConstraints (SubType _ ty' ty@TST.TyRec{}) =
-  return [SubType RecTypeSubConstraint ty' (TST.unfoldRecType ty)]
+subConstraints (SubType _ ty@TyRec{} ty') =
+  return [SubType RecTypeSubConstraint (unfoldRecType ty) ty']
+subConstraints (SubType _ ty' ty@TyRec{}) =
+  return [SubType RecTypeSubConstraint ty' (unfoldRecType ty)]
 -- Constraints between structural data or codata types:
 --
 -- Constraints between structural data and codata types generate constraints based
@@ -206,10 +206,10 @@ subConstraints (SubType _ ty' ty@TST.TyRec{}) =
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TST.TyData _ PosRep ctors1) (TST.TyData _ NegRep ctors2)) = do
+subConstraints (SubType _ (TyData _ PosRep ctors1) (TyData _ NegRep ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure $ concat constraints
-subConstraints (SubType _ (TST.TyCodata _ PosRep dtors1) (TST.TyCodata _ NegRep dtors2)) = do
+subConstraints (SubType _ (TyCodata _ PosRep dtors1) (TyCodata _ NegRep dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
 -- Constraints between refinement data or codata types:
@@ -220,10 +220,10 @@ subConstraints (SubType _ (TST.TyCodata _ PosRep dtors1) (TST.TyCodata _ NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TST.TyDataRefined _ PosRep tn1 ctors1) (TST.TyDataRefined _ NegRep tn2 ctors2)) | tn1 == tn2= do
+subConstraints (SubType _ (TyDataRefined _ PosRep tn1 ctors1) (TyDataRefined _ NegRep tn2 ctors2)) | tn1 == tn2= do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure $ concat constraints
-subConstraints (SubType _ (TST.TyCodataRefined _ PosRep tn1 dtors1) (TST.TyCodataRefined _ NegRep tn2 dtors2))  | tn1 == tn2 = do
+subConstraints (SubType _ (TyCodataRefined _ PosRep tn1 dtors1) (TyCodataRefined _ NegRep tn2 dtors2))  | tn1 == tn2 = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
 -- Constraints between nominal types:
@@ -234,16 +234,16 @@ subConstraints (SubType _ (TST.TyCodataRefined _ PosRep tn1 dtors1) (TST.TyCodat
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TST.TyNominal _ _ _ tn1 args1) (TST.TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
-    let f (TST.CovariantType ty1) (TST.CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
-        f (TST.ContravariantType ty1) (TST.ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
+subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
+    let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
+        f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
         f _ _ = error "cannot occur"
     pure (zipWith f args1 args2)
 -- Constraints between primitive types:
-subConstraints (SubType _ (TST.TyI64 _ _) (TST.TyI64 _ _)) = pure []
-subConstraints (SubType _ (TST.TyF64 _ _) (TST.TyF64 _ _)) = pure []
-subConstraints (SubType _ (TST.TyChar _ _) (TST.TyChar _ _)) = pure []
-subConstraints (SubType _ (TST.TyString _ _) (TST.TyString _ _)) = pure []
+subConstraints (SubType _ (TyI64 _ _) (TyI64 _ _)) = pure []
+subConstraints (SubType _ (TyF64 _ _) (TyF64 _ _)) = pure []
+subConstraints (SubType _ (TyChar _ _) (TyChar _ _)) = pure []
+subConstraints (SubType _ (TyString _ _) (TyString _ _)) = pure []
 -- All other constraints cannot be solved.
 subConstraints (SubType _ t1 t2) = do
   throwSolverError defaultLoc ["Cannot constraint type"

@@ -11,15 +11,15 @@ import Text.Read (readMaybe)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Common.Names
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
+import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Utils
 import Syntax.TST.Types qualified as TST
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad

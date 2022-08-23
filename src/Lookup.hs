@@ -1,6 +1,6 @@
 module Lookup
-  ( PrdCnsToPol
-  , prdCnsToPol
+  ( RST.PrdCnsToPol
+  , RST.prdCnsToPol
   , lookupTerm
   , lookupCommand
   , lookupDataDecl
@@ -27,9 +27,9 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
-import Syntax.Common.Names
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
+import Syntax.RST.Types (PolarityRep(..), Polarity(..))
+import Syntax.CST.Types (PrdCnsRep(..))
+import Syntax.CST.Names
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -58,8 +58,7 @@ findFirstM f err = asks fst >>= \env -> go (M.toList env)
         Nothing -> go envs
 
 -- | Lookup the term and the type of a term bound in the environment.
-lookupTerm :: EnvReader a m
-           => Loc -> PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TST.TypeScheme (PrdCnsToPol pc))
+lookupTerm :: EnvReader a m => Loc -> PrdCnsRep pc -> FreeVarName -> m (TST.Term pc, TST.TypeScheme (RST.PrdCnsToPol pc))
 lookupTerm loc PrdRep fv = do
   env <- asks fst
   let err = ErrOther $ SomeOtherError loc ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
@@ -155,7 +154,7 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
 ---------------------------------------------------------------------------------
 
 withTerm :: forall a m b pc. EnvReader a m
-         => ModuleName -> PrdCnsRep pc -> FreeVarName -> TST.Term pc -> Loc -> TST.TypeScheme (PrdCnsToPol pc)
+         => ModuleName -> PrdCnsRep pc -> FreeVarName -> TST.Term pc -> Loc -> TST.TypeScheme (RST.PrdCnsToPol pc)
          -> (m b -> m b)
 withTerm mn PrdRep fv tm loc tys action = do
   let modifyEnv :: Environment -> Environment

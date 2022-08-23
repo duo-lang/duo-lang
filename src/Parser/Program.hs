@@ -19,8 +19,7 @@ import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration

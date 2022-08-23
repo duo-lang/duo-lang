@@ -5,14 +5,11 @@ import Data.Set qualified as S
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Kind ( Type )
+import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
+import Syntax.CST.Kinds (Variance(..), MonoKind)
+import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
+import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 
-import Syntax.Common.PrdCns
-    ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
-import Syntax.CST.Kinds ( MonoKind, Variance(..) )
-import Syntax.Common.Polarity
-    ( FlipPol, Polarity(..), PolarityRep(..) )
-import Syntax.Common.Names
-    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 import Utils
 
 ------------------------------------------------------------------------------

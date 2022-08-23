@@ -11,9 +11,8 @@ import Text.Megaparsec
 import Parser.Definition
 import Parser.Lexer
 import Parser.Common
-import Syntax.Common.Names
-import Syntax.Common.Primitives
 import Syntax.CST.Kinds
+import Syntax.CST.Names
 
 ---------------------------------------------------------------------------------
 -- EvaluationOrder and MonoKinds
@@ -26,10 +25,10 @@ evalOrderP = (keywordP KwCBV >> sc >> pure CBV) <|>
 -- | Parses one of the keywords "CBV" or "CBN"
 monoKindP :: Parser MonoKind
 monoKindP = CBox <$> evalOrderP
-         <|> CRep I64 <$ (keywordP KwI64Rep >> sc)
-         <|> CRep F64 <$ (keywordP KwF64Rep >> sc)
-         <|> CRep PChar <$ (keywordP KwCharRep >> sc)
-         <|> CRep PString <$ (keywordP KwStringRep >> sc)
+         <|> I64Rep <$ (keywordP KwI64Rep >> sc)
+         <|> F64Rep <$ (keywordP KwF64Rep >> sc)
+         <|> CharRep <$ (keywordP KwCharRep >> sc)
+         <|> StringRep <$ (keywordP KwStringRep >> sc)
 
 ---------------------------------------------------------------------------------
 -- PolyKinds

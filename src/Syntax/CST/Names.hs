@@ -1,4 +1,4 @@
-module Syntax.Common.Names where
+module Syntax.CST.Names where
 
 import Data.Text (Text)
 

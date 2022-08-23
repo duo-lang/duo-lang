@@ -9,7 +9,7 @@ import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.TST.Types qualified as TST
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Translate.Reparse
 import Translate.Embed
 

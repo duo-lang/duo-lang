@@ -9,8 +9,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 
 import Syntax.TST.Types
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.RST.Types (PolarityRep(..),Polarity(..))
+import Syntax.CST.Names
 import TypeInference.Constraints
 import Utils
 

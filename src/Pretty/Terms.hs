@@ -8,8 +8,7 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common.Names ( FreeVarName )
-import Syntax.Common.Primitives ( primOpKeyword, primTypeKeyword )
+import Syntax.CST.Names ( FreeVarName )
 import Translate.Embed
 import Translate.Reparse
 
@@ -204,10 +203,29 @@ instance PrettyAnn CST.Term where
     brackets (prettyAnn cns)
   prettyAnn (CST.Apply _ t1 t2) =
     group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
-  prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ pt op subst)) =
-    annKeyword (prettyAnn (primOpKeyword op)) <>
-    annTypeName (prettyAnn (primTypeKeyword pt)) <>
+  prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ op subst)) =
+    annKeyword (prettyAnn op) <>
     parens' comma (prettyAnn <$> subst)
+
+---------------------------------------------------------------------------------
+-- Primitives
+---------------------------------------------------------------------------------
+
+instance PrettyAnn CST.PrimitiveOp where
+  prettyAnn CST.I64Add = "Add#I64"
+  prettyAnn CST.I64Sub = "Sub#I64"
+  prettyAnn CST.I64Mul = "Mul#I64"
+  prettyAnn CST.I64Div = "Div#I64"
+  prettyAnn CST.I64Mod = "Mod#I64"
+  -- F64 Ops
+  prettyAnn CST.F64Add = "Add#F64"
+  prettyAnn CST.F64Sub = "Sub#F64"
+  prettyAnn CST.F64Mul = "Mul#F64"
+  prettyAnn CST.F64Div = "Div#F64"
+  -- Char Ops
+  prettyAnn CST.CharPrepend = "Prepend#Char"
+  -- String Ops
+  prettyAnn CST.StringAppend = "Append#String"
 
 ---------------------------------------------------------------------------------
 -- Commands

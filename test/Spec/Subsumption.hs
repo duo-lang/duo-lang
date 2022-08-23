@@ -10,8 +10,8 @@ import Pretty.Types ()
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Types
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.CST.Names
+import Syntax.RST.Types (PolarityRep(..))
 import TypeAutomata.Subsume (subsume)
 import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
 
@@ -50,10 +50,10 @@ spec symboltables = do
     subsumptionCheckPos symboltables True "Nat" "Nat"
     subsumptionCheckPos symboltables True "{ Ap(Nat,return Bool) }" "{ Ap(Nat,return Bool) }"
     subsumptionCheckPos symboltables True "rec a.  <Z, S(< S(a) >)>" "rec a. <Z, S(a)>"
-    subsumptionCheckPos symboltables True "{ Ap(rec a. < Z, S (a) >, return (rec a.  <Z, S(< S(a) >)>) ) }" "{ Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S (a) >) ) }"
+    subsumptionCheckPos symboltables True "{ Ap(rec a. < Z, S(a) >, return (rec a.  <Z, S(< S(a) >)>) ) }" "{ Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S(a) >) ) }"
     subsumptionCheckPos symboltables True "Nat" "Nat \\/ Nat"
-    subsumptionCheckPos symboltables True "rec a. < Z, S (a) >" "rec a. < Z > \\/ < S (a) >"
-    subsumptionCheckPos symboltables True "<S (<Z>) >" "< Z> \\/ < S (<Z>) >"
+    subsumptionCheckPos symboltables True "rec a. < Z, S(a) >" "rec a. < Z > \\/ < S(a) >"
+    subsumptionCheckPos symboltables True "< S(<Z>) >" "< Z> \\/ < S(<Z>) >"
     subsumptionCheckPos symboltables True "forall t0. (t0 -> (rec r4.(t0 \\/ < S( r4 ) >)))"
                                           "(rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > ) "
     -- Subsumptions which shouldn't hold
@@ -61,7 +61,7 @@ spec symboltables = do
     subsumptionCheckPos symboltables False "{ Ap(< True >,return < True >) }" "forall a. { Ap(a,return a) }"
     subsumptionCheckPos symboltables False "{ Ap(< True >,return < True , False >) }" "{ Ap(< True >,return < True >) }"
     subsumptionCheckPos symboltables False "Nat" "Bool"
-    subsumptionCheckPos symboltables False "{ Ap(rec a. < Z, S ( <S(a)> ) >, return (rec a.  <Z, S(< S(a) >)>) ) }" "{ Ap(rec a.  <Z, S(a)>, return (rec a. < Z, S (a) >) ) }"
+    subsumptionCheckPos symboltables False "{ Ap(rec a. < Z, S( <S(a)> ) >, return (rec a.  <Z, S(< S(a) >)>) ) }" "{ Ap(rec a.  <Z, S(a)>, return (rec a. < Z, S(a) >) ) }"
     subsumptionCheckPos symboltables False "(rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > ) "
                                            "forall t0. (t0 -> (rec r4.(t0 \\/ < S( r4 ) >)))"
 

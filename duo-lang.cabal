@@ -140,14 +140,11 @@ library
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types
-      Syntax.Common.Names
-      Syntax.Common.Polarity
-      Syntax.Common.Primitives
-      Syntax.Common.PrdCns
       Syntax.Core.Annot
       Syntax.Core.Terms
       Syntax.Core.Program
       Syntax.CST.Kinds
+      Syntax.CST.Names
       Syntax.CST.Program
       Syntax.CST.Terms
       Syntax.CST.Types

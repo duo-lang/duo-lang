@@ -6,7 +6,7 @@ import Prettyprinter
 import Text.Megaparsec.Pos
 
 import Pretty.Pretty
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( Associativity(..),
       ClassName(MkClassName),
       DocComment(unDocComment),
@@ -20,8 +20,7 @@ import Syntax.Common.Names
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
-import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
-import Syntax.Common.Primitives ( PrimitiveType(..) )
+import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
 import Utils ( Loc(..) )
@@ -106,16 +105,6 @@ prettyPrdCns Prd = "prd"
 prettyPrdCns Cns = "cns"
 
 ---------------------------------------------------------------------------------
--- Primitives
----------------------------------------------------------------------------------
-
-instance PrettyAnn PrimitiveType where
-  prettyAnn I64 = "I64"
-  prettyAnn F64 = "F64"
-  prettyAnn PChar = "Char"
-  prettyAnn PString = "String"
-
----------------------------------------------------------------------------------
 -- Kinds
 ---------------------------------------------------------------------------------
 
@@ -125,10 +114,10 @@ instance PrettyAnn EvaluationOrder where
 
 instance PrettyAnn MonoKind where
   prettyAnn (CBox eo)  = prettyAnn eo
-  prettyAnn (CRep I64) = "I64Rep"
-  prettyAnn (CRep F64) = "F64Rep"
-  prettyAnn (CRep PChar) = "CharRep"
-  prettyAnn (CRep PString) = "StringRep"
+  prettyAnn I64Rep = "I64Rep"
+  prettyAnn F64Rep = "F64Rep"
+  prettyAnn CharRep = "CharRep"
+  prettyAnn StringRep = "StringRep"
 
 instance PrettyAnn Variance where
   prettyAnn Covariant     = annSymbol "+"

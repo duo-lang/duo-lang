@@ -6,16 +6,21 @@ import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
 import Syntax.TST.Types
-import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
 import Syntax.Core.Annot
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.CST.Names
+import Syntax.CST.Terms (PrimitiveOp)
 import Syntax.CST.Kinds
-import Syntax.RST.Types qualified as RST
+import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
+import Syntax.RST.Program (PrdCnsToPol)
 import Utils
 
-data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String | DualMethod Loc String
+data DualizeError
+    = DualPrim Loc String 
+    | DualPrint Loc String  
+    | DualRead Loc String 
+    | DualPrimOp Loc PrimitiveOp String 
+    | DualMethod Loc String
   deriving Show
 
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
@@ -44,7 +49,7 @@ dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
 dualCmd (Method loc _ _ _) = Left $ DualMethod loc "Cannot dualize type class method"
-dualCmd (PrimOp loc _ op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
+dualCmd (PrimOp loc op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
 dualCmd (ExitSuccess _) = return $ ExitSuccess defaultLoc
 dualCmd (ExitFailure _) = return $ ExitFailure defaultLoc
 

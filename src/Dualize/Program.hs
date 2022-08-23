@@ -1,10 +1,10 @@
 module Dualize.Program where
 
-import Syntax.Common.Polarity
 import Syntax.CST.Kinds
-import Syntax.Common.PrdCns
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Program qualified as RST
 import Dualize.Terms
 import TypeInference.GenerateConstraints.Definition (checkKind)
