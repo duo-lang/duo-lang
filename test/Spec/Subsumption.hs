@@ -13,7 +13,7 @@ import Resolution.Types
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import TypeAutomata.Subsume (subsume)
-import Translate.Embed
+import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
 
 subsumptionCheckPos :: [(ModuleName, SymbolTable)] -> Bool -> Text -> Text -> Spec
 subsumptionCheckPos env bspec s1 s2 = do
@@ -30,7 +30,7 @@ subsumptionCheckPos env bspec s1 s2 = do
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
           (Right r1, Right r2) -> do
-            case subsume PosRep (unEmbedTypeScheme r1) (unEmbedTypeScheme r2) of
+            case subsume PosRep (checkTypeScheme r1) (checkTypeScheme r2) of
               Right b -> b `shouldBe` bspec
               Left err -> expectationFailure (show err)
             

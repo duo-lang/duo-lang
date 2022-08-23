@@ -30,6 +30,7 @@ module TypeInference.GenerateConstraints.Definition
   , checkCorrectness
   , checkLinearContext
   , checkVariantType
+  , checkTypeScheme
   , checkExhaustiveness
   , checkInstanceCoverage
   , translateXtorSigUpper
@@ -261,6 +262,9 @@ translateTypeLower ty = do
 ---------------------------------------------------------------------------------------------
 -- Kinds
 ---------------------------------------------------------------------------------------------
+
+checkTypeScheme :: RST.TypeScheme pol -> TST.TypeScheme pol
+checkTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = checkKind ty}
 
 checkVariantType :: RST.VariantType pol -> TST.VariantType pol 
 checkVariantType (RST.CovariantType ty) = TST.CovariantType (checkKind ty)

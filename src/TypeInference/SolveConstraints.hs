@@ -14,7 +14,6 @@ import Data.Set qualified as S
 
 import Driver.Environment (Environment)
 import Errors
-import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
 import Pretty.Pretty
 import Pretty.Types ()
@@ -24,7 +23,6 @@ import Utils ( defaultLoc )
 import Syntax.Common.Names
 import Syntax.Common.Polarity
 import Syntax.Common.PrdCns
-import Translate.Embed
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

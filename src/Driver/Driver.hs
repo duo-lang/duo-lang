@@ -15,6 +15,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Data.Bifunctor (bimap)
 
 import Driver.Definition
 import Driver.Environment
@@ -37,7 +38,7 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM )
+    ( runGenM,checkTypeScheme,checkKind )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -49,7 +50,6 @@ import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
-import Translate.Embed
 
 
 checkAnnot :: PolarityRep pol
@@ -59,10 +59,10 @@ checkAnnot :: PolarityRep pol
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred (unEmbedTypeScheme tyAnnotated)
+  let isSubsumed = subsume rep tyInferred (checkTypeScheme tyAnnotated)
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated (unEmbedTypeScheme tyAnnotated))
+      (Right True) -> return (TST.Annotated (checkTypeScheme tyAnnotated))
       (Right False) -> do
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                             , " Annotated type: " <> ppPrint tyAnnotated
@@ -164,7 +164,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let instancetyp = (unEmbedType.fst $ instancedecl_typ, unEmbedType.snd $ instancedecl_typ)
+  let instancetyp = Data.Bifunctor.bimap checkKind checkKind instancedecl_typ
   let f env = env { instanceEnv = M.adjust (S.insert instancetyp) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
