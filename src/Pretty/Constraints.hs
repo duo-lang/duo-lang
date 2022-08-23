@@ -140,66 +140,28 @@ instance PrettyAnn SolverResult where
 -- Bisubstitutions
 ---------------------------------------------------------------------------------
 
-prettyRSTBisubst :: (UniTVar, (RST.Typ 'Pos, RST.Typ 'Neg)) -> Doc Annotation
-prettyRSTBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> prettyAnn v
+prettyBisubst :: (UniTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
+prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> prettyAnn v
 
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
                                              ]
 
-prettyRSTRecBisubst :: (RecTVar, (RST.Typ 'Pos, RST.Typ 'Neg)) -> Doc Annotation
-prettyRSTRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Recursive variable:" <+> prettyAnn v
+prettyRecBisubst :: (RecTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Recursive variable:" <+> prettyAnn v
 
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
                                              ]
-prettyRSTSkolBisubst :: (SkolemTVar, (RST.Typ 'Pos, RST.Typ 'Neg)) -> Doc Annotation
-prettyRSTSkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
+prettySkolBisubst :: (SkolemTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
+prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
 
                                              , vsep [ "+ |->" <+> prettyAnn typ
                                                     , "- |->" <+> prettyAnn tyn
                                                     ]
                                              ]
-
-prettyTSTBisubst :: (UniTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation 
-prettyTSTBisubst (v, (typ,tyn)) =  prettyRSTBisubst (v,(embedTSTType typ, embedTSTType tyn))
-
-prettyTSTRecBisubst :: (RecTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation 
-prettyTSTRecBisubst (v, (typ,tyn)) =  prettyRSTRecBisubst (v,(embedTSTType typ, embedTSTType tyn))
-
-prettyTSTSkolBisubst :: (SkolemTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation 
-prettyTSTSkolBisubst (v, (typ,tyn)) =  prettyRSTSkolBisubst (v,(embedTSTType typ, embedTSTType tyn))
-
-
-instance PrettyAnn (RST.Bisubstitution RST.UniVT) where
-  prettyAnn uvsubst = vsep
-    [ "---------------------------------------------------------"
-    , "                 Bisubstitution (UniTVar)                "
-    , "---------------------------------------------------------"
-    , ""
-    , vsep $ intersperse "" (prettyRSTBisubst <$> M.toList (RST.bisubst_map uvsubst))
-    ]
-
-instance PrettyAnn (RST.Bisubstitution RST.SkolemVT) where
-  prettyAnn skolvsubst = vsep 
-    [ "---------------------------------------------------------"
-    , "                 Bisubstitution (SkolemTVar)             "
-    , "---------------------------------------------------------"
-    , ""
-    , vsep $ intersperse "" (prettyRSTSkolBisubst <$> M.toList (RST.bisubst_map skolvsubst))
-    ]
-
-instance PrettyAnn (RST.Bisubstitution RST.RecVT) where
-  prettyAnn recvsubst = vsep
-    [ "---------------------------------------------------------"
-    , "                 Bisubstitution (RecTVar)                "
-    , "---------------------------------------------------------"
-    , ""
-    , vsep $ intersperse "" (prettyRSTRecBisubst <$> M.toList (RST.bisubst_map recvsubst))
-    ]
-
 
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
   prettyAnn uvsubst = vsep
@@ -207,7 +169,7 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     , "                 Bisubstitution (UniTVar)                "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyTSTBisubst <$> M.toList (TST.bisubst_map uvsubst))
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList (TST.bisubst_map uvsubst))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
@@ -216,7 +178,7 @@ instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
     , "                 Bisubstitution (SkolemTVar)             "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyTSTSkolBisubst <$> M.toList (TST.bisubst_map skolvsubst))
+    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
@@ -225,6 +187,6 @@ instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
     , "                 Bisubstitution (RecTVar)                "
     , "---------------------------------------------------------"
     , ""
-    , vsep $ intersperse "" (prettyTSTRecBisubst <$> M.toList (TST.bisubst_map recvsubst))
+    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst))
     ]
 
