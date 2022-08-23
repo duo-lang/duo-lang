@@ -232,7 +232,7 @@ translateXtorSigUpper xts = do
   env <- asks fst
   case TT.translateXtorSigUpper env xts of
     Left err -> throwError err
-    Right xts' -> return (unEmbedXtorSig xts')
+    Right xts' -> return (checkXtorSig xts')
 
 -- | Recursively translate a nominal type to an upper bound refinement type
 translateTypeUpper :: RST.Typ Neg -> GenM (TST.Typ Neg)
@@ -240,7 +240,7 @@ translateTypeUpper ty = do
   env <- asks fst
   case TT.translateTypeUpper env ty of
     Left err -> throwError err
-    Right xts' -> return (unEmbedType xts')
+    Right xts' -> return (checkKind xts')
 
 -- | Recursively translate types in xtor signature to lower bound refinement types
 translateXtorSigLower :: RST.XtorSig Pos -> GenM (TST.XtorSig Pos)
@@ -248,7 +248,7 @@ translateXtorSigLower xts = do
   env <- asks fst
   case TT.translateXtorSigLower env xts of
     Left err -> throwError err
-    Right xts' -> return (unEmbedXtorSig xts')
+    Right xts' -> return (checkXtorSig xts')
 
 -- | Recursively translate a nominal type to a lower bound refinement type
 translateTypeLower :: RST.Typ Pos -> GenM (TST.Typ Pos)
@@ -256,7 +256,7 @@ translateTypeLower ty = do
   env <- asks fst
   case TT.translateTypeLower env ty of
     Left err -> throwError err
-    Right xts' -> return (unEmbedType xts')
+    Right xts' -> return (checkKind xts')
 
 ---------------------------------------------------------------------------------------------
 -- Kinds
