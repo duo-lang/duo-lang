@@ -8,7 +8,6 @@ import Data.Text qualified as T
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Syntax.RST.Terms (PrimitiveOp)
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Utils
@@ -40,7 +39,7 @@ data ResolutionError where
                     -> Int
                     -> ResolutionError
   PrimOpArityMismatch :: Loc
-                      -> PrimitiveOp
+                      -> PrimName
                       -> Int
                       -> Int
                       -> ResolutionError

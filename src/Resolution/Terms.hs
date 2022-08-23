@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant multi-way if" #-}
 module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases) where
 
 import Control.Monad (when, forM)
@@ -181,42 +183,43 @@ resolveInstanceCases cases = do
 -- Resolving PrimCommands
 ---------------------------------------------------------------------------------
 
--- | Primitive operations and their arities
-primOpsArity :: CST.PrimitiveOp -> Arity
--- I64
-primOpsArity CST.I64Add = [Prd, Prd, Cns]
-primOpsArity CST.I64Sub = [Prd, Prd, Cns]
-primOpsArity CST.I64Mul = [Prd, Prd, Cns]
-primOpsArity CST.I64Div = [Prd, Prd, Cns]
-primOpsArity CST.I64Mod = [Prd, Prd, Cns]
--- F64
-primOpsArity CST.F64Add = [Prd, Prd, Cns]
-primOpsArity CST.F64Sub = [Prd, Prd, Cns]
-primOpsArity CST.F64Mul = [Prd, Prd, Cns]
-primOpsArity CST.F64Div = [Prd, Prd, Cns]
--- Char
-primOpsArity CST.CharPrepend = [Prd, Prd, Cns]
--- String
-primOpsArity CST.StringAppend = [Prd, Prd, Cns]
-
-resolvePrimCommand :: CST.PrimCommand -> ResolverM RST.Command
-resolvePrimCommand (CST.Print loc tm cmd) = do
+resolvePrimCommand :: Loc -> PrimName -> [CST.Term] -> ResolverM RST.Command
+-- 0 arguments
+resolvePrimCommand loc nm [] =
+  if | nm == exitSuccessName -> pure $ RST.ExitSuccess loc
+     | nm == exitFailureName -> pure $ RST.ExitFailure loc
+     | otherwise             -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 0 0) :| []
+-- 1 argument
+resolvePrimCommand loc nm [tm] | nm == readName =
+  if | nm == readName -> do
+               tm' <- resolveTerm CnsRep tm
+               pure $ RST.Read loc tm'
+     | otherwise      -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 1 1) :| []
+-- 2 arguments
+resolvePrimCommand loc nm [tm, cmd] | nm == printName = do
   tm' <- resolveTerm PrdRep tm
   cmd' <- resolveCommand cmd
   pure $ RST.Print loc tm' cmd'
-resolvePrimCommand (CST.Read loc tm) = do
-  tm' <- resolveTerm CnsRep tm
-  pure $ RST.Read loc tm'
-resolvePrimCommand (CST.ExitSuccess loc) =
-  pure $ RST.ExitSuccess loc
-resolvePrimCommand (CST.ExitFailure loc) =
-  pure $ RST.ExitFailure loc
-resolvePrimCommand (CST.PrimOp loc op args) = do
-  let reqArity = primOpsArity op
-  when (length reqArity /= length args) $
-         throwError $ ErrResolution (PrimOpArityMismatch loc op (length reqArity) (length args)) :| []
-  args' <- resolveTerms loc reqArity args
-  pure $ RST.PrimOp loc op args'
+--3 arguments
+resolvePrimCommand loc nm [tm1,tm2,tm3] = do
+  tm1' <- resolveTerm PrdRep tm1
+  tm2' <- resolveTerm PrdRep tm2
+  tm3' <- resolveTerm CnsRep tm3
+  let args = [RST.PrdTerm tm1', RST.PrdTerm tm2', RST.CnsTerm tm3']
+  if | nm == MkPrimName "#I64Add" -> pure (RST.PrimOp loc RST.I64Add args)
+     | nm == MkPrimName "#I64Sub" -> pure (RST.PrimOp loc RST.I64Sub args)
+     | nm == MkPrimName "#I64Mul" -> pure (RST.PrimOp loc RST.I64Mul args)
+     | nm == MkPrimName "#I64Div" -> pure (RST.PrimOp loc RST.I64Div args)
+     | nm == MkPrimName "#I64Mod" -> pure (RST.PrimOp loc RST.I64Mod args)
+     | nm == MkPrimName "#F64Add" -> pure (RST.PrimOp loc RST.F64Add args)
+     | nm == MkPrimName "#F64Sub" -> pure (RST.PrimOp loc RST.F64Sub args)
+     | nm == MkPrimName "#F64Mul" -> pure (RST.PrimOp loc RST.F64Mul args)
+     | nm == MkPrimName "#F64Div" -> pure (RST.PrimOp loc RST.F64Div args)
+     | nm == MkPrimName "#CharPrepend" -> pure (RST.PrimOp loc RST.CharPrepend args)
+     | nm == MkPrimName "#StringAppend" -> pure (RST.PrimOp loc RST.StringAppend args)
+     | otherwise -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 3 3) :| []
+-- More arguments
+resolvePrimCommand loc nm args = throwError $ ErrResolution (PrimOpArityMismatch loc nm (length args) (length args)) :| []
 
 ---------------------------------------------------------------------------------
 -- Resolving Commands
@@ -227,8 +230,8 @@ resolveCommand (CST.TermParens _loc cmd) =
   resolveCommand cmd
 resolveCommand (CST.Var loc fv) =
   pure $ RST.Jump loc fv
-resolveCommand (CST.PrimCmdTerm cmd) =
-  resolvePrimCommand cmd
+resolveCommand (CST.PrimTerm loc nm args) =
+  resolvePrimCommand loc nm args
 resolveCommand (CST.Apply loc tm1 tm2) = do
   tm1' <- resolveTerm PrdRep tm1
   tm2' <- resolveTerm CnsRep tm2
@@ -590,5 +593,5 @@ resolveTerm CnsRep (CST.Lambda loc _fv _tm) =
 ---------------------------------------------------------------------------------
 resolveTerm _ (CST.Apply loc _ _) =
   throwOtherError loc ["Cannot resolve Apply command to a term."]
-resolveTerm _ (CST.PrimCmdTerm _) =
-  throwOtherError defaultLoc [" Cannot resolve primCmdTerm to a term."]
+resolveTerm _ CST.PrimTerm {} =
+  throwOtherError defaultLoc [" Cannot resolve primTerm to a term."]

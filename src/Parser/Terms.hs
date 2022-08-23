@@ -2,7 +2,6 @@ module Parser.Terms
   ( termP
   , termCaseP) where
 
-import Data.Foldable
 import Data.Maybe qualified
 import Text.Megaparsec
     ( SourcePos,
