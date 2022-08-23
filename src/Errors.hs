@@ -8,7 +8,7 @@ import Data.Text qualified as T
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Syntax.CST.Terms
+import Syntax.RST.Terms (PrimitiveOp)
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Utils

@@ -56,6 +56,13 @@ freeVar = do
   (v, endPos) <- freeVarNameP
   return (CST.Var (Loc startPos endPos) v, endPos)
 
+primTermP :: Parser (CST.Term, SourcePos)
+primTermP = do
+  startPos <- getSourcePos
+  (nm, _pos) <- primNameP
+  (subst,endPos) <- parensP ( (fst <$> term3P) `sepBy` (symbolP SymComma >> sc)) -- Optional!
+  pure (CST.PrimTerm (Loc startPos endPos) nm subst, endPos)
+
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
@@ -128,57 +135,12 @@ muAbstraction =  do
   pure (CST.MuAbs (Loc startPos endPos) v cmd, endPos)
 
 
---------------------------------------------------------------------------------------------
--- Commands
---------------------------------------------------------------------------------------------
-
-exitSuccessCmdP :: Parser (CST.Term, SourcePos)
-exitSuccessCmdP = do
-  startPos <- getSourcePos
-  endPos <- try $ symbolP SymHash >> keywordP KwExitSuccess
-  return (CST.PrimCmdTerm $ CST.ExitSuccess (Loc startPos endPos), endPos)
-
-exitFailureCmdP :: Parser (CST.Term, SourcePos)
-exitFailureCmdP = do
-  startPos <- getSourcePos
-  endPos <- try $ symbolP SymHash >> keywordP KwExitFailure
-  return (CST.PrimCmdTerm $ CST.ExitFailure (Loc startPos endPos), endPos)
-
-printCmdP :: Parser (CST.Term, SourcePos)
-printCmdP = do
-  startPos <- getSourcePos
-  _ <- try $ symbolP SymHash >> keywordP KwPrint
-  ((arg, cmd),endPos) <- parensP $ do
-    (arg,_) <- term2P
-    sc
-    symbolP SymComma
-    sc
-    (cmd,_) <- term3P
-    sc
-    pure (arg, cmd)
-  return (CST.PrimCmdTerm $ CST.Print (Loc startPos endPos) arg cmd, endPos)
-
-readCmdP :: Parser (CST.Term, SourcePos)
-readCmdP = do
-  startPos <- getSourcePos
-  _ <- try $ symbolP SymHash >> keywordP KwRead
-  (arg,endPos) <- bracketsP (fst <$> term2P)
-  return (CST.PrimCmdTerm $ CST.Read (Loc startPos endPos) arg, endPos)
-
-primitiveCmdP :: Parser (CST.Term, SourcePos)
-primitiveCmdP = do
-  startPos <- getSourcePos
-  (op, _) <- asum (primOpKeywordP <$> [minBound..maxBound])
-  (subst,endPos) <- parensP ( (fst <$> term2P) `sepBy` (symbolP SymComma >> sc))
-  pure (CST.PrimCmdTerm $ CST.PrimOp (Loc startPos endPos) op subst, endPos)
-
 -------------------------------------------------------------------------------------------
 -- BNF Grammar
 -------------------------------------------------------------------------------------------
 --
 -- Square brackets [] are part of the grammar syntax and denote optional parts of a production
 --
--- primcmd ::=  Exit | ExitFailure | Print(t) | Read(t) | Prim(..)
 -- cse ::= pat => e
 -- v   ::= x | *
 --
@@ -387,18 +349,14 @@ term0P =
   charLitP <|>
   i64LitP <|>
   f64LitP <|>
-  primitiveCmdP <|>
+  primTermP <|>
   natLitP CST.Structural <|>
   natLitP CST.Nominal <|>
   xtorP <|>
   caseP <|>
   cocaseP <|>
   muAbstraction  <|>
-  lambdaP <|>
-  readCmdP <|>
-  printCmdP <|>
-  exitFailureCmdP <|>
-  exitSuccessCmdP
+  lambdaP
 
 -------------------------------------------------------------------------------------------
 -- Level 1 Parser

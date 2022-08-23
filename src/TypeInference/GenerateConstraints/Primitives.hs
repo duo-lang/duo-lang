@@ -1,6 +1,6 @@
 module TypeInference.GenerateConstraints.Primitives where
 
-import Syntax.CST.Terms (PrimitiveOp(..))
+import Syntax.RST.Terms (PrimitiveOp(..))
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.RST.Types
     ( LinearContext,

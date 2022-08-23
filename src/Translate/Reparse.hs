@@ -42,6 +42,11 @@ import Syntax.CST.Names
       RecTVar(MkRecTVar),
       RnTypeName(MkRnTypeName, rnTnName),
       SkolemTVar(MkSkolemTVar),
+      PrimName(..),
+      printName,
+      readName,
+      exitSuccessName,
+      exitFailureName,
       TyOpName(MkTyOpName),
       TypeName(MkTypeName),
       XtorName(MkXtorName) )
@@ -399,19 +404,19 @@ embedCommand :: RST.Command -> CST.Term
 embedCommand (RST.Apply loc prd cns) =
   CST.Apply loc (embedTerm prd) (embedTerm cns)
 embedCommand (RST.Print loc tm cmd) =
-  CST.PrimCmdTerm $ CST.Print loc (embedTerm tm) (embedCommand cmd)
+  CST.PrimTerm loc printName [embedTerm tm, embedCommand cmd]
 embedCommand (RST.Read loc cns) =
-  CST.PrimCmdTerm $ CST.Read loc (embedTerm cns)
+  CST.PrimTerm loc readName [embedTerm cns]
 embedCommand (RST.Jump loc fv) =
   CST.Var loc fv
 embedCommand (RST.Method loc mn _cn subst) =
   CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.ToSTerm <$> embedSubst subst)
 embedCommand (RST.ExitSuccess loc) =
-  CST.PrimCmdTerm $ CST.ExitSuccess loc
+  CST.PrimTerm loc exitSuccessName []
 embedCommand (RST.ExitFailure loc) =
-  CST.PrimCmdTerm $ CST.ExitFailure loc
+  CST.PrimTerm loc exitFailureName []
 embedCommand (RST.PrimOp loc op subst) =
-  CST.PrimCmdTerm $ CST.PrimOp loc op (embedSubst subst)
+  CST.PrimTerm loc (embedPrimitiveOp op) (embedSubst subst)
 embedCommand (RST.CaseOfCmd loc _ns tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
 embedCommand (RST.CocaseOfCmd loc _ns tm cases) =
@@ -421,6 +426,18 @@ embedCommand (RST.CaseOfI loc _rep _ns tm cases) =
 embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
   CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
 
+embedPrimitiveOp :: RST.PrimitiveOp -> PrimName
+embedPrimitiveOp RST.I64Add = MkPrimName "#I64Add"
+embedPrimitiveOp RST.I64Sub = MkPrimName "#I64Sub"
+embedPrimitiveOp RST.I64Mul = MkPrimName "#I64Mul"
+embedPrimitiveOp RST.I64Div = MkPrimName "#I64Div"
+embedPrimitiveOp RST.I64Mod = MkPrimName "#I64Mod"
+embedPrimitiveOp RST.F64Add = MkPrimName "#F64Add"
+embedPrimitiveOp RST.F64Sub = MkPrimName "#F64Sub"
+embedPrimitiveOp RST.F64Mul = MkPrimName "#F64Mul"
+embedPrimitiveOp RST.F64Div = MkPrimName "#F64Div"
+embedPrimitiveOp RST.CharPrepend = MkPrimName "#CharPrepend"
+embedPrimitiveOp RST.StringAppend = MkPrimName "#StringAppend"
 
 embedPat :: RST.Pattern -> CST.Pattern
 embedPat (RST.XtorPat loc xt args) =

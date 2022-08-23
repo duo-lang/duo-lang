@@ -10,6 +10,22 @@ import Utils
 
 newtype ModuleName = MkModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
 
+-- | Name of a primitive operation. Starts with a '#' followed by an uppercase letter.
+newtype PrimName = MkPrimName { unPrimName :: Text } deriving (Eq, Ord, Show)
+
+printName :: PrimName
+printName = MkPrimName "#Print"
+
+readName :: PrimName
+readName = MkPrimName "#Read"
+
+exitSuccessName :: PrimName
+exitSuccessName = MkPrimName "#ExitSuccess"
+
+exitFailureName :: PrimName
+exitFailureName = MkPrimName "#ExitFailure"
+
+
 -- | Name of a constructor/destructor. Starts with an uppercase letter.
 newtype XtorName = MkXtorName { unXtorName :: Text } deriving (Eq, Ord, Show)
 
