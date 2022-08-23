@@ -35,13 +35,13 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
-    pure $ RST.TyUniVar loc rep Nothing v
+    pure $ RST.TyUniVar loc rep v
 resolveTyp rep (TySkolemVar loc v) = do
     recVars <- asks rr_recVars
     let vr = skolemToRecRVar v
     if vr `S.member` recVars
-      then pure $ RST.TyRecVar loc rep Nothing vr
-      else pure $ RST.TySkolemVar loc rep Nothing v
+      then pure $ RST.TyRecVar loc rep vr
+      else pure $ RST.TySkolemVar loc rep v
 
 -- Nominal Data
 resolveTyp rep (TyXData loc Data sigs) = do
@@ -73,7 +73,7 @@ resolveTyp rep (TyNominal loc name args) = do
             throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
         NominalResult name' _ CST.NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
-            pure $ RST.TyNominal loc rep Nothing name' args'
+            pure $ RST.TyNominal loc rep name' args'
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
@@ -82,9 +82,9 @@ resolveTyp rep (TyRec loc v typ) = do
 resolveTyp PosRep (TyTop loc) =
     throwError (ErrResolution (TopInPosPolarity loc) :| [])
 resolveTyp NegRep (TyTop loc) =
-    pure $ RST.TyTop loc Nothing
+    pure $ RST.TyTop loc
 resolveTyp PosRep (TyBot loc) =
-    pure $ RST.TyBot loc Nothing
+    pure $ RST.TyBot loc
 resolveTyp NegRep (TyBot loc) =
     throwError (ErrResolution (BotInNegPolarity loc) :| [])
 resolveTyp rep (TyBinOpChain fst rest) =
