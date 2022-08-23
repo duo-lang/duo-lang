@@ -135,19 +135,19 @@ muAbstraction =  do
 exitSuccessCmdP :: Parser (CST.Term, SourcePos)
 exitSuccessCmdP = do
   startPos <- getSourcePos
-  endPos <- keywordP KwExitSuccess
+  endPos <- try $ symbolP SymHash >> keywordP KwExitSuccess
   return (CST.PrimCmdTerm $ CST.ExitSuccess (Loc startPos endPos), endPos)
 
 exitFailureCmdP :: Parser (CST.Term, SourcePos)
 exitFailureCmdP = do
   startPos <- getSourcePos
-  endPos <- keywordP KwExitFailure
+  endPos <- try $ symbolP SymHash >> keywordP KwExitFailure
   return (CST.PrimCmdTerm $ CST.ExitFailure (Loc startPos endPos), endPos)
 
 printCmdP :: Parser (CST.Term, SourcePos)
 printCmdP = do
   startPos <- getSourcePos
-  _ <- keywordP KwPrint
+  _ <- try $ symbolP SymHash >> keywordP KwPrint
   ((arg, cmd),endPos) <- parensP $ do
     (arg,_) <- term2P
     sc
@@ -161,7 +161,7 @@ printCmdP = do
 readCmdP :: Parser (CST.Term, SourcePos)
 readCmdP = do
   startPos <- getSourcePos
-  _ <- keywordP KwRead
+  _ <- try $ symbolP SymHash >> keywordP KwRead
   (arg,endPos) <- bracketsP (fst <$> term2P)
   return (CST.PrimCmdTerm $ CST.Read (Loc startPos endPos) arg, endPos)
 

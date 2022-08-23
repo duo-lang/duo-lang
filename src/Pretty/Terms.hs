@@ -190,14 +190,14 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.NatLit _ CST.Refinement n) =
     prettyAnn (show n)
   prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
-    annKeyword "ExitSuccess"
+    annKeyword "#ExitSuccess"
   prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =
-    annKeyword "ExitFailure"
+    annKeyword "#ExitFailure"
   prettyAnn (CST.PrimCmdTerm (CST.Print _ t cmd)) =
-    annKeyword "Print" <>
+    annKeyword "#Print" <>
     parens' comma [prettyAnn t, prettyAnn cmd]
   prettyAnn (CST.PrimCmdTerm (CST.Read _ cns)) =
-    annKeyword "Read" <>
+    annKeyword "#Read" <>
     brackets (prettyAnn cns)
   prettyAnn (CST.Apply _ t1 t2) =
     group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
