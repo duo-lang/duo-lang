@@ -9,8 +9,8 @@ import Data.List.NonEmpty ( NonEmpty )
 
 import Errors
 import Pretty.Pretty
-import Syntax.Common.PrdCns
 import Syntax.CST.Kinds
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Eval.Definition
@@ -39,7 +39,7 @@ evalTermOnce Method {} = return Nothing
 evalTermOnce (Apply _ _ Nothing _ _) =
   throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ _ (Just kind) prd cns) = evalApplyOnce kind prd cns
-evalTermOnce (PrimOp _ pt op args) = evalPrimOp pt op args
+evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
 evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
 -- Free variables have to be looked up in the environment.
@@ -61,7 +61,13 @@ evalApplyOnce _ prd@(XCase _ _ PrdRep _ _  cases) cns@(Xtor _ _ CnsRep _ _ xt ar
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
-evalApplyOnce (CRep _) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+evalApplyOnce I64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+  return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce F64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+  return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce CharRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+  return (Just (commandOpening [CnsTerm cns] cmd))
+evalApplyOnce StringRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (commandOpening [CnsTerm cns] cmd))
 evalApplyOnce (CBox CBN) prd@(MuAbs _ _ PrdRep _ _ _) (MuAbs _ _ CnsRep _ _ cmd) =
   return (Just (commandOpening [PrdTerm prd] cmd))

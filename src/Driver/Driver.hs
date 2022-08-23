@@ -25,10 +25,9 @@ import Resolution.Program (resolveProgram)
 import Resolution.SymbolTable
 import Resolution.Definition
 
-import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
@@ -46,6 +45,7 @@ import TypeInference.GenerateConstraints.Terms
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types
+import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
 

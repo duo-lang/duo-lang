@@ -19,7 +19,7 @@ import Repl.Repl
 import Driver.Definition (DriverState(..))
 import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv))
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.RST.Program qualified as RST
 import Utils (trim)
 

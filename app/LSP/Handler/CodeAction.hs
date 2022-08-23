@@ -12,14 +12,14 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.RST.Types ( TopAnnot(..))
+import Syntax.RST.Types ( TopAnnot(..), PolarityRep(..) )
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( FreeVarName(unFreeVarName),
       ModuleName(MkModuleName) )
-import Syntax.Common.PrdCns ( PrdCnsRep(..) )
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
+import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
 import Utils
@@ -30,7 +30,6 @@ import Pretty.Program ()
 import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
-import Syntax.Common.Polarity
 import Data.Text (pack, append)
 import Dualize.Program (dualDataDecl)
 

@@ -33,7 +33,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( programP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Driver.Driver
 import Utils
 

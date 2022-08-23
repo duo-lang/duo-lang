@@ -45,10 +45,9 @@ import Driver.Environment
 import Errors
 import Lookup
 import Syntax.RST.Types
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Kinds
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
