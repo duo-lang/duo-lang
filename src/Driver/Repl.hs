@@ -42,6 +42,7 @@ import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
+import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
 
 
 
@@ -122,7 +123,7 @@ subsumeRepl txt = do
     sts <- getSymbolTables
     resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t1))
     resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t2))
-    isSubsumed <-  liftEitherErr (subsume PosRep resolved_t1 resolved_t2,[])
+    isSubsumed <-  liftEitherErr (subsume PosRep (checkTypeScheme resolved_t1) (checkTypeScheme resolved_t2),[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"

@@ -3,6 +3,7 @@ module Translate.Embed where
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
+import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -210,16 +211,16 @@ embedTSTModule :: TST.Module -> Core.Module
 embedTSTModule (TST.MkModule decls) = Core.MkModule (embedTSTDecl <$> decls)
 
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Annotated tys, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Annotated tys, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc
                              , pcdecl_isRec = pcdecl_isRec
                              , pcdecl_name = pcdecl_name
-                             , pcdecl_annot = Just tys
+                             , pcdecl_annot = Just (embedTSTTypeScheme tys)
                              , pcdecl_term = embedTSTTerm pcdecl_term
                              }
-embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Inferred _, pcdecl_term } =
+embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Inferred _, pcdecl_term } =
     Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                              , pcdecl_doc = pcdecl_doc
                              , pcdecl_pc = pcdecl_pc
@@ -242,7 +243,7 @@ embedTSTInstanceDeclaration TST.MkInstanceDeclaration { instancedecl_loc, instan
     Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                , instancedecl_doc = instancedecl_doc
                                , instancedecl_name = instancedecl_name
-                               , instancedecl_typ = instancedecl_typ
+                               , instancedecl_typ = (embedTSTType.fst $ instancedecl_typ, embedTSTType.snd $ instancedecl_typ)
                                , instancedecl_cases = embedTSTInstanceCase <$> instancedecl_cases
                                }
 
@@ -269,4 +270,41 @@ embedTSTDecl (TST.ClassDecl decl) =
 embedTSTDecl (TST.InstanceDecl decl) =
     Core.InstanceDecl (embedTSTInstanceDeclaration decl)
 
-   
+
+embedTSTPrdCnsType :: TST.PrdCnsType pol -> RST.PrdCnsType pol
+embedTSTPrdCnsType (TST.PrdCnsType pc tp) = RST.PrdCnsType pc (embedTSTType tp)
+
+embedTSTXtorSig :: TST.XtorSig pol -> RST.XtorSig pol
+embedTSTXtorSig TST.MkXtorSig {sig_name = name, sig_args = cont} = RST.MkXtorSig {sig_name=name, sig_args = map embedTSTPrdCnsType cont}
+
+embedTSTVarType :: TST.VariantType pol -> RST.VariantType pol
+embedTSTVarType (TST.CovariantType tp) = RST.CovariantType (embedTSTType tp)
+embedTSTVarType (TST.ContravariantType tp) = RST.ContravariantType (embedTSTType tp)
+
+embedTSTTypeScheme :: TST.TypeScheme pol -> RST.TypeScheme pol
+embedTSTTypeScheme TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} = RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = embedTSTType mt}
+
+embedTSTLinearContext :: TST.LinearContext pol-> RST.LinearContext pol
+embedTSTLinearContext  = map embedTSTPrdCnsType
+
+embedTSTType :: TST.Typ pol -> RST.Typ pol
+embedTSTType (TST.TySkolemVar loc pol mk tv) = RST.TySkolemVar loc pol mk tv
+embedTSTType (TST.TyUniVar loc pol mk tv) = RST.TyUniVar loc pol mk tv
+embedTSTType (TST.TyRecVar loc pol mk tv) = RST.TyRecVar loc pol mk tv
+embedTSTType (TST.TyData loc pol xtors) = RST.TyData loc pol (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyCodata loc pol xtors) = RST.TyCodata loc pol (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyDataRefined loc pol tn xtors) = RST.TyDataRefined loc pol tn (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyCodataRefined loc pol tn xtors) = RST.TyCodataRefined loc pol tn (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyNominal loc pol mk tn varty) = RST.TyNominal loc pol mk tn (map embedTSTVarType varty)
+embedTSTType (TST.TySyn loc pol tn tp) = RST.TySyn loc pol tn (embedTSTType tp)
+embedTSTType (TST.TyBot loc mk) = RST.TyBot loc mk 
+embedTSTType (TST.TyTop loc mk) = RST.TyTop loc mk
+embedTSTType (TST.TyUnion loc mk tp1 tp2) = RST.TyUnion loc mk (embedTSTType tp1) (embedTSTType tp2)
+embedTSTType (TST.TyInter loc mk tn1 tn2) = RST.TyInter loc mk (embedTSTType tn1) (embedTSTType tn2)
+embedTSTType (TST.TyRec loc pol rv tp) = RST.TyRec loc pol rv (embedTSTType tp)
+embedTSTType (TST.TyI64 loc pol) = RST.TyI64 loc pol
+embedTSTType (TST.TyF64 loc pol) = RST.TyF64 loc pol
+embedTSTType (TST.TyChar loc pol) = RST.TyChar loc pol
+embedTSTType (TST.TyString loc pol) = RST.TyString loc pol
+embedTSTType (TST.TyFlipPol pol tp) = RST.TyFlipPol pol (embedTSTType tp)
+

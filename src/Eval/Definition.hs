@@ -16,7 +16,8 @@ import Syntax.CST.Kinds
 import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Utils
-import Syntax.RST.Types (Typ (TyNominal), Polarity(..), PolarityRep(..))
+import Syntax.TST.Types qualified as TST
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 
@@ -53,8 +54,8 @@ checkArgs cmd _ _ = throwEvalError defaultLoc [ "Error during evaluation of:"
                                               , "Argument lengths don't coincide."
                                               ]
 
-natType :: Typ Pos
-natType = TyNominal defaultLoc PosRep (Just (CBox CBV)) peanoNm []
+natType :: TST.Typ 'Pos
+natType = TST.TyNominal defaultLoc PosRep (Just (CBox CBV)) peanoNm []
 
 convertInt :: Int -> Term Prd
 convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") []

@@ -2,4 +2,4 @@
 destructor Ap : CBN;
 constructor True : CBV;
 constructor False : CBV;
-def prd foo : forall a. { Ap(a,a) } := Ap(True,case { True => ExitSuccess, False => ExitSuccess });
+def prd foo : forall a. { Ap(a,a) } := Ap(True,case { True => #ExitSuccess, False => #ExitSuccess });
