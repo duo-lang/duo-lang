@@ -7,7 +7,7 @@ import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text qualified as T
 import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist )
+import System.Directory ( doesFileExist, makeAbsolute )
 
 
 import Driver.Environment ( Environment, emptyEnvironment )
@@ -174,7 +174,8 @@ findModule (MkModuleName mod) loc = do
   let misses = lefts fps'
   case hits of
     [] -> throwOtherError loc $ ["Could not locate library: " <> mod <> "\n" <> "Paths searched:"] <> fmap T.pack misses
-    (fp:_) -> return fp
+    (fp:_) -> liftIO $ makeAbsolute fp
+      
 
 liftErr :: NonEmpty Error -> DriverM a
 liftErr errs = do
