@@ -324,7 +324,7 @@ prettyPolRep PosRep = "**+**"
 prettyPolRep NegRep = "**-**"
 
 instance ToHoverMap (RST.Typ pol) where
-  toHoverMap (RST.TySkolemVar loc rep _knd var) =
+  toHoverMap (RST.TySkolemVar loc rep  var) =
     let
       msg = T.unlines [ "### Skolem Variable "
                         , "- Name: `" <> ppPrint var <> "`"
@@ -332,7 +332,7 @@ instance ToHoverMap (RST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (RST.TyUniVar loc rep _knd var) =
+  toHoverMap (RST.TyUniVar loc rep  var) =
     let
       msg = T.unlines [ "#### Unification variable "
                       , "- Name: `" <> ppPrint var <> "`"
@@ -340,7 +340,7 @@ instance ToHoverMap (RST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (RST.TyRecVar loc rep _knd var) =
+  toHoverMap (RST.TyRecVar loc rep  var) =
     let
       msg = T.unlines [ "#### Recursive variable "
                       , "- Name: `" <> ppPrint var <> "`"
@@ -379,7 +379,7 @@ instance ToHoverMap (RST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (RST.TyNominal loc rep _knd tn args) =
+  toHoverMap (RST.TyNominal loc rep  tn args) =
     let
       msg = T.unlines [ "#### Nominal type"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -398,28 +398,28 @@ instance ToHoverMap (RST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (RST.TyTop loc _knd) =
+  toHoverMap (RST.TyTop loc) =
     let
       msg = T.unlines [ "#### Top type"
                       , "- Polarity: " <> prettyPolRep NegRep
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (RST.TyBot loc _knd) =
+  toHoverMap (RST.TyBot loc) =
     let
       msg = T.unlines [ "#### Bot type"
                       , "- Polarity: " <> prettyPolRep PosRep
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (RST.TyUnion loc _knd ty1 ty2) =
+  toHoverMap (RST.TyUnion loc ty1 ty2) =
     let
       msg = T.unlines [ "#### Union type"
                       , "- Polarity: " <> prettyPolRep PosRep
                       ]
     in
       M.unions [mkHoverMap loc msg, toHoverMap ty1, toHoverMap ty2]
-  toHoverMap (RST.TyInter loc _knd ty1 ty2) =
+  toHoverMap (RST.TyInter loc ty1 ty2) =
     let
       msg = T.unlines [ "#### Intersection type"
                       , "- Polarity: " <> prettyPolRep NegRep
