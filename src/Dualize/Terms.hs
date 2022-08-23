@@ -134,8 +134,8 @@ dualType pol (TyF64 loc _ ) = TyF64 loc (flipPolarityRep pol)
 dualType pol (TyChar loc _ ) = TyChar loc (flipPolarityRep pol)
 dualType pol (TyString loc _ ) = TyString loc (flipPolarityRep pol)
 -- @BinderDavid please check
-dualType _ (TyBot loc mk) = TyTop loc mk
-dualType _ (TyTop loc mk) = TyBot loc mk
+dualType _ (TyBot loc) = TyTop loc
+dualType _ (TyTop loc) = TyBot loc
 dualType pol (TyUnion loc mk t1 t2) = TyInter loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyInter loc mk t1 t2) = TyUnion loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyRec loc p x t) = TyRec loc (flipPolarityRep p) x (dualType pol t)
