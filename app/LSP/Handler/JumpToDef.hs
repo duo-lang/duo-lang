@@ -236,8 +236,8 @@ instance ToJumpMap RST.Declaration where
 
 
 instance ToLocation RnTypeName where
-  toLocation MkRnTypeName { rnTnLoc, rnTnModule } =
+  toLocation MkRnTypeName { rnTnLoc, rnTnFp } =
     let rng = locToRange rnTnLoc
-    in  Location { _uri = Uri $ "" <> unModuleName rnTnModule
+    in  Location { _uri = Uri $ maybe "" T.pack rnTnFp
                  , _range = rng
                  }
