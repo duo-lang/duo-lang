@@ -3,7 +3,6 @@ module Parser.Terms
   , termCaseP) where
 
 import Data.Foldable
-import Data.Map (keys)
 import Data.Maybe qualified
 import Text.Megaparsec
     ( SourcePos,
@@ -18,8 +17,7 @@ import Parser.Common
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common.Names
-import Syntax.Common.Primitives
+import Syntax.CST.Names
 import Utils
 
 --------------------------------------------------------------------------------------------
@@ -167,9 +165,9 @@ readCmdP = do
 primitiveCmdP :: Parser (CST.Term, SourcePos)
 primitiveCmdP = do
   startPos <- getSourcePos
-  (pt, op, _) <- asum (uncurry primOpKeywordP <$> keys primOps)
+  (op, _) <- asum (primOpKeywordP <$> [minBound..maxBound])
   (subst,endPos) <- parensP ( (fst <$> term2P) `sepBy` (symbolP SymComma >> sc))
-  pure (CST.PrimCmdTerm $ CST.PrimOp (Loc startPos endPos) pt op subst, endPos)
+  pure (CST.PrimCmdTerm $ CST.PrimOp (Loc startPos endPos) op subst, endPos)
 
 -------------------------------------------------------------------------------------------
 -- BNF Grammar

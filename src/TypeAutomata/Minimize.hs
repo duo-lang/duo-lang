@@ -8,8 +8,8 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import qualified Data.Map as M
 
+import Syntax.RST.Types ( Polarity(..) )
 import TypeAutomata.Definition
-import Syntax.Common.Polarity ( Polarity(..) )
 
 
 getAlphabet :: TypeGr -> [EdgeLabelNormal]
