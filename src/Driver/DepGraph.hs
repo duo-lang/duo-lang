@@ -81,8 +81,8 @@ createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGrap
                                   | otherwise = do
                                       -- We have to insert the current modulename
                                       let (this, depGraph') = lookupOrInsert depGraph mn
-                                      decls <- getModuleDeclarations mn
-                                      symTable <- createSymbolTable mn decls
+                                      (fp, decls) <- getModuleDeclarations mn
+                                      symTable <- createSymbolTable (fp,mn) decls
                                       let importedModules :: [ModuleName] = fst <$> imports symTable
                                       -- We have to insert all the imported module names
                                       let (nodes, depGraph'') = lookupOrInserts depGraph' importedModules
