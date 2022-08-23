@@ -29,14 +29,14 @@ def rec prd streamFilter : forall a. (a -> Bool) -> Stream(a) -> Stream(a) :=
   };
 
 -- | Interleave two streams.
-def rec prd interleave : forall a. Stream(a) -> Stream (a) -> Stream(a) :=
+def rec prd interleave : forall a. Stream(a) -> Stream(a) -> Stream(a) :=
   \s t => cocase {
     Head(*) => s.Head(*),
     Tail(*) => interleave t (s.Tail(*))
   };
 
 -- | Zip two streams to a stream of pairs.
-def rec prd zip : forall a b. Stream(a) -> Stream (b) -> Stream(Tensor(a, b)) :=
+def rec prd zip : forall a b. Stream(a) -> Stream(b) -> Stream(Tensor(a, b)) :=
   \s t => cocase {
     Head(*) => MkTensor(s.Head(*), t.Head(*)),
     Tail(*) => zip (s.Tail(*)) (t.Tail(*))

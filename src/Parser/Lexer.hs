@@ -3,6 +3,7 @@
 module Parser.Lexer
   ( -- Space Consumer and Comments
     sc
+  , scne
   , docCommentP
     -- Literals
   , natP
@@ -92,6 +93,10 @@ docCommentP = do
 -- | The space consumer. Consumes Comments but not doc comments.
 sc :: Parser ()
 sc = L.space space1 commentP empty
+
+-- Nonempty space
+scne :: Parser ()
+scne = space1 >> sc
 
 -------------------------------------------------------------------------------------------
 -- Helper functions
