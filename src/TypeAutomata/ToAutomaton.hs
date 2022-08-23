@@ -203,11 +203,11 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
                                                             , "should not appear at this point in the program."
                                                             ]
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
-insertType (TyTop _ _) = do
+insertType (TyTop _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
   pure newNode
-insertType (TyBot _ _) = do
+insertType (TyBot _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Pos)
   pure newNode

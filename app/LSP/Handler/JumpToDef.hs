@@ -171,15 +171,15 @@ instance ToJumpMap (RST.Typ pol) where
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
   toJumpMap (RST.TyCodata _ _ xtors) =
     M.unions (toJumpMap <$> xtors)
-  toJumpMap (RST.TyNominal loc _ _ rn args) =
+  toJumpMap (RST.TyNominal loc _ rn args) =
     M.unions (M.fromList [(locToRange loc, toLocation rn)] : (toJumpMap <$> args))
   toJumpMap (RST.TySyn loc _ rn _) =
     M.fromList [(locToRange loc, toLocation rn)]
   toJumpMap RST.TyBot {} = M.empty
   toJumpMap RST.TyTop {} = M.empty
-  toJumpMap (RST.TyUnion _ _ ty1 ty2) =
+  toJumpMap (RST.TyUnion _ ty1 ty2) =
     M.union (toJumpMap ty1) (toJumpMap ty2)
-  toJumpMap (RST.TyInter _ _ ty1 ty2) =
+  toJumpMap (RST.TyInter _ ty1 ty2) =
     M.union (toJumpMap ty1) (toJumpMap ty2)
   toJumpMap (RST.TyRec _ _ _ ty) =
     toJumpMap ty

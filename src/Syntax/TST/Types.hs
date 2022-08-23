@@ -97,8 +97,8 @@ data Typ (pol :: Polarity) where
   -- | Type synonym
   TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
-  TyBot :: Loc -> Maybe MonoKind -> Typ Pos
-  TyTop :: Loc -> Maybe MonoKind -> Typ Neg
+  TyBot :: Loc -> Typ Pos
+  TyTop :: Loc -> Typ Neg
   TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
   TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
@@ -116,12 +116,12 @@ deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
 mkUnion :: Loc -> Maybe MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc knd []     = TyBot loc knd
+mkUnion loc _   []     = TyBot loc
 mkUnion _   _   [t]    = t
 mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
 
 mkInter :: Loc -> Maybe MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc knd []     = TyTop loc knd
+mkInter loc _   []     = TyTop loc 
 mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 
@@ -276,10 +276,10 @@ instance Zonk (Typ pol) where
      TyNominal loc rep kind tn (zonk vt bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =
      TySyn loc rep nm (zonk vt bisubst ty)
-  zonk _vt _ (TyTop loc knd) =
-    TyTop loc knd
-  zonk _vt _ (TyBot loc knd) =
-    TyBot loc knd
+  zonk _vt _ (TyTop loc) =
+    TyTop loc
+  zonk _vt _ (TyBot loc) =
+    TyBot loc
   zonk vt bisubst (TyUnion loc knd ty ty') =
     TyUnion loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk vt bisubst (TyInter loc knd ty ty') =

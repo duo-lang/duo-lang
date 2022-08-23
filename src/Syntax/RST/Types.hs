@@ -4,7 +4,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Kind ( Type )
 
-import Syntax.CST.Kinds ( MonoKind, Variance(..) )
+import Syntax.CST.Kinds ( Variance(..) )
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -123,9 +123,9 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
-  TyUniVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
-  TyRecVar :: Loc -> PolarityRep pol -> Maybe MonoKind -> RecTVar -> Typ pol
+  TySkolemVar :: Loc -> PolarityRep pol -> SkolemTVar -> Typ pol
+  TyUniVar :: Loc -> PolarityRep pol -> UniTVar -> Typ pol
+  TyRecVar :: Loc -> PolarityRep pol -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
@@ -133,14 +133,14 @@ data Typ (pol :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: Loc -> PolarityRep pol -> Maybe MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal :: Loc -> PolarityRep pol -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
   TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
-  TyBot :: Loc -> Maybe MonoKind -> Typ Pos
-  TyTop :: Loc -> Maybe MonoKind -> Typ Neg
-  TyUnion :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
-  TyInter :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
+  TyBot :: Loc -> Typ Pos
+  TyTop :: Loc -> Typ Neg
+  TyUnion :: Loc -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter :: Loc -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
   TyRec :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
@@ -155,25 +155,25 @@ deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
-mkUnion :: Loc -> Maybe MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc knd []     = TyBot loc knd
-mkUnion _   _   [t]    = t
-mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
+mkUnion :: Loc -> [Typ Pos] -> Typ Pos
+mkUnion loc []     = TyBot loc 
+mkUnion _   [t]    = t
+mkUnion loc (t:ts) = TyUnion loc t (mkUnion loc ts)
 
-mkInter :: Loc -> Maybe MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc knd []     = TyTop loc knd
-mkInter _   _   [t]    = t
-mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
+mkInter :: Loc ->[Typ Neg] -> Typ Neg
+mkInter loc []     = TyTop loc
+mkInter _   [t]    = t
+mkInter loc (t:ts) = TyInter loc t (mkInter loc ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TySkolemVar _ rep _ _)     = rep
-getPolarity (TyUniVar _ rep _ _)        = rep
-getPolarity (TyRecVar _ rep _ _)        = rep
+getPolarity (TySkolemVar _ rep  _)     = rep
+getPolarity (TyUniVar _ rep  _)        = rep
+getPolarity (TyRecVar _ rep  _)        = rep
 getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
 getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep _ _ _)     = rep
+getPolarity (TyNominal _ rep  _ _)     = rep
 getPolarity (TySyn _ rep _ _)           = rep
 getPolarity TyTop {}                    = NegRep
 getPolarity TyBot {}                    = PosRep
@@ -218,15 +218,15 @@ class FreeTVars (a :: Type) where
   freeTVars :: a -> Set SkolemTVar
 
 instance FreeTVars (Typ pol) where
-  freeTVars (TySkolemVar _ _ _ tv)        = S.singleton tv
+  freeTVars (TySkolemVar _  _ tv)        = S.singleton tv
   freeTVars TyRecVar{}                    = S.empty
   freeTVars TyUniVar{}                    = S.empty
   freeTVars TyTop {}                      = S.empty
   freeTVars TyBot {}                      = S.empty
-  freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ _ t)              = freeTVars t
-  freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
+  freeTVars (TyUnion _ ty ty')            = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyInter _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyRec _ _ _ t)               = freeTVars t
+  freeTVars (TyNominal _ _ _ args)        = S.unions (freeTVars <$> args)
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
@@ -234,8 +234,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyCodataRefined _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyI64 _ _)                   = S.empty
   freeTVars (TyF64 _ _)                   = S.empty
-  freeTVars (TyChar _ _)                   = S.empty
-  freeTVars (TyString _ _)                   = S.empty
+  freeTVars (TyChar _ _)                  = S.empty
+  freeTVars (TyString _ _)                = S.empty
   freeTVars (TyFlipPol _ ty)              = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
