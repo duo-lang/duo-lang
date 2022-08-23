@@ -4,7 +4,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Kind ( Type )
 
-import Syntax.CST.Kinds ( MonoKind, Variance(..) )
+import Syntax.CST.Kinds ( Variance(..) )
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -158,7 +158,7 @@ deriving instance Show (Typ pol)
 mkUnion :: Loc -> [Typ Pos] -> Typ Pos
 mkUnion loc []     = TyBot loc 
 mkUnion _   [t]    = t
-mkUnion loc (t:ts) = TyUnion loc knd t (mkUnion loc ts)
+mkUnion loc (t:ts) = TyUnion loc t (mkUnion loc ts)
 
 mkInter :: Loc ->[Typ Neg] -> Typ Neg
 mkInter loc []     = TyTop loc
