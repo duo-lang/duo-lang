@@ -109,14 +109,13 @@ freshTVar uvp = do
   uCount <- gets uVarCount
   kCount <- gets kVarCount
   let tvar = MkUniTVar ("u" <> T.pack (show uCount))
-  let kvarPos = MkKVar ("kp" <> T.pack (show kCount))
-  let kvarNeg = MkKVar ("kn" <> T.pack (show kCount))
+  let kvar = MkKVar ("kv" <> T.pack (show kCount))
   -- We need to increment the counter:
   modify (\gs@GenerateState{} -> gs { uVarCount = uCount + 1 , kVarCount = kCount + 2})
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TyUniVar defaultLoc PosRep (KindVar kvarPos) tvar, TyUniVar defaultLoc NegRep (KindVar kvarNeg) tvar)
+  return (TyUniVar defaultLoc PosRep (KindVar kvar) tvar, TyUniVar defaultLoc NegRep (KindVar kvar) tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (LinearContext Pos, LinearContext Neg)
 freshTVars [] = return ([],[])
