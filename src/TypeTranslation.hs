@@ -99,7 +99,7 @@ translateTypeUpper' (TyNominal _ NegRep tn _) = do
   if M.member tn m then do
     let tv = fromJust (M.lookup tn m)
     modifyVarsUsed $ S.insert tv -- add rec. type variable to used var cache
-    return $ TyRecVar defaultLoc NegRep Nothing tv
+    return $ TyRecVar defaultLoc NegRep tv
   else do
     decl <- lookupTypeName defaultLoc tn
     case decl of
