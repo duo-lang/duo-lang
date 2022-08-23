@@ -6,6 +6,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
 
+import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
 import Syntax.CST.Terms
 import Syntax.CST.Types (PrdCns)
@@ -96,7 +97,7 @@ data ConstraintGenerationError where
   -- | One cannot infer a type for an empty refinement match.
   EmptyRefinementMatch :: Loc -> ConstraintGenerationError
   -- | Linear contexts have unequal length.
-  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> LinearContext Pos -> LinearContext Neg -> ConstraintGenerationError
+  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintGenerationError
   LinearContextIncompatibleTypeMode :: Loc -> PrdCns -> ConstraintInfo -> ConstraintGenerationError
 
 

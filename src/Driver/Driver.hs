@@ -15,8 +15,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Data.Bifunctor (bimap)
 import System.FilePath ( takeBaseName )
-
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
@@ -37,7 +37,7 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM )
+    ( runGenM,checkTypeScheme,checkKind )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -45,23 +45,25 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, AttachLoc(attachLoc) )
-import Syntax.RST.Types
+import Syntax.RST.Types qualified as RST
+import Syntax.RST.Types (PolarityRep(..))
+import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarProgram)
 import qualified Data.Set as S
 
 
 checkAnnot :: PolarityRep pol
-           -> TypeScheme pol -- ^ Inferred type
-           -> Maybe (TypeScheme pol) -- ^ Annotated type
+           -> TST.TypeScheme pol -- ^ Inferred type
+           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
-           -> DriverM (TopAnnot pol)
-checkAnnot _ tyInferred Nothing _ = return (Inferred tyInferred)
+           -> DriverM (TST.TopAnnot pol)
+checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred tyAnnotated
+  let isSubsumed = subsume rep tyInferred (checkTypeScheme tyAnnotated)
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (Annotated tyAnnotated)
+      (Right True) -> return (TST.Annotated (checkTypeScheme tyAnnotated))
       (Right False) -> do
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                             , " Annotated type: " <> ppPrint tyAnnotated
@@ -93,20 +95,20 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
-  let typ = zonk UniRep bisubst (TST.getTypeTerm tmInferred)
+  let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
+                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
-                     return tys) else return (generalize typ)
+                     return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (prdEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -117,7 +119,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                                    , pcdecl_term = tmInferred
                                    }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (cnsEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -163,7 +165,8 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { instanceEnv = M.adjust (S.insert instancedecl_typ) instancedecl_name (instanceEnv env)}
+  let instancetyp = Data.Bifunctor.bimap checkKind checkKind instancedecl_typ
+  let f env = env { instanceEnv = M.adjust (S.insert instancetyp) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

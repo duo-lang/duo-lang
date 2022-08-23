@@ -15,7 +15,8 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.RST.Types
+import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol)
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names

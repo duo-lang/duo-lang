@@ -14,10 +14,11 @@ import Data.Text qualified as T
 import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
+import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..))
 import Utils
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.RST.Types (Typ(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.CST.Kinds
 import Syntax.CST.Names

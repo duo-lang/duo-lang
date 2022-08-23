@@ -7,7 +7,8 @@ import Data.Set (Set)
 import Syntax.CST.Names
 import Syntax.TST.Terms ( Command, Term )
 import Syntax.RST.Program ( ClassDeclaration, DataDecl )
-import Syntax.RST.Types ( TypeScheme, Typ, Polarity(..))
+import Syntax.TST.Types ( TypeScheme, Typ)
+import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types( PrdCns(..) )
 import Utils ( Loc )
 

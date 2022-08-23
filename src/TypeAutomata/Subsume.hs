@@ -13,7 +13,8 @@ import Data.Functor.Identity
 import Control.Monad.State
 
 import Errors
-import Syntax.RST.Types
+import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)
