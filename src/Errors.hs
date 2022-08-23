@@ -103,7 +103,7 @@ data ConstraintGenerationError where
   -- | One cannot infer a type for an empty refinement match.
   EmptyRefinementMatch :: Loc -> ConstraintGenerationError
   -- | Linear contexts have unequal length.
-  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> RST.LinearContext Pos -> RST.LinearContext Neg -> ConstraintGenerationError
+  LinearContextsUnequalLength :: Loc -> ConstraintInfo -> TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintGenerationError
   LinearContextIncompatibleTypeMode :: Loc -> PrdCns -> ConstraintInfo -> ConstraintGenerationError
 
 
