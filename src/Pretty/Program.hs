@@ -210,11 +210,11 @@ instance PrettyAnn CST.Declaration where
 -- Program
 ---------------------------------------------------------------------------------
 
-instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
-  prettyAnn decls = vsep (prettyAnn <$> decls)
+instance PrettyAnn CST.Module where
+  prettyAnn (CST.MkModule decls) = vsep (prettyAnn <$> decls)
 
-instance {-# OVERLAPPING #-} PrettyAnn [CST.Declaration] where
-  prettyAnn decls = vsep (prettyAnn <$> decls)
+instance PrettyAnn TST.Module where
+  prettyAnn (TST.MkModule decls) = vsep (prettyAnn <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments

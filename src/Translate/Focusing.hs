@@ -1,5 +1,5 @@
 module Translate.Focusing
-  ( focusProgram
+  ( focusModule
   , focusTerm
   , focusCmd
   , focusEnvironment
@@ -14,10 +14,11 @@ import Data.Text qualified as T
 import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
+import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..))
 import Utils
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.RST.Types (Typ(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.CST.Kinds
 import Syntax.CST.Names
@@ -292,8 +293,8 @@ focusDecl _  decl@TySynDecl {}       = decl
 focusDecl _  decl@ClassDecl {}       = decl
 focusDecl eo (InstanceDecl decl)     = InstanceDecl (focusInstanceDeclaration eo decl)
 
-focusProgram :: EvaluationOrder -> Program -> Program
-focusProgram eo = fmap (focusDecl eo)
+focusModule :: EvaluationOrder -> Module -> Module
+focusModule eo (MkModule decls) = MkModule (focusDecl eo <$> decls)
 
 focusEnvironment :: EvaluationOrder -> EvalEnv -> EvalEnv
 focusEnvironment cc (prd, cns, cmd) = (prd', cns', cmd')

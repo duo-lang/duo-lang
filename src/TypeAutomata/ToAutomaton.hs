@@ -15,7 +15,8 @@ import Data.Set qualified as S
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
-import Syntax.RST.Types
+import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol)
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names
@@ -202,11 +203,11 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
                                                             , "should not appear at this point in the program."
                                                             ]
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
-insertType (TyTop _ _) = do
+insertType (TyTop _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
   pure newNode
-insertType (TyBot _ _) = do
+insertType (TyBot _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Pos)
   pure newNode

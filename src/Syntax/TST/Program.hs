@@ -4,8 +4,9 @@ module Syntax.TST.Program where
 import Syntax.TST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
+import Syntax.TST.Types ( TopAnnot, Typ )
+import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.RST.Types ( TopAnnot, Typ, Polarity(..))
 import Syntax.CST.Names ( ClassName, DocComment, FreeVarName )
 import Utils ( Loc )
 
@@ -101,5 +102,9 @@ instance Show Declaration where
   show (TySynDecl         decl) = show decl
   show (ClassDecl         decl) = show decl
   show (InstanceDecl      decl) = show decl
-  
-type Program = [Declaration]
+
+---------------------------------------------------------------------------------
+-- Module
+---------------------------------------------------------------------------------
+
+newtype Module = MkModule { mod_decls :: [Declaration] } deriving (Show)

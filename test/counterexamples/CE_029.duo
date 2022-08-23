@@ -2,4 +2,4 @@
 
 destructor A : CBV;
 
-def prd test := case { A => ExitSuccess };
+def prd test := case { A => #ExitSuccess };

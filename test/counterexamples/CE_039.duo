@@ -2,5 +2,5 @@
 constructor A(CBV) : CBV;
 
 def cns foo := case {
-    A(x,y) => ExitSuccess
+    A(x,y) => #ExitSuccess
 };

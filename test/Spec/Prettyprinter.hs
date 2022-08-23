@@ -25,8 +25,8 @@ pendingFiles = []
 -- 2. Prettyprinted
 -- 3a. Parsed again from the prettyprinted result.
 -- 3b. Parsed and typechecked again from the prettyprinted result.
-spec :: [(FilePath, Either (NonEmpty Error) CST.Program)] -- ^ examples to be parsed after pretty-printing
-  -> [(FilePath, Either (NonEmpty Error) TST.Program)] -- ^ examples to be type-checked after pretty-printing
+spec :: [(FilePath, Either (NonEmpty Error) CST.Module)] -- ^ examples to be parsed after pretty-printing
+  -> [(FilePath, Either (NonEmpty Error) TST.Module)] -- ^ examples to be type-checked after pretty-printing
   -> Spec
 spec parseExamples typeCheckExamples = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
@@ -35,7 +35,7 @@ spec parseExamples typeCheckExamples = do
         it "Can be parsed again." $
           case prog of
             Left err -> expectationFailure (ppPrintString err)
-            Right decls -> runFileParser example programP (ppPrint decls) `shouldSatisfy` isRight
+            Right decls -> runFileParser example moduleP (ppPrint decls) `shouldSatisfy` isRight
 
   describe "All the examples in the \"examples/\" folder can be parsed and typechecked after prettyprinting." $ do
     forM_ typeCheckExamples $ \(example,prog) -> do
@@ -44,7 +44,7 @@ spec parseExamples typeCheckExamples = do
          Nothing     -> describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
             case prog of
                 Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
-                Right decls -> case runFileParser example programP (ppPrint decls) of
+                Right decls -> case runFileParser example moduleP (ppPrint decls) of
                   Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
                   Right decls -> do
                     res <- runIO $ inferProgramIO defaultDriverState "Test:Prettyprinter" decls

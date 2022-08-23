@@ -20,10 +20,10 @@ import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)
-import qualified Syntax.CST.Program as CST (Program)
+import qualified Syntax.CST.Program as CST (Module)
 import qualified Data.Text.IO as T
 import Parser.Definition (runFileParser)
-import Parser.Parser (programP)
+import Parser.Parser (moduleP)
 import Data.Maybe ( fromMaybe )
 import TypeAutomata.Definition (Nubable(nub))
 
@@ -65,9 +65,9 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: !(Map ModuleName (FilePath, CST.Program))
+  , drvFiles   :: !(Map ModuleName (FilePath, CST.Module))
   , drvSymbols :: !(Map ModuleName SymbolTable)
-  , drvASTs    :: Map ModuleName TST.Program
+  , drvASTs    :: Map ModuleName TST.Module
   , drvErrs    :: Map ModuleName [Error]
   }
 
@@ -130,7 +130,7 @@ getSymbolTables = gets drvSymbols
 
 getSymbolTable  :: FilePath
                 -> ModuleName
-                -> CST.Program
+                -> CST.Module
                 -> DriverM SymbolTable
 getSymbolTable fp mn p = do
   sts <- getSymbolTables
@@ -152,7 +152,7 @@ getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) direc
 
 -- Modules and declarations
 
-getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Program)
+getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Module)
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
@@ -160,23 +160,23 @@ getModuleDeclarations mn = do
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
-            decls <- runFileParser fp programP file
+            decls <- runFileParser fp moduleP file
             addModuleDeclarations mn fp decls
             return (fp, decls)
 
-addModuleDeclarations :: ModuleName -> FilePath -> CST.Program -> DriverM ()
+addModuleDeclarations :: ModuleName -> FilePath -> CST.Module -> DriverM ()
 addModuleDeclarations mn fp decls = do
         modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
 
 -- AST Cache
 
-addTypecheckedProgram :: ModuleName -> TST.Program -> DriverM ()
-addTypecheckedProgram mn prog = modify f
+addTypecheckedModule :: ModuleName -> TST.Module -> DriverM ()
+addTypecheckedModule mn prog = modify f
   where
     f state@MkDriverState { drvASTs } = state { drvASTs = M.insert mn prog  drvASTs }
 
-queryTypecheckedProgram :: ModuleName -> DriverM TST.Program
-queryTypecheckedProgram mn = do
+queryTypecheckedModule :: ModuleName -> DriverM TST.Module
+queryTypecheckedModule mn = do
   cache <- gets drvASTs
   case M.lookup mn cache of
     Nothing -> throwOtherError defaultLoc [ "AST for module " <> ppPrint mn <> " not in cache."

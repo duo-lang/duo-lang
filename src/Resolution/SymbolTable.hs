@@ -119,9 +119,9 @@ checkFreshFreeVarName loc fv st =
 createSymbolTable :: MonadError (NonEmpty Error) m
                   => FilePath
                   -> ModuleName
-                  -> Program
+                  -> Module
                   -> m SymbolTable
-createSymbolTable fp mn prog = createSymbolTableAcc prog emptySymbolTable
+createSymbolTable fp mn md = createSymbolTableAcc (mod_decls md) emptySymbolTable
   where
     createSymbolTableAcc [] acc = pure acc
     createSymbolTableAcc (x:xs) acc = do

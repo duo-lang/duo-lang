@@ -1,6 +1,6 @@
 module Parser.Program
   ( declarationP
-  , programP
+  , moduleP
   , returnP
   , xtorDeclP
   , xtorSignatureP
@@ -335,9 +335,9 @@ declarationP = do
   docDeclarationP doc
 
 
-programP :: Parser Program
-programP = do
+moduleP :: Parser Module
+moduleP = do
   sc
   decls <- many declarationP
   eof
-  return decls
+  pure (MkModule decls)

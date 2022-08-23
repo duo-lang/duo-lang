@@ -15,7 +15,7 @@ import Driver.Definition (defaultDriverState)
 import Driver.Driver (inferProgramIO)
 import Errors
 import Parser.Definition (runFileParser)
-import Parser.Program (programP)
+import Parser.Program (moduleP)
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
@@ -53,14 +53,14 @@ getAvailableExamples = do
   examples <- listDirectory "examples/"
   return (("examples/" ++) <$> filter (\s -> head s /= '.' && notElem s excluded) examples)
 
-getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Program)
+getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  case runExcept (runFileParser fp programP s) of
+  case runExcept (runFileParser fp moduleP s) of
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getTypecheckedDecls :: FilePath -> IO (Either (NonEmpty Error) TST.Program)
+getTypecheckedDecls :: FilePath -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of

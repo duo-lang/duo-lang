@@ -3,7 +3,7 @@ module Parser.Parser
   , runInteractiveParser
   , termP
   , declarationP
-  , programP
+  , moduleP
   , typeSchemeP
   , subtypingProblemP
   , Parser
