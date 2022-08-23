@@ -146,13 +146,13 @@ desugaring :: Loc -> PolarityRep pol -> TyOpDesugaring -> Typ -> Typ -> Resolver
 desugaring loc PosRep UnionDesugaring tl tr = do
     tl <- resolveTyp PosRep tl
     tr <- resolveTyp PosRep tr
-    pure $ RST.TyUnion loc Nothing tl tr
+    pure $ RST.TyUnion loc tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
     throwError (ErrResolution (UnionInNegPolarity loc) :| [])
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
-    pure $ RST.TyInter loc Nothing tl tr
+    pure $ RST.TyInter loc tl tr
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
