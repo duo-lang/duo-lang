@@ -2,4 +2,4 @@
 
 constructor A : CBV;
 
-def prd test := cocase { A => ExitSuccess };
+def prd test := cocase { A => #ExitSuccess };
