@@ -59,8 +59,11 @@ primTermP :: Parser (CST.Term, SourcePos)
 primTermP = do
   startPos <- getSourcePos
   (nm, _pos) <- primNameP
-  (subst,endPos) <- parensP ( (fst <$> term3P) `sepBy` (symbolP SymComma >> sc)) -- Optional!
-  pure (CST.PrimTerm (Loc startPos endPos) nm subst, endPos)
+  subst <- optional $ do
+    (args,_) <- parensP ( (fst <$> term3P) `sepBy` (symbolP SymComma >> sc))
+    pure args
+  endPos <- getSourcePos
+  pure (CST.PrimTerm (Loc startPos endPos) nm (Data.Maybe.fromMaybe [] subst), endPos)
 
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
