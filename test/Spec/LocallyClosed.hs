@@ -19,23 +19,23 @@ type Reason = String
 pendingFiles :: [(FilePath, Reason)]
 pendingFiles = []
 
-getProducers :: TST.Program -> [(FreeVarName, Term Prd)]
-getProducers prog = go prog []
+getProducers :: TST.Module -> [(FreeVarName, Term Prd)]
+getProducers (TST.MkModule decls)= go decls []
   where
-    go :: TST.Program -> [(FreeVarName, Term Prd)] -> [(FreeVarName, Term Prd)]
+    go :: [TST.Declaration] -> [(FreeVarName, Term Prd)] -> [(FreeVarName, Term Prd)]
     go [] acc = acc
     go ((TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration _ _ PrdRep _ fv _ tm)):rest) acc = go rest ((fv,tm):acc)
     go (_:rest) acc = go rest acc
 
-getInstanceCases :: TST.Program -> [InstanceCase]
-getInstanceCases prog = go prog []
+getInstanceCases :: TST.Module -> [InstanceCase]
+getInstanceCases (TST.MkModule decls) = go decls []
   where
-    go :: TST.Program -> [InstanceCase] -> [InstanceCase]
+    go :: [TST.Declaration] -> [InstanceCase] -> [InstanceCase]
     go [] acc = acc
     go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ cases)):rest) acc = go rest (cases++acc)
     go (_:rest) acc = go rest acc
 
-spec :: [(FilePath, Either (NonEmpty Error) TST.Program)] -> Spec
+spec :: [(FilePath, Either (NonEmpty Error) TST.Module)] -> Spec
 spec examples = do
   describe "All examples are locally closed." $ do
     forM_ examples $ \(example, eitherEnv) -> do

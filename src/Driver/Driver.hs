@@ -22,7 +22,7 @@ import Driver.Environment
 import Driver.DepGraph
 import Errors
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
-import Resolution.Program (resolveProgram)
+import Resolution.Program (resolveModule)
 import Resolution.SymbolTable
 import Resolution.Definition
 
@@ -47,7 +47,7 @@ import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types
 import Syntax.RST.Program (prdCnsToPol)
-import Sugar.Desugar (desugarProgram)
+import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
 
 
@@ -238,8 +238,10 @@ inferDecl mn (Core.InstanceDecl decl) = do
   decl' <- inferInstanceDeclaration mn decl
   pure (TST.InstanceDecl decl')
 
-inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
-inferProgram mn decls = sequence $ inferDecl mn <$> decls
+inferProgram :: ModuleName -> Core.Module -> DriverM TST.Module
+inferProgram mn (Core.MkModule decls) = do
+  decls' <- mapM (inferDecl mn) decls
+  pure (TST.MkModule decls')
 
 ---------------------------------------------------------------------------------
 -- Infer programs
@@ -266,14 +268,14 @@ runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
       -- 4. Desugar the program
-      let desugaredProg = desugarProgram resolvedDecls
+      let desugaredProg = desugarModule resolvedDecls
       -- 5. Infer the declarations
       inferredDecls <- inferProgram mn desugaredProg
       -- 6. Add the resolved AST to the cache
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
-      addTypecheckedProgram mn inferredDecls
+      addTypecheckedModule mn inferredDecls
 
 ---------------------------------------------------------------------------------
 -- Old
@@ -285,18 +287,18 @@ filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> FilePath
-                -> [CST.Declaration]
-                -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
+                -> CST.Module
+                -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Module),[Warning])
 inferProgramIO state fp decls = do
   let mn = filePathToModuleName fp
-  let action :: DriverM TST.Program
+  let action :: DriverM TST.Module
       action = do
         st <- createSymbolTable (fp,mn) decls
         forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
         addSymboltable (MkModuleName "This") st
         sts <- getSymbolTables
-        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveProgram decls))
-        inferProgram mn (desugarProgram resolvedDecls)
+        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
+        inferProgram mn (desugarModule resolvedDecls)
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)

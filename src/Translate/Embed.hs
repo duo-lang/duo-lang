@@ -92,8 +92,8 @@ embedCoreCommand (Core.PrimOp loc op subst) =
     RST.PrimOp loc op (embedSubst subst)
 
 
-embedCoreProg :: Core.Program -> RST.Program
-embedCoreProg = fmap embedCoreDecl
+embedCoreModule :: Core.Module -> RST.Module
+embedCoreModule (Core.MkModule decls ) = RST.MkModule (embedCoreDecl <$> decls)
 
 embedPrdCnsDeclaration :: Core.PrdCnsDeclaration pc -> RST.PrdCnsDeclaration pc
 embedPrdCnsDeclaration Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
@@ -206,8 +206,8 @@ embedTSTCommand (TST.ExitFailure loc) =
 embedTSTCommand (TST.PrimOp loc op subst) =
     Core.PrimOp loc op (embedTSTSubst subst)
 
-embedTSTProg :: TST.Program -> Core.Program
-embedTSTProg = fmap embedTSTDecl
+embedTSTModule :: TST.Module -> Core.Module
+embedTSTModule (TST.MkModule decls) = Core.MkModule (embedTSTDecl <$> decls)
 
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
 embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = RST.Annotated tys, pcdecl_term } =

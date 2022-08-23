@@ -49,7 +49,7 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
     Just cache -> responder (Right (lookupInRangeMap pos cache))
 
 
-updateHoverCache :: Uri -> TST.Program -> LSPMonad ()
+updateHoverCache :: Uri -> TST.Module -> LSPMonad ()
 updateHoverCache uri prog = do
   MkLSPConfig ref <- getConfig
   liftIO $ modifyIORef ref (M.insert uri (toHoverMap prog))
@@ -500,5 +500,5 @@ instance ToHoverMap TST.Declaration where
   toHoverMap (TST.ClassDecl decl)    = toHoverMap decl
   toHoverMap (TST.InstanceDecl decl) = toHoverMap decl
 
-instance ToHoverMap TST.Program where
-  toHoverMap prog = M.unions (toHoverMap <$> prog)
+instance ToHoverMap TST.Module where
+  toHoverMap (TST.MkModule prog) = M.unions (toHoverMap <$> prog)
