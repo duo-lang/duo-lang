@@ -1,5 +1,5 @@
 module Translate.Focusing
-  ( focusProgram
+  ( focusModule
   , focusTerm
   , focusCmd
   , focusEnvironment
@@ -293,8 +293,8 @@ focusDecl _  decl@TySynDecl {}       = decl
 focusDecl _  decl@ClassDecl {}       = decl
 focusDecl eo (InstanceDecl decl)     = InstanceDecl (focusInstanceDeclaration eo decl)
 
-focusProgram :: EvaluationOrder -> Program -> Program
-focusProgram eo = fmap (focusDecl eo)
+focusModule :: EvaluationOrder -> Module -> Module
+focusModule eo (MkModule decls) = MkModule (focusDecl eo <$> decls)
 
 focusEnvironment :: EvaluationOrder -> EvalEnv -> EvalEnv
 focusEnvironment cc (prd, cns, cmd) = (prd', cns', cmd')

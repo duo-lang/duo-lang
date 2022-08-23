@@ -3,7 +3,7 @@ module Sugar.Desugar
   , desugarPCTerm
   , desugarPrdCnsDeclaration
   , desugarCommandDeclaration
-  , desugarProgram
+  , desugarModule
   , desugarCmd
   , desugarEnvironment
   , desugarDecl
@@ -177,8 +177,8 @@ desugarDecl (RST.ClassDecl decl) =
 desugarDecl (RST.InstanceDecl decl) =
   Core.InstanceDecl (desugarInstanceDeclaration decl)
 
-desugarProgram :: RST.Program -> Core.Program
-desugarProgram ps = desugarDecl <$> ps
+desugarModule :: RST.Module -> Core.Module
+desugarModule (RST.MkModule decls) = Core.MkModule (desugarDecl <$> decls)
 
 -- should be resolved, since it's  not actually desugaring anything anymore
 desugarEnvironment :: Map ModuleName Environment -> EvalEnv

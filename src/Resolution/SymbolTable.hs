@@ -115,13 +115,13 @@ checkFreshFreeVarName loc fv st =
   else pure ()
 
 
--- | Creating a symbol table for a program.
+-- | Creating a symbol table for a module.
 -- Throws errors if multiple declarations declare the same name.
 createSymbolTable :: MonadError (NonEmpty Error) m
                   => (FilePath, ModuleName)
-                  -> Program
+                  -> Module
                   -> m SymbolTable
-createSymbolTable mn prog = createSymbolTableAcc prog emptySymbolTable
+createSymbolTable mn (MkModule decls) = createSymbolTableAcc decls emptySymbolTable
   where
     createSymbolTableAcc [] acc = pure acc
     createSymbolTableAcc (x:xs) acc = do
