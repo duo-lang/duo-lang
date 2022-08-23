@@ -22,7 +22,7 @@ import Spec.TypeInferenceExamples qualified
 import Spec.Subsumption qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Options.Applicative

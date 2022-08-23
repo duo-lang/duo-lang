@@ -21,8 +21,7 @@ import Parser.Definition
 import Parser.Kinds
 import Parser.Lexer
 import Syntax.CST.Types
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils ( Loc(..) )
 
 ---------------------------------------------------------------------------------
@@ -40,11 +39,10 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  sc
   args <- optional $ do
     (args,_) <- parensP (returnP typP `sepBy` (symbolP SymComma >> sc))
-    sc
     pure args
+  sc
   return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
 
 -- | Parse a Constructor or destructor signature. E.g.
@@ -70,10 +68,9 @@ combineXtors = fmap combineXtor
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos = do
-  args <- parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
-  sc
-  pure args
+nominalTypeArgsP endPos =
+  parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
+
 
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
@@ -81,8 +78,8 @@ nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
-  sc
   (args, endPos') <- nominalTypeArgsP endPos
+  sc
   pure (TyNominal (Loc startPos endPos') name args, endPos')
 
 -- | Parse a data or codata type. E.g.:
@@ -120,7 +117,6 @@ recTypeP = do
   _ <- keywordP KwRec
   sc
   (rv,_) <- tvarP
-  sc
   symbolP SymDot
   sc
   (ty, endPos) <- typP

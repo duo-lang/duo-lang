@@ -15,7 +15,7 @@ import Errors
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedReport )
 import Resolution.SymbolTable
-import Syntax.Common.Names ( ModuleName(MkModuleName) )
+import Syntax.CST.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer

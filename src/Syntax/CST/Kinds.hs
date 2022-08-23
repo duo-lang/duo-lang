@@ -3,8 +3,7 @@ module Syntax.CST.Kinds where
 import Data.Set (Set)
 import Data.Set qualified as S
 
-import Syntax.Common.Names
-import Syntax.Common.Primitives
+import Syntax.CST.Names
 
 ---------------------------------------------------------------------------------
 -- Variance
@@ -33,7 +32,10 @@ data EvaluationOrder = CBV | CBN
 -- | A MonoKind is a kind which classifies inhabitated types.
 data MonoKind
   = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
-  | CRep PrimitiveType    -- ^ Primitive type representation
+  | I64Rep
+  | F64Rep
+  | CharRep
+  | StringRep
   deriving (Show, Eq, Ord)
 
 ------------------------------------------------------------------------------

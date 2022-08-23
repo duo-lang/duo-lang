@@ -17,23 +17,10 @@ import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Syntax.RST.Types
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
+import Syntax.CST.Names
 import Syntax.CST.Kinds
-import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
 import TypeAutomata.Definition
-    ( TypeAutEps,
-      TypeAut'(..),
-      TypeGrEps,
-      TypeAutCore(..),
-      FlowEdge,
-      EdgeLabelEpsilon,
-      EdgeLabel(..),
-      NodeLabel(..),
-      XtorLabel(..),
-      emptyNodeLabel, 
-      singleNodeLabel )
 import Utils ( enumerate, defaultLoc )
 import Control.Monad
 

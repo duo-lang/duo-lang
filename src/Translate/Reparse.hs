@@ -28,13 +28,14 @@ import Data.Maybe (fromJust)
 
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( BinOp(InterOp, CustomOp, UnionOp),
       FreeVarName(MkFreeVarName),
       MethodName(unMethodName),
@@ -44,8 +45,6 @@ import Syntax.Common.Names
       TyOpName(MkTyOpName),
       TypeName(MkTypeName),
       XtorName(MkXtorName) )
-import Syntax.Common.PrdCns
-    ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -156,8 +155,8 @@ openCommandComplete (RST.ExitSuccess loc) =
   RST.ExitSuccess loc
 openCommandComplete (RST.ExitFailure loc) =
   RST.ExitFailure loc
-openCommandComplete (RST.PrimOp loc pt op subst) =
-  RST.PrimOp loc pt op (openPCTermComplete <$> subst)
+openCommandComplete (RST.PrimOp loc op subst) =
+  RST.PrimOp loc op (openPCTermComplete <$> subst)
 openCommandComplete (RST.CaseOfCmd loc ns tm cases) =
   RST.CaseOfCmd loc ns (openTermComplete tm) (openCmdCase <$> cases)
 openCommandComplete (RST.CocaseOfCmd loc ns tm cases) =
@@ -269,9 +268,9 @@ createNamesCommand (RST.Print loc prd cmd) = do
 createNamesCommand (RST.Read loc cns) = do
   cns' <- createNamesTerm cns
   pure $ RST.Read loc cns'
-createNamesCommand (RST.PrimOp loc pt pop subst) = do
+createNamesCommand (RST.PrimOp loc op subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  pure $ RST.PrimOp loc pt pop subst'
+  pure $ RST.PrimOp loc op subst'
 createNamesCommand (RST.CaseOfCmd loc ns tm cases) = do
   tm' <- createNamesTerm tm
   cases' <- sequence $ createNamesCmdCase <$> cases
@@ -411,8 +410,8 @@ embedCommand (RST.ExitSuccess loc) =
   CST.PrimCmdTerm $ CST.ExitSuccess loc
 embedCommand (RST.ExitFailure loc) =
   CST.PrimCmdTerm $ CST.ExitFailure loc
-embedCommand (RST.PrimOp loc ty op subst) =
-  CST.PrimCmdTerm $ CST.PrimOp loc ty op (embedSubst subst)
+embedCommand (RST.PrimOp loc op subst) =
+  CST.PrimCmdTerm $ CST.PrimOp loc op (embedSubst subst)
 embedCommand (RST.CaseOfCmd loc _ns tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
 embedCommand (RST.CocaseOfCmd loc _ns tm cases) =

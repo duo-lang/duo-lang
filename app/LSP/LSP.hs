@@ -1,9 +1,9 @@
 {-# LANGUAGE TypeOperators #-}
 module LSP.LSP ( runLSP ) where
 
-import Data.IORef
 import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class (liftIO)
+import Data.IORef
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
@@ -23,24 +23,23 @@ import Language.LSP.Server
       getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
 import Language.LSP.Types
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
-import Paths_duo_lang (version)
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import Driver.Definition
-import Errors
-import LSP.MegaparsecToLSP ( locToRange )
-import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
-import Pretty.Pretty ( ppPrint )
-import Pretty.Program ()
 import Driver.Driver
-import Utils
-
+import Errors
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
 import LSP.Handler.CodeAction ( codeActionHandler )
 import LSP.Handler.Completion ( completionHandler )
 import LSP.Handler.JumpToDef ( jumpToDefHandler )
+import LSP.MegaparsecToLSP ( locToRange )
+import Paths_duo_lang (version)
+import Parser.Definition ( runFileParser )
+import Parser.Program ( programP )
+import Pretty.Pretty ( ppPrint )
+import Pretty.Program ()
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Static configuration of the LSP Server

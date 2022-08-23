@@ -16,7 +16,7 @@ import Text.Megaparsec
 
 import Parser.Definition
 import Parser.Lexer
-import Syntax.Common.Names
+import Syntax.CST.Names
 
 ---------------------------------------------------------------------------------
 -- Names
