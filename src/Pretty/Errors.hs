@@ -57,12 +57,11 @@ instance PrettyAnn ResolutionError where
           , "  Specified Arity:" <+> pretty ar1
           , "  Used Arity:" <+> pretty ar2
           ]
-  prettyAnn (PrimOpArityMismatch loc op ar1 ar2) =
+  prettyAnn (PrimOpArityMismatch loc op ar1) =
     vsep [ prettyAnn loc
          , "Arity mismatch:"
          , "  Primitive operation:" <+> prettyAnn op
-         , "  Specified Arity:" <+> pretty ar1
-         , "  Used Arity:" <+> pretty ar2
+         , "  Used Arity:" <+> pretty ar1
          ]
   prettyAnn (CmdExpected loc t) =
     prettyAnn loc <+> "Command expected: " <+> pretty t
@@ -188,7 +187,7 @@ instance ToReport ResolutionError where
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(MethodArityMismatch loc _ _ _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(PrimOpArityMismatch loc _ _ _) =
+  toReport e@(PrimOpArityMismatch loc _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(CmdExpected loc _) = 
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []

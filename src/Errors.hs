@@ -8,7 +8,6 @@ import Data.Text qualified as T
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Syntax.CST.Terms
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Utils
@@ -40,8 +39,7 @@ data ResolutionError where
                     -> Int
                     -> ResolutionError
   PrimOpArityMismatch :: Loc
-                      -> PrimitiveOp
-                      -> Int
+                      -> PrimName
                       -> Int
                       -> ResolutionError
   CmdExpected :: Loc -> Text -> ResolutionError
@@ -58,7 +56,7 @@ instance HasLoc ResolutionError where
   getLoc (UnknownOperator loc _) = loc
   getLoc (MethodArityMismatch loc _ _ _ _) = loc
   getLoc (XtorArityMismatch loc _ _ _) = loc
-  getLoc (PrimOpArityMismatch loc _ _ _) = loc
+  getLoc (PrimOpArityMismatch loc _ _) = loc
   getLoc (CmdExpected loc _) = loc
   getLoc (InvalidStar loc _) = loc
 
@@ -71,7 +69,7 @@ instance AttachLoc ResolutionError where
   attachLoc loc (UnknownOperator _ op) = UnknownOperator loc op
   attachLoc loc (XtorArityMismatch _ xt i1 i2) = XtorArityMismatch loc xt i1 i2
   attachLoc loc (MethodArityMismatch _ mt ct i1 i2) = MethodArityMismatch loc mt ct i1 i2
-  attachLoc loc (PrimOpArityMismatch _ po i1 i2) = PrimOpArityMismatch loc po i1 i2
+  attachLoc loc (PrimOpArityMismatch _ po i) = PrimOpArityMismatch loc po i
   attachLoc loc (CmdExpected _ t) = CmdExpected loc t
   attachLoc loc (InvalidStar _ t) = InvalidStar loc t
 

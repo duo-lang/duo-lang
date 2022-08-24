@@ -11,6 +11,7 @@ module Syntax.RST.Terms
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
+  , PrimitiveOp(..)
    -- Functions
   , termOpening
   , termOpeningRec
@@ -206,6 +207,24 @@ deriving instance Show (Term pc)
 -- Commands
 ---------------------------------------------------------------------------------
 
+data PrimitiveOp where
+  -- I64 Ops
+  I64Add :: PrimitiveOp
+  I64Sub :: PrimitiveOp
+  I64Mul :: PrimitiveOp
+  I64Div :: PrimitiveOp
+  I64Mod :: PrimitiveOp
+  -- F64 Ops
+  F64Add :: PrimitiveOp
+  F64Sub :: PrimitiveOp
+  F64Mul :: PrimitiveOp
+  F64Div :: PrimitiveOp
+  -- Char Ops
+  CharPrepend :: PrimitiveOp
+  -- String Ops
+  StringAppend :: PrimitiveOp
+  deriving (Show, Eq, Ord, Enum, Bounded)
+
 -- | An executable command.
 data Command where
   -- | A producer applied to a consumer:
@@ -218,7 +237,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> CST.PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
   CaseOfCmd :: Loc -> CST.NominalStructural -> Term Prd -> [CmdCase] -> Command
   CaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
   CocaseOfCmd :: Loc -> CST.NominalStructural -> Term Cns -> [CmdCase] -> Command

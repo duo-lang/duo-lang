@@ -137,7 +137,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> CST.PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> RST.PrimitiveOp -> Substitution -> Command
 
 --deriving instance Eq Command
 deriving instance Show Command
