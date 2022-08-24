@@ -44,7 +44,8 @@ dualCmd :: Command -> Either DualizeError Command
 dualCmd (Apply _ annot kind prd cns) = do
     t1 <- dualTerm CnsRep cns
     t2 <- dualTerm PrdRep prd
-    return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind kind) t1 t2
+    let kind' = case kind of Nothing -> Nothing; Just mk -> Just (dualMonoKind mk)
+    return $ Apply defaultLoc (dualApplyAnnot annot) kind' t1 t2
 dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
@@ -168,7 +169,7 @@ dualTypeName :: TypeName -> TypeName
 dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
-dualMonoKind :: Maybe MonoKind -> Maybe MonoKind
+dualMonoKind :: MonoKind -> MonoKind
 dualMonoKind mk = mk
 
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)

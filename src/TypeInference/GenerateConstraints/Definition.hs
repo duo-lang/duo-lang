@@ -7,6 +7,7 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
+  , freshKVar
   , paramsMap
   , createMethodSubst
     -- Throwing errors
@@ -61,7 +62,6 @@ import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
 import Utils
-import Translate.Embed
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -112,14 +112,20 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
+freshKVar :: GenM KVar
+freshKVar = do 
+  kCount <- gets kVarCount
+  modify (\gs@GenerateState{} -> gs {kVarCount = kCount + 1})
+  return (MkKVar ("kv" <> T.pack (show kCount)))
+
 freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp = do
   uCount <- gets uVarCount
   kCount <- gets kVarCount
   let tvar = MkUniTVar ("u" <> T.pack (show uCount))
-  let kvar = Just (KindVar (MkKVar ("kv" <> T.pack (show kCount))))
+  let kvar = KindVar (MkKVar ("kv" <> T.pack (show kCount)))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { uVarCount = uCount + 1 , kVarCount = kCount + 2})
+  modify (\gs@GenerateState{} -> gs { uVarCount = uCount + 1 , kVarCount = kCount + 1})
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
             gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
@@ -284,19 +290,19 @@ checkXtorSig :: RST.XtorSig pol -> TST.XtorSig pol
 checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = TST.MkXtorSig {sig_name = nm, sig_args = checkLinearContext ctxt }
 
 checkKind :: RST.Typ pol -> TST.Typ pol 
-checkKind (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol Nothing tv
-checkKind (RST.TyUniVar loc pol tv) = TST.TyUniVar loc pol Nothing tv
-checkKind (RST.TyRecVar loc pol rv) = TST.TyRecVar loc pol Nothing rv
+checkKind (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol (CBox CBV) tv
+checkKind (RST.TyUniVar loc pol tv) = TST.TyUniVar loc pol (CBox CBV) tv
+checkKind (RST.TyRecVar loc pol rv) = TST.TyRecVar loc pol (CBox CBV) rv
 checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol (map checkXtorSig xtors)
 checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol (map checkXtorSig xtors)
 checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol tn (map checkXtorSig xtors)
 checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol tn (map checkXtorSig xtors)
-checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol Nothing tn (map checkVariantType vart)
+checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol (CBox CBV) tn (map checkVariantType vart)
 checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty)
 checkKind (RST.TyBot loc) = TST.TyBot loc
 checkKind (RST.TyTop loc) = TST.TyTop loc
-checkKind (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc Nothing (checkKind ty1) (checkKind ty2)
-checkKind (RST.TyInter loc ty1 ty2) = TST.TyInter loc Nothing (checkKind ty1) (checkKind ty2)
+checkKind (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc (CBox CBV) (checkKind ty1) (checkKind ty2)
+checkKind (RST.TyInter loc ty1 ty2) = TST.TyInter loc (CBox CBV) (checkKind ty1) (checkKind ty2)
 checkKind (RST.TyRec loc pol rv ty) = TST.TyRec loc pol rv (checkKind ty)
 checkKind (RST.TyI64 loc pol) = TST.TyI64 loc pol
 checkKind (RST.TyF64 loc pol) = TST.TyF64 loc pol

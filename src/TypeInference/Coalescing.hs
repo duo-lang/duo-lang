@@ -73,8 +73,8 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
     where
         res = M.keys tvarSolution
         -- TODO: replace CBV/CBN with actual kind
-        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep (Just (KindVar (MkKVar (T.pack "kStartPos")))) tvar
-                    y <- coalesceType $ TyUniVar defaultLoc NegRep (Just (KindVar (MkKVar (T.pack "kStartNeg")))) tvar
+        f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep (KindVar (MkKVar (T.pack "kStart"))) tvar
+                    y <- coalesceType $ TyUniVar defaultLoc NegRep (KindVar (MkKVar (T.pack "kStart"))) tvar
                     return (x, y)
 
         xs = zip res $ runCoalesceM result $ mapM f res
