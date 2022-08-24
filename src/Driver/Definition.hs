@@ -65,7 +65,7 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: !(Map ModuleName (FilePath, CST.Module))
+  , drvFiles   :: !(Map ModuleName CST.Module)
   , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Module
   , drvErrs    :: Map ModuleName [Error]
@@ -150,21 +150,21 @@ getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) direc
 
 -- Modules and declarations
 
-getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Module)
+getModuleDeclarations :: ModuleName -> DriverM CST.Module
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
-          Just (fp, decls) -> return (fp, decls)
+          Just mod -> pure mod
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
-            decls <- runFileParser fp (moduleP mn fp) file
-            addModuleDeclarations mn fp decls
-            return (fp, decls)
+            mod <- runFileParser fp (moduleP mn fp) file
+            addModule mod
+            pure mod
 
-addModuleDeclarations :: ModuleName -> FilePath -> CST.Module -> DriverM ()
-addModuleDeclarations mn fp decls = do
-        modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
+addModule :: CST.Module -> DriverM ()
+addModule mod = do
+  modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert (CST.mod_name mod) mod drvFiles })
 
 -- AST Cache
 

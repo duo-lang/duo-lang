@@ -282,7 +282,7 @@ runCompilationPlan compilationOrder = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
       --  decls <- getModuleDeclarations mn
-      (_,decls) <- getModuleDeclarations mn
+      decls <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- getSymbolTable decls
       addSymboltable mn st
@@ -313,7 +313,7 @@ inferProgramIO state fp decls = do
   let mn = filePathToModuleName fp
   let action :: DriverM TST.Module
       action = do
-        addModuleDeclarations mn fp decls
+        addModule decls
         runCompilationModule mn
         queryTypecheckedModule mn
   res <- execDriverM state action
