@@ -23,7 +23,6 @@ import Driver.DepGraph
 import Errors
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveModule)
-import Resolution.SymbolTable
 import Resolution.Definition
 
 import Syntax.CST.Names
