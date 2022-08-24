@@ -262,10 +262,10 @@ class Zonk (a :: Type) where
 
 instance Zonk (Typ pol) where
   zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (fst (bisubst_map bisubst)) of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty 
      Just (tyPos,_) -> tyPos
   zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (fst (bisubst_map bisubst)) of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty
      Just (_,tyNeg) -> tyNeg
   zonk SkolemRep _ ty@TyUniVar{} = ty
   zonk RecRep _ ty@TyUniVar{} = ty
@@ -293,8 +293,12 @@ instance Zonk (Typ pol) where
      TyDataRefined loc rep mk tn (zonk vt bisubst <$> xtors)
   zonk vt bisubst (TyCodataRefined loc rep mk tn xtors) =
      TyCodataRefined loc rep mk tn (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyNominal loc rep kind tn args) =
-     TyNominal loc rep kind tn (zonk vt bisubst <$> args)
+  zonk UniRep bisubst (TyNominal loc rep knd tn args) = 
+    TyNominal loc rep (zonkKind bisubst knd) tn (zonk UniRep bisubst <$> args)
+  zonk SkolemRep bisubst (TyNominal loc rep kind tn args) =
+     TyNominal loc rep kind tn (zonk SkolemRep bisubst <$> args)
+  zonk RecRep bisubst (TyNominal loc rep kind tn args) =
+     TyNominal loc rep kind tn (zonk RecRep bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =
      TySyn loc rep nm (zonk vt bisubst ty)
   zonk _vt _ (TyTop loc) =
