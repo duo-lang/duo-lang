@@ -291,10 +291,10 @@ embedTSTType :: TST.Typ pol -> RST.Typ pol
 embedTSTType (TST.TySkolemVar loc pol _ tv) = RST.TySkolemVar loc pol tv
 embedTSTType (TST.TyUniVar loc pol _ tv) = RST.TyUniVar loc pol tv
 embedTSTType (TST.TyRecVar loc pol _ tv) = RST.TyRecVar loc pol tv
-embedTSTType (TST.TyData loc pol xtors) = RST.TyData loc pol (map embedTSTXtorSig xtors)
-embedTSTType (TST.TyCodata loc pol xtors) = RST.TyCodata loc pol (map embedTSTXtorSig xtors)
-embedTSTType (TST.TyDataRefined loc pol tn xtors) = RST.TyDataRefined loc pol tn (map embedTSTXtorSig xtors)
-embedTSTType (TST.TyCodataRefined loc pol tn xtors) = RST.TyCodataRefined loc pol tn (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyData loc pol _ xtors) = RST.TyData loc pol (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyCodata loc pol _ xtors) = RST.TyCodata loc pol (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyDataRefined loc pol _ tn xtors) = RST.TyDataRefined loc pol tn (map embedTSTXtorSig xtors)
+embedTSTType (TST.TyCodataRefined loc pol _ tn xtors) = RST.TyCodataRefined loc pol tn (map embedTSTXtorSig xtors)
 embedTSTType (TST.TyNominal loc pol _ tn varty) = RST.TyNominal loc pol tn (map embedTSTVarType varty)
 embedTSTType (TST.TySyn loc pol tn tp) = RST.TySyn loc pol tn (embedTSTType tp)
 embedTSTType (TST.TyBot loc) = RST.TyBot loc 

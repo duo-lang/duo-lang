@@ -141,14 +141,14 @@ dualType pol (TyUnion loc mk t1 t2) = TyInter loc mk (dualType pol t1) (dualType
 dualType pol (TyInter loc mk t1 t2) = TyUnion loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyRec loc p x t) = TyRec loc (flipPolarityRep p) x (dualType pol t)
 dualType pol (TySyn loc _ rn ty) = TySyn loc (flipPolarityRep pol) (dualRnTypeName rn) (dualType pol ty)
-dualType PosRep (TyData loc _ xtors) = TyCodata loc NegRep  xtors
-dualType NegRep (TyData loc _ xtors) = TyCodata loc PosRep  xtors
-dualType PosRep (TyCodata loc _ xtors) = TyData loc NegRep  xtors
-dualType NegRep (TyCodata loc _ xtors) = TyData loc PosRep  xtors
-dualType PosRep (TyDataRefined loc _ rn xtors) = TyCodataRefined loc NegRep  (dualRnTypeName rn) xtors
-dualType NegRep (TyDataRefined loc _ rn xtors) = TyCodataRefined loc PosRep  (dualRnTypeName rn) xtors
-dualType PosRep (TyCodataRefined loc _ rn xtors) = TyDataRefined loc NegRep  (dualRnTypeName rn) xtors
-dualType NegRep (TyCodataRefined loc _ rn xtors) = TyDataRefined loc PosRep  (dualRnTypeName rn) xtors
+dualType PosRep (TyData loc _ mk xtors) = TyCodata loc NegRep  (dualMonoKind mk) xtors
+dualType NegRep (TyData loc _ mk xtors) = TyCodata loc PosRep  (dualMonoKind mk) xtors
+dualType PosRep (TyCodata loc _ mk xtors) = TyData loc NegRep  (dualMonoKind mk)  xtors
+dualType NegRep (TyCodata loc _ mk  xtors) = TyData loc PosRep  (dualMonoKind mk) xtors
+dualType PosRep (TyDataRefined loc _ mk rn xtors) = TyCodataRefined loc NegRep (dualMonoKind mk) (dualRnTypeName rn) xtors
+dualType NegRep (TyDataRefined loc _ mk rn xtors) = TyCodataRefined loc PosRep  (dualMonoKind mk) (dualRnTypeName rn) xtors
+dualType PosRep (TyCodataRefined loc _  mk rn xtors) = TyDataRefined loc NegRep  (dualMonoKind mk) (dualRnTypeName rn) xtors
+dualType NegRep (TyCodataRefined loc _  mk rn xtors) = TyDataRefined loc PosRep  (dualMonoKind mk) (dualRnTypeName rn) xtors
 dualType _ (TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> VariantType pol -> VariantType (FlipPol pol)

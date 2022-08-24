@@ -13,6 +13,7 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Maybe (fromMaybe)
+import Data.Text qualified as T
 
 import Driver.Environment (Environment)
 import Errors
@@ -274,12 +275,27 @@ subConstraints (SubType _ ty' ty@TyRec{}) =
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TyData _ PosRep ctors1) (TyData _ NegRep ctors2)) = do
-  constraints <- forM ctors1 (checkXtor ctors2)
-  pure $ concat constraints
-subConstraints (SubType _ (TyCodata _ PosRep dtors1) (TyCodata _ NegRep dtors2)) = do
-  constraints <- forM dtors2 (checkXtor dtors1)
-  pure $ concat constraints
+subConstraints (SubType _ (TyData _ PosRep mk1 ctors1) (TyData _ NegRep mk2 ctors2)) =
+  if mk1 == mk2 then do
+    constraints <- forM ctors1 (checkXtor ctors2)
+    pure $ concat constraints
+  else
+    throwSolverError defaultLoc ["Cannot solve constraint between Data Types with kinds "
+                                 , T.pack (show mk1)
+                                 , " and "
+                                 , T.pack (show mk2)
+                                ]
+subConstraints (SubType _ (TyCodata _ PosRep mk1 dtors1) (TyCodata _ NegRep mk2 dtors2)) =
+  if mk1 == mk2 then do
+    constraints <- forM dtors2 (checkXtor dtors1)
+    pure $ concat constraints
+  else 
+    throwSolverError defaultLoc ["Cannot solve constraint between Codata Types with kinds "
+                                 , T.pack (show mk1)
+                                 , " and "
+                                 , T.pack (show mk2)
+                                ]
+
 -- Constraints between refinement data or codata types:
 --
 -- These constraints are treated in the same way as those between structural (co)data types, with
@@ -288,12 +304,28 @@ subConstraints (SubType _ (TyCodata _ PosRep dtors1) (TyCodata _ NegRep dtors2))
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TyDataRefined _ PosRep tn1 ctors1) (TyDataRefined _ NegRep tn2 ctors2)) | tn1 == tn2= do
-  constraints <- forM ctors1 (checkXtor ctors2)
-  pure $ concat constraints
-subConstraints (SubType _ (TyCodataRefined _ PosRep tn1 dtors1) (TyCodataRefined _ NegRep tn2 dtors2))  | tn1 == tn2 = do
-  constraints <- forM dtors2 (checkXtor dtors1)
-  pure $ concat constraints
+subConstraints (SubType _ (TyDataRefined _ PosRep mk1 tn1 ctors1) (TyDataRefined _ NegRep mk2 tn2 ctors2)) | tn1 == tn2 = 
+  if mk1 == mk2 then do 
+    constraints <- forM ctors1 (checkXtor ctors2)
+    pure $ concat constraints
+  else 
+    throwSolverError defaultLoc ["Cannot solve constraint between Refinement Data Types with kinds "
+                                 , T.pack (show mk1)
+                                 , " and "
+                                 , T.pack (show mk2)
+                                ]
+
+subConstraints (SubType _ (TyCodataRefined _ PosRep mk1 tn1 dtors1) (TyCodataRefined _ NegRep mk2 tn2 dtors2))  | tn1 == tn2 = 
+  if mk1 == mk2 then do
+    constraints <- forM dtors2 (checkXtor dtors1)
+    pure $ concat constraints
+  else 
+    throwSolverError defaultLoc ["Cannot solve constraint between Refinement Codata Types with kinds "
+                                 , T.pack (show mk1)
+                                 , " and "
+                                 , T.pack (show mk2)
+                                ]
+
 -- Constraints between nominal types:
 --
 -- We currently do not have any subtyping relationships between nominal types.

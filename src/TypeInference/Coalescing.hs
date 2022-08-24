@@ -115,18 +115,18 @@ coalesceType (TyUniVar _ NegRep mono tv) = do
                     newName <- freshSkolemVar
                     return $                                            mkInter defaultLoc mono (TySkolemVar defaultLoc NegRep mono newName : ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mono (TyRecVar defaultLoc NegRep mono recVar  : ubs'))
-coalesceType (TyData loc rep xtors) = do
+coalesceType (TyData loc rep mk xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyData loc rep xtors')
-coalesceType (TyCodata loc rep xtors) = do
+    return (TyData loc rep mk xtors')
+coalesceType (TyCodata loc rep mk xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodata loc rep xtors')
-coalesceType (TyDataRefined loc rep tn xtors) = do
+    return (TyCodata loc rep mk xtors')
+coalesceType (TyDataRefined loc rep mk tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyDataRefined loc rep tn xtors')
-coalesceType (TyCodataRefined loc rep tn xtors) = do
+    return (TyDataRefined loc rep mk tn xtors')
+coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodataRefined loc rep tn xtors')
+    return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'

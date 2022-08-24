@@ -39,10 +39,10 @@ checkKind (RST.TyRecVar loc pol rv) = do
   let knd = KindVar (MkKVar (unRecTVar rv))
   TST.TyRecVar loc pol knd rv 
 
-checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol (map checkXtorSig xtors)                            -- TODO
-checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol (map checkXtorSig xtors)                        -- TODO
-checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol tn (map checkXtorSig xtors)        -- TODO
-checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol tn (map checkXtorSig xtors)    -- TODO
+checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol (CBox CBV) (map checkXtorSig xtors)                            -- TODO
+checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol (CBox CBV) (map checkXtorSig xtors)                        -- TODO
+checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol (CBox CBV) tn (map checkXtorSig xtors)        -- TODO
+checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol (CBox CBV) tn (map checkXtorSig xtors)    -- TODO
 checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol (CBox CBV) tn (map checkVariantType vart)   -- TODO
 
 checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty) 

@@ -89,10 +89,10 @@ data Typ (pol :: Polarity) where
   TyRecVar        :: Loc -> PolarityRep pol -> MonoKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
-  TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
-  TyCodata        :: Loc -> PolarityRep pol               -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
-  TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyData          :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig pol]           -> Typ pol
+  TyCodata        :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyDataRefined   :: Loc -> PolarityRep pol -> MonoKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
+  TyCodataRefined :: Loc -> PolarityRep pol -> MonoKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
@@ -127,55 +127,47 @@ mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TySkolemVar _ rep _ _)     = rep
-getPolarity (TyUniVar _ rep _ _)        = rep
-getPolarity (TyRecVar _ rep _ _)        = rep
-getPolarity (TyData _ rep _)            = rep
-getPolarity (TyCodata _ rep _)          = rep
-getPolarity (TyDataRefined _ rep _ _)   = rep
-getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep _ _ _)     = rep
-getPolarity (TySyn _ rep _ _)           = rep
-getPolarity TyTop {}                    = NegRep
-getPolarity TyBot {}                    = PosRep
-getPolarity TyUnion {}                  = PosRep
-getPolarity TyInter {}                  = NegRep
-getPolarity (TyRec _ rep _ _)           = rep
-getPolarity (TyI64 _ rep)               = rep
-getPolarity (TyF64 _ rep)               = rep
-getPolarity (TyChar _ rep)              = rep
-getPolarity (TyString _ rep)            = rep
-getPolarity (TyFlipPol rep _)           = rep
+getPolarity (TySkolemVar _ rep _ _)        = rep
+getPolarity (TyUniVar _ rep _ _)           = rep
+getPolarity (TyRecVar _ rep _ _)           = rep
+getPolarity (TyData _ rep _  _)            = rep
+getPolarity (TyCodata _ rep _  _)          = rep
+getPolarity (TyDataRefined _ rep  _ _ _)   = rep
+getPolarity (TyCodataRefined _ rep  _ _ _) = rep
+getPolarity (TyNominal _ rep _ _ _)        = rep
+getPolarity (TySyn _ rep _ _)              = rep
+getPolarity TyTop {}                       = NegRep
+getPolarity TyBot {}                       = PosRep
+getPolarity TyUnion {}                     = PosRep
+getPolarity TyInter {}                     = NegRep
+getPolarity (TyRec _ rep _ _)              = rep
+getPolarity (TyI64 _ rep)                  = rep
+getPolarity (TyF64 _ rep)                  = rep
+getPolarity (TyChar _ rep)                 = rep
+getPolarity (TyString _ rep)               = rep
+getPolarity (TyFlipPol rep _)              = rep
 
-class GetKind(a::Type) where
-  getKind :: a -> MonoKind
 
-instance GetKind (Typ pol) where
-  getKind (TySkolemVar _ _ mk _)    = mk
-  getKind (TyUniVar _ _ mk _)       = mk
-  getKind (TyRecVar _ _ mk _)       = mk
--- No Kinds available, will have to be added from return kinds of constructor
-  getKind (TyData _ _ _)            = TopBotKind
-  getKind (TyCodata _ _ _)          = TopBotKind
-  getKind (TyDataRefined _ _ _ _)   = TopBotKind
-  getKind (TyCodataRefined _ _ _ _) = TopBotKind
--- From here all should be fine
-  getKind (TyNominal _ _ mk _ _)    = mk
-  getKind (TySyn _ _ _ ty)          = getKind ty
-  getKind TyTop {}                  = TopBotKind
-  getKind TyBot {}                  = TopBotKind
-  getKind (TyUnion _ mk _ _)        = mk
-  getKind (TyInter _ mk _ _)        = mk
-  getKind (TyRec _ _ _ ty)          = getKind ty
-  getKind TyI64{}                   = I64Rep
-  getKind TyF64{}                   = F64Rep
-  getKind TyChar{}                  = CharRep
-  getKind TyString{}                = StringRep
-  getKind (TyFlipPol _ ty)          = getKind ty
-
-instance GetKind (VariantType pol) where
-  getKind (CovariantType ty) = getKind ty
-  getKind (ContravariantType ty) = getKind ty
+getKind ::  Typ pol -> MonoKind
+getKind (TySkolemVar _ _ mk _)        = mk
+getKind (TyUniVar _ _ mk _)           = mk
+getKind (TyRecVar _ _ mk _)           = mk
+getKind (TyData _ _ mk _ )            = mk
+getKind (TyCodata _ _ mk _ )          = mk
+getKind (TyDataRefined _ _ mk _ _ )   = mk
+getKind (TyCodataRefined _ _ mk _ _ ) = mk
+getKind (TyNominal _ _ mk _ _)        = mk
+getKind (TySyn _ _ _ ty)              = getKind ty
+getKind TyTop {}                      = TopBotKind
+getKind TyBot {}                      = TopBotKind
+getKind (TyUnion _ mk _ _)            = mk
+getKind (TyInter _ mk _ _)            = mk
+getKind (TyRec _ _ _ ty)              = getKind ty
+getKind TyI64{}                       = I64Rep
+getKind TyF64{}                       = F64Rep
+getKind TyChar{}                      = CharRep
+getKind TyString{}                    = StringRep
+getKind (TyFlipPol _ ty)              = getKind ty
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -207,25 +199,25 @@ class FreeTVars (a :: Type) where
   freeTVars :: a -> Set SkolemTVar
 
 instance FreeTVars (Typ pol) where
-  freeTVars (TySkolemVar _ _ _ tv)        = S.singleton tv
-  freeTVars TyRecVar{}                    = S.empty
-  freeTVars TyUniVar{}                    = S.empty
-  freeTVars TyTop {}                      = S.empty
-  freeTVars TyBot {}                      = S.empty
-  freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ _ t)               = freeTVars t
-  freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
-  freeTVars (TySyn _ _ _ ty)              = freeTVars ty
-  freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
-  freeTVars (TyDataRefined _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodataRefined _ _ _ xtors) = S.unions (freeTVars <$> xtors)
-  freeTVars (TyI64 _ _)                   = S.empty
-  freeTVars (TyF64 _ _)                   = S.empty
-  freeTVars (TyChar _ _)                  = S.empty
-  freeTVars (TyString _ _)                = S.empty
-  freeTVars (TyFlipPol _ ty)              = freeTVars ty
+  freeTVars (TySkolemVar _ _ _ tv)           = S.singleton tv
+  freeTVars TyRecVar{}                       = S.empty
+  freeTVars TyUniVar{}                       = S.empty
+  freeTVars TyTop {}                         = S.empty
+  freeTVars TyBot {}                         = S.empty
+  freeTVars (TyUnion _ _ ty ty')             = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyInter _ _ ty ty')             = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyRec _ _ _ t)                  = freeTVars t
+  freeTVars (TyNominal _ _ _ _ args)         = S.unions (freeTVars <$> args)
+  freeTVars (TySyn _ _ _ ty)                 = freeTVars ty
+  freeTVars (TyData _  _ _ xtors)            = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodata _ _ _ xtors)           = S.unions (freeTVars <$> xtors)
+  freeTVars (TyDataRefined _ _ _ _ xtors)    = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodataRefined  _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
+  freeTVars (TyI64 _ _)                      = S.empty
+  freeTVars (TyF64 _ _)                      = S.empty
+  freeTVars (TyChar _ _)                     = S.empty
+  freeTVars (TyString _ _)                   = S.empty
+  freeTVars (TyFlipPol _ ty)                 = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
@@ -293,14 +285,14 @@ instance Zonk (Typ pol) where
   zonk RecRep bisubst ty@(TyRecVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
     Nothing -> ty
     Just (_,tyNeg) -> tyNeg
-  zonk vt bisubst (TyData loc rep xtors) =
-     TyData loc rep (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyCodata loc rep xtors) =
-     TyCodata loc rep (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyDataRefined loc rep tn xtors) =
-     TyDataRefined loc rep tn (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyCodataRefined loc rep tn xtors) =
-     TyCodataRefined loc rep tn (zonk vt bisubst <$> xtors)
+  zonk vt bisubst (TyData loc rep mk xtors) =
+     TyData loc rep mk (zonk vt bisubst <$> xtors)
+  zonk vt bisubst (TyCodata loc rep mk xtors) =
+     TyCodata loc rep mk (zonk vt bisubst <$> xtors)
+  zonk vt bisubst (TyDataRefined loc rep mk tn xtors) =
+     TyDataRefined loc rep mk tn (zonk vt bisubst <$> xtors)
+  zonk vt bisubst (TyCodataRefined loc rep mk tn xtors) =
+     TyCodataRefined loc rep mk tn (zonk vt bisubst <$> xtors)
   zonk vt bisubst (TyNominal loc rep kind tn args) =
      TyNominal loc rep kind tn (zonk vt bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =

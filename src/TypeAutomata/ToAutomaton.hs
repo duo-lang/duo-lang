@@ -253,10 +253,10 @@ insertType (TyRec _ rep rv ty) = do
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 -- for now, only default values CBV and CBN are used, later these types will all have type annotations
-insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors (CBox CBV)
-insertType (TyCodata _ polrep xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors (CBox CBN)
-insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors (CBox CBV)
-insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors (CBox CBN)
+insertType (TyData _ polrep mk xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors mk
+insertType (TyCodata _ polrep mk xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors mk
+insertType (TyDataRefined _ polrep mk mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors mk
+insertType (TyCodataRefined _ polrep mk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors mk
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
