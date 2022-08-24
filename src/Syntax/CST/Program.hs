@@ -283,4 +283,9 @@ data Declaration where
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"
 
-type Program = [Declaration]
+---------------------------------------------------------------------------------
+-- Module
+---------------------------------------------------------------------------------
+
+newtype Module = MkModule { mod_decls :: [Declaration] } deriving (Show)
+

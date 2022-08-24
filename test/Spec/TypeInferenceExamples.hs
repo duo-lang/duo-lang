@@ -16,8 +16,8 @@ pendingFiles = [ ("test/counterexamples/CE_053.duo", "Constraint Solver for type
                ]
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
-spec :: [(FilePath, Either (NonEmpty Error) CST.Program)]
-     -> [(FilePath, Either (NonEmpty Error) TST.Program)]
+spec :: [(FilePath, Either (NonEmpty Error) CST.Module)]
+     -> [(FilePath, Either (NonEmpty Error) TST.Module)]
      -> Spec
 spec counterExamplesParsed counterExamplesChecked = do
   describe "All the programs in the \"test/counterexamples/\" folder can be parsed." $ do

@@ -77,8 +77,7 @@ genConstraintsTerm :: Core.Term pc
 --
 genConstraintsTerm (Core.BoundVar loc rep idx) = do
   ty <- lookupContext loc rep idx
-  let ty' = checkKind ty
-  return (TST.BoundVar loc rep ty' idx)
+  return (TST.BoundVar loc rep ty idx)
 --
 -- Free variables:
 --

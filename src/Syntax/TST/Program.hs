@@ -102,5 +102,11 @@ instance Show Declaration where
   show (TySynDecl         decl) = show decl
   show (ClassDecl         decl) = show decl
   show (InstanceDecl      decl) = show decl
-  
-type Program = [Declaration]
+
+
+---------------------------------------------------------------------------------
+-- Module
+---------------------------------------------------------------------------------
+
+newtype Module = MkModule { mod_decls :: [Declaration] } deriving (Show)
+

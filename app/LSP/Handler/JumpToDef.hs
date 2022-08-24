@@ -29,7 +29,7 @@ import Driver.Driver ( inferProgramIO )
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
+import Parser.Program ( moduleP )
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
@@ -44,7 +44,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
     let file = virtualFileText vfile
     let fp = fromMaybe "fail" (uriToFilePath uri)
-    let decls = runFileParser fp programP file
+    let decls = runFileParser fp moduleP file
     case decls of
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
@@ -54,10 +54,10 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
-            responder (generateJumpToDef pos (embedCoreProg (embedTSTProg prog)))
+            responder (generateJumpToDef pos (embedCoreModule (embedTSTModule prog)))
 
 
-generateJumpToDef :: Position -> RST.Program -> Either ResponseError (Location |? b)
+generateJumpToDef :: Position -> RST.Module -> Either ResponseError (Location |? b)
 generateJumpToDef pos prog = do
     let jumpMap = toJumpMap prog
     case lookupInRangeMap pos jumpMap of
@@ -201,8 +201,8 @@ instance ToJumpMap (RST.TypeScheme pol) where
 -- Converting programs to a JumpMap
 ---------------------------------------------------------------------------------
 
-instance ToJumpMap RST.Program where
-  toJumpMap prog = M.unions (toJumpMap <$> prog)
+instance ToJumpMap RST.Module where
+  toJumpMap (RST.MkModule prog) = M.unions (toJumpMap <$> prog)
 
 instance ToJumpMap (RST.PrdCnsDeclaration pc) where
   toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =
