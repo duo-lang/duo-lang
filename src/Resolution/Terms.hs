@@ -188,13 +188,13 @@ resolvePrimCommand :: Loc -> PrimName -> [CST.Term] -> ResolverM RST.Command
 resolvePrimCommand loc nm [] =
   if | nm == exitSuccessName -> pure $ RST.ExitSuccess loc
      | nm == exitFailureName -> pure $ RST.ExitFailure loc
-     | otherwise             -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 0 0) :| []
+     | otherwise             -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 0) :| []
 -- 1 argument
 resolvePrimCommand loc nm [tm] | nm == readName =
   if | nm == readName -> do
                tm' <- resolveTerm CnsRep tm
                pure $ RST.Read loc tm'
-     | otherwise      -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 1 1) :| []
+     | otherwise      -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 1) :| []
 -- 2 arguments
 resolvePrimCommand loc nm [tm, cmd] | nm == printName = do
   tm' <- resolveTerm PrdRep tm
@@ -217,9 +217,9 @@ resolvePrimCommand loc nm [tm1,tm2,tm3] = do
      | nm == MkPrimName "#F64Div" -> pure (RST.PrimOp loc RST.F64Div args)
      | nm == MkPrimName "#CharPrepend" -> pure (RST.PrimOp loc RST.CharPrepend args)
      | nm == MkPrimName "#StringAppend" -> pure (RST.PrimOp loc RST.StringAppend args)
-     | otherwise -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 3 3) :| []
+     | otherwise -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 3) :| []
 -- More arguments
-resolvePrimCommand loc nm args = throwError $ ErrResolution (PrimOpArityMismatch loc nm (length args) (length args)) :| []
+resolvePrimCommand loc nm args = throwError $ ErrResolution (PrimOpArityMismatch loc nm (length args)) :| []
 
 ---------------------------------------------------------------------------------
 -- Resolving Commands
