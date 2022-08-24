@@ -8,6 +8,8 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Text.Megaparsec.Pos
+import Data.Map (Map)
+import qualified Data.Map as M
 
 ----------------------------------------------------------------------------------
 -- Source code locations
@@ -59,3 +61,10 @@ indexMaybe xs i | 0 <= i && i <= length xs -1 = Just (xs !! i)
 
 data Verbosity = Verbose | Silent
   deriving (Eq)
+
+-- Maps
+mapAppend :: (Ord k, Semigroup m) => k -> m -> Map k m -> Map k m
+mapAppend k a = M.alter (\case
+                              Nothing -> Just a
+                              Just b  -> Just $ a <> b)
+                        k

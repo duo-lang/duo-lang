@@ -47,7 +47,7 @@ spec parseExamples typeCheckExamples = do
                 Right decls -> case runFileParser example moduleP (ppPrint decls) of
                   Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
                   Right decls -> do
-                    res <- runIO $ inferProgramIO defaultDriverState "" decls
+                    res <- runIO $ inferProgramIO defaultDriverState "Test:Prettyprinter" decls
                     it "Can be parsed and typechecked again." $
                         fst res `shouldSatisfy` isRight
 
