@@ -15,6 +15,7 @@ import Data.Map qualified as M
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
+import Pretty.Types ()
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Program
@@ -112,6 +113,16 @@ checkFreshFreeVarName loc fv st =
   then throwOtherError loc ["FreeVarName is already used: " <> ppPrint fv]
   else pure ()
 
+checkFreshTyOpName :: MonadError (NonEmpty Error) m
+                   => Loc
+                   -> TyOpName
+                   -> SymbolTable
+                   -> m ()
+checkFreshTyOpName loc op st =
+  if op `elem` M.keys (tyOps st)
+  then throwOtherError loc ["TyOp is already used: " <> ppPrint op]
+  else pure ()
+
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.
 createSymbolTable :: MonadError (NonEmpty Error) m
@@ -157,7 +168,8 @@ createSymbolTable' fp mn  (DataDecl MkDataDecl { data_loc, data_doc, data_refine
   let nominalResult = NominalResult rnTypeName data_polarity data_refined polyKind
   pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
             , typeNameMap = M.insert data_name nominalResult (typeNameMap st)}
-createSymbolTable' _ _ (TyOpDecl MkTyOpDeclaration { tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res}) st = do
+createSymbolTable' _ _ (TyOpDecl MkTyOpDeclaration { tyopdecl_loc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res}) st = do
+  checkFreshTyOpName tyopdecl_loc tyopdecl_sym st
   let descr = MkBinOpDescr { prec = tyopdecl_prec
                            , assoc = tyopdecl_assoc
                            , desugar = NominalDesugaring tyopdecl_res
