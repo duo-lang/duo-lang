@@ -5,7 +5,6 @@ import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.List (find)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
@@ -79,34 +78,32 @@ lookupTypeConstructor loc tn = do
       xs         -> throwOtherError loc ["Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))]
 
 -- | Type operator for the union type
-unionTyOp :: TyOp
-unionTyOp = MkTyOp
-  { symbol = UnionOp
-  , prec = MkPrecedence 1
+unionTyOp :: BinOpDescr
+unionTyOp = MkBinOpDescr
+  { prec = MkPrecedence 1
   , assoc = LeftAssoc
   , desugar = UnionDesugaring
   }
 
 -- | Type operator for the intersection type
-interTyOp :: TyOp
-interTyOp = MkTyOp
-  { symbol = InterOp
-  , prec = MkPrecedence 2
+interTyOp :: BinOpDescr
+interTyOp = MkBinOpDescr
+  { prec = MkPrecedence 2
   , assoc = LeftAssoc
   , desugar = InterDesugaring
   }
 
 lookupTyOp :: Loc
            -> BinOp
-           -> ResolverM (ModuleName, TyOp)
+           -> ResolverM (ModuleName, BinOpDescr)
 lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
 lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
-lookupTyOp loc op = do
+lookupTyOp loc (CustomOp sym) = do
   symbolTables <- asks $ M.toList . rr_modules
-  let results :: [(ModuleName, Maybe TyOp)]
-      results = second (find (\tyop -> symbol tyop == op) . tyOps) <$> symbolTables
+  let results :: [(ModuleName, Maybe BinOpDescr)]
+      results = second (M.lookup sym . tyOps) <$> symbolTables
   case filterJusts results of
-    []    -> throwError (ErrResolution (UnknownOperator loc (ppPrint op)) NE.:| [])
+    []    -> throwError (ErrResolution (UnknownOperator loc (ppPrint sym)) NE.:| [])
     [res] -> pure res
-    _     -> throwOtherError loc ["Type operator " <> ppPrint op <> " found in multiple imports."]
+    _     -> throwOtherError loc ["Type operator " <> ppPrint sym <> " found in multiple imports."]
 

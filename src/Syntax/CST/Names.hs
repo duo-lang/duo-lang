@@ -123,7 +123,7 @@ data BinOp where
   CustomOp :: TyOpName -> BinOp
   UnionOp  :: BinOp
   InterOp  :: BinOp
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data Associativity where
   LeftAssoc :: Associativity
