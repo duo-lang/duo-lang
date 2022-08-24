@@ -5,16 +5,22 @@ import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Functor ( (<&>) )
 
 import Syntax.TST.Terms
-import Syntax.Common.PrdCns
-import Syntax.Common.Primitives
+import Syntax.TST.Types
 import Syntax.Core.Annot
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.CST.Names
+import Syntax.CST.Terms (PrimitiveOp)
 import Syntax.CST.Kinds
-import Syntax.RST.Types
+import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
+import Syntax.RST.Program (PrdCnsToPol)
 import Utils
 
-data DualizeError = DualPrim Loc String | DualPrint Loc String  | DualRead Loc String | DualPrimOp Loc PrimitiveOp String | DualMethod Loc String
+data DualizeError
+    = DualPrim Loc String 
+    | DualPrint Loc String  
+    | DualRead Loc String 
+    | DualPrimOp Loc PrimitiveOp String 
+    | DualMethod Loc String
   deriving Show
 
 dualTerm :: PrdCnsRep pc -> Term pc -> Either DualizeError (Term (FlipPrdCns pc))
@@ -38,12 +44,12 @@ dualCmd :: Command -> Either DualizeError Command
 dualCmd (Apply _ annot kind prd cns) = do
     t1 <- dualTerm CnsRep cns
     t2 <- dualTerm PrdRep prd
-    return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind <$> kind) t1 t2
+    return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind kind) t1 t2
 dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
 dualCmd (Method loc _ _ _) = Left $ DualMethod loc "Cannot dualize type class method"
-dualCmd (PrimOp loc _ op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
+dualCmd (PrimOp loc op _) = Left $ DualPrimOp loc op "Cannot dualize primitive op"
 dualCmd (ExitSuccess _) = return $ ExitSuccess defaultLoc
 dualCmd (ExitFailure _) = return $ ExitFailure defaultLoc
 
@@ -128,8 +134,8 @@ dualType pol (TyF64 loc _ ) = TyF64 loc (flipPolarityRep pol)
 dualType pol (TyChar loc _ ) = TyChar loc (flipPolarityRep pol)
 dualType pol (TyString loc _ ) = TyString loc (flipPolarityRep pol)
 -- @BinderDavid please check
-dualType _ (TyBot loc mk) = TyTop loc mk
-dualType _ (TyTop loc mk) = TyBot loc mk
+dualType _ (TyBot loc) = TyTop loc
+dualType _ (TyTop loc) = TyBot loc
 dualType pol (TyUnion loc mk t1 t2) = TyInter loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyInter loc mk t1 t2) = TyUnion loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyRec loc p x t) = TyRec loc (flipPolarityRep p) x (dualType pol t)
@@ -150,7 +156,7 @@ dualVariantType PosRep (ContravariantType ty) = ContravariantType (dualType NegR
 dualVariantType NegRep (ContravariantType ty) = ContravariantType (dualType PosRep ty)
 
 dualRnTypeName :: RnTypeName -> RnTypeName
-dualRnTypeName (MkRnTypeName _loc _doc mn tn) = MkRnTypeName defaultLoc Nothing mn (dualTypeName tn)
+dualRnTypeName (MkRnTypeName _loc _doc _fp mn tn) = MkRnTypeName defaultLoc Nothing Nothing mn (dualTypeName tn)
 
 -- >>> dualTypeName (MkTypeName "Foo")
 -- MkTypeName {unTypeName = "CoFoo"}
@@ -162,7 +168,7 @@ dualTypeName :: TypeName -> TypeName
 dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
-dualMonoKind :: MonoKind -> MonoKind
+dualMonoKind :: Maybe MonoKind -> Maybe MonoKind
 dualMonoKind mk = mk
 
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)

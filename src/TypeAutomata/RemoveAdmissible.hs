@@ -10,9 +10,8 @@ import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 
-import Syntax.Common.Polarity ( Polarity(Pos, Neg) )
-import Syntax.Common.PrdCns ( PrdCns(Cns, Prd) )
-import Syntax.CST.Types ( DataCodata(Codata, Data) )
+import Syntax.CST.Types ( DataCodata(Codata, Data), PrdCns(..))
+import Syntax.RST.Types (Polarity(..))
 import TypeAutomata.Definition
 import Control.Monad.State.Strict (MonadState (get, put), modify, gets, State, runState, evalState)
 import GHC.Base (Alternative)

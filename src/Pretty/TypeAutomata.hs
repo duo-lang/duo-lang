@@ -13,8 +13,8 @@ import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX)
 import Pretty.Common
 import Pretty.Types (pipeSym)
 import TypeAutomata.Definition
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
+import Syntax.CST.Types (PrdCns(..))
+import Syntax.RST.Types (Polarity(..))
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Type Automata
@@ -23,6 +23,12 @@ import Syntax.Common.Polarity
 instance PrettyAnn XtorLabel where
   prettyAnn MkXtorLabel { labelName, labelArity } =
     prettyAnn labelName <> prettyArity labelArity
+
+instance PrettyAnn PrimitiveType where
+  prettyAnn I64 = "I64"
+  prettyAnn F64 = "F64"
+  prettyAnn PChar = "Char"
+  prettyAnn PString = "String"
 
 instance PrettyAnn NodeLabel where
   prettyAnn (MkPrimitiveNodeLabel _ tp) = prettyAnn tp

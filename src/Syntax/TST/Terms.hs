@@ -24,23 +24,17 @@ import Data.Text qualified as T
 
 import Utils
 import Errors
-import Syntax.Common.PrdCns
-    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
-import Syntax.Common.Polarity
-    ( Polarity(Pos), PolarityRep(PosRep) )
 import Syntax.CST.Kinds ( MonoKind )
-import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Terms qualified as RST
-import Syntax.RST.Types
-    ( LinearContext,
-      PrdCnsType(PrdCnsType),
-      Typ(TyString, TyI64, TyF64, TyChar),
-      Zonk(..) )
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
+import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.TST.Types
 import Data.Bifunctor (Bifunctor(second))
 
 ---------------------------------------------------------------------------------
@@ -196,7 +190,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> CST.PrimitiveOp -> Substitution -> Command
 
 deriving instance Show Command
 
@@ -215,8 +209,8 @@ instance Zonk Command where
     ExitSuccess ext
   zonk _vt _ (ExitFailure ext) =
     ExitFailure ext
-  zonk vt bisubst (PrimOp ext pt op subst) =
-    PrimOp ext pt op (zonk vt bisubst <$> subst)
+  zonk vt bisubst (PrimOp ext op subst) =
+    PrimOp ext op (zonk vt bisubst <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
@@ -262,8 +256,8 @@ commandOpeningRec k args (Method loc mn cn subst) =
   Method loc mn cn (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (Apply loc annot kind t1 t2) =
   Apply loc annot kind (termOpeningRec k args t1) (termOpeningRec k args t2)
-commandOpeningRec k args (PrimOp loc pt op subst) =
-  PrimOp loc pt op (pctermOpeningRec k args <$> subst)
+commandOpeningRec k args (PrimOp loc op subst) =
+  PrimOp loc op (pctermOpeningRec k args <$> subst)
 
 commandOpening :: Substitution -> Command -> Command
 commandOpening = commandOpeningRec 0
@@ -311,8 +305,8 @@ commandClosingRec k args (Method ext mn cn subst) =
   Method ext mn cn (pctermClosingRec k args <$> subst)
 commandClosingRec k args (Apply ext annot kind t1 t2) =
   Apply ext annot kind (termClosingRec k args t1) (termClosingRec k args t2)
-commandClosingRec k args (PrimOp ext pt op subst) =
-  PrimOp ext pt op (pctermClosingRec k args <$> subst)
+commandClosingRec k args (PrimOp ext op subst) =
+  PrimOp ext op (pctermClosingRec k args <$> subst)
 
 commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
@@ -372,7 +366,7 @@ commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> comm
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
-commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
+commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -435,8 +429,8 @@ shiftCmdRec _ _ (Jump ext fv) =
   Jump ext fv
 shiftCmdRec dir n (Method ext mn cn subst) =
   Method ext mn cn (shiftPCTermRec dir n <$> subst)
-shiftCmdRec dir n (PrimOp ext pt op subst) =
-  PrimOp ext pt op (shiftPCTermRec dir n <$> subst)
+shiftCmdRec dir n (PrimOp ext op subst) =
+  PrimOp ext op (shiftPCTermRec dir n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
 shiftCmd :: ShiftDirection -> Command -> Command

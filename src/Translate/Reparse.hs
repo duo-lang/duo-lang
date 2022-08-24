@@ -28,13 +28,14 @@ import Data.Maybe (fromJust)
 
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( BinOp(InterOp, CustomOp, UnionOp),
       FreeVarName(MkFreeVarName),
       MethodName(unMethodName),
@@ -44,8 +45,6 @@ import Syntax.Common.Names
       TyOpName(MkTyOpName),
       TypeName(MkTypeName),
       XtorName(MkXtorName) )
-import Syntax.Common.PrdCns
-    ( PrdCns(..), PrdCnsRep(CnsRep, PrdRep) )
 
 ---------------------------------------------------------------------------------
 -- These functions  translate a locally nameless term into a named representation.
@@ -156,8 +155,8 @@ openCommandComplete (RST.ExitSuccess loc) =
   RST.ExitSuccess loc
 openCommandComplete (RST.ExitFailure loc) =
   RST.ExitFailure loc
-openCommandComplete (RST.PrimOp loc pt op subst) =
-  RST.PrimOp loc pt op (openPCTermComplete <$> subst)
+openCommandComplete (RST.PrimOp loc op subst) =
+  RST.PrimOp loc op (openPCTermComplete <$> subst)
 openCommandComplete (RST.CaseOfCmd loc ns tm cases) =
   RST.CaseOfCmd loc ns (openTermComplete tm) (openCmdCase <$> cases)
 openCommandComplete (RST.CocaseOfCmd loc ns tm cases) =
@@ -269,9 +268,9 @@ createNamesCommand (RST.Print loc prd cmd) = do
 createNamesCommand (RST.Read loc cns) = do
   cns' <- createNamesTerm cns
   pure $ RST.Read loc cns'
-createNamesCommand (RST.PrimOp loc pt pop subst) = do
+createNamesCommand (RST.PrimOp loc op subst) = do
   subst' <- sequence $ createNamesPCTerm <$> subst
-  pure $ RST.PrimOp loc pt pop subst'
+  pure $ RST.PrimOp loc op subst'
 createNamesCommand (RST.CaseOfCmd loc ns tm cases) = do
   tm' <- createNamesTerm tm
   cases' <- sequence $ createNamesCmdCase <$> cases
@@ -411,8 +410,8 @@ embedCommand (RST.ExitSuccess loc) =
   CST.PrimCmdTerm $ CST.ExitSuccess loc
 embedCommand (RST.ExitFailure loc) =
   CST.PrimCmdTerm $ CST.ExitFailure loc
-embedCommand (RST.PrimOp loc ty op subst) =
-  CST.PrimCmdTerm $ CST.PrimOp loc ty op (embedSubst subst)
+embedCommand (RST.PrimOp loc op subst) =
+  CST.PrimCmdTerm $ CST.PrimOp loc op (embedSubst subst)
 embedCommand (RST.CaseOfCmd loc _ns tm cases) =
   CST.CaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
 embedCommand (RST.CocaseOfCmd loc _ns tm cases) =
@@ -485,11 +484,11 @@ embedVariantType (RST.CovariantType ty) = embedType ty
 embedVariantType (RST.ContravariantType ty) = embedType ty
 
 resugarType :: RST.Typ pol -> Maybe CST.Typ
-resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
   Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "->")) (embedType tr))
-resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
   Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "-<")) (embedType tr))
-resugarType (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
   Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
 resugarType _ = Nothing
 
@@ -498,11 +497,11 @@ embedRecTVar (MkRecTVar n) = MkSkolemTVar n
 
 embedType :: RST.Typ pol -> CST.Typ
 embedType (resugarType -> Just ty) = ty
-embedType (RST.TyUniVar loc _ _ tv) =
+embedType (RST.TyUniVar loc _ tv) =
   CST.TyUniVar loc tv
-embedType (RST.TySkolemVar loc _ _ tv) = 
+embedType (RST.TySkolemVar loc _ tv) = 
   CST.TySkolemVar loc tv
-embedType (RST.TyRecVar loc _ _ tv) = 
+embedType (RST.TyRecVar loc _ tv) = 
   CST.TySkolemVar loc $ embedRecTVar tv
 embedType (RST.TyData loc _ xtors) =
   CST.TyXData loc CST.Data (embedXtorSig <$> xtors)
@@ -512,17 +511,17 @@ embedType (RST.TyDataRefined loc _ tn xtors) =
   CST.TyXRefined loc CST.Data (rnTnName tn) (embedXtorSig <$> xtors)
 embedType (RST.TyCodataRefined loc _ tn xtors) =
   CST.TyXRefined loc CST.Codata (rnTnName tn) (embedXtorSig <$> xtors)
-embedType (RST.TyNominal loc _ _ nm args) =
+embedType (RST.TyNominal loc _ nm args) =
   CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
 embedType (RST.TySyn loc _ nm _) =
   CST.TyNominal loc (rnTnName nm) []
-embedType (RST.TyTop loc _knd) =
+embedType (RST.TyTop loc) =
   CST.TyTop loc
-embedType (RST.TyBot loc _knd) =
+embedType (RST.TyBot loc) =
   CST.TyBot loc
-embedType (RST.TyUnion loc _knd ty ty') =
+embedType (RST.TyUnion loc ty ty') =
   CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
-embedType (RST.TyInter loc _knd ty ty') =
+embedType (RST.TyInter loc ty ty') =
   CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
 embedType (RST.TyRec loc _ tv ty) =
   CST.TyRec loc (embedRecTVar tv) (embedType ty)

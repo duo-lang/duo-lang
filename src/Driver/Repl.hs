@@ -33,15 +33,16 @@ import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
 import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
 import Translate.Focusing ( focusCmd, focusEnvironment )
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
+import Syntax.RST.Types (PolarityRep(..))
 import Syntax.Core.Program qualified as Core
 import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
+import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
 
 
 
@@ -80,7 +81,7 @@ letRepl :: Text -> DriverM ()
 letRepl txt = do
     decl <- runInteractiveParser declarationP txt
     sts <- getSymbolTables
-    resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty 0) (resolveDecl decl))
+    resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveDecl decl))
     _ <- inferDecl interactiveModule (desugarDecl resolvedDecl)
     pure ()
 
@@ -94,7 +95,7 @@ runCmd :: Text -> EvalSteps ->  DriverM ()
 runCmd txt steps = do
     (parsedCommand, _) <- runInteractiveParser termP txt
     sts <- getSymbolTables
-    resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty 0) (resolveCommand parsedCommand))
+    resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveCommand parsedCommand))
     let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl)
     (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- inferDecl interactiveModule (Core.CmdDecl cmdDecl)
     env <- gets drvEnv
@@ -120,9 +121,9 @@ subsumeRepl :: Text -> DriverM ()
 subsumeRepl txt = do
     (t1,t2) <- runInteractiveParser subtypingProblemP txt
     sts <- getSymbolTables
-    resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty 0) (resolveTypeScheme PosRep t1))
-    resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty 0) (resolveTypeScheme PosRep t2))
-    isSubsumed <-  liftEitherErr (subsume PosRep resolved_t1 resolved_t2,[])
+    resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t1))
+    resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t2))
+    isSubsumed <-  liftEitherErr (subsume PosRep (checkTypeScheme resolved_t1) (checkTypeScheme resolved_t2),[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"

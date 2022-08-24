@@ -11,12 +11,10 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
-import Syntax.Common.Names ( RnTypeName, XtorName )
-import Syntax.Common.PrdCns ( Arity, PrdCns )
-import Syntax.CST.Types ( DataCodata(..) )
-import Syntax.Common.Polarity ( Polarity, PolarityRep )
-import Syntax.Common.Primitives ( PrimitiveType )
-import Syntax.CST.Kinds ( Variance, MonoKind(..) )
+import Syntax.CST.Names ( RnTypeName, XtorName )
+import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
+import Syntax.RST.Types ( Polarity, PolarityRep(..))
+import Syntax.CST.Kinds 
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -151,12 +149,26 @@ data XtorLabel = MkXtorLabel
   }
   deriving (Eq, Show, Ord)
 
+-- | A primitive type/calling convention
+data PrimitiveType =
+      I64 -- ^ Primitive signed 64-bit integer
+    | F64 -- ^ Primitive double-precision floating point
+    | PChar
+    | PString
+    deriving (Show, Eq, Ord)
+
+primTyToMonoKind :: PrimitiveType -> MonoKind
+primTyToMonoKind I64 = I64Rep
+primTyToMonoKind F64 = F64Rep
+primTyToMonoKind PChar = CharRep
+primTyToMonoKind PString = StringRep
+    
 data NodeLabel = 
   MkNodeLabel
     { nl_pol :: Polarity
     , nl_data :: Maybe (Set XtorLabel)
     , nl_codata :: Maybe (Set XtorLabel)
-    , nl_kind :: MonoKind
+    , nl_kind :: Maybe MonoKind
     -- Nominal type names with the arities of type parameters
     , nl_nominal :: Set (RnTypeName, [Variance])
     , nl_ref_data :: Map RnTypeName (Set XtorLabel)
@@ -168,13 +180,13 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
+emptyNodeLabel :: Polarity -> Maybe MonoKind -> NodeLabel
 emptyNodeLabel pol mk = MkNodeLabel pol Nothing Nothing mk S.empty M.empty M.empty
 
 -- emptyPrimNodeLabel :: Polarity -> NodeLabel
 -- emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
 
-singleNodeLabel :: Polarity -> DataCodata -> MonoKind -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
+singleNodeLabel :: Polarity -> DataCodata -> Maybe MonoKind -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
 singleNodeLabel pol Data mk Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing mk S.empty M.empty M.empty
 singleNodeLabel pol Codata mk Nothing xtors = MkNodeLabel pol Nothing (Just xtors) mk S.empty M.empty M.empty
 singleNodeLabel pol Data mk (Just tn) xtors   = MkNodeLabel pol Nothing Nothing mk S.empty (M.singleton tn xtors) M.empty
@@ -272,13 +284,14 @@ removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundan
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es
 
-compareKinds :: [MonoKind] -> MonoKind
+compareKinds :: [Maybe MonoKind] -> Maybe MonoKind
 compareKinds [] = error "Can't create union/intersection with no kind"
-compareKinds [mk] = mk
-compareKinds (mk:rest) = if compareKinds rest == mk then mk else error "Can't create union/intersection of types with different kinds"
+compareKinds (Nothing:_) = error "Kind can't be nothing" -- will be removed later
+compareKinds [Just mk] = Just mk
+compareKinds (Just mk:rest) = if compareKinds rest == Just mk then Just mk else error "Can't create union/intersection of types with different kinds"
 
-getNodeKind :: Node -> TypeGr -> MonoKind
+getNodeKind :: Node -> TypeGr -> Maybe MonoKind
 getNodeKind i gr = case lab gr i of 
   Nothing -> error "No kind available for Node"
   Just (MkNodeLabel _ _ _ mk _ _ _) -> mk
-  Just (MkPrimitiveNodeLabel _ pt) -> CRep pt
+  Just (MkPrimitiveNodeLabel _ pt) ->Just (primTyToMonoKind pt)

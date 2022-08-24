@@ -14,15 +14,15 @@ import Data.Set qualified as S
 
 import Driver.Environment (Environment)
 import Errors
-import Syntax.RST.Types
+import Syntax.TST.Types 
+import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
 import Utils ( defaultLoc )
-import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
+import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds
 
 ------------------------------------------------------------------------------
@@ -74,14 +74,14 @@ getBounds uv = do
                                            ]
     Just vs -> return vs
 
-addUpperBound :: UniTVar -> Syntax.RST.Types.Typ Neg -> SolverM [Constraint ConstraintInfo]
+addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind)uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
-addLowerBound :: UniTVar -> Syntax.RST.Types.Typ Pos -> SolverM [Constraint ConstraintInfo]
+addLowerBound :: UniTVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv
@@ -175,9 +175,9 @@ subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ _ (TyTop _ _)) =
+subConstraints (SubType _ _ (TyTop _)) =
   pure []
-subConstraints (SubType _ (TyBot _ _) _) =
+subConstraints (SubType _ (TyBot _) _) =
   pure []
 subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) =
   pure [ SubType IntersectionUnionSubConstraint ty1 ty3

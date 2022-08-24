@@ -3,9 +3,8 @@ module Syntax.CST.Kinds where
 import Data.Set (Set)
 import Data.Set qualified as S
 
-import Syntax.Common.Names
-import Syntax.Common.Primitives
 import Data.Text
+import Syntax.CST.Names
 
 ---------------------------------------------------------------------------------
 -- Variance
@@ -42,13 +41,13 @@ newtype KVar = MkKVar { unKVar :: Text }
 -- | A MonoKind is a kind which classifies inhabitated types.
 data MonoKind
   = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
-  | CRep PrimitiveType    -- ^ Primitive type representation
   | KindVar KVar 
+  | I64Rep
+  | F64Rep
+  | CharRep
+  | StringRep
   deriving (Show, Eq, Ord)
 
--- | A kind Variable used for top and bottom kinds, as they can have any kind
-anyKind::MonoKind
-anyKind = KindVar (MkKVar (Data.Text.pack "TopBotKind"))
 
 ------------------------------------------------------------------------------
 -- Kinds
@@ -64,9 +63,8 @@ deriving instance (Eq PolyKind)
 deriving instance (Ord PolyKind)
 
 freeKindVars :: MonoKind -> Maybe KVar
-freeKindVars (CBox _) = Nothing
-freeKindVars (CRep _) = Nothing
 freeKindVars (KindVar v) = Just v
+freeKindVars _ = Nothing
 
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars MkPolyKind{ kindArgs } =

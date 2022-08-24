@@ -8,8 +8,10 @@ import Pretty.Common ()
 import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.Names
+import Syntax.TST.Types qualified as TST
+import Syntax.CST.Names
 import Translate.Reparse
+import Translate.Embed
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -74,6 +76,9 @@ instance PrettyAnn (RST.VariantType pol) where
 instance PrettyAnn (RST.PrdCnsType pol) where
   prettyAnn pctype = prettyAnn (embedPrdCnsType pctype)
 
+instance PrettyAnn (TST.PrdCnsType pol) where 
+  prettyAnn pctype = prettyAnn (embedTSTPrdCnsType pctype)
+
 instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.PrdType ty) = prettyAnn ty
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
@@ -83,9 +88,15 @@ instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.LinearContext where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
+ 
+instance {-# OVERLAPPING #-} PrettyAnn (TST.LinearContext pol) where 
+  prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
 
 instance PrettyAnn (RST.XtorSig pol) where
   prettyAnn xtorSig = prettyAnn (embedXtorSig xtorSig)
+
+instance PrettyAnn (TST.XtorSig pol) where
+  prettyAnn xtorSig = prettyAnn (embedTSTXtorSig xtorSig)
 
 instance PrettyAnn CST.XtorSig where
   prettyAnn (CST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
@@ -96,6 +107,9 @@ instance PrettyAnn CST.XtorSig where
 
 instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embedType typ)
+
+instance PrettyAnn (TST.Typ pol) where
+  prettyAnn typ = prettyAnn (embedTSTType typ)
 
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
@@ -135,13 +149,15 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyString _) = "#String"
   prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
 
-
 ---------------------------------------------------------------------------------
 -- TypScheme
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTypeScheme tys)
+
+instance PrettyAnn (TST.TypeScheme pol) where
+  prettyAnn tys = prettyAnn (embedTSTTypeScheme tys)
 
 instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
