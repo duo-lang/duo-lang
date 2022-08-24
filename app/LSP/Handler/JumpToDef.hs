@@ -6,7 +6,7 @@ import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
 import Data.Text qualified as T
 import Language.LSP.Types
-    ( Uri(Uri, getUri),
+    ( Uri(Uri),
       Range,
       SMethod(STextDocumentDefinition),
       RequestMessage(RequestMessage),
@@ -49,7 +49,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
       Right decls -> do
-        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
+        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState decls
         case res of
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))

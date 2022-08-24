@@ -48,7 +48,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
+      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState decls
       case res of
         Left _err -> do
           responder (Right (List []))

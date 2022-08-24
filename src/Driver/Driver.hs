@@ -24,7 +24,6 @@ import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveModule)
 import Resolution.Definition
 
-import Parser.Program ( filePathToModuleName )
 import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
@@ -241,10 +240,10 @@ inferDecl mn (Core.InstanceDecl decl) = do
   decl' <- inferInstanceDeclaration mn decl
   pure (TST.InstanceDecl decl')
 
-inferProgram :: ModuleName -> Core.Module -> DriverM TST.Module
-inferProgram mn Core.MkModule { mod_name, mod_fp, mod_decls } = do
+inferProgram :: Core.Module -> DriverM TST.Module
+inferProgram Core.MkModule { mod_name, mod_fp, mod_decls } = do
   let inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
-      inferDecl' d = catchError (Just <$> inferDecl mn d) (addErrorsNonEmpty mn Nothing)
+      inferDecl' d = catchError (Just <$> inferDecl mod_name d) (addErrorsNonEmpty mod_name Nothing)
   newDecls <- catMaybes <$> mapM inferDecl' mod_decls
   pure TST.MkModule { mod_name = mod_name
                     , mod_fp = mod_fp
@@ -292,7 +291,7 @@ runCompilationPlan compilationOrder = do
       -- 4. Desugar the program
       let desugaredProg = desugarModule resolvedDecls
       -- 5. Infer the declarations
-      inferredDecls <- inferProgram mn desugaredProg
+      inferredDecls <- inferProgram desugaredProg
       -- 6. Add the resolved AST to the cache
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
       addTypecheckedModule mn inferredDecls
@@ -302,16 +301,14 @@ runCompilationPlan compilationOrder = do
 ---------------------------------------------------------------------------------
 
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> FilePath
                 -> CST.Module
                 -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Module),[Warning])
-inferProgramIO state fp decls = do
-  let mn = filePathToModuleName fp
+inferProgramIO state decls = do
   let action :: DriverM TST.Module
       action = do
         addModule decls
-        runCompilationModule mn
-        queryTypecheckedModule mn
+        runCompilationModule (CST.mod_name decls)
+        queryTypecheckedModule (CST.mod_name decls)
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)
