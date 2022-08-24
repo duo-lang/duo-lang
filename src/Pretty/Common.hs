@@ -13,6 +13,7 @@ import Syntax.CST.Names
       FreeVarName(MkFreeVarName),
       MethodName(MkMethodName),
       ModuleName(MkModuleName),
+      PrimName(..),
       Precedence(..),
       RecTVar(MkRecTVar),
       RnTypeName(MkRnTypeName, rnTnName),
@@ -53,6 +54,8 @@ instance PrettyAnn DocComment where
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
+instance PrettyAnn PrimName where
+  prettyAnn (MkPrimName nm) = annSymbol "#" <> prettyAnn nm
 instance PrettyAnn MethodName where
   prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
 

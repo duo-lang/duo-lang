@@ -8,7 +8,7 @@ import Syntax.TST.Terms
 import Syntax.TST.Types
 import Syntax.Core.Annot
 import Syntax.CST.Names
-import Syntax.CST.Terms (PrimitiveOp)
+import Syntax.RST.Terms (PrimitiveOp)
 import Syntax.CST.Kinds
 import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))

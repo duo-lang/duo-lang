@@ -10,7 +10,7 @@ module Driver.Driver
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.List.NonEmpty ( NonEmpty )
+import Data.List.NonEmpty ( NonEmpty ((:|)) )
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
@@ -23,7 +23,6 @@ import Driver.DepGraph
 import Errors
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveModule)
-import Resolution.SymbolTable
 import Resolution.Definition
 
 import Syntax.CST.Names
@@ -51,6 +50,7 @@ import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
+import Data.Maybe (catMaybes)
 
 
 checkAnnot :: PolarityRep pol
@@ -242,9 +242,13 @@ inferDecl mn (Core.InstanceDecl decl) = do
   pure (TST.InstanceDecl decl')
 
 inferProgram :: ModuleName -> Core.Module -> DriverM TST.Module
-inferProgram mn (Core.MkModule decls) = do
-  decls' <- mapM (inferDecl mn) decls
-  pure (TST.MkModule decls')
+inferProgram mn md = TST.MkModule <$> newDecls
+  where
+    newDecls :: DriverM [TST.Declaration]
+    newDecls = catMaybes <$> mapM inferDecl' (mod_decls md)
+
+    inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
+    inferDecl' d = catchError (Just <$> inferDecl mn d) (addErrorsNonEmpty mn Nothing)
 
 ---------------------------------------------------------------------------------
 -- Infer programs
@@ -259,15 +263,25 @@ runCompilationModule mn = do
   runCompilationPlan compilationOrder
 
 runCompilationPlan :: CompilationOrder -> DriverM ()
-runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
+runCompilationPlan compilationOrder = do
+  forM_ compilationOrder compileModule
+  --  errs <- concat <$> mapM (gets . flip getModuleErrorsTrans) compilationOrder
+  errs <- case reverse compilationOrder of
+            [] -> return []
+            (m:_) -> gets $ flip getModuleErrorsTrans m
+  case errs of
+    [] -> return ()
+    (e:es) -> throwError (e :| es)
   where
     compileModule :: ModuleName -> DriverM ()
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      (fp,decls) <- getModuleDeclarations mn
+      --  decls <- getModuleDeclarations mn
+      (fp,decls) <- catchError  (getModuleDeclarations mn)
+                                (addErrorsNonEmpty mn (undefined, CST.MkModule []))
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- createSymbolTable (fp,mn) decls
+      st <- getSymbolTable fp mn decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
@@ -296,12 +310,9 @@ inferProgramIO state fp decls = do
   let mn = filePathToModuleName fp
   let action :: DriverM TST.Module
       action = do
-        st <- createSymbolTable (fp,mn) decls
-        forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
-        addSymboltable (MkModuleName "This") st
-        sts <- getSymbolTables
-        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
-        inferProgram mn (desugarModule resolvedDecls)
+        addModuleDeclarations mn fp decls
+        runCompilationModule mn
+        queryTypecheckedModule mn
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)

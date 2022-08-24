@@ -1,6 +1,6 @@
 module Syntax.CST.Terms where
 
-import Syntax.CST.Names ( FreeVarName, XtorName )
+import Syntax.CST.Names ( FreeVarName, XtorName, PrimName )
 import Utils ( HasLoc(..), Loc )
 
 --------------------------------------------------------------------------------------------
@@ -63,45 +63,8 @@ data NominalStructural where
   Refinement :: NominalStructural
   deriving (Eq, Ord, Show)
 
-data PrimitiveOp where
-  -- I64 Ops
-  I64Add :: PrimitiveOp
-  I64Sub :: PrimitiveOp
-  I64Mul :: PrimitiveOp
-  I64Div :: PrimitiveOp
-  I64Mod :: PrimitiveOp
-  -- F64 Ops
-  F64Add :: PrimitiveOp
-  F64Sub :: PrimitiveOp
-  F64Mul :: PrimitiveOp
-  F64Div :: PrimitiveOp
-  -- Char Ops
-  CharPrepend :: PrimitiveOp
-  -- String Ops
-  StringAppend :: PrimitiveOp
-  deriving (Show, Eq, Ord, Enum, Bounded)
-
-data PrimCommand where
-  -- AST Nodes
-  Print :: Loc -> Term -> Term -> PrimCommand
-  Read  :: Loc -> Term -> PrimCommand
-  ExitSuccess  :: Loc -> PrimCommand
-  ExitFailure :: Loc -> PrimCommand
-  PrimOp :: Loc -> PrimitiveOp -> [Term] -> PrimCommand
-  -- Sugar Nodes
-
-deriving instance Show PrimCommand
-deriving instance Eq PrimCommand
-
-instance HasLoc PrimCommand where
-  getLoc (Print loc _ _) = loc 
-  getLoc (Read loc _) = loc 
-  getLoc (ExitSuccess loc) = loc 
-  getLoc (ExitFailure loc) = loc 
-  getLoc (PrimOp loc _ _) = loc
-
 data Term where
-    PrimCmdTerm :: PrimCommand -> Term 
+    PrimTerm :: Loc -> PrimName -> [Term] -> Term 
     Var :: Loc -> FreeVarName -> Term
     Xtor :: Loc -> XtorName -> SubstitutionI -> Term
     Semi :: Loc -> XtorName -> SubstitutionI -> Term -> Term
@@ -144,4 +107,4 @@ instance HasLoc Term where
   getLoc (Lambda loc _ _) = loc
   getLoc (CoLambda loc _ _) = loc
   getLoc (Apply loc _ _) = loc 
-  getLoc (PrimCmdTerm pc) = getLoc pc 
+  getLoc (PrimTerm loc _ _) = loc 

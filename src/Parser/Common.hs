@@ -2,6 +2,7 @@ module Parser.Common
   ( -- Names
     freeVarNameP
   , tvarP
+  , primNameP
   , xtorNameP
   , typeNameP
   , moduleNameP
@@ -52,6 +53,12 @@ classNameP :: Parser (ClassName, SourcePos)
 classNameP = try $ do
   (name, pos) <- upperCaseIdL
   return (MkClassName name, pos)
+
+primNameP :: Parser (PrimName, SourcePos)
+primNameP = try $ do
+  symbolP SymHash
+  (name, pos) <- upperCaseIdL
+  pure (MkPrimName name, pos)
 
 methodNameP :: Parser (MethodName, SourcePos)
 methodNameP = try $ do

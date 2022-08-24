@@ -189,41 +189,13 @@ instance PrettyAnn CST.Term where
     prettyAnn (show n)
   prettyAnn (CST.NatLit _ CST.Refinement n) =
     prettyAnn (show n)
-  prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
-    annKeyword "#ExitSuccess"
-  prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =
-    annKeyword "#ExitFailure"
-  prettyAnn (CST.PrimCmdTerm (CST.Print _ t cmd)) =
-    annKeyword "#Print" <>
-    parens' comma [prettyAnn t, prettyAnn cmd]
-  prettyAnn (CST.PrimCmdTerm (CST.Read _ cns)) =
-    annKeyword "#Read" <>
-    brackets (prettyAnn cns)
+  prettyAnn (CST.PrimTerm _ nm []) =
+    prettyAnn nm
+  prettyAnn (CST.PrimTerm _ nm args) =
+    prettyAnn nm <>
+    parens' comma (prettyAnn <$> args)
   prettyAnn (CST.Apply _ t1 t2) =
     group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
-  prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ op subst)) =
-    annKeyword (prettyAnn op) <>
-    parens' comma (prettyAnn <$> subst)
-
----------------------------------------------------------------------------------
--- Primitives
----------------------------------------------------------------------------------
-
-instance PrettyAnn CST.PrimitiveOp where
-  prettyAnn CST.I64Add = "#I64Add"
-  prettyAnn CST.I64Sub = "#I64Sub"
-  prettyAnn CST.I64Mul = "#I64Mul"
-  prettyAnn CST.I64Div = "#I64Div"
-  prettyAnn CST.I64Mod = "#I64Mod"
-  -- F64 Ops
-  prettyAnn CST.F64Add = "#F64Add"
-  prettyAnn CST.F64Sub = "#F64Sub"
-  prettyAnn CST.F64Mul = "#F64Mul"
-  prettyAnn CST.F64Div = "#F64Div"
-  -- Char Ops
-  prettyAnn CST.CharPrepend = "#CharPrepend"
-  -- String Ops
-  prettyAnn CST.StringAppend = "#StringAppend"
 
 ---------------------------------------------------------------------------------
 -- Commands
