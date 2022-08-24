@@ -147,29 +147,35 @@ getPolarity (TyChar _ rep)              = rep
 getPolarity (TyString _ rep)            = rep
 getPolarity (TyFlipPol rep _)           = rep
 
-getKind :: Typ pol -> MonoKind
-getKind (TySkolemVar _ _ mk _)    = mk
-getKind (TyUniVar _ _ mk _)       = mk
-getKind (TyRecVar _ _ mk _)       = mk
--- No Kinds available, will have to be added from return kinds of constructor
-getKind (TyData _ _ _)            = TopBotKind
-getKind (TyCodata _ _ _)          = TopBotKind
-getKind (TyDataRefined _ _ _ _)   = TopBotKind
-getKind (TyCodataRefined _ _ _ _) = TopBotKind
--- From here all should be fine
-getKind (TyNominal _ _ mk _ _)    = mk
-getKind (TySyn _ _ _ ty)          = getKind ty
-getKind TyTop {}                  = TopBotKind
-getKind TyBot {}                  = TopBotKind
-getKind (TyUnion _ mk _ _)        = mk
-getKind (TyInter _ mk _ _)        = mk
-getKind (TyRec _ _ _ ty)          = getKind ty
-getKind TyI64{}                   = I64Rep
-getKind TyF64{}                   = F64Rep
-getKind TyChar{}                  = CharRep
-getKind TyString{}                = StringRep
-getKind (TyFlipPol _ ty)          = getKind ty
+class GetKind(a::Type) where
+  getKind :: a -> MonoKind
 
+instance GetKind (Typ pol) where
+  getKind (TySkolemVar _ _ mk _)    = mk
+  getKind (TyUniVar _ _ mk _)       = mk
+  getKind (TyRecVar _ _ mk _)       = mk
+-- No Kinds available, will have to be added from return kinds of constructor
+  getKind (TyData _ _ _)            = TopBotKind
+  getKind (TyCodata _ _ _)          = TopBotKind
+  getKind (TyDataRefined _ _ _ _)   = TopBotKind
+  getKind (TyCodataRefined _ _ _ _) = TopBotKind
+-- From here all should be fine
+  getKind (TyNominal _ _ mk _ _)    = mk
+  getKind (TySyn _ _ _ ty)          = getKind ty
+  getKind TyTop {}                  = TopBotKind
+  getKind TyBot {}                  = TopBotKind
+  getKind (TyUnion _ mk _ _)        = mk
+  getKind (TyInter _ mk _ _)        = mk
+  getKind (TyRec _ _ _ ty)          = getKind ty
+  getKind TyI64{}                   = I64Rep
+  getKind TyF64{}                   = F64Rep
+  getKind TyChar{}                  = CharRep
+  getKind TyString{}                = StringRep
+  getKind (TyFlipPol _ ty)          = getKind ty
+
+instance GetKind (VariantType pol) where
+  getKind (CovariantType ty) = getKind ty
+  getKind (ContravariantType ty) = getKind ty
 
 ------------------------------------------------------------------------------
 -- Type Schemes
