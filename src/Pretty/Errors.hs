@@ -18,12 +18,13 @@ import Prettyprinter
 
 import Errors
 import Pretty.Constraints ()
+import Pretty.Terms ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
-import Syntax.Common.Primitives ( primTypeKeyword, primOpKeyword )
 import Utils (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
-import Syntax.Common.PrdCns (PrdCns(..))
 import System.Directory (doesFileExist)
+import Syntax.CST.Types (PrdCns(..))
+
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Errors
@@ -56,14 +57,11 @@ instance PrettyAnn ResolutionError where
           , "  Specified Arity:" <+> pretty ar1
           , "  Used Arity:" <+> pretty ar2
           ]
-  prettyAnn (UndefinedPrimOp loc (pt, op)) = 
-    prettyAnn loc <+> "Undefined primitive operator" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
-  prettyAnn (PrimOpArityMismatch loc (pt, op) ar1 ar2) =
+  prettyAnn (PrimOpArityMismatch loc op ar1) =
     vsep [ prettyAnn loc
          , "Arity mismatch:"
-         , "  Primitive operation:" <+> prettyAnn (primOpKeyword op ++ primTypeKeyword pt)
-         , "  Specified Arity:" <+> pretty ar1
-         , "  Used Arity:" <+> pretty ar2
+         , "  Primitive operation:" <+> prettyAnn op
+         , "  Used Arity:" <+> pretty ar1
          ]
   prettyAnn (CmdExpected loc t) =
     prettyAnn loc <+> "Command expected: " <+> pretty t
@@ -101,10 +99,6 @@ instance PrettyAnn ConstraintGenerationError where
   prettyAnn (InstanceImplementationAdditional loc m) =
     vsep [ prettyAnn loc
          , "Instance Declaration Error. Method: " <> prettyAnn m <> " is implemented but not declared."
-         ]
-  prettyAnn (PrimitiveOpMissingSignature loc op pt) =
-    vsep [ prettyAnn loc
-         , "Unreachable: Signature for primitive op" <+> pretty (primOpKeyword op) <> pretty (primTypeKeyword pt) <+> "not defined"
          ]
   prettyAnn (EmptyNominalMatch loc) =
     vsep [ prettyAnn loc
@@ -193,9 +187,7 @@ instance ToReport ResolutionError where
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(MethodArityMismatch loc _ _ _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(UndefinedPrimOp loc _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(PrimOpArityMismatch loc _ _ _) =
+  toReport e@(PrimOpArityMismatch loc _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(CmdExpected loc _) = 
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
@@ -214,8 +206,6 @@ instance ToReport ConstraintGenerationError where
   toReport e@(InstanceImplementationMissing loc _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(InstanceImplementationAdditional loc _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(PrimitiveOpMissingSignature loc _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(EmptyNominalMatch loc) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []

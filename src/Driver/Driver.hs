@@ -10,25 +10,24 @@ module Driver.Driver
 
 import Control.Monad.State
 import Control.Monad.Except
-import Data.List.NonEmpty ( NonEmpty )
+import Data.List.NonEmpty ( NonEmpty ((:|)) )
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
-
+import Data.Bifunctor (bimap)
+import System.FilePath ( takeBaseName )
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
 import Errors
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
-import Resolution.Program (resolveProgram)
-import Resolution.SymbolTable
+import Resolution.Program (resolveModule)
 import Resolution.Definition
 
-import Syntax.Common.Names
-import Syntax.Common.Polarity
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
@@ -36,30 +35,34 @@ import Syntax.Core.Program as Core
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
-import TypeInference.GenerateConstraints.Definition ( runGenM )
+import TypeInference.GenerateConstraints.Definition
+    ( runGenM,checkTypeScheme,checkKind )
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
       genConstraintsTermRecursive,
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc,AttachLoc(attachLoc) )
-
-import Syntax.RST.Types
-import Sugar.Desugar (desugarProgram)
+import Utils ( Loc, AttachLoc(attachLoc) )
+import Syntax.RST.Types qualified as RST
+import Syntax.RST.Types (PolarityRep(..))
+import Syntax.TST.Types qualified as TST
+import Syntax.RST.Program (prdCnsToPol)
+import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
+import Data.Maybe (catMaybes)
 
 checkAnnot :: PolarityRep pol
-           -> TypeScheme pol -- ^ Inferred type
-           -> Maybe (TypeScheme pol) -- ^ Annotated type
+           -> TST.TypeScheme pol -- ^ Inferred type
+           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
-           -> DriverM (TopAnnot pol)
-checkAnnot _ tyInferred Nothing _ = return (Inferred tyInferred)
+           -> DriverM (TST.TopAnnot pol)
+checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred tyAnnotated
+  let isSubsumed = subsume rep tyInferred (checkTypeScheme tyAnnotated)
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (Annotated tyAnnotated)
+      (Right True) -> return (TST.Annotated (checkTypeScheme tyAnnotated))
       (Right False) -> do
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                             , " Annotated type: " <> ppPrint tyAnnotated
@@ -91,20 +94,20 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Read of the type and generate the resulting type
-  let typ = zonk UniRep bisubst (TST.getTypeTerm tmInferred)
+  let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 5. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
+                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
-                     return tys) else return (generalize typ)
+                     return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (prdEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -115,7 +118,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                                    , pcdecl_term = tmInferred
                                    }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of Annotated ty -> ty; Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (cnsEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -161,7 +164,8 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let f env = env { instanceEnv = M.adjust (S.insert instancedecl_typ) instancedecl_name (instanceEnv env)}
+  let instancetyp = Data.Bifunctor.bimap checkKind checkKind instancedecl_typ
+  let f env = env { instanceEnv = M.adjust (S.insert instancetyp) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
@@ -236,8 +240,14 @@ inferDecl mn (Core.InstanceDecl decl) = do
   decl' <- inferInstanceDeclaration mn decl
   pure (TST.InstanceDecl decl')
 
-inferProgram :: ModuleName -> Core.Program -> DriverM TST.Program
-inferProgram mn decls = sequence $ inferDecl mn <$> decls
+inferProgram :: ModuleName -> Core.Module -> DriverM TST.Module
+inferProgram mn md = TST.MkModule <$> newDecls
+  where
+    newDecls :: DriverM [TST.Declaration]
+    newDecls = catMaybes <$> mapM inferDecl' (mod_decls md)
+
+    inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
+    inferDecl' d = catchError (Just <$> inferDecl mn d) (addErrorsNonEmpty mn Nothing)
 
 ---------------------------------------------------------------------------------
 -- Infer programs
@@ -252,45 +262,56 @@ runCompilationModule mn = do
   runCompilationPlan compilationOrder
 
 runCompilationPlan :: CompilationOrder -> DriverM ()
-runCompilationPlan compilationOrder = forM_ compilationOrder compileModule
+runCompilationPlan compilationOrder = do
+  forM_ compilationOrder compileModule
+  --  errs <- concat <$> mapM (gets . flip getModuleErrorsTrans) compilationOrder
+  errs <- case reverse compilationOrder of
+            [] -> return []
+            (m:_) -> gets $ flip getModuleErrorsTrans m
+  case errs of
+    [] -> return ()
+    (e:es) -> throwError (e :| es)
   where
     compileModule :: ModuleName -> DriverM ()
     compileModule mn = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
-      decls <- getModuleDeclarations mn
+      --  decls <- getModuleDeclarations mn
+      (fp,decls) <- catchError  (getModuleDeclarations mn)
+                                (addErrorsNonEmpty mn (undefined, CST.MkModule []))
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- createSymbolTable mn decls
+      st <- getSymbolTable fp mn decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty 0) (resolveProgram decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
       -- 4. Desugar the program
-      let desugaredProg = desugarProgram resolvedDecls
+      let desugaredProg = desugarModule resolvedDecls
       -- 5. Infer the declarations
       inferredDecls <- inferProgram mn desugaredProg
       -- 6. Add the resolved AST to the cache
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn <> " DONE")
-      addTypecheckedProgram mn inferredDecls
+      addTypecheckedModule mn inferredDecls
 
 ---------------------------------------------------------------------------------
 -- Old
 ---------------------------------------------------------------------------------
 
 
+filePathToModuleName :: FilePath -> ModuleName
+filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
+
 inferProgramIO  :: DriverState -- ^ Initial State
-                -> ModuleName
-                -> [CST.Declaration]
-                -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Program),[Warning])
-inferProgramIO state mn decls = do
-  let action :: DriverM TST.Program
+                -> FilePath
+                -> CST.Module
+                -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Module),[Warning])
+inferProgramIO state fp decls = do
+  let mn = filePathToModuleName fp
+  let action :: DriverM TST.Module
       action = do
-        st <- createSymbolTable mn decls
-        forM_ (imports st) $ \(mn,_) -> runCompilationModule mn
-        addSymboltable (MkModuleName "This") st
-        sts <- getSymbolTables
-        resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty 0) (resolveProgram decls))
-        inferProgram mn (desugarProgram resolvedDecls)
+        addModuleDeclarations mn fp decls
+        runCompilationModule mn
+        queryTypecheckedModule mn
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)

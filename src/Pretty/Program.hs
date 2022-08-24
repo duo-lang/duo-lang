@@ -11,9 +11,9 @@ import Pretty.Types ()
 import Pretty.Common
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..))
 import Syntax.CST.Kinds
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
@@ -210,11 +210,11 @@ instance PrettyAnn CST.Declaration where
 -- Program
 ---------------------------------------------------------------------------------
 
-instance {-# OVERLAPPING #-} PrettyAnn [TST.Declaration] where
-  prettyAnn decls = vsep (prettyAnn <$> decls)
+instance PrettyAnn CST.Module where
+  prettyAnn (CST.MkModule decls) = vsep (prettyAnn <$> decls)
 
-instance {-# OVERLAPPING #-} PrettyAnn [CST.Declaration] where
-  prettyAnn decls = vsep (prettyAnn <$> decls)
+instance PrettyAnn TST.Module where
+  prettyAnn (TST.MkModule decls) = vsep (prettyAnn <$> decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments

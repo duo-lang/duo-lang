@@ -1,4 +1,4 @@
-module Resolution.Program (resolveProgram, resolveDecl) where
+module Resolution.Program (resolveModule, resolveDecl) where
 
 import Control.Monad.Reader
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -13,12 +13,13 @@ import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Types qualified as RST
-import Syntax.Common.Polarity
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Kinds
-import Syntax.Common.Names
-import Syntax.Common.PrdCns
+import Syntax.CST.Names
 import Utils (Loc, defaultLoc)
 
 
@@ -330,5 +331,7 @@ resolveDecl (CST.InstanceDecl decl) = do
 resolveDecl CST.ParseErrorDecl =
   throwOtherError defaultLoc ["Unreachable: ParseErrorDecl cannot be parsed"]
 
-resolveProgram :: CST.Program -> ResolverM RST.Program
-resolveProgram = mapM resolveDecl
+resolveModule :: CST.Module -> ResolverM RST.Module
+resolveModule (CST.MkModule decls) = do
+  decls' <- mapM resolveDecl decls
+  pure (RST.MkModule decls')

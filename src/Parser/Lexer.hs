@@ -3,6 +3,7 @@
 module Parser.Lexer
   ( -- Space Consumer and Comments
     sc
+  , scne
   , docCommentP
     -- Literals
   , natP
@@ -12,10 +13,11 @@ module Parser.Lexer
   , uintP
   , floatP
     -- Identifier
-  , lowerCaseId
-  , upperCaseId
+  , lowerCaseIdL
+  , upperCaseIdL
+  , allCaseIdL
+    -- Operators
   , operatorP
-  , allCaseId
   -- Keywords
   , Keyword(..)
   , keywordP
@@ -23,12 +25,11 @@ module Parser.Lexer
   , Symbol(..)
   , symbolP
   -- Parens
-  , angles
-  , parens
-  , brackets
-  , braces
+  , anglesP
+  , parensP
+  , bracketsP
+  , bracesP
   -- Other
-  , primOpKeywordP
   , checkTick
   , parseUntilKeywP
   ) where
@@ -42,10 +43,11 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 
-import Syntax.Common.Names
-import Syntax.Common.Primitives
-import Syntax.CST.Terms qualified as CST
 import Parser.Definition
+import Syntax.CST.Names
+import Syntax.CST.Terms qualified as CST
+
+
 
 -------------------------------------------------------------------------------------------
 -- General lexing conventions around space consumption and source code locations:
@@ -85,24 +87,23 @@ docCommentP = do
   endPos <- getSourcePos
   pure (MkDocComment comment, endPos)
 
+-- | The space consumer. Consumes Comments but not doc comments.
 sc :: Parser ()
 sc = L.space space1 commentP empty
+
+-- Nonempty space
+scne :: Parser ()
+scne = space1 >> sc
 
 -------------------------------------------------------------------------------------------
 -- Helper functions
 -------------------------------------------------------------------------------------------
 
-lexeme :: Parser a -> Parser (a, SourcePos)
-lexeme p = do
-  res <- p
-  endPos <- getSourcePos
-  sc
-  return (res, endPos)
-
 natP :: Parser (Int, SourcePos)
 natP = do
-  (numStr, pos) <- lexeme (some numberChar)
-  return (read numStr, pos)
+  numStr <- some numberChar
+  endPos <- getSourcePos
+  return (read numStr, endPos)
 
 scharP :: Parser Char
 scharP = satisfy isSChar <?> "string character"
@@ -111,12 +112,16 @@ scharP = satisfy isSChar <?> "string character"
 
 charP :: Parser (Char, SourcePos)
 charP = do
-  (ch, pos) <- betweenP (symbolP SymSingleQuote) (symbolP SymSingleQuote) scharP
-  return (ch, pos)
+  symbolP SymSingleQuote
+  ch <- scharP
+  symbolP SymSingleQuote
+  pos <- getSourcePos
+  pure (ch, pos)
 
 stringP :: Parser (String, SourcePos)
 stringP = do
-  s <- symbolP SymDoubleQuote >> manyTill scharP (symbolP SymDoubleQuote)
+  symbolP SymDoubleQuote
+  s <- manyTill scharP (symbolP SymDoubleQuote)
   pos <- getSourcePos
   return (s, pos)
 
@@ -139,36 +144,53 @@ floatP = do
   pure (f, pos)
 
 -------------------------------------------------------------------------------------------
--- Names
+-- Identifier
 -------------------------------------------------------------------------------------------
 
-lowerCaseId :: Parser (Text, SourcePos)
-lowerCaseId = do
-  (name, pos) <- lexeme (T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar))
+-- | Parses a lower case identifer, eg `foo`.
+-- Does not parse trailing whitespace.
+lowerCaseIdL :: Parser (Text, SourcePos)
+lowerCaseIdL = do
+  name <- T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
+  pos <- getSourcePos
   pure (name, pos)
 
-upperCaseId :: Parser (Text, SourcePos)
-upperCaseId = do
-  (name, pos) <- lexeme $ T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
+-- | Parses an upper case identifier, e.g. `Foo`.
+-- Does not parse trailing whitespace.
+upperCaseIdL :: Parser (Text, SourcePos)
+upperCaseIdL = do
+  name <- T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
   checkReserved name
+  pos <- getSourcePos
   pure (name, pos)
 
-allCaseId :: Parser (Text, SourcePos)
-allCaseId = do
-  (name, pos) <- lexeme $ T.pack <$> many alphaNumChar
+-- | Parses an upper or lower case identifier, e.g. `Foo` or `foo`.
+-- Does not parse trailing whitespace.
+allCaseIdL :: Parser (Text, SourcePos)
+allCaseIdL = do
+  name <- T.pack <$> many alphaNumChar
   checkReserved name
+  pos <- getSourcePos
   pure (name, pos)
+
+-------------------------------------------------------------------------------------------
+-- Operators
+-------------------------------------------------------------------------------------------
 
 operatorP :: Parser (Text, SourcePos)
-operatorP = f <|> g
+operatorP = funOperator <|> otherOperator
   where
     -- We have to treat the function arrow specially, since we want to allow it
     -- as an operator, but it is also a reserved symbol.
-    f = symbolP SymSimpleRightArrow >>= \pos -> pure ("->",pos)
-    g = do
-      (name, pos) <- lexeme $ T.pack <$> many (symbolChar <|> punctuationChar)
+    funOperator = do
+      symbolP SymSimpleRightArrow
+      pos <- getSourcePos
+      pure ("->",pos)
+    otherOperator = do
+      name <- T.pack <$> many (symbolChar <|> punctuationChar)
       checkReservedOp name
+      pos <- getSourcePos
       pure (name, pos)
 
 ---
@@ -207,11 +229,6 @@ data Keyword where
   KwAt          :: Keyword
   KwLeftAssoc   :: Keyword
   KwRightAssoc  :: Keyword
-  -- Command Keywords
-  KwExitSuccess :: Keyword
-  KwExitFailure :: Keyword
-  KwPrint       :: Keyword
-  KwRead        :: Keyword
   -- Declaration Keywords
   KwType        :: Keyword
   KwRefinement  :: Keyword
@@ -256,11 +273,6 @@ instance Show Keyword where
   show KwAt          = "at"
   show KwLeftAssoc   = "leftassoc"
   show KwRightAssoc  = "rightassoc"
-  -- Command Keywords
-  show KwExitSuccess = "ExitSuccess"
-  show KwExitFailure = "ExitFailure"
-  show KwPrint       = "Print"
-  show KwRead        = "Read"
   -- Declaration Keywords
   show KwType        = "type"
   show KwRefinement  = "refinement"
@@ -307,11 +319,6 @@ isDeclarationKw KwOperator    = False
 isDeclarationKw KwAt          = False
 isDeclarationKw KwLeftAssoc   = False
 isDeclarationKw KwRightAssoc  = False
--- Command Keywords
-isDeclarationKw KwExitSuccess = False
-isDeclarationKw KwExitFailure = False
-isDeclarationKw KwPrint       = False
-isDeclarationKw KwRead        = False
 -- Declaration Keywords
 isDeclarationKw KwType        = True
 isDeclarationKw KwRefinement  = True
@@ -342,9 +349,7 @@ declKeywords = filter isDeclarationKw keywords
 keywordP :: Keyword -> Parser SourcePos
 keywordP kw = do
   _ <- string (T.pack (show kw)) <* notFollowedBy alphaNumChar
-  endPos <- getSourcePos
-  sc
-  return endPos
+  getSourcePos
 
 parseUntilKeywP :: Parser ()
 parseUntilKeywP = do
@@ -357,13 +362,6 @@ parseUntilKeywP = do
 checkReserved :: Text -> Parser ()
 checkReserved str | str `elem` (T.pack . show <$> keywords) = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
-
-primOpKeywordP :: PrimitiveType -> PrimitiveOp -> Parser (PrimitiveType, PrimitiveOp, SourcePos)
-primOpKeywordP pt op = do
-  _ <- string (T.pack (primOpKeyword op ++ primTypeKeyword pt))
-  endPos <- getSourcePos
-  sc
-  pure (pt, op, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Symbols
@@ -436,12 +434,11 @@ instance Show Symbol where
   show SymAngleLeft        = "<"
   show SymAngleRight       = ">"
 
-symbolP :: Symbol -> Parser SourcePos
+-- | symbolP does NOT consume trailing whitespace.
+symbolP :: Symbol -> Parser ()
 symbolP sym = do
   _ <- string (T.pack (show sym))
-  endPos <- getSourcePos
-  sc
-  return endPos
+  pure ()
 
 operators :: [Symbol]
 operators = enumFromTo minBound maxBound
@@ -457,15 +454,46 @@ checkReservedOp str | any (\op -> op `T.isInfixOf` str) (T.pack . show <$> opera
 -- Parens
 -------------------------------------------------------------------------------------------
 
-betweenP :: Show a => Parser SourcePos -> Parser SourcePos -> Parser a -> Parser (a, SourcePos)
-betweenP open close middle = do
-  _ <- open
-  res <- middle
-  endPos <- close
+-- | The parser provided to `parens` must parse its own trailing whitespace.
+-- The `parens` parser doesn't parse trailing whitespace.
+parensP :: Parser a -> Parser (a, SourcePos)
+parensP parser = do
+  symbolP SymParenLeft
+  sc
+  res <- parser
+  symbolP SymParenRight
+  endPos <- getSourcePos
   pure (res, endPos)
 
-parens, braces, brackets, angles :: Show a => Parser a -> Parser (a, SourcePos)
-parens    = betweenP (symbolP SymParenLeft)   (symbolP SymParenRight)
-braces    = betweenP (symbolP SymBraceLeft)   (symbolP SymBraceRight)
-brackets  = betweenP (symbolP SymBracketLeft) (symbolP SymBracketRight)
-angles    = betweenP (symbolP SymAngleLeft)   (symbolP SymAngleRight)
+-- | The parser provided to `braces` must parse its own trailing whitespace.
+-- The `braces` parser doesn't parse trailing whitespace.
+bracesP :: Parser a -> Parser (a, SourcePos)
+bracesP parser = do
+  symbolP SymBraceLeft
+  sc
+  res <- parser
+  symbolP SymBraceRight
+  endPos <- getSourcePos
+  pure (res, endPos)
+
+-- | The parser provided to `brackets` must parse its own trailing whitespace.
+-- The `brackets` parser doesn't parse trailing whitespace.
+bracketsP :: Parser a -> Parser (a, SourcePos)
+bracketsP parser = do
+  symbolP SymBracketLeft
+  sc
+  res <- parser
+  symbolP SymBracketRight
+  endPos <- getSourcePos
+  pure (res, endPos)
+
+-- | The parser provided to `angles` must parse its own trailing whitespace.
+-- The `angles` parser doesn't parse trailing whitespace.
+anglesP :: Parser a -> Parser (a, SourcePos)
+anglesP parser = do
+  symbolP SymAngleLeft
+  sc
+  res <- parser
+  symbolP SymAngleRight
+  endPos <- getSourcePos
+  pure (res, endPos)

@@ -2,8 +2,8 @@
 module Syntax.RST.Program where
 
 import Syntax.RST.Terms( Command, Term, InstanceCase )
-import Syntax.RST.Types ( TypeScheme, Typ, MethodSig, XtorSig)
-import Syntax.Common.Names
+import Syntax.RST.Types ( TypeScheme, Typ, MethodSig, XtorSig, Polarity(..), PolarityRep(..))
+import Syntax.CST.Names
     ( Associativity,
       ClassName,
       DocComment,
@@ -14,15 +14,25 @@ import Syntax.Common.Names
       TyOpName,
       TypeName,
       XtorName )
-import Syntax.Common.PrdCns
-    ( PrdCns(..), PrdCnsRep(..), PrdCnsToPol )
 import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Syntax.CST.Types ( DataCodata )
-import Syntax.Common.Polarity ( Polarity(Neg, Pos) )
+import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..) )
 
 import Utils ( Loc )
 import Syntax.CST.Program qualified as CST
+
+---------------------------------------------------------------------------------
+-- Producer / Consumer Tags
+---------------------------------------------------------------------------------
+
+-- | We map producer terms to positive types, and consumer terms to negative types.
+type family PrdCnsToPol (pc :: PrdCns) :: Polarity where
+  PrdCnsToPol Prd = Pos
+  PrdCnsToPol Cns = Neg
+
+prdCnsToPol :: PrdCnsRep pc -> PolarityRep (PrdCnsToPol pc)
+prdCnsToPol PrdRep = PosRep
+prdCnsToPol CnsRep = NegRep
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -239,5 +249,8 @@ instance Show Declaration where
   show (ClassDecl         decl) = show decl
   show (InstanceDecl      decl) = show decl
 
-  
-type Program = [Declaration]
+---------------------------------------------------------------------------------
+-- Module
+---------------------------------------------------------------------------------
+
+newtype Module = MkModule { mod_decls :: [Declaration] } deriving (Show)

@@ -1,20 +1,56 @@
-module Syntax.RST.Types where
+module Syntax.RST.Types where 
 
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Map (Map)
-import Data.Map qualified as M
 import Data.Kind ( Type )
-import Data.Maybe
 
-import Syntax.Common.PrdCns
-    ( Arity, PrdCns(..), PrdCnsFlip, PrdCnsRep(..) )
-import Syntax.CST.Kinds ( MonoKind(..), Variance(..),KVar )
-import Syntax.Common.Polarity
-    ( FlipPol, Polarity(..), PolarityRep(..) )
-import Syntax.Common.Names
+import Syntax.CST.Kinds ( Variance(..) )
+import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
+import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 import Utils
+
+------------------------------------------------------------------------------
+-- Polarity
+------------------------------------------------------------------------------
+
+data Polarity = Pos | Neg deriving (Eq, Ord, Show)
+
+data PolarityRep pol where
+  PosRep :: PolarityRep Pos
+  NegRep :: PolarityRep Neg
+
+deriving instance Show (PolarityRep pol)
+deriving instance Eq (PolarityRep pol)
+deriving instance Ord (PolarityRep pol)
+
+flipPol :: Polarity -> Polarity
+flipPol Pos = Neg
+flipPol Neg = Pos
+
+type family FlipPol (pol :: Polarity) :: Polarity where
+  FlipPol Pos = Neg
+  FlipPol Neg = Pos
+
+flipPolarityRep :: forall pol. PolarityRep pol -> PolarityRep (FlipPol pol)
+flipPolarityRep PosRep = NegRep
+flipPolarityRep NegRep = PosRep
+
+polarityRepToPol :: PolarityRep pol -> Polarity
+polarityRepToPol PosRep = Pos
+polarityRepToPol NegRep = Neg
+
+type family PrdCnsFlip (pc :: PrdCns) (pol :: Polarity) :: Polarity where
+  PrdCnsFlip Prd pol = pol
+  PrdCnsFlip Cns pol = FlipPol pol
+
+type family FlipPrdCns (pc :: PrdCns) :: PrdCns where
+  FlipPrdCns Prd = Cns
+  FlipPrdCns Cns = Prd
+
+flipPrdCns :: PrdCnsRep pc -> PrdCnsRep (FlipPrdCns pc)
+flipPrdCns PrdRep = CnsRep
+flipPrdCns CnsRep = PrdRep
 
 ------------------------------------------------------------------------------
 -- CovContraList
@@ -86,10 +122,10 @@ deriving instance Ord (MethodSig pol)
 deriving instance Show (MethodSig pol)
 
 
-data Typ (pol :: Polarity) where
-  TySkolemVar :: Loc -> PolarityRep pol -> MonoKind -> SkolemTVar -> Typ pol
-  TyUniVar :: Loc -> PolarityRep pol -> MonoKind -> UniTVar -> Typ pol
-  TyRecVar :: Loc -> PolarityRep pol -> MonoKind -> RecTVar -> Typ pol
+data Typ (pol     :: Polarity) where
+  TySkolemVar     :: Loc -> PolarityRep pol -> SkolemTVar -> Typ pol
+  TyUniVar        :: Loc -> PolarityRep pol -> UniTVar -> Typ pol
+  TyRecVar        :: Loc -> PolarityRep pol -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
@@ -97,48 +133,47 @@ data Typ (pol :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal :: Loc -> PolarityRep pol -> MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
-  TySyn :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
+  TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
-  TyBot :: Loc -> MonoKind -> Typ Pos
-  TyTop :: Loc -> MonoKind -> Typ Neg
-  TyUnion :: Loc -> MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
-  TyInter :: Loc -> MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
+  TyBot           :: Loc -> Typ Pos
+  TyTop           :: Loc -> Typ Neg
+  TyUnion         :: Loc -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter         :: Loc -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
-  TyRec :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
+  TyRec           :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
-  TyI64 :: Loc -> PolarityRep pol -> Typ pol
-  TyF64 :: Loc -> PolarityRep pol -> Typ pol
-  TyChar :: Loc -> PolarityRep pol -> Typ pol
-  TyString :: Loc -> PolarityRep pol -> Typ pol
+  TyI64           :: Loc -> PolarityRep pol -> Typ pol
+  TyF64           :: Loc -> PolarityRep pol -> Typ pol
+  TyChar          :: Loc -> PolarityRep pol -> Typ pol
+  TyString        :: Loc -> PolarityRep pol -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
-  TyFlipPol :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
+  TyFlipPol       :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
+mkUnion :: Loc -> [Typ Pos] -> Typ Pos
+mkUnion loc []     = TyBot loc 
+mkUnion _   [t]    = t
+mkUnion loc (t:ts) = TyUnion loc t (mkUnion loc ts)
 
-mkUnion :: Loc -> MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc knd []     = TyBot loc knd
-mkUnion _   _   [t]    = t
-mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
-
-mkInter :: Loc -> MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc knd []     = TyTop loc knd
-mkInter _   _   [t]    = t
-mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
+mkInter :: Loc ->[Typ Neg] -> Typ Neg
+mkInter loc []     = TyTop loc
+mkInter _   [t]    = t
+mkInter loc (t:ts) = TyInter loc t (mkInter loc ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TySkolemVar _ rep _ _)     = rep
-getPolarity (TyUniVar _ rep _ _)        = rep
-getPolarity (TyRecVar _ rep _ _)        = rep
+getPolarity (TySkolemVar _ rep  _)     = rep
+getPolarity (TyUniVar _ rep  _)        = rep
+getPolarity (TyRecVar _ rep  _)        = rep
 getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
 getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep _ _ _)     = rep
+getPolarity (TyNominal _ rep  _ _)     = rep
 getPolarity (TySyn _ rep _ _)           = rep
 getPolarity TyTop {}                    = NegRep
 getPolarity TyBot {}                    = PosRep
@@ -183,15 +218,15 @@ class FreeTVars (a :: Type) where
   freeTVars :: a -> Set SkolemTVar
 
 instance FreeTVars (Typ pol) where
-  freeTVars (TySkolemVar _ _ _ tv)        = S.singleton tv
+  freeTVars (TySkolemVar _  _ tv)        = S.singleton tv
   freeTVars TyRecVar{}                    = S.empty
   freeTVars TyUniVar{}                    = S.empty
   freeTVars TyTop {}                      = S.empty
   freeTVars TyBot {}                      = S.empty
-  freeTVars (TyUnion _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyInter _ _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyRec _ _ _ t)              = freeTVars t
-  freeTVars (TyNominal _ _ _ _ args)      = S.unions (freeTVars <$> args)
+  freeTVars (TyUnion _ ty ty')            = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyInter _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyRec _ _ _ t)               = freeTVars t
+  freeTVars (TyNominal _ _ _ args)        = S.unions (freeTVars <$> args)
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
@@ -199,8 +234,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyCodataRefined _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyI64 _ _)                   = S.empty
   freeTVars (TyF64 _ _)                   = S.empty
-  freeTVars (TyChar _ _)                   = S.empty
-  freeTVars (TyString _ _)                   = S.empty
+  freeTVars (TyChar _ _)                  = S.empty
+  freeTVars (TyString _ _)                = S.empty
   freeTVars (TyFlipPol _ ty)              = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
@@ -219,110 +254,3 @@ instance FreeTVars (XtorSig pol) where
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
-------------------------------------------------------------------------------
--- Bisubstitution and Zonking
-------------------------------------------------------------------------------
-
-data VarType
-  = UniVT
-  | SkolemVT
-  | RecVT
-
-type family BisubstMap (vt :: VarType) :: Type where
-  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar MonoKind)
-  BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
-  BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
-
-newtype Bisubstitution vt = MkBisubstitution { bisubst_map :: BisubstMap vt }
-
-data VarTypeRep (vt :: VarType) where
-  UniRep    :: VarTypeRep UniVT
-  SkolemRep :: VarTypeRep SkolemVT
-  RecRep    :: VarTypeRep RecVT
-
--- | Class of types for which a Bisubstitution can be applied.
-class Zonk (a :: Type) where
-  zonk :: VarTypeRep vt -> Bisubstitution vt -> a -> a
-
-instance Zonk (Typ pol) where
-  zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = case M.lookup tv (fst (bisubst_map bisubst)) of
-     Nothing -> ty -- Recursive variable!
-     Just (tyPos,_) -> tyPos
-  zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = case M.lookup tv (fst (bisubst_map bisubst)) of
-     Nothing -> ty -- Recursive variable!
-     Just (_,tyNeg) -> tyNeg
-  zonk SkolemRep _ ty@TyUniVar{} = ty
-  zonk RecRep _ ty@TyUniVar{} = ty
-  zonk UniRep _ ty@TySkolemVar{} = ty
-  zonk SkolemRep bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
-     Nothing -> ty -- Recursive variable!
-     Just (tyPos,_) -> tyPos
-  zonk SkolemRep bisubst ty@(TySkolemVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
-     Nothing -> ty -- Recursive variable!
-     Just (_,tyNeg) -> tyNeg
-  zonk RecRep _ ty@TySkolemVar{} = ty
-  zonk UniRep _ ty@TyRecVar{} = ty
-  zonk SkolemRep _ ty@TyRecVar{} = ty
-  zonk RecRep bisubst ty@(TyRecVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
-    Nothing -> ty
-    Just (tyPos,_) -> tyPos
-  zonk RecRep bisubst ty@(TyRecVar _ NegRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
-    Nothing -> ty
-    Just (_,tyNeg) -> tyNeg
-  zonk vt bisubst (TyData loc rep xtors) =
-     TyData loc rep (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyCodata loc rep xtors) =
-     TyCodata loc rep (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyDataRefined loc rep tn xtors) =
-     TyDataRefined loc rep tn (zonk vt bisubst <$> xtors)
-  zonk vt bisubst (TyCodataRefined loc rep tn xtors) =
-     TyCodataRefined loc rep tn (zonk vt bisubst <$> xtors)
-  zonk UniRep bisubst (TyNominal loc rep kind tn args) =
-     TyNominal loc rep (zonkKind bisubst kind) tn (zonk UniRep bisubst <$> args) 
-  zonk vt bisubst (TyNominal loc rep kind tn args) =
-     TyNominal loc rep kind tn (zonk vt bisubst <$> args)
-  zonk vt bisubst (TySyn loc rep nm ty) =
-     TySyn loc rep nm (zonk vt bisubst ty)
-  zonk _vt _ (TyTop loc knd) =
-    TyTop loc knd
-  zonk _vt _ (TyBot loc knd) =
-    TyBot loc knd
-  zonk vt bisubst (TyUnion loc knd ty ty') =
-    TyUnion loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
-  zonk vt bisubst (TyInter loc knd ty ty') =
-    TyInter loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
-  zonk RecRep bisubst (TyRec loc rep tv ty) =
-    let bisubst' = MkBisubstitution $ M.delete tv (bisubst_map bisubst)
-    in TyRec loc rep tv $ zonk RecRep bisubst' ty
-  zonk vt bisubst (TyRec loc rep tv ty) =
-     TyRec loc rep tv (zonk vt bisubst ty)
-  zonk _vt _ t@TyI64 {} = t
-  zonk _vt _ t@TyF64 {} = t
-  zonk _vt _ t@TyChar {} = t
-  zonk _vt _ t@TyString {} = t
-  zonk vt bisubst (TyFlipPol rep ty) = TyFlipPol rep (zonk vt bisubst ty)
-
-instance Zonk (VariantType pol) where
-  zonk vt bisubst (CovariantType ty) = CovariantType (zonk vt bisubst ty)
-  zonk vt bisubst (ContravariantType ty) = ContravariantType (zonk vt bisubst ty)
-
-instance Zonk (XtorSig pol) where
-  zonk vt bisubst (MkXtorSig name ctxt) =
-    MkXtorSig name (zonk vt bisubst ctxt)
-
-instance Zonk (LinearContext pol) where
-  zonk vt bisubst = fmap (zonk vt bisubst)
-
-instance Zonk (PrdCnsType pol) where
-  zonk vt bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk vt bisubst ty)
-
-zonkKind :: Bisubstitution UniVT -> MonoKind -> MonoKind
-zonkKind _ (CBox cc) = CBox cc
-zonkKind _ (CRep prim) =  CRep prim
-zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
-
--- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
-unfoldRecType :: Typ pol -> Typ pol
-unfoldRecType recty@(TyRec _ PosRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
-unfoldRecType recty@(TyRec _ NegRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
-unfoldRecType ty = ty

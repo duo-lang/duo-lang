@@ -3,14 +3,15 @@ module Parser.Definition
   , runInteractiveParser
   , runFileParser
   , dbg
-  , parseTst) where
+  , parseTst
+  ) where
 
 import Control.Applicative (Alternative)
 import Control.Monad.Except
-import Data.Text qualified as T
-import Data.Void (Void)
 import Data.List.NonEmpty ( NonEmpty )
+import Data.Text qualified as T
 import Data.Text (Text)
+import Data.Void (Void)
 import Text.Megaparsec
 import Text.Megaparsec.Debug qualified
 

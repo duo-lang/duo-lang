@@ -6,13 +6,14 @@ import Prettyprinter
 import Text.Megaparsec.Pos
 
 import Pretty.Pretty
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( Associativity(..),
       ClassName(MkClassName),
       DocComment(unDocComment),
       FreeVarName(MkFreeVarName),
       MethodName(MkMethodName),
       ModuleName(MkModuleName),
+      PrimName(..),
       Precedence(..),
       RecTVar(MkRecTVar),
       RnTypeName(MkRnTypeName, rnTnName),
@@ -20,9 +21,9 @@ import Syntax.Common.Names
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
-import Syntax.Common.PrdCns ( Arity, PrdCns(..) )
-import Syntax.Common.Primitives ( PrimitiveType(..) )
-import Syntax.CST.Kinds  ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..))
+import Syntax.CST.Types (Arity, PrdCns(..))      
+import Syntax.CST.Kinds
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..))
 import Utils ( Loc(..) )
 
 
@@ -53,6 +54,8 @@ instance PrettyAnn DocComment where
 instance PrettyAnn XtorName where
   prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
+instance PrettyAnn PrimName where
+  prettyAnn (MkPrimName nm) = annSymbol "#" <> prettyAnn nm
 instance PrettyAnn MethodName where
   prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
 
@@ -105,16 +108,6 @@ prettyPrdCns Prd = "prd"
 prettyPrdCns Cns = "cns"
 
 ---------------------------------------------------------------------------------
--- Primitives
----------------------------------------------------------------------------------
-
-instance PrettyAnn PrimitiveType where
-  prettyAnn I64 = "I64"
-  prettyAnn F64 = "F64"
-  prettyAnn PChar = "Char"
-  prettyAnn PString = "String"
-
----------------------------------------------------------------------------------
 -- Kinds
 ---------------------------------------------------------------------------------
 
@@ -124,10 +117,11 @@ instance PrettyAnn EvaluationOrder where
 
 instance PrettyAnn MonoKind where
   prettyAnn (CBox eo)  = prettyAnn eo
-  prettyAnn (CRep I64) = "I64Rep"
-  prettyAnn (CRep F64) = "F64Rep"
-  prettyAnn (CRep PChar) = "CharRep"
-  prettyAnn (CRep PString) = "StringRep"
+  prettyAnn F64Rep = "F64Rep"
+  prettyAnn I64Rep = "I64Rep"
+  prettyAnn CharRep = "CharRep"
+  prettyAnn StringRep = "StringRep"
+  prettyAnn TopBotKind = "Any"
   prettyAnn (KindVar kv) = prettyAnn kv
 
 instance PrettyAnn KVar where

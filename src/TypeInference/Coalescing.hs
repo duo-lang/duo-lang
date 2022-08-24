@@ -8,9 +8,9 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Syntax.RST.Types
-import Syntax.Common.Names
-import Syntax.Common.Polarity
+import Syntax.TST.Types
+import Syntax.RST.Types (PolarityRep(..),Polarity(..))
+import Syntax.CST.Names
 import TypeInference.Constraints
 import Utils
 import qualified Data.Maybe as M
@@ -131,10 +131,10 @@ coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TyTop loc knd) =
-    pure (TyTop loc knd)
-coalesceType (TyBot loc knd) =
-    pure (TyBot loc knd)
+coalesceType (TyTop loc) =
+    pure (TyTop loc)
+coalesceType (TyBot loc) =
+    pure (TyBot loc)
 coalesceType (TyUnion loc knd ty1 ty2) = do
     ty1' <- coalesceType ty1
     ty2' <- coalesceType ty2

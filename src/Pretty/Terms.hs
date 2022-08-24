@@ -8,8 +8,7 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
-import Syntax.Common.Names ( FreeVarName )
-import Syntax.Common.Primitives ( primOpKeyword, primTypeKeyword )
+import Syntax.CST.Names ( FreeVarName )
 import Translate.Embed
 import Translate.Reparse
 
@@ -190,24 +189,13 @@ instance PrettyAnn CST.Term where
     prettyAnn (show n)
   prettyAnn (CST.NatLit _ CST.Refinement n) =
     prettyAnn (show n)
-  prettyAnn (CST.PrimCmdTerm (CST.ExitSuccess _)) =
-    annKeyword "ExitSuccess"
-  prettyAnn (CST.PrimCmdTerm (CST.ExitFailure _)) =
-    annKeyword "ExitFailure"
-  prettyAnn (CST.PrimCmdTerm (CST.Print _ t cmd)) =
-    annKeyword "Print" <>
-    parens (prettyAnn t) <>
-    semi <+>
-    prettyAnn cmd
-  prettyAnn (CST.PrimCmdTerm (CST.Read _ cns)) =
-    annKeyword "Read" <>
-    brackets (prettyAnn cns)
+  prettyAnn (CST.PrimTerm _ nm []) =
+    prettyAnn nm
+  prettyAnn (CST.PrimTerm _ nm args) =
+    prettyAnn nm <>
+    parens' comma (prettyAnn <$> args)
   prettyAnn (CST.Apply _ t1 t2) =
     group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
-  prettyAnn (CST.PrimCmdTerm (CST.PrimOp _ pt op subst)) =
-    annKeyword (prettyAnn (primOpKeyword op)) <>
-    annTypeName (prettyAnn (primTypeKeyword pt)) <>
-    parens' comma (prettyAnn <$> subst)
 
 ---------------------------------------------------------------------------------
 -- Commands

@@ -18,21 +18,18 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Parser.Common
 import Parser.Definition
+import Parser.Kinds
 import Parser.Lexer
 import Syntax.CST.Types
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Utils ( Loc(..) )
-import Control.Monad (void)
-
-
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
 ---------------------------------------------------------------------------------
 returnP :: Parser a -> Parser (PrdCns,a)
 returnP p = do
-  r <- optional (keywordP KwReturn)
+  r <- optional (keywordP KwReturn >> sc)
   b <- p
   return $ case r of
     Just _ -> (Cns,b)
@@ -42,7 +39,10 @@ returnP p = do
 xtorDeclP :: Parser (XtorName, [(PrdCns, Typ)])
 xtorDeclP = do
   (xt, _pos) <- xtorNameP <?> "constructor/destructor name"
-  args <- optional $ fst <$> (parens (returnP typP `sepBy` symbolP SymComma) <?> "argument list")
+  args <- optional $ do
+    (args,_) <- parensP (returnP typP `sepBy` (symbolP SymComma >> sc))
+    pure args
+  sc
   return (xt, maybe [] (map (\(x,(y,_)) -> (x,y))) args)
 
 -- | Parse a Constructor or destructor signature. E.g.
@@ -68,7 +68,9 @@ combineXtors = fmap combineXtor
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos = parens ((fst <$> typP) `sepBy` symbolP SymComma) <|> pure ([], endPos)
+nominalTypeArgsP endPos =
+  parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
+
 
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
@@ -77,6 +79,7 @@ nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
   (args, endPos') <- nominalTypeArgsP endPos
+  sc
   pure (TyNominal (Loc startPos endPos') name args, endPos')
 
 -- | Parse a data or codata type. E.g.:
@@ -85,11 +88,13 @@ nominalTypeP = do
 xdataTypeP :: DataCodata -> Parser (Typ, SourcePos)
 xdataTypeP Data = do
   startPos <- getSourcePos
-  (xtorSigs, endPos) <- angles (xtorSignatureP `sepBy` symbolP SymComma)
+  (xtorSigs, endPos) <- anglesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  sc
   pure (TyXData (Loc startPos endPos) Data xtorSigs, endPos)
 xdataTypeP Codata = do
   startPos <- getSourcePos
-  (xtorSigs, endPos) <- braces (xtorSignatureP `sepBy` symbolP SymComma)
+  (xtorSigs, endPos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  sc
   pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
 
 
@@ -103,14 +108,17 @@ typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
   (tvar, endPos) <- tvarP
-  return (TySkolemVar (Loc startPos endPos) tvar, endPos)
+  sc
+  pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
 recTypeP :: Parser (Typ, SourcePos)
 recTypeP = do
   startPos <- getSourcePos
   _ <- keywordP KwRec
+  sc
   (rv,_) <- tvarP
-  _ <- symbolP SymDot
+  symbolP SymDot
+  sc
   (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)
 
@@ -121,19 +129,25 @@ recTypeP = do
 refinementTypeP :: DataCodata -> Parser (Typ, SourcePos)
 refinementTypeP Data = do
   startPos <- getSourcePos
-  ((tn, ctors), endPos) <- angles (do
+  ((tn, ctors), endPos) <- anglesP (do
     (tn,_) <- typeNameP
-    _ <- symbolP SymPipe
-    ctors <- xtorSignatureP `sepBy` symbolP SymComma
+    sc
+    symbolP SymPipe
+    sc
+    ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, ctors))
+  sc
   pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
 refinementTypeP Codata = do
   startPos <- getSourcePos
-  ((tn, dtors), endPos) <- braces (do
+  ((tn, dtors), endPos) <- bracesP (do
     (tn,_) <- typeNameP
-    _ <- symbolP SymPipe
-    dtors <- xtorSignatureP `sepBy` symbolP SymComma
+    sc
+    symbolP SymPipe
+    sc
+    dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, dtors))
+  sc
   pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
 
 ---------------------------------------------------------------------------------
@@ -144,6 +158,7 @@ primTypeP :: Keyword -> (Loc -> Typ) -> Parser (Typ, SourcePos)
 primTypeP kw constr = do
   startPos <- getSourcePos
   endPos <- keywordP kw
+  sc
   pure (constr (Loc startPos endPos), endPos)
 
 tyI64P :: Parser (Typ, SourcePos)
@@ -165,19 +180,22 @@ tyStringP = primTypeP KwString TyString
 tyParensP :: Parser (Typ, SourcePos)
 tyParensP = do
   startPos <- getSourcePos
-  (typ, endPos) <- parens (fst <$> typP)
+  (typ, endPos) <- parensP (fst <$> typP)
+  sc
   pure (TyParens (Loc startPos endPos) typ, endPos)
 
 tyTopP :: Parser (Typ, SourcePos)
 tyTopP = do
   startPos <- getSourcePos
   endPos <- keywordP KwTop
+  sc
   pure (TyTop (Loc startPos endPos), endPos)
 
 tyBotP :: Parser (Typ, SourcePos)
 tyBotP = do
   startPos <- getSourcePos
   endPos <- keywordP KwBot
+  sc
   pure (TyBot (Loc startPos endPos), endPos)
 
 -- | Parse atomic types (i,e, without tyop chains)
@@ -203,6 +221,7 @@ tyOpChainP = do
   let f = do
           startPos <- getSourcePos
           (op, endPos) <- tyBinOpP
+          sc
           (typ,pos) <- typAtomP
           pure ((Loc startPos endPos, op, typ), pos)
   lst <- some f
@@ -228,21 +247,24 @@ typP = do
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> some (fst <$> tvarP) <* symbolP SymDot)
+  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
-  tConstraints <- option [] (constraintP `sepBy` symbolP SymComma <* symbolP SymDoubleRightArrow)
+  tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
   pure (TypeScheme (Loc startPos endPos) tvars' tConstraints monotype)
 
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
-  cname <- fst <$> upperCaseId
+  (cname,_) <- classNameP
+  sc
   (tvar, pos) <- tvarP
-  return (TypeClass (MkClassName cname) tvar, pos)
+  sc
+  return (TypeClass cname tvar, pos)
 
 subTypeConstraintP :: Parser (Constraint, SourcePos)
 subTypeConstraintP = try $ do
   t1 <- fst <$> typP
-  void $ symbolP SymSubtype
+  symbolP SymSubtype
+  sc
   (t2, pos) <- typP
   return (SubType t1 t2, pos)

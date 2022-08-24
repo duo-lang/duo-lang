@@ -17,7 +17,7 @@ def rec prd splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         S(n) => case xs of {
             Nil => MkTensor(Nil, Nil),
             Cons(x, xs) => case splitAt n xs of {
-                MkTensor(left, right) => MkTensor (Cons(x, left), right)
+                MkTensor(left, right) => MkTensor(Cons(x, left), right)
             }
         }
     };
@@ -84,4 +84,4 @@ def rec prd compare : Nat -> Nat -> Ordering :=
 
 def prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
-def cmd main := Print(sort compare testlist); ExitSuccess;
+def cmd main := #Print(sort compare testlist, #ExitSuccess);

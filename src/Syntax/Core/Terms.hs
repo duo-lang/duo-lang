@@ -22,13 +22,12 @@ import Data.Text qualified as T
 import Syntax.Core.Annot
 import Utils
 import Errors
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
-import Syntax.Common.PrdCns ( PrdCns(..), PrdCnsRep(..) )
-import Syntax.Common.Names
+import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.Common.Primitives ( PrimitiveOp, PrimitiveType )
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -138,7 +137,7 @@ data Command where
   Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
-  PrimOp :: Loc -> PrimitiveType -> PrimitiveOp -> Substitution -> Command
+  PrimOp :: Loc -> RST.PrimitiveOp -> Substitution -> Command
 
 --deriving instance Eq Command
 deriving instance Show Command
@@ -186,8 +185,8 @@ commandOpeningRec k args (Method loc mn cn subst) =
   Method loc mn cn (pctermOpeningRec k args <$> subst)
 commandOpeningRec k args (Apply loc annot t1 t2) =
   Apply loc annot (termOpeningRec k args t1) (termOpeningRec k args t2)
-commandOpeningRec k args (PrimOp loc pt op subst) =
-  PrimOp loc pt op (pctermOpeningRec k args <$> subst)
+commandOpeningRec k args (PrimOp loc op subst) =
+  PrimOp loc op (pctermOpeningRec k args <$> subst)
 
 commandOpening :: Substitution -> Command -> Command
 commandOpening = commandOpeningRec 0
@@ -232,8 +231,8 @@ commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
 commandClosingRec k args (Apply ext annot t1 t2) =
   Apply ext annot (termClosingRec k args t1) (termClosingRec k args t2)
-commandClosingRec k args (PrimOp ext pt op subst) =
-  PrimOp ext pt op (pctermClosingRec k args <$> subst)
+commandClosingRec k args (PrimOp ext op subst) =
+  PrimOp ext op (pctermClosingRec k args <$> subst)
 
 commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
 commandClosing = commandClosingRec 0
@@ -289,7 +288,7 @@ commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClos
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (PrimOp _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
+commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -333,7 +332,7 @@ shiftCmdRec dir n (Print ext prd cmd) = Print ext (shiftTermRec dir n prd) (shif
 shiftCmdRec dir n (Read ext cns) = Read ext (shiftTermRec dir n cns)
 shiftCmdRec _ _ (Jump ext fv) = Jump ext fv
 shiftCmdRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftPCTermRec dir n <$> subst)
-shiftCmdRec dir n (PrimOp ext pt op subst) = PrimOp ext pt op (shiftPCTermRec dir n <$> subst)
+shiftCmdRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftPCTermRec dir n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
 shiftCmd :: ShiftDirection -> Command -> Command

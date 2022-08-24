@@ -1,38 +1,35 @@
 {-# LANGUAGE TypeOperators #-}
 module LSP.Handler.CodeAction (codeActionHandler) where
 
+import Control.Monad (join)
+import Control.Monad.IO.Class ( MonadIO(liftIO) )
+import Data.HashMap.Strict qualified as Map
+import Data.Maybe ( fromMaybe, isNothing )
+import Data.Text qualified as T
 import Language.LSP.Types
 import Language.LSP.Server
 import Language.LSP.VFS
-import Control.Monad (join)
-import Data.Maybe ( fromMaybe, isNothing )
 import System.Log.Logger ( debugM )
-import Data.HashMap.Strict qualified as Map
-import Control.Monad.IO.Class ( MonadIO(liftIO) )
-
-import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Syntax.RST.Types ( TopAnnot(..))
+import Syntax.TST.Types qualified as TST ( TopAnnot(..))
+import Syntax.RST.Types ( PolarityRep(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
-import Syntax.Common.Names
-    ( FreeVarName(unFreeVarName),
-      ModuleName(MkModuleName) )
-import Syntax.Common.PrdCns ( PrdCnsRep(..) )
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
+import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
-import Utils
+import Dualize.Program (dualDataDecl)
+import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
+import LSP.Definition ( LSPMonad )
+import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
+import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
-import Syntax.Common.Polarity
-import Data.Text (pack, append)
-import Dualize.Program (dualDataDecl)
+import Syntax.CST.Names ( FreeVarName(..) )
+import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
+import Utils
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -43,31 +40,31 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
   let (RequestMessage _ _ _ (CodeActionParams _workDoneToken _partialResultToken ident@(TextDocumentIdentifier uri) range _context)) = req
   liftIO $ debugM "lspserver.codeActionHandler" ("Received codeAction request: " <> show uri <> " range: " <> show range)
   mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = maybe (error "Virtual File not present!") id mfile
+  let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp programP file
+  let decls = runFileParser fp moduleP file
   case decls of
     Left _err -> do
       responder (Right (List []))
     Right decls -> do
-      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (MkModuleName (getUri uri)) decls
+      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
       case res of
         Left _err -> do
           responder (Right (List []))
         Right (_,prog) -> do
           responder (Right (generateCodeActions ident range prog))
 
-generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Program -> List (Command  |? CodeAction)
-generateCodeActions ident rng program = List (join ls)
+generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command  |? CodeAction)
+generateCodeActions ident rng (TST.MkModule program) = List (join ls)
   where
     ls = generateCodeAction ident rng <$> program
 
 
 generateCodeActionPrdCnsDeclaration :: TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> [Command |? CodeAction]
-generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } =
+generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } =
   [generateAnnotCodeAction ident decl]
-generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated _, pcdecl_term } =
+generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
   let
     desugar  = [ generateDesugarCodeAction ident decl | not (isDesugaredTerm pcdecl_term)]
     cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
@@ -112,17 +109,17 @@ generateAnnotCodeAction (TextDocumentIdentifier uri) decl =
                    }
 
 generateAnnotEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateAnnotEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Inferred tys) tm) =
+generateAnnotEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Inferred tys) tm) =
   let
     newDecl :: TST.Declaration
-    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Annotated tys) tm)
+    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange loc, _newText = replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
-generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Annotated _ } = error "Should not occur"
+generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _ } = error "Should not occur"
 
 ---------------------------------------------------------------------------------
 -- Provide Dualize Action
@@ -142,20 +139,20 @@ generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
 
 
 generateDualizeEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (Annotated tys) tm) =
+generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm) =
   let
     tm' = dualTerm rep tm
     replacement = case tm' of
-      (Left error) -> ppPrint $ pack (show error)
+      (Left error) -> ppPrint $ T.pack (show error)
       (Right tm'') -> case rep of
-        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (Annotated (dualTypeScheme PosRep tys)) tm''))
-        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (Annotated (dualTypeScheme NegRep tys)) tm''))
-    edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
+        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme PosRep tys)) tm''))
+        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme NegRep tys)) tm''))
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
-generateDualizeEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } = error "Should not occur"
+generateDualizeEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } = error "Should not occur"
 
 generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
 generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
@@ -175,7 +172,7 @@ generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
     replacement = ppPrint (TST.DataDecl decl')
-    edit = TextEdit {_range = locToEndRange loc, _newText = pack "\n" `append` replacement }
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
@@ -253,16 +250,16 @@ generateDesugarCodeAction ident decl =
                    }
 
 generateDesugarEdit :: forall pc. TextDocumentIdentifier  -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateDesugarEdit (TextDocumentIdentifier uri) (TST.MkPrdCnsDeclaration loc doc rep isRec name (Annotated ty) tm) =
+generateDesugarEdit (TextDocumentIdentifier uri) (TST.MkPrdCnsDeclaration loc doc rep isRec name (TST.Annotated ty) tm) =
   let
-    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration defaultLoc doc rep isRec name (Annotated ty) (resetAnnotationTerm tm))
+    newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration defaultLoc doc rep isRec name (TST.Annotated ty) (resetAnnotationTerm tm))
     replacement = ppPrint newDecl
     edit = TextEdit {_range =locToRange loc, _newText = replacement}
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing}
-generateDesugarEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = Inferred _ } = error "Should not occur"
+generateDesugarEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } = error "Should not occur"
 
 generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
 generateCmdDesugarCodeAction ident decl =

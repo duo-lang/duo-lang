@@ -11,15 +11,15 @@ import Text.Read (readMaybe)
 import Errors
 import Pretty.Pretty
 import Pretty.Terms ()
-import Syntax.Common.Names
-import Syntax.Common.PrdCns
-import Syntax.Common.Polarity
+import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Utils
-import Syntax.RST.Types (Typ (TyNominal))
+import Syntax.TST.Types qualified as TST
+import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Terms qualified as CST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
@@ -54,9 +54,8 @@ checkArgs cmd _ _ = throwEvalError defaultLoc [ "Error during evaluation of:"
                                               , "Argument lengths don't coincide."
                                               ]
 
-natType :: Typ 'Pos
-
-natType = TyNominal defaultLoc PosRep (CBox CBV) peanoNm []
+natType :: TST.Typ 'Pos
+natType = TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []
 
 convertInt :: Int -> Term Prd
 convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") []

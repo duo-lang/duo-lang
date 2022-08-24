@@ -15,8 +15,8 @@ import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
-import Syntax.Common.PrdCns
-import Syntax.Common.Names
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Syntax.CST.Names
 import Utils ( Loc, HasLoc(getLoc))
 
 ---------------------------------------------------------------------------------

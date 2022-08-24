@@ -3,7 +3,7 @@ module Parser.Parser
   , runInteractiveParser
   , termP
   , declarationP
-  , programP
+  , moduleP
   , typeSchemeP
   , subtypingProblemP
   , Parser
@@ -23,7 +23,8 @@ import Syntax.CST.Types
 subtypingProblemP :: Parser (TypeScheme, TypeScheme)
 subtypingProblemP = do
   t1 <- typeSchemeP
-  _ <- symbolP SymSubtype
+  symbolP SymSubtype
+  sc
   t2 <- typeSchemeP
   return (t1,t2)
 

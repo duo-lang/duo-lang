@@ -4,7 +4,6 @@ import Control.Monad.Except (runExcept, forM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.Directory (listDirectory)
 import System.Environment (withArgs)
@@ -16,14 +15,14 @@ import Driver.Definition (defaultDriverState)
 import Driver.Driver (inferProgramIO)
 import Errors
 import Parser.Definition (runFileParser)
-import Parser.Program (programP)
+import Parser.Program (moduleP)
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
 import Spec.Subsumption qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
@@ -54,26 +53,26 @@ getAvailableExamples = do
   examples <- listDirectory "examples/"
   return (("examples/" ++) <$> filter (\s -> head s /= '.' && notElem s excluded) examples)
 
-getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Program)
+getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  case runExcept (runFileParser fp programP s) of
+  case runExcept (runFileParser fp moduleP s) of
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
-getTypecheckedDecls :: FilePath -> IO (Either (NonEmpty Error) TST.Program)
+getTypecheckedDecls :: FilePath -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> (fst <$> inferProgramIO defaultDriverState (MkModuleName (T.pack fp)) decls)
+      fmap snd <$> (fst <$> inferProgramIO defaultDriverState fp decls)
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable (MkModuleName "<BOOM>") decls))
+    Right decls -> pure (runExcept (createSymbolTable "<BOOM>" (MkModuleName "<BOOM>") decls))
     Left err -> return (Left err)
 
 

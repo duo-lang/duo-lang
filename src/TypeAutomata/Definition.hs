@@ -11,12 +11,10 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
-import Syntax.Common.Names ( RnTypeName, XtorName )
-import Syntax.Common.PrdCns ( Arity, PrdCns )
-import Syntax.CST.Types ( DataCodata(..) )
-import Syntax.Common.Polarity ( Polarity, PolarityRep )
-import Syntax.Common.Primitives ( PrimitiveType )
-import Syntax.CST.Kinds ( Variance, MonoKind(..) )
+import Syntax.CST.Names ( RnTypeName, XtorName )
+import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
+import Syntax.RST.Types ( Polarity, PolarityRep(..))
+import Syntax.CST.Kinds 
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -151,6 +149,20 @@ data XtorLabel = MkXtorLabel
   }
   deriving (Eq, Show, Ord)
 
+-- | A primitive type/calling convention
+data PrimitiveType =
+      I64 -- ^ Primitive signed 64-bit integer
+    | F64 -- ^ Primitive double-precision floating point
+    | PChar
+    | PString
+    deriving (Show, Eq, Ord)
+
+primTyToMonoKind :: PrimitiveType -> MonoKind
+primTyToMonoKind I64 = I64Rep
+primTyToMonoKind F64 = F64Rep
+primTyToMonoKind PChar = CharRep
+primTyToMonoKind PString = StringRep
+    
 data NodeLabel = 
   MkNodeLabel
     { nl_pol :: Polarity
@@ -281,4 +293,4 @@ getNodeKind :: Node -> TypeGr -> MonoKind
 getNodeKind i gr = case lab gr i of 
   Nothing -> error "No kind available for Node"
   Just (MkNodeLabel _ _ _ mk _ _ _) -> mk
-  Just (MkPrimitiveNodeLabel _ pt) -> CRep pt
+  Just (MkPrimitiveNodeLabel _ pt) -> primTyToMonoKind pt

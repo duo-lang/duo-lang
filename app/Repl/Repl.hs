@@ -14,7 +14,7 @@ import Pretty.Errors ()
 import Pretty.Pretty ( PrettyAnn, ppPrintIO )
 import Pretty.Program ()
 import Driver.Environment (Environment)
-import Syntax.Common.Names
+import Syntax.CST.Names
 import Driver.Driver
 import Driver.Repl (runCmd, EvalSteps(..))
 import Driver.Definition ( DriverM, defaultDriverState )
