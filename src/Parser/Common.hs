@@ -58,7 +58,7 @@ primNameP :: Parser (PrimName, SourcePos)
 primNameP = try $ do
   symbolP SymHash
   (name, pos) <- upperCaseIdL
-  pure (MkPrimName ("#" <> name), pos)
+  pure (MkPrimName name, pos)
 
 methodNameP :: Parser (MethodName, SourcePos)
 methodNameP = try $ do

@@ -55,7 +55,7 @@ instance PrettyAnn XtorName where
   prettyAnn (MkXtorName xt) = annXtorName $ prettyAnn xt
 
 instance PrettyAnn PrimName where
-  prettyAnn (MkPrimName nm) = prettyAnn nm
+  prettyAnn (MkPrimName nm) = annSymbol "#" <> prettyAnn nm
 instance PrettyAnn MethodName where
   prettyAnn (MkMethodName xt) = annMethodName $ prettyAnn xt
 

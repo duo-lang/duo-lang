@@ -427,17 +427,17 @@ embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
   CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
 
 embedPrimitiveOp :: RST.PrimitiveOp -> PrimName
-embedPrimitiveOp RST.I64Add = MkPrimName "#I64Add"
-embedPrimitiveOp RST.I64Sub = MkPrimName "#I64Sub"
-embedPrimitiveOp RST.I64Mul = MkPrimName "#I64Mul"
-embedPrimitiveOp RST.I64Div = MkPrimName "#I64Div"
-embedPrimitiveOp RST.I64Mod = MkPrimName "#I64Mod"
-embedPrimitiveOp RST.F64Add = MkPrimName "#F64Add"
-embedPrimitiveOp RST.F64Sub = MkPrimName "#F64Sub"
-embedPrimitiveOp RST.F64Mul = MkPrimName "#F64Mul"
-embedPrimitiveOp RST.F64Div = MkPrimName "#F64Div"
-embedPrimitiveOp RST.CharPrepend = MkPrimName "#CharPrepend"
-embedPrimitiveOp RST.StringAppend = MkPrimName "#StringAppend"
+embedPrimitiveOp RST.I64Add = MkPrimName "I64Add"
+embedPrimitiveOp RST.I64Sub = MkPrimName "I64Sub"
+embedPrimitiveOp RST.I64Mul = MkPrimName "I64Mul"
+embedPrimitiveOp RST.I64Div = MkPrimName "I64Div"
+embedPrimitiveOp RST.I64Mod = MkPrimName "I64Mod"
+embedPrimitiveOp RST.F64Add = MkPrimName "F64Add"
+embedPrimitiveOp RST.F64Sub = MkPrimName "F64Sub"
+embedPrimitiveOp RST.F64Mul = MkPrimName "F64Mul"
+embedPrimitiveOp RST.F64Div = MkPrimName "F64Div"
+embedPrimitiveOp RST.CharPrepend = MkPrimName "CharPrepend"
+embedPrimitiveOp RST.StringAppend = MkPrimName "StringAppend"
 
 embedPat :: RST.Pattern -> CST.Pattern
 embedPat (RST.XtorPat loc xt args) =

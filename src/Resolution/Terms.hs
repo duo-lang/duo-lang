@@ -206,17 +206,17 @@ resolvePrimCommand loc nm [tm1,tm2,tm3] = do
   tm2' <- resolveTerm PrdRep tm2
   tm3' <- resolveTerm CnsRep tm3
   let args = [RST.PrdTerm tm1', RST.PrdTerm tm2', RST.CnsTerm tm3']
-  if | nm == MkPrimName "#I64Add" -> pure (RST.PrimOp loc RST.I64Add args)
-     | nm == MkPrimName "#I64Sub" -> pure (RST.PrimOp loc RST.I64Sub args)
-     | nm == MkPrimName "#I64Mul" -> pure (RST.PrimOp loc RST.I64Mul args)
-     | nm == MkPrimName "#I64Div" -> pure (RST.PrimOp loc RST.I64Div args)
-     | nm == MkPrimName "#I64Mod" -> pure (RST.PrimOp loc RST.I64Mod args)
-     | nm == MkPrimName "#F64Add" -> pure (RST.PrimOp loc RST.F64Add args)
-     | nm == MkPrimName "#F64Sub" -> pure (RST.PrimOp loc RST.F64Sub args)
-     | nm == MkPrimName "#F64Mul" -> pure (RST.PrimOp loc RST.F64Mul args)
-     | nm == MkPrimName "#F64Div" -> pure (RST.PrimOp loc RST.F64Div args)
-     | nm == MkPrimName "#CharPrepend" -> pure (RST.PrimOp loc RST.CharPrepend args)
-     | nm == MkPrimName "#StringAppend" -> pure (RST.PrimOp loc RST.StringAppend args)
+  if | nm == i64AddName -> pure (RST.PrimOp loc RST.I64Add args)
+     | nm == i64SubName -> pure (RST.PrimOp loc RST.I64Sub args)
+     | nm == i64MulName -> pure (RST.PrimOp loc RST.I64Mul args)
+     | nm == i64DivName -> pure (RST.PrimOp loc RST.I64Div args)
+     | nm == i64ModName -> pure (RST.PrimOp loc RST.I64Mod args)
+     | nm == f64AddName -> pure (RST.PrimOp loc RST.F64Add args)
+     | nm == f64SubName -> pure (RST.PrimOp loc RST.F64Sub args)
+     | nm == f64MulName -> pure (RST.PrimOp loc RST.F64Mul args)
+     | nm == f64DivName -> pure (RST.PrimOp loc RST.F64Div args)
+     | nm == charPrependName -> pure (RST.PrimOp loc RST.CharPrepend args)
+     | nm == stringAppendName -> pure (RST.PrimOp loc RST.StringAppend args)
      | otherwise -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 3) :| []
 -- More arguments
 resolvePrimCommand loc nm args = throwError $ ErrResolution (PrimOpArityMismatch loc nm (length args)) :| []
