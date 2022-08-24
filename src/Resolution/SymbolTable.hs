@@ -1,5 +1,5 @@
 module Resolution.SymbolTable
-  ( TyOp(..)
+  ( BinOpDescr(..)
   , TyOpDesugaring(..)
   , TypeNameResolve(..)
   , XtorNameResolve(..)
@@ -15,6 +15,7 @@ import Data.Map qualified as M
 import Errors
 import Pretty.Pretty
 import Pretty.Common ()
+import Pretty.Types ()
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Program
@@ -23,7 +24,7 @@ import Syntax.CST.Terms
 import Utils
 
 ---------------------------------------------------------------------------------
--- Type Operators
+-- Binary Type Operators
 ---------------------------------------------------------------------------------
 
 data TyOpDesugaring where
@@ -31,12 +32,10 @@ data TyOpDesugaring where
     InterDesugaring :: TyOpDesugaring
     NominalDesugaring :: TypeName -> TyOpDesugaring
 
-data TyOp = MkTyOp
-    {
-        symbol :: BinOp,
-        prec :: Precedence,
-        assoc :: Associativity,
-        desugar :: TyOpDesugaring
+data BinOpDescr = MkBinOpDescr
+    { prec :: Precedence,
+      assoc :: Associativity,
+      desugar :: TyOpDesugaring
     }
 
 ---------------------------------------------------------------------------------
@@ -65,7 +64,7 @@ data SymbolTable = MkSymbolTable
   { xtorNameMap  :: Map XtorName XtorNameResolve
   , typeNameMap  :: Map TypeName TypeNameResolve
   , freeVarMap   :: Map FreeVarName FreeVarNameResolve
-  , tyOps        :: [TyOp]
+  , tyOps        :: Map TyOpName BinOpDescr
   , imports      :: [(ModuleName, Loc)]
   }
 
@@ -73,7 +72,7 @@ emptySymbolTable :: SymbolTable
 emptySymbolTable = MkSymbolTable { xtorNameMap  = M.empty
                                  , typeNameMap  = M.empty
                                  , freeVarMap   = M.empty
-                                 , tyOps        = []
+                                 , tyOps        = M.empty
                                  , imports      = []
                                  }
 
@@ -112,6 +111,16 @@ checkFreshFreeVarName :: MonadError (NonEmpty Error) m
 checkFreshFreeVarName loc fv st =
   if fv `elem` M.keys (freeVarMap st)
   then throwOtherError loc ["FreeVarName is already used: " <> ppPrint fv]
+  else pure ()
+
+checkFreshTyOpName :: MonadError (NonEmpty Error) m
+                   => Loc
+                   -> TyOpName
+                   -> SymbolTable
+                   -> m ()
+checkFreshTyOpName loc op st =
+  if op `elem` M.keys (tyOps st)
+  then throwOtherError loc ["TyOp is already used: " <> ppPrint op]
   else pure ()
 
 -- | Creating a symbol table for a program.
@@ -159,13 +168,13 @@ createSymbolTable' fp mn  (DataDecl MkDataDecl { data_loc, data_doc, data_refine
   let nominalResult = NominalResult rnTypeName data_polarity data_refined polyKind
   pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
             , typeNameMap = M.insert data_name nominalResult (typeNameMap st)}
-createSymbolTable' _ _ (TyOpDecl MkTyOpDeclaration { tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res}) st = do
-    let tyOp = MkTyOp { symbol = CustomOp tyopdecl_sym
-                      , prec = tyopdecl_prec
-                      , assoc = tyopdecl_assoc
-                      , desugar = NominalDesugaring tyopdecl_res
-                      }
-    pure $ st { tyOps = tyOp : tyOps st }
+createSymbolTable' _ _ (TyOpDecl MkTyOpDeclaration { tyopdecl_loc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res}) st = do
+  checkFreshTyOpName tyopdecl_loc tyopdecl_sym st
+  let descr = MkBinOpDescr { prec = tyopdecl_prec
+                           , assoc = tyopdecl_assoc
+                           , desugar = NominalDesugaring tyopdecl_res
+                           }
+  pure $ st { tyOps = M.insert tyopdecl_sym descr (tyOps st) }
 createSymbolTable' _ _ (ImportDecl MkImportDeclaration { imprtdecl_loc, imprtdecl_module }) st =
   pure $ st { imports = (imprtdecl_module,imprtdecl_loc):imports st }
 createSymbolTable' fp mn (TySynDecl MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res }) st = do
