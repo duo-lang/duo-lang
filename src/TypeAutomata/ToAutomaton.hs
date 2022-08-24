@@ -91,9 +91,7 @@ initialize tvars =
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
     lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
-        ,tRecVarEnv = M.empty
-                          }
-  in
+        ,tRecVarEnv = M.empty } in
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
@@ -118,7 +116,6 @@ insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
 insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TTA ()
 insertEdges edges = modifyGraph (G.insEdges edges)
-
 newNodeM :: TTA Node
 newNodeM = do
   graph <- gets ta_gr
@@ -226,13 +223,11 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
 insertType (TyTop _) = do
   newNode <- newNodeM
-  let kind = KindVar (MkKVar (T.pack "TOP"))
-  insertNode newNode (emptyNodeLabel Neg kind)
+  insertNode newNode (emptyNodeLabel Neg TopBotKind)
   pure newNode
 insertType (TyBot _) = do
   newNode <- newNodeM
-  let kind = KindVar (MkKVar (T.pack "BOT"))
-  insertNode newNode (emptyNodeLabel Pos kind)
+  insertNode newNode (emptyNodeLabel Pos TopBotKind)
   pure newNode
 insertType (TyUnion _ mk ty1 ty2) = do
   newNode <- newNodeM
@@ -254,8 +249,7 @@ insertType (TyRec _ rep rv ty) = do
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
-  --gr <- gets ta_gr
-  insertNode newNode (emptyNodeLabel pol (CBox CBV)) -- (getNodeKind n gr))
+  insertNode newNode (emptyNodeLabel pol (getKind ty)) 
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
