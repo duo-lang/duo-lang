@@ -43,7 +43,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
   let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp moduleP file
+  let decls = runFileParser fp (moduleP undefined fp) file
   case decls of
     Left _err -> do
       responder (Right (List []))
@@ -56,9 +56,9 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
           responder (Right (generateCodeActions ident range prog))
 
 generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command  |? CodeAction)
-generateCodeActions ident rng (TST.MkModule program) = List (join ls)
+generateCodeActions ident rng TST.MkModule { mod_decls } = List (join ls)
   where
-    ls = generateCodeAction ident rng <$> program
+    ls = generateCodeAction ident rng <$> mod_decls
 
 
 generateCodeActionPrdCnsDeclaration :: TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> [Command |? CodeAction]

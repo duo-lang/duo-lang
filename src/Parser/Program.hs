@@ -335,9 +335,12 @@ declarationP = do
   docDeclarationP doc
 
 
-moduleP :: Parser Module
-moduleP = do
+moduleP :: ModuleName -> FilePath -> Parser Module
+moduleP mn fp = do
   sc
   decls <- many declarationP
   eof
-  pure (MkModule decls)
+  pure MkModule { mod_name = mn
+                , mod_fp = fp
+                , mod_decls = decls
+                }

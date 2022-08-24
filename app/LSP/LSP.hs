@@ -206,7 +206,7 @@ publishErrors uri = do
     Just vfile -> do
       let file = virtualFileText vfile
       let fp = fromMaybe "fail" (uriToFilePath uri)
-      let decls = runExcept (runFileParser fp moduleP file)
+      let decls = runExcept (runFileParser fp (moduleP undefined fp) file)
       case decls of
         Left errs -> do
           sendDiagnostics (toNormalizedUri uri) (NE.toList errs)

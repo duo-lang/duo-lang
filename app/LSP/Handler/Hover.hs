@@ -506,4 +506,4 @@ instance ToHoverMap TST.Declaration where
   toHoverMap (TST.InstanceDecl decl) = toHoverMap decl
 
 instance ToHoverMap TST.Module where
-  toHoverMap (TST.MkModule prog) = M.unions (toHoverMap <$> prog)
+  toHoverMap TST.MkModule { mod_decls } = M.unions (toHoverMap <$> mod_decls)

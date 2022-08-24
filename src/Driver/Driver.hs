@@ -242,13 +242,17 @@ inferDecl mn (Core.InstanceDecl decl) = do
   pure (TST.InstanceDecl decl')
 
 inferProgram :: ModuleName -> Core.Module -> DriverM TST.Module
-inferProgram mn md = TST.MkModule <$> newDecls
-  where
-    newDecls :: DriverM [TST.Declaration]
-    newDecls = catMaybes <$> mapM inferDecl' (mod_decls md)
+inferProgram mn Core.MkModule { mod_name, mod_fp, mod_decls } = do
+  let inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
+      inferDecl' d = catchError (Just <$> inferDecl mn d) (addErrorsNonEmpty mn Nothing)
+  newDecls <- catMaybes <$> mapM inferDecl' mod_decls
+  pure TST.MkModule { mod_name = mod_name
+                    , mod_fp = mod_fp
+                    , mod_decls = newDecls
+                    }
 
-    inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
-    inferDecl' d = catchError (Just <$> inferDecl mn d) (addErrorsNonEmpty mn Nothing)
+
+    
 
 ---------------------------------------------------------------------------------
 -- Infer programs
@@ -278,8 +282,7 @@ runCompilationPlan compilationOrder = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
       --  decls <- getModuleDeclarations mn
-      (fp,decls) <- catchError  (getModuleDeclarations mn)
-                                (addErrorsNonEmpty mn (undefined, CST.MkModule []))
+      (fp,decls) <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
       st <- getSymbolTable fp mn decls
       addSymboltable mn st

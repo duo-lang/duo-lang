@@ -44,7 +44,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
     let file = virtualFileText vfile
     let fp = fromMaybe "fail" (uriToFilePath uri)
-    let decls = runFileParser fp moduleP file
+    let decls = runFileParser fp (moduleP undefined fp) file
     case decls of
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
@@ -202,7 +202,7 @@ instance ToJumpMap (RST.TypeScheme pol) where
 ---------------------------------------------------------------------------------
 
 instance ToJumpMap RST.Module where
-  toJumpMap (RST.MkModule prog) = M.unions (toJumpMap <$> prog)
+  toJumpMap RST.MkModule { mod_decls } = M.unions (toJumpMap <$> mod_decls)
 
 instance ToJumpMap (RST.PrdCnsDeclaration pc) where
   toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =
