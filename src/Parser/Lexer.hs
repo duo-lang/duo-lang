@@ -30,7 +30,6 @@ module Parser.Lexer
   , bracketsP
   , bracesP
   -- Other
-  , primOpKeywordP
   , checkTick
   , parseUntilKeywP
   ) where
@@ -45,8 +44,6 @@ import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
 
 import Parser.Definition
-import Pretty.Pretty (ppPrint)
-import Pretty.Terms ()
 import Syntax.CST.Names
 import Syntax.CST.Terms qualified as CST
 
@@ -232,11 +229,6 @@ data Keyword where
   KwAt          :: Keyword
   KwLeftAssoc   :: Keyword
   KwRightAssoc  :: Keyword
-  -- Command Keywords
-  KwExitSuccess :: Keyword
-  KwExitFailure :: Keyword
-  KwPrint       :: Keyword
-  KwRead        :: Keyword
   -- Declaration Keywords
   KwType        :: Keyword
   KwRefinement  :: Keyword
@@ -281,11 +273,6 @@ instance Show Keyword where
   show KwAt          = "at"
   show KwLeftAssoc   = "leftassoc"
   show KwRightAssoc  = "rightassoc"
-  -- Command Keywords
-  show KwExitSuccess = "ExitSuccess"
-  show KwExitFailure = "ExitFailure"
-  show KwPrint       = "Print"
-  show KwRead        = "Read"
   -- Declaration Keywords
   show KwType        = "type"
   show KwRefinement  = "refinement"
@@ -332,11 +319,6 @@ isDeclarationKw KwOperator    = False
 isDeclarationKw KwAt          = False
 isDeclarationKw KwLeftAssoc   = False
 isDeclarationKw KwRightAssoc  = False
--- Command Keywords
-isDeclarationKw KwExitSuccess = False
-isDeclarationKw KwExitFailure = False
-isDeclarationKw KwPrint       = False
-isDeclarationKw KwRead        = False
 -- Declaration Keywords
 isDeclarationKw KwType        = True
 isDeclarationKw KwRefinement  = True
@@ -380,13 +362,6 @@ parseUntilKeywP = do
 checkReserved :: Text -> Parser ()
 checkReserved str | str `elem` (T.pack . show <$> keywords) = fail . T.unpack $ "Keyword " <> str <> " cannot be used as an identifier."
                   | otherwise = return ()
-
-primOpKeywordP :: CST.PrimitiveOp -> Parser (CST.PrimitiveOp, SourcePos)
-primOpKeywordP op = do
-  _ <- string (ppPrint op)
-  endPos <- getSourcePos
-  sc
-  pure (op, endPos)
 
 -------------------------------------------------------------------------------------------
 -- Symbols

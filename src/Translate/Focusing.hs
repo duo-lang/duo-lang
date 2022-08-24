@@ -16,6 +16,7 @@ import Syntax.TST.Program
 import Syntax.TST.Terms
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..))
+import Syntax.RST.Terms qualified as RST
 import Utils
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
@@ -216,7 +217,7 @@ focusInstanceCase eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, in
                    }
 
 
-focusPrimOp :: EvaluationOrder -> CST.PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
+focusPrimOp :: EvaluationOrder -> RST.PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusPrimOp _  op [] pcterms' = PrimOp defaultLoc op (reverse pcterms')
 focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
