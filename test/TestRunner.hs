@@ -56,7 +56,7 @@ getAvailableExamples = do
 getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  case runExcept (runFileParser fp (moduleP undefined fp) s) of
+  case runExcept (runFileParser fp (moduleP fp) s) of
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 

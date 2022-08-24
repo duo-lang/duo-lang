@@ -44,7 +44,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
     let file = virtualFileText vfile
     let fp = fromMaybe "fail" (uriToFilePath uri)
-    let decls = runFileParser fp (moduleP undefined fp) file
+    let decls = runFileParser fp (moduleP fp) file
     case decls of
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))

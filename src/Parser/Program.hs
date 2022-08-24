@@ -4,10 +4,13 @@ module Parser.Program
   , returnP
   , xtorDeclP
   , xtorSignatureP
+  , filePathToModuleName
   ) where
 
 import Control.Monad (void)
 import Data.Maybe qualified
+import Data.Text qualified as T
+import System.FilePath (takeBaseName)
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (eol)
 
@@ -21,6 +24,7 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
 import Utils
+
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
 recoverDeclaration = withRecovery (\err -> registerParseError err >> parseUntilKeywP >> return ParseErrorDecl)
@@ -334,13 +338,15 @@ declarationP = do
   doc <- optional ((fst <$> docCommentP) <* eol)
   docDeclarationP doc
 
+filePathToModuleName :: FilePath -> ModuleName
+filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
 
-moduleP :: ModuleName -> FilePath -> Parser Module
-moduleP mn fp = do
+moduleP :: FilePath -> Parser Module
+moduleP fp = do
   sc
   decls <- many declarationP
   eof
-  pure MkModule { mod_name = mn
+  pure MkModule { mod_name = filePathToModuleName fp
                 , mod_fp = fp
                 , mod_decls = decls
                 }

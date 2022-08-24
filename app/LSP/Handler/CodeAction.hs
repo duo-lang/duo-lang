@@ -43,7 +43,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
   let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp (moduleP undefined fp) file
+  let decls = runFileParser fp (moduleP fp) file
   case decls of
     Left _err -> do
       responder (Right (List []))

@@ -16,7 +16,6 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Bifunctor (bimap)
-import System.FilePath ( takeBaseName )
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
@@ -25,6 +24,7 @@ import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveModule)
 import Resolution.Definition
 
+import Parser.Program ( filePathToModuleName )
 import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
@@ -300,10 +300,6 @@ runCompilationPlan compilationOrder = do
 ---------------------------------------------------------------------------------
 -- Old
 ---------------------------------------------------------------------------------
-
-
-filePathToModuleName :: FilePath -> ModuleName
-filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
 
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> FilePath

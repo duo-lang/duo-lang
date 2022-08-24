@@ -158,7 +158,7 @@ getModuleDeclarations mn = do
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
-            mod <- runFileParser fp (moduleP mn fp) file
+            mod <- runFileParser fp (moduleP fp) file
             addModule mod
             pure mod
 
