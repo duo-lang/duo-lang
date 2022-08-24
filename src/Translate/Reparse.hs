@@ -3,7 +3,7 @@ module Translate.Reparse
   , reparsePCTerm
   , reparseCommand
   , reparseDecl
-  , reparseProgram
+  , reparseModule
   , reparseSubst
   , reparseSubstI
   , reparseCmdCase
@@ -707,5 +707,5 @@ reparseDecl (RST.ClassDecl decl) =
 reparseDecl (RST.InstanceDecl decl) =
   CST.InstanceDecl (reparseInstanceDecl decl)
 
-reparseProgram :: RST.Program -> CST.Program
-reparseProgram = fmap reparseDecl
+reparseModule :: RST.Module -> CST.Module
+reparseModule (RST.MkModule decls) = CST.MkModule (reparseDecl <$> decls)

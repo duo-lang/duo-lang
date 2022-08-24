@@ -36,7 +36,7 @@ import LSP.Handler.JumpToDef ( jumpToDefHandler )
 import LSP.MegaparsecToLSP ( locToRange )
 import Paths_duo_lang (version)
 import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
+import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Utils
@@ -206,7 +206,7 @@ publishErrors uri = do
     Just vfile -> do
       let file = virtualFileText vfile
       let fp = fromMaybe "fail" (uriToFilePath uri)
-      let decls = runExcept (runFileParser fp programP file)
+      let decls = runExcept (runFileParser fp moduleP file)
       case decls of
         Left errs -> do
           sendDiagnostics (toNormalizedUri uri) (NE.toList errs)

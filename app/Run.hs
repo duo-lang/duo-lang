@@ -17,10 +17,10 @@ import Utils ( defaultLoc )
 import Options (DebugFlags(..))
 import Pretty.Errors (printLocatedReport)
 
-driverAction :: ModuleName -> DriverM TST.Program
+driverAction :: ModuleName -> DriverM TST.Module
 driverAction mn = do
   runCompilationModule mn
-  queryTypecheckedProgram mn
+  queryTypecheckedModule mn
 
 
 runRun :: DebugFlags -> ModuleName -> IO ()

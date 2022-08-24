@@ -23,7 +23,7 @@ import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
-import Parser.Program ( programP )
+import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
@@ -43,7 +43,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
   let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp programP file
+  let decls = runFileParser fp moduleP file
   case decls of
     Left _err -> do
       responder (Right (List []))
@@ -55,8 +55,8 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
         Right (_,prog) -> do
           responder (Right (generateCodeActions ident range prog))
 
-generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Program -> List (Command  |? CodeAction)
-generateCodeActions ident rng program = List (join ls)
+generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command  |? CodeAction)
+generateCodeActions ident rng (TST.MkModule program) = List (join ls)
   where
     ls = generateCodeAction ident rng <$> program
 
