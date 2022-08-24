@@ -94,7 +94,11 @@ embedCoreCommand (Core.PrimOp loc op subst) =
 
 
 embedCoreModule :: Core.Module -> RST.Module
-embedCoreModule (Core.MkModule decls ) = RST.MkModule (embedCoreDecl <$> decls)
+embedCoreModule Core.MkModule { mod_name, mod_fp, mod_decls } =
+    RST.MkModule { mod_name = mod_name
+                 , mod_fp = mod_fp
+                 , mod_decls = embedCoreDecl <$> mod_decls
+                 }
 
 embedPrdCnsDeclaration :: Core.PrdCnsDeclaration pc -> RST.PrdCnsDeclaration pc
 embedPrdCnsDeclaration Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
@@ -208,7 +212,11 @@ embedTSTCommand (TST.PrimOp loc op subst) =
     Core.PrimOp loc op (embedTSTSubst subst)
 
 embedTSTModule :: TST.Module -> Core.Module
-embedTSTModule (TST.MkModule decls) = Core.MkModule (embedTSTDecl <$> decls)
+embedTSTModule TST.MkModule { mod_name, mod_fp, mod_decls } =
+    Core.MkModule { mod_name = mod_name
+                  , mod_fp = mod_fp
+                  , mod_decls = embedTSTDecl <$> mod_decls
+                  }
 
 embedTSTPrdCnsDecl :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
 embedTSTPrdCnsDecl TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Annotated tys, pcdecl_term } =

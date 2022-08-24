@@ -20,7 +20,7 @@ pendingFiles :: [(FilePath, Reason)]
 pendingFiles = []
 
 getProducers :: TST.Module -> [(FreeVarName, Term Prd)]
-getProducers (TST.MkModule decls)= go decls []
+getProducers TST.MkModule { mod_decls } = go mod_decls []
   where
     go :: [TST.Declaration] -> [(FreeVarName, Term Prd)] -> [(FreeVarName, Term Prd)]
     go [] acc = acc
@@ -28,7 +28,7 @@ getProducers (TST.MkModule decls)= go decls []
     go (_:rest) acc = go rest acc
 
 getInstanceCases :: TST.Module -> [InstanceCase]
-getInstanceCases (TST.MkModule decls) = go decls []
+getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
   where
     go :: [TST.Declaration] -> [InstanceCase] -> [InstanceCase]
     go [] acc = acc

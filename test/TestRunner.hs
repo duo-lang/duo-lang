@@ -56,7 +56,7 @@ getAvailableExamples = do
 getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
   s <- T.readFile fp
-  case runExcept (runFileParser fp moduleP s) of
+  case runExcept (runFileParser fp (moduleP fp) s) of
     Left err -> pure (Left err)
     Right prog -> pure (pure prog)
 
@@ -65,14 +65,14 @@ getTypecheckedDecls fp = do
   decls <- getParsedDeclarations fp
   case decls of
     Right decls -> do
-      fmap snd <$> (fst <$> inferProgramIO defaultDriverState fp decls)
+      fmap snd <$> (fst <$> inferProgramIO defaultDriverState decls)
     Left err -> return (Left err)
 
 getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable "<BOOM>" (MkModuleName "<BOOM>") decls))
+    Right decls -> pure (runExcept (createSymbolTable decls))
     Left err -> return (Left err)
 
 

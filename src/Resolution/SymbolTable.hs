@@ -117,15 +117,13 @@ checkFreshFreeVarName loc fv st =
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.
 createSymbolTable :: MonadError (NonEmpty Error) m
-                  => FilePath
-                  -> ModuleName
-                  -> Module
+                  => Module
                   -> m SymbolTable
-createSymbolTable fp mn md = createSymbolTableAcc (mod_decls md) emptySymbolTable
+createSymbolTable MkModule { mod_name, mod_fp, mod_decls } = createSymbolTableAcc mod_decls emptySymbolTable
   where
     createSymbolTableAcc [] acc = pure acc
     createSymbolTableAcc (x:xs) acc = do
-      acc' <- createSymbolTable' fp mn x acc
+      acc' <- createSymbolTable' mod_fp mod_name x acc
       createSymbolTableAcc xs acc'
 
 createSymbolTable' :: MonadError (NonEmpty Error) m

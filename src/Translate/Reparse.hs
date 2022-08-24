@@ -719,4 +719,8 @@ reparseDecl (RST.InstanceDecl decl) =
   CST.InstanceDecl (reparseInstanceDecl decl)
 
 reparseModule :: RST.Module -> CST.Module
-reparseModule (RST.MkModule decls) = CST.MkModule (reparseDecl <$> decls)
+reparseModule RST.MkModule { mod_name, mod_fp, mod_decls } =
+  CST.MkModule { mod_name = mod_name
+               , mod_fp = mod_fp
+               , mod_decls = reparseDecl <$> mod_decls
+               }

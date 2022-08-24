@@ -295,7 +295,8 @@ focusDecl _  decl@ClassDecl {}       = decl
 focusDecl eo (InstanceDecl decl)     = InstanceDecl (focusInstanceDeclaration eo decl)
 
 focusModule :: EvaluationOrder -> Module -> Module
-focusModule eo (MkModule decls) = MkModule (focusDecl eo <$> decls)
+focusModule eo mod@MkModule { mod_decls } =
+    mod { mod_decls = focusDecl eo <$> mod_decls }
 
 focusEnvironment :: EvaluationOrder -> EvalEnv -> EvalEnv
 focusEnvironment cc (prd, cns, cmd) = (prd', cns', cmd')

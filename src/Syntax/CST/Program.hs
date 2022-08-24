@@ -287,5 +287,14 @@ instance Show Declaration where
 -- Module
 ---------------------------------------------------------------------------------
 
-newtype Module = MkModule { mod_decls :: [Declaration] } deriving (Show)
+-- | A module which corresponds to a single '*.duo' file.
+data Module = MkModule
+  { mod_name :: ModuleName
+    -- ^ The name of the module.
+  , mod_fp :: FilePath
+    -- ^ The absolute filepath of the module.
+  , mod_decls :: [Declaration]
+    -- ^ The declarations contained in the module.
+  }
 
+deriving instance Show Module

@@ -6,7 +6,7 @@ import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
 import Data.Text qualified as T
 import Language.LSP.Types
-    ( Uri(Uri, getUri),
+    ( Uri(Uri),
       Range,
       SMethod(STextDocumentDefinition),
       RequestMessage(RequestMessage),
@@ -44,12 +44,12 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
     let file = virtualFileText vfile
     let fp = fromMaybe "fail" (uriToFilePath uri)
-    let decls = runFileParser fp moduleP file
+    let decls = runFileParser fp (moduleP fp) file
     case decls of
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
       Right decls -> do
-        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
+        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState decls
         case res of
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
@@ -202,7 +202,7 @@ instance ToJumpMap (RST.TypeScheme pol) where
 ---------------------------------------------------------------------------------
 
 instance ToJumpMap RST.Module where
-  toJumpMap (RST.MkModule prog) = M.unions (toJumpMap <$> prog)
+  toJumpMap RST.MkModule { mod_decls } = M.unions (toJumpMap <$> mod_decls)
 
 instance ToJumpMap (RST.PrdCnsDeclaration pc) where
   toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =

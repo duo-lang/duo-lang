@@ -178,7 +178,11 @@ desugarDecl (RST.InstanceDecl decl) =
   Core.InstanceDecl (desugarInstanceDeclaration decl)
 
 desugarModule :: RST.Module -> Core.Module
-desugarModule (RST.MkModule decls) = Core.MkModule (desugarDecl <$> decls)
+desugarModule RST.MkModule { mod_name, mod_fp, mod_decls } =
+  Core.MkModule { mod_name = mod_name
+                , mod_fp = mod_fp
+                , mod_decls = desugarDecl <$> mod_decls
+                }
 
 -- should be resolved, since it's  not actually desugaring anything anymore
 desugarEnvironment :: Map ModuleName Environment -> EvalEnv

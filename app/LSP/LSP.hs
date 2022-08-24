@@ -206,12 +206,12 @@ publishErrors uri = do
     Just vfile -> do
       let file = virtualFileText vfile
       let fp = fromMaybe "fail" (uriToFilePath uri)
-      let decls = runExcept (runFileParser fp moduleP file)
+      let decls = runExcept (runFileParser fp (moduleP fp) file)
       case decls of
         Left errs -> do
           sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
         Right decls -> do
-          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState (T.unpack (getUri uri)) decls
+          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState decls
           sendDiagnostics (toNormalizedUri uri) warnings 
           case res of
             Left errs -> do

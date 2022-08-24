@@ -211,10 +211,10 @@ instance PrettyAnn CST.Declaration where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.Module where
-  prettyAnn (CST.MkModule decls) = vsep (prettyAnn <$> decls)
+  prettyAnn CST.MkModule { mod_decls } = vsep (prettyAnn <$> mod_decls)
 
 instance PrettyAnn TST.Module where
-  prettyAnn (TST.MkModule decls) = vsep (prettyAnn <$> decls)
+  prettyAnn TST.MkModule { mod_decls } = vsep (prettyAnn <$> mod_decls)
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments

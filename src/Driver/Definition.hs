@@ -20,7 +20,7 @@ import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)
-import qualified Syntax.CST.Program as CST (Module)
+import qualified Syntax.CST.Program as CST (Module(..))
 import qualified Data.Text.IO as T
 import Parser.Definition (runFileParser)
 import Parser.Parser (moduleP)
@@ -65,7 +65,7 @@ data DriverState = MkDriverState
   { drvOpts    :: InferenceOptions
     -- ^ The inference options
   , drvEnv     :: Map ModuleName Environment
-  , drvFiles   :: !(Map ModuleName (FilePath, CST.Module))
+  , drvFiles   :: !(Map ModuleName CST.Module)
   , drvSymbols :: !(Map ModuleName SymbolTable)
   , drvASTs    :: Map ModuleName TST.Module
   , drvErrs    :: Map ModuleName [Error]
@@ -128,16 +128,14 @@ addSymboltable mn st = modify f
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets drvSymbols
 
-getSymbolTable  :: FilePath
-                -> ModuleName
-                -> CST.Module
+getSymbolTable  :: CST.Module
                 -> DriverM SymbolTable
-getSymbolTable fp mn p = do
+getSymbolTable mod = do
   sts <- getSymbolTables
-  case M.lookup mn sts of
+  case M.lookup (CST.mod_name mod) sts of
     Nothing -> do
-      st <- createSymbolTable fp mn p
-      addSymboltable mn st
+      st <- createSymbolTable mod
+      addSymboltable (CST.mod_name mod) st
       return st
     Just st -> return st
 
@@ -152,21 +150,21 @@ getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) direc
 
 -- Modules and declarations
 
-getModuleDeclarations :: ModuleName -> DriverM (FilePath, CST.Module)
+getModuleDeclarations :: ModuleName -> DriverM CST.Module
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
         case M.lookup mn moduleMap of
-          Just (fp, decls) -> return (fp, decls)
+          Just mod -> pure mod
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
-            decls <- runFileParser fp moduleP file
-            addModuleDeclarations mn fp decls
-            return (fp, decls)
+            mod <- runFileParser fp (moduleP fp) file
+            addModule mod
+            pure mod
 
-addModuleDeclarations :: ModuleName -> FilePath -> CST.Module -> DriverM ()
-addModuleDeclarations mn fp decls = do
-        modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mn (fp, decls) drvFiles })
+addModule :: CST.Module -> DriverM ()
+addModule mod = do
+  modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert (CST.mod_name mod) mod drvFiles })
 
 -- AST Cache
 
