@@ -20,7 +20,7 @@ import Syntax.TST.Program qualified as TST
 import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)
-import qualified Syntax.CST.Program as CST (Module)
+import qualified Syntax.CST.Program as CST (Module(..))
 import qualified Data.Text.IO as T
 import Parser.Definition (runFileParser)
 import Parser.Parser (moduleP)
@@ -128,16 +128,14 @@ addSymboltable mn st = modify f
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
 getSymbolTables = gets drvSymbols
 
-getSymbolTable  :: FilePath
-                -> ModuleName
-                -> CST.Module
+getSymbolTable  :: CST.Module
                 -> DriverM SymbolTable
-getSymbolTable fp mn p = do
+getSymbolTable mod = do
   sts <- getSymbolTables
-  case M.lookup mn sts of
+  case M.lookup (CST.mod_name mod) sts of
     Nothing -> do
-      st <- createSymbolTable fp mn p
-      addSymboltable mn st
+      st <- createSymbolTable mod
+      addSymboltable (CST.mod_name mod) st
       return st
     Just st -> return st
 

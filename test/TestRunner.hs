@@ -72,7 +72,7 @@ getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
 getSymbolTable fp = do
   decls <- getParsedDeclarations fp
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable "<BOOM>" (MkModuleName "<BOOM>") decls))
+    Right decls -> pure (runExcept (createSymbolTable decls))
     Left err -> return (Left err)
 
 

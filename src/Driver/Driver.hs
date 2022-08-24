@@ -282,9 +282,9 @@ runCompilationPlan compilationOrder = do
       guardVerbose $ putStrLn ("Compiling module: " <> ppPrintString mn)
       -- 1. Find the corresponding file and parse its contents.
       --  decls <- getModuleDeclarations mn
-      (fp,decls) <- getModuleDeclarations mn
+      (_,decls) <- getModuleDeclarations mn
       -- 2. Create a symbol table for the module and add it to the Driver state.
-      st <- getSymbolTable fp mn decls
+      st <- getSymbolTable decls
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
