@@ -143,10 +143,32 @@ getPolarity TyInter {}                  = NegRep
 getPolarity (TyRec _ rep _ _)           = rep
 getPolarity (TyI64 _ rep)               = rep
 getPolarity (TyF64 _ rep)               = rep
-getPolarity (TyChar _ rep)               = rep
-getPolarity (TyString _ rep)               = rep
+getPolarity (TyChar _ rep)              = rep
+getPolarity (TyString _ rep)            = rep
 getPolarity (TyFlipPol rep _)           = rep
 
+getKind :: Typ pol -> MonoKind
+getKind (TySkolemVar _ _ mk _)    = mk
+getKind (TyUniVar _ _ mk _)       = mk
+getKind (TyRecVar _ _ mk _)       = mk
+-- No Kinds available, will have to be added from return kinds of constructor
+getKind (TyData _ _ _)            = TopBotKind
+getKind (TyCodata _ _ _)          = TopBotKind
+getKind (TyDataRefined _ _ _ _)   = TopBotKind
+getKind (TyCodataRefined _ _ _ _) = TopBotKind
+-- From here all should be fine
+getKind (TyNominal _ _ mk _ _)    = mk
+getKind (TySyn _ _ _ ty)          = getKind ty
+getKind TyTop {}                  = TopBotKind
+getKind TyBot {}                  = TopBotKind
+getKind (TyUnion _ mk _ _)        = mk
+getKind (TyInter _ mk _ _)        = mk
+getKind (TyRec _ _ _ ty)          = getKind ty
+getKind TyI64{}                   = I64Rep
+getKind TyF64{}                   = F64Rep
+getKind TyChar{}                  = CharRep
+getKind TyString{}                = StringRep
+getKind (TyFlipPol _ ty)          = getKind ty
 
 
 ------------------------------------------------------------------------------
@@ -316,6 +338,7 @@ zonkKind _ F64Rep = F64Rep
 zonkKind _ I64Rep = I64Rep
 zonkKind _ CharRep = CharRep
 zonkKind _ StringRep = StringRep
+zonkKind _ TopBotKind = TopBotKind
 zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
