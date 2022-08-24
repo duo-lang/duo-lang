@@ -13,7 +13,7 @@ import Resolution.Types
 import Syntax.CST.Names
 import Syntax.RST.Types (PolarityRep(..))
 import TypeAutomata.Subsume (subsume)
-import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
+import TypeInference.GenerateConstraints.KindInference (checkTypeScheme)
 
 subsumptionCheckPos :: [(ModuleName, SymbolTable)] -> Bool -> Text -> Text -> Spec
 subsumptionCheckPos env bspec s1 s2 = do

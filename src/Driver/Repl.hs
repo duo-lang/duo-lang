@@ -42,7 +42,7 @@ import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
-import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
+import TypeInference.GenerateConstraints.KindInference (checkTypeScheme)
 
 
 

@@ -26,6 +26,7 @@ import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.CST.Kinds
+import TypeInference.GenerateConstraints.KindInference
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts

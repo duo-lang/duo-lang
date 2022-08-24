@@ -35,8 +35,8 @@ import Syntax.Core.Program as Core
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
-import TypeInference.GenerateConstraints.Definition
-    ( runGenM,checkTypeScheme,checkKind )
+import TypeInference.GenerateConstraints.Definition ( runGenM )
+import TypeInference.GenerateConstraints.KindInference (checkTypeScheme, checkKind)
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,

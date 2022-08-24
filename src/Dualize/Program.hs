@@ -7,8 +7,8 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Program qualified as RST
 import Dualize.Terms
-import TypeInference.GenerateConstraints.Definition (checkKind)
 import Translate.Embed
+import TypeInference.GenerateConstraints.KindInference
 
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
