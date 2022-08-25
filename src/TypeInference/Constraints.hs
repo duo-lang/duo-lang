@@ -39,6 +39,7 @@ data ConstraintInfo
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
+  KindEq :: a -> MonoKind -> MonoKind -> Constraint a
   TypeClassPos :: a -> ClassName -> Typ Pos -> Constraint a
   TypeClassNeg :: a -> ClassName -> Typ Neg -> Constraint a
     deriving (Eq, Ord, Functor)
@@ -57,6 +58,7 @@ data UVarProvenance
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
                                    , cs_uvars :: [(UniTVar, UVarProvenance)]
+                                   , cs_kvars :: [KVar]
                                    }
 
 ------------------------------------------------------------------------------
@@ -73,6 +75,7 @@ data VariableState = VariableState
 emptyVarState :: MonoKind -> VariableState
 emptyVarState = VariableState [] [] []
 
-newtype SolverResult = MkSolverResult
+data SolverResult = MkSolverResult
   { tvarSolution :: Map UniTVar VariableState
+  , kvarSolution :: Map KVar MonoKind
     }

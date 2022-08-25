@@ -309,14 +309,14 @@ instance ToHoverMap (TST.Typ pol) where
     in
       mkHoverMap loc msg
 
-  toHoverMap (TST.TyData loc rep xtors) =
+  toHoverMap (TST.TyData loc rep _ xtors) =
     let
       msg = T.unlines [ "#### Structural data type"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyDataRefined loc rep tn xtors) =
+  toHoverMap (TST.TyDataRefined loc rep _ tn xtors) =
     let
       msg = T.unlines [ "#### Refinement datatype"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -324,14 +324,14 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyCodata loc rep xtors) =
+  toHoverMap (TST.TyCodata loc rep _ xtors) =
     let
       msg = T.unlines [ "#### Structural codata type"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyCodataRefined loc rep tn xtors) =
+  toHoverMap (TST.TyCodataRefined loc rep _ tn xtors) =
     let
       msg = T.unlines [ "#### Refinement codata type"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -358,14 +358,14 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyTop loc) =
+  toHoverMap (TST.TyTop loc _) =
     let
       msg = T.unlines [ "#### Top type"
                       , "- Polarity: " <> prettyPolRep NegRep
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyBot loc) =
+  toHoverMap (TST.TyBot loc _) =
     let
       msg = T.unlines [ "#### Bot type"
                       , "- Polarity: " <> prettyPolRep PosRep

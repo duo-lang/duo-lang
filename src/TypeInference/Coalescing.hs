@@ -62,7 +62,7 @@ getOrElseUpdateRecVar ptv = do
 
 
 coalesce :: SolverResult -> Bisubstitution UniVT
-coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution $ M.fromList xs
+coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs,M.empty)
     where
         res = M.keys tvarSolution
         f tvar = do x <- coalesceType $ TyUniVar defaultLoc PosRep Nothing tvar
@@ -106,26 +106,26 @@ coalesceType (TyUniVar _ NegRep _ tv) = do
                     newName <- freshSkolemVar
                     return $                                            mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing newName : ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyRecVar defaultLoc NegRep Nothing recVar  : ubs'))
-coalesceType (TyData loc rep xtors) = do
+coalesceType (TyData loc rep mk xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyData loc rep xtors')
-coalesceType (TyCodata loc rep xtors) = do
+    return (TyData loc rep mk xtors')
+coalesceType (TyCodata loc rep mk xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodata loc rep xtors')
-coalesceType (TyDataRefined loc rep tn xtors) = do
+    return (TyCodata loc rep mk xtors')
+coalesceType (TyDataRefined loc rep mk tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyDataRefined loc rep tn xtors')
-coalesceType (TyCodataRefined loc rep tn xtors) = do
+    return (TyDataRefined loc rep mk tn xtors')
+coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
-    return (TyCodataRefined loc rep tn xtors')
+    return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep kind tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep kind tn args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TyTop loc) =
-    pure (TyTop loc)
-coalesceType (TyBot loc) =
-    pure (TyBot loc)
+coalesceType (TyTop loc mk) =
+    pure (TyTop loc mk)
+coalesceType (TyBot loc mk) =
+    pure (TyBot loc mk)
 coalesceType (TyUnion loc knd ty1 ty2) = do
     ty1' <- coalesceType ty1
     ty2' <- coalesceType ty2
