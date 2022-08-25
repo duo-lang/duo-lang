@@ -30,6 +30,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.CST.Names
+import Syntax.CST.Kinds (MonoKind)
 import Utils
 
 ---------------------------------------------------------------------------------
@@ -148,6 +149,14 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
   case find ( \RST.MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
     Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
     Just msig -> pure $ RST.msig_args msig
+
+lookupXtorKind :: EnvReader a m
+             => XtorName -> m MonoKind
+lookupXtorKind xtorn = do
+  let err = ErrOther $ SomeOtherError defaultLoc ("No Kind for XTor" <> ppPrint xtorn)
+  let f env = M.lookup xtorn (kindEnv env)
+  snd <$> findFirstM f err
+
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

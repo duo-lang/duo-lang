@@ -25,6 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
+import Syntax.CST.Kinds (MonoKind(CBox))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -206,6 +207,8 @@ inferDecl mn (Core.DataDecl decl) = do
 -- XtorDecl
 --
 inferDecl _mn (Core.XtorDecl decl) = do
+  let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
+  modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --
 -- ImportDecl

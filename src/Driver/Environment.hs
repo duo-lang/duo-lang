@@ -10,6 +10,7 @@ import Syntax.RST.Program ( ClassDeclaration, DataDecl )
 import Syntax.TST.Types ( TypeScheme, Typ)
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types( PrdCns(..) )
+import Syntax.CST.Kinds (MonoKind)
 import Utils ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -23,9 +24,10 @@ data Environment = MkEnvironment
   , classEnv :: Map ClassName ClassDeclaration
   , instanceEnv :: Map ClassName (Set (Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
+  , kindEnv :: Map XtorName MonoKind
   }
 
 emptyEnvironment :: Environment
-emptyEnvironment = MkEnvironment M.empty M.empty M.empty M.empty M.empty []
+emptyEnvironment = MkEnvironment M.empty M.empty M.empty M.empty M.empty [] M.empty
 instance Show Environment where
   show _ = "<Environment>"
