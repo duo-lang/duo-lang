@@ -47,8 +47,6 @@ data MonoKind
   | F64Rep
   | CharRep
   | StringRep
-  -- Used to annotate kinds for bottom and top types, as they can have any kind
-  | TopBotKind
   deriving (Show, Eq, Ord)
 
 
