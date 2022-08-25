@@ -84,24 +84,24 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar     :: Loc -> PolarityRep pol -> MonoKind -> SkolemTVar -> Typ pol
-  TyUniVar        :: Loc -> PolarityRep pol -> MonoKind -> UniTVar -> Typ pol
-  TyRecVar        :: Loc -> PolarityRep pol -> MonoKind -> RecTVar -> Typ pol
+  TySkolemVar     :: Loc -> PolarityRep pol -> Maybe MonoKind -> SkolemTVar -> Typ pol
+  TyUniVar        :: Loc -> PolarityRep pol -> Maybe MonoKind -> UniTVar -> Typ pol
+  TyRecVar        :: Loc -> PolarityRep pol -> Maybe MonoKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
-  TyData          :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig pol]           -> Typ pol
-  TyCodata        :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyDataRefined   :: Loc -> PolarityRep pol -> MonoKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
-  TyCodataRefined :: Loc -> PolarityRep pol -> MonoKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyData          :: Loc -> PolarityRep pol -> Maybe MonoKind                  -> [XtorSig pol]           -> Typ pol
+  TyCodata        :: Loc -> PolarityRep pol -> Maybe MonoKind                  -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyDataRefined   :: Loc -> PolarityRep pol -> Maybe MonoKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
+  TyCodataRefined :: Loc -> PolarityRep pol -> Maybe MonoKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal       :: Loc -> PolarityRep pol -> MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> Maybe MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
   TyBot           :: Loc -> Maybe MonoKind -> Typ Pos
   TyTop           :: Loc -> Maybe MonoKind -> Typ Neg
-  TyUnion         :: Loc -> MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
-  TyInter         :: Loc -> MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
+  TyUnion         :: Loc -> Maybe MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter         :: Loc -> Maybe MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
   TyRec           :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
@@ -116,13 +116,13 @@ deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
-mkUnion :: Loc -> MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc _   []     = TyBot loc
+mkUnion :: Loc -> Maybe MonoKind -> [Typ Pos] -> Typ Pos
+mkUnion loc _   []     = TyBot loc Nothing
 mkUnion _   _   [t]    = t
 mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
 
-mkInter :: Loc -> MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc _   []     = TyTop loc 
+mkInter :: Loc -> Maybe MonoKind -> [Typ Neg] -> Typ Neg
+mkInter loc _   []     = TyTop loc Nothing
 mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 
@@ -148,7 +148,7 @@ getPolarity (TyString _ rep)               = rep
 getPolarity (TyFlipPol rep _)              = rep
 
 
-getKind ::  Typ pol -> MonoKind
+getKind ::  Typ pol -> Maybe MonoKind
 getKind (TySkolemVar _ _ mk _)        = mk
 getKind (TyUniVar _ _ mk _)           = mk
 getKind (TyRecVar _ _ mk _)           = mk
@@ -163,11 +163,10 @@ getKind (TyBot _ mk)                  = mk
 getKind (TyUnion _ mk _ _)            = mk
 getKind (TyInter _ mk _ _)            = mk
 getKind (TyRec _ _ _ ty)              = getKind ty
-getKind (TyRec _ _ _ ty)              = getKind ty
-getKind TyI64{}                       = I64Rep
-getKind TyF64{}                       = F64Rep
-getKind TyChar{}                      = CharRep
-getKind TyString{}                    = StringRep
+getKind TyI64{}                       = Just I64Rep
+getKind TyF64{}                       = Just F64Rep
+getKind TyChar{}                      = Just CharRep
+getKind TyString{}                    = Just StringRep
 getKind (TyFlipPol _ ty)              = getKind ty
 
 ------------------------------------------------------------------------------
@@ -335,13 +334,14 @@ instance Zonk (LinearContext pol) where
 instance Zonk (PrdCnsType pol) where
   zonk vt bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk vt bisubst ty)
 
-zonkKind :: Bisubstitution UniVT -> MonoKind -> MonoKind
-zonkKind _ (CBox cc) = CBox cc
-zonkKind _ F64Rep = F64Rep 
-zonkKind _ I64Rep = I64Rep
-zonkKind _ CharRep = CharRep
-zonkKind _ StringRep = StringRep
-zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
+zonkKind :: Bisubstitution UniVT -> Maybe MonoKind -> Maybe MonoKind
+zonkKind _ Nothing = Nothing
+zonkKind _ (Just (CBox cc)) = Just (CBox cc)
+zonkKind _ (Just F64Rep) = Just F64Rep 
+zonkKind _ (Just I64Rep) = Just I64Rep
+zonkKind _ (Just CharRep) = Just CharRep
+zonkKind _ (Just StringRep) = Just StringRep
+zonkKind bisubst (Just kindV@(KindVar kv)) = Just (Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst))))
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol

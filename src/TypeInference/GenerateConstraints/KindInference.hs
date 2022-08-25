@@ -29,26 +29,26 @@ checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = TST.MkXtorSig {s
 checkKind :: RST.Typ pol -> TST.Typ pol 
 checkKind (RST.TySkolemVar loc pol tv) = do
   let knd = KindVar (MkKVar (unSkolemTVar tv))
-  TST.TySkolemVar loc pol knd tv 
+  TST.TySkolemVar loc pol (Just knd) tv 
 
 checkKind (RST.TyUniVar loc pol tv) = do 
   let knd = KindVar (MkKVar (unUniTVar tv))
-  TST.TyUniVar loc pol knd tv 
+  TST.TyUniVar loc pol (Just knd) tv 
 
 checkKind (RST.TyRecVar loc pol rv) = do
   let knd = KindVar (MkKVar (unRecTVar rv))
-  TST.TyRecVar loc pol knd rv 
+  TST.TyRecVar loc pol (Just knd) rv 
 
-checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol (CBox CBV) (map checkXtorSig xtors)                            -- TODO
-checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol (CBox CBV) (map checkXtorSig xtors)                        -- TODO
-checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol (CBox CBV) tn (map checkXtorSig xtors)        -- TODO
-checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol (CBox CBV) tn (map checkXtorSig xtors)    -- TODO
-checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol (CBox CBV) tn (map checkVariantType vart)   -- TODO
+checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol Nothing (map checkXtorSig xtors)                            -- TODO
+checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol Nothing (map checkXtorSig xtors)                        -- TODO
+checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol Nothing tn (map checkXtorSig xtors)        -- TODO
+checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol Nothing tn (map checkXtorSig xtors)    -- TODO
+checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol Nothing tn (map checkVariantType vart)   -- TODO
 
 checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty) 
 
-checkKind (RST.TyBot loc) = TST.TyBot loc
-checkKind (RST.TyTop loc) = TST.TyTop loc
+checkKind (RST.TyBot loc) = TST.TyBot loc (Just topbotVar)
+checkKind (RST.TyTop loc) = TST.TyTop loc (Just topbotVar)
 checkKind (RST.TyUnion loc ty1 ty2) = do 
   let ty1' = checkKind ty1
   let ty2' = checkKind ty2

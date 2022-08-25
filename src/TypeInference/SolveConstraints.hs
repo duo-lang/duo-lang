@@ -13,7 +13,6 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Maybe (fromMaybe)
-import Data.Text qualified as T
 
 import Driver.Environment (Environment)
 import Errors
