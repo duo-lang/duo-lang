@@ -179,7 +179,7 @@ allCaseIdL = do
 -------------------------------------------------------------------------------------------
 
 operatorP :: Parser (Text, SourcePos)
-operatorP = funOperator <|> otherOperator <|> backtickOperator
+operatorP = backtickOperator <|> funOperator <|> otherOperator
   where
     -- We have to treat the function arrow specially, since we want to allow it
     -- as an operator, but it is also a reserved symbol.
