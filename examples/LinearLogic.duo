@@ -121,11 +121,11 @@ type operator ⅋ leftassoc at 3 := Par;
 
 -- | Injection into the right element of Par.
 def prd unit : forall a. a -> Bot ⅋ a :=
-  \x => cocase { MkPar(kerr,*) => x };
+  \x => cocase { MkPar(k_err,*) => x };
 
 -- | Injection into the left element of Par.
 def prd throw : forall a. a -> a ⅋ Bot :=
-  \x => cocase { MkPar(*,kres) => x };
+  \x => cocase { MkPar(*,k_res) => x };
 
 --------------------------------------------------------------------------------------------
 -- Negation as a data type
