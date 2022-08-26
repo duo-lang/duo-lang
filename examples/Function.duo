@@ -6,9 +6,14 @@ codata Fun : (-a : CBV, +b : CBV) -> CBN {
 };
 
 type operator -> rightassoc at 0 := Fun;
+type operator `to` rightassoc at 0 := Fun;
 
 -- | The polymorphic identity function
 def prd id : forall a. a -> a :=
+  \x => x;
+
+-- | The polymorphic identity function
+def prd idTo : forall a. a `to` a :=
   \x => x;
 
 -- | Function composition
