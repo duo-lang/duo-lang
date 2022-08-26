@@ -135,14 +135,8 @@ coalesceType (TyInter loc knd ty1 ty2) = do
     ty2' <- coalesceType ty2
     pure (TyInter loc knd ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
-    -- modify (second (M.insert (tv, Pos) tv))
-    -- let f = second (S.insert (tv, Pos))
-    -- ty' <- local f $ coalesceType ty
     return $ TyRec loc PosRep tv ty
 coalesceType (TyRec loc NegRep tv ty) = do
-    -- modify (second (M.insert (tv, Neg) tv))
-    -- let f = second (S.insert (tv, Neg))
-    -- ty' <- local f $ coalesceType ty
     return $ TyRec loc NegRep tv ty
 coalesceType t@TyI64 {} = return t
 coalesceType t@TyF64 {} = return t

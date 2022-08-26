@@ -4,72 +4,132 @@ import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
-import Syntax.CST.Names (SkolemTVar(unSkolemTVar), UniTVar (unUniTVar), RecTVar (unRecTVar))
+import Syntax.CST.Names 
+import Lookup
+import Errors
+import Driver.Environment
+import Utils
 
----------------------------------------------------------------------------------------------
--- Kinds
----------------------------------------------------------------------------------------------
+import Control.Monad.Reader
+import Control.Monad.Except
+import Control.Monad.Writer
+import Control.Monad.State
+import Data.List.NonEmpty
+import Data.Map 
 
-checkTypeScheme :: RST.TypeScheme pol -> TST.TypeScheme pol
-checkTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = checkKind ty}
+--------------------------------------------------------------------------------------------
+-- Kind Inference Monad 
+--------------------------------------------------------------------------------------------
+newtype KindState = KindState { kVarCount :: Int } 
 
-checkVariantType :: RST.VariantType pol -> TST.VariantType pol 
-checkVariantType (RST.CovariantType ty) = TST.CovariantType (checkKind ty)
-checkVariantType (RST.ContravariantType ty) = TST.ContravariantType (checkKind ty)
+newtype KindReader = KindReader {location :: Loc}
 
-checkPrdCnsType :: RST.PrdCnsType pol -> TST.PrdCnsType pol
-checkPrdCnsType (RST.PrdCnsType rep ty) = TST.PrdCnsType rep (checkKind ty)
+newtype KindM a = KindM {getKindM :: ReaderT (Map ModuleName Environment, KindReader) (StateT KindState (ExceptT (NonEmpty Error) (Writer [Warning]))) a}
+  deriving (Functor, Applicative, Monad, MonadState KindState, MonadReader (Map ModuleName Environment, KindReader), MonadError (NonEmpty Error) )
 
-checkLinearContext :: RST.LinearContext pol -> TST.LinearContext pol
-checkLinearContext = map checkPrdCnsType
+--------------------------------------------------------------------------------------------
+-- Kind Inference
+--------------------------------------------------------------------------------------------
+getXtorKinds :: [RST.XtorSig pol] -> KindM (Maybe MonoKind)
+getXtorKinds [] = return Nothing
+getXtorKinds (fst:rst) = do
+  let nm = RST.sig_name fst
+  knd <- Just <$> lookupXtorKind nm
+  knd' <- getXtorKinds rst
+  if knd == knd' then return knd else error "Kinds of constructors do not match" 
 
-checkXtorSig :: RST.XtorSig pol -> TST.XtorSig pol
-checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = TST.MkXtorSig {sig_name = nm, sig_args = checkLinearContext ctxt }
 
-checkKind :: RST.Typ pol -> TST.Typ pol 
+checkTypeScheme :: RST.TypeScheme pol -> KindM (TST.TypeScheme pol)
+checkTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
+  ty' <- checkKind ty
+  return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty'}
+
+checkVariantType :: RST.VariantType pol -> KindM (TST.VariantType pol)
+checkVariantType (RST.CovariantType ty) = TST.CovariantType <$> checkKind ty
+checkVariantType (RST.ContravariantType ty) = TST.ContravariantType <$> checkKind ty
+
+checkPrdCnsType :: RST.PrdCnsType pol -> KindM (TST.PrdCnsType pol)
+checkPrdCnsType (RST.PrdCnsType rep ty) = do 
+  ty' <- checkKind ty
+  return (TST.PrdCnsType rep ty')
+
+checkLinearContext :: RST.LinearContext pol -> KindM (TST.LinearContext pol)
+checkLinearContext = mapM checkPrdCnsType
+
+checkXtorSig :: RST.XtorSig pol -> KindM (TST.XtorSig pol)
+checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do 
+  ctxt' <- checkLinearContext ctxt 
+  return (TST.MkXtorSig {sig_name = nm, sig_args = ctxt' })
+
+checkKind :: RST.Typ pol -> KindM (TST.Typ pol)
 checkKind (RST.TySkolemVar loc pol tv) = do
   let knd = KindVar (MkKVar (unSkolemTVar tv))
-  TST.TySkolemVar loc pol (Just knd) tv 
+  return (TST.TySkolemVar loc pol (Just knd) tv)
 
 checkKind (RST.TyUniVar loc pol tv) = do 
   let knd = KindVar (MkKVar (unUniTVar tv))
-  TST.TyUniVar loc pol (Just knd) tv 
+  return (TST.TyUniVar loc pol (Just knd) tv)
 
 checkKind (RST.TyRecVar loc pol rv) = do
   let knd = KindVar (MkKVar (unRecTVar rv))
-  TST.TyRecVar loc pol (Just knd) rv 
+  return (TST.TyRecVar loc pol (Just knd) rv)
 
-checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol Nothing (map checkXtorSig xtors)                            -- TODO
-checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol Nothing (map checkXtorSig xtors)                        -- TODO
-checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol Nothing tn (map checkXtorSig xtors)        -- TODO
-checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol Nothing tn (map checkXtorSig xtors)    -- TODO
-checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol Nothing tn (map checkVariantType vart)   -- TODO
+checkKind (RST.TyData loc pol xtors) = do 
+  knd <- getXtorKinds xtors 
+  xtors' <- mapM checkXtorSig xtors
+  return (TST.TyData loc pol knd xtors')
 
-checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty) 
+checkKind (RST.TyCodata loc pol xtors) = do 
+  knd <- getXtorKinds xtors
+  xtors' <- mapM checkXtorSig xtors
+  return (TST.TyCodata loc pol knd xtors')
 
-checkKind (RST.TyBot loc) = TST.TyBot loc (Just topbotVar)
-checkKind (RST.TyTop loc) = TST.TyTop loc (Just topbotVar)
+-- TODO
+checkKind (RST.TyDataRefined loc pol tn xtors) = do
+  xtors' <- mapM checkXtorSig xtors
+  return (TST.TyDataRefined loc pol Nothing tn xtors')
+checkKind (RST.TyCodataRefined loc pol tn xtors) = do 
+  xtors' <- mapM checkXtorSig xtors
+  return (TST.TyCodataRefined loc pol Nothing tn xtors')
+checkKind (RST.TyNominal loc pol tn vart) = do
+  vart' <- mapM checkVariantType vart
+  return (TST.TyNominal loc pol Nothing tn vart')
+---
+
+checkKind (RST.TySyn loc pol tn ty) = do 
+  ty' <- checkKind ty 
+  return (TST.TySyn loc pol tn ty')
+
+checkKind (RST.TyBot loc) = return (TST.TyBot loc (Just topbotVar))
+checkKind (RST.TyTop loc) = return (TST.TyTop loc (Just topbotVar))
+
 checkKind (RST.TyUnion loc ty1 ty2) = do 
-  let ty1' = checkKind ty1
-  let ty2' = checkKind ty2
+  ty1' <- checkKind ty1
+  ty2' <- checkKind ty2
   let knd = getKind ty1'
   if knd == getKind ty2' then
-    TST.TyUnion loc knd (checkKind ty1) (checkKind ty2)
+    return (TST.TyUnion loc knd ty1' ty2')
   else
     error ("Union of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
 
 checkKind (RST.TyInter loc ty1 ty2) = do
-  let ty1' = checkKind ty1
-  let ty2' = checkKind ty2
+  ty1' <- checkKind ty1
+  ty2' <- checkKind ty2
   let knd = getKind ty1'
   if knd == getKind ty2' then
-    TST.TyInter loc knd (checkKind ty1) (checkKind ty2)
+    return (TST.TyInter loc knd ty1' ty2')
   else
     error ("Intersection of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
 
-checkKind (RST.TyRec loc pol rv ty) = TST.TyRec loc pol rv (checkKind ty)
-checkKind (RST.TyI64 loc pol) = TST.TyI64 loc pol
-checkKind (RST.TyF64 loc pol) = TST.TyF64 loc pol
-checkKind (RST.TyChar loc pol) = TST.TyChar loc pol
-checkKind (RST.TyString loc pol) = TST.TyString loc pol
-checkKind (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (checkKind ty)
+checkKind (RST.TyRec loc pol rv ty) = do
+  ty' <- checkKind ty
+  return (TST.TyRec loc pol rv ty')
+
+checkKind (RST.TyI64 loc pol) = return (TST.TyI64 loc pol)
+checkKind (RST.TyF64 loc pol) = return (TST.TyF64 loc pol)
+checkKind (RST.TyChar loc pol) = return (TST.TyChar loc pol)
+checkKind (RST.TyString loc pol) = return(TST.TyString loc pol)
+
+checkKind (RST.TyFlipPol pol ty) = do 
+  ty' <- checkKind ty
+  return (TST.TyFlipPol pol ty')
