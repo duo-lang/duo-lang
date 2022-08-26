@@ -179,7 +179,7 @@ allCaseIdL = do
 -------------------------------------------------------------------------------------------
 
 operatorP :: Parser (Text, SourcePos)
-operatorP = funOperator <|> otherOperator
+operatorP = funOperator <|> otherOperator <|> backtickOperator
   where
     -- We have to treat the function arrow specially, since we want to allow it
     -- as an operator, but it is also a reserved symbol.
@@ -192,6 +192,12 @@ operatorP = funOperator <|> otherOperator
       checkReservedOp name
       pos <- getSourcePos
       pure (name, pos)
+    backtickOperator = do
+      symbolP SymBacktick
+      name <- T.pack <$> many alphaNumChar
+      symbolP SymBacktick
+      pos <- getSourcePos
+      pure ("`" <> name <> "`", pos)
 
 ---
 
