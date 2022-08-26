@@ -1,6 +1,7 @@
 module TypeInference.GenerateConstraints.KindInference where
 
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Types (Polarity(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
@@ -8,11 +9,9 @@ import Syntax.CST.Names
 import Lookup
 import Errors
 import Driver.Environment
-import Utils
 
 import Control.Monad.Reader
 import Control.Monad.Except
-import Control.Monad.Writer
 import Control.Monad.State
 import Data.List.NonEmpty
 import Data.Map 
@@ -20,13 +19,21 @@ import Data.Map
 --------------------------------------------------------------------------------------------
 -- Kind Inference Monad 
 --------------------------------------------------------------------------------------------
-newtype KindState = KindState { kVarCount :: Int } 
+--type KindedTypes = (S.Set (TST.Typ Pos), S.Set (TST.Typ Neg))
 
-newtype KindReader = KindReader {location :: Loc}
+data KindState = KindState { posTypes :: [TST.Typ Pos], negTypes :: [TST.Typ Neg] } 
+initialState :: KindState
+initialState = KindState { posTypes = [], negTypes = []}
 
-newtype KindM a = KindM {getKindM :: ReaderT (Map ModuleName Environment, KindReader) (StateT KindState (ExceptT (NonEmpty Error) (Writer [Warning]))) a}
-  deriving (Functor, Applicative, Monad, MonadState KindState, MonadReader (Map ModuleName Environment, KindReader), MonadError (NonEmpty Error) )
+-- newtype KindReader = KindReader {location :: Loc}
+--initialReader:: Loc -> Map ModuleName Environment -> (Map ModuleName Environment,KindReader)
+-- initialReader loc env = (env, KindReader {location = loc})
 
+type KindM a = (ReaderT (Map ModuleName Environment, ()) (StateT KindState (Except (NonEmpty Error)))) a
+ 
+
+runKindM ::  KindM a -> Map ModuleName Environment -> KindState -> Either (NonEmpty Error) (a, KindState)
+runKindM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 --------------------------------------------------------------------------------------------
 -- Kind Inference
 --------------------------------------------------------------------------------------------
@@ -133,3 +140,31 @@ checkKind (RST.TyString loc pol) = return(TST.TyString loc pol)
 checkKind (RST.TyFlipPol pol ty) = do 
   ty' <- checkKind ty
   return (TST.TyFlipPol pol ty')
+
+
+-- insert Type into state
+insertType :: TST.Typ pol -> KindM ()
+insertType ty = do
+  posTy <- gets posTypes
+  negTy <- gets negTypes
+  case TST.getPolarity ty of 
+   RST.PosRep -> modify (\s -> s { posTypes = ty:posTy })
+   RST.NegRep ->  modify (\s -> s { negTypes = ty:negTy })
+
+-- check a list of kinds and insert them all into the environment
+checkKinds :: [RST.Typ pol] -> KindM ()
+checkKinds [] = return ()
+checkKinds (ty:tys) = do
+  ty' <- checkKind ty
+  insertType ty'
+  checkKinds tys
+
+---------------------------------------------------------------------------------
+-- Run Kind Inference
+---------------------------------------------------------------------------------
+
+inferKindsTypes :: ([RST.Typ Pos],[RST.Typ Neg]) -> Map ModuleName Environment -> Either (NonEmpty Error) ([TST.Typ Pos], [TST.Typ Neg])
+inferKindsTypes typs env = do 
+  (_, posSt) <- runKindM (checkKinds (fst typs)) env initialState
+  (_, kindSt) <- runKindM (checkKinds (snd typs)) env posSt
+  Right (posTypes kindSt,negTypes kindSt)
