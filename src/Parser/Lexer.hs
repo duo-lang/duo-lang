@@ -151,7 +151,7 @@ floatP = do
 -- Does not parse trailing whitespace.
 lowerCaseIdL :: Parser (Text, SourcePos)
 lowerCaseIdL = do
-  name <- T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar)
+  name <- T.cons <$> lowerChar <*> (T.pack <$> many (alphaNumChar <|> char '_'))
   checkReserved name
   pos <- getSourcePos
   pure (name, pos)
@@ -160,7 +160,7 @@ lowerCaseIdL = do
 -- Does not parse trailing whitespace.
 upperCaseIdL :: Parser (Text, SourcePos)
 upperCaseIdL = do
-  name <- T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
+  name <- T.cons <$> upperChar <*> (T.pack <$> many (alphaNumChar <|> char '_'))
   checkReserved name
   pos <- getSourcePos
   pure (name, pos)
@@ -169,7 +169,7 @@ upperCaseIdL = do
 -- Does not parse trailing whitespace.
 allCaseIdL :: Parser (Text, SourcePos)
 allCaseIdL = do
-  name <- T.pack <$> many alphaNumChar
+  name <- T.cons <$> alphaNumChar <*> (T.pack <$> many (alphaNumChar <|> char '_'))
   checkReserved name
   pos <- getSourcePos
   pure (name, pos)
