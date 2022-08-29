@@ -5,7 +5,6 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
 import Data.Text.IO qualified as T
-import System.Directory (listDirectory)
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
@@ -26,6 +25,7 @@ import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
+import Utils (listRecursiveDuoFiles)
 
 data Options where
   OptEmpty  :: Options
@@ -42,16 +42,16 @@ filterP = some (argument str (metavar "FILES..." <> help "Specify files which sh
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
-  examples <- listDirectory "test/counterexamples/"
-  pure  $ sort (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
+  examples <- listRecursiveDuoFiles "test/counterexamples/"
+  pure  $ sort (filter (\s -> head s /= '.') examples)
 
 excluded :: [FilePath]
 excluded = ["fix.duo"]
 
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
-  examples <- listDirectory "examples/"
-  return (("examples/" ++) <$> filter (\s -> head s /= '.' && notElem s excluded) examples)
+  examples <- listRecursiveDuoFiles "examples/"
+  return (filter (\s -> head s /= '.' && notElem s excluded) examples)
 
 getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
