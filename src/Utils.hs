@@ -10,6 +10,9 @@ module Utils
   , Verbosity(..)
     -- Directory helper functions
   , listRecursiveFiles
+  , listRecursiveDuoFiles
+  , isDuoFile
+  , analyzeDuoFilepath
   ) where
 
 import Control.Monad (forM)
@@ -23,7 +26,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import System.Directory ( listDirectory, doesDirectoryExist)
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeExtension, splitFileName, splitDirectories, dropExtension)
 
 ----------------------------------------------------------------------------------
 -- Helper Functions
@@ -75,6 +78,24 @@ listRecursiveFiles topdir = do
       then listRecursiveFiles path
       else pure [path]
   pure (concat paths)
-             
-    
-  
+
+
+listRecursiveDuoFiles :: FilePath -> IO [FilePath]
+listRecursiveDuoFiles fp = do
+  files <- listRecursiveFiles fp
+  pure (filter isDuoFile files)
+
+-- | Checks whether given filepath ends in ".duo"
+isDuoFile :: FilePath -> Bool
+isDuoFile fp = takeExtension fp == ".duo"
+
+
+-- | Analyzes a filepath to a .duo file. Only call on arguments for which 
+-- the `isDuoFile` function returns true.
+-- Examples:
+-- analyzeDuoFilepath "foo/bar/file.duo" = (["foo", "bar"],"file")
+-- analyzeDuoFilepath "file.duo" = ([], "file")
+analyzeDuoFilepath :: FilePath -> ([FilePath], String)
+analyzeDuoFilepath fp =
+  case splitFileName fp of
+    (path, file) -> (splitDirectories path, dropExtension file)
